@@ -145,6 +145,9 @@ class JobKind:
     # The sentence for a job whose ending record could not be written; the internal error when the kind has none
     store_failure_reason: Optional[str] = None
     initial_stages: Callable[[Mapping[str, Any]], list[dict[str, Any]]] = _no_initial_stages
+    # Whether what an ending record names is stored and whole: a succeeded job's results, a rejected job's own
+    # (a media job's kept attempt, which holds why it was refused); asked at the commit and of a succeeded job a
+    # start would answer
     results_valid: Callable[[JobStore, Mapping[str, Any]], bool] = _results_whole
 
 
@@ -378,8 +381,8 @@ class Runner:
         return max(attempts, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
 
     def _current(self, kind: JobKind, record: Mapping[str, Any]) -> bool:
-        """Whether a succeeded job's results are to be answered: made by the kind's producer at its revision or
-        later, and whole."""
+        """Whether an ended job's results are to be answered: made by the kind's producer at its revision or
+        later, and whole by the kind's own check of what the record names (a rejected job names its attempt)."""
         if not kind.producer.made(record):
             return False
         try:

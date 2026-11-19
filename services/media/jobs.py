@@ -73,13 +73,19 @@ def clip_refusal(asset: Mapping[str, Any], kind: str) -> Optional[str]:
     return CLIP_DISPLAY_COPY if kind == "display_copy" else None
 
 
-def _variant_stored(store: JobStore, record: Mapping[str, Any]) -> bool:
-    """A succeeded job answers as current only while its variant's file and records are in place."""
+def _results_stored(store: JobStore, record: Mapping[str, Any]) -> bool:
+    """Whether what an ending record names is stored: a rejected job's kept attempt, which holds the reason it was
+    refused (platform-8); a succeeded job's variant file and records, so it answers as current only while they are in
+    place."""
+    folder = store.upload_folder(record["sourceAssetSha256"])
+    if record.get("state") == "rejected":
+        attempt_id = record.get("attemptId")
+        return isinstance(attempt_id, str) and (folder / "attempts" / f"{attempt_id}.json").is_file()
     variant_id = record.get("variantId")
     if not isinstance(variant_id, str):
         return False
-    folder = store.upload_folder(record["sourceAssetSha256"]) / "variants" / variant_id
-    return all((folder / name).is_file() for name in ("variant.png", "variant.json", "graph.json", "attempt.json"))
+    variant = folder / "variants" / variant_id
+    return all((variant / name).is_file() for name in ("variant.png", "variant.json", "graph.json", "attempt.json"))
 
 
 def _sha256(path: Path) -> str:
@@ -222,9 +228,9 @@ def restoration_in_child(store_root: str, folder: str, original: str, sha256: st
 DISPLAY_COPY_KIND = JobKind(
     name="display_copy", group="media", producer=MEDIA_PRODUCER, run=run_display_copy, time_limit_s=bound_s,
     time_limit_reason=decode.TIME_LIMIT, internal_error_reason=decode.INTERNAL_ERROR, subject=subject,
-    results_valid=_variant_stored)
+    results_valid=_results_stored)
 RESTORATION_KIND = JobKind(
     name="restoration", group="media", producer=MEDIA_PRODUCER, run=run_restoration, time_limit_s=bound_s,
     time_limit_reason=decode.TIME_LIMIT, internal_error_reason=decode.INTERNAL_ERROR, subject=subject,
-    results_valid=_variant_stored)
+    results_valid=_results_stored)
 MEDIA_KINDS = (DISPLAY_COPY_KIND, RESTORATION_KIND)

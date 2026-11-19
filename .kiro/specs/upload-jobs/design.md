@@ -201,7 +201,8 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   - `time_limit_s(asset, request) -> float` (the restoration's rule: restoration design section 11);
   - `producer`: `{name, revision}` (3.5);
   - `result_paths(record) -> list[path]` and `result_roots`: where its results live, for publish and sweep;
-  - `results_valid(record) -> bool`: whether a `succeeded` job's results are whole and pass their contract;
+  - `results_valid(record) -> bool`: whether what an ending record names is stored, whole and passes its
+    contract: a `succeeded` job's results, a `rejected` job's kept attempt (platform-8);
   - `time_limit_reason`, `internal_error_reason`: the kind's own fixed sentences (the restoration's are fixed in
     restoration design section 11);
   - `run(ctx) -> KindResult`.

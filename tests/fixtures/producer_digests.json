@@ -16,7 +16,7 @@
    "services/media/tone.py",
    "services/science/detector.py"
   ],
-  "digest": "e336f5337afae1c0ac279a6f32167cfe39b03902ef6dd2860d3bae9c14860275"
+  "digest": "8f28d1ce43456ac7b416c1b374edb71540da176ff8383be4adcd9b02b010892c"
  },
  "albedian.solve_chain": {
   "revision": 3,

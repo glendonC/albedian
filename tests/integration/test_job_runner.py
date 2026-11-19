@@ -3,7 +3,8 @@
 The runner is tested with fake kinds, never with science: a kind here is a few lines that report progress, wait on
 the test's own events, publish a made-up solution, refuse, raise, or start a grandchild in the group's child. Every
 upload is a small PNG stored through the upload route, so the runner reads real `record.json` files. Every wait has
-its own bound and fails by an assertion.
+its own bound and fails by an assertion. The one exception is the media kinds' rejected ending (platform-8): the two
+real media kinds run through the API with their child's step called in this process, so a test's stand-in reaches it.
 """
 
 from __future__ import annotations
@@ -45,6 +46,9 @@ from services.ingest.runner import (
     runner_for,
 )
 from services.ingest.store import IngestStore
+from services.media import decode as media_decode
+from services.media import jobs as media_jobs
+from services.media import variants as media_variants
 from services.science.bounded_worker import POLL_SEC, STOP_GRACE_SEC
 
 BOUND_S = 30.0
@@ -1219,3 +1223,94 @@ def test_an_error_while_a_job_ends_fails_that_job_and_the_group_runs_the_next(
     other, _ = runner.start(sha_b, "solve")
     assert runner.wait(again["id"], BOUND_S)["state"] == "succeeded"
     assert runner.wait(other["id"], BOUND_S)["state"] == "succeeded", "the group's slot runs the next job"
+
+
+# ---- platform-8: a media job its own check refuses ends rejected, naming the attempt that says why ----
+
+# A restoration the gate refused, as the media contract's fixture holds it (its `rejection` is the reason)
+REJECTED_ATTEMPT = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "media_contract.json")
+                              .read_text(encoding="utf-8"))["valid"]["ProcessingAttempt"][4]
+
+
+class InProcessChild:
+    """The media group's child as the kinds call it, run in this process, so a test's stand-in reaches the step."""
+
+    def call(self, target: Callable[..., dict], args: tuple, *, timeout_s: float, stop: threading.Event,
+             progress_kwarg: str, on_event: Callable[..., None]) -> dict:
+        return target(*args, **{progress_kwarg: on_event})
+
+
+def _keep_rejected_restoration(store_root: str, folder: str, original: str, sha256: str, job_id: str, request: dict,
+                               orientation: Optional[dict], progress: Callable[..., None]) -> dict:
+    """Stands in for the restoration's step at its rejected end (its gate is RESTORE-PHOTO's): keeps the attempt the
+    gate refused, made this upload's and this job's, and answers as the step does."""
+    attempt = copy.deepcopy(REJECTED_ATTEMPT)
+    graph = media_variants.graph_id(sha256, "restoration", request)
+    attempt.update(id=media_variants.attempt_id(graph, attempt["startedAtUTC"]), sourceSha256=sha256, graphId=graph,
+                   jobId=job_id)
+    media_variants.keep_attempt(Path(folder), attempt)
+    return {"status": "rejected", "attemptId": attempt["id"]}
+
+
+@pytest.fixture
+def media_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """The API on a store of its own, with the real media kinds and their child's step called in this process."""
+    monkeypatch.setattr(JobContext, "child", lambda self: InProcessChild())
+    uploads = IngestStore(tmp_path / "store", max_bytes=10_000_000)
+    app = create_app()
+    app.dependency_overrides[ingest_router.get_ingest_store] = lambda: uploads
+    with TestClient(app) as client:
+        client.uploads = uploads  # type: ignore[attr-defined]
+        yield client
+    runner_for(uploads).shutdown()
+
+
+def _media_upload(client: TestClient, n: int) -> str:
+    answer = client.post("/api/ingest", content=_png(n), headers={"content-type": "image/png"})
+    assert answer.status_code in (200, 201), answer.text
+    return answer.json()["sourceAsset"]["sha256"]
+
+
+def _followed(client: TestClient, job: dict[str, Any]) -> dict[str, Any]:
+    deadline = time.monotonic() + BOUND_S
+    while job["state"] in ("queued", "running"):
+        assert time.monotonic() < deadline, "the job did not end within the test's bound"
+        time.sleep(0.02)
+        answer = client.get(f"/api/ingest/jobs/{job['id']}")
+        assert answer.status_code == 200, answer.text
+        job = answer.json()
+    return job
+
+
+@pytest.mark.parametrize("kind, rejection", [("display_copy", "copy_differs"), ("restoration", "unconfirmed_points")])
+def test_a_media_job_its_own_check_refuses_ends_rejected_naming_the_attempt_that_says_why(
+        media_client: TestClient, monkeypatch: pytest.MonkeyPatch, kind: str, rejection: str) -> None:
+    """AUDIT's finding on main d9134b6b: a refused display copy or restoration keeps its attempt as rejected, yet its
+    job ended failed with the internal error sentence, because the commit asked for a variant a rejected job never
+    has. The display copy's own comparison refuses here (it is told the copy differs)."""
+    monkeypatch.setattr(media_variants, "verify_copy", lambda data, samples: False)
+    monkeypatch.setattr(media_jobs, "restoration_in_child", _keep_rejected_restoration)
+    sha = _media_upload(media_client, 7)
+    started = media_client.post(f"/api/media/{sha}/restore", json={"kind": kind})
+    assert started.status_code == 202, started.text
+    ended = _followed(media_client, started.json())
+    assert (ended["state"], ended.get("error"), ended.get("variantId")) == ("rejected", None, None)
+    UploadJob.model_validate(ended)
+    assert _on_disk(JobStore(media_client.uploads), ended["id"]) == ended  # type: ignore[attr-defined]
+    listing = media_client.get(f"/api/media/{sha}/variants").json()
+    assert listing["variants"] == []
+    [attempt] = [a for a in listing["attempts"] if a["id"] == ended["attemptId"]]
+    assert (attempt["status"], attempt["rejection"], attempt["jobId"]) == ("rejected", rejection, ended["id"])
+
+
+def test_a_rejected_ending_that_names_an_attempt_never_kept_fails_with_the_kinds_sentence(
+        media_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The commit still checks what a rejected ending names: an attempt that is not stored is no reason to serve."""
+    monkeypatch.setattr(media_jobs, "restoration_in_child",
+                        lambda *args, progress: {"status": "rejected", "attemptId": "att_" + "0" * 16})
+    sha = _media_upload(media_client, 8)
+    started = media_client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"})
+    assert started.status_code == 202, started.text
+    ended = _followed(media_client, started.json())
+    assert (ended["state"], ended["error"]) == ("failed", media_decode.INTERNAL_ERROR), ended
+    assert "attemptId" not in ended
