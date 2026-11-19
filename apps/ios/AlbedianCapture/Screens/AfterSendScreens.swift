@@ -33,7 +33,8 @@ struct WaitingScreen: View {
                                     settled: model.lockOnSettled, width: width, height: width * 4 / 3)
                             .atTop(Arrive.photoTop)
                     } else {
-                        PlacedSkyOverlay(placed: early, width: width, height: width * 4 / 3)
+                        EarlyMarksLayer(placed: early, source: model.laptopEarly == nil ? "phone" : "laptop",
+                                        width: width, height: width * 4 / 3)
                             .atTop(Arrive.photoTop)
                     }
                 }
@@ -140,6 +141,65 @@ private struct MatchedMark: View {
         }
         .frame(width: 16, height: 16)
     }
+}
+
+/// The early marks as one view each, keyed by their catalogue id (or a body's name), so a better early pose arriving
+/// is one correction, never a blink (ruled 18:05, UIUX-iphone-lockon-READY): a ring in both sets moves from the phone's
+/// place to the laptop's, all together, on the lock-on's travel (0.4 s on .16, 1, .3, 1); a ring only in the old set
+/// leaves on frame out and one only in the new set arrives on frame in; under Reduce Motion the old go and the new
+/// come in the 0.27 s dissolve. Names by D20 over the current set.
+private struct EarlyMarksLayer: View {
+    let placed: [(SkyMark, CGPoint)]
+    /// Which early pose placed them: under Reduce Motion a new source is new marks, so nothing travels and the sets dissolve.
+    let source: String
+    let width: Double
+    let height: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func key(_ mark: SkyMark) -> String { reduceMotion ? "\(source) \(mark.swapKey)" : mark.swapKey }
+
+    private struct Keyed { let key: String; let mark: SkyMark; let at: CGPoint }
+
+    /// Each mark once by its key, in the set's order (a second mark with the same key is left out).
+    private var keyed: [Keyed] {
+        var seen = Set<String>()
+        return placed.compactMap { mark, at in seen.insert(key(mark)).inserted ? Keyed(key: key(mark), mark: mark, at: at) : nil }
+    }
+
+    var body: some View {
+        let names = SkyOverlayNames.names(placed.map { SkyOverlayNames.Placed(mark: $0.0, x: $0.1.x, y: $0.1.y) }, widthPt: width, heightPt: height)
+        ZStack(alignment: .topLeading) {
+            ForEach(keyed, id: \.key) { item in
+                EarlyMark(mark: item.mark, onLeft: names[item.mark.id])
+                    .position(item.at)
+                    .transition(.asymmetric(
+                        insertion: .opacity.animation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)),
+                        removal: .opacity.animation(.motion(MotionStyle.frameOut, reduceMotion: reduceMotion))))
+            }
+        }
+        .frame(width: CGFloat(width), height: CGFloat(height), alignment: .topLeading)
+        .animation(reduceMotion ? nil : .motion(MotionStyle.frameIn, reduceMotion: false), value: placed.map { key($0.0) })
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// One early mark drawn as D20 draws it, centred on its own frame so it can move as one piece.
+private struct EarlyMark: View {
+    let mark: SkyMark
+    let onLeft: Bool?
+    static let side = 260.0
+
+    var body: some View {
+        Canvas { context, size in
+            PlacedSkyOverlay.draw(mark, at: CGPoint(x: size.width / 2, y: size.height / 2), onLeft: onLeft, named: onLeft != nil, in: context)
+        }
+        .frame(width: CGFloat(Self.side), height: 40)
+    }
+}
+
+private extension SkyMark {
+    var swapKey: String { catalogSourceId ?? name }
 }
 
 /// D31 item 2: C13's source sentence 14 pt under the step row's line, 24 pt in from each side, 12 pt at ink 44 percent,
