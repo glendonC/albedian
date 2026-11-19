@@ -212,11 +212,11 @@ CRAFTS: dict[str, dict] = {
             "EMU:emusuit21_emusuit4_justbody_blinn3SG": {"role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.1},
         },
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
         "smooth_deg": 40.0,
-        # Below about 45 percent, decimating NASA's overlapping fabric layers leaves dark streaks on the arms, so the
-        # close view keeps 45 percent under its own budget; the chase view's level stays within the shared one.
-        "lod_ratio": {"lod0": 0.45, "lod1": 0.09, "lod2": 0.035},
-        "budget_bytes": {"lod0": 7_000_000},
+        # NASA's file keeps its faces apart at shared corners (each quad with its own vertices), which left the
+        # fabric and visor blocky and the decimation streaked: welded within 0.1 mm first.
+        "lod_ratio": {"lod0": 0.45, "lod1": 0.15, "lod2": 0.05},
         "body_radius_m": 1.1,
         "changes": "suit",
     },

@@ -79,7 +79,8 @@ CHANGES = {
         "joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is "
         "built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping "
         "NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem "
-        "covered with the suit's white fabric, and the normals made again, smooth within an angle and sharp beyond it."
+        "covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals "
+        "made again, smooth within an angle and sharp beyond it."
     ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
@@ -585,6 +586,19 @@ def main() -> None:
         tri = craft.modifiers.new("tri", "TRIANGULATE")
         bpy.ops.object.modifier_apply(modifier=tri.name)
         craft.data.validate(verbose=False, clean_customdata=False)
+    if recipe.get("weld_m"):
+        # Faces NASA's file keeps apart at shared corners are welded (vertices closer than weld_m metres become
+        # one), so normals can be smoothed across them and decimation sees one surface.
+        import bmesh
+
+        bm = bmesh.new()
+        bm.from_mesh(craft.data)
+        before = len(bm.verts)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=recipe["weld_m"])
+        print(f"HANGAR {args.craft} welded {before - len(bm.verts)} of {before} vertices")
+        bm.to_mesh(craft.data)
+        bm.free()
+        craft.data.update()
     if recipe.get("smooth_deg"):
         bpy.context.view_layer.objects.active = craft
         craft.select_set(True)

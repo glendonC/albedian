@@ -108,7 +108,7 @@
   "files": [
     {
       "path": "hangar/emu/emu_lod0.glb",
-      "sha256": "d0ec298c2ab500f5540da239fe5ad662e55f34e3ad6d9ec0b5894c4df73515da",
+      "sha256": "b48ed61de56ee208f6e407dd973d1cd4dfdfad7c71a8ab7f583eafba42ab36e6",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -117,13 +117,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft emu --out apps/web/public/models/hangar/emu",
-        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb (3448904 bytes, SHA-256 4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/emu/emu_lod1.glb",
-      "sha256": "f8dd03d9354790e8be3232547a4aa0fa62ad1ac30cebaca6ba91e6592dcea985",
+      "sha256": "4382ebf0aa5a33e2e82be5cc6f433c75a55aa1998785ab1bddfcf040fb00089a",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -138,7 +138,7 @@
     },
     {
       "path": "hangar/emu/emu_lod2.glb",
-      "sha256": "3559bff869db51b0b5a288de644ea9f403c58bab4ad002137eb6c376beb26eb2",
+      "sha256": "078c3e41056fe86a4b823ca145ed6acdc2dcaf7f0624284b1be38c30ad51b231",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -153,7 +153,7 @@
     },
     {
       "path": "hangar/emu/emu_picker.webp",
-      "sha256": "6697624d65c17cc101d3637c114d660a04d0af3fa74770ee5c96b2df504f41c7",
+      "sha256": "a7e73f8a8c2c28109dd128c9e54034e38af362e442696baafeb1c7c047038149",
       "sources": [
         "nasa-3d-resources"
       ],
@@ -167,7 +167,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "6c196834dcbcaa5afcbcca00d2be32b67db898cd72c2d05050a8a29daa048e6e",
+      "sha256": "2aa938465918375dedf8ed32a1cc65a14db6ac5da1618dcba90c1a76c0fdb159",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

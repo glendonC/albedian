@@ -191,49 +191,49 @@
       "files": {
         "lod0": {
           "path": "emu/emu_lod0.glb",
-          "bytes": 6597932,
-          "triangles": 108931,
+          "bytes": 2784272,
+          "triangles": 102338,
           "textureEdgeMax": 2048,
-          "budgetBytes": 7000000
+          "budgetBytes": 4000000
         },
         "lod1": {
           "path": "emu/emu_lod1.glb",
-          "bytes": 1452656,
-          "triangles": 21786,
+          "bytes": 1041120,
+          "triangles": 34113,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "emu/emu_lod2.glb",
-          "bytes": 576392,
-          "triangles": 8472,
+          "bytes": 432584,
+          "triangles": 11361,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
         },
         "picker": {
           "path": "emu/emu_picker.webp",
-          "bytes": 3094,
+          "bytes": 3088,
           "edgePx": 176,
           "budgetBytes": 60000
         }
       },
       "boundsM": {
         "min": [
-          -0.568,
-          -1.002,
+          -0.567,
+          -1.001,
           -0.707
         ],
         "max": [
           0.567,
-          1.002,
+          1.001,
           0.707
         ]
       },
       "bodyRadiusM": 1.1,
       "lodTriangleShare": {
         "lod0": 0.45,
-        "lod1": 0.09,
-        "lod2": 0.035
+        "lod1": 0.15,
+        "lod2": 0.05
       },
       "scaleFrom": {
         "native": true,
