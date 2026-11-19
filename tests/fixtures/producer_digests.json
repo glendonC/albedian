@@ -1,6 +1,6 @@
 {
  "albedian.solve_chain": {
-  "revision": 2,
+  "revision": 3,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -12,8 +12,11 @@
    "services/science/camera_profiles.py",
    "services/science/ephemeris.py",
    "services/science/catalog.py",
-   "services/science/bounded_worker.py"
+   "services/science/bounded_worker.py",
+   "services/science/deep_sky_catalog.py",
+   "services/science/deep_sky_projection.py",
+   "services/science/deep_sky_selection.py"
   ],
-  "digest": "712cc02b9fca7357b86d2c1250f1249eea9932aeefd4ef2c854cb2ef2461bd88"
+  "digest": "fb524f258d492e4482c0de64c4739d240ef823389edba757a57383c4364ec274"
  }
 }
