@@ -46,48 +46,6 @@
       "note": "Each speed, size and date in hangar/hangar.json names the NASA page it was read on, with a short quote from that page."
     },
     {
-      "id": "nasa-3d-resources-voyager-probe-b",
-      "title": "NASA 3D Resources: Voyager Probe (B)",
-      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20(B)/Voyager%20Probe%20(B).glb",
-      "retrieved": "2026-11-19",
-      "license": {
-        "spdx": "LicenseRef-NASA-Media-Guidelines",
-        "name": "NASA Images and Media Usage Guidelines",
-        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
-        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement; NASA's insignia and logos are not used."
-      },
-      "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
-      "note": "NASA's own repository of 3D models. The file's git blob is bb997a2f539b54574d6e24a8123855ecc83748ac, as the repository lists it on 19 November 2026; 1,720,864 bytes."
-    },
-    {
-      "id": "nasa-3d-resources-james-webb-space-telescope-a",
-      "title": "NASA 3D Resources: James Webb Space Telescope (A)",
-      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20(A)/James%20Webb%20Space%20Telescope%20(A).glb",
-      "retrieved": "2026-11-19",
-      "license": {
-        "spdx": "LicenseRef-NASA-Media-Guidelines",
-        "name": "NASA Images and Media Usage Guidelines",
-        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
-        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement; NASA's insignia and logos are not used."
-      },
-      "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
-      "note": "NASA's own repository of 3D models. The file's git blob is 4c00d7b2565a0229dbdbac12b4caa469d359aaf1, as the repository lists it on 19 November 2026; 4,710,016 bytes."
-    },
-    {
-      "id": "nasa-3d-resources-astronaut",
-      "title": "NASA 3D Resources: Astronaut",
-      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.glb",
-      "retrieved": "2026-11-19",
-      "license": {
-        "spdx": "LicenseRef-NASA-Media-Guidelines",
-        "name": "NASA Images and Media Usage Guidelines",
-        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
-        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement; NASA's insignia and logos are not used."
-      },
-      "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
-      "note": "NASA's own repository of 3D models. The file's git blob is 20b576367f8cdc40e9688be24b269a0a74acbff7, as the repository lists it on 19 November 2026; 762,988 bytes."
-    },
-    {
       "id": "oneill-2024-local-bubble",
       "title": "The Local Bubble Is a Magnetized, Multi-temperature Superbubble: 3D Dust Shell Model (A_G = 0.5 mag/kpc threshold)",
       "url": "https://doi.org/10.7910/DVN/INB1RB",
@@ -1090,72 +1048,6 @@
         "command": "uv run python scripts/bake_local_bubble_mesh.py",
         "changes": "Worked out from the dust shell table, not copied: the directions with no distance are left out, the shell's distance in the others is averaged over coarser sky cells, one point for each, and the points are joined into a closed surface with smooth shading, in units of 100 parsecs."
       }
-    },
-    {
-      "path": "nasa/astronaut.glb",
-      "sha256": "d18c141410542b935113d1c25a9271d90c40d44015a64295b7b68a30f0ce2820",
-      "sources": [
-        "nasa-3d-resources-astronaut"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's model of an astronaut in a spacesuit, Draco compressed with WebP textures as NASA publishes it; it stands along +y and faces +z. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
-    },
-    {
-      "path": "nasa/astronaut.png",
-      "sha256": "5d44c49cb9803ec18b408d43dbd93adc3828e1b5e5f477bd85654f6f357933d9",
-      "sources": [
-        "nasa-3d-resources-astronaut"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.png (git blob c843147a7c426be10ddaea9fcb815b5fd663de2c, 1,109,191 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
-    },
-    {
-      "path": "nasa/james-webb-space-telescope-a.glb",
-      "sha256": "ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750",
-      "sources": [
-        "nasa-3d-resources-james-webb-space-telescope-a"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's model of the James Webb Space Telescope, Draco compressed as NASA publishes it. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
-    },
-    {
-      "path": "nasa/james-webb-space-telescope-a.png",
-      "sha256": "a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10",
-      "sources": [
-        "nasa-3d-resources-james-webb-space-telescope-a"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20(A)/James%20Webb%20Space%20Telescope%20(A).png (git blob c7a442139024b023cf1db470beaef03bfb96f496, 518,892 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
-    },
-    {
-      "path": "nasa/voyager-probe-b.glb",
-      "sha256": "bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289",
-      "sources": [
-        "nasa-3d-resources-voyager-probe-b"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's model of a Voyager probe (Voyager 1 and 2 are twins), Draco compressed with WebP textures as NASA publishes it. Its high-gain dish is the thin disc across the model's +y axis. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
-    },
-    {
-      "path": "nasa/voyager-probe-b.png",
-      "sha256": "66d9fc3028a3f92413519bd413aa1a8705790d0f7786c11f62b1b166bd1ee964",
-      "sources": [
-        "nasa-3d-resources-voyager-probe-b"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20(B)/Voyager%20Probe%20(B).png (git blob f1428536445e57e3acf2eb14b31fde000c6806ac, 417,970 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
     },
     {
       "path": "nasa_lro_moon_3d.glb",
