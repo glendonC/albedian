@@ -604,15 +604,17 @@ export const SpatialObservatoryViewport: React.FC<
   })();
 
   // At phone width the photo covers its slot: written as the crop the stage and every mark read, its ends faded
+  // The working screen at phone width keeps the photo in the reveal's slot (D2, jp-run)
+  const phoneWorking = phone && !entryStageActive && arrival !== null;
   const slotted: ObservationSession = (() => {
     const asset = session.sourceAsset;
-    if (!phoneReveal || !asset) return session;
+    if (!(phoneReveal || phoneWorking) || !asset) return session;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
     return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx) } } as ObservationSession;
   })();
   const slotMask = (() => {
     const asset = session.sourceAsset;
-    if (!phoneReveal || !asset) return undefined;
+    if (!(phoneReveal || phoneWorking) || !asset) return undefined;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
     return phoneEndsMask(sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, slotted.cropTransform));
   })();
@@ -690,8 +692,15 @@ export const SpatialObservatoryViewport: React.FC<
       {!entryStageActive && arrival && (
         <>
           {!isSourcePhotoShown(session) && <div className="work-backdrop" />}
-          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare dimmed={arrival.failure !== null} />
+          <SourcePhotoStage
+            session={phoneWorking ? slotted : session}
+            onFrameMismatch={setPhotoFrameMismatch}
+            bare
+            dimmed={arrival.failure !== null}
+            endsMask={phoneWorking ? slotMask : undefined}
+          />
           <WorkingScreen
+            phone={phone}
             arrival={arrival}
             photoRect={photoFrameMismatch ? null : sessionPhotoRect(session, windowSize.widthPx, windowSize.heightPx)}
             onTryAgain={() => onTryAgain?.()}

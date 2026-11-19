@@ -188,6 +188,17 @@ describe('the viewport shows the working screen while an upload is on its way', 
     renderViewport(session, extra);
   }
 
+  it("shows the phone's working screen on a phone, the photo in the reveal's slot with its ends faded (D2)", () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    try {
+      past(storedPhoto(), { arrival: arrival() });
+      expect(q(WORKING)!.className).toBe('work-screen is-phone');
+      expect((q(`${STAGE} img`) as HTMLElement).style.maskImage).toContain('linear-gradient(to bottom');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
   it('shows the photo bare and the rows, and none of the pieces that come after the solve', () => {
     past(storedPhoto(), { arrival: arrival() });
     expect(q(HOME_SCREEN)).toBeNull();

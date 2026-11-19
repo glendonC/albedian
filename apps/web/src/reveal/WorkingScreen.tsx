@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
+import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -20,6 +20,8 @@ export interface WorkingScreenProps {
   onHome?: () => void;
   /** Cancel, pressed, while the job waits or works (D2): asks the server to cancel the job; a refusal lets it go. */
   onCancel?: () => Promise<unknown> | void;
+  /** At phone width (D2, jp-run and jp-queued): only the step the job is on, under the photo in the reveal's slot. */
+  phone?: boolean;
 }
 
 const ROW_CLASS: Readonly<Record<StageRow['state'], string>> = {
@@ -39,7 +41,7 @@ const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`
  * another, and the stage it stopped at keeps its count. Nothing here moves by itself: a row changes only when the
  * job's record does.
  */
-export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel }) => {
+export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false }) => {
   const fileInput = useRef<HTMLInputElement>(null);
   const failure = arrival.failure;
   const job = arrival.job;
@@ -59,6 +61,50 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       setAsked(false);
     }
   };
+
+  if (phone) {
+    // D2 at phone width: the close circle, then only the step the job is on (its word large, its count, its bar), or
+    // "Queued" and the jobs ahead; Cancel compact where Ask out loud sits. A stopped job's sentence and Try again are
+    // laid out like the phone's answer [proposed: no record draws a stopped job at phone width]
+    const now = stageRows(arrival).find((row) => row.state === 'now') ?? null;
+    const ahead = job?.queueAhead ?? 0;
+    return (
+      <div className="work-screen is-phone" data-testid="working-screen" data-hud-interactive="true">
+        <div className="work-phone-top">
+          <IconButton label="Close" icon="x" size="phone" onClick={() => onHome?.()} />
+        </div>
+        {failure ? (
+          <p className="work-phone-why" role="alert">
+            {failure.sentence}
+          </p>
+        ) : job?.state === 'queued' ? (
+          <div className="work-phone-row">
+            <b>
+              Queued
+              {ahead > 0 && <span>{` · ${ahead} ahead`}</span>}
+            </b>
+          </div>
+        ) : now ? (
+          <div className="work-phone-row">
+            <b>{now.word}</b>
+            <span className="work-phone-row__v">{now.value}</span>
+            {now.fraction !== null && (
+              <span className="work-phone-row__bar">
+                <b style={{ width: barWidth(now.fraction) }} />
+              </span>
+            )}
+          </div>
+        ) : null}
+        <div className="work-phone-go">
+          {failure ? (
+            failure.canTryAgain && <MainAction label="Try again" icon="arrow-clockwise" size="phone" onClick={onTryAgain} />
+          ) : cancellable ? (
+            <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" size="phone" aria-disabled={held ? true : undefined} onClick={cancel} />
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

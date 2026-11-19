@@ -492,3 +492,72 @@ describe('Cancel on a job that waits or works (D2, INTERIM)', () => {
     });
   });
 });
+
+// D2 at phone width (UIUX-jobs-READY.md, decided by the lead 06:11; jp-run, jp-queued): the photo in the reveal's slot,
+// a close circle top left, and only the step the job is on under the photo, with Cancel compact where Ask out loud sits
+describe('the working screen at phone width (D2)', () => {
+  const phone = (over: Partial<Arrival> = {}, props: Partial<Parameters<typeof WorkingScreen>[0]> = {}) =>
+    show({ arrival: arrival(over), phone: true, onCancel: noop, ...props });
+
+  it('shows only the step the job is on: its word large, its count, its bar, and Cancel at the phone size', () => {
+    phone({ job: { ...WORKING_JOB, id: 'job_a' } });
+    expect(q('.work-screen')!.className).toBe('work-screen is-phone');
+    expect(q('.work-phone-row > b')!.textContent).toBe('Matching');
+    expect(q('.work-phone-row__v')!.textContent).toBe('2,080 of 4,160');
+    expect((q('.work-phone-row__bar b') as HTMLElement).style.width).toBe('50%');
+    const cancel = q('.work-phone-go button') as HTMLButtonElement;
+    expect(cancel.textContent).toBe('Cancel');
+    expect(cancel.className).toContain('look-size-phone');
+    for (const gone of ['.work-steps', '.work-size', '[data-testid="working-home"]', 'svg.photo-corners']) expect(q(gone), gone).toBeNull();
+  });
+
+  it('says "Queued" and the jobs ahead in place of the step while the job waits', () => {
+    phone({ job: { id: 'job_a', state: 'queued', queueAhead: 1, stages: [stage('store', 'bytes', BYTES, BYTES)] } });
+    expect(q('.work-phone-row > b')!.textContent).toBe('Queued · 1 ahead');
+    expect(q('.work-phone-row > b span')!.textContent).toBe(' · 1 ahead');
+    expect(q('.work-phone-row__bar')).toBeNull();
+    expect(q('.work-phone-go button')!.textContent).toBe('Cancel');
+  });
+
+  it('draws no bar for a step with nothing to count, and goes home from the close circle', () => {
+    const onHome = vi.fn();
+    phone({ job: { ...WORKING_JOB, id: 'job_a', stages: [...WORKING_JOB.stages, stage('verify', 'steps', 0, null)] } }, { onHome });
+    expect(q('.work-phone-row > b')!.textContent).toBe('Checking');
+    expect(q('.work-phone-row__bar')).toBeNull();
+    act(() => (q('.work-phone-top button') as HTMLButtonElement).click());
+    expect(onHome).toHaveBeenCalledTimes(1);
+  });
+
+  it("says a stopped job's sentence with Try again at the phone size [proposed: no record draws it]", () => {
+    const onTryAgain = vi.fn();
+    show({ arrival: FAILED, phone: true, onTryAgain });
+    expect(q('.work-phone-why')!.textContent).toBe('The solve stopped on an internal error.');
+    const again = q('.work-phone-go button') as HTMLButtonElement;
+    expect(again.textContent).toBe('Try again');
+    expect(again.className).toContain('look-size-phone');
+    act(() => again.click());
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
+    expect(q('.work-phone-row')).toBeNull();
+  });
+
+  it('sets the row and the button as jp-run does', () => {
+    expect(declarationsOf('.work-phone-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', height: '44px', display: 'flex', 'align-items': 'center' });
+    expect(declarationsOf('.work-phone-row')).toEqual({
+      position: 'absolute',
+      left: '24px',
+      right: '24px',
+      top: '668px',
+      display: 'grid',
+      'grid-template-columns': '1fr auto',
+      'row-gap': '12px',
+      'align-items': 'baseline',
+      'font-variant-numeric': 'tabular-nums',
+    });
+    expect(declarationsOf('.work-phone-row > b')).toEqual({ font: '300 28px / 1 var(--look-font-sans)', 'letter-spacing': '-0.035em' });
+    expect(declarationsOf('.work-phone-row > b span')).toEqual({ color: 'var(--look-ink-3)' });
+    expect(declarationsOf('.work-phone-row__v')).toEqual({ font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', color: 'var(--look-ink-2)' });
+    expect(declarationsOf('.work-phone-row__bar')).toEqual({ 'grid-column': '1 / 3', height: '2px', background: 'var(--look-hair)', 'border-radius': '2px', overflow: 'hidden' });
+    expect(declarationsOf('.work-phone-row__bar b')).toEqual({ display: 'block', height: '100%', background: 'var(--look-ink)' });
+    expect(declarationsOf('.work-phone-go')).toEqual({ position: 'absolute', left: '0', right: '0', top: '772px', display: 'flex', 'justify-content': 'center' });
+  });
+});
