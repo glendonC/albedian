@@ -6,7 +6,7 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import { hasVerifiedWcs, type RenderLayerSet } from '@albedian/contracts';
+import { hasVerifiedWcs, type ObservationSolution, type RenderLayerSet } from '@albedian/contracts';
 import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import { IconButton, ViewPills } from '../look/index.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
@@ -90,6 +90,8 @@ export interface SpatialObservatoryViewportProps {
   uploadRefusal?: HomeRefusal | null;
   /** The upload on its way to a solved sky: while there is one, the working screen shows in place of what follows the solve. */
   arrival?: Arrival | null;
+  /** The sky the last solve predicted from an early pose, kept after its job ended, for the reveal's lock-on (D25). */
+  lockOnSky?: ObservationSolution | null;
   /** Starts the failed upload's work again (the working screen's Try again). */
   onTryAgain?: () => void;
   /** Asks the server to cancel the upload's job (the working screen's Cancel, D2). */
@@ -176,6 +178,7 @@ export const SpatialObservatoryViewport: React.FC<
   onTriggerUpload,
   uploadRefusal = null,
   arrival = null,
+  lockOnSky = null,
   answer = null,
   onCloseAnswer,
   heardWords = null,
@@ -729,6 +732,7 @@ export const SpatialObservatoryViewport: React.FC<
           />
           {revealShown && (
             <RevealPhoto
+              lockOnSky={lockOnSky}
               session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
               onAligningChange={setPhoneAligning}

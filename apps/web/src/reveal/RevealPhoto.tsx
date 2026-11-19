@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { alignReadout, alignStartWords, alignTargets, startPose, type AlignPose, type AlignStart } from './alignPose.js';
-import { AlignLayer } from './AlignLayer.js';
+import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
+import { earlyPoseOf } from './earlyPose.js';
+import { lockOnPlan } from './lockOn.js';
+import type { ObservationSolution } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { saveFromServer, variantExportUrl } from '../services/apiClient.js';
@@ -32,6 +35,25 @@ export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
 // How long the reveal is arriving: its marks' span, then the status, In this photo and Ask out loud, 20 ms apart (the
 // motion record). While it is, the status waits for the marks; after, a view change brings it in at the words' delay.
 export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
+/** The arrival that locks on (D25): the travel, the matched marks' colour at rest, then the words as after the marks. */
+export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colourMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
+
+/** One early mark of the lock-on: its ring at the point, its name beside it as the working screen drew it. */
+const LockOnMark: React.FC<{ className: string; xPx: number; yPx: number; name: string | null; nameOnLeft: boolean; dxPx?: number; dyPx?: number }> = ({ className, xPx, yPx, name, nameOnLeft, dxPx, dyPx }) => (
+  <div
+    className={className}
+    style={{ left: `${xPx}px`, top: `${yPx}px`, width: 0, height: 0, ...(dxPx === undefined ? {} : { '--lock-dx': `${dxPx}px`, '--lock-dy': `${dyPx}px` }) } as React.CSSProperties}
+  >
+    <svg className="align-layer__rings" aria-hidden="true" focusable="false">
+      <circle cx={0} cy={0} r={ALIGN_RING_PX} />
+    </svg>
+    {name !== null && (
+      <span className={nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'} style={nameOnLeft ? { right: `${ALIGN_RING_PX + 6}px`, top: 0 } : { left: `${ALIGN_RING_PX + 6}px`, top: 0 }}>
+        {name}
+      </span>
+    )}
+  </div>
+);
 
 /** What the view there is, word for word from the approved fly record: the spec's sentence, then the layer's sources. */
 const THERE_DISCLOSURE =
@@ -67,6 +89,12 @@ export interface RevealPhotoProps {
   onAligningChange?: (active: boolean) => void;
   /** Changed to cancel an alignment from outside: the phone's close circle while aligning. */
   cancelAligningToken?: number;
+  /**
+   * The sky the solve predicted from an early pose while it ran (the lock-on, D25), kept after the job ended: on the
+   * laptop its marks travel to the solve's places on the first arrival once the check passed, and stay still and amber
+   * at the early pose when it was refused.
+   */
+  lockOnSky?: ObservationSolution | null;
   onSelectFinding: (findingId: string, pointerCoords?: { xPx: number; yPx: number }) => void;
   /** The logo, pressed: back to the home. */
   onHome: () => void;
@@ -198,6 +226,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   viewportWidthPx,
   viewportHeightPx,
   restoration,
+  lockOnSky = null,
   onRestore,
   onCancelRestore,
   onAligningChange,
@@ -280,11 +309,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const arrival = markArrivalRanks(arrivingMarks);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
+  // The lock-on (D25, MOTION-READY-web.md section 6): on the laptop, the early sky of this upload, from the reveal's
+  // first arrival; it travels only once the check passed, and the arrival lasts until its words are in
+  const early = !phone && !there && frame !== null ? earlyPoseOf(lockOnSky, session.sourceAsset) : null;
+  const [lockingAtStart] = useState(() => early !== null && status.kind === 'calibrated');
   const [arriving, setArriving] = useState(true);
   useEffect(() => {
-    const timer = setTimeout(() => setArriving(false), REVEAL_ARRIVAL_MS);
+    const timer = setTimeout(() => setArriving(false), lockingAtStart ? LOCK_ON_ARRIVAL_MS : REVEAL_ARRIVAL_MS);
     return () => clearTimeout(timer);
   }, []);
+  const lockOn = lockingAtStart && arriving && early && frame && !bareFrame && !earthOnly ? lockOnPlan(early, frame, arrivingMarks) : null;
   // The restoration (D10), on the laptop over the photo itself: offered while idle on a still, its steps in the counts'
   // place while it works or once it stopped, the compare once done
   const overPhoto = !phone && !there && !skyShown;
@@ -333,7 +367,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const uprightWidth = asset ? orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx : 0;
 
   return (
-    <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
+    <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
       {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
@@ -361,6 +395,22 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
       )}
 
+      {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
+      {early && frame && status.kind === 'unmatched' && !aligning && !skyShown && !compareShown && !bareFrame && <StillAlignMarks rect={frame} placed={early.marks} />}
+
+      {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
+          solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
+      {lockOn && (
+        <div className="lockon" data-testid="lockon" aria-hidden="true">
+          {lockOn.travelling.map((t) => (
+            <LockOnMark key={t.id} className="align-layer is-still lockon-mark is-travelling" xPx={t.fromXPx} yPx={t.fromYPx} name={t.name} nameOnLeft={t.nameOnLeft} dxPx={t.toXPx - t.fromXPx} dyPx={t.toYPx - t.fromYPx} />
+          ))}
+          {lockOn.leaving.map((l) => (
+            <LockOnMark key={l.id} className="align-layer is-still lockon-mark is-leaving" xPx={l.xPx} yPx={l.yPx} name={l.name} nameOnLeft={l.nameOnLeft} />
+          ))}
+        </div>
+      )}
+
       {!bareFrame && !earthOnly && !(compareShown && compareZoomed) && (
       <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
         {marks.map((mark) =>
@@ -381,7 +431,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <button
             key={mark.finding.id}
             type="button"
-            className={`${MARK_CLASS[mark.kind]}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
+            className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
             data-testid={`reveal-mark-${mark.finding.id}`}
             data-evidence-class={mark.finding.evidenceClass}
             aria-label={

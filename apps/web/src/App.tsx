@@ -4,6 +4,7 @@ import {
   CelestialFinding,
   IngestReceipt,
   ObservationSession,
+  ObservationSolution,
 } from '@albedian/contracts';
 import {
   createEmptyObservationSession,
@@ -124,6 +125,8 @@ export const App: React.FC = () => {
   const latestChoiceRef = useRef<File | null>(null);
   // The upload on its way to a solved sky, for the working screen; none once its sky is solved or it was refused
   const [arrival, setArrival] = useState<Arrival | null>(null);
+  // The sky the solve predicted from an early pose (the lock-on, D25), kept past the job's end for the reveal
+  const [lockOnSky, setLockOnSky] = useState<ObservationSolution | null>(null);
   // The answer to the last question asked over the laptop reveal, or a command's refusal, with the photo it is about
   // (ask, approved 2026-11-12; command, decided the same night)
   const [answer, setAnswer] = useState<({ photoKey: string } & ShownAnswer) | null>(null);
@@ -375,6 +378,7 @@ export const App: React.FC = () => {
     setActiveDiscoveredId(null);
     setUploadedMediaUrl(url);
     setArrival(arrivalOf(file));
+    setLockOnSky(null);
     void ingestAndSolveUploadedFile(
       file,
       url,
@@ -395,6 +399,7 @@ export const App: React.FC = () => {
   const hearUploadEvent = (file: File, event: UploadEvent) => {
     if (latestChoiceRef.current !== file) return;
     if (event.kind === 'stored' && inFlightRef.current?.file === file) inFlightRef.current.receipt = event.receipt;
+    if (event.kind === 'early') setLockOnSky(event.solution);
     setArrival((prev) => arrivalAfter(prev, event));
   };
 
@@ -441,6 +446,7 @@ export const App: React.FC = () => {
         onFileChosen={handleFileChosen}
         uploadRefusal={uploadRefusal}
         arrival={arrival}
+        lockOnSky={lockOnSky}
         onTryAgain={handleTryAgain}
         onCancelJob={() => (arrival?.job?.id ? cancelJob(arrival.job.id) : undefined)}
         answer={answer && answer.photoKey === photoKeyOf(session) ? answer : null}

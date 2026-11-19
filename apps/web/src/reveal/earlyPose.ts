@@ -19,6 +19,8 @@ export interface PlacedTarget {
   name: string;
   u: number;
   v: number;
+  /** Its catalog object (the catalog's own id, as "HIP 27989"), so the lock-on finds it again in the solve. */
+  key?: string;
 }
 
 export interface EarlyPose {
@@ -69,9 +71,10 @@ export function earlyPoseOf(solution: ObservationSolution | null | undefined, as
       if (!at) return [];
       // Pixel centres at whole numbers, as sourcePixelToViewport turns them
       const p = orientStoredPoint(at.xPx + 0.5, at.yPx + 0.5, asset.width, asset.height, asset.displayOrientation);
-      return [{ id: finding.id, name: target.name, magnitude: target.magnitude, u: p.xPx / Math.max(1, shown.widthPx), v: p.yPx / Math.max(1, shown.heightPx) }];
+      const key = finding.catalogRef?.catalogSourceId;
+      return [{ id: finding.id, name: target.name, magnitude: target.magnitude, u: p.xPx / Math.max(1, shown.widthPx), v: p.yPx / Math.max(1, shown.heightPx), ...(key ? { key } : {}) }];
     })
     .sort(brightestFirst)
-    .map(({ id, name, u, v }) => ({ id, name, u, v }));
+    .map(({ magnitude: _magnitude, ...placed }) => placed);
   return { source, marks };
 }

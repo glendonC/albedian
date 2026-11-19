@@ -370,6 +370,31 @@ describe('the app follows an upload on the working screen', () => {
     expect(q(WORKING)).toBeNull();
   });
 
+  it('keeps the sky the running solve predicted from an early pose for the reveal, which locks on (D25)', async () => {
+    const running = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      kind: 'solve',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      producer: { name: 'albedian.solve', revision: 1 },
+      state: 'running',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      stages: [STORE],
+      predictedSkyAtUTC: '2026-01-19T05:31:01Z',
+    };
+    const sky = { ...samples['pose_moon_level_head']!, sourceSha256: sha256, sourceAssetId: assetId };
+    const calls = await renderApp({
+      ingest: [async () => json(receipt, 201)],
+      solve: [async () => json(running, 202)],
+      jobs: [async () => json(sky), async () => json(succeeded)],
+      solution: [async () => json(solution)],
+    });
+    chooseOnHome(readableFile('night.jpg'));
+    await waitUntil(() => expect(q('.work-early__from')!.textContent).toBe('Placed from the Moon: predicted until matched.'));
+    await waitUntil(() => expect(q('[data-testid="reveal-photo"].is-locking')).not.toBeNull());
+    expect(calls).toContain(`GET /api/ingest/jobs/${running.id}/predicted-sky`);
+  });
+
   it("changes nothing for an older upload's steps once another file was chosen", async () => {
     const first = held();
     const second = held();

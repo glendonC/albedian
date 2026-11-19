@@ -157,3 +157,73 @@
 .ask-bar {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both;
 }
+
+/* The lock-on (D25; MOTION-READY-web.md section 6, decided by the lead 07:51): once the check passed, every early mark
+   the solve places travels from its pose place to its solve place, all together, in the frame-in time on its curve
+   (400 ms, .16 1 .3 1, no overshoot), then at rest its matched mark takes its place in the colour time (200 ms); an
+   early mark the solve does not place leaves (frame out, 300 ms). The words wait for the colour, then come in as after
+   the marks. The travel is driven by the two real places alone (--lock-dx and --lock-dy, from the pose's to the
+   solve's). */
+.lockon-mark.is-travelling {
+  animation: lockon-travel var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both, look-mo-frame-out var(--look-mo-dur-colour) var(--look-mo-ease-std) var(--look-mo-dur-frame-in) both;
+}
+
+.lockon-mark.is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
+}
+
+@keyframes lockon-travel {
+  to {
+    translate: var(--lock-dx) var(--lock-dy);
+  }
+}
+
+.is-locking .reveal-marks .reveal-mark.is-locked-on {
+  animation: look-mo-frame-in var(--look-mo-dur-colour) var(--look-mo-ease-std) var(--look-mo-dur-frame-in) both;
+}
+
+/* The other matched marks come in as the approved reveal's do, from when the travel is at rest [proposed: the record
+   names only the marks that travel] */
+.is-locking .reveal-marks .reveal-mark:not(.is-locked-on) {
+  animation-delay: calc(var(--look-mo-dur-frame-in) + var(--mark-i) * var(--mark-step));
+}
+
+.is-locking[data-arriving] .reveal-status {
+  animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in));
+}
+
+.is-locking .reveal-legend {
+  animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
+}
+
+:root:has(.reveal-photo.is-locking) .ask-bar {
+  animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2);
+}
+
+/* Reduced motion: nothing travels. The amber marks dissolve where the pose put them and the matched marks dissolve in
+   where the solve puts them, together (270 ms); then the words dissolve in. */
+@media (prefers-reduced-motion: reduce) {
+  .lockon-mark.is-travelling {
+    animation: look-mo-frame-out var(--look-mo-dur-dissolve) var(--look-mo-ease-dissolve) both;
+  }
+
+  .is-locking .reveal-marks .reveal-mark.is-locked-on {
+    animation: look-mo-frame-in var(--look-mo-dur-dissolve) var(--look-mo-ease-dissolve) both;
+  }
+
+  .is-locking .reveal-marks .reveal-mark:not(.is-locked-on) {
+    animation-delay: calc(var(--mark-i) * var(--mark-step));
+  }
+
+  .is-locking[data-arriving] .reveal-status {
+    animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in));
+  }
+
+  .is-locking .reveal-legend {
+    animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
+  }
+
+  :root:has(.reveal-photo.is-locking) .ask-bar {
+    animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2);
+  }
+}
