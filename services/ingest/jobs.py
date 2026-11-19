@@ -33,12 +33,15 @@ from typing import Any, Callable, Optional
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
+from services.contracts.astronomy import parse_observation_solution
 from services.contracts.ingest import JOB_ID_PATTERN, SolveJob, format_utc
+from services.contracts.jobs import SOLVE_FAILURE_SENTENCES
+from services.ingest.job_store import JobStore
+from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, Producer
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.science.detector import _to_luma_2d, detect_point_sources, noise_limit_warnings, stack_video_frames_for_calibration
 from services.science.bounded_worker import BoundedWorker, WorkerTimeout
 from services.science.catalog import get_catalog_stars
-from services.science.designations import upgrade_stored_solution
 from services.science.phone_photo_solver import (
     PHONE_SOLVER_IDENTITY,
     diagonal_fov_deg_from_35mm_equivalent,
@@ -93,11 +96,12 @@ def _write_json(folder: Path, filename: str, payload: dict[str, Any], *, read_on
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / filename
     scratch = folder / f".{filename}-{secrets.token_hex(8)}.tmp"
-    with os.fdopen(os.open(scratch, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, ensure_ascii=False)
-        handle.flush()
-        os.fsync(handle.fileno())
+    # The finally covers the whole write, so a failure inside json.dump (a full disk) leaves no scratch behind
     try:
+        with os.fdopen(os.open(scratch, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(scratch, target)
         os.chmod(target, 0o400 if read_only else 0o600)
     finally:
@@ -136,11 +140,10 @@ def read_solve_job_by_id(store: IngestStore, job_id: str) -> Optional[dict[str, 
 
 
 def read_solution(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
-    """The stored contract `ObservationSolution` dict for `sha256`, or `None` when none exists."""
-    path = store.folder(sha256) / "solution.json"
-    if not path.is_file():
-        return None
-    return upgrade_stored_solution(json.loads(path.read_text(encoding="utf-8")))
+    """The contract `ObservationSolution` dict of the newest succeeded solve of `sha256` (a job of the runner's, or
+    today's `solution.json`), read and checked by the job store; `None` when none exists. A stored solution the
+    contract refuses raises the store's `Unreadable`."""
+    return JobStore(store).read_solution(sha256)
 
 
 PGM_HEADER = re.compile(rb"P5\s+(\d+)\s+(\d+)\s+(\d+)\s")
@@ -574,6 +577,12 @@ class SolveContext:
     `report(stage, persist=True, announce=True)` records the stage's progress; `announce` sends the job's running
     record on, written to `job.json` when `persist`. `reports_often` says a listener follows every transition, so
     each candidate is announced and not only the first and last.
+
+    The runner's solve kind (`run_solve_kind`) also gives the hooks of its job context; without them (today's
+    `run_solve_job`) the searches run in the shared child under the process lock, as before. `child` is the group
+    slot's worker and `stop` its job's stop event; `on_pass(stage, number, label)` is told each search as it starts,
+    `on_span(first, count, start_sec, end_sec)` a clip's decoded frames, `check_cancel()` is asked between steps, and
+    `remaining_s()` bounds the search.
     """
 
     sha256: str
@@ -585,6 +594,12 @@ class SolveContext:
     report: Callable[..., None]
     reports_often: bool
     time_limit_s: float | None
+    child: Optional[Callable[[], Any]] = None
+    stop: Optional[threading.Event] = None
+    on_pass: Optional[Callable[[str, int, str], None]] = None
+    on_span: Optional[Callable[[int, int, float, float], None]] = None
+    check_cancel: Callable[[], None] = lambda: None
+    remaining_s: Optional[Callable[[], float]] = None
 
 
 def solve_upload(ctx: SolveContext) -> ObservationSolution:
@@ -603,6 +618,11 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
 
     frames, rgb_u8 = _decode_luma_frames(original, media_kind, width, height, on_decode_progress)
     frame_count = len(frames)
+    if ctx.on_span is not None and media_kind == "video":
+        span = _decoded_span(asset, frame_count)
+        if span is not None:
+            ctx.on_span(*span)
+    ctx.check_cancel()
     ctx.report({"stage": "detect", "unit": "frames", "done": 0, "total": frame_count}, persist=False)
 
     if frame_count > 1:
@@ -614,6 +634,7 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         detections = detect_point_sources(frames[0], asset_id=asset["id"])
         solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
         ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
+    ctx.check_cancel()
 
     candidate_reported = False
     stopped_at_bound = False
@@ -639,9 +660,16 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     lon_deg = location.get("lonDeg")
     solution_id = f"sol_{sha256[:16]}"
 
+    passes: list[str] = []
+
     def on_event(kind: str, *payload: Any) -> None:
         if kind == "solver":
             running_solver[0] = payload[0]
+            if ctx.on_pass is not None:
+                # Only the chain's first search, the phone solver of a camera-tagged upload, takes the 35 mm hint
+                label = pass_label(payload[0], hinted=bool(fov_hint is not None and camera_meta and not passes))
+                passes.append(label)
+                ctx.on_pass("solve", len(passes), label)
         elif kind == "candidate":
             on_candidate(*payload)
 
@@ -658,20 +686,36 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         solution_id=solution_id,
     )
     limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
+    if ctx.remaining_s is not None:
+        # The search keeps its own bound, and never runs past what is left of its job's
+        limit_s = min(limit_s, ctx.remaining_s())
     if _SOLVE_IN_PROCESS:
         solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
     else:
         try:
-            # One solve at a time in the shared child; the bound counts from the call, once the child is free
-            with _SOLVE_LOCK:
-                solution = _SOLVE_WORKER.call(
+            if ctx.child is not None:
+                # The job's group slot runs one job at a time, so its child is free; a cancel or the job's bound
+                # stops the child and every process it started (WorkerStopped)
+                solution = ctx.child().call(
                     _solve_chain,
                     (solve_image, detections, width, height),
                     chain_kwargs,
                     timeout_s=limit_s,
                     progress_kwarg="on_event",
                     on_event=on_event,
+                    stop=ctx.stop,
                 )
+            else:
+                # One solve at a time in the shared child; the bound counts from the call, once the child is free
+                with _SOLVE_LOCK:
+                    solution = _SOLVE_WORKER.call(
+                        _solve_chain,
+                        (solve_image, detections, width, height),
+                        chain_kwargs,
+                        timeout_s=limit_s,
+                        progress_kwarg="on_event",
+                        on_event=on_event,
+                    )
         except WorkerTimeout:
             stopped_at_bound = True
             identity = PHONE_SOLVER_IDENTITY if running_solver[0] == "phone_photo" else triangle_solver_identity(get_catalog_stars())
@@ -689,6 +733,7 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
                 identity,
             )
 
+    ctx.check_cancel()
     if not candidate_reported:
         # A search stopped at its bound before counting a candidate did not finish its step
         ctx.report({"stage": "solve", "unit": "steps", "done": 0 if stopped_at_bound else 1, "total": 1})
@@ -807,3 +852,140 @@ def run_solve_job(
         finished_dt = max(datetime.now(timezone.utc), started_dt)
         emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=UNEXPECTED_ERROR_REASON)
         raise
+
+
+# ---- The solve kind of the upload job runner (upload jobs design 3.4, platform-5) ----
+
+# What the job record names as the code that made its solution (design 3.5); platform-6 guards its revision
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 1)
+# [proposed until platform-5b measures it] The whole solve job's bound: today's step bounds sum to 300 s (60 s decode,
+# 180 s search, 60 s spread frames) and detection, stacking and the predicted sky run untimed in the server thread
+SOLVE_JOB_TIME_LIMIT_SEC = 600.0
+# The solve kind's own sentences for a job past its whole bound and for a result that could not be stored (the job
+# contract's, platform-5s; the lead's answer of 2026-11-18): a time limit is not an internal error
+SOLVE_JOB_TIME_LIMIT_REASON = "The solve stopped at its time limit."
+RESULT_NOT_STORED = "The job's result could not be stored."
+DECODER_UNREADABLE = "The decoder could not read the file."
+DECODER_TIME_LIMIT = "The decoder stopped at its time limit."
+TILE_GRID_UNCOVERED = "The file's tile grid does not cover the stored image."
+# Each failure text today's solve job can store, by its fixed start, as the sentence the job contract allows: the
+# decoder's own words, the sizes and the time limit dropped [decided 2026-11-13, lead's request platform-3-v4]
+_FAILURE_PREFIXES = (
+    ("The decoder could not read the file", DECODER_UNREADABLE),
+    ("The decoder wrote a frame without a PGM header", DECODER_UNREADABLE),
+    ("The decoder wrote an unexpected ", DECODER_UNREADABLE),
+    ("The decoder's last frame is cut short", DECODER_UNREADABLE),
+    # [proposed, asked of the lead] a frame of another size than the stored one: the decoder did not give the file
+    ("The decoder produced a ", DECODER_UNREADABLE),
+    ("ffmpeg took longer than ", DECODER_TIME_LIMIT),
+    # [proposed, asked of the lead] grids none or several of which give the stored image
+    ("The file's tile grids do not give one ", TILE_GRID_UNCOVERED),
+    ("The file's tile grid does not cover the stored ", TILE_GRID_UNCOVERED),
+)
+
+
+def solve_failure_sentence(message: str) -> str:
+    """The fixed sentence the solve kind stores for a `SolveJobError`'s text; the internal error for any other."""
+    if message in SOLVE_FAILURE_SENTENCES:
+        return message
+    for start, sentence in _FAILURE_PREFIXES:
+        if message.startswith(start):
+            return sentence
+    return UNEXPECTED_ERROR_REASON
+
+
+def pass_label(solver: str, *, hinted: bool) -> str:
+    """The pass label of a search `_solve_chain` announces: the phone solver with the 35 mm hint, or without it, or
+    the plate solver."""
+    if solver == "phone_photo":
+        return "phone_photo_hinted" if hinted else "phone_photo_generic"
+    if solver == "triangle":
+        return "triangle"
+    raise ValueError("a search the chain does not run")
+
+
+def _decoded_span(asset: Mapping[str, Any], frame_count: int) -> tuple[int, int, float, float] | None:
+    """A clip's decoded frames as the job records them: the first `frame_count` frames from frame 0, their times from
+    the probed frame rate on the asset (design 3.4). None when the clip has no frame rate or no frame was decoded."""
+    numerator, denominator = asset.get("fpsNumerator"), asset.get("fpsDenominator")
+    if frame_count < 1 or not isinstance(numerator, int) or not isinstance(denominator, int):
+        return None
+    if numerator <= 0 or denominator <= 0:
+        return None
+    return 0, frame_count, 0.0, (frame_count - 1) * denominator / numerator
+
+
+def _write_partial(path: Path, payload: dict[str, Any]) -> None:
+    """A partial output written whole: created with O_EXCL and mode 0600, fsynced; the runner removes it if the job
+    does not commit."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def run_solve_kind(ctx: JobContext) -> KindResult:
+    """The solve of one stored upload as a job of the runner: the chain of `solve_upload`, with the runner's progress,
+    passes, frame span, cancel and child, then the solution checked by its contract, written as a partial and
+    published as `solutions/<job_id>.json` before the commit (REQ-JOB-5.2, 5.4)."""
+    asset = ctx.asset
+
+    def report(stage: dict[str, Any], *, persist: bool = True, announce: bool = True) -> None:
+        ctx.progress(stage["stage"], stage["unit"], stage["done"], stage["total"])
+
+    solve_ctx = SolveContext(
+        sha256=ctx.sha256,
+        original=ctx.original,
+        asset=asset,
+        width=int(asset["width"]),
+        height=int(asset["height"]),
+        media_kind=str(asset["mediaKind"]),
+        report=report,
+        reports_often=True,
+        time_limit_s=None,
+        child=ctx.child,
+        stop=ctx.stop,
+        on_pass=ctx.pass_,
+        on_span=ctx.input_span,
+        check_cancel=ctx.check_cancel,
+        remaining_s=ctx.remaining_s,
+    )
+    try:
+        solution = solve_upload(solve_ctx)
+    except SolveJobError as error:
+        raise JobRefusal(solve_failure_sentence(str(error))) from None
+    ctx.check_cancel()
+    payload = solution.to_contract_dict()
+    parse_observation_solution(payload)
+    try:
+        partial = ctx.partial("solution.json")
+        _write_partial(partial, payload)
+        ctx.publish(partial, ctx.solution_path())
+    except OSError:
+        # A full disk or a refused write: the runner removes the partial and anything published
+        raise JobRefusal(RESULT_NOT_STORED) from None
+    return KindResult("succeeded", {"solutionId": solution.id})
+
+
+def _solve_store_stage(asset: Mapping[str, Any]) -> list[dict[str, Any]]:
+    size = int(asset["byteSize"])
+    return [{"stage": "store", "unit": "bytes", "done": size, "total": size}]
+
+
+def _solve_results_valid(store: JobStore, record: Mapping[str, Any]) -> bool:
+    return store.solution_of(dict(record)) is not None
+
+
+SOLVE_KIND = JobKind(
+    name="solve",
+    group="solve",
+    producer=SOLVE_PRODUCER,
+    run=run_solve_kind,
+    time_limit_s=lambda asset, request: SOLVE_JOB_TIME_LIMIT_SEC,
+    time_limit_reason=SOLVE_JOB_TIME_LIMIT_REASON,
+    internal_error_reason=UNEXPECTED_ERROR_REASON,
+    store_failure_reason=RESULT_NOT_STORED,
+    initial_stages=_solve_store_stage,
+    results_valid=_solve_results_valid,
+)

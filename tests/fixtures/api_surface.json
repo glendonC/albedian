@@ -573,7 +573,7 @@
       "/api/ingest/{sha256}/solve": {
         "post": {
           "summary": "Start Ingest Solve Job",
-          "description": "Run or return the solve job for a stored upload, reporting real byte, frame and candidate denominators.",
+          "description": "Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate\ndenominators. With `wait=false` it answers at once: 202 with a new job, 200 with the active job it joined or\nthe current succeeded one. Without it, it waits for the job to end and answers 201, or 200 with the current\nsucceeded job (until the web follows jobs). Leaving early never cancels the job.",
           "operationId": "start_ingest_solve_job_api_ingest__sha256__solve_post",
           "parameters": [
             {
@@ -587,6 +587,18 @@
                 "title": "Sha256"
               },
               "description": "The file's SHA-256, 64 lowercase hex characters"
+            },
+            {
+              "name": "wait",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "boolean",
+                "description": "false: answer at once with the job (202 new, 200 joined or current)",
+                "default": true,
+                "title": "Wait"
+              },
+              "description": "false: answer at once with the job (202 new, 200 joined or current)"
             }
           ],
           "responses": {
@@ -614,7 +626,7 @@
       "/api/ingest/jobs/{job_id}": {
         "get": {
           "summary": "Get Ingest Solve Job",
-          "description": "The state and stage progress of a solve job.",
+          "description": "The state and stage progress of a job of any kind: the live record while this server runs it.",
           "operationId": "get_ingest_solve_job_api_ingest_jobs__job_id__get",
           "parameters": [
             {
@@ -656,10 +668,51 @@
           }
         }
       },
+      "/api/ingest/jobs/{job_id}/cancel": {
+        "post": {
+          "summary": "Cancel Ingest Job",
+          "description": "Cancel a job of any kind: 200 with a queued job now canceled, or with a job that had already ended, unchanged;\n202 with a running job, which records when the cancel was asked and ends canceled once its work stops, or\nsucceeded when it had already committed.",
+          "operationId": "cancel_ingest_job_api_ingest_jobs__job_id__cancel_post",
+          "parameters": [
+            {
+              "name": "job_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^job_[0-9a-f]{16,64}$",
+                "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters",
+                "title": "Job Id"
+              },
+              "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/ingest/{sha256}/solution": {
         "get": {
           "summary": "Get Ingest Solution",
-          "description": "The contract ObservationSolution produced for a stored upload.",
+          "description": "The contract ObservationSolution of the newest succeeded solve of a stored upload.",
           "operationId": "get_ingest_solution_api_ingest__sha256__solution_get",
           "parameters": [
             {
@@ -1378,6 +1431,15 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/ingest/jobs/{job_id}/cancel",
+      "methods": [
+        "POST"
+      ],
+      "name": "cancel_ingest_job",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
       "path": "/api/ingest/{sha256}/solution",
       "methods": [
         "GET"
@@ -1470,6 +1532,7 @@
           "/api/ingest/{sha256}/original": 0,
           "/api/ingest/{sha256}/solve": 0,
           "/api/ingest/jobs/{job_id}": 0,
+          "/api/ingest/jobs/{job_id}/cancel": 0,
           "/api/ingest/{sha256}/solution": 0,
           "/api/ingest/{sha256}/pointing": 65536
         }

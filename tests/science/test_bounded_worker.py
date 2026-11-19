@@ -14,16 +14,25 @@ from __future__ import annotations
 
 import math
 import operator
+import os
 import signal
 import subprocess
 import threading
 import time
+from typing import Any, Callable
 
 import numpy as np
 import pytest
 
 from research.benchmarks.phone_photos import solvers
-from services.science.bounded_worker import STOP_GRACE_SEC, BoundedWorker, WorkerFailed, WorkerTimeout
+from services.science.bounded_worker import (
+    POLL_SEC,
+    STOP_GRACE_SEC,
+    BoundedWorker,
+    WorkerFailed,
+    WorkerStopped,
+    WorkerTimeout,
+)
 
 # Stopping a child takes a terminate and a join; the bound is checked every 0.25 s
 STOP_MARGIN_S = 1.5
@@ -142,3 +151,137 @@ def test_run_solver_works_off_the_main_thread() -> None:
     thread.start()
     thread.join(30.0)
     assert results and results[0].status == "timeout", results
+
+
+# ---- The stop hook and the process group (upload jobs design 3.3, platform-5) ----
+
+# A stop is seen at the next poll, then the child's group is terminated and, after the grace, killed
+STOP_BOUND_S = POLL_SEC + 2 * STOP_GRACE_SEC + STOP_MARGIN_S
+
+
+def _group_is_gone(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return True
+    return False
+
+
+def _wait_until(check: Callable[[], bool], bound_s: float) -> bool:
+    deadline = time.monotonic() + bound_s
+    while time.monotonic() < deadline:
+        if check():
+            return True
+        time.sleep(0.02)
+    return check()
+
+
+def _own_group() -> tuple[int, int]:
+    return os.getpid(), os.getpgid(0)
+
+
+def _start_grandchild_then_sleep(seconds: float, report: Callable[..., None]) -> None:
+    grandchild = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL)
+    report("grandchild", grandchild.pid, os.getpgid(0))
+    time.sleep(seconds)
+
+
+def _start_grandchild_and_return() -> int:
+    return subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL).pid
+
+
+def test_the_child_leads_its_own_process_group() -> None:
+    with BoundedWorker() as worker:
+        pid, pgid = worker.call(_own_group, timeout_s=30.0)
+        assert pid == worker.pid and pgid == pid
+        assert pgid != os.getpgid(0)
+
+
+def test_a_stop_from_another_thread_ends_the_call_and_every_process_the_child_started() -> None:
+    stop = threading.Event()
+    seen: list[tuple] = []
+
+    def on_event(*event: Any) -> None:
+        seen.append(event)
+        stop.set()
+
+    with BoundedWorker() as worker:
+        worker.call(operator.add, (1, 1), timeout_s=30.0)
+        pid = worker.pid
+        started = time.monotonic()
+        with pytest.raises(WorkerStopped):
+            worker.call(_start_grandchild_then_sleep, (30.0,), timeout_s=60.0, progress_kwarg="report",
+                        on_event=on_event, stop=stop)
+        assert time.monotonic() - started < STOP_BOUND_S + 2.0
+        assert worker.pid is None and _pid_is_gone(pid)
+        ((_, grandchild, pgid),) = seen
+        assert pgid == pid
+        assert _wait_until(lambda: _group_is_gone(pgid), STOP_BOUND_S), "a process of the child's group is left"
+        assert _wait_until(lambda: _pid_is_gone(grandchild), STOP_BOUND_S)
+        assert worker.call(operator.mul, (6, 7), timeout_s=30.0) == 42, "the next call starts a fresh child"
+
+
+def test_a_stop_set_before_the_call_stops_it_at_once() -> None:
+    stop = threading.Event()
+    stop.set()
+    with BoundedWorker() as worker:
+        started = time.monotonic()
+        with pytest.raises(WorkerStopped):
+            worker.call(time.sleep, (30.0,), timeout_s=60.0, stop=stop)
+        assert time.monotonic() - started < STOP_BOUND_S + 2.0
+
+
+def test_a_call_past_its_bound_ends_every_process_the_child_started() -> None:
+    seen: list[tuple] = []
+    with BoundedWorker() as worker:
+        with pytest.raises(WorkerTimeout):
+            worker.call(_start_grandchild_then_sleep, (30.0,), timeout_s=3.0, progress_kwarg="report",
+                        on_event=lambda *event: seen.append(event))
+    ((_, grandchild, pgid),) = seen
+    assert _wait_until(lambda: _group_is_gone(pgid), STOP_BOUND_S), "a process of the child's group is left"
+    assert _wait_until(lambda: _pid_is_gone(grandchild), STOP_BOUND_S)
+
+
+def test_close_ends_a_process_the_child_started_and_left_running() -> None:
+    worker = BoundedWorker()
+    grandchild = worker.call(_start_grandchild_and_return, timeout_s=30.0)
+    pgid = worker.pid
+    assert pgid is not None and not _pid_is_gone(grandchild)
+    worker.close()
+    assert _wait_until(lambda: _group_is_gone(pgid), STOP_BOUND_S), "a process of the child's group is left"
+    assert _wait_until(lambda: _pid_is_gone(grandchild), STOP_BOUND_S)
+
+
+def _report_then_sleep(seconds: float, report: Callable[..., None]) -> str:
+    report("started")
+    time.sleep(seconds)
+    return "late"
+
+
+def test_an_event_handler_that_raises_stops_the_child_so_the_next_call_gets_its_own_result() -> None:
+    def refuse(*event: Any) -> None:
+        raise ValueError("refused")
+
+    with BoundedWorker() as worker:
+        worker.call(operator.add, (1, 1), timeout_s=30.0)
+        pid = worker.pid
+        with pytest.raises(ValueError, match="refused"):
+            worker.call(_report_then_sleep, (2.0,), timeout_s=30.0, progress_kwarg="report", on_event=refuse)
+        assert worker.pid is None and _pid_is_gone(pid)
+        assert worker.call(operator.mul, (6, 7), timeout_s=30.0) == 42
+
+
+def test_close_never_signals_a_group_the_child_does_not_lead(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A child that reported another group than its own (one that never led a group shares the caller's) must not
+    have that group signalled: it would stop the caller. `killpg` is recorded here, never sent."""
+    from services.science import bounded_worker
+
+    sent: list[tuple[int, int]] = []
+    monkeypatch.setattr(bounded_worker.os, "killpg", lambda pgid, sig: sent.append((pgid, sig)))
+    worker = BoundedWorker()
+    worker.call(operator.add, (1, 1), timeout_s=30.0)
+    pid = worker.pid
+    worker._pgid = os.getpgid(0)
+    worker.close()
+    assert _pid_is_gone(pid), "the child itself is still stopped"
+    assert sent == [], "no group but the child's own is ever signalled"

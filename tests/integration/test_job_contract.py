@@ -916,6 +916,52 @@ def test_every_failure_text_todays_solve_job_can_store_is_judged() -> None:
     assert (taken, refused) == (TAKEN_FAILURE_TEXTS, REFUSED_FAILURE_TEXTS)
 
 
+# What the runner's solve kind stores for each failure text (platform-5): one of its fixed sentences, the decoder's own
+# words, the sizes and the time limit dropped [decided 2026-11-13, lead's request platform-3-v4]. Two are
+# [proposed] and asked of the lead: a frame of another size, and tile grids that do not give one image.
+SOLVE_KIND_SENTENCES = {
+    "ffmpeg is not installed to decode the upload.": "ffmpeg is not installed to decode the upload.",
+    solve_job.HEIF_PROBE_REFUSAL: solve_job.HEIF_PROBE_REFUSAL,
+    solve_job.TILE_DECODE_REFUSAL: solve_job.TILE_DECODE_REFUSAL,
+    "The decoder did not write one frame for every tile.": "The decoder did not write one frame for every tile.",
+    solve_job.UNEXPECTED_ERROR_REASON: solve_job.UNEXPECTED_ERROR_REASON,
+    "The decoder wrote a frame without a PGM header.": "The decoder could not read the file.",
+    "The decoder wrote an unexpected {width}x{height} frame with maximum value {maxval}.":
+        "The decoder could not read the file.",
+    "The decoder's last frame is cut short.": "The decoder could not read the file.",
+    f"ffmpeg took longer than {solve_job.DECODE_TIMEOUT_SEC} s to decode the upload.":
+        "The decoder stopped at its time limit.",
+    "The decoder could not read the file: {msg}": "The decoder could not read the file.",
+    "The decoder could not read the file: no frame bytes produced": "The decoder could not read the file.",
+    "The decoder produced a {frame.shape[1]}x{frame.shape[0]} frame, not the stored {width}x{height}.":
+        "The decoder could not read the file.",
+    "The file's tile grids do not give one {width}x{height} image.": "The file's tile grid does not cover the stored image.",
+    "The file's tile grid does not cover the stored {width}x{height} image.":
+        "The file's tile grid does not cover the stored image.",
+}
+# What a slot can hold when the job runs: a decoder's words with the upload's path, sizes, a maximum value
+SLOT_FILLINGS = {"msg": "/stand-in/original.heic: Invalid data found when processing input",
+                 "width": "4032", "height": "3024", "maxval": "65535", "frame.shape[1]": "4000", "frame.shape[0]": "3000"}
+
+
+def test_every_failure_text_the_solve_kind_can_store_becomes_one_of_its_fixed_sentences() -> None:
+    """Each text today's solve job can raise, as written and with its slots filled as they are when the job runs, is
+    stored by the runner's solve kind as the sentence pinned above, which the job contract takes on a failed record."""
+    data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
+    base = next(j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed")
+    found = set(_storable_failure_texts())
+    assert found == set(SOLVE_KIND_SENTENCES), "a failure text was added or changed: pin what the solve kind stores"
+    for text, sentence in SOLVE_KIND_SENTENCES.items():
+        filled = re.sub(r"\{([^{}]*)\}", lambda m: SLOT_FILLINGS[m.group(1)], text)
+        for form in {text, filled}:
+            stored = solve_job.solve_failure_sentence(form)
+            assert stored == sentence, (form, stored)
+            assert stored in jobs.SOLVE_FAILURE_SENTENCES and stored != jobs.INTERRUPTED_SENTENCE
+            assert verdict(_todays_record_but_its_gap(_unplaced({**base, "error": stored})))[0], form
+    assert solve_job.solve_failure_sentence("Some other text /private/owner/file.heic") == (
+        solve_job.UNEXPECTED_ERROR_REASON), "a text no rule names gives the internal error, never itself"
+
+
 def test_the_failure_text_finder_reads_every_form_and_refuses_one_it_cannot_read() -> None:
     module = type("M", (), {"LIMIT": 60, "FIXED": "A fixed text."})
     source = ('def f(d):\n    word = d[0] if d else "outer"\n\n    def g(d):\n        word = d[0] if d else "none"\n'

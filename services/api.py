@@ -21,9 +21,12 @@ the bytes are counted as they arrive, so a body with no Content-Length, a false 
 at the first piece that passes the limit. The upload route counts its own body against the store's caps while it
 streams (services/ingest/store.py). A request no route serves may send no body.
 
-At start, before the first request, the job store's sweep runs once over the store the ingest routes use
-(services/ingest/job_store.py): a job a stopped process left running is recorded as interrupted, and what
-no record names is removed. It logs counts only.
+At start, before the first request, the job runner of the store the ingest routes use recovers it
+(services/ingest/runner.py): the job store's sweep runs once (services/ingest/job_store.py), so a job a stopped
+process left running is recorded as interrupted and what no record names is removed, and each queued job it
+hands back runs in creation order. It logs counts only. At shutdown the runner stops its slots' children, and
+a job that was running is left for the next start to record as interrupted. The solve kind is registered with
+the runner when the app is built (services/ingest/jobs.py).
 """
 
 from __future__ import annotations
@@ -45,7 +48,8 @@ from starlette.datastructures import Headers
 from starlette.routing import compile_path
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from services.ingest.job_store import JobStore
+from services.ingest.jobs import SOLVE_KIND
+from services.ingest.runner import register_default_kind, runner_for
 from services.ingest.router import get_ingest_store
 from services.ingest.router import router as ingest_router
 from services.media.router import DEFAULT_MEDIA_FOLDERS, MediaFolders
@@ -215,6 +219,7 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/ingest/{sha256}/original": 0,
     "/api/ingest/{sha256}/solve": 0,
     "/api/ingest/jobs/{job_id}": 0,
+    "/api/ingest/jobs/{job_id}/cancel": 0,
     "/api/ingest/{sha256}/solution": 0,
     # Largest measured body 1,936 bytes (a pointing record of the fixture, indented); 4 times is 7,744
     "/api/ingest/{sha256}/pointing": BODY_LIMIT_FLOOR,
@@ -376,17 +381,22 @@ def create_app(
     """
     origins = allowed_origins(cors_origins)
     hosts = allowed_hosts(trusted_hosts)
+    register_default_kind(SOLVE_KIND)
 
     @asynccontextmanager
     async def lifespan(started: FastAPI) -> AsyncIterator[None]:
         # The store the ingest routes use, a test's own when it replaces the dependency
         uploads = started.dependency_overrides.get(get_ingest_store, get_ingest_store)()
+        runner = runner_for(uploads)
         try:
-            JobStore(uploads).sweep()
+            runner.recover()
         except OSError as error:
             # The app still starts; the sweep runs again at the next start. No path, id or name is logged
             logging.getLogger("albedian.jobs").error("job sweep stopped: %s", type(error).__name__)
-        yield
+        try:
+            yield
+        finally:
+            runner.shutdown()
 
     app = FastAPI(
         lifespan=lifespan,

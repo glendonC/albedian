@@ -45,7 +45,7 @@ import pytest
 from scipy import ndimage
 
 from services.api import app
-from services.contracts.ingest import SolveJob
+from services.contracts.jobs import UploadJob
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
 from services.ingest.store import IngestStore
@@ -125,7 +125,7 @@ def _upload(client: TestClient, body: bytes, content_type: str = "image/png") ->
 
 def _solve(client: TestClient, sha: str) -> tuple[dict[str, Any], dict[str, Any]]:
     job = client.post(f"/api/ingest/{sha}/solve").json()
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     assert job["state"] == "succeeded", job
     assert "error" not in job
     return job, client.get(f"/api/ingest/{sha}/solution").json()

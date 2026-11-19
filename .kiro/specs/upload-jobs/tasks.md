@@ -61,6 +61,9 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - Sets the solve kind's time bound from measured real-case durations with `uptime`'s load, and measures a solve
     beside a running fake media job to answer the open question on slots.
   - After tasks 3 and 4. The restoration lane wires its kinds and routes to the runner only after this lands.
+  - Split by the lead (2026-11-18): [x] 5s, the solve's time-limit and storing sentences in the job contract;
+    [x] 5a, the runner, the solve kind, the routes, the stop hook, the scratch fix and the nine texts mapped;
+    [ ] 5b, the measured time bound and the slots question; [ ] 5c, `run_solve_job` as the runner's thin wrapper.
   - _Requirements: REQ-JOB-1.1 to 1.4, 1.6, REQ-JOB-2.1 to 2.6, REQ-JOB-3.6, 3.7, REQ-JOB-4.1 to 4.5,
     REQ-JOB-7.1 to 7.4_
 

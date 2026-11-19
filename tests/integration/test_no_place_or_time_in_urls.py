@@ -8,8 +8,8 @@ does.
 - GET with a time and place is refused on both routes
 - A POST that carries them only in its query string is refused: the routes never read the URL for them
 - A POST with them in its body is answered for that time and place
-- No operation in the app's OpenAPI document takes a query parameter that is not on the allow list, which is empty
-  today and never lists a name for a time, a place or a position
+- No operation in the app's OpenAPI document takes a query parameter that is not on the allow list, which holds only
+  the solve start's boolean `wait` and never lists a name for a time, a place or a position
 """
 
 from __future__ import annotations
@@ -32,7 +32,10 @@ ROUTES = {
 }
 # The (path, name) query parameters the API may take. Any query string lands in the access log, so the list is empty
 # and a parameter joins it only once its value is known to name no time, place or position
-ALLOWED_QUERY_PARAMETERS: frozenset[tuple[str, str]] = frozenset()
+ALLOWED_QUERY_PARAMETERS: frozenset[tuple[str, str]] = frozenset({
+    # A boolean: whether the solve start waits for its job (upload jobs REQ-JOB-7.1, 7.2)
+    ("/api/ingest/{sha256}/solve", "wait"),
+})
 # Words in a parameter name that say it holds a time, a place or a position: never on the allow list
 TIME_OR_PLACE_WORDS = {
     "lat", "latitude", "lon", "lng", "longitude", "utc", "time", "timestamp", "datetime", "moment", "date", "when",

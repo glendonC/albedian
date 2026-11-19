@@ -17,11 +17,14 @@ record once a solve job exists for the photo. A refusal holds
 only the contract's closed sentences and the record's own keys, never a value of the record, and nothing here logs a
 record. `GET` of the same path returns the stored bytes, once checked against the contract and the address.
 
-Job records are read through the job store (services/ingest/job_store.py), checked against the contract: a
-stored record that fails it is never served. A receipt then names no job, a start runs the solve again, and
-`GET /api/ingest/jobs/{job_id}` answers 409 with one plain sentence. The solution is read through the store's
-one solution read, checked by the solution contract's parser: one it refuses is never served. A start then runs the
-solve again, and `GET /api/ingest/{sha256}/solution` answers 409 with one plain sentence.
+The solve is a job of the upload job runner (services/ingest/runner.py): `POST /api/ingest/{sha256}/solve`
+starts, joins or answers it (at once with `wait=false`), `GET /api/ingest/jobs/{job_id}` serves any job, live while
+this server runs it, and `POST /api/ingest/jobs/{job_id}/cancel` stops one. Job records are read through the job
+store (services/ingest/job_store.py), checked against the contract: a stored record that fails it is never served,
+and the job route answers 409 with one plain sentence. A receipt names the newest solve attempt it can read. The
+solution served is the newest succeeded solve's, read through the store's one solution read and checked by the
+solution contract's parser: one it refuses is never served, `GET /api/ingest/{sha256}/solution` answers 409 with one
+plain sentence, and a start runs the solve again.
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ import re
 from typing import Any, Optional
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
@@ -52,7 +55,7 @@ from services.contracts.pointing_reply import (
     PointingRecordRefusal,
 )
 from services.ingest.job_store import JobStore, Unreadable
-from services.ingest.jobs import run_solve_job
+from services.ingest.runner import NoUpload, runner_for
 from services.ingest.metadata import HeifError, display_matrix_hint, exif_hints, quicktime_hints, read_heif
 from services.ingest.probe import MediaFacts, ProbeError, probe_media
 from services.ingest.store import DECLARABLE, IngestStore, Received, Refused
@@ -111,19 +114,9 @@ def get_ingest_store() -> IngestStore:
 
 
 def _solve_job(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
-    """Today's solve job of an upload, checked; None when there is none or its record fails the contract."""
-    try:
-        return JobStore(store).legacy_solve_job(sha256)
-    except Unreadable:
-        return None
-
-
-def _checked_solution(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
-    """An upload's stored solution, checked; None when there is none or the contract refuses it."""
-    try:
-        return JobStore(store).read_solution(sha256)
-    except Unreadable:
-        return None
+    """The newest solve attempt of an upload, active or ended, checked (a job of the runner's, or today's
+    `job.json`); None when there is none or every record fails the contract."""
+    return JobStore(store).newest_solve(sha256)
 
 
 def _title(header: Optional[str], sha256: str) -> str:
@@ -316,45 +309,64 @@ def get_ingest_original(sha256: str = _sha256_path(), store: IngestStore = Depen
 
 @router.post("/api/ingest/{sha256}/solve", status_code=201)
 async def start_ingest_solve_job(
-    sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
+    sha256: str = _sha256_path(),
+    wait: bool = Query(True, description="false: answer at once with the job (202 new, 200 joined or current)"),
+    store: IngestStore = Depends(get_ingest_store),
 ) -> JSONResponse:
-    """Run or return the solve job for a stored upload, reporting real byte, frame and candidate denominators."""
-    if store.read_record(sha256) is None or store.original(sha256) is None:
-        raise HTTPException(status_code=404, detail="no file with that hash is stored")
-    existing = _solve_job(store, sha256)
-    if existing is not None and existing.get("state") == "succeeded" and _checked_solution(store, sha256) is not None:
-        return JSONResponse(existing, status_code=200)
-    job = await run_in_threadpool(run_solve_job, store, sha256)
-    return JSONResponse(job, status_code=201)
+    """Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate
+    denominators. With `wait=false` it answers at once: 202 with a new job, 200 with the active job it joined or
+    the current succeeded one. Without it, it waits for the job to end and answers 201, or 200 with the current
+    succeeded job (until the web follows jobs). Leaving early never cancels the job."""
+    runner = runner_for(store)
+    try:
+        job, created = runner.start(sha256, "solve")
+    except NoUpload:
+        raise HTTPException(status_code=404, detail="no file with that hash is stored") from None
+    if not wait:
+        return JSONResponse(job, status_code=202 if created else 200)
+    if not created and job["state"] not in ("queued", "running"):
+        return JSONResponse(job, status_code=200)
+    ended = await run_in_threadpool(runner.wait, job["id"])
+    return JSONResponse(ended, status_code=201)
+
+
+def _job_or_404(store: IngestStore, job_id: str, read: Any) -> Any:
+    try:
+        answer = read(job_id)
+    except Unreadable:
+        raise HTTPException(status_code=409, detail=UNREADABLE_JOB) from None
+    if answer is None:
+        raise HTTPException(status_code=404, detail="no solve job with that id is stored")
+    return answer
 
 
 @router.get("/api/ingest/jobs/{job_id}")
 def get_ingest_solve_job(
     job_id: str = _job_id_path(), store: IngestStore = Depends(get_ingest_store)
-  ) -> dict[str, Any]:
-    """The state and stage progress of a solve job."""
-    # Today's solve records by their 16-character ids, the job store's by its 32-character ones; a stored record
-    # that fails the contract is answered 409, never served (the docstring above is the published description)
-    jobs = JobStore(store)
-    try:
-        if len(job_id) == len("job_") + 16:
-            job = jobs.legacy_solve_job_by_id(job_id)
-        elif len(job_id) == len("job_") + 32:
-            job = jobs.read_job(job_id)
-        else:
-            job = None
-    except Unreadable:
-        raise HTTPException(status_code=409, detail=UNREADABLE_JOB) from None
-    if job is None:
-        raise HTTPException(status_code=404, detail="no solve job with that id is stored")
-    return job
+) -> dict[str, Any]:
+    """The state and stage progress of a job of any kind: the live record while this server runs it."""
+    # Today's solve records by their 16-character ids, the runner's by its 32-character ones; a stored record that
+    # fails the contract is answered 409, never served (the docstring above is the published description)
+    return _job_or_404(store, job_id, runner_for(store).get)
+
+
+@router.post("/api/ingest/jobs/{job_id}/cancel")
+def cancel_ingest_job(job_id: str = _job_id_path(), store: IngestStore = Depends(get_ingest_store)) -> JSONResponse:
+    """Cancel a job of any kind: 200 with a queued job now canceled, or with a job that had already ended, unchanged;
+    202 with a running job, which records when the cancel was asked and ends canceled once its work stops, or
+    succeeded when it had already committed."""
+    job, outcome = _job_or_404(store, job_id, runner_for(store).cancel)
+    if outcome == "elsewhere":
+        # Another server process runs it; this one cannot stop it (one process serves the API today)
+        raise HTTPException(status_code=409)
+    return JSONResponse(job, status_code=202 if outcome == "requested" else 200)
 
 
 @router.get("/api/ingest/{sha256}/solution")
 def get_ingest_solution(
     sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
 ) -> dict[str, Any]:
-    """The contract ObservationSolution produced for a stored upload."""
+    """The contract ObservationSolution of the newest succeeded solve of a stored upload."""
     if store.read_record(sha256) is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
     try:

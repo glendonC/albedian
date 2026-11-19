@@ -31,6 +31,7 @@ import pytest
 
 from services.api import app
 from services.contracts.ingest import SolveJob
+from services.contracts.jobs import UploadJob
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
 from services.ingest.store import IngestStore
@@ -76,7 +77,7 @@ def _upload(client: TestClient, body: bytes, content_type: str) -> str:
 def test_black_frame_records_no_verify_step(client: TestClient) -> None:
     sha = _upload(client, _png(np.zeros((48, 64))), "image/png")
     job = client.post(f"/api/ingest/{sha}/solve").json()
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
     stages = {entry["stage"]: entry for entry in job["stages"]}
     assert "verify" not in stages, stages.get("verify")
@@ -167,12 +168,17 @@ def test_a_decoder_message_is_stored_without_the_path_and_bounded(
 
 def test_job_and_solution_files_are_owner_only(client: TestClient, store: IngestStore) -> None:
     sha = _upload(client, _png(_starfield()), "image/png")
-    assert client.post(f"/api/ingest/{sha}/solve").json()["state"] == "succeeded"
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    assert job["state"] == "succeeded"
     folder = store.folder(sha)
+    # The runner's records: read-only once the job has ended, as its solution is
+    assert stat.S_IMODE((folder / "jobs" / f"{job['id']}.json").stat().st_mode) == 0o400
+    assert stat.S_IMODE((folder / "solutions" / f"{job['id']}.json").stat().st_mode) == 0o400
+    # Today's job, which tests and scripts still run, writes today's two files
+    assert ingest_jobs.run_solve_job(store, sha)["state"] == "succeeded"
     assert stat.S_IMODE((folder / "job.json").stat().st_mode) == 0o600
     assert stat.S_IMODE((folder / "solution.json").stat().st_mode) == 0o400
     before = {name: (folder / name).stat().st_ino for name in ("job.json", "solution.json")}
-    # The route returns a stored succeeded job without rerunning it, so run the job itself a second time
     assert ingest_jobs.run_solve_job(store, sha)["state"] == "succeeded"
     for name, mode in (("job.json", 0o600), ("solution.json", 0o400)):
         assert (folder / name).stat().st_ino != before[name], f"{name} was not rewritten"

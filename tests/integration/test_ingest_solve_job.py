@@ -28,6 +28,7 @@ import pytest
 
 from services.api import app
 from services.contracts.ingest import IngestReceipt, SolveJob
+from services.contracts.jobs import UploadJob
 from services.ingest import router as ingest_router
 from research.benchmarks.phone_photos import render as phone_render, stars as phone_stars, suite as phone_suite
 from services.ingest.jobs import job_id_for_sha256, run_solve_job
@@ -238,8 +239,10 @@ def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated
     solve_resp = client.post(f"/api/ingest/{sha}/solve")
     assert solve_resp.status_code == 201, solve_resp.text
     job = solve_resp.json()
-    SolveJob.model_validate(job)
-    assert job["id"] == job_id_for_sha256(sha)
+    UploadJob.model_validate(job)
+    # The runner's own id: the hash's first 16 hex characters, then 16 of its own
+    assert job["id"].startswith(job_id_for_sha256(sha)) and len(job["id"]) == len("job_") + 32
+    assert job["kind"] == "solve" and job["producer"] == {"name": "albedian.solve_chain", "revision": 1}
     assert job["sourceAssetSha256"] == sha
     assert job["state"] == "succeeded"
     assert job["solutionId"] == f"sol_{sha[:16]}"
@@ -323,9 +326,11 @@ def test_ingest_solve_job_handles_too_few_sources_and_missing_hashes_honestly(cl
     solve_resp = client.post(f"/api/ingest/{sha}/solve")
     assert solve_resp.status_code == 201
     job = solve_resp.json()
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     stages = {entry["stage"]: entry for entry in job["stages"]}
-    assert stages["solve"] == {"stage": "solve", "unit": "steps", "done": 1, "total": 1}
+    # Too few sources for a triplet: the plate solver's one step, in its own pass
+    assert stages["solve"] == {"stage": "solve", "unit": "steps", "done": 1, "total": 1,
+                               "pass": {"number": 1, "label": "triangle"}}
 
     sol = client.get(f"/api/ingest/{sha}/solution").json()
     assert sol["status"] == "unresolved"
@@ -437,7 +442,7 @@ def test_ingest_solve_job_calibrates_uploaded_phone_photo_against_g12_tiles(
     solve_resp = client.post(f"/api/ingest/{sha}/solve")
     assert solve_resp.status_code == 201, solve_resp.text
     job = solve_resp.json()
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
 
     stages = {entry["stage"]: entry for entry in job["stages"]}
@@ -507,7 +512,7 @@ def test_pbt_solve_job_with_or_without_camera_metadata_preserves_stage_denominat
             solve_resp = test_client.post(f"/api/ingest/{sha}/solve")
             assert solve_resp.status_code == 201
             job = solve_resp.json()
-            SolveJob.model_validate(job)
+            UploadJob.model_validate(job)
             stages = {s["stage"]: s for s in job["stages"]}
             sol = test_client.get(f"/api/ingest/{sha}/solution").json()
             # A verify step is recorded only when a held-out star was compared

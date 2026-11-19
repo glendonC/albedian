@@ -301,7 +301,7 @@ class JobStore:
                     records.append(self.read_record(Path(entry.path)))
                 except (Unreadable, FileNotFoundError):
                     continue
-        return sorted(records, key=lambda r: (r["createdAtUTC"], r["id"]))
+        return sorted(records, key=lambda r: (instant(r["createdAtUTC"]), r["id"]))
 
     def legacy_solve_job(self, sha256: str) -> Optional[dict[str, Any]]:
         """Today's `job.json`, checked against `SolveJob` under wire names and against this upload's hash and id;
@@ -355,13 +355,69 @@ class JobStore:
         return None
 
     def read_solution(self, sha256: str) -> Optional[dict[str, Any]]:
-        """Today's `solution.json`, read without following a link, parsed as RFC 8259 JSON with finite numbers,
+        """The solution of the newest succeeded solve of an upload (a job of the runner's, or today's `job.json`),
+        checked as `solution_of` reads it; when no solve has succeeded, today's `solution.json` as it is stored. So
+        while a newer solve runs, the last good solution is the one served (REQ-JOB-6.5). None when there is none;
+        Unreadable when the one to serve fails the contract."""
+        succeeded = [r for r in self.jobs_of(sha256) if r["kind"] == "solve" and r["state"] == "succeeded"]
+        try:
+            legacy = self.legacy_solve_job(sha256)
+        except Unreadable:
+            legacy = None
+        if legacy is not None and legacy["state"] == "succeeded":
+            succeeded.append(legacy)
+        if not succeeded:
+            return self._solution_file(sha256, self.upload_folder(sha256) / "solution.json")
+        newest = max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
+        return self.solution_of(newest)
+
+    def solution_of(self, record: dict[str, Any]) -> Optional[dict[str, Any]]:
+        """The solution a succeeded solve record names: `solutions/<job_id>.json` for a job of the runner's, today's
+        `solution.json` for a record today's code wrote; checked as `_solution_file` checks it, and its id must be
+        the one the record names. None when it is missing."""
+        sha256 = record["sourceAssetSha256"]
+        if "kind" in record:
+            if record["kind"] != "solve" or not JOB_ID.fullmatch(record["id"]):
+                raise ValueError("not a solve job of the store's")
+            path = self.upload_folder(sha256) / SOLUTIONS_FOLDER / f"{record['id']}.json"
+        else:
+            path = self.upload_folder(sha256) / "solution.json"
+        solution = self._solution_file(sha256, path)
+        if solution is not None and record.get("solutionId") is not None and solution.get("id") != record["solutionId"]:
+            raise Unreadable("a stored solution is not the one its job names")
+        return solution
+
+    def newest_solve(self, sha256: str) -> Optional[dict[str, Any]]:
+        """The newest readable solve attempt of an upload, active or ended; today's `job.json` counts too."""
+        attempts = [r for r in self.jobs_of(sha256) if r["kind"] == "solve"]
+        try:
+            legacy = self.legacy_solve_job(sha256)
+        except Unreadable:
+            legacy = None
+        if legacy is not None:
+            attempts.append(legacy)
+        return max(attempts, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"])) if attempts else None
+
+    def interrupt(self, record: dict[str, Any], now: Optional[datetime] = None) -> dict[str, Any]:
+        """A running record no live process holds, stored as interrupted (REQ-JOB-3.4); when its job has meanwhile
+        ended, the record it ended with."""
+        ended = UploadJob.model_validate(_interrupted(record, now or datetime.now(timezone.utc))).model_dump(
+            by_alias=True, exclude_unset=True)
+        try:
+            return self.write_record(ended)
+        except Ended:
+            stored = self.read_job(record["id"])
+            if stored is None:
+                raise
+            return stored
+
+    def _solution_file(self, sha256: str, path: Path) -> Optional[dict[str, Any]]:
+        """A stored solution file, read without following a link, parsed as RFC 8259 JSON with finite numbers,
         upgraded in memory for pre-catalog-2b star designations (`upgrade_stored_solution`), and checked against
         this upload's hash and id and the solution contract (`parse_observation_solution`), then returned without
         re-dumping through the model. None when none is stored; Unreadable when its folder or file cannot be read as
         a regular UTF-8 file, is not finite JSON, names another upload, or fails the contract. Never rewritten or
         removed here."""
-        path = self.upload_folder(sha256) / "solution.json"
         try:
             exists = self._exists(path.parent)
         except OSError as error:
@@ -605,7 +661,7 @@ class JobStore:
             result.partials_removed,
             result.scratch_removed,
         )
-        return result, sorted(handed_back, key=lambda r: (r["createdAtUTC"], r["id"]))
+        return result, sorted(handed_back, key=lambda r: (instant(r["createdAtUTC"]), r["id"]))
 
     def _upload_folders(self) -> Iterator[Path]:
         if not stat.S_ISDIR(_lstat_mode(self.root)):
@@ -676,7 +732,7 @@ def _interrupted(record: dict[str, Any], moment: datetime) -> dict[str, Any]:
     """A running record the process stopped, ended: what it recorded stays, its cancel time among it; it finishes
     no earlier than it started or was asked to stop."""
     ended = {k: v for k, v in record.items() if k != "queueAhead"}
-    known = [_instant(record[key]) for key in ("startedAtUTC", "cancelRequestedAtUTC") if key in record]
+    known = [instant(record[key]) for key in ("startedAtUTC", "cancelRequestedAtUTC") if key in record]
     return {
         **ended,
         "state": "interrupted",
@@ -685,7 +741,7 @@ def _interrupted(record: dict[str, Any], moment: datetime) -> dict[str, Any]:
     }
 
 
-def _instant(text: str) -> datetime:
+def instant(text: str) -> datetime:
     return datetime.fromisoformat(text.removesuffix("Z") + "+00:00")
 
 

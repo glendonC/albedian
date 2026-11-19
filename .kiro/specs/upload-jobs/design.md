@@ -234,6 +234,22 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
 - Start-up: a FastAPI lifespan in `create_app` runs the sweep for the configured store and starts the runner;
   shutdown stops the slots' children. Jobs the sweep hands back start in creation order.
 
+- As built in platform-5a [tested]: `services/ingest/runner.py` as above, with these choices. `queueAhead` counts the
+  jobs of the group that run before it, the one in the slot included. A new pass restarts its stage at `done` 0 and
+  `total` null; a count that falls within one pass, a stage or unit the kind does not declare, or `done` past
+  `total` fails the job with the kind's internal-error sentence. A job past its bound fails with the kind's
+  time-limit sentence even when its work returned (the solve's is "The solve stopped at its time limit.", added in
+  platform-5s), and an ending record that cannot be written fails it with the kind's storing sentence ("The job's
+  result could not be stored."). Before the commit the runner checks the record by the contract and asks the kind
+  whether its results are whole; a job that does not commit loses everything `ctx.publish` made and its partials.
+  At shutdown no record is written, so a job that was running is ended interrupted by the next start's sweep. A
+  cancel of a job another process runs answers 409. `run_solve_job` stays as on `main`, writing today's two files,
+  for the tests and scripts that call it; it becomes the thin wrapper in platform-5c [decided 2026-11-18].
+  One child per group serves the whole process (`SlotWorker`), shared by the runners of every store root, as the one
+  solve child was before: a child holds the solvers and their star tiles, and with one per store root a Linux run
+  of this unit's tests was killed (exit 137) [inference: out of memory, from the children it kept]. A call waits for it
+  while another root's job uses it, and stops waiting when its own job is stopped [tested].
+
 ### 3.3 The stop hook in the bounded worker (`services/science/bounded_worker.py`) [decided 2026-11-11: added to this lane's files]
 - `call(..., stop: threading.Event | None = None)`: the poll loop (:108-125) also checks `stop` every `POLL_SEC`; when
   it is set, `close()` and raise `WorkerStopped`. A cancel or the job's deadline therefore stops a call within

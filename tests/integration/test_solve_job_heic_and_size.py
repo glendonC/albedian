@@ -36,6 +36,7 @@ import pytest
 
 from services.api import app
 from services.contracts.ingest import SolveJob
+from services.contracts.jobs import UploadJob
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
 from services.ingest.store import IngestStore
@@ -118,7 +119,7 @@ def test_a_tile_grid_heic_decodes_at_its_stored_size_through_the_api(
     sha = hashlib.sha256(body).hexdigest()
 
     job = client.post(f"/api/ingest/{sha}/solve").json()
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     if not GRIDS:
         _assert_refused(job)
         return
@@ -141,7 +142,7 @@ def test_a_grid_heic_irot_stays_display_metadata_and_the_stored_pixels_decode(
     sha = hashlib.sha256(body).hexdigest()
 
     job = client.post(f"/api/ingest/{sha}/solve").json()
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     if not GRIDS:
         _assert_refused(job)
         return

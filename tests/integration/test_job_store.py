@@ -9,6 +9,7 @@ and to end; one that is still alive then is killed after the assertion has faile
 from __future__ import annotations
 
 import copy
+import dataclasses
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -19,7 +20,7 @@ from pathlib import Path
 import re
 import stat
 import tempfile
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Optional
 
 from fastapi.testclient import TestClient
 from hypothesis import example, given, settings
@@ -31,7 +32,9 @@ from services.contracts.jobs import INTERRUPTED_SENTENCE, UploadJob, build_job_s
 from services.ingest import job_store
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
+from services.ingest import runner as job_runner
 from services.ingest.job_store import Ended, JobStore, SweepCounts, Unreadable, new_job_id
+from services.ingest.runner import JobRefusal, KindResult
 from services.ingest.store import IngestStore
 
 CHILD_BOUND_S = 60.0
@@ -558,7 +561,7 @@ def test_todays_records_are_never_read_through_a_linked_upload_folder(tree: Any)
     assert jobs.legacy_solve_job(SHAS[1]) is None
     assert jobs.legacy_solve_job_by_id(f"job_{SHAS[1][:16]}") is None
     assert jobs.read_solution(SHAS[1]) is None
-    assert ingest_router._checked_solution(uploads, SHAS[1]) is None
+    assert ingest_router._solve_job(uploads, SHAS[1]) is None
     (outside / "solution.json").write_text("{}", encoding="utf-8")
     assert jobs.read_solution(SHAS[1]) is None
     with pytest.raises(ValueError):
@@ -1034,6 +1037,20 @@ def app_and_store(tmp_path: Path) -> Iterator[tuple[Any, IngestStore, JobStore]]
     app.dependency_overrides[ingest_router.get_ingest_store] = lambda: uploads
     yield app, uploads, jobs
     app.dependency_overrides.clear()
+
+
+def fake_solve_kind(monkeypatch: pytest.MonkeyPatch, body: Optional[Callable[[Any], Any]] = None) -> list[str]:
+    """The solve kind replaced by one that records the upload it ran for, then runs `body` or refuses the work."""
+    ran: list[str] = []
+
+    def run(ctx: Any) -> Any:
+        ran.append(ctx.sha256)
+        if body is not None:
+            return body(ctx)
+        raise JobRefusal("The decoder could not read the file.")
+
+    monkeypatch.setitem(job_runner._KINDS, "solve", dataclasses.replace(ingest_jobs.SOLVE_KIND, run=run))
+    return ran
 
 
 def _legacy_job(sha: str) -> dict[str, Any]:
@@ -1531,8 +1548,7 @@ def test_misfiled_records_and_python_named_legacy_keys_are_refused_everywhere(
     png_a, png_b = _tiny_png(10), _tiny_png(200)
     sha_a = client.post("/api/ingest", content=png_a, headers={"content-type": "image/png"}).json()["sourceAsset"]["sha256"]
     sha_b = client.post("/api/ingest", content=png_b, headers={"content-type": "image/png"}).json()["sourceAsset"]["sha256"]
-    ran: list[str] = []
-    monkeypatch.setattr(ingest_router, "run_solve_job", lambda store, s: ran.append(s) or {"ran": s})
+    ran = fake_solve_kind(monkeypatch)
 
     own_1 = record(sha_a, "solve", "running", 1)
     own_2 = record(sha_a, "solve", "succeeded", 2)
@@ -1594,10 +1610,11 @@ def test_misfiled_records_and_python_named_legacy_keys_are_refused_everywhere(
             jobs.legacy_solve_job_by_id(f"job_{sha_a[:16]}")
         by_id = client.get(f"/api/ingest/jobs/job_{sha_a[:16]}")
         assert (by_id.status_code, by_id.json()) == (409, {"detail": ingest_router.UNREADABLE_JOB})
+        # The receipt names the newest readable solve attempt: own_2, whatever job.json holds
         receipt = client.get(f"/api/ingest/{sha_a}")
-        assert receipt.status_code == 200 and "solveJobId" not in receipt.json()
+        assert receipt.status_code == 200 and receipt.json()["solveJobId"] == own_2["id"]
         reupload = client.post("/api/ingest", content=png_a, headers={"content-type": "image/png"})
-        assert reupload.status_code == 200 and "solveJobId" not in reupload.json()
+        assert reupload.status_code == 200 and reupload.json()["solveJobId"] == own_2["id"]
         ran.clear()
         started = client.post(f"/api/ingest/{sha_a}/solve")
         assert started.status_code == 201 and ran == [sha_a]
@@ -1703,8 +1720,7 @@ def test_unreadable_buckets_and_non_utf8_records_answer_409_and_never_500(
     png = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55"
                         "0000000a49444154789c63600000000200015e2fe9e30000000049454e44ae426082")
     sha = client.post("/api/ingest", content=png, headers={"content-type": "image/png"}).json()["sourceAsset"]["sha256"]
-    ran: list[str] = []
-    monkeypatch.setattr(ingest_router, "run_solve_job", lambda store, s: ran.append(s) or {"ran": s})
+    ran = fake_solve_kind(monkeypatch)
 
     made = record(sha, "solve", "failed", 1)
     jobs.write_record(made)
@@ -1818,20 +1834,22 @@ def test_a_start_runs_the_solve_again_unless_a_checked_job_succeeded_with_its_so
     assert original_path is not None
     original_before = original_path.read_bytes()
     record_before = (folder / "record.json").read_bytes()
-    valid_sol = _solution_for(sha)
-    succeeded = {**_legacy_job(sha), "state": "succeeded", "startedAtUTC": "2030-01-01T05:00:01Z",
-                 "finishedAtUTC": "2030-01-01T05:00:02Z", "solutionId": f"sol_{sha[:16]}"}
-    ran: list[str] = []
+    valid_sol = {**_solution_for(sha), "id": f"sol_{sha[:16]}"}
+    # Today's records are older than any job of the runner's
+    succeeded = {**_legacy_job(sha), "createdAtUTC": "2020-01-01T05:00:00Z", "state": "succeeded",
+                 "startedAtUTC": "2020-01-01T05:00:01Z", "finishedAtUTC": "2020-01-01T05:00:02Z",
+                 "solutionId": f"sol_{sha[:16]}"}
     write_new_solution = [False]
 
-    def fake_solve(store: IngestStore, target_sha: str) -> dict[str, Any]:
-        ran.append(target_sha)
-        if write_new_solution[0]:
-            ingest_jobs._write_json(store.folder(target_sha), "solution.json", valid_sol, read_only=True)
-            ingest_jobs._write_json(store.folder(target_sha), "job.json", succeeded)
-        return succeeded
+    def publish(ctx: Any) -> Any:
+        if not write_new_solution[0]:
+            raise JobRefusal("The decoder could not read the file.")
+        partial = ctx.partial("solution.json")
+        partial.write_text(json.dumps(valid_sol), encoding="utf-8")
+        ctx.publish(partial, ctx.solution_path())
+        return KindResult("succeeded", {"solutionId": valid_sol["id"]})
 
-    monkeypatch.setattr(ingest_router, "run_solve_job", fake_solve)
+    ran = fake_solve_kind(monkeypatch, publish)
     (folder / "job.json").write_text(json.dumps(succeeded), encoding="utf-8")
     assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha], "no solution: run again"
     ingest_jobs._write_json(
@@ -1840,19 +1858,61 @@ def test_a_start_runs_the_solve_again_unless_a_checked_job_succeeded_with_its_so
         _solution_for(sha, _refused_sample("audit_j_observed_relabelled_catalog_matched_its_evidence_still_observed")),
         read_only=True,
     )
-    assert client.get(f"/api/ingest/{sha}/solution").status_code == 409
+    assert client.get(f"/api/ingest/{sha}/solution").status_code == 409, "the newest succeeded solve's is refused"
     write_new_solution[0] = True
     assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha, sha], "refused solution: run again"
     served = client.get(f"/api/ingest/{sha}/solution")
     assert (served.status_code, served.json()) == (200, valid_sol)
+    current = jobs.newest_solve(sha)
+    assert current["state"] == "succeeded" and current["kind"] == "solve"
     answer = client.post(f"/api/ingest/{sha}/solve")
-    assert (answer.status_code, answer.json(), ran) == (200, succeeded, [sha, sha])
+    assert (answer.status_code, answer.json(), ran) == (200, current, [sha, sha])
     write_new_solution[0] = False
-    failed = {**_legacy_job(sha), "state": "failed", "startedAtUTC": "2030-01-01T05:00:01Z",
-              "finishedAtUTC": "2030-01-01T05:00:02Z", "error": "The solve stopped on an internal error."}
-    (folder / "job.json").write_text(json.dumps(failed), encoding="utf-8")
-    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 3, "failed job: run again"
+    (folder / "solutions" / f"{current['id']}.json").unlink()
+    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 3, "result gone: run again"
     (folder / "job.json").write_text(json.dumps({**succeeded, "state": "finished"}), encoding="utf-8")
     assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 4, "unreadable: run again"
     assert original_path.read_bytes() == original_before
     assert (folder / "record.json").read_bytes() == record_before
+
+
+def test_a_json_dump_that_fails_in_todays_writer_leaves_no_scratch_file(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The gap design section 1 names in `_write_json`: a failure inside `json.dump` (a full disk) left its
+    `.<name>-<hex>.tmp` behind, and nothing swept it."""
+    folder = tmp_path / "upload"
+
+    def full_disk(*args: Any, **kwargs: Any) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(ingest_jobs.json, "dump", full_disk)
+    with pytest.raises(OSError):
+        ingest_jobs._write_json(folder, "job.json", {"id": "x"})
+    assert sorted(p.name for p in folder.iterdir()) == []
+
+
+def test_an_uploads_records_are_ordered_by_their_instant_not_their_text(tree: Any) -> None:
+    """"05:00:00.300Z" sorts before "05:00:00Z" as text, though it is 300 ms later."""
+    _, _, jobs = tree
+    later = {**record(SHAS[0], "solve", "queued", 1), "createdAtUTC": "2030-01-01T05:00:00.300Z"}
+    earlier = {**record(SHAS[0], "solve", "queued", 2), "createdAtUTC": "2030-01-01T05:00:00Z"}
+    jobs.write_record(later)
+    jobs.write_record(earlier)
+    assert [r["id"] for r in jobs.jobs_of(SHAS[0])] == [earlier["id"], later["id"]]
+
+
+def test_a_solution_file_that_is_not_the_one_its_job_names_is_unreadable(tree: Any) -> None:
+    _, _, jobs = tree
+    made = record(SHAS[0], "solve", "succeeded", 1)
+    made["solutionId"] = f"sol_{SHAS[0][:16]}"
+    jobs.write_record(made)
+    folder = jobs.upload_folder(SHAS[0]) / "solutions"
+    folder.mkdir(mode=0o700)
+    (folder / f"{made['id']}.json").write_text(json.dumps(_solution_for(SHAS[0])), encoding="utf-8")
+    assert _solution_for(SHAS[0])["id"] != made["solutionId"]
+    with pytest.raises(Unreadable):
+        jobs.read_solution(SHAS[0])
+    (folder / f"{made['id']}.json").unlink()
+    (folder / f"{made['id']}.json").write_text(
+        json.dumps({**_solution_for(SHAS[0]), "id": made["solutionId"]}), encoding="utf-8")
+    assert jobs.read_solution(SHAS[0])["id"] == made["solutionId"]
