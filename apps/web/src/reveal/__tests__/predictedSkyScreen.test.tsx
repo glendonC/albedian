@@ -307,6 +307,17 @@ describe("the card's action row in the sky (ruled 13:25)", () => {
   });
 });
 
+describe("the predicted sky's disclosure from its first frame (the lead's rule, 17:30)", () => {
+  it('shows the Predicted tag, the heading and the disclosure at once: no delay and no fade from nothing', () => {
+    const motion = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
+    const rules: Record<string, string> = {};
+    postcss.parse(motion).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.predsky .reveal-status' && rule.parent?.type === 'root') rule.walkDecls((d) => (rules[d.prop] = d.value));
+    });
+    expect(rules).toEqual({ animation: 'none' });
+  });
+});
+
 describe("the predicted sky's rules are the record's", () => {
   function declarationsOf(selector: string): Record<string, string> {
     const found: Record<string, string> = {};

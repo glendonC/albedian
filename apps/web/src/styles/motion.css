@@ -350,3 +350,9 @@
     animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2);
   }
 }
+
+/* The lead's rule, 17:30: a predicted or simulated view shows its disclosure from its first frame. D33's status
+   column (the Predicted tag, the heading and the disclosure) is there at once, with no delay and no fade from nothing */
+.predsky .reveal-status {
+  animation: none;
+}
