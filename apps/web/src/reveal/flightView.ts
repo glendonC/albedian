@@ -45,7 +45,13 @@ export function flightReadout(session: ObservationSession): FlightReadout | null
   };
 }
 
-/** One decimal, as the approved readout writes it ("1.0", "24.0"), thousands grouped. */
-export function oneDecimal(value: number): string {
-  return value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+/**
+ * Three figures, as the approved screens write the readout (fly: "0.00" to "24.0" from Earth, "25.0" to "1.00" to the
+ * star; D30: "160", "321"): two decimals below 10, one below 100, whole light years from 100, grouped above a thousand
+ * (every whole light year kept, none rounded away). A rounding that reaches the next width takes its form ("10.0").
+ */
+export function threeFigures(value: number): string {
+  if (Math.round(value * 10) / 10 >= 100) return Math.round(value).toLocaleString('en-US');
+  if (Math.round(value * 100) / 100 >= 10) return value.toFixed(1);
+  return value.toFixed(2);
 }

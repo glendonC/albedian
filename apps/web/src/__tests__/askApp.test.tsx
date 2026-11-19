@@ -524,7 +524,7 @@ describe('asking about the photo on the laptop reveal', () => {
       // One press, nothing awaited after it: with a flight, the first frame is still the photo turning into the sky
       await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
       expect(q('[data-testid="flight-readout"]')).not.toBeNull();
-      expect(q('[data-testid="flight-readout"]')!.textContent).toContain('1.0ly');
+      expect(q('[data-testid="flight-readout"]')!.textContent).toContain('1.00ly');
     } finally {
       delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
       delete (window as unknown as Record<string, unknown>).matchMedia;

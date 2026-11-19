@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
-import { flightReadout, isFlightShown, oneDecimal } from '../flightView.js';
+import { flightReadout, isFlightShown, threeFigures } from '../flightView.js';
 
 // Go there (fly, approved 2026-11-12): after the card's Go there, the photo gives way to the real sky in place and the
 // readout takes the card's place: the star's name, then how far the camera is from it and from Earth, in light years
@@ -85,12 +85,23 @@ describe('flightReadout: the flight\'s own distances', () => {
   });
 });
 
-describe('oneDecimal: the readout\'s numbers', () => {
-  it('writes one decimal, as the approved picture does, with a thousands comma', () => {
-    expect(oneDecimal(1)).toBe('1.0');
-    expect(oneDecimal(24.04)).toBe('24.0');
-    expect(oneDecimal(0)).toBe('0.0');
-    expect(oneDecimal(321.96)).toBe('322.0');
-    expect(oneDecimal(1234.56)).toBe('1,234.6');
+describe('threeFigures: the readout\'s numbers', () => {
+  it('writes three figures, as the approved screens do (0.00 to 24.0 from Earth, 25.0 to 1.00 to the star, 321)', () => {
+    expect(threeFigures(0)).toBe('0.00');
+    expect(threeFigures(1)).toBe('1.00');
+    expect(threeFigures(1.004)).toBe('1.00');
+    expect(threeFigures(24.04)).toBe('24.0');
+    expect(threeFigures(25)).toBe('25.0');
+    expect(threeFigures(321.04)).toBe('321');
+    expect(threeFigures(321.96)).toBe('322');
+  });
+
+  it('carries a rounding into the next width, and keeps every whole light year above a thousand, grouped', () => {
+    expect(threeFigures(9.996)).toBe('10.0');
+    expect(threeFigures(99.96)).toBe('100');
+    expect(threeFigures(9.994)).toBe('9.99');
+    expect(threeFigures(99.94)).toBe('99.9');
+    expect(threeFigures(1234.56)).toBe('1,235');
+    expect(threeFigures(15625.4)).toBe('15,625');
   });
 });

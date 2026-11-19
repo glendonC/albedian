@@ -607,15 +607,15 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     }
   });
 
-  it('puts the readout in the card\'s place: the Simulated tag, the name, then to the star and from Earth in light years with one decimal', () => {
+  it('puts the readout in the card\'s place: the Simulated tag, the name, then to the star and from Earth in light years to three figures, as the approved screens write them', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.43 } });
     const readout = q(READOUT)!;
     expect(readout.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
     expect(readout.querySelector('h1')!.textContent).toBe('Rigel');
     expect([...readout.querySelectorAll('.flight-readout__stat')].map((s) => [s.querySelector('b')!.textContent, s.querySelector('span')!.textContent])).toEqual([
-      ['1.0ly', 'to Rigel'],
-      ['859.4ly', 'from Earth'],
+      ['1.00ly', 'to Rigel'],
+      ['859ly', 'from Earth'],
     ]);
     // A star with no position in space: only how far the camera is from Earth
     show(session, { flight: { name: 'Rigel', toStarLy: null, fromEarthLy: 0 } });

@@ -72,7 +72,7 @@ const FLIGHT_LINES = {
   milkyWay: 'Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.',
 } as const;
 import { realSkyResidualArcmin } from './realSkyGrid.js';
-import { oneDecimal, type FlightReadout } from './flightView.js';
+import { threeFigures, type FlightReadout } from './flightView.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -634,7 +634,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             {shownFlight.toStarLy !== null && (
               <div className="flight-readout__stat">
                 <b>
-                  {oneDecimal(shownFlight.toStarLy)}
+                  {threeFigures(shownFlight.toStarLy)}
                   <small>ly</small>
                 </b>
                 <span>{`to ${shownFlight.name}`}</span>
@@ -642,7 +642,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             )}
             <div className="flight-readout__stat">
               <b>
-                {oneDecimal(shownFlight.fromEarthLy)}
+                {threeFigures(shownFlight.fromEarthLy)}
                 <small>ly</small>
               </b>
               <span>from Earth</span>
