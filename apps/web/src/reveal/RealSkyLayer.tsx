@@ -72,6 +72,18 @@ export function phoneRealSkyShade(viewportHeightPx: number, { there = false }: {
 }
 
 /**
+ * There at phone width with D30's readout (UIUX-phone3d-READY.md item 2): the top bar's shade as before, clear from 32 px
+ * inside the slot, then darkening from 70 px above the readout's top to 62 percent 10 px under it and 86 at the foot,
+ * so the readout reads over the sky however tall its lines make it.
+ */
+export function phoneThereScrim(viewportHeightPx: number, readoutTopPx: number): string {
+  const s = PHONE_REAL_SKY_SHADE;
+  const top = PHONE_SLOT.topPx;
+  const black = (a: number) => `rgba(0, 0, 0, ${a})`;
+  return `linear-gradient(to bottom, ${black(s.top)} 0px, ${black(s.aboveSlot)} ${top - 6}px, ${black(0)} ${top + 32}px, ${black(0)} ${readoutTopPx - 70}px, ${black(0.62)} ${readoutTopPx + 10}px, ${black(0.86)} ${viewportHeightPx}px)`;
+}
+
+/**
  * The Credits page's line for what Real sky does to ESO's panorama (CC BY 4.0 asks that changes be indicated), worded
  * from the layer's own numbers [proposed: no record words the Credits lines].
  */
@@ -192,7 +204,9 @@ export const RealSkyLayer: React.FC<{
   phone?: boolean;
   /** There, after Go there: on the phone, the shade under the taller readout. */
   there?: boolean;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false, there = false }) => {
+  /** There on the phone: the readout's measured top, which D30's scrim rises to meet; the slot's shade without it. */
+  readoutTopPx?: number | null;
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false, there = false, readoutTopPx = null }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
@@ -229,7 +243,7 @@ export const RealSkyLayer: React.FC<{
   return (
     <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas ref={canvas} className="real-sky__canvas" width={Math.round(viewportWidthPx * dpr)} height={Math.round(viewportHeightPx * dpr)} />
-      {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? phoneRealSkyShade(viewportHeightPx, { there }) : realSkyShade(rect, viewportWidthPx) }} />}
+      {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? (there && readoutTopPx !== null ? phoneThereScrim(viewportHeightPx, readoutTopPx) : phoneRealSkyShade(viewportHeightPx, { there })) : realSkyShade(rect, viewportWidthPx) }} />}
     </div>
   );
 };

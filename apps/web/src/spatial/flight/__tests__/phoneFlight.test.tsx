@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../../components/__tests__/poseSessions.js';
 import { RevealPhoto } from '../../../reveal/RevealPhoto.js';
+import { phoneThereScrim } from '../../../reveal/RealSkyLayer.js';
 import { AskBar } from '../../../reveal/AskBar.js';
 import { PHONE_CRAFT_DIAMETER_PX, PHONE_SKY_TOP_PX, phoneCraftFraming, type CraftFraming } from '../craftScene.js';
 import type { Craft } from '../crafts.js';
@@ -17,6 +18,7 @@ const seen = vi.hoisted(() => ({
   steering: false,
   onDragSky: undefined as (() => void) | undefined,
   onPressSky: undefined as (() => void) | undefined,
+  scrimTopPx: undefined as number | null | undefined,
 }));
 vi.mock('../FlightStarsLayer.js', async () => {
   const { createElement: h, useEffect } = await import('react');
@@ -39,7 +41,8 @@ vi.mock('../../../reveal/RealSkyLayer.js', async (importOriginal) => {
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; readoutTopPx?: number | null }) => {
+      seen.scrimTopPx = props.readoutTopPx;
       useEffect(() => {
         props.onDrawn?.(true);
       }, [props.onDrawn]);
@@ -288,5 +291,20 @@ describe('Your photo\'s view at phone width (D30 item 7)', () => {
       '3 stars have no measured distance, so they stay where they appear from Earth.',
     ]);
     expect((q('[data-testid="cone-readout"]') as HTMLElement).style.visibility).toBe('hidden');
+  });
+});
+
+describe('The scrim raised to the readout (D30 item 2)', () => {
+  it('darkens from 70 px above the readout\'s top to 62 percent 10 px under it and 86 at the foot, the top bar\'s shade as before', () => {
+    expect(phoneThereScrim(844, 417)).toBe(
+      'linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0px, rgba(0, 0, 0, 0.3) 112px, rgba(0, 0, 0, 0) 150px, rgba(0, 0, 0, 0) 347px, rgba(0, 0, 0, 0.62) 427px, rgba(0, 0, 0, 0.86) 844px)'
+    );
+  });
+
+  it('hands the panorama the readout\'s measured top on the phone there', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ top: 417, bottom: 696, left: 24, right: 366, width: 342, height: 279, x: 24, y: 417, toJSON: () => ({}) } as DOMRect);
+    showPhone();
+    expect(seen.scrimTopPx).toBe(417);
+    vi.restoreAllMocks();
   });
 });
