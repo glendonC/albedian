@@ -1104,24 +1104,25 @@ SOLVE_PRODUCER_FILES = (
     "apps/web/public/catalog/deepsky/openngc.json",
     "services/science/record_hint.py",
 )
-# Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose
-# field of view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives
-# in a matched or predicted star's Bayer designation (field-5: Crucis, Coronae Australis) and the deep-sky objects
-# every predicted sky and a calibrated frame now hold (field-6, whose three deep-sky modules join the files) (field-6r);
-# 4, a clip's stack detected with its frames' rounding noise as the floor, which changes its detections, the searches
-# they feed and the job's noise words (field-8); 5, the blind search over the whole sky's brightest stars
-# (solve-search-2) and the horizon search at any roll (the high-pointing prior), which calibrate photos that were
-# unresolved; 6, a still's 35 mm hint scaled to its stored frame (fov-1), which calibrates 16:9 phone photos that were
-# unresolved; 7, the phone solver's refinement trained on half its tight pairs, which matches photos it did not
-# (refine-1); 8, the words when a floor set a frame's noise, once beside the near-black warning (field-8b); 9, a stored
-# pointing hint names its source, the phone's record or a person (align-1b), so a hint stored without one is solved
-# again rather than refused when read; 10, the solvers' refused-gate and too-few-stars warnings in the design lane's
-# words (C16); 11, a pointing record's time and place where the file holds none (pointing-moment v2), which give a sky,
-# named as the record's and with its place's accuracy, to photos that had none; 12, a pointing record's heading as a
-# search hint (pointing-4, whose record_hint.py joins the files), which narrows the searches of photos with a record and
-# states the hint in their solutions; 13, a pointing record's attitude as an approximate pose when the stars do not
-# solve (pointing-5), which lines up photos with a record that were predicted only
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 13, SOLVE_PRODUCER_FILES)
+# Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose field of
+# view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives in a matched or
+# predicted star's Bayer designation (field-5: Crucis, Coronae Australis) and the deep-sky objects every predicted sky
+# and a calibrated frame now hold (field-6, whose three deep-sky modules join the files) (field-6r); 4, a clip's stack
+# detected with its frames' rounding noise as the floor, which changes its detections, the searches they feed and the
+# job's noise words (field-8); 5, the blind search over the whole sky's brightest stars (solve-search-2) and the horizon
+# search at any roll (the high-pointing prior), which calibrate photos that were unresolved; 6, a still's 35 mm hint
+# scaled to its stored frame (fov-1), which calibrates 16:9 phone photos that were unresolved; 7, the phone solver's
+# refinement trained on half its tight pairs, which matches photos it did not (refine-1); 8, the words when a floor set
+# a frame's noise, once beside the near-black warning (field-8b); 9, a stored pointing hint names its source, the
+# phone's record or a person (align-1b), so a hint stored without one is solved again rather than refused when read; 10,
+# the solvers' refused-gate and too-few-stars warnings in the design lane's words (C16); 11, a pointing record's time
+# and place where the file holds none (pointing-moment v2), which give a sky, named as the record's and with its place's
+# accuracy, to photos that had none; 12, a pointing record's heading as a search hint (pointing-4, whose record_hint.py
+# joins the files), which narrows the searches of photos with a record and states the hint in their solutions; 13, a
+# pointing record's attitude as an approximate pose when the stars do not solve (pointing-5), which lines up photos with
+# a record that were predicted only; 14, a predicted or matched star's place and brightness cautions in the design
+# lane's C24 words, so stored solutions take the new words
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 14, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

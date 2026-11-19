@@ -358,8 +358,11 @@ def test_each_star_names_its_release_epoch_band_transform_and_that_it_was_not_me
         moved = star.pm_ra_mas_yr is not None
         assert ("moved by its proper motion to the date" in first) == moved
         assert ("not moved, since the row has no proper motion" in first) == (not moved)
-        assert f"Apparent magnitude is {star.magnitude_band}, not Johnson V." in finding.limitations
-        assert finding.limitations[-1] == STAR_POSITION_LIMITATION and "ERFA" in STAR_POSITION_LIMITATION
+        assert f"Its brightness is the catalog's own {star.magnitude_band} magnitude, not the usual V." in finding.limitations
+        # C24's words: the place for the moment at sea level with refraction left out (ERFA's apparent place, named
+        # in the code, not on the card)
+        assert finding.limitations[-1] == STAR_POSITION_LIMITATION
+        assert "at sea level" in STAR_POSITION_LIMITATION and "bending of light is left out" in STAR_POSITION_LIMITATION
 
 
 # =============================================================================================

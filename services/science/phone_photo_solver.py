@@ -129,6 +129,12 @@ PUBLISHED_CAMERA_FOV_DEG: dict[str, tuple[float, tuple[str, ...]]] = {
 FULL_FRAME_DIAGONAL_MM = math.hypot(36.0, 24.0)
 
 
+def magnitude_band_words(band: str) -> str:
+    """A matched or predicted star's brightness caution, in the design lane's C24 words (.lead/uiux/
+    UIUX-starplacewords-READY.md, decided 2026-11-19): its magnitude is the catalog's own band, not Johnson V."""
+    return f"Its brightness is the catalog's own {band} magnitude, not the usual V."
+
+
 def diagonal_fov_deg_from_35mm_equivalent(focal_35mm_mm: float) -> float:
     """Diagonal field of view of a rectilinear lens with this 35 mm equivalent focal length: 2 atan(d / 2f)."""
     if not (math.isfinite(focal_35mm_mm) and focal_35mm_mm > 0.0):
@@ -2493,7 +2499,7 @@ def _solve_phone_photo_with(
                     limitations=(
                         f"Distance is {st.distance_source}, not measured from this image.",
                         *(
-                            (f"Apparent magnitude is {st.magnitude_band}, not Johnson V.",)
+                            (magnitude_band_words(st.magnitude_band),)
                             if st.magnitude_band is not None
                             else ()
                         ),

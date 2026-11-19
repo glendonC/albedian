@@ -23,7 +23,7 @@
   "digest": "10c57ba10c23bc3537ad8873985b628260448668d6834c9d099fad6e41b6c3f3"
  },
  "albedian.solve_chain": {
-  "revision": 13,
+  "revision": 14,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -67,6 +67,6 @@
    "apps/web/public/catalog/deepsky/openngc.json",
    "services/science/record_hint.py"
   ],
-  "digest": "fbf749db17cc1075fc2decacdf8a91a373f873fcd752561aaca6b84909de8417"
+  "digest": "fb6d2ac3958f198066a923446e7aaca720dd9d996bb2b720515763b210e8b791"
  }
 }

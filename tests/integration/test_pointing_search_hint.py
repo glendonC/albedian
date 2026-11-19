@@ -456,3 +456,16 @@ def test_what_the_record_lent_names_the_blind_solve_s_words(time_from: str, plac
     hint = PointingHint(source_asset_sha256="e" * 64, used_as=("moment",), time_from=time_from, place_from=place_from)
     assert ingest_jobs._what_was_lent(hint) == lent
     assert ingest_jobs._what_was_lent(None) is None
+
+
+def test_a_matched_star_s_brightness_caution_is_c24_s() -> None:
+    # C24: the phone solver's matched stars carry the same brightness words as the predicted ones
+    solution = _solve()
+    assert solution.status == "calibrated"
+    matched = [f for f in solution.findings if f.evidence_class == "catalog_matched" and f.catalog_star is not None]
+    assert matched
+    for finding in matched:
+        band = finding.catalog_star.magnitude_band
+        if band is not None:
+            assert pps.magnitude_band_words(band) in finding.limitations
+        assert not any("Johnson" in line for line in finding.limitations)

@@ -61,7 +61,7 @@ from services.science.ephemeris import (
     compute_solar_system_ephemerides,
     require_ephemeris_range,
 )
-from services.science.phone_photo_solver import _get_tile_index, _TileStarIndex, iau_constellation_codes
+from services.science.phone_photo_solver import _get_tile_index, _TileStarIndex, iau_constellation_codes, magnitude_band_words
 from services.science.pose_estimate import (
     DAYTIME,
     MIRRORED,
@@ -248,21 +248,19 @@ def _moment_said(time_said: str, lent: LentMoment | None) -> str:
 
 
 def _star_position_limitation(lent: LentMoment | None) -> str:
-    if lent is None or lent.place_from != "record":
-        return STAR_POSITION_LIMITATION
-    lent_text = STAR_POSITION_LIMITATION.replace(
-        "for the recorded place at sea level", f"for {RECORD_PLACE_WORDS}, at sea level"
-    )
-    assert lent_text != STAR_POSITION_LIMITATION
-    return lent_text
+    """The star's place caution: the same words for a lent place, since "that moment and place" are the ones the
+    caution before it names, the record's when it lent them (C24)."""
+    return STAR_POSITION_LIMITATION
 
 
+# C24 (.lead/uiux/UIUX-starplacewords-READY.md, decided 2026-11-19 17:14): the first sentence shown on the card, the
+# second kept in the record. The place is ERFA's apparent place (catalog.py icrs_to_altaz), refraction left out
 STAR_POSITION_LIMITATION = (
-    "Placed by ERFA's apparent place for the recorded place at sea level (catalog.py icrs_to_altaz). Its stated "
-    "uncertainty adds UT1 - UTC (up to 13.5 arcsec), polar motion, its own parallax, which is left out, the stored "
-    "precision of its motion, and the motion a row without a proper motion or radial velocity may have, up to the "
-    "fastest star in the tiles; the catalog's own position and motion errors are not in it. Its altitude leaves out "
-    "refraction, which lifts what is near the horizon."
+    "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the "
+    "air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, "
+    "its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper "
+    "motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own "
+    "position and motion errors are not in it."
 )
 
 
@@ -501,7 +499,7 @@ def _star_limitations(
         f"Predicted from its {star.release_version} catalog row (epoch J{catalog_epoch:.1f}), "
         + ("moved by its proper motion to the date" if moved else "not moved, since the row has no proper motion")
         + f", for {moment_said}; not measured in the recording.",
-        f"Apparent magnitude is {star.magnitude_band}, not Johnson V.",
+        magnitude_band_words(star.magnitude_band),
         *(() if star.has_distance else ("Its catalog row gives no distance, so none is shown.",)),
         _star_position_limitation(lent),
     )

@@ -603,3 +603,21 @@ def test_pbt_no_added_warning_holds_the_capture_time_or_the_place(when: datetime
     (added,) = out.warnings[1:]
     for value in _capture_values(moment, lat, lon):
         assert value not in added
+
+
+
+def test_a_predicted_star_s_place_and_brightness_cautions_are_c24_s() -> None:
+    # C24 (.lead/uiux/UIUX-starplacewords-READY.md, decided 17:14): the first sentence shown on the card, the second
+    # kept in the record; the same words whether the place was the file's or lent by the phone's record
+    from services.science import predicted_sky as ps
+
+    assert ps.STAR_POSITION_LIMITATION == (
+        "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the "
+        "air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar "
+        "motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no "
+        "proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's "
+        "own position and motion errors are not in it."
+    )
+    lent = ps.LentMoment("record", "record", 8.0, "full")
+    assert ps._star_position_limitation(lent) == ps._star_position_limitation(None) == ps.STAR_POSITION_LIMITATION
+    assert ps.magnitude_band_words("Gaia G") == "Its brightness is the catalog's own Gaia G magnitude, not the usual V."
