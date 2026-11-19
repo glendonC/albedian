@@ -140,17 +140,13 @@ def asset_facts(asset: dict[str, Any], hints: dict[str, Any]) -> dict[str, Any]:
 
 
 def fov_hint_deg(asset: dict[str, Any]) -> Optional[float]:
-    """The diagonal field the job passes its first phone pass, decided as services/ingest/jobs.py decides it."""
-    from services.science.phone_photo_solver import diagonal_fov_deg_from_35mm_equivalent, is_published_camera_label
+    """The diagonal field the job passes its first phone pass, by the function services/ingest/jobs.py calls: a
+    still's 35 mm tag scaled to its stored frame, a clip's as written (fov-1)."""
+    from services.science.phone_photo_solver import camera_fov_hint_deg
 
-    camera = asset.get("cameraMetadata") or {}
-    focal = camera.get("focalLength35mmMm") if isinstance(camera, dict) else None
-    if isinstance(focal, (int, float)) and not isinstance(focal, bool) and not is_published_camera_label(camera.get("model")):
-        try:
-            return diagonal_fov_deg_from_35mm_equivalent(float(focal))
-        except ValueError:
-            return None
-    return None
+    frame = (asset.get("width"), asset.get("height"))
+    still = asset.get("mediaKind") == "image" and all(isinstance(side, int) and side > 0 for side in frame)
+    return camera_fov_hint_deg(asset.get("cameraMetadata"), frame if still else None)
 
 
 def solution_summary(

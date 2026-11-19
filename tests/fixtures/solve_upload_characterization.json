@@ -37,7 +37,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -74,7 +74,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -100,7 +100,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -126,7 +126,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -158,7 +158,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -190,7 +190,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -228,7 +228,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -266,7 +266,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -312,7 +312,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -342,7 +342,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -378,7 +378,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -702,7 +702,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -788,7 +788,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -825,7 +825,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -851,7 +851,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -877,7 +877,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -909,7 +909,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -941,7 +941,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -979,7 +979,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1017,7 +1017,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -1063,7 +1063,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -1093,7 +1093,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -1129,7 +1129,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -1453,7 +1453,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -1539,7 +1539,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -1576,7 +1576,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1602,7 +1602,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1628,7 +1628,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1660,7 +1660,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1692,7 +1692,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1730,7 +1730,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -1768,7 +1768,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -1814,7 +1814,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -1844,7 +1844,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -1880,7 +1880,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -2204,7 +2204,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -2290,7 +2290,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -2327,7 +2327,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -2353,7 +2353,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -2379,7 +2379,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -2411,7 +2411,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -2443,7 +2443,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -2481,7 +2481,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -2519,7 +2519,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -2565,7 +2565,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -2595,7 +2595,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -2631,7 +2631,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -2955,7 +2955,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -3041,7 +3041,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -3078,7 +3078,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3104,7 +3104,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3130,7 +3130,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3162,7 +3162,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3194,7 +3194,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3232,7 +3232,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3270,7 +3270,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -3316,7 +3316,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -3346,7 +3346,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -3382,7 +3382,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -3706,7 +3706,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -3792,7 +3792,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -3829,7 +3829,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3855,7 +3855,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3881,7 +3881,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3913,7 +3913,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3945,7 +3945,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -3983,7 +3983,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4021,7 +4021,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -4067,7 +4067,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -4097,7 +4097,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -4133,7 +4133,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -4457,7 +4457,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -4543,7 +4543,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -4580,7 +4580,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4606,7 +4606,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4632,7 +4632,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4664,7 +4664,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4696,7 +4696,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4734,7 +4734,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -4772,7 +4772,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -4818,7 +4818,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -4848,7 +4848,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -4884,7 +4884,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -5208,7 +5208,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -5293,7 +5293,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    },
    "inputSpan": {
     "firstFrameIndex": 0,
@@ -5336,7 +5336,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -5362,7 +5362,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -5388,7 +5388,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -5414,7 +5414,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5452,7 +5452,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5490,7 +5490,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5534,7 +5534,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5578,7 +5578,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5630,7 +5630,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -5660,7 +5660,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -5690,7 +5690,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -5732,7 +5732,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -6062,7 +6062,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -6163,7 +6163,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    },
    "inputSpan": {
     "firstFrameIndex": 0,
@@ -6206,7 +6206,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -6232,7 +6232,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -6258,7 +6258,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -6284,7 +6284,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6322,7 +6322,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6360,7 +6360,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6408,7 +6408,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6456,7 +6456,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6504,7 +6504,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6552,7 +6552,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6600,7 +6600,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6648,7 +6648,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6696,7 +6696,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6744,7 +6744,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6792,7 +6792,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6840,7 +6840,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6888,7 +6888,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6936,7 +6936,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6984,7 +6984,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7032,7 +7032,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7080,7 +7080,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7128,7 +7128,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7176,7 +7176,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7224,7 +7224,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7272,7 +7272,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7320,7 +7320,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7368,7 +7368,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7416,7 +7416,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7464,7 +7464,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7512,7 +7512,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7560,7 +7560,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7608,7 +7608,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7656,7 +7656,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7704,7 +7704,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7752,7 +7752,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7800,7 +7800,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7848,7 +7848,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7896,7 +7896,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7944,7 +7944,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7992,7 +7992,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8040,7 +8040,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8088,7 +8088,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8136,7 +8136,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8184,7 +8184,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8232,7 +8232,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8280,7 +8280,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8328,7 +8328,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8376,7 +8376,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8424,7 +8424,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8472,7 +8472,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8520,7 +8520,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8568,7 +8568,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8616,7 +8616,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8664,7 +8664,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8712,7 +8712,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8760,7 +8760,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8808,7 +8808,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8856,7 +8856,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8904,7 +8904,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8952,7 +8952,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9000,7 +9000,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9048,7 +9048,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9096,7 +9096,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9144,7 +9144,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9192,7 +9192,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9240,7 +9240,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9288,7 +9288,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9336,7 +9336,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9384,7 +9384,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9432,7 +9432,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9480,7 +9480,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9528,7 +9528,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9576,7 +9576,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9624,7 +9624,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9672,7 +9672,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9720,7 +9720,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9768,7 +9768,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9816,7 +9816,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9864,7 +9864,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9912,7 +9912,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9960,7 +9960,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10008,7 +10008,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10056,7 +10056,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10104,7 +10104,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10152,7 +10152,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10200,7 +10200,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10248,7 +10248,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10296,7 +10296,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10344,7 +10344,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10392,7 +10392,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10440,7 +10440,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10488,7 +10488,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10536,7 +10536,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10584,7 +10584,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10632,7 +10632,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10680,7 +10680,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10728,7 +10728,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10776,7 +10776,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10824,7 +10824,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10872,7 +10872,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10920,7 +10920,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10968,7 +10968,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11016,7 +11016,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11064,7 +11064,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11112,7 +11112,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11160,7 +11160,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11208,7 +11208,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11256,7 +11256,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11304,7 +11304,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11352,7 +11352,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11400,7 +11400,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11448,7 +11448,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11496,7 +11496,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11544,7 +11544,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11592,7 +11592,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11640,7 +11640,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11688,7 +11688,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11736,7 +11736,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11784,7 +11784,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11832,7 +11832,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11880,7 +11880,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11928,7 +11928,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11976,7 +11976,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12024,7 +12024,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12072,7 +12072,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12120,7 +12120,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12168,7 +12168,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12216,7 +12216,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12264,7 +12264,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12312,7 +12312,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12360,7 +12360,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12408,7 +12408,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12456,7 +12456,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12504,7 +12504,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12552,7 +12552,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12600,7 +12600,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12648,7 +12648,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12696,7 +12696,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12744,7 +12744,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12792,7 +12792,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12840,7 +12840,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12888,7 +12888,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12936,7 +12936,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12984,7 +12984,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13032,7 +13032,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13080,7 +13080,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13128,7 +13128,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13176,7 +13176,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13224,7 +13224,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13272,7 +13272,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13320,7 +13320,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13368,7 +13368,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13416,7 +13416,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13464,7 +13464,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13512,7 +13512,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13560,7 +13560,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13608,7 +13608,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13656,7 +13656,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13704,7 +13704,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13752,7 +13752,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13800,7 +13800,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13848,7 +13848,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13896,7 +13896,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13944,7 +13944,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13992,7 +13992,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14040,7 +14040,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14088,7 +14088,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14136,7 +14136,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14184,7 +14184,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14232,7 +14232,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14280,7 +14280,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14328,7 +14328,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14376,7 +14376,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14424,7 +14424,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14472,7 +14472,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14520,7 +14520,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14568,7 +14568,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14616,7 +14616,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14664,7 +14664,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14712,7 +14712,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14760,7 +14760,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14808,7 +14808,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14856,7 +14856,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14904,7 +14904,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14952,7 +14952,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15000,7 +15000,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15048,7 +15048,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15096,7 +15096,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15144,7 +15144,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15192,7 +15192,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15240,7 +15240,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15288,7 +15288,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15336,7 +15336,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15384,7 +15384,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15432,7 +15432,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15480,7 +15480,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15528,7 +15528,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15576,7 +15576,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15624,7 +15624,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15672,7 +15672,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15720,7 +15720,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15768,7 +15768,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15816,7 +15816,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15864,7 +15864,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15912,7 +15912,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15960,7 +15960,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16008,7 +16008,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16056,7 +16056,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16104,7 +16104,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16152,7 +16152,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16200,7 +16200,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16248,7 +16248,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16296,7 +16296,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16344,7 +16344,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16392,7 +16392,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16440,7 +16440,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16488,7 +16488,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16536,7 +16536,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16584,7 +16584,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16632,7 +16632,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16680,7 +16680,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16728,7 +16728,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16776,7 +16776,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16824,7 +16824,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16872,7 +16872,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16920,7 +16920,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16968,7 +16968,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17016,7 +17016,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17064,7 +17064,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17112,7 +17112,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17160,7 +17160,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17208,7 +17208,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17256,7 +17256,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17304,7 +17304,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17352,7 +17352,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17400,7 +17400,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17448,7 +17448,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17496,7 +17496,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17544,7 +17544,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17592,7 +17592,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17640,7 +17640,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17688,7 +17688,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17736,7 +17736,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17784,7 +17784,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17832,7 +17832,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17880,7 +17880,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17928,7 +17928,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17976,7 +17976,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18024,7 +18024,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18072,7 +18072,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18120,7 +18120,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18168,7 +18168,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18216,7 +18216,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18264,7 +18264,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18312,7 +18312,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18360,7 +18360,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18408,7 +18408,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18456,7 +18456,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18504,7 +18504,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18552,7 +18552,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18600,7 +18600,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18648,7 +18648,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18696,7 +18696,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18744,7 +18744,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18792,7 +18792,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18840,7 +18840,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18888,7 +18888,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18936,7 +18936,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18984,7 +18984,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19032,7 +19032,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19080,7 +19080,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19128,7 +19128,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19176,7 +19176,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19224,7 +19224,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19272,7 +19272,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19320,7 +19320,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19368,7 +19368,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19416,7 +19416,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19464,7 +19464,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19512,7 +19512,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19560,7 +19560,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19608,7 +19608,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19656,7 +19656,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19704,7 +19704,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19752,7 +19752,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19800,7 +19800,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19848,7 +19848,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19896,7 +19896,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19944,7 +19944,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19992,7 +19992,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20040,7 +20040,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20088,7 +20088,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20136,7 +20136,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20184,7 +20184,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20232,7 +20232,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20280,7 +20280,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20328,7 +20328,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20376,7 +20376,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20424,7 +20424,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20472,7 +20472,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20520,7 +20520,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20568,7 +20568,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20616,7 +20616,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20664,7 +20664,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20712,7 +20712,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20760,7 +20760,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20808,7 +20808,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20856,7 +20856,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20904,7 +20904,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20952,7 +20952,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21000,7 +21000,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21048,7 +21048,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21096,7 +21096,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21144,7 +21144,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21192,7 +21192,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21240,7 +21240,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21288,7 +21288,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21336,7 +21336,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21384,7 +21384,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21432,7 +21432,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21480,7 +21480,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21528,7 +21528,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21576,7 +21576,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21624,7 +21624,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21672,7 +21672,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21720,7 +21720,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21768,7 +21768,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21816,7 +21816,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21864,7 +21864,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21912,7 +21912,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21960,7 +21960,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22008,7 +22008,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22056,7 +22056,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22104,7 +22104,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22152,7 +22152,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22200,7 +22200,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22248,7 +22248,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22296,7 +22296,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22344,7 +22344,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22398,7 +22398,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22452,7 +22452,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22504,7 +22504,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -22534,7 +22534,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -22564,7 +22564,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22606,7 +22606,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22658,7 +22658,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22710,7 +22710,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22762,7 +22762,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22814,7 +22814,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22866,7 +22866,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22924,7 +22924,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -23323,7 +23323,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -23367,7 +23367,7 @@
    "error": "The solve stopped on an internal error.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -23404,7 +23404,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -23424,7 +23424,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "error": "The solve stopped on an internal error.",
     "finishedAtUTC": "<now 2>"
@@ -23470,7 +23470,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -23494,7 +23494,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "error": "The solve stopped on an internal error.",
      "finishedAtUTC": "<now 2>"
@@ -23530,7 +23530,7 @@
    "error": "The decoder could not read the file.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -23567,7 +23567,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -23587,7 +23587,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "error": "The decoder could not read the file.",
     "finishedAtUTC": "<now 2>"
@@ -23633,7 +23633,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -23657,7 +23657,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "error": "The decoder could not read the file.",
      "finishedAtUTC": "<now 2>"
@@ -23705,7 +23705,7 @@
    "error": "The solve stopped on an internal error.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -23742,7 +23742,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -23768,7 +23768,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -23794,7 +23794,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -23826,7 +23826,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -23858,7 +23858,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "error": "The solve stopped on an internal error.",
     "finishedAtUTC": "<now 2>"
@@ -23904,7 +23904,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -23934,7 +23934,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -23970,7 +23970,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "error": "The solve stopped on an internal error.",
      "finishedAtUTC": "<now 2>"
@@ -24071,7 +24071,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -24108,7 +24108,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24134,7 +24134,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24160,7 +24160,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24192,7 +24192,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24224,7 +24224,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24266,7 +24266,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24308,7 +24308,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -24354,7 +24354,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -24384,7 +24384,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -24420,7 +24420,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -24466,7 +24466,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -24541,7 +24541,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -24607,7 +24607,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -24644,7 +24644,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24670,7 +24670,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24696,7 +24696,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24728,7 +24728,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24760,7 +24760,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24802,7 +24802,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24844,7 +24844,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24886,7 +24886,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24928,7 +24928,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -24970,7 +24970,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25012,7 +25012,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25054,7 +25054,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25096,7 +25096,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25138,7 +25138,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25180,7 +25180,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25222,7 +25222,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25264,7 +25264,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25306,7 +25306,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25348,7 +25348,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25390,7 +25390,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25432,7 +25432,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25474,7 +25474,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25516,7 +25516,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25558,7 +25558,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25600,7 +25600,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25642,7 +25642,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25684,7 +25684,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25726,7 +25726,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25768,7 +25768,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25810,7 +25810,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25852,7 +25852,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25894,7 +25894,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25936,7 +25936,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -25978,7 +25978,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26020,7 +26020,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26062,7 +26062,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26104,7 +26104,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26146,7 +26146,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26188,7 +26188,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26230,7 +26230,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26272,7 +26272,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26314,7 +26314,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26356,7 +26356,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26398,7 +26398,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26440,7 +26440,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26482,7 +26482,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26524,7 +26524,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26566,7 +26566,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26608,7 +26608,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26650,7 +26650,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26692,7 +26692,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26734,7 +26734,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26776,7 +26776,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26818,7 +26818,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26860,7 +26860,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26902,7 +26902,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26944,7 +26944,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -26986,7 +26986,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27028,7 +27028,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27070,7 +27070,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27112,7 +27112,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27154,7 +27154,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27196,7 +27196,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27238,7 +27238,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27280,7 +27280,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27322,7 +27322,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27364,7 +27364,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27406,7 +27406,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27448,7 +27448,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27490,7 +27490,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27532,7 +27532,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27574,7 +27574,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27616,7 +27616,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27658,7 +27658,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27700,7 +27700,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27742,7 +27742,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27784,7 +27784,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27826,7 +27826,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27868,7 +27868,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27910,7 +27910,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27952,7 +27952,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -27994,7 +27994,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28036,7 +28036,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28078,7 +28078,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28120,7 +28120,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28162,7 +28162,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28204,7 +28204,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28246,7 +28246,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28288,7 +28288,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28330,7 +28330,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28372,7 +28372,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28414,7 +28414,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28456,7 +28456,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28498,7 +28498,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28540,7 +28540,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28582,7 +28582,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28624,7 +28624,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28666,7 +28666,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28708,7 +28708,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28750,7 +28750,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28792,7 +28792,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28834,7 +28834,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28876,7 +28876,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28918,7 +28918,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -28960,7 +28960,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29002,7 +29002,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29044,7 +29044,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29086,7 +29086,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29128,7 +29128,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29170,7 +29170,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29212,7 +29212,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29254,7 +29254,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29296,7 +29296,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29338,7 +29338,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29380,7 +29380,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29422,7 +29422,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29464,7 +29464,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29506,7 +29506,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29548,7 +29548,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29590,7 +29590,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29632,7 +29632,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29674,7 +29674,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29716,7 +29716,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29758,7 +29758,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29800,7 +29800,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29842,7 +29842,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29884,7 +29884,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29926,7 +29926,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -29968,7 +29968,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30010,7 +30010,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30052,7 +30052,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30094,7 +30094,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30136,7 +30136,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30178,7 +30178,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30220,7 +30220,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30262,7 +30262,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30304,7 +30304,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30346,7 +30346,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30388,7 +30388,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30430,7 +30430,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30472,7 +30472,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30514,7 +30514,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30556,7 +30556,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30598,7 +30598,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30640,7 +30640,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30682,7 +30682,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30724,7 +30724,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30766,7 +30766,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30808,7 +30808,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30850,7 +30850,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30892,7 +30892,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30934,7 +30934,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -30976,7 +30976,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31018,7 +31018,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31060,7 +31060,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31102,7 +31102,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31144,7 +31144,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31186,7 +31186,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31228,7 +31228,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31270,7 +31270,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31312,7 +31312,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31354,7 +31354,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31396,7 +31396,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31438,7 +31438,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31480,7 +31480,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31522,7 +31522,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31564,7 +31564,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31606,7 +31606,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31648,7 +31648,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31690,7 +31690,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31732,7 +31732,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31780,7 +31780,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -31828,7 +31828,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -31874,7 +31874,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -31904,7 +31904,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -31940,7 +31940,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -31986,7 +31986,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -32032,7 +32032,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -32084,7 +32084,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -32908,7 +32908,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -32974,7 +32974,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [],
@@ -33018,7 +33018,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -33048,7 +33048,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -33084,7 +33084,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -33130,7 +33130,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -33176,7 +33176,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -33228,7 +33228,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -34052,7 +34052,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -34118,7 +34118,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -34155,7 +34155,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34181,7 +34181,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34207,7 +34207,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34239,7 +34239,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34271,7 +34271,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34313,7 +34313,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34355,7 +34355,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34397,7 +34397,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34439,7 +34439,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34481,7 +34481,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34523,7 +34523,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34565,7 +34565,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34607,7 +34607,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34649,7 +34649,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34691,7 +34691,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34733,7 +34733,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34775,7 +34775,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34817,7 +34817,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34859,7 +34859,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34901,7 +34901,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34943,7 +34943,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -34985,7 +34985,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35027,7 +35027,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35069,7 +35069,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35111,7 +35111,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35153,7 +35153,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35195,7 +35195,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35237,7 +35237,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35279,7 +35279,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35321,7 +35321,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35363,7 +35363,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35405,7 +35405,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35447,7 +35447,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35489,7 +35489,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35531,7 +35531,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35573,7 +35573,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35615,7 +35615,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35657,7 +35657,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35699,7 +35699,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35741,7 +35741,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35783,7 +35783,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35825,7 +35825,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35867,7 +35867,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35909,7 +35909,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35951,7 +35951,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -35993,7 +35993,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36035,7 +36035,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36077,7 +36077,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36119,7 +36119,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36161,7 +36161,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36203,7 +36203,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36245,7 +36245,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36287,7 +36287,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36329,7 +36329,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36371,7 +36371,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36413,7 +36413,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36455,7 +36455,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36497,7 +36497,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36539,7 +36539,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36581,7 +36581,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36623,7 +36623,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36665,7 +36665,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36707,7 +36707,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36749,7 +36749,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36791,7 +36791,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36833,7 +36833,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36875,7 +36875,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36917,7 +36917,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -36959,7 +36959,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37001,7 +37001,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37043,7 +37043,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37085,7 +37085,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37127,7 +37127,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37169,7 +37169,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37211,7 +37211,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37253,7 +37253,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37295,7 +37295,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37337,7 +37337,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37379,7 +37379,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37421,7 +37421,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37463,7 +37463,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37505,7 +37505,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37547,7 +37547,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37589,7 +37589,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37631,7 +37631,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37673,7 +37673,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37715,7 +37715,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37757,7 +37757,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37799,7 +37799,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37841,7 +37841,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37889,7 +37889,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -37937,7 +37937,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -37983,7 +37983,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -38013,7 +38013,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -38049,7 +38049,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -38095,7 +38095,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -38141,7 +38141,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -38193,7 +38193,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -39126,7 +39126,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -39182,7 +39182,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    },
    "inputSpan": {
     "firstFrameIndex": 0,
@@ -39225,7 +39225,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -39251,7 +39251,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -39277,7 +39277,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -39303,7 +39303,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39341,7 +39341,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39379,7 +39379,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39423,7 +39423,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39467,7 +39467,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39519,7 +39519,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -39549,7 +39549,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -39579,7 +39579,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -39621,7 +39621,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -40006,7 +40006,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -40125,7 +40125,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -40162,7 +40162,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40188,7 +40188,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40214,7 +40214,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40246,7 +40246,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40278,7 +40278,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40316,7 +40316,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40354,7 +40354,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -40400,7 +40400,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -40430,7 +40430,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -40466,7 +40466,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -40789,7 +40789,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -40889,7 +40889,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -40926,7 +40926,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40952,7 +40952,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -40978,7 +40978,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41010,7 +41010,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41042,7 +41042,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41084,7 +41084,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41126,7 +41126,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -41172,7 +41172,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41202,7 +41202,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41238,7 +41238,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41284,7 +41284,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41359,7 +41359,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -41425,7 +41425,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -41462,7 +41462,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41488,7 +41488,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41514,7 +41514,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41546,7 +41546,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41578,7 +41578,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41620,7 +41620,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -41662,7 +41662,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -41708,7 +41708,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41738,7 +41738,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41774,7 +41774,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41820,7 +41820,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -41895,7 +41895,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -41955,7 +41955,7 @@
    "error": "The job's result could not be stored.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -41992,7 +41992,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42018,7 +42018,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42044,7 +42044,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42076,7 +42076,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42108,7 +42108,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42150,7 +42150,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42192,7 +42192,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "error": "The job's result could not be stored.",
     "finishedAtUTC": "<now 2>"
@@ -42238,7 +42238,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42268,7 +42268,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42304,7 +42304,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42350,7 +42350,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42425,7 +42425,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "error": "The job's result could not be stored.",
      "finishedAtUTC": "<now 2>"
@@ -42483,7 +42483,7 @@
    "error": "The solve stopped on an internal error.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -42520,7 +42520,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42546,7 +42546,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42572,7 +42572,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42604,7 +42604,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42636,7 +42636,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42678,7 +42678,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -42720,7 +42720,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "error": "The solve stopped on an internal error.",
     "finishedAtUTC": "<now 2>"
@@ -42766,7 +42766,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42796,7 +42796,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42832,7 +42832,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42878,7 +42878,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -42924,7 +42924,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "error": "The solve stopped on an internal error.",
      "finishedAtUTC": "<now 2>"
@@ -43012,7 +43012,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -43049,7 +43049,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43075,7 +43075,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43101,7 +43101,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43133,7 +43133,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43165,7 +43165,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43207,7 +43207,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43249,7 +43249,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -43291,7 +43291,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -43337,7 +43337,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -43367,7 +43367,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -43403,7 +43403,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -43449,7 +43449,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -44372,7 +44372,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -44462,7 +44462,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -44499,7 +44499,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -44525,7 +44525,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -44551,7 +44551,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -44583,7 +44583,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -44615,7 +44615,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -44657,7 +44657,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -44699,7 +44699,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -44745,7 +44745,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -44775,7 +44775,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -44811,7 +44811,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -44857,7 +44857,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -45185,7 +45185,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -45275,7 +45275,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 5
+    "revision": 6
    }
   },
   "transitions": [
@@ -45312,7 +45312,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -45338,7 +45338,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -45364,7 +45364,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -45396,7 +45396,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -45428,7 +45428,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -45470,7 +45470,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     }
    },
    {
@@ -45512,7 +45512,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 5
+     "revision": 6
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -45558,7 +45558,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -45588,7 +45588,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -45624,7 +45624,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -45670,7 +45670,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      }
     }
    },
@@ -46002,7 +46002,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 5
+      "revision": 6
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"

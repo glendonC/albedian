@@ -579,14 +579,18 @@ def test_the_gps_time_diagnostic_runs_only_where_the_stamp_is_all_the_upload_pat
 
 
 def test_the_hinted_field_is_the_jobs_own() -> None:
-    from services.science.phone_photo_solver import diagonal_fov_deg_from_35mm_equivalent
+    from services.science.phone_photo_solver import diagonal_fov_deg_from_35mm_equivalent, frame_diagonal_fov_deg
 
     assert measure.fov_hint_deg(MADE_UP_ASSET) == pytest.approx(diagonal_fov_deg_from_35mm_equivalent(26.0))
     assert measure.fov_hint_deg({"cameraMetadata": {"model": "Synthetic"}}) is None
     assert measure.fov_hint_deg({"cameraMetadata": {"model": "iphone-18-pro-main", "focalLength35mmMm": 24.0}}) is None
     assert measure.fov_hint_deg({"cameraMetadata": {"focalLength35mmMm": True}}) is None
+    # A still's tag is scaled to its stored frame (fov-1): a 16:9 phone frame is a part of its 4:3 sensor
+    still = {"mediaKind": "image", "width": 4032, "height": 2268, "cameraMetadata": {"focalLength35mmMm": 27.0, "focalLengthMm": 4.38}}
+    assert measure.fov_hint_deg(still) == pytest.approx(frame_diagonal_fov_deg(27.0, 4032, 2268, 4.38))
+    assert measure.fov_hint_deg({**still, "mediaKind": "video"}) == pytest.approx(diagonal_fov_deg_from_35mm_equivalent(27.0))
     jobs = (ROOT / "services/ingest/jobs.py").read_text(encoding="utf-8")
-    assert "not is_published_camera_label(camera_label)" in jobs and "diagonal_fov_deg_from_35mm_equivalent(float(focal_35mm))" in jobs
+    assert 'fov_hint = camera_fov_hint_deg(camera_meta, (width, height) if media_kind == "image" else None)' in jobs
 
 
 def test_a_run_folder_is_a_plain_label_under_the_bench_root(bench_under_pytest_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:

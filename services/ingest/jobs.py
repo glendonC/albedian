@@ -49,8 +49,7 @@ from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
     PHONE_SOLVER_IDENTITY,
-    diagonal_fov_deg_from_35mm_equivalent,
-    is_published_camera_label,
+    camera_fov_hint_deg,
     solve_phone_photo,
 )
 from services.science.predicted_sky import complete_sky
@@ -613,13 +612,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     location = asset.get("observerLocation") or {}
     camera_meta = asset.get("cameraMetadata") or {}
     camera_label = camera_meta.get("model") if isinstance(camera_meta, dict) else None
-    focal_35mm = camera_meta.get("focalLength35mmMm") if isinstance(camera_meta, dict) else None
-    fov_hint: float | None = None
-    if isinstance(focal_35mm, (int, float)) and not isinstance(focal_35mm, bool) and not is_published_camera_label(camera_label):
-        try:
-            fov_hint = diagonal_fov_deg_from_35mm_equivalent(float(focal_35mm))
-        except ValueError:
-            fov_hint = None
+    # The 35 mm tag names the whole sensor; a still's frame may be a part of it (a 16:9 mode, a crop), so its own
+    # field of view is the tag's scaled to the stored frame (fov-1); a clip's tag stands as written
+    fov_hint = camera_fov_hint_deg(camera_meta, (width, height) if media_kind == "image" else None)
     obs_utc_iso = asset.get("capturedAtUTC")
     lat_deg = location.get("latDeg")
     lon_deg = location.get("lonDeg")
@@ -774,8 +769,9 @@ SOLVE_PRODUCER_FILES = (
 # 4, a clip's stack detected with its frames' rounding noise as the floor, which changes its detections, the searches
 # they feed and the job's noise words (field-8); 5, the blind search over the whole sky's brightest stars
 # (solve-search-2) and the horizon search at any roll (the high-pointing prior), which calibrate photos that were
-# unresolved
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 5, SOLVE_PRODUCER_FILES)
+# unresolved; 6, a still's 35 mm hint scaled to its stored frame (fov-1), which calibrates 16:9 phone photos that
+# were unresolved
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 6, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

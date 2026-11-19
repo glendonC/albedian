@@ -136,9 +136,68 @@ def diagonal_fov_deg_from_35mm_equivalent(focal_35mm_mm: float) -> float:
     return math.degrees(2.0 * math.atan(FULL_FRAME_DIAGONAL_MM / (2.0 * focal_35mm_mm)))
 
 
+# The shape of the sensor a 35 mm tag names (fov-1): a phone's is 4:3, and a camera whose 35 mm equivalent is under
+# 1.9 times its focal length (full frame and APS-C; a phone's is about 4 to 7) is 3:2, the film frame's own
+# [tested: the public photos' tags against astrometry.net's fields of view, fov-1 report; the 1.9 is [proposed],
+# between APS-C's 1.5 to 1.6 and Four Thirds' 2.0, which is 4:3]
+PHONE_SENSOR_ASPECT = 4.0 / 3.0
+FILM_FRAME_ASPECT = 1.5
+LARGE_SENSOR_CROP_FACTOR = 1.9
+
+
+def frame_diagonal_fov_deg(
+    focal_35mm_mm: float, width_px: int, height_px: int, focal_length_mm: float | None = None
+) -> float:
+    """The stored frame's diagonal field of view from its 35 mm equivalent focal length.
+
+    The tag names the whole sensor. A frame of another shape (a phone's 16:9 or square mode, a crop) is taken as the
+    largest part of the sensor of its own shape, so it spans the sensor along one side and its diagonal is that
+    fraction of the sensor's; a rectilinear lens's half-angle tangent scales by the same fraction. Without a focal
+    length the sensor is taken as a phone's.
+    """
+    if not (math.isfinite(width_px) and math.isfinite(height_px) and width_px > 0 and height_px > 0):
+        raise ValueError(f"A frame's width and height must be positive, not {width_px!r} by {height_px!r}.")
+    if focal_length_mm is not None and not (math.isfinite(focal_length_mm) and focal_length_mm > 0.0):
+        raise ValueError(f"A focal length must be finite and positive, not {focal_length_mm!r}.")
+    sensor_fov = diagonal_fov_deg_from_35mm_equivalent(focal_35mm_mm)
+    large_sensor = focal_length_mm is not None and focal_35mm_mm / focal_length_mm < LARGE_SENSOR_CROP_FACTOR
+    aspect = FILM_FRAME_ASPECT if large_sensor else PHONE_SENSOR_ASPECT
+    long_px, short_px = float(max(width_px, height_px)), float(min(width_px, height_px))
+    if long_px / short_px >= aspect:
+        sensor_long, sensor_short = long_px, long_px / aspect
+    else:
+        sensor_long, sensor_short = short_px * aspect, short_px
+    fraction = math.hypot(long_px, short_px) / math.hypot(sensor_long, sensor_short)
+    return math.degrees(2.0 * math.atan(math.tan(math.radians(sensor_fov) / 2.0) * fraction))
+
+
 def is_published_camera_label(camera_label: str | None) -> bool:
     """Whether `camera_label` names a camera in `PUBLISHED_CAMERA_FOV_DEG`."""
     return camera_label is not None and camera_label.strip().lower() in PUBLISHED_CAMERA_FOV_DEG
+
+
+def _positive_number(value: object) -> float | None:
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0:
+        return float(value)
+    return None
+
+
+def camera_fov_hint_deg(camera_metadata: object, frame_size: tuple[int, int] | None) -> float | None:
+    """The diagonal field of view the solve job's first phone pass starts from, or None.
+
+    None when the upload's camera tags hold no usable 35 mm equivalent, or name a camera in `PUBLISHED_CAMERA_FOV_DEG`
+    (the solver starts from that camera's own). A still's tag is scaled to its stored frame (`frame_diagonal_fov_deg`,
+    `frame_size` its width and height); a clip's (`frame_size` None) stands as written, since no clip was measured.
+    """
+    if not isinstance(camera_metadata, dict):
+        return None
+    focal_35mm = _positive_number(camera_metadata.get("focalLength35mmMm"))
+    model = camera_metadata.get("model")
+    if focal_35mm is None or is_published_camera_label(model if isinstance(model, str) else None):
+        return None
+    if frame_size is None:
+        return diagonal_fov_deg_from_35mm_equivalent(focal_35mm)
+    return frame_diagonal_fov_deg(focal_35mm, frame_size[0], frame_size[1], _positive_number(camera_metadata.get("focalLengthMm")))
 
 
 MIN_COINCIDENCE_LOG_ODDS = 18.0
