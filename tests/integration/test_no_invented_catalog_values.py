@@ -37,6 +37,7 @@ import pytest
 from research.benchmarks.phone_photos import render, stars, suite
 from services.contracts.catalog_reference import CatalogReference
 from services.science import catalog_tiles as ct
+from services.science import phone_photo_solver as pps
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 from services.science.designations import designation_of_row
 from services.science.phone_photo_solver import (
@@ -363,7 +364,8 @@ def test_every_finding_of_a_solved_ci_frame_equals_its_tile_row(ci_frames, rows,
             # Pinned or not, every catalog value is the row's; a pinned record adds only the star's names
             _assert_row_values(ref, row, names.get(source), epoch, PINNED.get(source))
             band = "Hipparcos Hp" if row.mag_hp else "Gaia G"
-            assert any(f"magnitude is {band}" in note for note in finding["evidence"]["limitations"]), source
+            # The brightness note names the row's own band, in the design lane's C24 words (magnitude_band_words)
+            assert pps.magnitude_band_words(band) in finding["evidence"]["limitations"], source
             # The finding's own distance block names the row's method, a Bailer-Jones geometric one included
             assert finding["inferredDistancePc"]["median"] == pytest.approx(row.median, rel=1e-9)
             checked += 1
