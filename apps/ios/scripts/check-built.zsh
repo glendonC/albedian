@@ -48,7 +48,14 @@ transport_objects=(AlbedianCaptureCore.build/LaptopConnection.o AlbedianCaptureC
 exceptions=(AlbedianCaptureCore.build/CaptureStore.o:Data.init)
 # OutsidePages makes the Safari view's three addresses (the reveal, two credit pages), each checked by SafariViewGate and
 # opened only by the system's Safari process, never fetched by the app (mobile-4b)
-make_exceptions=(AlbedianCaptureCore.build/OutsidePages.o:URL.init)
+make_exceptions=(AlbedianCaptureCore.build/OutsidePages.o:URL.init AlbedianCapture.build/SettingsPage.o:URL.init)
+# The one object that opens the app's own page in the Settings app (D8): it may refer to UIApplication and its open call,
+# and make an address from text only from UIKit's own constant, so it holds no address of its own in text. A linked binary
+# may refer to them only when single-file objects were read and this object is the only one that does
+settings_object='AlbedianCapture.build/SettingsPage.o'
+settings_family='(^|[^A-Za-z0-9_])UIApplication([^A-Za-z0-9_]|$)'
+settings_c='^_objc_msgSend\$openURL:options:completionHandler:$'
+settings_text='openURL:options:completionHandler:'
 # The four closed lists, read from the .app
 allowed_links=(
   /System/Library/Frameworks/Foundation.framework/Foundation /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
@@ -121,10 +128,17 @@ notes=()
 # The objects of single source files, read first: what the app's own code imports
 objects_importing_dlsym=0
 objects_read=0
+settings_users=()
 for f in $macho; do
   if single_object "$f"; then
     objects_read=$((objects_read + 1))
     nm -u -j "$f" 2>/dev/null | grep -qx '_dlsym' && objects_importing_dlsym=$((objects_importing_dlsym + 1))
+    # Which objects refer to UIApplication or its open call (the Settings page's exception holds only for its own object)
+    if nm -u -j "$f" 2>/dev/null | grep -Eq "$settings_c" \
+        || nm -u -j "$f" 2>/dev/null | xcrun swift-demangle --simplified 2>/dev/null | sed -E 's/_OBJC_(META)?CLASS_\$_/objc class /' | grep -Eq "$settings_family" \
+        || strings -a "$f" 2>/dev/null | grep -Fq "$settings_text"; then
+      settings_users+=("$(object_id "$f")")
+    fi
   fi
 done
 for f in $macho; do
@@ -140,10 +154,25 @@ for f in $macho; do
   # An Objective-C class reference reads as "objc class <name>", so the name stands as a word
   demangled=(${(f)"$(print -l -- $raw | xcrun swift-demangle --simplified 2>/dev/null | sed -E 's/_OBJC_(META)?CLASS_\$_/objc class /')"})
   all_symbols+=($demangled)
+  # The Settings page's exception: its own object, or a linked binary whose only such object is it
+  settings_ok=0
+  if single_object "$f"; then
+    [[ $(object_id "$f") == "$settings_object" ]] && settings_ok=1
+  elif (( objects_read > 0 )) && [[ ${#${(u)settings_users}} -eq 1 && ${settings_users[1]} == "$settings_object" ]]; then
+    settings_ok=1
+  fi
   for s in $raw; do
-    [[ $s =~ $families_c ]] && findings+=("${f:t}: imports $s")
+    [[ $s =~ $families_c ]] || continue
+    (( settings_ok )) && [[ $s =~ $settings_c ]] && continue
+    findings+=("${f:t}: imports $s")
   done
-  for s in ${(f)"$(print -l -- $demangled | grep -E "$families_demangled")"}; do findings+=("${f:t}: refers to $s"); done
+  for s in ${(f)"$(print -l -- $demangled | grep -E "$families_demangled")"}; do
+    (( settings_ok )) && [[ $s =~ $settings_family ]] && ! [[ ${s//UIApplication/} =~ $families_demangled ]] && continue
+    findings+=("${f:t}: refers to $s")
+  done
+  if single_object "$f" && [[ $(object_id "$f") == "$settings_object" ]] && strings -a "$f" 2>/dev/null | grep -Fq '://'; then
+    findings+=("$settings_object: holds an address in text")
+  fi
   # Rule 1 and connection creation: checked per target-scoped object file, and also on any linked binary (.app / .dylib)
   # when no single-file objects were passed to account for the import.
   if single_object "$f"; then
@@ -166,6 +195,7 @@ for f in $macho; do
     if print -l -- $demangled | grep -Eq "$creating"; then findings+=("${f:t}: creates a connection with no object files to show where"); fi
   fi
   for word in ${(f)"$(strings -a "$f" 2>/dev/null | grep -Eo "$families_strings" | tr -cd 'A-Za-z0-9_:\n' | sort -u)"}; do
+    (( settings_ok )) && [[ $word == "$settings_text" ]] && continue
     findings+=("${f:t}: holds the text $word")
   done
 done

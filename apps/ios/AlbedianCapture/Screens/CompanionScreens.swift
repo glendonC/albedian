@@ -152,8 +152,9 @@ struct AimScreen: View {
         GeometryReader { geometry in
             ZStack {
                 if model.cameraRefused {
-                    // D8, INTERIM (UIUX-iphone-aim-QUESTION, ia-cam): no preview; why, centred at 340. Its "Open Settings" button
-                    // is not built: opening Settings needs a call the build check refuses (asked of the lead)
+                    // D8 (UIUX-iphone-aim-QUESTION, ia-cam; decided by the lead, 19 Nov): no preview; why, centred at 340, and
+                    // "Open Settings" where the capture button sits. Changing the camera's permission in Settings ends the app,
+                    // so it opens again from its home
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
                             AlbedianIcon.cameraSlash.image(18)
@@ -166,6 +167,7 @@ struct AimScreen: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, CGFloat(Arrive.side))
                     .atTop(340)
+                    MainButton(title: "Open Settings", icon: .arrow, action: SettingsPage.open).atBottom(Arrive.mainBottomGap)
                 } else {
                     let width = Double(geometry.size.width)
                     CameraPreview(session: model.camera.session)

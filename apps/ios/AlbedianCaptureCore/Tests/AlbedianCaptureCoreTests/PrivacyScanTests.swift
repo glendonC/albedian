@@ -74,6 +74,10 @@ final class PrivacyScanTests: XCTestCase {
     /// by path under `apps/ios`; it shows only pages `SafariViewGate` allows, and Safari's process makes the request.
     static let safariViewPath = "AlbedianCapture/Screens/SafariView.swift"
     static let safariViewNames: Set<String> = ["SafariServices", "SFSafariViewController"]
+    /// D8: the app's own page in the Settings app, opened from one file only, by path under `apps/ios` (as `check-built.zsh`
+    /// lets only its object refer to UIApplication); the address is UIKit's constant, never one of the app's own.
+    static let settingsPagePath = "AlbedianCapture/UI/SettingsPage.swift"
+    static let settingsPageNames: Set<String> = ["UIApplication"]
 
     /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why.
     static let exceptions: [Exception] = [
@@ -87,6 +91,10 @@ final class PrivacyScanTests: XCTestCase {
          reason: "the reveal on the paired laptop's web app for a contract SHA-256 (the lead's answer, mobile-4b); only handed to the system's Safari view after SafariViewGate, never fetched by the app"),
         (file: "CompanionFlow.swift", line: 25, code: "public static let fixedScheme = \"http://\"",
          reason: "the scheme the connect screen shows fixed in front of the field (UIUX-connect-APPROVED); the typed text joined to it is read only as a pairing address (LaptopAddress: plain http to a local network host), and nothing is opened from it"),
+        (file: "SettingsPage.swift", line: 10, code: "guard let page = URL(string: UIApplication.openSettingsURLString) else { return }",
+         reason: "D8, decided by the lead: the app's own page in the Settings app, UIKit's constant for it and no address of the app's own; check-built.zsh lets this object alone refer to it"),
+        (file: "SettingsPage.swift", line: 11, code: "UIApplication.shared.open(page)",
+         reason: "D8: opens only that Settings page; check-built.zsh refuses UIApplication's open call in any other object and any address in text in this one"),
     ]
 
     typealias Asset = (path: String, sha256: String, reason: String)
@@ -239,6 +247,7 @@ final class PrivacyScanTests: XCTestCase {
                 for pattern in privacy { for line in lines(of: pattern, in: tokens) { findings.append(Finding(file: name, line: line, what: pattern)) } }
                 for token in tokens where sendingNames.contains(token.text) || sendingPrefixes.contains(where: { token.text.hasPrefix($0) }) {
                     if relPath == safariViewPath, safariViewNames.contains(token.text) { continue }
+                    if relPath == settingsPagePath, settingsPageNames.contains(token.text) { continue }
                     findings.append(Finding(file: name, line: token.line, what: token.text))
                 }
                 // An exception counts only while its line holds the very code it lists
@@ -436,6 +445,8 @@ final class PrivacyScanTests: XCTestCase {
             ("V7.swift", "ShareLink(item: url)\nUIPasteboard.general.string = text", "ShareLink"),
             // The Safari view's names stand only in AlbedianCapture/Screens/SafariView.swift; a file anywhere else is refused
             ("V10.swift", "import SafariServices\nlet v = SFSafariViewController(url: u)", "SFSafariViewController"),
+            // The Settings page's name stands only in AlbedianCapture/UI/SettingsPage.swift; the same file name elsewhere is refused
+            ("Elsewhere/SettingsPage.swift", "UIApplication.shared.open(page)", "UIApplication"),
             ("V9.m", "#import <Foundation/Foundation.h>\nvoid f(void) { [[NSURLSession sharedSession] dataTaskWithURL:nil]; }", "NSURLSession"),
             ("Raw.swift", "let x = #\"a \\(b)\"# + \"\\(URLRequest(url: u))\"", "URLRequest"),
             ("RawInterp.swift", "let x = #\"\\#(WKWebView())\"#", "WKWebView"),

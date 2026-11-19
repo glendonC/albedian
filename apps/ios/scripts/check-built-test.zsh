@@ -1,7 +1,7 @@
 #!/bin/zsh
 # The check of what was built, tried on what it must refuse: one call from each of nineteen of its named families and
 # the last reader's eight address reads, each planted in a scratch object file of its own (compiled for the iPhone
-# simulator, as the app is), a class named in text and one in Objective-C, the connection created outside its file and
+# simulator, as the app is), the Settings call outside its own object or with an address of its own, a class named in text and one in Objective-C, the connection created outside its file and
 # from two files, and an app off each closed list; and on what must pass: the transport making the paired address, an
 # app on the lists, an embedded library on the list, the connection in its own file and a clean file. Exits 0 when
 # every planted case is refused and each passing one passes.
@@ -200,6 +200,20 @@ else
     && links_it ListedApp @rpath/libListed.dylib \
     && { saved=$check; check=$scratch/check-listed.zsh; expect passes "an embedded library on the list" - "$scratch/ListedApp.app"; check=$saved; }
 fi
+
+# The Settings page (D8): its own object may open UIKit's settings address and nothing of its own; the same code in any
+# other object is refused, and so is a Settings page that opens an address it holds in text
+settings=$(<"$here/../AlbedianCapture/UI/SettingsPage.swift")
+compile_swift AlbedianCapture.build/SettingsPage "$settings" && expect passes "the Settings page in its own object" - "$scratch/AlbedianCapture.build/SettingsPage.o"
+compile_swift AlbedianCaptureCore.build/SettingsPage "$settings" && expect refused "a Settings page in the core" UIApplication "$scratch/AlbedianCaptureCore.build/SettingsPage.o"
+mkdir -p "$scratch/Other.build"
+compile_swift Other.build/Elsewhere "$settings" && expect refused "the Settings call in another object" UIApplication "$scratch/Other.build/Elsewhere.o"
+compile_swift AlbedianCapture.build/SettingsPage 'import UIKit
+@MainActor enum SettingsPage { static func open() { UIApplication.shared.open(URL(string: "https://example.com")!) } }' \
+  && expect refused "a Settings page opening an address of its own" "holds an address in text" "$scratch/AlbedianCapture.build/SettingsPage.o"
+compile_swift AlbedianCapture.build/SettingsPage 'import UIKit
+@MainActor enum SettingsPage { static func open() { UIPasteboard.general.string = "x"; UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!) } }' \
+  && expect refused "a Settings page using another family" UIPasteboard "$scratch/AlbedianCapture.build/SettingsPage.o"
 
 # A class named by its text alone, with the lookup hidden behind a symbol the list does not hold: the text is seen
 compile_swift planted_text 'import Foundation

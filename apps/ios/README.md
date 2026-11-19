@@ -44,6 +44,11 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
     `<paired address>/?upload=<sha256>` and the two Credits pages, each checked by `SafariViewGate` first. Safari's own
     process makes those requests. It is the one object outside the transport that may make an address from text
     (`URL(string:)`), listed as such in `scripts/check-built.zsh` (`make_exceptions`) and in the privacy scan's exceptions.
+  - `SettingsPage` (in the app, D8) opens the app's own page in the Settings app from the refused camera screen, with
+    UIKit's own address for it (`UIApplication.openSettingsURLString`). It is the one object that may refer to
+    `UIApplication` and its open call and make that address from text: `scripts/check-built.zsh` (`settings_object`)
+    refuses the same in any other object, in a linked binary unless that object is the only one, and any address of its
+    own in text in it; `scripts/check-built-test.zsh` plants each case.
   - `SendLedger` keeps each capture's send state across launches (task 9, mobile-3p): one JSON file per photo hash in
     its own folder, "sent" or "not_sent" with the failure's name; no time, place, address or value from the photo.
   - `CaptureStore` keeps each photo as the bytes given, named by its SHA-256 and its type's extension, and its record
