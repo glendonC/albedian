@@ -2,9 +2,11 @@
 
 Covers:
 - A dense simulated upload (many random point sources, no real sky) whose triangle search runs past a 0.1 s limit
-  is stopped by it, part way through that search or before the child counted its first triplet, and ends within the
-  limit plus a stated margin: the job succeeded, its contract is valid, and the solution is unresolved with a warning
-  that names the limit and the triangle solver, every detection kept as an observed finding.
+  is stopped by it, part way through that search or before the child counted its first triplet: the child's one call
+  is given that limit and ends at it, the job succeeded, its contract is valid, and the solution is unresolved with a
+  warning that names the limit and the triangle solver, every detection kept as an observed finding. How soon a call
+  past its bound is stopped is the bounded worker's own test (tests/science/test_bounded_worker.py); this file
+  measures no time, so the machine's load cannot fail it.
 - The solve stage keeps only counts the child measured.
 - Production runs the searches in the worker: the in-process flag defaults to off and the router's call uses it.
 """
@@ -17,7 +19,6 @@ import io
 import math
 import operator
 from pathlib import Path
-import time
 from typing import Any, Iterator
 
 from fastapi.testclient import TestClient
@@ -31,6 +32,7 @@ from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
 from services.ingest import runner as job_runner
 from services.ingest.store import IngestStore
+from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.solver import triangle_solver_identity
 
@@ -41,10 +43,11 @@ from services.science.solver import triangle_solver_identity
 # at load 23 to 28 and up to 0.100 s at load 131 to 199, and its first count as late as 0.247 s at load 15 to 32
 # [inference: those timing scripts and audits are not in the repository]. The limit lies under a third of that
 # earliest end, so it stops that search, and the test accepts a stop on either side of the first triplet. What the
-# repository runs is this file: the stop lands within the limit plus MARGIN_S, in the search or before it [tested]
+# repository runs is this file: the search's one call is given the limit and ends at it, in the search or before it
+# [tested]. The whole job's time was once held within the limit plus a 4 s margin; detection, storage and the early
+# sky run before the bound starts and outside it, so that sum measured the machine's load, not the bound, and failed
+# a landing gate at load 61 (2026-11-19)
 LIMIT_S = 0.1
-# Detection and storage run before the bound starts; stopping the child takes a terminate and a join
-MARGIN_S = 4.0
 
 
 @pytest.fixture
@@ -96,14 +99,26 @@ def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(
     seen: list[dict[str, Any]] = []
 
     _warm_the_solve_child()
-    started = time.monotonic()
+    # The search's call in the child, spied on and let through: the bound it is given and how it ended
+    calls: list[tuple[float, str]] = []
+    real = job_runner._SLOT_WORKERS["solve"].call
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        try:
+            result = real(*args, **kwargs)
+        except WorkerTimeout:
+            calls.append((kwargs["timeout_s"], "stopped at its bound"))
+            raise
+        calls.append((kwargs["timeout_s"], "returned"))
+        return result
+
+    monkeypatch.setattr(job_runner._SLOT_WORKERS["solve"], "call", spy)
     monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", LIMIT_S)
     job = ingest_jobs.run_solve_job(store, sha, on_transition=seen.append)
-    elapsed = time.monotonic() - started
 
     UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
-    assert elapsed < LIMIT_S + MARGIN_S, f"took {elapsed:.1f} s"
+    assert calls == [(LIMIT_S, "stopped at its bound")]
     solution = ingest_jobs.read_solution(store, sha)
     assert solution is not None
     assert solution["status"] == "unresolved"
