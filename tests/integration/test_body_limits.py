@@ -52,7 +52,7 @@ DEV_ORIGIN = "http://localhost:5173"
 # calls (measured for this unit by recording every TestClient and stubbed-fetch body; the report gives the method).
 # A limit below these would refuse a request the product sends today.
 MEASURED_LARGEST_BODY = {
-    "/api/science/sky-context": 69,
+    "/api/science/sky-context": 109,
     "/api/science/radiometry-audit": 109,
     "/api/science/solve": 4_287_844,
     "/api/science/solve-horizon": 922_519,

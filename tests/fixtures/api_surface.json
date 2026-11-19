@@ -31,7 +31,7 @@
       "/api/science/sky-context": {
         "post": {
           "summary": "Post Science Sky Context",
-          "description": "Compute full 360-degree topocentric sky context for all 70+ navigational stars,\nSolar System ephemerides, and constellation stick-figure edges.",
+          "description": "The bright stars, the solar system bodies, the constellation figures' edges and the sky brightness predicted\nfor a time and place, every item `predicted`, built to services/contracts/sky_context.py and checked against it\nbefore it is sent: a reply the contract refuses is this route's fault and answers 500.",
           "operationId": "post_science_sky_context_api_science_sky_context_post",
           "requestBody": {
             "content": {
@@ -57,11 +57,11 @@
               }
             },
             "422": {
-              "description": "Validation Error",
+              "description": "The request is refused",
               "content": {
                 "application/json": {
                   "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
+                    "$ref": "#/components/schemas/SolveRefusal"
                   }
                 }
               }
@@ -1178,6 +1178,7 @@
           "properties": {
             "observedAtUTC": {
               "type": "string",
+              "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{3})?Z$",
               "title": "Observedatutc"
             },
             "latDeg": {
@@ -1191,17 +1192,26 @@
               "maximum": 180.0,
               "minimum": -180.0,
               "title": "Londeg"
+            },
+            "magLimit": {
+              "type": "number",
+              "maximum": 30.0,
+              "minimum": -30.0,
+              "title": "Maglimit"
+            },
+            "aboveHorizonOnly": {
+              "type": "boolean",
+              "title": "Abovehorizononly"
             }
           },
-          "additionalProperties": true,
+          "additionalProperties": false,
           "type": "object",
           "required": [
             "observedAtUTC",
             "latDeg",
             "lonDeg"
           ],
-          "title": "SkyContextRequest",
-          "description": "Request payload for `POST /api/science/sky-context`. The time and place travel in the body, never in the\nURL, whose query string an access log prints."
+          "title": "SkyContextRequest"
         },
         "SolveRefusal": {
           "properties": {

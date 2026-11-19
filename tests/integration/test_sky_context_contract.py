@@ -603,3 +603,17 @@ def test_a_null_anywhere_else_in_a_reply_is_still_refused() -> None:
     for path in (["predictedSkyBrightness", "airmass"], ["predictedSkyBrightness", "target"], ["observerLocation", "latDeg"],
                  ["stars", 0, "bpRp"], ["filters", "magLimit"]):
         assert not accepts("reply", _apply(BASE_REPLY, [_set(path, None)])), path
+
+
+def test_a_null_is_refused_at_its_own_key_and_every_other_fault_still_shows() -> None:
+    """The request refuses a null where it sits (the wire module's single refusal at the body would hide the rest)."""
+    cases = [
+        ({"magLimit": None}, {("magLimit",)}),
+        ({"aboveHorizonOnly": None, "latDeg": 91.0}, {("aboveHorizonOnly",), ("latDeg",)}),
+        ({"latDeg": None, "lonDeg": None}, {("latDeg",), ("lonDeg",)}),
+        ({"observedAtUTC": None, "unknownKey": None}, {("observedAtUTC",), ("unknownKey",)}),
+    ]
+    for changes, places in cases:
+        with pytest.raises(ValidationError) as exc_info:
+            sc.SkyContextRequest.model_validate({**BASE_REQUEST, **changes})
+        assert {err["loc"][:1] for err in exc_info.value.errors()} == places, changes

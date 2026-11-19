@@ -2696,6 +2696,10 @@ def test_a_moment_outside_the_ephemeris_span_is_refused_without_the_moment(route
     said = "observedAtUTC is outside 1800-01-01 to 2050-12-31 UTC, the span the ephemeris' method and its stated errors hold for."
     for moment in ("1799-12-31T23:59:59Z", "2051-01-01T00:00:00Z", "0001-01-01T00:00:00Z", "9999-12-31T23:59:59Z", "1700-06-01T12:00:00+02:00"):
         answer = client.post(route, json={**body, "observedAtUTC": moment})
+        if route == "/api/science/sky-context" and not moment.endswith("Z"):
+            # The sky-context contract takes a UTC instant with Z alone, so a time with an offset is refused for its form
+            assert answer.status_code == 422 and answer.json()["detail"].startswith("observedAtUTC must be "), moment
+            continue
         assert answer.status_code == 422 and answer.json() == {"detail": said}, (route, moment)
     for moment in ("1800-01-01T00:00:00Z", "2050-12-31T23:59:59Z"):
         assert client.post(route, json={**body, "observedAtUTC": moment}).status_code == 200, (route, moment)

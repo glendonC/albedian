@@ -20,11 +20,12 @@ every level.
 from __future__ import annotations
 
 import re
-from typing import Annotated, Any, ClassVar, Literal, Optional
+from typing import Annotated, Any, ClassVar, Literal, Optional, Union
 
-from pydantic import AfterValidator, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BeforeValidator, ConfigDict, Field, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
-from services.contracts.wire import WIRE_CONFIG, UtcInstant, WireModel, WireNumber, utf16_units, wire_int
+from services.contracts.wire import WIRE_CONFIG, UtcInstant, WireModel, WireNumber, utf16_units, wire_int, wire_number
 
 SKY_CONTEXT_FORMAT = "albedian.sky-context"
 SKY_CONTEXT_FORMAT_VERSION = 1
@@ -112,10 +113,16 @@ Name = _text(SKY_CONTEXT_NAME_MAX_UTF16)
 Text = _text(SKY_CONTEXT_TEXT_MAX_UTF16)
 Id = Annotated[Name, Field(pattern=SKY_CONTEXT_ID_PATTERN)]
 Notes = Annotated[list[Text], Field(min_length=1, max_length=SKY_CONTEXT_NOTES_MAX)]
-Latitude = Annotated[WireNumber, Field(ge=-90.0, le=90.0)]
-Longitude = Annotated[WireNumber, Field(ge=-180.0, le=180.0)]
-Angle360 = Annotated[WireNumber, Field(ge=0.0, le=360.0)]
-Magnitude = Annotated[WireNumber, Field(ge=SKY_CONTEXT_MAG_MIN, le=SKY_CONTEXT_MAG_MAX)]
+def _number(**bounds: float) -> Any:
+    """A wire number held to `bounds`, the bounds inside the before validator, so the API's description names them as
+    JSON Schema's minimum and maximum."""
+    return Annotated[float, Field(**bounds), BeforeValidator(wire_number)]
+
+
+Latitude = _number(ge=-90.0, le=90.0)
+Longitude = _number(ge=-180.0, le=180.0)
+Angle360 = _number(ge=0.0, le=360.0)
+Magnitude = _number(ge=SKY_CONTEXT_MAG_MIN, le=SKY_CONTEXT_MAG_MAX)
 def _is(expected: bool) -> Any:
     """A strict boolean that must be `expected`: Literal[True] alone would take the number 1, which equals True."""
 
@@ -128,11 +135,16 @@ def _is(expected: bool) -> Any:
 
 
 AlwaysTrue, AlwaysFalse = _is(True), _is(False)
-Positive = Annotated[WireNumber, Field(gt=0.0)]
-NonNegative = Annotated[WireNumber, Field(ge=0.0)]
+Positive = _number(gt=0.0)
+NonNegative = _number(ge=0.0)
 # Three numbers, x, y and z in parsecs (a strict tuple would refuse the list JSON reads)
 Cartesian = Annotated[list[WireNumber], Field(min_length=3, max_length=3)]
-ProperMotion = Annotated[WireNumber, Field(ge=-SKY_CONTEXT_PROPER_MOTION_MAX, le=SKY_CONTEXT_PROPER_MOTION_MAX)]
+ProperMotion = _number(ge=-SKY_CONTEXT_PROPER_MOTION_MAX, le=SKY_CONTEXT_PROPER_MOTION_MAX)
+BpRp = _number(ge=SKY_CONTEXT_BP_RP_MIN, le=SKY_CONTEXT_BP_RP_MAX)
+RadialVelocity = _number(ge=-SKY_CONTEXT_RADIAL_VELOCITY_MAX, le=SKY_CONTEXT_RADIAL_VELOCITY_MAX)
+Airmass = _number(ge=1.0)
+Fraction = _number(ge=0.0, le=1.0)
+Separation = _number(ge=0.0, le=180.0)
 
 
 def _rule(key: str) -> ValueError:
@@ -148,8 +160,24 @@ class SkyContextRequest(_Strict):
     observed_at_utc: UtcInstant = Field(alias="observedAtUTC")
     lat_deg: Latitude
     lon_deg: Longitude
-    mag_limit: Optional[Magnitude] = None
-    above_horizon_only: Optional[bool] = None
+    # Absent, never null: the API's description lists no null for them
+    mag_limit: Union[Magnitude, SkipJsonSchema[None]] = None
+    above_horizon_only: Union[bool, SkipJsonSchema[None]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_for_optional(cls, data: Any) -> Any:
+        """In place of the wire module's one refusal for any null, which names the key a client sent and hides every
+        other fault: a null is refused at its own key (below for the two optional fields; the required ones refuse it by
+        their type, an unknown key as unknown), so each fault shows at its place."""
+        return data
+
+    @field_validator("mag_limit", "above_horizon_only", mode="before")
+    @classmethod
+    def _absent_not_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("may be absent but not null")
+        return value
 
     @model_validator(mode="after")
     def _in_the_ephemeris_span(self) -> SkyContextRequest:
@@ -261,10 +289,8 @@ class SkyContextStar(_Strict):
     distance_pc: StarDistance
     cartesian_parsec_icrs: Cartesian = Field(alias="cartesianParsecICRS")
     light_travel: LightTravel
-    bp_rp: Optional[Annotated[WireNumber, Field(ge=SKY_CONTEXT_BP_RP_MIN, le=SKY_CONTEXT_BP_RP_MAX)]] = None
-    radial_velocity_km_s: Optional[
-        Annotated[WireNumber, Field(ge=-SKY_CONTEXT_RADIAL_VELOCITY_MAX, le=SKY_CONTEXT_RADIAL_VELOCITY_MAX)]
-    ] = None
+    bp_rp: Optional[BpRp] = None
+    radial_velocity_km_s: Optional[RadialVelocity] = None
     astrophysics: Optional[Astrophysics] = None
 
     @model_validator(mode="after")
@@ -353,10 +379,10 @@ class PredictedSkyBrightness(_Strict):
     lunar_veil_delta_mag: NonNegative
     sky_brightness_nano_lamberts: NonNegative
     lunar_scattered_nano_lamberts: NonNegative
-    airmass: Annotated[WireNumber, Field(ge=1.0)]
-    illumination_fraction: Annotated[WireNumber, Field(ge=0.0, le=1.0)]
+    airmass: Airmass
+    illumination_fraction: Fraction
     lunar_phase_name: Optional[Literal[SKY_CONTEXT_MOON_PHASES]]  # type: ignore[valid-type]
-    sep_from_moon_deg: Annotated[WireNumber, Field(ge=0.0, le=180.0)]
+    sep_from_moon_deg: Separation
     target: Literal["zenith"]
     target_alt_deg: Latitude
     moon_alt_deg: Latitude

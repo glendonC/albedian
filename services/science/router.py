@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from services.contracts.astronomy import NUMBER, UTC_INSTANT, field_rule
 from services.contracts.media import MEDIA_ID_PATTERNS
+from services.contracts import sky_context
 from services.contracts.wire import MAX_SAFE_INTEGER, wire_int
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
@@ -276,9 +277,10 @@ class EphemerisRequest(BaseModel):
     bodies: list[str] = Field(default_factory=lambda: list(DEFAULT_BODIES))
 
 
-class SkyContextRequest(BaseModel):
-    """Request payload for `POST /api/science/sky-context`. The time and place travel in the body, never in the
-    URL, whose query string an access log prints."""
+class MomentAndPlaceRequest(BaseModel):
+    """A time and place, the base of the radiometry audit's request (the sky-context route takes
+    services/contracts/sky_context.py's). The time and place travel in the body, never in the URL, whose query string
+    an access log prints."""
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
@@ -287,7 +289,7 @@ class SkyContextRequest(BaseModel):
     lon_deg: float = Field(alias="lonDeg", ge=-180.0, le=180.0)
 
 
-class RadiometryAuditRequest(SkyContextRequest):
+class RadiometryAuditRequest(MomentAndPlaceRequest):
     """Request payload for `POST /api/science/radiometry-audit`: a time and place, and the target asked about."""
 
     target_sep_deg: float = Field(alias="targetSepDeg", ge=0.5, le=180.0)
@@ -329,24 +331,105 @@ def _optional_ratio(detection: dict[str, Any]) -> dict[str, Any]:
     return {"peak_to_total_ratio": first}
 
 
-@router.post("/api/science/sky-context")
-def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
-    """Compute full 360-degree topocentric sky context for all 70+ navigational stars,
-    Solar System ephemerides, and constellation stick-figure edges.
-    """
-    obs_utc_iso, lat_deg, lon_deg = req.obs_utc_iso, req.lat_deg, req.lon_deg
+# The words a refused sky-context request is answered with: closed sentences, which name a field and what it must be
+# and never repeat a value sent (a place is a value). The span's is the ephemeris' own sentence, with the field's name
+# where the moment would be
+_SKY_CONTEXT_FIELD_MUST_BE = {
+    "observedAtUTC": "a UTC instant ending in Z, written YYYY-MM-DDThh:mm:ssZ; a time with an offset such as +00:00 is not taken",
+    "latDeg": "a number from -90 to 90",
+    "lonDeg": "a number from -180 to 180",
+    "magLimit": "a number from -30 to 30, or left out",
+    "aboveHorizonOnly": "true or false, or left out",
+}
+_SKY_CONTEXT_UNKNOWN_KEY = (
+    "The request holds a key this route does not take: send observedAtUTC, latDeg and lonDeg, and magLimit and "
+    "aboveHorizonOnly if wanted."
+)
+try:
+    require_ephemeris_range(sky_context.SKY_CONTEXT_EPHEMERIS_UNTIL)
+except EphemerisOutOfRange as _exc:
+    _SKY_CONTEXT_OUTSIDE_SPAN = str(_exc).replace(sky_context.SKY_CONTEXT_EPHEMERIS_UNTIL, "observedAtUTC")
+
+
+def _sky_context_refusal(errors: Sequence[Mapping[str, Any]]) -> str:
+    """A sky-context request that failed its contract, said plainly: one sentence for each field at fault, in the
+    order the errors come. Only each error's place and kind are read, and its message only to find the contract's own
+    rule; the input and the key a client made up are never repeated."""
+    sentences: list[str] = []
+    span_rule = f"Value error, {sky_context.SKY_CONTEXT_RULES['insideEphemerisSpan']}"
+    for error in errors:
+        where = error["loc"]
+        if error.get("msg") == span_rule:
+            sentence = _SKY_CONTEXT_OUTSIDE_SPAN
+        elif len(where) < 2 or not isinstance(where[1], str):
+            sentence = _NOT_JSON if error["type"] == "json_invalid" else _NOT_AN_OBJECT
+        elif error["type"] == "extra_forbidden":
+            sentence = _SKY_CONTEXT_UNKNOWN_KEY
+        else:
+            name, must_be = where[1], _SKY_CONTEXT_FIELD_MUST_BE[where[1]]
+            sentence = f"{name} is missing: send {must_be}." if error["type"] == "missing" else f"{name} must be {must_be}."
+        if sentence not in sentences:
+            sentences.append(sentence)
+    return " ".join(sentences)
+
+
+class _SkyContextAnswered(APIRoute):
+    """The sky-context route's own answer to a request its contract refuses: 422 and `_sky_context_refusal`'s
+    sentences, where FastAPI's own answer would send the time and place back. A body FastAPI could not read at all,
+    which it answers with a 400 of its own, is answered the same way."""
+
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        handler = super().get_route_handler()
+
+        async def answer(request: Request) -> Response:
+            try:
+                return await handler(request)
+            except RequestValidationError as error:
+                raise HTTPException(status_code=422, detail=_sky_context_refusal(error.errors())) from None
+            except StarletteHTTPException as error:
+                if error.status_code != 400:
+                    raise
+                raise HTTPException(status_code=422, detail=_NOT_JSON) from None
+
+        return answer
+
+
+_LIGHT_TRAVEL_KEYS = ("distancePc", "lightYears", "lightMinutes", "lightSeconds", "description", "formatted")
+
+
+def _light_travel(distance_pc: float) -> dict[str, Any]:
+    """The light travel time in the contract's keys alone: the catalog's function also writes snake-case copies."""
+    words = compute_light_travel_time_description(distance_pc)
+    return {key: words[key] for key in _LIGHT_TRAVEL_KEYS}
+
+
+def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, Any]:
+    """The bright stars, the solar system bodies, the constellation figures' edges and the sky brightness predicted
+    for a time and place, every item `predicted`, built to services/contracts/sky_context.py and checked against it
+    before it is sent: a reply the contract refuses is this route's fault and answers 500."""
+    obs_utc_iso, lat_deg, lon_deg = req.observed_at_utc, req.lat_deg, req.lon_deg
     _within_ephemeris_range(obs_utc_iso)
+    above_only = bool(req.above_horizon_only)
+
+    def kept(alt_deg: float, mag: float | None) -> bool:
+        if above_only and alt_deg < 0.0:
+            return False
+        return mag is None or req.mag_limit is None or mag <= req.mag_limit
+
     stars_out: list[dict[str, Any]] = []
     for st in ALL_SKY_CATALOG_STARS:
         alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, lat_deg, lon_deg, obs_utc_iso)
+        if not kept(float(alt_deg), float(st.mag)):
+            continue
         cx, cy, cz = catalog_cartesian_pc(st)
-        light_travel = compute_light_travel_time_description(st.median_pc)
         star_entry: dict[str, Any] = {
             "id": st.id,
+            "evidenceClass": "predicted",
             "commonName": st.common_name,
             "bayerDesignation": st.bayer_designation,
             "constellation": st.constellation,
             "provider": st.provider,
+            "releaseVersion": st.release_version,
             "catalogSourceId": st.catalog_source_id,
             "raDeg": float(st.ra_deg),
             "decDeg": float(st.dec_deg),
@@ -363,19 +446,17 @@ def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
                 "method": st.distance_method,
             },
             "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
-            "lightTravel": light_travel,
+            "lightTravel": _light_travel(st.median_pc),
         }
         if st.bp_rp is not None:
             star_entry["bpRp"] = float(st.bp_rp)
-        if st.spectral_type is not None:
-            star_entry["spectralType"] = st.spectral_type
         if st.rv_km_s is not None:
             star_entry["radialVelocityKmS"] = float(st.rv_km_s)
-        stars_out.append(star_entry)
         # Gaia DR3 catalog values only: none for a Hipparcos-only star or a value its row lacks
         astrophysics = gaia_stellar_parameters(st)
         if astrophysics is not None:
-            stars_out[-1]["astrophysics"] = astrophysics
+            star_entry["astrophysics"] = astrophysics
+        stars_out.append(star_entry)
 
     ephem_items = compute_solar_system_ephemerides(
         obs_utc_iso=obs_utc_iso,
@@ -385,6 +466,8 @@ def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
     )
     ephem_out: list[dict[str, Any]] = []
     for item in ephem_items:
+        if not kept(float(item.alt_deg), None):
+            continue
         # A prediction for a time and place: no recording stands behind it, so it names none
         d = item.to_contract_dict(source_sha256=None)
         d["name"] = item.name
@@ -395,30 +478,44 @@ def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
         d["aboveHorizon"] = bool(item.alt_deg >= 0.0)
         d["distanceAu"] = float(item.distance_au)
         d["distancePc"] = float(item.distance_pc)
-        d["lightTravel"] = compute_light_travel_time_description(item.distance_pc)
-        d["evidenceClass"] = "predicted"
-        d["evidence_class"] = "predicted"
+        d["lightTravel"] = _light_travel(item.distance_pc)
         ephem_out.append(d)
 
+    held = {star["id"] for star in stars_out}
     edges_out = [
         {"constellation": c_name, "fromStarId": sid_a, "toStarId": sid_b}
         for c_name, sid_a, sid_b in CONSTELLATION_EDGES
+        if sid_a in held and sid_b in held
     ]
-    # The bodies asked for above include the Moon; the sky brightness is predicted at the zenith, a stated target
+    # The bodies asked for above include the Moon, whether or not the reply keeps it; the sky brightness is predicted
+    # at the zenith, a stated target
     moon_alt_deg = float(next(e for e in ephem_items if e.name == "Moon").alt_deg)
     sky_brightness = predict_sky_brightness(
         obs_utc_iso, moon_alt_deg=moon_alt_deg, target_alt_deg=90.0, sep_from_moon_deg=90.0 - moon_alt_deg,
         target="zenith",
     )
-
-    return {
+    filters: dict[str, Any] = {"aboveHorizonOnly": above_only}
+    if req.mag_limit is not None:
+        filters["magLimit"] = req.mag_limit
+    reply = {
+        "format": sky_context.SKY_CONTEXT_FORMAT,
+        "formatVersion": sky_context.SKY_CONTEXT_FORMAT_VERSION,
         "observedAtUTC": obs_utc_iso,
         "observerLocation": {"latDeg": lat_deg, "lonDeg": lon_deg},
+        "filters": filters,
+        "convention": dict(sky_context.SKY_CONTEXT_CONVENTION),
         "stars": stars_out,
         "ephemerides": ephem_out,
         "constellationEdges": edges_out,
         "predictedSkyBrightness": sky_brightness,
     }
+    return sky_context.SkyContextReply.model_validate(reply).to_wire_dict()
+
+
+router.add_api_route(
+    "/api/science/sky-context", post_science_sky_context, methods=["POST"], route_class_override=_SkyContextAnswered,
+    responses={422: {"model": SolveRefusal, "description": "The request is refused"}},
+)
 
 
 @router.post("/api/science/radiometry-audit")
