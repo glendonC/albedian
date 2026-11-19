@@ -167,7 +167,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "2aa938465918375dedf8ed32a1cc65a14db6ac5da1618dcba90c1a76c0fdb159",
+      "sha256": "55159ad026b0068e8382c6fe991077ea33f7808cff6904a3e23aac0ee7488fd9",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -178,6 +178,65 @@
         "command": "uv run python scripts/lookdev/hangar/write_hangar.py",
         "changes": "Written from the built craft files and from facts read on NASA's pages, not copied: each model's file sizes, triangle counts and true size in metres measured from its own glb, and each speed and fact typed from the NASA page named beside it, with a short quote from that page."
       }
+    },
+    {
+      "path": "hangar/hubble/hubble_lod0.glb",
+      "sha256": "c5cb2131d6a00c16d48700a43c790e3db0cc333d9972f083837021b14f798547",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb (1694988 bytes, SHA-256 e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/hubble/hubble_lod1.glb",
+      "sha256": "d0108ecdd4c7521563e85a107bdfcbb134b0cd58f028b050403980a9d3ef60d8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb (1694988 bytes, SHA-256 e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/hubble/hubble_lod2.glb",
+      "sha256": "9dae83cd5d445bcc5d83ef39b862fd221808c600cdd2a95170d0bbace9104680",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb (1694988 bytes, SHA-256 e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/hubble/hubble_picker.webp",
+      "sha256": "ff3175a70708afbf7acdbe13598539f29e64e8dfed8863f1e11fa3533531862b",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.png (673364 bytes, SHA-256 2c400cfa23cf6602202db163dea3c26e5b601aecb0ea50fb7d3407a1cb21c4ea)."
     },
     {
       "path": "hangar/jwst/jwst_lod0.glb",

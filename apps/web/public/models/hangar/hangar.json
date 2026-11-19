@@ -353,6 +353,63 @@
         "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
         "quote": "fit crewmembers who are sized in the medium ISS EMU HUT"
       }
+    },
+    "hubble": {
+      "title": "Hubble Space Telescope",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "hubble/hubble_lod0.glb",
+          "bytes": 1252480,
+          "triangles": 7672,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "hubble/hubble_lod1.glb",
+          "bytes": 861192,
+          "triangles": 3836,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "hubble/hubble_lod2.glb",
+          "bytes": 299272,
+          "triangles": 1380,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "hubble/hubble_picker.webp",
+          "bytes": 2920,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -5.799,
+          -6.344,
+          -6.65
+        ],
+        "max": [
+          5.799,
+          6.344,
+          6.65
+        ]
+      },
+      "bodyRadiusM": 7.0,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "hbltel_1",
+        "metres": 13.3,
+        "page": "https://science.nasa.gov/missions/hubble/a-nasa-refresher-on-hubble-facts-for-the-25th-anniversary/",
+        "quote": "43.5 feet (13.3 m)"
+      }
     }
   },
   "entries": [
@@ -605,6 +662,38 @@
           "value": "13 by 11",
           "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
           "quote": "a 13” x 11” elliptical dome"
+        }
+      ]
+    },
+    {
+      "id": "hubble",
+      "name": "Hubble Space Telescope",
+      "model": "hubble",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1990-04-24",
+          "page": "https://science.nasa.gov/mission/hubble/",
+          "quote": "APR 24, 1990"
+        },
+        {
+          "key": "lengthM",
+          "value": 13.3,
+          "page": "https://science.nasa.gov/missions/hubble/a-nasa-refresher-on-hubble-facts-for-the-25th-anniversary/",
+          "quote": "43.5 feet (13.3 m)"
+        },
+        {
+          "key": "primaryMirrorDiameterM",
+          "value": 2.4,
+          "page": "https://science.nasa.gov/mission/hubble/overview/hubble-by-the-numbers/",
+          "quote": "Primary mirror diameter 7.8 feet (2.4 m)"
+        },
+        {
+          "key": "altitudeKm",
+          "value": 483,
+          "page": "https://science.nasa.gov/mission/hubble/overview/hubble-by-the-numbers/",
+          "quote": "approximately 300 miles (483 km)"
         }
       ]
     }

@@ -314,6 +314,44 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 0.8,
         "changes": "baked",
     },
+    "hubble": {
+        "title": "Hubble Space Telescope",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-hubble-space-telescope-a",
+            "title": "Hubble Space Telescope (A), NASA 3D Resources",
+            "folder": "Hubble Space Telescope (A)",
+            "file": "Hubble Space Telescope (A).glb",
+            "bytes": 1_694_988,
+            "sha256": "e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384",
+            "picture": "Hubble Space Telescope (A).png",
+            "picture_bytes": 673_364,
+            "picture_sha256": "2c400cfa23cf6602202db163dea3c26e5b601aecb0ea50fb7d3407a1cb21c4ea",
+            "local": "hubble-a",
+        },
+        "drop_objects": [],
+        # NASA's model is in inches along +Z, the aperture door's end at +Z: forward is where the telescope looks.
+        # (NASA's "Hubble Space Telescope (B)" arrives with its parts scattered and no materials, in NASA's own render
+        # of it too, so (A) is used.)
+        "forward": (0.0, 0.0, 1.0),
+        "up": (0.0, 1.0, 0.0),
+        "scale_from": {
+            "material": "hbltel_1",
+            "axis": "z",
+            "metres": 13.3,
+            "page": "https://science.nasa.gov/missions/hubble/a-nasa-refresher-on-hubble-facts-for-the-25th-anniversary/",
+            "quote": "43.5 feet (13.3 m)",
+        },
+        "materials": {
+            "hbltel_1": {"role": "photo_atlas"},
+            "hbltel_2": {"role": "photo_atlas"},
+            "hbltel_3": {"role": "photo_atlas"},
+            "hbltel_4": {"role": "photo_atlas"},
+            "hbltel_wfc_1": {"role": "photo_atlas"},
+        },
+        "body_radius_m": 7.0,
+        "changes": "photo",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -433,6 +471,19 @@ HANGAR: list[dict] = [
         "facts": [
             {"key": "what", "value": "NASA prototype spacesuit", "page": "https://photojournal.jpl.nasa.gov/catalog/PIA23978", "quote": "the Z-2, a prototype spacesuit"},
             {"key": "helmetInches", "value": "13 by 11", "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf", "quote": "a 13” x 11” elliptical dome"},
+        ],
+    },
+    {
+        # Hubble orbits Earth and never travels between stars: no speed (D26 item 5).
+        "id": "hubble",
+        "name": "Hubble Space Telescope",
+        "model": "hubble",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1990-04-24", "page": "https://science.nasa.gov/mission/hubble/", "quote": "APR 24, 1990"},
+            {"key": "lengthM", "value": 13.3, "page": "https://science.nasa.gov/missions/hubble/a-nasa-refresher-on-hubble-facts-for-the-25th-anniversary/", "quote": "43.5 feet (13.3 m)"},
+            {"key": "primaryMirrorDiameterM", "value": 2.4, "page": "https://science.nasa.gov/mission/hubble/overview/hubble-by-the-numbers/", "quote": "Primary mirror diameter 7.8 feet (2.4 m)"},
+            {"key": "altitudeKm", "value": 483, "page": "https://science.nasa.gov/mission/hubble/overview/hubble-by-the-numbers/", "quote": "approximately 300 miles (483 km)"},
         ],
     },
 ]
