@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { alignReadout, alignStartWords, alignTargets, startPose, type AlignPose, type AlignStart } from './alignPose.js';
+import { AlignLayer } from './AlignLayer.js';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
@@ -286,6 +288,25 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     if (!compareShown) setCompareZoomed(false);
   }, [compareShown]);
+  // Line it up yourself (D24), on the laptop's no-match reveal over the photo: from the start the file gives, until
+  // Cancel or Esc, which keep nothing
+  const alignStart = useMemo(() => startPose(session), [session]);
+  const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
+  const [aligningState, setAligning] = useState<{ pose: AlignPose; from: AlignStart } | null>(null);
+  const alignAllowed = overPhoto && !compareShown && status.kind === 'unmatched' && frame !== null && !bareFrame;
+  const aligning = alignAllowed ? aligningState : null;
+  const alignOffered = alignAllowed && alignStart !== null && restoration?.phase !== 'working';
+  useEffect(() => {
+    setAligning(null);
+  }, [session.sourceAsset?.sha256]);
+  useEffect(() => {
+    if (!aligning) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAligning(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [aligning !== null]);
   const asset = session.sourceAsset;
   const uprightWidth = asset ? orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx : 0;
 
@@ -312,6 +333,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           maxZoom={uprightWidth / Math.max(1, frame.widthPx)}
           onZoomed={setCompareZoomed}
         />
+      )}
+
+      {aligning && frame && (
+        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
       )}
 
       {!bareFrame && !earthOnly && !(compareShown && compareZoomed) && (
@@ -405,6 +430,25 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <LookIcon name="info" />
               <span>{DISCLOSURES.restoration}</span>
             </p>
+          ) : aligning ? (
+            // Aligning (D24): what to do, how, Cancel, then the live readout and where the start came from. "Solve from
+            // here" waits on SOLVER's alignment contract (the lead, 07:51)
+            <>
+              <p className="reveal-status__lead align-lead">Drag the stars onto the dots you see.</p>
+              <div className="align-help">
+                <span>Drag to move</span>
+                <span>Ctrl and drag to turn</span>
+                <span>Scroll or pinch to scale</span>
+              </div>
+              <div className="align-acts">
+                <SecondAction label="Cancel" onClick={() => setAligning(null)} />
+              </div>
+              <p className="align-readout" data-testid="align-readout">
+                {alignReadout(aligning.pose)}
+                <br />
+                {alignStartWords(aligning.from)}
+              </p>
+            </>
           ) : (
             <>
               {status.lines.map((line) => (
@@ -413,15 +457,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 </p>
               ))}
               {status.predictedSky && <MainAction label="Show predicted sky" onClick={() => onShowPredictedSky?.()} />}
-              {/* Restore under Show predicted sky, as D10 puts it under a matched photo's status lines (the lead, 06:39) */}
-              {restoreOffered && (
+              {/* Line it up yourself 16 px under Show predicted sky (D24), Restore 10 px under it (D10; the lead, 06:39) */}
+              {(alignOffered || restoreOffered) && (
                 <div className="reveal-status__act">
-                  <SecondAction label="Restore" onClick={() => onRestore?.()} />
+                  {alignOffered && <SecondAction label="Line it up yourself" onClick={() => setAligning(alignStart)} />}
+                  {restoreOffered && <SecondAction label="Restore" onClick={() => onRestore?.()} />}
                 </div>
               )}
             </>
           )}
-          {status.warnings.length > 0 && (
+          {!aligning && status.warnings.length > 0 && (
             <ul className="reveal-status__warns">
               {status.warnings.map((warning) => (
                 <li key={warning}>

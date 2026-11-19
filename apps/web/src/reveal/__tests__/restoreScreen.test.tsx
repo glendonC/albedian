@@ -394,7 +394,8 @@ describe("the restoration's rules are the approved page's", () => {
   });
 
   it('puts Restore 16 px under the status lines, Cancel where Try again sits, and the sentence as the cautions are set', () => {
-    expect(declarationsOf('.reveal-status__act')).toEqual({ 'margin-top': '16px', 'pointer-events': 'auto' });
+    // Now a column, as Line it up yourself sits 10 px over Restore there (D24); one button alone is placed as before
+    expect(declarationsOf('.reveal-status__act')).toMatchObject({ 'margin-top': '16px', 'pointer-events': 'auto' });
     expect(declarationsOf('.restore-why')).toEqual({ 'pointer-events': 'auto' });
     // A refusal: the sentence, then the photo unchanged at 14 px in the second ink, 10 px apart (#rx-refused .why)
     expect(declarationsOf('.restore-why.is-refused')).toEqual({ gap: '10px' });

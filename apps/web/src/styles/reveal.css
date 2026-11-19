@@ -1403,8 +1403,82 @@
 
 /* The restoration (UIUX-restoration-READY.md, D10, approved 2026-11-18): "Restore" 16 px under the status lines */
 .reveal-status__act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   margin-top: 16px;
   pointer-events: auto;
+}
+
+/* Line it up yourself (D24, the al-align screen's rules): the sentence 10 px over the three hints, Cancel, then the
+   readout under a hairline */
+.reveal-status__lead.align-lead {
+  margin: 0 0 10px;
+}
+
+.align-help {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
+.align-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.align-readout {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--look-hair);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--look-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The aligning layer over the photo's frame: the rings amber, dashed, never solid or white; the names amber with the
+   reveal's dark halo */
+.align-layer {
+  position: absolute;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.align-layer:active {
+  cursor: grabbing;
+}
+
+.align-layer__rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: var(--look-ev-predicted);
+  stroke-width: 1.1;
+  stroke-dasharray: 2.6 2.4;
+}
+
+.align-layer__name {
+  position: absolute;
+  transform: translateY(-50%);
+  font: 400 13px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: var(--look-ev-predicted);
+  paint-order: stroke;
+  -webkit-text-stroke: 3px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
 }
 /* Cancel or Try again above the restoration's steps, where Try again sits on a failed job */
 .restore-why {
