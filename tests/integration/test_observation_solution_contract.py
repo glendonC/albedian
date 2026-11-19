@@ -209,6 +209,7 @@ SAYS = {
         "moon_horizon, the sun for sun_horizon."
     ),
     "pose_belongs": "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off.",
+    "approximate_needs_pose": "An approximate solution states how far its WCS may be off, so it carries a pose estimate.",
     "swept_crpix": "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame.",
     "swept_size": (
         "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, "
@@ -434,9 +435,10 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
             "sol-contract-predicted", "predicted_only", **moment, solver=SOLVER, quality=UNVERIFIED,
             findings=[predicted_star], warnings=[],
         ),
+        # An approximate solution carries its pose estimate (REQ-SKY-5.4)
         "approximate": _solution(
             "sol-contract-approximate", "approximate", **moment, solver=SOLVER, wcs=WCS, quality=UNVERIFIED,
-            findings=[_pixels_only("sol-contract-approximate")], warnings=[],
+            findings=[_pixels_only("sol-contract-approximate")], warnings=[], poseEstimate=pose,
         ),
         "approximate_with_pose": _solution(
             "sol-contract-pose", "approximate", **moment, solver=SOLVER, wcs=WCS, quality=UNVERIFIED,
@@ -496,8 +498,10 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         drop(["quality", "medianResidualPx"]), drop(["quality", "p95ResidualPx"]), drop(["quality", "medianResidualArcsec"]),
         says=(SAYS["passed_needs_wcs"], gate_sentence()))
     for status in ("approximate", "ambiguous", "unresolved", "predicted_only"):
+        # An approximate one carries its pose (REQ-SKY-5.4), so the passed verification is its only fault
+        with_pose = (put(["poseEstimate"], parts["pose"]),) if status == "approximate" else ()
         bad(f"passed_on_{status}", gate, f"a passed verification on a solution whose status is {status}", [passed],
-            put(["status"], status), says=(not_calibrated_sentence(status),))
+            put(["status"], status), *with_pose, says=(not_calibrated_sentence(status),))
     bad("passed_on_pending", gate, "a pending solution with a solver and a passed quality", ["quality", "solver", passed],
         put(["status"], "pending"), says=(SAYS["pending_quality"], SAYS["pending_solver"], not_calibrated_sentence("pending")))
     # Quality and solver follow the status
@@ -569,8 +573,9 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
     bad("findings_missing", gate, "no findings list", ["findings"], drop(["findings"]))
     bad("warnings_missing", gate, "no warnings list", ["warnings"], drop(["warnings"]))
     bad("warning_not_text", gate, "a number among the warnings", ["warnings.0"], put(["warnings"], [5]))
-    bad("wcs_centre_pixel_infinite", "approximate", "an infinite crpixX", ["wcs.crpixX"], put(["wcs", "crpixX"], {"$number": "Infinity"}))
-    bad("wcs_scale_zero", "approximate", "a pixel scale of zero", ["wcs.scaleDegPerPx"], put(["wcs", "scaleDegPerPx"], 0))
+    # On a solution with no pose: Zod still runs the pose's rules on a solution whose WCS field failed, pydantic does not
+    bad("wcs_centre_pixel_infinite", gate, "an infinite crpixX", ["wcs.crpixX"], put(["wcs", "crpixX"], {"$number": "Infinity"}))
+    bad("wcs_scale_zero", gate, "a pixel scale of zero", ["wcs.scaleDegPerPx"], put(["wcs", "scaleDegPerPx"], 0))
     # Findings
     bad("predicted_finding_names_no_solution", "predicted_only", "a finding inside a solution that names no solution",
         ["findings.0.observationSolutionId"], drop(["findings", 0, "observationSolutionId"]), says=(SAYS["finding_in_solution"],))
@@ -629,6 +634,8 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         ["poseEstimate"], put(["status"], "predicted_only"), says=(SAYS["pose_belongs"],))
     bad("pose_without_a_wcs", "approximate_with_pose", "a pose estimate with no nominal WCS", ["poseEstimate"],
         drop(["wcs"]), says=(SAYS["pose_belongs"],))
+    bad("approximate_without_a_pose", "approximate", "an approximate solution that does not say how far its WCS may be off",
+        ["poseEstimate"], drop(["poseEstimate"]), says=(SAYS["approximate_needs_pose"],))
     bad("swept_wcs_on_another_centre_pixel", "approximate_with_pose", "a swept WCS on another crpixX",
         ["poseEstimate.sweptWcs.1"], put(["poseEstimate", "sweptWcs", 1, "crpixX"], 480.5), says=(SAYS["swept_crpix"],))
     bad("swept_wcs_same_scale_other_field_of_view", "approximate_with_pose",
@@ -1971,7 +1978,8 @@ def dataclass_solution(recipe: str, **changes: Any) -> ObservationSolution:
         "solver": identity() if solved else None, "observed_at_utc": MOMENT if timed else None,
         "observer_lat": PLACE["latDeg"] if timed else None, "observer_lon": PLACE["lonDeg"] if timed else None,
         "findings": findings, "warnings": ["Hand-built for contract tests."],
-        "pose_estimate": pose() if recipe == "approximate_with_pose" else None,
+        # Every approximate solution carries its pose (REQ-SKY-5.4)
+        "pose_estimate": pose() if status == "approximate" else None,
     }
     return ObservationSolution(**{**fields, **changes})
 

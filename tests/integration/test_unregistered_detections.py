@@ -325,6 +325,16 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
         solution(None, True, matched)
 
 
+def _pose_on(wcs: WCSModel) -> PoseEstimate:
+    """The pose an approximate solution carries (REQ-SKY-5.4): synthetic values for contract tests, two swept WCS on
+    the nominal one, lined up from no real frame."""
+    return PoseEstimate(
+        method="moon_camera_profile_level_head", beacon="moon", center_alt_deg=33.0, center_az_deg=224.0, roll_deg=0.0,
+        fov_diagonal_deg=38.2, fov_source="A synthetic camera profile for contract tests", assumptions=("The head is level.",),
+        swept_wcs=(wcs, wcs), max_center_offset_deg=0.4, beacon_centroid_uncertainty_deg=0.004,
+    )
+
+
 def _quality_rule_solution(status: str, has_quality: bool, has_solver: bool) -> ObservationSolution:
     """A finding-free solution under a status, with or without quality and solver (experience-9f)."""
     calibrated = status == "calibrated"
@@ -348,6 +358,7 @@ def _quality_rule_solution(status: str, has_quality: bool, has_solver: bool) -> 
         wcs=wcs if calibrated or status == "approximate" else None,
         quality=quality if has_quality else None,
         solver=SolverIdentity(name="hand-built in this test", version="0", catalog_release="none") if has_solver else None,
+        pose_estimate=_pose_on(wcs) if status == "approximate" else None,
     )
 
 
@@ -529,6 +540,7 @@ def test_pbt_solution_time_and_place_follow_the_contract(
             # Nothing has run on a pending solution, so it counts nothing and names no solver
             quality=None if status == "pending" else quality, findings=findings,
             solver=None if status == "pending" else SolverIdentity(name="hand-built in this test", version="0", catalog_release="none"),
+            pose_estimate=_pose_on(wcs) if status == "approximate" else None,
         )
 
     if not valid:

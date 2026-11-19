@@ -971,6 +971,9 @@ class ObservationSolution:
                 and (finding.pixel_residual_px is not None or finding.angular_residual_arcsec is not None)
             ):
                 raise ContractRefusal(f"{contract.OBSERVED_RESIDUAL_OF_A_POSE[:-1]} ({finding.id}, a {self.status} solution).")
+        # REQ-SKY-5.4, judged last so that each earlier rule still names its own fault first
+        if self.pose_estimate is None and self.status == "approximate":
+            raise ContractRefusal(contract.APPROXIMATE_NEEDS_POSE)
 
     @property
     def has_verified_wcs(self) -> bool:

@@ -3,7 +3,7 @@ import { Fragment, act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
+import { ObservationSolutionSchema, type ObservationSession, type ObservationSolution } from '@albedian/contracts';
 import { dispatchAlbedianAction, executeVoiceOrTextCommand } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { ObservationSolveAndCompareHud } from '../../spatial/ObservationSolveAndCompareHud';
@@ -159,12 +159,12 @@ describe('the photo view draws the predicted sky lined up by a pose (REQ-SKY-6.2
   });
 
   it('draws no predicted marker over the photo without a pose estimate, or for a predicted_only result', () => {
-    for (const session of [
-      poseSession({ ...POSE, poseEstimate: undefined }),
-      poseSession(sample('horizon_predicted_only')),
-      // The horizon sample without the pose estimate it carries since sky-4 (REQ-SKY-4.4)
-      poseSession({ ...sample('horizon_approximate'), poseEstimate: undefined }),
-    ]) {
+    // An approximate solution without its pose estimate is no solution at all: the contract refuses it (REQ-SKY-5.4),
+    // so no session is ever built from one
+    for (const posed of [POSE, sample('horizon_approximate')]) {
+      expect(ObservationSolutionSchema.safeParse({ ...posed, poseEstimate: undefined }).success).toBe(false);
+    }
+    for (const session of [poseSession(sample('horizon_predicted_only'))]) {
       expect(session.spatialView.activeOverlays.predictedEphemerides).toBe(true);
       renderOverlay(session);
       expect(markerIds('predicted')).toEqual([]);
@@ -267,7 +267,8 @@ describe('the disclosure beside the lined-up markers (REQ-SKY-6.3)', () => {
   });
 
   it('says nothing about a lined-up sky when none is drawn', () => {
-    renderStage(poseSession({ ...POSE, poseEstimate: undefined }));
+    // A predicted_only result draws no lined-up sky (an approximate one always carries its pose, REQ-SKY-5.4)
+    renderStage(poseSession(sample('horizon_predicted_only')));
     expect(disclosure()).toBeNull();
     expect(goToLine()).toBeNull();
     expect(container.querySelector('.alb-layer-credits')!.textContent).toContain(

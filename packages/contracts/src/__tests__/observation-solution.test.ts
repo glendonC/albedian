@@ -78,6 +78,25 @@ function asStatus<T extends ReturnType<typeof solution>>(sol: T, status: Solutio
   return { ...rest, status };
 }
 
+// An approximate solution says how far its WCS may be off (REQ-SKY-5.4): the WCS and the pose these tests give one,
+// synthetic values for contract tests that describe no real camera
+const APPROXIMATE_POSE = {
+  method: 'moon_camera_profile_level_head',
+  beacon: 'moon',
+  centerAltDeg: 33,
+  centerAzDeg: 224,
+  rollDeg: 0,
+  fovDiagonalDeg: 38.2,
+  fovSource: 'A synthetic camera profile for contract tests',
+  assumptions: ['The head is level.'],
+  sweptWcs: [WCS, WCS],
+  maxCenterOffsetDeg: 0.4,
+  beaconCentroidUncertaintyDeg: 0.004,
+};
+function withItsPose<T extends { status: SolutionStatus }>(sol: T): T {
+  return sol.status === 'approximate' ? { ...sol, wcs: WCS, poseEstimate: APPROXIMATE_POSE } : sol;
+}
+
 describe('@albedian/contracts: CelestialFinding sky positions', () => {
   it('accepts an observed point source located by its pixels alone', () => {
     const parsed = CelestialFindingSchema.parse(finding('obs', 'observed', { detection: true }));
@@ -393,12 +412,12 @@ describe('@albedian/contracts: solution and spatial view time and place', () => 
     const verified = opts.status === 'calibrated';
     const base = asStatus(solution({ wcs: verified, passed: verified, findings: opts.findings ?? [] }), opts.status);
     const { observedAtUTC: _droppedTime, observerLocation: _droppedPlace, ...withoutTimeAndPlace } = base;
-    return {
+    return withItsPose({
       ...withoutTimeAndPlace,
       status: opts.status,
       ...(opts.observedAtUTC !== undefined ? { observedAtUTC: opts.observedAtUTC } : {}),
       ...(opts.observerLocation !== undefined ? { observerLocation: opts.observerLocation } : {}),
-    };
+    });
   }
 
   it('accepts a calibrated, unresolved, ambiguous or pending solution without a capture time or observer location', () => {
@@ -563,7 +582,7 @@ describe('@albedian/contracts: what a solver measured (experience-9f)', () => {
   const build = (status: SolutionStatus, parts: { quality: boolean; solver: boolean }) => {
     const verified = status === 'calibrated';
     const { quality, solver, ...rest } = solution({ wcs: verified, passed: verified, findings: [] });
-    return { ...rest, status, ...(parts.quality ? { quality } : {}), ...(parts.solver ? { solver } : {}) };
+    return withItsPose({ ...rest, status, ...(parts.quality ? { quality } : {}), ...(parts.solver ? { solver } : {}) });
   };
 
   it('accepts a pending solution with no quality and no solver: nothing has run, so nothing was counted', () => {
@@ -707,8 +726,8 @@ describe('@albedian/contracts: the pose estimate of an approximate solution (REQ
       expect(issuePaths(parsed), String(count)).toEqual([]);
       expect(parsed.data?.poseEstimate?.sweptWcs, String(count)).toHaveLength(count);
     }
-    // The pose estimate stays optional: an approximate solution without one is what the solvers send today
-    expect(issuePaths(ObservationSolutionSchema.safeParse(posed()))).toEqual([]);
+    // An approximate solution without one is refused (REQ-SKY-5.4)
+    expect(issuePaths(ObservationSolutionSchema.safeParse(posed()))).toEqual(['poseEstimate']);
   });
 
   it('refuses a pose estimate on any solution but an approximate one', () => {
@@ -881,7 +900,7 @@ describe('@albedian/contracts: the pose estimate of an approximate solution (REQ
     const REASONS = [
       'accepted with a pose', 'accepted without a pose', 'status', 'no wcs', 'fewer than two', 'more than 27', 'other crpix',
       'field', 'predicted with a detection', 'simulated with a detection', 'catalog-backed predicted with a detection',
-      'catalog-backed simulated with a detection',
+      'catalog-backed simulated with a detection', 'approximate without a pose',
     ];
     const seen = new Set<string>();
     const okPose: PoseSpec = { count: 9, offIndex: undefined, offKey: 'crpixX', offBy: 1, offSign: 1, fieldFault: undefined };
@@ -904,9 +923,11 @@ describe('@albedian/contracts: the pose estimate of an approximate solution (REQ
           }
         }
         const crpixMoved = p !== undefined && p.offIndex !== undefined && p.offIndex < p.count;
+        // REQ-SKY-5.4: an approximate solution carries its pose
         const poseOk =
-          p === undefined ||
-          (spec.status === 'approximate' && spec.wcs && p.count >= 2 && p.count <= 27 && !crpixMoved && p.fieldFault === undefined);
+          p === undefined
+            ? spec.status !== 'approximate'
+            : spec.status === 'approximate' && spec.wcs && p.count >= 2 && p.count <= 27 && !crpixMoved && p.fieldFault === undefined;
         const detectionOn = spec.findings.map((f) => f.evidenceClass !== 'observed' && f.detection);
         const expected = poseOk && !detectionOn.some(Boolean);
 
@@ -919,6 +940,7 @@ describe('@albedian/contracts: the pose estimate of an approximate solution (REQ
 
         if (expected) seen.add(p === undefined ? 'accepted without a pose' : 'accepted with a pose');
         if (p !== undefined && spec.status !== 'approximate') seen.add('status');
+        if (p === undefined && spec.status === 'approximate') seen.add('approximate without a pose');
         if (p !== undefined && !spec.wcs) seen.add('no wcs');
         if (p !== undefined && p.count < 2) seen.add('fewer than two');
         if (p !== undefined && p.count > 27) seen.add('more than 27');
@@ -935,6 +957,7 @@ describe('@albedian/contracts: the pose estimate of an approximate solution (REQ
         examples: [
           [{ status: 'approximate', wcs: true, pose: okPose, findings: [{ evidenceClass: 'observed', detection: true, catalog: false }, { evidenceClass: 'predicted', detection: false, catalog: true }, { evidenceClass: 'simulated', detection: false, catalog: false }] }],
           [{ status: 'approximate', wcs: true, pose: undefined, findings: [{ evidenceClass: 'predicted', detection: false, catalog: false }] }],
+          [{ status: 'unresolved', wcs: false, pose: undefined, findings: [{ evidenceClass: 'observed', detection: true, catalog: false }] }],
           [{ status: 'calibrated', wcs: true, pose: okPose, findings: [] }],
           [{ status: 'predicted_only', wcs: false, pose: okPose, findings: [] }],
           [{ status: 'approximate', wcs: false, pose: okPose, findings: [] }],

@@ -436,8 +436,9 @@ def test_only_a_plate_solvers_outcome_is_completed(status: str) -> None:
         [], "sol_synthetic", ASSET_ID, SHA, 0.0, moment, 30.0, -40.0, "No detections.", "Pixel position only.",
         triangle_solver_identity(get_catalog_stars()),
     )
-    other = replace(solution, status=status, quality=None, solver=None) if status == "pending" else replace(solution, status=status)
+    # An approximate solution with no pose is refused when it is built (REQ-SKY-5.4), before complete_sky sees it
     with pytest.raises(ValueError) as refused:
+        other = replace(solution, status=status, quality=None, solver=None) if status == "pending" else replace(solution, status=status)
         complete_sky(other, _asset(moment, 30.0, -40.0))
     assert "2030" not in str(refused.value)
 

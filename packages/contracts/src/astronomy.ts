@@ -630,6 +630,14 @@ export const ObservationSolutionSchema = z
   .superRefine((solution, ctx) => {
     const quality = solution.quality;
     const pose = solution.poseEstimate;
+    // REQ-SKY-5.4: an approximate solution says how far its WCS may be off
+    if (pose === undefined && solution.status === 'approximate') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['poseEstimate'],
+        message: 'An approximate solution states how far its WCS may be off, so it carries a pose estimate.',
+      });
+    }
     if (pose !== undefined) {
       if (solution.status !== 'approximate' || solution.wcs === undefined) {
         ctx.addIssue({

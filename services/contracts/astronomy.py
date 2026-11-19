@@ -220,6 +220,7 @@ BEACON_OF_ITS_METHOD = (
     "moon_horizon, the sun for sun_horizon."
 )
 POSE_BELONGS = "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off."
+APPROXIMATE_NEEDS_POSE = "An approximate solution states how far its WCS may be off, so it carries a pose estimate."
 SWEPT_ON_THE_NOMINAL_CRPIX = (
     "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame."
 )
@@ -949,6 +950,9 @@ def detection_issues(statistic: str, noise_limits: Any, widths: tuple[float, flo
 def _solution_issues(solution: ObservationSolution) -> list[Issue]:
     issues: list[Issue] = []
     status, quality, pose, nominal = solution.status, solution.quality, solution.pose_estimate, solution.wcs
+    # REQ-SKY-5.4: an approximate solution says how far its WCS may be off
+    if pose is None and status == "approximate":
+        issues.append((("poseEstimate",), APPROXIMATE_NEEDS_POSE))
     if pose is not None:
         if status != "approximate" or nominal is None:
             issues.append((("poseEstimate",), POSE_BELONGS))

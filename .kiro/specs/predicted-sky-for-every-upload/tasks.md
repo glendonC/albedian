@@ -35,7 +35,7 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
     lined-up drawing its poses on main; the drawing's own tests still use the synthetic fixture.
   - _Requirements: REQ-SKY-6.1 to 6.8_
 
-- [ ] 5. sky-4: the Moon plus horizon pose for uploads and laptop clips, with its uncertainty (REQ-SKY-4.1, 4.2, 4.4)
+- [x] 5. sky-4: the Moon plus horizon pose for uploads and laptop clips, with its uncertainty (REQ-SKY-4.1, 4.2, 4.4)
   - Wire `solve_horizon_and_beacon_pose` into `complete_sky`; its findings from `predicted_sky_findings`
     (characterization test); its `poseEstimate`; the topocentric Moon; the half-maximum Moon test of sky-3.
   - Then a separate small unit: `approximate` requires `poseEstimate` in both contracts (REQ-SKY-5.4).
@@ -69,10 +69,10 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
     [inference] (verdict `sky-3b.md`, left alone (3)); bring the two into line. Done in sky-4: both say [inference].
   - sky-4 itself landed as `b98f55cf` (REQ-SKY-4.1, 4.2, 4.4: `horizon_pose_solution` in
     `services/science/predicted_sky.py`, `solve_horizon_and_beacon_pose` in `services/media/discovery.py`, the
-    topocentric Moon in `services/science/pose_estimate.py`). Missing: the separate small unit for REQ-SKY-5.4; on
-    `main` at `698e9c50` neither `ObservationSolutionSchema` (`packages/contracts/src/astronomy.ts`) nor
-    `ObservationSolution` (`services/science/wcs_models.py`) refuses an `approximate` solution without a
-    `poseEstimate`.
+    topocentric Moon in `services/science/pose_estimate.py`). The separate small unit for REQ-SKY-5.4 is sky-5.4:
+    `ObservationSolutionSchema` (`packages/contracts/src/astronomy.ts`), the parser
+    (`services/contracts/astronomy.py`) and `ObservationSolution` (`services/science/wcs_models.py`) refuse an
+    `approximate` solution without a `poseEstimate`.
   - _Requirements: REQ-SKY-4.1, 4.2, 4.4, 5.4_
 
 - [ ] 6. sky-6: the Sun as the beacon in daytime photos (REQ-SKY-4.3)

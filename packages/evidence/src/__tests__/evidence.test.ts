@@ -527,6 +527,17 @@ describe('@albedian/evidence: detections without a sky position', () => {
             quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
           }),
       wcs,
+      // An approximate solution says how far its WCS may be off (REQ-SKY-5.4): a synthetic pose on that WCS, which the
+      // evidence records do not read
+      ...(status === 'approximate' && wcs !== undefined
+        ? {
+            poseEstimate: {
+              method: 'moon_horizon', beacon: 'moon', centerAltDeg: 33, centerAzDeg: 224, rollDeg: 0, fovDiagonalDeg: 43.6,
+              fovSource: 'A synthetic field of view for contract tests', assumptions: ['The skyline is level.'],
+              sweptWcs: [wcs, wcs], maxCenterOffsetDeg: 0.4, beaconCentroidUncertaintyDeg: 0.004,
+            },
+          }
+        : {}),
       findings: [finding], warnings: [],
     });
 

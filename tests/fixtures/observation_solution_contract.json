@@ -2991,7 +2991,65 @@
      }
     }
    ],
-   "warnings": []
+   "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   }
   },
   "approximate_with_pose": {
    "id": "sol-contract-pose",
@@ -3443,7 +3501,65 @@
      }
     }
    ],
-   "warnings": []
+   "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   }
   }
  },
  "invalid": [
@@ -3590,6 +3706,70 @@
       "status"
      ],
      "value": "approximate"
+    },
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate"
+     ],
+     "value": {
+      "method": "moon_camera_profile_level_head",
+      "beacon": "moon",
+      "centerAltDeg": 33.0,
+      "centerAzDeg": 224.0,
+      "rollDeg": 0.0,
+      "fovDiagonalDeg": 38.2,
+      "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+      "assumptions": [
+       "The head is level."
+      ],
+      "sweptWcs": [
+       {
+        "projection": "TAN",
+        "crvalRaDeg": 83.8,
+        "crvalDecDeg": 4.0,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.0315,
+        "rotationDeg": -1.5,
+        "radialDistortionK1": -0.008,
+        "radialDistortionK2": 0.001,
+        "parity": -1,
+        "fovHorizontalDeg": 30.24,
+        "fovVerticalDeg": 17.01
+       },
+       {
+        "projection": "TAN",
+        "crvalRaDeg": 83.8,
+        "crvalDecDeg": 4.0,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.035,
+        "rotationDeg": 4.5,
+        "radialDistortionK1": -0.008,
+        "radialDistortionK2": 0.001,
+        "parity": -1,
+        "fovHorizontalDeg": 33.6,
+        "fovVerticalDeg": 18.9
+       },
+       {
+        "projection": "TAN",
+        "crvalRaDeg": 83.8,
+        "crvalDecDeg": 4.0,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.0385,
+        "rotationDeg": 1.5,
+        "radialDistortionK1": -0.008,
+        "radialDistortionK2": 0.001,
+        "parity": -1,
+        "fovHorizontalDeg": 36.96,
+        "fovVerticalDeg": 20.79
+       }
+      ],
+      "maxCenterOffsetDeg": 0.4,
+      "beaconCentroidUncertaintyDeg": 0.004
+     }
     }
    ],
    "reason": "a passed verification on a solution whose status is approximate",
@@ -4492,7 +4672,7 @@
   },
   {
    "name": "wcs_centre_pixel_infinite",
-   "base": "approximate",
+   "base": "calibrated_at_the_gate",
    "patch": [
     {
      "op": "set",
@@ -4513,7 +4693,7 @@
   },
   {
    "name": "wcs_scale_zero",
-   "base": "approximate",
+   "base": "calibrated_at_the_gate",
    "patch": [
     {
      "op": "set",
@@ -5258,6 +5438,25 @@
    ],
    "messages": [
     "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off."
+   ]
+  },
+  {
+   "name": "approximate_without_a_pose",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "poseEstimate"
+     ]
+    }
+   ],
+   "reason": "an approximate solution that does not say how far its WCS may be off",
+   "paths": [
+    "poseEstimate"
+   ],
+   "messages": [
+    "An approximate solution states how far its WCS may be off, so it carries a pose estimate."
    ]
   },
   {
@@ -6209,6 +6408,64 @@
     }
    ],
    "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   },
    "note": null
   },
   "parsed": {
@@ -6278,7 +6535,65 @@
      }
     }
    ],
-   "warnings": []
+   "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   }
   }
  },
  "findings": {
@@ -7909,10 +8224,10 @@
   ]
  },
  "keyCases": {
-  "levels": 151,
-  "dropped": 1771,
+  "levels": 159,
+  "dropped": 1905,
   "refusedUnknown": 49,
-  "refusedWhenRenamed": 677,
-  "leftOutWhenRenamed": 86
+  "refusedWhenRenamed": 758,
+  "leftOutWhenRenamed": 83
  }
 }

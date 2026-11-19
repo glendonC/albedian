@@ -250,10 +250,15 @@ def test_every_swept_wcs_sits_on_the_nominal_crpix() -> None:
 
 
 def test_solution_serializes_its_pose_estimate_only_when_present() -> None:
-    assert "poseEstimate" not in solution().to_contract_dict()
-    # The keyword has a default, so every existing constructor call still works and sends no pose estimate
+    assert solution(pose=pose_estimate()).to_contract_dict()["poseEstimate"]["method"] == "moon_camera_profile_level_head"
+    # The keyword has a default: every status but approximate builds and sends no pose estimate, and an approximate
+    # solution without one is refused (REQ-SKY-5.4)
     for status in STATUSES:
-        assert "poseEstimate" not in solution(status).to_contract_dict()
+        if status == "approximate":
+            with pytest.raises(ValueError, match="carries a pose estimate"):
+                solution(status)
+        else:
+            assert "poseEstimate" not in solution(status).to_contract_dict()
 
 
 # With and without a catalog row behind it: the predicted stars the solvers send carry one
@@ -350,7 +355,8 @@ def test_pbt_pose_estimate_and_detections_follow_the_contract(
 ) -> None:
     """P-SKY-7 on the Python mirror: the same oracle as the TypeScript property."""
     crpix_moved = pose is not None and pose["off_index"] is not None and pose["off_index"] < pose["count"]
-    pose_ok = pose is None or (
+    # REQ-SKY-5.4: an approximate solution carries its pose
+    pose_ok = status != "approximate" if pose is None else (
         status == "approximate" and wcs and 2 <= pose["count"] <= 27 and not crpix_moved and pose["field_fault"] is None
     )
     detection_on = [cls != "observed" and det for cls, det, _ in findings]
