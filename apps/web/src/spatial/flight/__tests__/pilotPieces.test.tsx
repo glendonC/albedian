@@ -65,13 +65,14 @@ describe('PilotTrip (D26 items 4 and 5)', () => {
 });
 
 describe('FlightClock: the flight\'s own travel time, measured', () => {
-  it('measures from the first travelling frame to arrival, and nothing for an arrival without travel', () => {
+  it('measures from the flight\'s first frame, in either half, to arrival, and nothing for an arrival without a flight', () => {
     const clock = new FlightClock();
+    clock.observe('at_source', -50);
     clock.observe('phase_a_photo_to_sky', 0);
-    clock.observe('phase_b_sky_to_space', 620);
-    clock.observe('phase_b_sky_to_space', 900);
-    clock.observe('at_space', 2170);
-    expect(clock.seconds).toBeCloseTo(1.55, 12);
+    clock.observe('phase_a_photo_to_sky', 400);
+    clock.observe('phase_b_sky_to_space', 750);
+    clock.observe('at_space', 1500);
+    expect(clock.seconds).toBeCloseTo(1.5, 12);
     const reduced = new FlightClock();
     reduced.observe('at_space', 10);
     expect(reduced.seconds).toBeNull();

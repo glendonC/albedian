@@ -93,8 +93,8 @@ export const CRAFT_CHOICES: readonly CraftChoice[] = [
 export const CRAFT_PICKER_FOOT = "NASA's own 3D models. Drawn by the app, not measured.";
 
 /**
- * How long the flight's camera travelled on screen, measured: from the first frame of the flight's travel to arrival.
- * A flight that arrives without travelling (reduced motion) has none, so no pace is claimed.
+ * How long the flight took on screen, measured: from the first frame of Go there's flight (either half) to arrival.
+ * A flight that arrives without a flight on screen (reduced motion) has none, so no pace is claimed.
  */
 export class FlightClock {
   private startedMs: number | null = null;
@@ -102,7 +102,7 @@ export class FlightClock {
 
   /** Feed each phase the session shows, with the time it was seen. */
   observe(phase: string | undefined, nowMs: number): void {
-    if (phase === 'phase_b_sky_to_space') {
+    if (phase === 'phase_a_photo_to_sky' || phase === 'phase_b_sky_to_space') {
       if (this.startedMs === null) this.startedMs = nowMs;
     } else if (phase === 'at_space') {
       if (this.startedMs !== null) this.secondsValue = (nowMs - this.startedMs) / 1000;
