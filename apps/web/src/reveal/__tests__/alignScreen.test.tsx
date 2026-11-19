@@ -286,6 +286,10 @@ describe('after Solve from here', () => {
     const session = unmatched();
     show(session, { alignedFrom: keptOf(session), onRestore: () => {}, restoration: { phase: 'idle' } as Restoration });
     const status = q('.reveal-status.is-unmatched')!;
+    // The Predicted tag above the refusal, in a column with no entrance (UIUX-tagplaces-DECIDED-BY-LEAD.md place 1)
+    expect(status.firstElementChild!.getAttribute('data-evidence-class')).toBe('predicted');
+    expect(status.firstElementChild!.nextElementSibling!.className).toBe('align-refused');
+    expect(status.classList.contains('has-predicted')).toBe(true);
     expect([...status.querySelectorAll('.align-refused p')].map((p) => p.textContent)).toEqual(['No stars matched near your alignment.', 'Your alignment is kept, drawn as predicted.']);
     expect([...status.querySelectorAll('.align-refused__acts button')].map((b) => b.textContent)).toEqual(['Line it up again', 'Show predicted sky', 'Restore']);
     // The rings stay amber and dashed at the kept pose

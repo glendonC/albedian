@@ -393,7 +393,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // so the tag is there from the rings' first frame (the lead's 17:38 rule; its four places decided 17:56,
   // WEB-UX-refused-tag-QUESTION.md). The laptop's column only: the phone's aligning and no-match screens are their own,
   // and no record places it there
-  const ringsTagged = aligning !== null || earlyKept;
+  const ringsTagged = aligning !== null || earlyKept || keptRefused !== null;
   useEffect(() => {
     setAligning(null);
   }, [session.sourceAsset?.sha256, cancelAligningToken]);
