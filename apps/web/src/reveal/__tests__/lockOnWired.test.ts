@@ -70,15 +70,18 @@ describe('the early pose from the served predicted sky', () => {
     expect(first.v).toBeCloseTo(p.yPx / FRAME.widthPx, 9);
   });
 
-  it('is none for a sky with no pose, one not approximate, a pose no record words (the Sun), or another upload', () => {
+  it('names the Sun for a pose lined up from the Sun, in the line added to the record at 12:41', () => {
+    const sun: ObservationSolution = { ...POSE, poseEstimate: { ...POSE.poseEstimate!, method: 'sun_horizon', beacon: 'sun' } };
+    expect(earlyPoseOf(sun, asset())!.source).toBe('sun');
+  });
+
+  it('is none for a sky with no pose, one not approximate, or another upload', () => {
     expect(earlyPoseOf(null, asset())).toBeNull();
     expect(earlyPoseOf(POSE, undefined)).toBeNull();
     const { poseEstimate: _pose, ...noPose } = POSE;
     expect(earlyPoseOf(noPose as ObservationSolution, asset())).toBeNull();
     expect(earlyPoseOf({ ...POSE, status: 'predicted_only' }, asset())).toBeNull();
     expect(earlyPoseOf(sample('plate_calibrated'), asset())).toBeNull();
-    const sun: ObservationSolution = { ...POSE, poseEstimate: { ...POSE.poseEstimate!, method: 'sun_horizon', beacon: 'sun' } };
-    expect(earlyPoseOf(sun, asset())).toBeNull();
     expect(earlyPoseOf(POSE, asset({ sha256: 'f'.repeat(64) }))).toBeNull();
   });
 

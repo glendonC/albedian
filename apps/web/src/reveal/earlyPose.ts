@@ -11,7 +11,7 @@ import { alignTargetOf, brightestFirst } from './alignPose.js';
  */
 
 /** Where an early pose came from, as the record words them. */
-export type EarlySource = 'pointing' | 'moon' | 'alignment' | 'compass';
+export type EarlySource = 'pointing' | 'moon' | 'sun' | 'alignment' | 'compass';
 
 /** A target's place over the photo as shown upright: u and v are shares of its width and height. */
 export interface PlacedTarget {
@@ -33,19 +33,22 @@ export interface EarlyPose {
 export const EARLY_SOURCE_WORDS: Readonly<Record<EarlySource, string>> = {
   pointing: 'Placed from where your iPhone pointed: predicted until matched.',
   moon: 'Placed from the Moon: predicted until matched.',
+  // Added to the record at 12:41 on 19 Nov: every early pose names its source
+  sun: 'Placed from the Sun: predicted until matched.',
   alignment: 'Placed from your alignment: predicted until matched.',
   // Only if SCIENCE accepts the compass and lens as a start (the record's own condition)
   compass: "Placed from your photo's compass heading and lens: predicted until matched.",
 };
 
 /**
- * The source each pose method names: the Moon's two poses, and the phone's device attitude (the iPhone's pointing
- * record). The record words no Sun source, so a Sun pose draws no early state [open: for UIUX]. A person's alignment
- * takes its words when its solve publishes a sky.
+ * The source each pose method names: the Moon's two poses, the Sun's, and the phone's device attitude (the iPhone's
+ * pointing record). Every method has its source, so no early mark is drawn without its source line. A person's
+ * alignment takes its words when its solve publishes a sky.
  */
 const POSE_SOURCES: Readonly<Partial<Record<PoseEstimate['method'], EarlySource>>> = {
   moon_camera_profile_level_head: 'moon',
   moon_horizon: 'moon',
+  sun_horizon: 'sun',
   [DEVICE_ATTITUDE]: 'pointing',
 };
 

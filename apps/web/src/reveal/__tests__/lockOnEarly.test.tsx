@@ -83,6 +83,7 @@ describe('the early state', () => {
     expect(EARLY_SOURCE_WORDS).toEqual({
       pointing: 'Placed from where your iPhone pointed: predicted until matched.',
       moon: 'Placed from the Moon: predicted until matched.',
+      sun: 'Placed from the Sun: predicted until matched.',
       alignment: 'Placed from your alignment: predicted until matched.',
       compass: "Placed from your photo's compass heading and lens: predicted until matched.",
     });
