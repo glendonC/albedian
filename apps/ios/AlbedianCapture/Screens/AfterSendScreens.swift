@@ -19,7 +19,9 @@ struct WaitingScreen: View {
             // D31: the early rings that fall inside the photo: the laptop's early sky when its job serves one (lockon-m5),
             // else the phone's own projection of its record; the source sentence stands only beside at least one
             let early = earlyPlaced(width: width, height: width * 4 / 3)
-            let earlyDrawn = !early.isEmpty
+            // The 17:38 tag rule: early marks only while their source line stands under a row (UIUX-built-1756)
+            let rowShown = model.waitRow ?? lastRow
+            let earlyDrawn = !early.isEmpty && (rowShown != nil || model.queuedRow != nil)
             ZStack {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
@@ -37,14 +39,15 @@ struct WaitingScreen: View {
                 }
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
-                if let row = model.waitRow ?? lastRow {
+                if let row = rowShown {
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         let passed = model.solveStartedAt.map { Double((ContinuousClock.now - $0).components.seconds) } ?? 0
                         // A new step is a new row: its line starts from its own count, never sliding back from the last
                         VStack(alignment: .leading, spacing: 14) {
                             StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
                                 .id(row.stage)
-                            EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil)
+                            EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil,
+                                        leaving: model.lockOnSettled)
                         }
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
@@ -52,7 +55,8 @@ struct WaitingScreen: View {
                 } else if let queued = model.queuedRow {
                     VStack(alignment: .leading, spacing: 14) {
                         StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
-                        EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil)
+                        EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil,
+                                        leaving: model.lockOnSettled)
                     }
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 }
@@ -143,6 +147,9 @@ private struct MatchedMark: View {
 private struct EarlySource: View {
     /// The early sky's source sentence (C13 for the iPhone's record, D25's for the Moon or the Sun), or none.
     let sentence: String?
+    /// The marks have turned matched: the line leaves with the early layer, on the class change's own timing.
+    let leaving: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if let sentence {
@@ -150,6 +157,8 @@ private struct EarlySource: View {
                 .foregroundStyle(Color(ControlStyle.inkQuiet))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, CGFloat(Arrive.side))
+                .opacity(leaving ? 0 : 1)
+                .animation(.motion(MotionStyle.colour, reduceMotion: reduceMotion), value: leaving)
         }
     }
 }
