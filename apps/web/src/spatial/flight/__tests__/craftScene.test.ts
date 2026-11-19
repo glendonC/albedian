@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { followRows, resolveFindingParsecPosition, steerCamera, type Vec3 } from '@albedian/camera-rig';
+import { followRows, placeStar, resolveFindingParsecPosition, steerCamera, type Vec3 } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
@@ -210,4 +210,24 @@ describe('craftFromSearch: the interim choice by page address', () => {
     // The near plane still clears the whole sphere
     expect(scene.near).toBeLessThan(Math.hypot(centre[0], centre[1], centre[2]) - 10);
   });
+
+  it('places a flat extent on the photo\'s axis exactly the screen\'s size across, where the sphere rule falls short (frame-2)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 390, 844)!;
+    const pin = photoPinholeOf(camera);
+    // The photo's own axis on the window, so nothing is foreshortened: the mast stands square to the line of sight
+    const axis = screenOfPlacement(camera, placeStar(pin.rows.z, null))!;
+    const framing = { xPx: axis.xPx, yPx: axis.yPx, diameterPx: 184 };
+    const scene = craftSceneOf(camera, CRAFTS['voyager-1']!, [0, 0, 0], 10, undefined, framing, 5)!;
+    const centre = apply(scene.modelMatrix, [0, 0, 0]);
+    const at = (p: Vec3) => {
+      const c = apply(scene.clipMatrix, p);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 390, yPx: ((1 - c[1] / c[3]) / 2) * 844 };
+    };
+    const u = pin.rows.y;
+    const top = at([centre[0] + u[0] * 5, centre[1] + u[1] * 5, centre[2] + u[2] * 5]);
+    const foot = at([centre[0] - u[0] * 5, centre[1] - u[1] * 5, centre[2] - u[2] * 5]);
+    expect(Math.hypot(top.xPx - foot.xPx, top.yPx - foot.yPx)).toBeCloseTo(184, 3);
+  });
 });
+
