@@ -37,7 +37,8 @@ export const JOB_PASS_MAX = 16;
 export const JOB_SPAN_MAX_SEC = 86_400;
 export const PRODUCER_NAME_PATTERN = '^[a-z][a-z0-9_.]{0,79}$';
 export const INTERRUPTED_SENTENCE = 'The server stopped before this job finished.';
-/** The only text a failed solve stores. */
+/** The only text a failed solve stores: the solve's own sentences, and the runner's for a job past its whole bound
+ * and for a result that could not be written (platform-5s). */
 export const SOLVE_FAILURE_SENTENCES = [
   'The decoder could not read the file.',
   'ffmpeg is not installed to decode the upload.',
@@ -47,6 +48,8 @@ export const SOLVE_FAILURE_SENTENCES = [
   "The file's tile grid does not cover the stored image.",
   'The decoder did not write one frame for every tile.',
   'The solve stopped on an internal error.',
+  'The solve stopped at its time limit.',
+  "The job's result could not be stored.",
   'The original changed while the job ran.',
   INTERRUPTED_SENTENCE,
 ] as const;

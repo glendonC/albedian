@@ -53,7 +53,9 @@ JOB_SPAN_MAX_SEC = 86_400
 PRODUCER_NAME_PATTERN = r"^[a-z][a-z0-9_.]{0,79}$"
 INTERRUPTED_SENTENCE = "The server stopped before this job finished."
 # The only text a failed solve stores [proposed]: today's solve job's own sentences (services/ingest/jobs.py:68,
-# 154-315) with the sizes, the time limit and the decoder's own words left out, and the runner's
+# 154-315) with the sizes, the time limit and the decoder's own words left out, and the runner's: a job past its
+# whole bound, and one whose result could not be written (design 5), each its own sentence, since a time limit is
+# not an internal error (the lead's answer of 2026-11-18, platform-5s)
 SOLVE_FAILURE_SENTENCES = (
     "The decoder could not read the file.",
     "ffmpeg is not installed to decode the upload.",
@@ -63,6 +65,8 @@ SOLVE_FAILURE_SENTENCES = (
     "The file's tile grid does not cover the stored image.",
     "The decoder did not write one frame for every tile.",
     "The solve stopped on an internal error.",
+    "The solve stopped at its time limit.",
+    "The job's result could not be stored.",
     "The original changed while the job ran.",
     INTERRUPTED_SENTENCE,
 )

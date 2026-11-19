@@ -537,6 +537,25 @@ def test_the_stages_are_every_kinds_in_one_list_and_the_failures_hold_no_slot() 
     assert jobs.INTERRUPTED_SENTENCE in jobs.SOLVE_FAILURE_SENTENCES
 
 
+# The runner's own sentences for a solve (platform-5s; the lead's answer of 2026-11-18): a job past its whole bound
+# says so, since a time limit is not an internal error, and a job whose result could not be written says that
+RUNNER_SOLVE_SENTENCES = ("The solve stopped at its time limit.", "The job's result could not be stored.")
+
+
+def test_a_failed_solve_can_say_it_stopped_at_its_time_limit_or_could_not_store_its_result() -> None:
+    valid = build_job_samples()["valid"]
+    failed = next(r for r in valid if r["kind"] == "solve" and r["state"] == "failed")
+    interrupted = next(r for r in valid if r["kind"] == "solve" and r["state"] == "interrupted")
+    for sentence in RUNNER_SOLVE_SENTENCES:
+        assert sentence in jobs.SOLVE_FAILURE_SENTENCES
+        assert verdict({**failed, "error": sentence}) == (True, "")
+        taken, why = verdict({**interrupted, "error": sentence})
+        assert not taken and jobs.M_INTERRUPTED in why, "an interrupted job says only that the server stopped"
+    restoration = next(r for r in valid if r["kind"] == "restoration" and r["state"] == "failed")
+    for sentence in RUNNER_SOLVE_SENTENCES:
+        assert not verdict({**restoration, "error": sentence})[0], "a solve's sentences are not a restoration's"
+
+
 def test_the_older_solve_job_record_is_unchanged() -> None:
     # Today's server writes SolveJob and the web reads SolveJobSchema; UploadJob replaces them in tasks 4 and 5
     for record in ingest.build_ingest_samples()["valid"]["SolveJob"]:
