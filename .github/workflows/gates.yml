@@ -46,10 +46,8 @@ jobs:
   python:
     name: Python ${{ matrix.python }}, ${{ matrix.ffmpeg }} ffmpeg (pytest)
     runs-on: ubuntu-24.04
-    # [proposed] 45 minutes: the full suite (~9,700 tests) takes about 25 to 32 minutes on GitHub's x86-64 runners,
-    # while pyproject.toml's 300 s per-test bound fails a hung test by name in five minutes instead of eating the job
-    # timeout
-    timeout-minutes: 45
+    # 90 minutes [measured, gh run view]: 3.12 ran 27 to 42 minutes, then hit the old 45 twice; 3.14 ran 31 to 42
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
