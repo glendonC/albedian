@@ -194,3 +194,19 @@ export function revealMarks(
     };
   });
 }
+
+/**
+ * The order the matched marks arrive in (the MOTION record): brightest first, by catalog magnitude, a mark with none
+ * after the others in its own order. The solve is over when they appear, so the order comes from the data, never a
+ * sweep across the photo that would look like stars being found. Returns each mark's place, 0 first, by finding id.
+ */
+export function markArrivalRanks(marks: readonly RevealMark[]): Map<string, number> {
+  const order = marks
+    .map((mark, index) => ({ id: mark.finding.id, index, magnitude: mark.finding.catalogRef?.apparentMagnitude }))
+    .sort((a, b) => {
+      const ma = a.magnitude ?? Number.POSITIVE_INFINITY;
+      const mb = b.magnitude ?? Number.POSITIVE_INFINITY;
+      return ma === mb ? a.index - b.index : ma - mb;
+    });
+  return new Map(order.map((entry, rank) => [entry.id, rank]));
+}

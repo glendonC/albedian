@@ -13,6 +13,7 @@ import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { cornerPaths } from '../cornerPaths.js';
 import { leaderPath, revealMarks } from '../revealMarks.js';
 import { REAL_SKY_FADE_MS, RevealPhoto } from '../RevealPhoto.js';
+import { markArrivalRanks, revealMarks as marksOf } from '../revealMarks.js';
 import { MOTION_TOKENS } from '@albedian/design-system';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
@@ -767,5 +768,52 @@ describe('Your photo and Real sky dissolve into each other in the motion record\
   it('keeps the layer mounted as long as the fade, and no longer', () => {
     expect(REAL_SKY_FADE_MS).toBe(MOTION_TOKENS.viewMs);
     expect(REAL_SKY_FADE_MS).toBe(400);
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Matched marks with names"): the solve is over when the marks appear, so they
+// must not look like stars being found; they come in brightest first, each in 67 ms, all within 330 ms (Death
+// Stranding's pace, measured), never as a sweep across the photo
+describe('the matched marks arrive brightest first, all within a third of a second', () => {
+  it('ranks the marks by catalog magnitude, brightest first, a mark with no magnitude last in its own order', () => {
+    const marks = marksOf(calibrated(), VIEW.w, VIEW.h);
+    expect(marks.length).toBeGreaterThan(1);
+    const ranks = markArrivalRanks(marks);
+    expect([...ranks.values()].sort((a, b) => a - b)).toEqual(marks.map((_, i) => i));
+    const byRank = [...marks].sort((a, b) => ranks.get(a.finding.id)! - ranks.get(b.finding.id)!);
+    const mags = byRank.map((m) => m.finding.catalogRef?.apparentMagnitude ?? Number.POSITIVE_INFINITY);
+    for (let i = 1; i < mags.length; i++) expect(mags[i]!).toBeGreaterThanOrEqual(mags[i - 1]!);
+    // a mark with no magnitude keeps its place among the others with none
+    const fake = marks.slice(0, 3).map((m, i) => ({ ...m, finding: { ...m.finding, id: `none-${i}`, catalogRef: undefined } }));
+    const mixed = markArrivalRanks([...fake, marks[0]!]);
+    expect([mixed.get('none-0'), mixed.get('none-1'), mixed.get('none-2'), mixed.get(marks[0]!.finding.id)]).toEqual([1, 2, 3, 0]);
+  });
+
+  it('numbers each mark for its place and tells the layer how many there are', () => {
+    show(calibrated());
+    const layer = container.querySelector<HTMLElement>('[data-testid="reveal-marks"]')!;
+    const buttons = [...layer.querySelectorAll<HTMLElement>('button')];
+    expect(layer.style.getPropertyValue('--mark-n')).toBe(String(buttons.length));
+    const ranks = markArrivalRanks(marksOf(calibrated(), VIEW.w, VIEW.h));
+    for (const b of buttons) expect(b.style.getPropertyValue('--mark-i')).toBe(String(ranks.get(b.dataset.testid!.replace('reveal-mark-', ''))));
+  });
+
+  it('spaces the marks so the last is in by 330 ms, and pops each in 67 ms', () => {
+    const motionOf = (selector: string): Record<string, string> => {
+      const found: Record<string, string> = {};
+      postcss.parse(motionCss).walkRules((rule) => {
+        if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+        rule.walkDecls((decl) => {
+          found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+        });
+      });
+      return found;
+    };
+    expect(motionOf('.reveal-marks')).toEqual({
+      '--mark-step': 'max(0ms, calc((var(--look-mo-span-marks) - var(--look-mo-dur-mark)) / max(1, var(--mark-n) - 1)))',
+    });
+    expect(motionOf('.reveal-marks .reveal-mark')).toMatchObject({
+      animation: 'look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both',
+    });
   });
 });

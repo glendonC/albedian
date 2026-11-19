@@ -4,7 +4,7 @@ import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
-import { leaderPath, revealMarks, type RevealMark } from './revealMarks.js';
+import { leaderPath, markArrivalRanks, revealMarks, type RevealMark } from './revealMarks.js';
 import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
@@ -156,6 +156,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const picked = session.observationSolution?.findings.find((finding) => finding.id === marked.selectedFindingId) ?? null;
   // There, only the picked star's mark stays (fly, approved)
   const marks = revealMarks(marked, viewW, viewH, { phone }).filter((mark) => !there || mark.picked);
+  // The order the marks arrive in: brightest first (the motion record)
+  const arrival = markArrivalRanks(marks);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
 
@@ -171,7 +173,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {!bareFrame && (
-      <div className="reveal-marks" data-testid="reveal-marks">
+      <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg
@@ -198,7 +200,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 .ariaDescription
             }
             aria-pressed={mark.picked}
-            style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px` }}
+            style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, '--mark-i': arrival.get(mark.finding.id) } as React.CSSProperties}
             onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
           >
             <MarkGlyph mark={mark} phone={phone} />

@@ -42,8 +42,14 @@
 /* A star picked: its mark turns white in the colour time; the leader line draws from the star to the card as the card's
    frame; the card's lines arrive top first, 20 ms apart, 120 ms after the frame. On a phone the card rises from the
    bottom edge as Apple's sheet does. Let go: the card and the line go at once (an exit would need them kept mounted). */
+.reveal-marks {
+  --mark-step: max(0ms, calc((var(--look-mo-span-marks) - var(--look-mo-dur-mark)) / max(1, var(--mark-n) - 1)));
+}
+
+/* Matched marks come in brightest first (--mark-i from markArrivalRanks), each in 67 ms, the last by 330 ms */
 .reveal-marks .reveal-mark {
   transition: color var(--look-mo-dur-colour) var(--look-mo-ease-std);
+  animation: look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both;
 }
 
 .reveal-leader path {

@@ -276,7 +276,7 @@ describe("the card's rules are the approved pages'", () => {
 
   it('raises the phone card from the bottom edge as Apple\'s sheet, and turns the picked mark white in the colour time', () => {
     expect(motionOf('.reveal-card.is-phone')).toEqual({ animation: 'look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
-    expect(motionOf('.reveal-marks .reveal-mark')).toEqual({ transition: 'color var(--look-mo-dur-colour) var(--look-mo-ease-std)' });
+    expect(motionOf('.reveal-marks .reveal-mark')).toMatchObject({ transition: 'color var(--look-mo-dur-colour) var(--look-mo-ease-std)' });
   });
 
   it('draws the leader line on a path of length 1, and loads the motion with the card', () => {
