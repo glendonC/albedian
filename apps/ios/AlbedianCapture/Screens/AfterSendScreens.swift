@@ -69,7 +69,7 @@ struct WaitingScreen: View {
 }
 
 /// D31 item 3 with MOTION-READY-iphone section 5: each early ring the solve matched travels to its detection, all
-/// together in 0.4 s on (0.16, 1, 0.3, 1), no spring; every other ring, and the names, leave on the same timing; at rest
+/// together in 0.4 s on (0.16, 1, 0.3, 1), no spring; every other ring leaves on frame out (0.3 s); at rest
 /// each ring becomes the result's catalog matched mark in 0.2 s on the standard curve. Under Reduce Motion nothing
 /// travels: the early rings go and the matched marks come, together, in a 0.27 s dissolve.
 private struct LockOnLayer: View {
@@ -93,6 +93,9 @@ private struct LockOnLayer: View {
                                                dash: SkyOverlayStyle.ringDash.map { CGFloat($0) }))
                     .frame(width: CGFloat(2 * SkyOverlayStyle.ringRadiusPt), height: CGFloat(2 * SkyOverlayStyle.ringRadiusPt))
                     .opacity(moved && (end == nil || reduceMotion || settled) ? 0 : 1)
+                    // A ring the solve does not place leaves on frame out (0.3 s on .4, 0, 1, 1), as the web's
+                    // .lockon-mark.is-leaving does (MOTION's check, item 3)
+                    .animation(end == nil && !reduceMotion ? .motion(MotionStyle.frameOut, reduceMotion: false) : nil, value: moved)
                     .position(at)
                 if let end {
                     MatchedMark()

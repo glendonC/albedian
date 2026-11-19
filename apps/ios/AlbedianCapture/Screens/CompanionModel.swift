@@ -431,11 +431,13 @@ final class CompanionModel {
             }
             lockOnPass = (readout, frame)
             lockOnSettled = false
+            // Under Reduce Motion nothing travels: the 0.27 s dissolve, then the result at once (MOTION's check, item 4)
+            let reduced = UIAccessibility.isReduceMotionEnabled
             earlyTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(MotionStyle.frameIn.seconds))
+                try? await Task.sleep(for: .seconds(reduced ? MotionStyle.reduceMotionSeconds : MotionStyle.frameIn.seconds))
                 guard !Task.isCancelled, let self else { return }
                 self.lockOnSettled = true
-                try? await Task.sleep(for: .seconds(MotionStyle.colour.seconds))
+                if !reduced { try? await Task.sleep(for: .seconds(MotionStyle.colour.seconds)) }
                 guard !Task.isCancelled, self.lockOnPass != nil else { return }
                 self.screen = .result
             }
