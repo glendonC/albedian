@@ -9,6 +9,9 @@ import SwiftUI
 /// in the count's, its line empty; no Cancel on the phone.
 struct WaitingScreen: View {
     let model: CompanionModel
+    /// The last step the running job reported, kept through the lock-on's pass once the job has ended (D31's il-move
+    /// keeps "Matching" and the sentence while the marks travel).
+    @State private var lastRow: WaitRow?
 
     var body: some View {
         GeometryReader { geometry in
@@ -38,7 +41,7 @@ struct WaitingScreen: View {
                 }
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
-                if let row = model.waitRow {
+                if let row = model.waitRow ?? (model.lockOnPass != nil ? lastRow : nil) {
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         let passed = model.solveStartedAt.map { Double((ContinuousClock.now - $0).components.seconds) } ?? 0
                         // A new step is a new row: its line starts from its own count, never sliding back from the last
@@ -60,6 +63,8 @@ struct WaitingScreen: View {
             }
         }
         .ignoresSafeArea()
+        .onChange(of: model.waitRow) { _, row in if let row { lastRow = row } }
+        .onAppear { lastRow = model.waitRow }
     }
 }
 
