@@ -29,7 +29,7 @@ vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   };
 });
 
-const skyLooks = vi.hoisted(() => [] as Array<[number, number]>);
+const skyLooks = vi.hoisted(() => [] as Array<[number, number, number | undefined]>);
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
     setObserverCoordinates() {}
@@ -51,8 +51,8 @@ vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
     getCameraSkyPose() {
       return null;
     }
-    lookAtSky(azDeg: number, altDeg: number) {
-      skyLooks.push([azDeg, altDeg]);
+    lookAtSky(azDeg: number, altDeg: number, acrossDeg?: number) {
+      skyLooks.push([azDeg, altDeg, acrossDeg]);
     }
   },
 }));
@@ -181,12 +181,13 @@ describe('the predicted sky in the app (laptop)', () => {
     const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [...base.observationSolution!.findings, vega] } } as ObservationSession;
     const start = startPose(session)!;
     expect(start.pose.azDeg).toBe(75);
-    expect(predictedSkyStart(session, false)).toEqual({ azDeg: start.pose.azDeg, altDeg: 30 });
-    expect(predictedSkyStart(session, true)).toEqual({ azDeg: start.pose.azDeg, altDeg: 26 });
+    // The picture's field across (ruled 17:05): 100 degrees on the laptop, 64 on the phone
+    expect(predictedSkyStart(session, false)).toEqual({ azDeg: start.pose.azDeg, altDeg: 30, acrossDeg: 100 });
+    expect(predictedSkyStart(session, true)).toEqual({ azDeg: start.pose.azDeg, altDeg: 26, acrossDeg: 64 });
     skyLooks.length = 0;
     renderViewport(session);
     for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
-    expect(skyLooks.at(-1)).toEqual([start.pose.azDeg, 30]);
+    expect(skyLooks.at(-1)).toEqual([start.pose.azDeg, 30, 100]);
   });
 
   it('returns to the moment on Esc, as the There screen whose frame it takes does', () => {

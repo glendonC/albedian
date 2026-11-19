@@ -16,14 +16,17 @@ export function isPredictedSkyShown(session: ObservationSession): boolean {
 
 /** How high D33's sky opens: 30 degrees up on the laptop and 26 on the phone, so the horizon sits near the foot (13:23). */
 export const PREDICTED_SKY_OPEN_ALT_DEG = { laptop: 30, phone: 26 } as const;
+/** The field across it opens at: the picture's, 100 degrees on the laptop and 64 on the phone (ruled 17:05). */
+export const PREDICTED_SKY_OPEN_ACROSS_DEG = { laptop: 100, phone: 64 } as const;
 
 /**
  * Where D33's sky opens (decided by the lead 13:23): facing D24's start (the file's compass heading, else the
  * brightest predicted star above the horizon), at the height above. None where D24 has no start.
  */
-export function predictedSkyStart(session: ObservationSession, phone: boolean): { azDeg: number; altDeg: number } | null {
+export function predictedSkyStart(session: ObservationSession, phone: boolean): { azDeg: number; altDeg: number; acrossDeg: number } | null {
   const start = startPose(session);
-  return start ? { azDeg: start.pose.azDeg, altDeg: phone ? PREDICTED_SKY_OPEN_ALT_DEG.phone : PREDICTED_SKY_OPEN_ALT_DEG.laptop } : null;
+  const size = phone ? 'phone' : 'laptop';
+  return start ? { azDeg: start.pose.azDeg, altDeg: PREDICTED_SKY_OPEN_ALT_DEG[size], acrossDeg: PREDICTED_SKY_OPEN_ACROSS_DEG[size] } : null;
 }
 
 /** The catalogues the app's star field draws (the There screen names the same two). */

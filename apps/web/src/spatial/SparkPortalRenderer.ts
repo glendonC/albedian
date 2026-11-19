@@ -210,7 +210,7 @@ export class SparkPortalRenderer {
     this.syncRegimeVisibility();
   }
 
-  public lookAtSky(azDeg: number, altDeg: number): void { this.setLook((-azDeg * Math.PI) / 180, (altDeg * Math.PI) / 180); }
+  public lookAtSky(azDeg: number, altDeg: number, acrossDeg?: number): void { this.setLook((-azDeg * Math.PI) / 180, (altDeg * Math.PI) / 180); if (acrossDeg) this.targetFov = this.curFov = (360 / Math.PI) * Math.atan(Math.tan((acrossDeg * Math.PI) / 360) / this.camera.aspect); }
   private setLook(yaw: number, pitch: number): void { Object.assign(this.lookTarget, { yaw, pitch, curYaw: yaw, curPitch: pitch }); }
 
   private lookAtDefault(): void {
