@@ -461,6 +461,61 @@
   }
 }
 
+/* The answer in the card's place (ask, approved 2026-11-12; #l-answer in .cache/uiux/ask/index.html): it fades in
+   and rises 10 px on the spring, with the card's own timings */
+.reveal-answer {
+  position: absolute;
+  right: 32px;
+  top: 118px;
+  width: 320px;
+  pointer-events: auto;
+  animation:
+    reveal-card-fade 500ms var(--look-ease-standard) both,
+    reveal-answer-rise 900ms var(--look-ease-spring) both;
+}
+
+@keyframes reveal-answer-rise {
+  from {
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-answer {
+    animation: none;
+  }
+}
+
+.reveal-answer__q {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--look-ink-3);
+  letter-spacing: -0.005em;
+}
+
+.reveal-answer__s {
+  margin: 0;
+  font: 300 34px / 1.12 var(--look-font-sans);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.reveal-answer__st {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--look-hair);
+}
+
+.reveal-answer__v {
+  font-size: 13px;
+  color: var(--look-ink-2);
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+}
+
 .reveal-card__top {
   display: flex;
   align-items: center;

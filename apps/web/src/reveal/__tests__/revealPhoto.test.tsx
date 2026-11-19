@@ -6,7 +6,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
+import type { ObservationSession, ObservationSolution, VoiceQuestionReply } from '@albedian/contracts';
 import { POSE, poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { SIDE_FADE, SourcePhotoStage } from '../../components/SourcePhotoStage.js';
 import { LOOK_ICON_PATHS } from '../../look/index.js';
@@ -307,6 +307,111 @@ describe('RevealPhoto: a sky that is not matched to stars', () => {
   });
 });
 
+describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-12)', () => {
+  const ANSWER = '[data-testid="reveal-answer"]';
+  const rigelOf = (session: ObservationSession) => {
+    const index = session.observationSolution!.findings.findIndex((f) => f.title === 'Rigel');
+    return { index, rigel: session.observationSolution!.findings[index]! };
+  };
+  function answered(session: ObservationSession): VoiceQuestionReply {
+    const { index, rigel } = rigelOf(session);
+    return {
+      heard: 'How far away is Rigel?',
+      answer: {
+        status: 'answered',
+        question: 'distance',
+        observationSolutionId: 'sol-synthetic-1',
+        sentence: 'Rigel is about 260 parsecs away, about 860 light years.',
+        statements: [
+          {
+            subject: { kind: 'finding', findingId: rigel.id, evidenceClass: 'catalog_matched' },
+            quantity: 'distance',
+            value: { kind: 'number', amount: 264.55, unit: 'pc' },
+            evidenceClass: 'catalog_matched',
+            source: { kind: 'solution_field', path: ['findings', index, 'catalogRef', 'bailerJonesDistancePc', 'median'] },
+          },
+          {
+            subject: { kind: 'finding', findingId: rigel.id, evidenceClass: 'observed' },
+            quantity: 'detection_snr',
+            value: { kind: 'number', amount: 87.2, unit: 'ratio' },
+            evidenceClass: 'observed',
+            source: { kind: 'solution_field', path: ['findings', index, 'sourceDetection', 'snr'] },
+          },
+        ],
+      },
+    } as unknown as VoiceQuestionReply;
+  }
+  const refusal = { heard: 'Is that a plane?', answer: { status: 'unanswerable', question: 'unanswerable', reason: 'outside_the_data', sentence: "Nothing in this photo's data answers that." } } as VoiceQuestionReply;
+  /** The session with Rigel's catalog distance measured by its parallax, in the release the approved picture names. */
+  function withParallax(session: ObservationSession): ObservationSession {
+    const { index } = rigelOf(session);
+    const solution = session.observationSolution!;
+    const findings = solution.findings.map((f, i) =>
+      i === index ? { ...f, catalogRef: { ...f.catalogRef!, releaseVersion: 'Hipparcos 2007', bailerJonesDistancePc: { lower: 250, median: 264.55, upper: 280, method: 'geometric_parallax' as const } } } : f
+    );
+    return { ...session, observationSolution: { ...solution, findings } } as ObservationSession;
+  }
+
+  it('shows the words as heard, the sentence, and under a hairline each statement as its tag, with a value line only for the approved kind', () => {
+    const session = withParallax(calibrated());
+    show(session, { answer: answered(session) });
+    expect(q(ANSWER)!.tagName).toBe('SECTION');
+    expect(q('.reveal-answer__q')!.textContent).toBe('How far away is Rigel?');
+    expect(q('.reveal-answer__s')!.textContent).toBe('Rigel is about 260 parsecs away, about 860 light years.');
+    const parts = [...q('.reveal-answer__st')!.children].map((el) => (el.classList.contains('look-tag') ? `tag:${el.getAttribute('data-evidence-class')}` : el.textContent));
+    expect(parts).toEqual(['tag:catalog_matched', '265 parsecs · Hipparcos 2007 parallax', 'tag:observed']);
+    expect(q(ANSWER)!.textContent).not.toContain('87');
+  });
+
+  it('lights up the star the answer is about as a picked star, with the line to the answer, and shows no card', () => {
+    const session = calibrated();
+    const { rigel } = rigelOf(session);
+    const other = session.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched' && f.id !== rigel.id)!;
+    show({ ...session, selectedFindingId: other.id }, { answer: answered(session) });
+    expect(q('[data-testid="star-card"]')).toBeNull();
+    expect(all('.reveal-mark.is-picked').map((m) => m.getAttribute('data-testid'))).toEqual([`reveal-mark-${rigel.id}`]);
+    expect(q('[data-testid="reveal-leader"]')).not.toBeNull();
+  });
+
+  it('shows a refusal as the words and the sentence only: no statements, nothing lit, no line', () => {
+    const session = calibrated();
+    show(session, { answer: refusal });
+    expect(q('.reveal-answer__q')!.textContent).toBe('Is that a plane?');
+    expect(q('.reveal-answer__s')!.textContent).toBe("Nothing in this photo's data answers that.");
+    expect(q('.reveal-answer__st')).toBeNull();
+    expect(q('.reveal-mark.is-picked')).toBeNull();
+    expect(q('[data-testid="reveal-leader"]')).toBeNull();
+  });
+
+  it('closes on Esc, and not on Esc something else already answered or while typing', () => {
+    const onCloseAnswer = vi.fn();
+    show(calibrated(), { answer: refusal, onCloseAnswer });
+    const press = (target: EventTarget, prevented = false) => {
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+      if (prevented) event.preventDefault();
+      act(() => {
+        target.dispatchEvent(event);
+      });
+    };
+    press(window, true);
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    press(field);
+    field.remove();
+    expect(onCloseAnswer).not.toHaveBeenCalled();
+    press(window);
+    expect(onCloseAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the card again once the answer is gone', () => {
+    const session = calibrated();
+    const { rigel } = rigelOf(session);
+    show({ ...session, selectedFindingId: rigel.id }, { answer: null });
+    expect(q(ANSWER)).toBeNull();
+    expect(q('[data-testid="star-card"]')).not.toBeNull();
+  });
+});
+
 describe("the photo's side edges fade, and nothing else of it changes", () => {
   it('fades 56 px at each side on the reveal and not otherwise', () => {
     expect(SIDE_FADE).toBe('linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%)');
@@ -367,6 +472,23 @@ describe("the reveal's rules are the approved pages'", () => {
       color: 'var(--look-ink-3)',
     });
     expect(declarationsOf('.reveal-status__warns .look-i')).toEqual({ flex: 'none', 'margin-top': '2px' });
+  });
+
+  it('sets the answer in the card\'s place as the approved page does, rising 10 px as it fades in, and not at all with reduced motion', () => {
+    expect(declarationsOf('.reveal-answer')).toEqual({
+      position: 'absolute',
+      right: '32px',
+      top: '118px',
+      width: '320px',
+      'pointer-events': 'auto',
+      animation: 'reveal-card-fade 500ms var(--look-ease-standard) both, reveal-answer-rise 900ms var(--look-ease-spring) both',
+    });
+    expect(declarationsOf('.reveal-answer__q')).toEqual({ margin: '0 0 14px', 'font-size': '14px', color: 'var(--look-ink-3)', 'letter-spacing': '-0.005em' });
+    expect(declarationsOf('.reveal-answer__s')).toEqual({ margin: '0', font: '300 34px / 1.12 var(--look-font-sans)', 'letter-spacing': '-0.035em', 'text-wrap': 'balance' });
+    expect(declarationsOf('.reveal-answer__st')).toEqual({ display: 'grid', gap: '10px', 'justify-items': 'start', 'margin-top': '22px', 'padding-top': '18px', 'border-top': '1px solid var(--look-hair)' });
+    expect(declarationsOf('.reveal-answer__v')).toEqual({ 'font-size': '13px', color: 'var(--look-ink-2)', 'letter-spacing': '-0.005em', 'font-variant-numeric': 'tabular-nums' });
+    expect(css.replace(/\s+/g, ' ')).toContain('@keyframes reveal-answer-rise { from { transform: translateY(10px); } }');
+    expect(css.replace(/\s+/g, ' ')).toContain('@media (prefers-reduced-motion: reduce) { .reveal-answer { animation: none; } }');
   });
 
   it('sets a warning in 12 px at the quietest ink with a 13 px icon', () => {

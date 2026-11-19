@@ -6,7 +6,7 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import { hasVerifiedWcs, type RenderLayerSet } from '@albedian/contracts';
+import { hasVerifiedWcs, type RenderLayerSet, type VoiceQuestionReply } from '@albedian/contracts';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { ViewPills } from '../look/index.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
@@ -80,6 +80,9 @@ export interface SpatialObservatoryViewportProps {
   arrival?: Arrival | null;
   /** Starts the failed upload's work again (the working screen's Try again). */
   onTryAgain?: () => void;
+  /** The answer to the last question, shown in the card's place over the laptop reveal. */
+  answer?: VoiceQuestionReply | null;
+  onCloseAnswer?: () => void;
 }
 
 const LANDING_SHOWCASE_SCENES = [
@@ -152,6 +155,8 @@ export const SpatialObservatoryViewport: React.FC<
   onTriggerUpload,
   uploadRefusal = null,
   arrival = null,
+  answer = null,
+  onCloseAnswer,
   onTryAgain,
 }) => {
   const windowSize = useViewportSize();
@@ -587,6 +592,8 @@ export const SpatialObservatoryViewport: React.FC<
               }}
               onCloseCard={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
               onShowPredictedSky={() => showSky('predicted')}
+              answer={answer}
+              onCloseAnswer={onCloseAnswer}
             />
           )}
           {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (

@@ -4,6 +4,7 @@ import {
   CelestialFinding,
   IngestReceipt,
   ObservationSession,
+  VoiceQuestionReply,
 } from '@albedian/contracts';
 import {
   createEmptyObservationSession,
@@ -24,6 +25,9 @@ import {
 } from './services/apiClient.js';
 import { openStoredUpload, uploadAddressed } from './services/openUpload.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
+import { usePhoneLayout } from './reveal/usePhoneLayout.js';
+import { isSourcePhotoShown } from './components/sourcePhotoRect.js';
+import { askVoiceAnswer, isQuestion } from './services/voiceAnswer.js';
 import {
   applyVoiceBackendReply,
   askVoiceBackend,
@@ -107,6 +111,9 @@ export const App: React.FC = () => {
   const latestChoiceRef = useRef<File | null>(null);
   // The upload on its way to a solved sky, for the working screen; none once its sky is solved or it was refused
   const [arrival, setArrival] = useState<Arrival | null>(null);
+  // The answer to the last question asked over the laptop reveal, with the photo it is about (ask, approved 2026-11-12)
+  const [answer, setAnswer] = useState<{ photoKey: string; reply: VoiceQuestionReply } | null>(null);
+  const phone = usePhoneLayout();
   // What Try again needs: the file and its browser URL, and the receipt once the file is stored
   const inFlightRef = useRef<{ file: File; url: string; receipt: IngestReceipt | null } | null>(null);
 
@@ -187,6 +194,25 @@ export const App: React.FC = () => {
     // Push-to-talk calls this from the render that opened the microphone; the words act on what stands now
     const pointer = recentPointerRef.current;
     const asked = sessionRef.current;
+    // A question over the laptop reveal goes to the answer route of the photo's upload, whose answer takes the card's
+    // place; when the route does not answer, the words run as they did before. A command stays with the app.
+    const sha256 = asked.sourceAsset?.sha256;
+    if (modality !== 'pointer' && sha256 && !phone && isSourcePhotoShown(asked) && isQuestion(utterance, asked, pointer)) {
+      const photoKey = photoKeyOf(asked);
+      void askVoiceAnswer(sha256, utterance, asked.selectedFindingId).then((reply) => {
+        // An answer about the previous photo is dropped
+        if (photoKeyOf(sessionRef.current) !== photoKey) return;
+        if (reply) setAnswer({ photoKey, reply });
+        else runCommand(utterance, modality, pointer);
+      });
+      return;
+    }
+    runCommand(utterance, modality, pointer);
+  };
+
+  const runCommand = (utterance: string, modality: 'voice' | 'text' | 'pointer', pointer: ActionContext['recentPointer']) => {
+    setAnswer(null);
+    const asked = sessionRef.current;
     const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
     setSession(result.session);
 
@@ -220,6 +246,8 @@ export const App: React.FC = () => {
     pointerCoords?: { xPx: number; yPx: number }
   ) => {
     audioBusRef.current?.playSelectionClick(isMuted);
+    // Picking a star closes the answer; its card takes the place
+    setAnswer(null);
     if (pointerCoords) {
       setRecentPointer({
         xPx: pointerCoords.xPx,
@@ -356,6 +384,8 @@ export const App: React.FC = () => {
         uploadRefusal={uploadRefusal}
         arrival={arrival}
         onTryAgain={handleTryAgain}
+        answer={answer && answer.photoKey === photoKeyOf(session) ? answer.reply : null}
+        onCloseAnswer={() => setAnswer(null)}
       />
     </>
   );
