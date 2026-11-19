@@ -282,6 +282,14 @@ describe('SourcePhotoStage (experience-9a)', () => {
     expect(video.style.transform).toBe('');
   });
 
+  it("names an undrawable file by its kind's plain name (C18): HEIC photos, HEVC clips, else this kind of file", async () => {
+    const { undrawableNotice } = await import('../SourcePhotoStage.js');
+    const asset = uploadedPhotoSession().sourceAsset!;
+    expect(undrawableNotice({ ...asset, mimeType: 'image/heif' })).toBe('This browser cannot show HEIC photos. Your photo was stored and solved as it is; open Albedian in Safari on a Mac or an iPhone to see it here.');
+    expect(undrawableNotice({ ...asset, mediaKind: 'video', mimeType: 'video/quicktime', videoCodec: 'hevc' })).toBe('This browser cannot show HEVC clips. Your clip was stored and solved as it is; open Albedian in Safari on a Mac or an iPhone to see it here.');
+    expect(undrawableNotice({ ...asset, mimeType: 'image/tiff' })).toBe('This browser cannot show this kind of file. Your photo was stored and solved as it is; open Albedian in Safari on a Mac or an iPhone to see it here.');
+  });
+
   it('says plainly when the browser cannot show the file instead of a broken image', () => {
     const base = uploadedPhotoSession();
     const session = { ...base, sourceAsset: { ...base.sourceAsset!, mimeType: 'image/heic' } } as ObservationSession;
@@ -295,7 +303,9 @@ describe('SourcePhotoStage (experience-9a)', () => {
     expect(container.querySelector('[data-testid="source-photo-stage"] img')).toBeNull();
     const notice = container.querySelector('[data-testid="source-photo-unavailable"]') as HTMLElement;
     expect(notice).not.toBeNull();
-    expect(notice.textContent).toContain('image/heic');
+    // C18 (decided 12:47): the kind's plain name, never a media type
+    expect(notice.textContent!.replace(/\s+/g, ' ').trim()).toBe('This browser cannot show HEIC photos. Your photo was stored and solved as it is; open Albedian in Safari on a Mac or an iPhone to see it here.');
+    expect(notice.textContent).not.toContain('image/heic');
     // Nothing is on screen, so the layer label does not say the photo is shown as uploaded
     const label = container.querySelector('[data-testid="source-photo-layer-label"]') as HTMLElement;
     expect(label.textContent).not.toContain('Shown as uploaded');
@@ -516,7 +526,7 @@ describe('display orientation (experience-9e)', () => {
     });
     const notice = container.querySelector('[data-testid="source-photo-orientation-mismatch"]') as HTMLElement;
     expect(notice).not.toBeNull();
-    expect(notice.textContent).toContain('turned the photo');
+    expect(notice.textContent!.replace(/\s+/g, ' ').trim()).toBe('This browser turned your photo differently from how it was taken, so its marks are hidden rather than drawn in the wrong places.');
     expect(onFrameMismatch).toHaveBeenLastCalledWith(true);
     // The box takes the shape the browser drew (480 x 360 fitted to 390 wide), not the tag's portrait shape
     expect(img.style.width).toBe('390px');
@@ -544,7 +554,7 @@ describe('display orientation (experience-9e)', () => {
       video.dispatchEvent(new Event('loadedmetadata'));
     });
     const notice = container.querySelector('[data-testid="source-photo-orientation-mismatch"]') as HTMLElement;
-    expect(notice.textContent).toContain('turned the clip');
+    expect(notice.textContent).toContain('turned your clip');
     expect(notice.textContent).not.toContain('photo');
   });
 

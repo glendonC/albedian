@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { ObservationSession } from '@albedian/contracts';
+import type { ObservationSession, SourceAsset } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
 import { goToMomentSentence, poseBasisSentence, poseUncertaintySentence } from '../services/skyLayerWords.js';
 import { linedUpSky } from './poseProjection.js';
@@ -54,6 +54,18 @@ export interface SourcePhotoStageProps {
  * by the same `displayOrientation`. If the decoded frame has the other shape, the two disagree, so the
  * stage says so and the markers are hidden rather than misplaced.
  */
+/**
+ * The notice for a file the browser cannot draw (C18, decided by the lead 12:47): the kind's plain name, never a media
+ * type: HEIC photos, HEVC clips, or this kind of file where there is no plain name.
+ */
+export function undrawableNotice(asset: Pick<SourceAsset, 'mediaKind' | 'mimeType' | 'videoCodec'>): string {
+  const clip = asset.mediaKind === 'video';
+  const type = (asset.mimeType ?? '').toLowerCase();
+  const codec = (asset.videoCodec ?? '').toLowerCase();
+  const format = !clip && (type === 'image/heic' || type === 'image/heif') ? 'HEIC photos' : clip && (codec === 'hevc' || codec === 'h265') ? 'HEVC clips' : 'this kind of file';
+  return `This browser cannot show ${format}. Your ${clip ? 'clip' : 'photo'} was stored and solved as it is; open Albedian in Safari on a Mac or an iPhone to see it here.`;
+}
+
 export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   session,
   viewportWidthPx,
@@ -181,8 +193,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          This browser cannot display {asset.mimeType ?? 'this file type'}. The file was stored and solved as
-          uploaded; open the app in a browser that shows it, such as Safari on iPhone or Mac, to see it here.
+          {undrawableNotice(asset)}
         </p>
       ) : asset.mediaKind === 'video' ? (
         <video
@@ -229,8 +240,8 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          This browser turned the {kind} differently from its orientation tag, so the markers are hidden
-          rather than shown in the wrong places.
+          This browser turned your {kind} differently from how it was taken, so its marks are hidden rather than drawn
+          in the wrong places.
         </p>
       )}
       {!bare && (

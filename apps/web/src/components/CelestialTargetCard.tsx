@@ -1,3 +1,4 @@
+import { undrawableNotice } from './SourcePhotoStage.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { hasVerifiedWcs, type CelestialFinding, type EvidenceClass, type ObservationSession } from '@albedian/contracts';
 import {
@@ -197,8 +198,7 @@ const LogRailView: React.FC<{
 };
 
 /** The photo stage's own words for a still this browser cannot draw (SourcePhotoStage.tsx). */
-const cannotDisplayMessage = (mimeType: string | undefined) =>
-  `This browser cannot display ${mimeType ?? 'this file type'}. The file was stored and solved as uploaded; open the app in a browser that shows it, such as Safari on iPhone or Mac, to see it here.`;
+const cannotDisplayMessage = (mimeType: string | undefined) => undrawableNotice({ mediaKind: 'image', mimeType, videoCodec: '' });
 
 const rangeText = (interval: ScanInterval, digits: number, unit: string) =>
   interval.lower !== undefined && interval.upper !== undefined
