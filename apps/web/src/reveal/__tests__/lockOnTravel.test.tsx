@@ -125,6 +125,19 @@ describe('the reveal locking on', () => {
     expect(travelling[0]!.className).toContain('align-layer is-still');
   });
 
+  it('never leaves the still amber early marks on a calibrated reveal, during the lock-on or after it (AUDIT-C, 13:30)', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated, early());
+      expect(q('[data-testid="early-marks"]')).toBeNull();
+      act(() => vi.advanceTimersByTime(LOCK_ON_ARRIVAL_MS + 10));
+      expect(q('[data-testid="early-marks"]')).toBeNull();
+      expect(q('.lockon-mark')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('lasts until the words are in, the travel, the colour and the words after them, then is the reveal as approved', () => {
     expect(LOCK_ON_ARRIVAL_MS).toBe(400 + 200 + 120 + 300 + 2 * 20);
     vi.useFakeTimers();
