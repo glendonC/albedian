@@ -65,10 +65,13 @@ async function readRecords(): Promise<{ loaded: LoadedRecord[] } | { failures: s
 /**
  * The Credits page, laid out as the owner approved it for the iPhone: a back button, the title, then rows divided by
  * hairlines, each a small grey label over its lines as one block, with the small open-link icon at the right edge of a
- * credit whose source has a page. Each row groups sources under the page's row labels, drawing credits, licences,
- * acknowledgements, citations and script-change sentences from the served provenance records (and Sound from the audio
- * engine's credits, with the lines of each soundtrack piece heard this visit as soon as it is heard), notice links for served notice files, and the app's own shader and backdrop change lines where a
- * licence asks. Until the records arrive the page shows only its title: no count, no spinner.
+ * credit whose source has a page. Each row groups sources under the page's row labels, drawing credits and licences
+ * from the served provenance records (and Sound from the audio engine's credits, with the lines of each soundtrack
+ * piece heard this visit as soon as it is heard), with notice links for served notice files. Cut back to these short
+ * lines as B4 decides (UIUX-built-review-READY.md), with the lines a source's terms ask for beyond its credit kept
+ * where a licence asks: acknowledgements, a citation where its terms ask to cite, and the change lines where its terms
+ * ask that changes be indicated (the verdict on credits-1). Until the records arrive the page shows only its title: no
+ * count, no spinner.
  */
 export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [state, setState] = useState<CreditsState>({ kind: 'reading' });
@@ -147,6 +150,9 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                           {notice.name}
                         </a>
                       )),
+                      // What a source asks for beyond its credit stays on the page (the verdict on credits-1): its
+                      // acknowledgement word for word, its citation where its terms ask to cite, and what the app
+                      // changed where its terms ask that changes be indicated (creditRows.ts chooses each)
                       ...block.acknowledgements.map((line) => <React.Fragment key={`a:${line}`}>{line}</React.Fragment>),
                       ...block.citations.map((line) => <React.Fragment key={`t:${line}`}>{line}</React.Fragment>),
                       ...block.changes.map((line) => <React.Fragment key={`m:${line}`}>{line}</React.Fragment>),

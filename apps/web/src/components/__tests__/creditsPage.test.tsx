@@ -347,6 +347,8 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     expect(shown.map((r) => r.querySelector('.credits-label')?.textContent)).toEqual(rows.map((r) => r.name));
     const first = shown[0]!;
     const lines = first.querySelector('.credits-lines');
+    // B4's short lines, and the lines its licence asks for: ESO's terms ask that modifications be indicated (the verdict
+    // on credits-1)
     expect(lines?.innerHTML.split('<br>').map((l) => l.replace(/<[^>]+>/g, ''))).toEqual([
       'ESO/S. Brunier',
       'Creative Commons Attribution 4.0 International',
@@ -366,7 +368,7 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     const exoplanets = shown.find((r) => r.querySelector('.credits-label')?.textContent === 'Planets around other stars');
     expect(exoplanets?.querySelector('a.credits-link')).toBeNull();
     expect(exoplanets?.querySelector('a.credits-licence')?.getAttribute('href')).toBe('https://exoplanetarchive.ipac.caltech.edu/docs/acknowledge.html');
-    // Its acknowledgement and its citation are drawn, word for word
+    // Its acknowledgement and its citation are drawn, word for word: its terms ask for both
     const exoplanetSource = sources.find((s) => s.id === 'nasa-exoplanet-archive-pscomppars')!;
     expect(exoplanets?.textContent).toContain(exoplanetSource.acknowledgement!);
     expect(exoplanets?.textContent).toContain(exoplanetSource.citation!);
@@ -529,7 +531,26 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     expect(pageSource).not.toContain('Every word in a row comes from a provenance record');
     expect(pageSource).toContain("the page's row labels");
     expect(pageSource).toContain('notice links for served notice files');
-    expect(pageSource).toContain('shader and backdrop change lines');
+    expect(pageSource).toContain('B4');
+    expect(pageSource).toContain('where a licence asks');
+  });
+
+  it('keeps on the page every line a source asks for beyond its credit (the verdict on credits-1): changes indicated, acknowledgements word for word, a citation where its terms ask to cite', async () => {
+    vi.stubGlobal('fetch', serve());
+    await renderPage();
+    const page = q('[data-testid="credits-page"]')!.textContent!;
+    const asked = sources.filter((s) => /indicat|changed|acknowledg|\bcite\b/i.test(s.license.conditions ?? ''));
+    // The sources the auditor named are among them
+    for (const id of ['eso0932a', 'eso1804a', 'openngc-v20260501-ngc', 'nasa-exoplanet-archive-pscomppars', 'iau-csn']) expect(asked.map((s) => s.id), id).toContain(id);
+    for (const source of asked) {
+      for (const line of [...(CHANGES[source.id]?.() ?? []), ...recordChangeLines(loaded, source.id)]) expect(page, source.id).toContain(line);
+      if (source.acknowledgement) expect(page, source.id).toContain(source.acknowledgement);
+      if (source.citation && /\bcite\b/i.test(source.license.conditions ?? '')) expect(page, source.id).toContain(source.citation);
+    }
+    // OpenNGC's terms ask to say the data were changed: its record says how
+    expect(recordChangeLines(loaded, 'openngc-v20260501-ngc').length).toBeGreaterThan(0);
+    // Gaia's acknowledgement is the wording ESA's linked terms ask for; it stays too
+    expect(page).toContain(sources.find((s) => s.id === 'gaia-dr3')!.acknowledgement!);
   });
 
   it('keys licences by name so distinct licence names sharing one URL render without duplicate React keys, and disambiguates multiple notices on one credit', async () => {
