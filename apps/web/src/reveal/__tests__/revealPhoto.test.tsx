@@ -836,3 +836,45 @@ describe('the reveal\'s words arrive after its marks', () => {
     });
   });
 });
+
+// The motion record (MOTION-READY-web.md, "Your photo, Real sky" and "Go there"): the status line comes in after the
+// marks when the reveal arrives, 120 ms after the old line went on a view change, and between the flight's two halves
+// there. Each state is its own element (keyed), so a change brings the new line in.
+describe('the status line comes in at its moment\'s time', () => {
+  const momentOf = () => q('[data-testid="reveal-status"]')!.getAttribute('data-moment');
+  it('names its moment: your photo, Real sky, there, and a photo nothing was matched on', () => {
+    show(calibrated());
+    expect(momentOf()).toBe('photo');
+    act(() => root.unmount()); root = createRoot(container);
+    show(calibrated(), { realSky: true });
+    expect(momentOf()).toBe('real-sky');
+    act(() => root.unmount()); root = createRoot(container);
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    show({ ...session, selectedFindingId: rigel.id } as ObservationSession, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    expect(momentOf()).toBe('there');
+    act(() => root.unmount()); root = createRoot(container);
+    show(poseSession(sample('horizon_predicted_only')));
+    expect(momentOf()).toBe('unmatched');
+  });
+
+  it('is a new element when the moment changes, so its arrival plays again', () => {
+    show(calibrated());
+    const before = q('[data-testid="reveal-status"]');
+    show(calibrated(), { realSky: true });
+    expect(q('[data-testid="reveal-status"]')).not.toBe(before);
+  });
+
+  it('times the line in motion.css: 120 ms after a change, between the halves there', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.reveal-status']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
+    expect(rules['.reveal-status[data-moment="there"]']).toEqual({ 'animation-delay': 'var(--look-mo-dur-camera-half)' });
+  });
+});

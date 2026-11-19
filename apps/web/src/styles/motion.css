@@ -109,6 +109,17 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both;
 }
 
+/* The status line: each moment (your photo, Real sky, there, nothing matched) is its own element, so a view change
+   brings the new line in at the words' delay, 120 ms after the old one went; there, it comes in between the flight's
+   two halves, with the readout. */
+.reveal-status {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.reveal-status[data-moment="there"] {
+  animation-delay: var(--look-mo-dur-camera-half);
+}
+
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this
    photo 20 ms later, then Ask out loud 20 ms after that. */
 .reveal-legend {

@@ -220,12 +220,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} />
       ) : phone && (!skyOnScreen || there) ? null : there && skyOnScreen ? (
-        <div className="reveal-status" data-testid="reveal-status" role="status">
+        <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
           <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
         </div>
       ) : skyOnScreen ? (
-        <div className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" role="status">
+        <div key="real-sky" className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" data-moment="real-sky" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
           {residual !== null && (
@@ -233,7 +233,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )}
         </div>
       ) : status.kind === 'unmatched' ? (
-        <div className="reveal-status is-unmatched" data-testid="reveal-status" role="status">
+        <div key="unmatched" className="reveal-status is-unmatched" data-testid="reveal-status" data-moment="unmatched" role="status">
           {status.lines.map((line) => (
             <p key={line} className="reveal-status__lead">
               {line}
@@ -252,7 +252,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )}
         </div>
       ) : (
-      <div className="reveal-status" data-testid="reveal-status" role="status">
+      <div key="photo" className="reveal-status" data-testid="reveal-status" data-moment="photo" role="status">
         {status.tag && <EvidenceTag evidenceClass={status.tag} />}
         {status.lines.map((line) => (
           <p key={line} className="reveal-status__line">
