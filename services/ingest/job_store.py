@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import errno
 import fcntl
+import hashlib
 import json
 import logging
 import math
@@ -40,7 +41,7 @@ import secrets
 import stat
 import threading
 import time
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from pydantic import ValidationError
 
@@ -66,10 +67,29 @@ JOB_FILE = re.compile(r"(job_[0-9a-f]{32})\.json")
 RESULT_FILE = re.compile(r"(job_[0-9a-f]{32})\.json")
 JOB_PARTIAL = re.compile(r"(job_[0-9a-f]{32})-[a-z0-9_]{1,64}(?:\.[a-z0-9]{1,8})?\.part")
 STORE_SCRATCH = re.compile(r"\.job-[0-9a-f]{16}\.tmp")
-LOCK_FILE = re.compile(r"[a-z_]{1,32}(?:\.graph_[0-9a-f]{16})?\.lock")
+LOCK_FILE = re.compile(r"[a-z_]{1,32}(?:\.(?:graph|align)_[0-9a-f]{16})?\.lock")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 LEGACY_JOB_ID = re.compile(r"job_[0-9a-f]{16}")
 BUCKET = re.compile(r"[0-9a-f]{2}")
+
+
+
+def alignment_subject(alignment: Mapping[str, Any]) -> str:
+    """The subject of a solve started from a person's alignment (align-2r): `align_` and the first 16 hex of the
+    SHA-256 of the alignment's canonical JSON (sorted keys, no spaces), so a record read back from disk gives the same
+    subject as the start that wrote it, whatever the order of its keys."""
+    text = json.dumps(dict(alignment), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return "align_" + hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def record_subject(record: Mapping[str, Any]) -> Optional[str]:
+    """Which piece of work of its upload and kind a record is, the one rule wherever the runner and the store key a
+    record (PLATFORM's five places, align-2-runner-review.md): a media job's graph; a solve's alignment digest when it
+    ran from one, else none (the plain solve, today's `job.json` among them)."""
+    if record.get("kind") in MEDIA_JOB_KINDS:
+        return record.get("graphId")
+    request = record.get("request")
+    return alignment_subject(request) if isinstance(request, Mapping) else None
 _FOLDER_GUARDS: dict[Path, threading.Lock] = {}
 _FOLDER_GUARDS_LOCK = threading.Lock()
 
@@ -476,8 +496,7 @@ class JobStore:
         return self.upload_folder(sha256) / JOBS_FOLDER / name
 
     def lock_of(self, record: dict[str, Any]) -> Path:
-        graph = record.get("graphId") if record["kind"] in MEDIA_JOB_KINDS else None
-        return self.lock_path(record["sourceAssetSha256"], record["kind"], graph)
+        return self.lock_path(record["sourceAssetSha256"], record["kind"], record_subject(record))
 
     def try_hold(self, lock: Path) -> bool:
         """Takes the lock without waiting: True when this process now holds it, False when any process does. A lock

@@ -48,8 +48,10 @@ from services.ingest.job_store import (
     Ended,
     JobStore,
     Unreadable,
+    alignment_subject,
     instant,
     new_job_id,
+    record_subject,
 )
 from services.ingest.store import IngestStore
 from services.science.bounded_worker import POLL_SEC, BoundedWorker, WorkerStopped, WorkerTimeout
@@ -122,6 +124,12 @@ class KindResult:
 
 def _no_subject(sha256: str, request: Optional[Mapping[str, Any]]) -> Optional[str]:
     return None
+
+
+
+def solve_subject(sha256: str, request: Optional[Mapping[str, Any]]) -> Optional[str]:
+    """A solve's subject: its alignment's digest when a person's alignment started it (align-2r), else none."""
+    return None if request is None else alignment_subject(request)
 
 
 def _no_initial_stages(asset: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -301,8 +309,8 @@ class Runner:
         original = self.uploads.original(sha256)
         if upload is None or original is None:
             raise NoUpload("no stored upload with that hash")
-        if (kind.name in MEDIA_JOB_KINDS) != (request is not None):
-            raise ValueError("a media job names its request and a solve none")
+        if kind.name in MEDIA_JOB_KINDS and request is None:
+            raise ValueError("a media job names its request")
         subject = kind.subject(sha256, request)
         key = (sha256, kind.name, subject)
         lock = self.store.lock_path(sha256, kind.name, subject)
@@ -356,6 +364,9 @@ class Runner:
         if kind.name in MEDIA_JOB_KINDS:
             record["request"] = request
             record["graphId"] = subject
+        elif request is not None:
+            # The person's alignment a solve runs from (align-2r), kept from its creation
+            record["request"] = request
         written = self.store.write_record(record)
         return self._served(self._adopt(kind, written, lock, upload, original)), True, True
 
@@ -379,9 +390,10 @@ class Runner:
         """The newest readable attempt of that piece of work; for the solve, today's `job.json` counts too."""
         attempts = [
             r for r in self.store.jobs_of(sha256)
-            if r["kind"] == kind and (r.get("graphId") if kind in MEDIA_JOB_KINDS else None) == subject
+            if r["kind"] == kind and record_subject(r) == subject
         ]
-        if kind == "solve":
+        # Today's job.json is a plain solve: never an aligned one's attempt
+        if kind == "solve" and subject is None:
             try:
                 legacy = self.store.legacy_solve_job(sha256)
             except Unreadable:
@@ -406,7 +418,7 @@ class Runner:
                original: Path) -> _Job:
         """A queued record this process now holds the lock of, put in its group's queue in creation order."""
         job = _Job(kind, {k: v for k, v in record.items() if k != "queueAhead"}, lock, upload, original)
-        subject = record.get("graphId") if kind.name in MEDIA_JOB_KINDS else None
+        subject = record_subject(record)
         self._jobs[job.id] = job
         self._keys[(record["sourceAssetSha256"], kind.name, subject)] = job.id
         queue = self._queues[kind.group]
@@ -702,8 +714,7 @@ class Runner:
                     pass
         with self._cond:
             self._jobs.pop(job.id, None)
-            subject = job.record.get("graphId") if job.kind.name in MEDIA_JOB_KINDS else None
-            key = (job.record["sourceAssetSha256"], job.kind.name, subject)
+            key = (job.record["sourceAssetSha256"], job.kind.name, record_subject(job.record))
             if self._keys.get(key) == job.id:
                 self._keys.pop(key)
             self.store.release(job.lock)
