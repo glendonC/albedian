@@ -132,6 +132,9 @@ describe('a mirrored photo\'s camera (parity -1: left-handed axes) keeps its han
     const turned = steerCamera({ positionPc: [0, 0, 0], rows: mirrored, speedPcPerS: 0 }, { yawRadPerS: 1, pitchRadPerS: 0.3 }, 0.5).rows;
     const r = followRows(mirrored, turned, 0.1);
     expect(handed(r)).toBe(-1);
+    // A long follow lands on the craft on every axis, so the hand is kept without turning the view about its forward axis
+    const landed = followRows(mirrored, turned, 20);
+    for (const k of ['x', 'y', 'z'] as const) for (let i = 0; i < 3; i++) expect(landed[k][i]).toBeCloseTo(turned[k][i]!, 9);
     expect(followRows(mirrored, mirrored, 0.1)).toEqual(mirrored);
   });
 });
