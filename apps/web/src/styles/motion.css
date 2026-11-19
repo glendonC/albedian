@@ -102,3 +102,9 @@
 .reveal-answer__st {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 2) both;
 }
+
+/* There, after Go there: Back to Moment (the ask bar's only main button, there and only there) arrives once the
+   camera is still, after both halves of the flight. */
+.ask-bar > .look-main {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both;
+}

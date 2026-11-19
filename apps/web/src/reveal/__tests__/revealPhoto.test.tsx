@@ -528,14 +528,15 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="reveal-answer"]')).not.toBeNull();
   });
 
-  it('sets the readout as the approved page does, arriving after the old panels leave', () => {
+  it('sets the readout as the approved page does, arriving at the flight\'s halfway point (the motion record)', () => {
     expect(declarationsOf('.flight-readout')).toEqual({
       position: 'absolute',
       right: '32px',
       top: '118px',
       width: '320px',
       'pointer-events': 'auto',
-      animation: 'reveal-card-fade 900ms var(--look-ease-standard) 450ms both',
+      // between the flight's two halves, as NASA's Eyes' two moves: the words of the new place, the readout counting on
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both',
     });
     expect(declarationsOf('.flight-readout h1')).toEqual({ margin: '22px 0 0', font: '400 66px / 1 var(--look-font-sans)', 'letter-spacing': '-0.05em' });
     expect(declarationsOf('.flight-readout__stats')).toEqual({ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '16px', 'margin-top': '30px', 'padding-top': '20px', 'border-top': '1px solid var(--look-hair)' });

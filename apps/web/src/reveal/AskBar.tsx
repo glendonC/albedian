@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { IconButton, LookIcon, MainAction, SecondAction } from '../look/index.js';
+import '../styles/motion.css';
 
 /** The words heard so far while listening, and whether the recogniser has settled the last of them. */
 export interface HeardWords {

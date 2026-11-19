@@ -18,6 +18,7 @@ import { AskBar } from '../AskBar.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+const motionCss = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
 
 let container: HTMLDivElement;
 let root: Root;
@@ -262,5 +263,34 @@ describe('AskBar at phone width (ask, approved 2026-11-12, iPhone; #p-answer)', 
     show();
     expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar');
     expect(q('.ask-bar__type')).not.toBeNull();
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Go there and Back to Moment"): Back to Moment arrives once the camera is
+// still, after both halves of the flight; under reduced motion the camera half is 0, so it comes at once
+describe('Back to Moment arrives when the camera is at rest', () => {
+  it('is the bar\'s only main button, there and only there', () => {
+    show();
+    expect(container.querySelector('.ask-bar > .look-main')).toBeNull();
+    act(() => root.unmount());
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    show({ onBack: () => {} });
+    expect(container.querySelector('.ask-bar > .look-main')!.textContent).toBe('Back to Moment');
+  });
+
+  it('words in after the two halves of the flight, and loads the motion with the bar', () => {
+    let found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar > .look-main' && rule.parent?.type === 'root') {
+        rule.walkDecls((decl) => {
+          found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+        });
+      }
+    });
+    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both' });
+    expect(fs.readFileSync(path.resolve(here, '../AskBar.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
   });
 });

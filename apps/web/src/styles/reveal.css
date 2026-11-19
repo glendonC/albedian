@@ -485,12 +485,6 @@
   pointer-events: auto;
 }
 
-@keyframes reveal-card-fade {
-  from {
-    opacity: 0;
-  }
-}
-
 /* The answer in the card's place (ask, approved 2026-11-12; #l-answer in .cache/uiux/ask/index.html): it fades in
    and rises 10 px on the spring, with the card's own timings */
 .reveal-answer {
@@ -920,14 +914,14 @@
 }
 
 /* There, after Go there (fly, approved 2026-11-12; #l-there in .cache/uiux/fly/index.html): the readout in the card's
-   place, arriving from 0.45 s over 0.9 s, once the old panels have left */
+   place, its words arriving at the flight's halfway point (the motion record; was from 0.45 s over 0.9 s) */
 .flight-readout {
   position: absolute;
   right: 32px;
   top: 118px;
   width: 320px;
   pointer-events: auto;
-  animation: reveal-card-fade 900ms var(--look-ease-standard) 450ms both;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both;
 }
 
 .flight-readout h1 {
