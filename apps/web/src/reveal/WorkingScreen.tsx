@@ -3,6 +3,8 @@ import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/in
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
+import { StillAlignMarks } from './AlignLayer.js';
+import type { AlignPose, AlignTarget } from './alignPose.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -22,7 +24,28 @@ export interface WorkingScreenProps {
   onCancel?: () => Promise<unknown> | void;
   /** At phone width (D2, jp-run and jp-queued): only the step the job is on, under the photo in the reveal's slot. */
   phone?: boolean;
+  /**
+   * The lock-on's early pose (D25), while the solve job runs: the predicted sky it places, and where it came from. No
+   * record carries one yet (PLATFORM's partial result): until then none is given and the screen is as approved.
+   */
+  early?: EarlyPose | null;
 }
+
+export type EarlySource = 'pointing' | 'moon' | 'alignment' | 'compass';
+export interface EarlyPose {
+  pose: AlignPose;
+  source: EarlySource;
+  targets: readonly AlignTarget[];
+}
+
+/** Where the early pose came from, in the decided words (UIUX-lockon-READY.md point 1). */
+export const EARLY_SOURCE_WORDS: Readonly<Record<EarlySource, string>> = {
+  pointing: 'Placed from where your iPhone pointed: predicted until matched.',
+  moon: 'Placed from the Moon: predicted until matched.',
+  alignment: 'Placed from your alignment: predicted until matched.',
+  // Only if SCIENCE accepts the compass and lens as a start (the record's own condition)
+  compass: "Placed from your photo's compass heading and lens: predicted until matched.",
+};
 
 const ROW_CLASS: Readonly<Record<StageRow['state'], string>> = {
   done: 'work-step is-done',
@@ -41,7 +64,7 @@ const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`
  * another, and the stage it stopped at keeps its count. Nothing here moves by itself: a row changes only when the
  * job's record does.
  */
-export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false }) => {
+export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false, early = null }) => {
   const fileInput = useRef<HTMLInputElement>(null);
   const failure = arrival.failure;
   const job = arrival.job;
@@ -106,9 +129,41 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
     );
   }
 
+  // The lock-on's early state (D25): the marks the early pose places, and at the status place what is happening, where
+  // the pose came from, Cancel (D2) and the job's rows; a stopped job shows as approved
+  const shownEarly = failure === null ? early : null;
+  const steps = (
+        <ol className="work-steps">
+          {stageRows(arrival).map((row, i) => (
+            <li
+              key={row.stage}
+              className={ROW_CLASS[row.state]}
+              aria-current={row.state === 'now' ? 'step' : undefined}
+              style={{ '--work-i': i } as React.CSSProperties}
+            >
+              <span className="work-step__mark" aria-hidden="true">
+                {row.state === 'done' ? (
+                  <LookIcon name="check" />
+                ) : row.state === 'failed' ? (
+                  <LookIcon name="x" />
+                ) : (
+                  <i className="work-step__dot" />
+                )}
+              </span>
+              <span className="work-step__word">{row.word}</span>
+              <span className="work-step__value">{row.value}</span>
+              {row.fraction !== null && (
+                <span className="work-step__bar">
+                  <b style={{ width: barWidth(row.fraction) }} />
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+  );
   return (
     <div
-      className={failure ? 'work-screen is-failed' : 'work-screen'}
+      className={failure ? 'work-screen is-failed' : shownEarly ? 'work-screen is-early' : 'work-screen'}
       data-testid="working-screen"
       data-hud-interactive="true"
     >
@@ -116,7 +171,21 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       <button type="button" className="work-word" data-testid="working-home" onClick={() => onHome?.()}>
         <Logo sizePx={21} />
       </button>
-      <p className="work-size">{sizeLine(arrival)}</p>
+      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} pose={shownEarly.pose} targets={shownEarly.targets} />}
+      {shownEarly ? (
+        <div className="work-early" data-testid="work-early">
+          <p className="work-early__lead">Matching the stars.</p>
+          <p className="work-early__from">{EARLY_SOURCE_WORDS[shownEarly.source]}</p>
+          {cancellable && (
+            <div className="work-acts">
+              <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" aria-disabled={held ? true : undefined} onClick={cancel} />
+            </div>
+          )}
+          {steps}
+        </div>
+      ) : (
+        <p className="work-size">{sizeLine(arrival)}</p>
+      )}
       {failure && (
         <div className="work-why" role="alert">
           <p>{failure.sentence}</p>
@@ -126,7 +195,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
           </div>
         </div>
       )}
-      {cancellable && (
+      {cancellable && !shownEarly && (
         <div className="work-why">
           {job.state === 'queued' && (
             <p>
@@ -139,33 +208,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
           </div>
         </div>
       )}
-      <ol className="work-steps">
-        {stageRows(arrival).map((row, i) => (
-          <li
-            key={row.stage}
-            className={ROW_CLASS[row.state]}
-            aria-current={row.state === 'now' ? 'step' : undefined}
-            style={{ '--work-i': i } as React.CSSProperties}
-          >
-            <span className="work-step__mark" aria-hidden="true">
-              {row.state === 'done' ? (
-                <LookIcon name="check" />
-              ) : row.state === 'failed' ? (
-                <LookIcon name="x" />
-              ) : (
-                <i className="work-step__dot" />
-              )}
-            </span>
-            <span className="work-step__word">{row.word}</span>
-            <span className="work-step__value">{row.value}</span>
-            {row.fraction !== null && (
-              <span className="work-step__bar">
-                <b style={{ width: barWidth(row.fraction) }} />
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
+      {shownEarly ? null : steps}
       {failure && (
         <input
           ref={fileInput}

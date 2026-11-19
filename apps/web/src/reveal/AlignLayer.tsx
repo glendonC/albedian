@@ -51,6 +51,44 @@ export function alignMarks(targets: readonly AlignTarget[], pose: AlignPose, rec
   return marks;
 }
 
+/**
+ * The same rings and names, still: the lock-on's early marks (D25), drawn where an early pose puts the predicted sky,
+ * with no hands on them.
+ */
+export const StillAlignMarks: React.FC<{ rect: FrameRect; pose: AlignPose; targets: readonly AlignTarget[] }> = ({ rect, pose, targets }) => {
+  const marks = alignMarks(targets, pose, rect, 13);
+  return (
+    <div className="align-layer is-still" data-testid="early-marks" style={{ left: `${rect.leftPx}px`, top: `${rect.topPx}px`, width: `${rect.widthPx}px`, height: `${rect.heightPx}px` }}>
+      <MarksDrawing marks={marks} rect={rect} />
+    </div>
+  );
+};
+
+const MarksDrawing: React.FC<{ marks: readonly AlignMark[]; rect: FrameRect }> = ({ marks, rect }) => (
+  <>
+    <svg className="align-layer__rings" aria-hidden="true" focusable="false">
+      {marks.map((mark) => (
+        <circle key={mark.id} cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} />
+      ))}
+    </svg>
+    {marks.map((mark) =>
+      mark.name === null ? null : (
+        <span
+          key={`name:${mark.id}`}
+          className={mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}
+          style={
+            mark.nameOnLeft
+              ? { right: `${rect.leftPx + rect.widthPx - (mark.xPx - ALIGN_RING_PX - 6)}px`, top: `${mark.yPx - rect.topPx}px` }
+              : { left: `${mark.xPx - rect.leftPx + ALIGN_RING_PX + 6}px`, top: `${mark.yPx - rect.topPx}px` }
+          }
+        >
+          {mark.name}
+        </span>
+      )
+    )}
+  </>
+);
+
 /** A wheel step of this many pixels scales the field by e to this power: up enlarges, down shrinks. */
 const WHEEL_SCALE_PER_PX = 0.0015;
 
@@ -119,26 +157,7 @@ export const AlignLayer: React.FC<{
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      <svg className="align-layer__rings" aria-hidden="true" focusable="false">
-        {marks.map((mark) => (
-          <circle key={mark.id} cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} />
-        ))}
-      </svg>
-      {marks.map((mark) =>
-        mark.name === null ? null : (
-          <span
-            key={`name:${mark.id}`}
-            className={mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}
-            style={
-              mark.nameOnLeft
-                ? { right: `${rect.leftPx + rect.widthPx - (mark.xPx - ALIGN_RING_PX - 6)}px`, top: `${mark.yPx - rect.topPx}px` }
-                : { left: `${mark.xPx - rect.leftPx + ALIGN_RING_PX + 6}px`, top: `${mark.yPx - rect.topPx}px` }
-            }
-          >
-            {mark.name}
-          </span>
-        )
-      )}
+      <MarksDrawing marks={marks} rect={rect} />
     </div>
   );
 };

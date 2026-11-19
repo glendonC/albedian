@@ -1663,3 +1663,44 @@
   left: auto;
   right: calc(50% + 12px);
 }
+
+/* The lock-on's early state (D25, the lk-early screen's rules): at the status place what is happening, where the pose
+   came from, then Cancel (D2) and the job's rows under it; the early marks still, with no hands on them */
+.work-early {
+  position: absolute;
+  left: 36px;
+  top: 70px;
+  width: 300px;
+  font: 400 13px / 1.55 var(--look-font-sans);
+  letter-spacing: -0.005em;
+  color: var(--look-ink-2);
+}
+
+.work-early__lead {
+  margin: 0 0 8px;
+  font: 300 24px / 1.2 var(--look-font-sans);
+  letter-spacing: -0.03em;
+  color: var(--look-ink);
+}
+
+.work-early__from {
+  margin: 0 0 16px;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
+.work-early .work-acts {
+  margin: 0 0 16px;
+}
+
+.work-screen.is-early .work-steps {
+  position: static;
+  width: 260px;
+}
+
+.align-layer.is-still {
+  cursor: default;
+  pointer-events: none;
+}
