@@ -670,3 +670,48 @@ def test_a_phone_photo_is_lined_up_from_its_pointing_record_before_its_search_as
         return [f for f in solution["findings"] if f["evidenceClass"] == "predicted"]
 
     assert predicted(sky) and predicted(sky) == predicted(final)
+
+
+@pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")
+def test_a_head_worn_photo_lined_up_from_the_moon_at_the_moment_its_record_lent_states_the_records_hint_early_too(
+        real: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """platform-10d: a Moon pose states no pointing hint of its own, so the final sky is given the record's; the early
+    sky, published before the search, states the same hint, with the same pose, WCS and predicted items, which say
+    the moment came from the record (pointing-moment's head-worn Moon fixture [simulated])."""
+    from services.science.camera_profiles import META_RAY_BAN_DISPLAY_MODEL  # noqa: PLC0415
+    from tests.integration.test_pointing_moment import _png as png_of, _put, _record, _upload  # noqa: PLC0415
+
+    client = real["client"]
+    height, width = 448, 336
+    yy, xx = np.mgrid[0:height, 0:width]
+    frame = np.full((height, width), 4.0)
+    frame[(xx - 200.0) ** 2 + (yy - 150.0) ** 2 <= 5.5**2] = 255.0
+    sha, _ = _upload(client, png_of(frame, model=META_RAY_BAN_DISPLAY_MODEL))
+    record = json.loads(_record(sha))
+    record["capturedAtDeviceClockUTC"] = "2031-08-30T03:01:00Z"
+    record["location"].update(latDeg=30.0, lonDeg=-40.0)
+    _put(client, sha, json.dumps(record).encode("utf-8"))
+    real_chain = ingest_jobs._solve_chain
+    searching, release = threading.Event(), threading.Event()
+
+    def chain(*args: Any, **kwargs: Any) -> Any:
+        searching.set()
+        assert release.wait(BOUND_S), "the test never released the search"
+        return real_chain(*args, **kwargs)
+
+    monkeypatch.setattr(ingest_jobs, "_solve_chain", chain)
+    monkeypatch.setattr(ingest_jobs, "_SOLVE_IN_PROCESS", True)
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    assert searching.wait(BOUND_S)
+    early = client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky")
+    release.set()
+    assert early.status_code == 200, early.text
+    ended = _until_state(client, job["id"], ("succeeded", "failed"))
+    assert ended["state"] == "succeeded", ended.get("error")
+    final, sky = client.get(f"/api/ingest/{sha}/solution").json(), early.json()
+    assert final["status"] == sky["status"] == "approximate", final["warnings"]
+    assert sky["poseEstimate"]["method"] != "device_attitude" and "moment" in sky["pointingHint"]["usedAs"]
+    for key in ("poseEstimate", "wcs", "solver", "pointingHint"):
+        assert sky[key] == final[key], key
+    assert [f for f in sky["findings"] if f["evidenceClass"] == "predicted"] == [
+        f for f in final["findings"] if f["evidenceClass"] == "predicted"]
