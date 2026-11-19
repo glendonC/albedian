@@ -193,6 +193,12 @@ public final class SkyContextClient: Sendable {
     }
 
     public func marks(at moment: Date, latDeg: Double, lonDeg: Double) async -> [SkyMark]? {
+        guard let reply = await context(at: moment, latDeg: latDeg, lonDeg: lonDeg) else { return nil }
+        return SkyContextReader.marks(reply)
+    }
+
+    /// The whole reply, for the overlay's marks and the capture coach's conditions from one request; nil on any failure.
+    public func context(at moment: Date, latDeg: Double, lonDeg: Double) async -> JSONValue? {
         guard let body = SkyContextRequest.body(at: moment, latDeg: latDeg, lonDeg: lonDeg),
               let approved = CaptureUploader.permits(method: SkyContextRequest.method, path: SkyContextRequest.path, to: address)
         else { return nil }
@@ -201,7 +207,8 @@ public final class SkyContextClient: Sendable {
         guard case .success(let reply) = await transport.exchange(request, to: approved.endpoint, timeoutSec: Self.timeoutSec,
                                                                   bodyMaxBytes: Self.replyMaxBytes, onSent: { _ in }),
               (200...299).contains(reply.status) else { return nil }
-        return SkyContextReader.marks(reply.body)
+        guard let value = try? JSONText.read(reply.body), SkyContextReader.marks(value) != nil else { return nil }
+        return value
     }
 }
 

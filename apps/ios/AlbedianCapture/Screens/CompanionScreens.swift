@@ -229,6 +229,22 @@ struct AimScreen: View {
                                     // MOTION-READY-iphone: a missing-sensor line words in
                                     .transition(.words(reduceMotion: reduceMotion))
                             }
+                            // D29, the capture coach: up to two lines 16 pt under the source line (670 on the 390 point
+                            // screen), each one line, centred, 12 pt at ink 66 percent, 1.35 a line, 1 pt apart, its 14 pt
+                            // icon 6 pt before the words; each words in and out as MOTION's record has every line
+                            VStack(spacing: 1) {
+                                ForEach(model.coachLines(), id: \.words) { line in
+                                    HStack(spacing: 6) {
+                                        AlbedianIcon(rawValue: line.icon)?.image(14)
+                                        Text(line.words).font(AlbedianFont.regular(12)).tracking(-0.005 * 12).lineLimit(1)
+                                    }
+                                    .frame(height: 12 * 1.35)
+                                    .foregroundStyle(Color(ControlStyle.inkSecondary))
+                                    .transition(.words(reduceMotion: reduceMotion))
+                                }
+                            }
+                            .frame(maxWidth: .infinity).padding(.horizontal, 24)
+                            .atTop(Arrive.photoTop + width * 4 / 3 + 32)
                         }
                     }
                     // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's

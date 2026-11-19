@@ -101,6 +101,16 @@ final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManag
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {}
 
+    /// The capture coach (D29): told on the main actor when iOS itself asks for a heading calibration.
+    var onCalibrationAsked: (@MainActor () -> Void)?
+
+    /// iOS asks for a heading calibration: the coach's compass line says what to do instead of the system's own overlay
+    /// over the aiming preview [proposed: D29 names the request, not which of the two shows].
+    nonisolated func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool {
+        Task { @MainActor [weak self] in self?.onCalibrationAsked?() }
+        return false
+    }
+
     nonisolated static func device(_ orientation: HeadingOrientation) -> CLDeviceOrientation {
         switch orientation {
         case .portrait: .portrait

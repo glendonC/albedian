@@ -68,6 +68,26 @@ final class CameraSession: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
     /// The field of view across the portrait preview: the active format's horizontal field of view (the corrected one
     /// while distortion correction is on) carried to the format's short side, which a portrait preview shows across
     /// [inference: which axis "horizontal" means is an iPhone check]. Nil without a camera or a reported field of view.
+    /// The capture coach (D29): the length of the long exposure the shutter would take now (`NightExposure.plan` from the
+    /// meter, as `shootLong` plans it), and the focal length in pixels of the largest photo the format writes, across its
+    /// horizontal field of view [inference: the photo's long side is the field's horizontal axis, iPhone check 8]. Nil
+    /// without a camera or a usable reading.
+    var comingExposureSec: Double? {
+        guard let device else { return nil }
+        let format = device.activeFormat
+        return NightExposure.plan(meterDurationSec: CMTimeGetSeconds(device.exposureDuration), meterISO: Double(device.iso),
+                                  maxDurationSec: CMTimeGetSeconds(format.maxExposureDuration),
+                                  minISO: Double(format.minISO), maxISO: Double(format.maxISO))?.durationSec
+    }
+
+    var photoFocalPx: Double? {
+        guard let device else { return nil }
+        let format = device.activeFormat
+        let horizontal = Double(device.isGeometricDistortionCorrectionEnabled ? format.geometricDistortionCorrectedVideoFieldOfView : format.videoFieldOfView)
+        guard let long = format.supportedMaxPhotoDimensions.map({ max($0.width, $0.height) }).max() else { return nil }
+        return CoachSteadiness.focalPx(longSidePx: Double(long), longSideFovDeg: horizontal)
+    }
+
     var previewAcrossFieldOfViewDeg: Double? {
         guard let device else { return nil }
         let format = device.activeFormat

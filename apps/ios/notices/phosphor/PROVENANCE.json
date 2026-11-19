@@ -15,7 +15,7 @@
         "conditions": "The copyright and permission notice travels with every copy: LICENSE sits beside this record and is bundled in AlbedianCapture.app as Phosphor-LICENSE.txt."
       },
       "credit": "Phosphor Icons",
-      "note": "Nine regular-weight icons the approved and interim iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
+      "note": "Twelve regular-weight icons the approved, decided and interim iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
     }
   ],
   "files": [
@@ -128,6 +128,39 @@
         "method": "downloaded-as-is"
       },
       "note": "The package's assets/regular/camera-slash.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/camera-slash.imageset/camera-slash.svg for aiming when the camera is not allowed (D8, interim)."
+    },
+    {
+      "path": "moon.svg",
+      "sha256": "5c91f82aea4e7b53305bf29628caebc22a1198ba9fa46c62eef13fb8b3c3f21d",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/moon.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/moon.imageset/moon.svg for the capture coach's lines (D29)."
+    },
+    {
+      "path": "hand.svg",
+      "sha256": "b845c51acbe69c5ac2ec208c5648806f33c0a86b06d2dfa53ebe599ccb0f9c65",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/hand.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/hand.imageset/hand.svg for the capture coach's lines (D29)."
+    },
+    {
+      "path": "compass.svg",
+      "sha256": "00c7e42415f795fcea90bd9dc0b2c8266b4e9601d2937cb122cd03b7e9e9e198",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/compass.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/compass.imageset/compass.svg for the capture coach's lines (D29)."
     }
   ],
   "fileSets": []

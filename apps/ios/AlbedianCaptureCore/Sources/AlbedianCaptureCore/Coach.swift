@@ -92,3 +92,18 @@ public enum CoachSteadiness {
         }
     }
 }
+
+extension CoachSteadiness {
+    /// Whether the steadiness line shows: some sample of the last half second before the newest smears past the limit
+    /// in an exposure this long through a lens this long. False without samples, an exposure or a focal length.
+    public static func moving(_ samples: [MotionSample], exposureSec: Double?, focalPx: Double?) -> Bool {
+        guard let exposureSec, let focalPx, let newest = samples.last else { return false }
+        var window = Window()
+        for sample in samples {
+            if let smear = smearPx(rotationRateRadPerSec: sample.rotationRateRadPerSec, exposureSec: exposureSec, focalPx: focalPx) {
+                window.add(sec: sample.bootClockSec, smearPx: smear)
+            }
+        }
+        return window.moving(at: newest.bootClockSec)
+    }
+}

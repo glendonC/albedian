@@ -231,6 +231,14 @@ public final class SensorRecorder: @unchecked Sendable {
         }
     }
 
+    /// The motion samples of the last `seconds` before the newest, oldest first: the capture coach's steadiness (D29).
+    public func recentMotion(seconds: Double) -> [MotionSample] {
+        lock.withLock {
+            guard let newest = ring.newest, seconds.isFinite, seconds > 0 else { return [] }
+            return ring.samples.filter { $0.bootClockSec > newest.bootClockSec - seconds }
+        }
+    }
+
     public var status: Status {
         lock.withLock {
             Status(running: running, frame: frame, samplesKept: ring.count, samplesOverwritten: ring.overwrittenCount,

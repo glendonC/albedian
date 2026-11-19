@@ -29,6 +29,10 @@ enum AlbedianIcon: String {
     case unreachable = "wifi-slash"
     case warning = "warning-circle"
     case cameraSlash = "camera-slash"
+    // The capture coach (D29)
+    case moon = "moon"
+    case hand = "hand"
+    case compass = "compass"
 
     func image(_ size: Double) -> some View {
         Image(rawValue).resizable().renderingMode(.template).aspectRatio(contentMode: .fit).frame(width: size, height: size)

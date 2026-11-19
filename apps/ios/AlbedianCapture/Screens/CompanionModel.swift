@@ -121,7 +121,9 @@ final class CompanionModel {
     func startAiming() {
         screen = .aim
         guard recorder == nil else { return }
-        recorder = SensorRecorder(motion: CoreMotionSource(), place: CoreLocationSource())
+        let place = CoreLocationSource()
+        place.onCalibrationAsked = { [weak self] in self?.compassAskedAt = Date() }
+        recorder = SensorRecorder(motion: CoreMotionSource(), place: place)
         recorder?.start(interface: .portrait)
         let access = AVCaptureDevice.authorizationStatus(for: .video)
         cameraRefused = access == .denied || access == .restricted
@@ -139,6 +141,10 @@ final class CompanionModel {
     /// The marks the kept laptop last predicted for the phone's time and place, every one `predicted`; none without a
     /// kept laptop, while the laptop cannot be reached, or while the record would hold no place or no heading.
     private(set) var skyMarks: [SkyMark] = []
+    /// The capture coach's sky (D29): the same reply's predicted darkness and Moon; nil whenever the marks are none.
+    private(set) var skyConditions: SkyConditions?
+    /// When iOS last asked for a heading calibration while aiming.
+    private(set) var compassAskedAt: Date?
     /// The heading accuracy the marks were asked with, for the line under the preview.
     private(set) var skyHeadingAccuracyDeg: Double?
     private var skyTask: Task<Void, Never>?
@@ -148,6 +154,7 @@ final class CompanionModel {
     private func startSky() {
         skyTask?.cancel()
         skyMarks = []
+        skyConditions = nil
         skyHeadingAccuracyDeg = nil
         guard let address = pairing.kept else { return }
         let client = SkyContextClient(address: address)
@@ -159,14 +166,17 @@ final class CompanionModel {
                 if let sky = self.aimingSkyNow() {
                     if askedAt.map({ now.timeIntervalSince($0) >= SkyContextRequest.refreshSec }) ?? true {
                         askedAt = now
-                        let marks = await client.marks(at: now, latDeg: sky.latDeg, lonDeg: sky.lonDeg)
+                        let reply = await client.context(at: now, latDeg: sky.latDeg, lonDeg: sky.lonDeg)
                         guard !Task.isCancelled else { return }
+                        let marks = reply.flatMap(SkyContextReader.marks)
                         self.skyMarks = marks ?? []
+                        self.skyConditions = reply.flatMap(SkyConditions.read)
                         self.skyHeadingAccuracyDeg = marks == nil ? nil : sky.headingAccuracyDeg
                     }
                 } else {
                     askedAt = nil
                     self.skyMarks = []
+                    self.skyConditions = nil
                     self.skyHeadingAccuracyDeg = nil
                 }
                 try? await Task.sleep(for: .seconds(1))
@@ -178,6 +188,8 @@ final class CompanionModel {
         skyTask?.cancel()
         skyTask = nil
         skyMarks = []
+        skyConditions = nil
+        compassAskedAt = nil
         skyHeadingAccuracyDeg = nil
         recorder?.stop()
         recorder = nil
@@ -407,6 +419,31 @@ final class CompanionModel {
     #endif
 
     #if DEBUG
+    /// `-AlbedianCoachStandIn moving` or `compass` (either or both): the capture coach as if the phone moved, or iOS asked
+    /// for a heading calibration, which the simulator never does. A stand-in for captures, never a reading.
+    private(set) var standInCoach: Set<String> = []
+    #endif
+
+    /// The capture coach's lines now (D29): the compass while iOS's request stands (until a heading within the record's
+    /// limit arrives after it), the Moon from the sky context, and steadiness from the last half second of motion.
+    func coachLines() -> [CoachLine] {
+        var compassAsked = false
+        if let asked = compassAskedAt {
+            let settled = recorder?.status.lastHeading.map {
+                $0.timestamp > asked && $0.headingAccuracyDeg >= 0 && $0.headingAccuracyDeg <= PointingContract.headingAccuracyLimitDeg
+            } ?? false
+            compassAsked = !settled
+        }
+        var moving = CoachSteadiness.moving(recorder?.recentMotion(seconds: CoachSteadiness.windowSec) ?? [],
+                                            exposureSec: camera.comingExposureSec, focalPx: camera.photoFocalPx)
+        #if DEBUG
+        compassAsked = compassAsked || standInCoach.contains("compass")
+        moving = moving || standInCoach.contains("moving")
+        #endif
+        return Coach.lines(compassAsked: compassAsked, conditions: skyConditions, moving: moving)
+    }
+
+    #if DEBUG
     /// For simulator captures only (the simulator has no camera): `-AlbedianShotFile <path>` takes a photo file from the
     /// Mac as if the camera had written it, with no record, and opens the screen after the shot; `-AlbedianSendShot`
     /// then sends it. `-AlbedianOpen credits|pairing` opens that screen.
@@ -418,6 +455,9 @@ final class CompanionModel {
            PhotoHash.isContractHash(args[index + 1]) {
             startSolve(sha256: args[index + 1], address: laptop)
             return
+        }
+        for (index, flag) in args.enumerated() where flag == "-AlbedianCoachStandIn" && args.indices.contains(index + 1) {
+            standInCoach.insert(args[index + 1])
         }
         if let index = args.firstIndex(of: "-AlbedianAimStandIn"), args.indices.contains(index + 5) {
             let n = args[(index + 1)...(index + 5)].compactMap(Double.init)
