@@ -1111,3 +1111,65 @@ describe("a predicted mark's may-be-off ring arrives as the motion record says",
     });
   });
 });
+
+// The motion record (MOTION-READY-web.md, "Your photo and Real sky" and row "Reveal parts ... words out (Go there)"):
+// the old status line goes in words out (100 ms) while the new one waits its 120 ms; the leaving line is no longer a
+// status for a screen reader and takes no input.
+describe('the status line that gives way leaves as the motion record says', () => {
+  const LEAVING = '[data-testid="reveal-status-leaving"]';
+  it('keeps the old moment\'s line for the words-out time on a view change, then removes it', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated());
+      expect(q(LEAVING)).toBeNull();
+      show(calibrated(), { realSky: true });
+      const old = q(LEAVING)!;
+      expect(old.getAttribute('data-moment')).toBe('photo');
+      expect(old.classList.contains('is-leaving')).toBe(true);
+      expect(old.hasAttribute('inert')).toBe(true);
+      expect(old.getAttribute('role')).toBeNull();
+      expect(q('[data-testid="reveal-status"]')!.getAttribute('data-moment')).toBe('real-sky');
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      expect(q(LEAVING)).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q(LEAVING)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does the same at Go there, the old line going while the flight starts', () => {
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    const picked = { ...session, selectedFindingId: rigel.id } as ObservationSession;
+    show(picked);
+    show(picked, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    expect(q(LEAVING)!.getAttribute('data-moment')).toBe('photo');
+    expect(q('[data-testid="reveal-status"]')!.getAttribute('data-moment')).toBe('there');
+  });
+
+  it("lets only a moment's line leave: the phone's no-match block goes as before", () => {
+    const session = poseSession(sample('horizon_predicted_only'));
+    show(session, { phone: true });
+    expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
+    show(session, { phone: true, realSky: true });
+    expect(q('[data-testid="reveal-status"]')!.getAttribute('data-moment')).toBe('real-sky');
+    expect(q(LEAVING)).toBeNull();
+    expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+  });
+
+  it('times the leaving in motion.css: words out, at once', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.reveal-status.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+    // after the status rules it overrides, so the leaving wins over the arriving delays
+    const order = [...motionCss.matchAll(/^(\.reveal-status\.is-leaving|\.reveal-status\[data-moment="there"\]|\[data-arriving\] \.reveal-status) \{/gm)].map((m) => m[1]);
+    expect(order.at(-1)).toBe('.reveal-status.is-leaving');
+  });
+});

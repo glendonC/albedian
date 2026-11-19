@@ -198,6 +198,11 @@
   animation-delay: var(--look-mo-dur-camera-half);
 }
 
+/* The line that gave way to another moment's: its words go in 100 ms while the new line waits its 120 ms */
+.reveal-status.is-leaving {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this
    photo 20 ms later, then Ask out loud 20 ms after that. */
 /* At Go there, In this photo leaves: its rows last first, 20 ms apart, then its title (it has no frame) */

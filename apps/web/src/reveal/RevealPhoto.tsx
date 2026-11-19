@@ -421,98 +421,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const marksShown = marksLayer.mounted && !frameMismatch;
   // At Go there, In this photo leaves: its rows last first, then its title (the motion record)
   const legend = useLeaving(!phone && !there && counts.length > 0, linesLeaveMs(counts.length + 1, leaveMotion));
-
-  return (
-    <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
-      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
-      {rect && <PhotoCorners rect={rect} />}
-
-      {leader.mounted && leaderShape && !earthOnly && (
-        <svg className={`reveal-leader${leaderShape.predicted ? ' is-predicted' : ''}${leader.leaving ? ' is-leaving' : ''}`} data-testid="reveal-leader" aria-hidden="true" focusable="false">
-          <path pathLength={1} d={leaderShape.d} />
-        </svg>
-      )}
-
-      {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
-      {compareShown && frame && restoration?.phase === 'done' && asset && (
-        <RestoreCompare
-          rect={frame}
-          src={restoration.variantUrl}
-          originalSrc={asset.uri}
-          fade={SIDE_FADE}
-          orientation={restoration.orientation}
-          maxZoom={uprightWidth / Math.max(1, frame.widthPx)}
-          onZoomed={setCompareZoomed}
-        />
-      )}
-
-      {aligning && frame && (
-        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
-      )}
-
-      {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
-      {early && frame && status.kind === 'unmatched' && !aligning && !skyShown && !compareShown && !bareFrame && <StillAlignMarks rect={frame} placed={early.marks} />}
-
-      {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
-          solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
-      {lockOn && (
-        <div className="lockon" data-testid="lockon" aria-hidden="true">
-          {lockOn.travelling.map((t) => (
-            <LockOnMark key={t.id} className="align-layer is-still lockon-mark is-travelling" xPx={t.fromXPx} yPx={t.fromYPx} name={t.name} nameOnLeft={t.nameOnLeft} dxPx={t.toXPx - t.fromXPx} dyPx={t.toYPx - t.fromYPx} />
-          ))}
-          {lockOn.leaving.map((l) => (
-            <LockOnMark key={l.id} className="align-layer is-still lockon-mark is-leaving" xPx={l.xPx} yPx={l.yPx} name={l.name} nameOnLeft={l.nameOnLeft} />
-          ))}
-        </div>
-      )}
-
-      {marksShown && !earthOnly && !(compareShown && compareZoomed) && (
-      <div className={marksLayer.leaving ? 'reveal-marks is-leaving' : 'reveal-marks'} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
-        {marks.map((mark) =>
-          mark.uncertaintyPx === null ? null : (
-            <svg
-              key={`may-be-off-${mark.finding.id}`}
-              className="reveal-mark__may-be-off"
-              data-testid={`reveal-mark-ring-${mark.finding.id}`}
-              aria-hidden="true"
-              style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, width: `${2 * mark.uncertaintyPx + 2}px`, height: `${2 * mark.uncertaintyPx + 2}px` }}
-              viewBox={`${-mark.uncertaintyPx - 1} ${-mark.uncertaintyPx - 1} ${2 * mark.uncertaintyPx + 2} ${2 * mark.uncertaintyPx + 2}`}
-            >
-              <circle r={mark.uncertaintyPx} />
-            </svg>
-          )
-        )}
-        {marks.map((mark) => (
-          <button
-            key={mark.finding.id}
-            type="button"
-            className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
-            data-testid={`reveal-mark-${mark.finding.id}`}
-            data-evidence-class={mark.finding.evidenceClass}
-            aria-label={
-              getMarkerVisualSpec({ evidenceClass: mark.finding.evidenceClass, title: mark.finding.title, isSelected: mark.picked, isFocused: false, isHovered: false })
-                .ariaDescription
-            }
-            aria-pressed={mark.picked}
-            style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, '--mark-i': arrival.get(mark.finding.id) } as React.CSSProperties}
-            onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
-          >
-            <MarkGlyph mark={mark} phone={phone} />
-            {mark.name !== null && <span className="reveal-mark__name">{mark.name}</span>}
-          </button>
-        ))}
-      </div>
-      )}
-
-      {!phone && (
-      <button type="button" className="reveal-word" data-testid="reveal-home" onClick={onHome}>
-        <Logo sizePx={21} />
-      </button>
-      )}
-
-      {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
-      {phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
+  // The status line for this moment (each moment its own element, keyed: motion-14)
+  const statusLine: React.ReactElement | null = phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700; the close circle
         // cancels. "Solve from here" at 772 waits on SOLVER's contract (lead 07:51)
         <div className="align-phone" data-testid="reveal-status" role="status">
@@ -648,7 +558,125 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           </div>
         )}
       </div>
+      );
+  // The line that just gave way to another moment's stays while its words go (the motion record): no longer a
+  // status for a screen reader, and taking no input
+  const [outgoing, setOutgoing] = useState<React.ReactElement | null>(null);
+  const latestLine = useRef<React.ReactElement | null>(statusLine);
+  const lineKey = statusLine?.key ?? null;
+  useEffect(() => {
+    const before = latestLine.current;
+    if (!before || before.key === lineKey || !(before.props as { 'data-moment'?: string })['data-moment']) return undefined;
+    setOutgoing(before);
+    const timer = setTimeout(() => setOutgoing(null), leaveMotion.wordsOutMs);
+    return () => clearTimeout(timer);
+  }, [lineKey]);
+  useEffect(() => {
+    latestLine.current = statusLine;
+  });
+  const outgoingLine = outgoing
+    ? React.cloneElement(outgoing as React.ReactElement<Record<string, unknown>>, {
+        key: `leaving-${outgoing.key}`,
+        className: `${(outgoing.props as { className: string }).className} is-leaving`,
+        role: undefined,
+        'data-testid': 'reveal-status-leaving',
+        inert: true,
+      })
+    : null;
+
+
+  return (
+    <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
+      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
+      {rect && <PhotoCorners rect={rect} />}
+
+      {leader.mounted && leaderShape && !earthOnly && (
+        <svg className={`reveal-leader${leaderShape.predicted ? ' is-predicted' : ''}${leader.leaving ? ' is-leaving' : ''}`} data-testid="reveal-leader" aria-hidden="true" focusable="false">
+          <path pathLength={1} d={leaderShape.d} />
+        </svg>
       )}
+
+      {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
+      {compareShown && frame && restoration?.phase === 'done' && asset && (
+        <RestoreCompare
+          rect={frame}
+          src={restoration.variantUrl}
+          originalSrc={asset.uri}
+          fade={SIDE_FADE}
+          orientation={restoration.orientation}
+          maxZoom={uprightWidth / Math.max(1, frame.widthPx)}
+          onZoomed={setCompareZoomed}
+        />
+      )}
+
+      {aligning && frame && (
+        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
+      )}
+
+      {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
+      {early && frame && status.kind === 'unmatched' && !aligning && !skyShown && !compareShown && !bareFrame && <StillAlignMarks rect={frame} placed={early.marks} />}
+
+      {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
+          solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
+      {lockOn && (
+        <div className="lockon" data-testid="lockon" aria-hidden="true">
+          {lockOn.travelling.map((t) => (
+            <LockOnMark key={t.id} className="align-layer is-still lockon-mark is-travelling" xPx={t.fromXPx} yPx={t.fromYPx} name={t.name} nameOnLeft={t.nameOnLeft} dxPx={t.toXPx - t.fromXPx} dyPx={t.toYPx - t.fromYPx} />
+          ))}
+          {lockOn.leaving.map((l) => (
+            <LockOnMark key={l.id} className="align-layer is-still lockon-mark is-leaving" xPx={l.xPx} yPx={l.yPx} name={l.name} nameOnLeft={l.nameOnLeft} />
+          ))}
+        </div>
+      )}
+
+      {marksShown && !earthOnly && !(compareShown && compareZoomed) && (
+      <div className={marksLayer.leaving ? 'reveal-marks is-leaving' : 'reveal-marks'} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
+        {marks.map((mark) =>
+          mark.uncertaintyPx === null ? null : (
+            <svg
+              key={`may-be-off-${mark.finding.id}`}
+              className="reveal-mark__may-be-off"
+              data-testid={`reveal-mark-ring-${mark.finding.id}`}
+              aria-hidden="true"
+              style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, width: `${2 * mark.uncertaintyPx + 2}px`, height: `${2 * mark.uncertaintyPx + 2}px` }}
+              viewBox={`${-mark.uncertaintyPx - 1} ${-mark.uncertaintyPx - 1} ${2 * mark.uncertaintyPx + 2} ${2 * mark.uncertaintyPx + 2}`}
+            >
+              <circle r={mark.uncertaintyPx} />
+            </svg>
+          )
+        )}
+        {marks.map((mark) => (
+          <button
+            key={mark.finding.id}
+            type="button"
+            className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
+            data-testid={`reveal-mark-${mark.finding.id}`}
+            data-evidence-class={mark.finding.evidenceClass}
+            aria-label={
+              getMarkerVisualSpec({ evidenceClass: mark.finding.evidenceClass, title: mark.finding.title, isSelected: mark.picked, isFocused: false, isHovered: false })
+                .ariaDescription
+            }
+            aria-pressed={mark.picked}
+            style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, '--mark-i': arrival.get(mark.finding.id) } as React.CSSProperties}
+            onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
+          >
+            <MarkGlyph mark={mark} phone={phone} />
+            {mark.name !== null && <span className="reveal-mark__name">{mark.name}</span>}
+          </button>
+        ))}
+      </div>
+      )}
+
+      {!phone && (
+      <button type="button" className="reveal-word" data-testid="reveal-home" onClick={onHome}>
+        <Logo sizePx={21} />
+      </button>
+      )}
+
+      {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
+      {statusLine}
+      {outgoingLine}
 
       {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
 
