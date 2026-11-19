@@ -2,8 +2,9 @@ import type { ObservationSession } from '@albedian/contracts';
 
 /**
  * D33, the predicted sky that Show predicted sky opens (UIUX-predsky-READY.md, decided by the lead 12:45): the words of
- * its status column. Every value is the recording's own (its capture time with the solved frame's offset, its place)
- * or the app's own star field's catalogues; nothing is lined up with the photo.
+ * its status column. The time and place are the ones the solve predicted the sky for (the solution's observedAtUTC and
+ * observerLocation), so a time or place lent by the iPhone's record shows as used (the lead, 13:04); the catalogues are
+ * the app's own star field's. Nothing is lined up with the photo.
  */
 
 /** Whether the screen shows now: the sky view opened for a recording whose stars were not matched (not Real sky). */
@@ -39,10 +40,10 @@ export function predictedSkyWords(session: ObservationSession): PredictedSkyWord
   const asset = session.sourceAsset;
   const kind = asset?.mediaKind === 'video' ? 'clip' : 'photo';
   const facts: string[] = [];
-  const captured = asset?.capturedAtUTC ? Date.parse(asset.capturedAtUTC) : Number.NaN;
-  // For a clip the time is the solved frame's
-  if (Number.isFinite(captured)) facts.push(formatSkyTime(captured + (session.observationSolution?.frameTimeSec ?? 0) * 1000));
-  const place = asset?.observerLocation;
+  const solution = session.observationSolution;
+  const observed = solution?.observedAtUTC ? Date.parse(solution.observedAtUTC) : Number.NaN;
+  if (Number.isFinite(observed)) facts.push(formatSkyTime(observed));
+  const place = solution?.observerLocation;
   if (place) facts.push(formatSkyPlace(place.latDeg, place.lonDeg));
   facts.push(PREDICTED_SKY_CATALOGUES);
   return {

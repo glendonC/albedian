@@ -123,16 +123,22 @@ describe("the predicted sky's words", () => {
     expect(predictedSkyWords(predictedSky())).toEqual({
       heading: "The sky predicted for your photo's time and place.",
       note: 'Drawn or computed by the app; not measured in the source recording. Not lined up with your photo.',
-      facts: ['2030-01-01 02:00 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3'],
+      facts: ['2031-08-30 03:01 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3'],
     });
   });
 
-  it("says your clip's for a clip, at its solved frame's time", () => {
-    const clip = predictedSky('video');
-    const words = predictedSkyWords({ ...clip, observationSolution: { ...clip.observationSolution!, frameTimeSec: 90.6 } });
+  it("says your clip's for a clip", () => {
+    const words = predictedSkyWords(predictedSky('video'));
     expect(words.heading).toBe("The sky predicted for your clip's time and place.");
     expect(words.note).toBe('Drawn or computed by the app; not measured in the source recording. Not lined up with your clip.');
-    expect(words.facts[0]).toBe('2030-01-01 02:01 UTC');
+  });
+
+  it("reads the time and place the solve predicted the sky for, so a time or place lent by the iPhone's record shows (13:04)", () => {
+    const session = predictedSky();
+    const lent = { ...session.observationSolution!, observedAtUTC: '2026-11-19T09:15:30Z', observerLocation: { latDeg: -12.5, lonDeg: 130.75 } };
+    expect(predictedSkyWords({ ...session, observationSolution: lent }).facts).toEqual(['2026-11-19 09:15 UTC', '12.50° S · 130.75° E', 'Hipparcos 2007 · Gaia DR3']);
+    // The file's own capture time and place are not what the screen names
+    expect(session.sourceAsset!.capturedAtUTC).toBe('2030-01-01T02:00:00Z');
   });
 
   it('writes the time to the minute it falls in and the place to two decimals, with its hemisphere', () => {
@@ -141,10 +147,10 @@ describe("the predicted sky's words", () => {
     expect(formatSkyPlace(-33.9, 151.2)).toBe('33.90° S · 151.20° E');
   });
 
-  it('names no time or place the recording does not give', () => {
+  it('names no time or place the solution does not give', () => {
     const session = predictedSky();
-    const { capturedAtUTC: _t, observerLocation: _p, ...asset } = session.sourceAsset!;
-    expect(predictedSkyWords({ ...session, sourceAsset: asset as ObservationSession['sourceAsset'] }).facts).toEqual(['Hipparcos 2007 · Gaia DR3']);
+    const { observedAtUTC: _t, observerLocation: _p, ...solution } = session.observationSolution!;
+    expect(predictedSkyWords({ ...session, observationSolution: solution as ObservationSession['observationSolution'] }).facts).toEqual(['Hipparcos 2007 · Gaia DR3']);
   });
 });
 
@@ -156,7 +162,7 @@ describe('the predicted sky in the app (laptop)', () => {
     const status = screen.querySelector('.predsky-status')!;
     expect([...status.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__facts']);
     expect(status.querySelector('.predsky-status__lead')!.textContent).toBe("The sky predicted for your photo's time and place.");
-    expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2030-01-01 02:00 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
+    expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
     expect(q('.ask-bar')).not.toBeNull();
     expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);
   });
