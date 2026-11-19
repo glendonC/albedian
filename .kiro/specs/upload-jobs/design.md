@@ -339,7 +339,7 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
 - As built in platform-6 [tested]: `Producer(name, revision, files)` in `services/ingest/runner.py`; the solve's is
   `albedian.solve_chain` revision 1 over 11 files (`SOLVE_PRODUCER_FILES` in `jobs.py`: the design's list and
   `horizon_solver.py`, which `solver.py` imports for the skyline pose [proposed]; the catalog's tile modules,
-  `wcs_models.py` and the designations are not listed [open: widen the list if a change there should rerun solves]).
+  `wcs_models.py` and the designations were not listed; platform-6w widened the list, below).
   `producer_digest` frames each file by its path, a NUL and its length. The guard and P-JOB-11 are
   `tests/integration/test_producer_revisions.py`, the pin `tests/fixtures/producer_digests.json`. A start answers a
   succeeded job as current only when its producer has the kind's name and a revision no older than the kind's, and
@@ -348,6 +348,12 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   solution route serves the newest succeeded solve's solution, and the client tells a newer solve runs from the
   start's answer (202 with the job) and the receipt's `solveJobId`, which names the newest attempt [proposed: no new
   field or header; the solution route's answer itself does not say it].
+- As widened in platform-6w [tested]: the solve's list holds every `services/science` module its job module
+  imports (the guard reads the imports, so a new one fails it until listed), the stored solution's contract and
+  its names (`astronomy.py`, `catalog_reference.py`, `designation.py`, `designation_tables.py`) and the catalog data
+  it reads, with the Gaia DR3 tiles' `SHA256SUMS` standing for the tiles, which the provenance tests hold to it.
+  The runner and the stores are bookkeeping and stay out. Widening changed no result: the digest was repinned and
+  the revision kept.
 
 ### 3.6 The routes (`services/ingest/router.py`)
 

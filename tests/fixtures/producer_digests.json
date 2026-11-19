@@ -38,8 +38,34 @@
    "services/science/bounded_worker.py",
    "services/science/deep_sky_catalog.py",
    "services/science/deep_sky_projection.py",
-   "services/science/deep_sky_selection.py"
+   "services/science/deep_sky_selection.py",
+   "services/science/catalog_all_sky.py",
+   "services/science/catalog_model.py",
+   "services/science/catalog_orion.py",
+   "services/science/catalog_tile_binary.py",
+   "services/science/catalog_tile_constants.py",
+   "services/science/catalog_tile_healpix.py",
+   "services/science/catalog_tile_merge.py",
+   "services/science/catalog_tile_scalars.py",
+   "services/science/catalog_tiles.py",
+   "services/science/coherent_stack.py",
+   "services/science/designations.py",
+   "services/science/optical_flow.py",
+   "services/science/radiometry.py",
+   "services/science/stellar_parameters.py",
+   "services/science/wcs_models.py",
+   "services/contracts/astronomy.py",
+   "services/contracts/catalog_reference.py",
+   "services/contracts/designation.py",
+   "services/contracts/designation_tables.py",
+   "apps/web/public/catalog/stars/gaia-dr3/SHA256SUMS",
+   "apps/web/public/catalog/stars/gaia-dr3/manifest.json",
+   "apps/web/public/catalog/stars/gaia-dr3/bright-star-merge.json",
+   "apps/web/public/catalog/stars/designations/designations.json",
+   "apps/web/public/catalog/stars/designation-links/links.json",
+   "apps/web/public/catalog/constellations/bounds.json",
+   "apps/web/public/catalog/deepsky/openngc.json"
   ],
-  "digest": "7522fea768ce10e7b86e7fbede769200f973d273506dee84a9be83f91ef7b452"
+  "digest": "8d8b6a2ae958e6e43b270ac64882b22749aa3d2daa83b7f7afac49e9c0d2cb34"
  }
 }

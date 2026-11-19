@@ -110,8 +110,9 @@ def test_p_job_11_one_changed_byte_of_a_listed_file_changes_the_digest_and_of_an
     for path in producer.files:
         (root / path).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(REPO / path, root / path)
-    unlisted = root / "services" / "science" / "wcs_models.py"
-    shutil.copyfile(REPO / "services" / "science" / "wcs_models.py", unlisted)
+    unlisted = root / "services" / "ingest" / "runner.py"
+    unlisted.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(REPO / "services" / "ingest" / "runner.py", unlisted)
     before = producer_digest(producer, root)
     assert before == producer_digest(producer, REPO), "the digest is of the files' paths and bytes alone"
 
@@ -140,3 +141,37 @@ def test_the_digest_frames_each_file_so_moving_bytes_between_files_changes_it(tm
         data = (tmp_path / path).read_bytes()
         expected.update(path.encode("utf-8") + b"\0" + len(data).to_bytes(8, "big") + data)
     assert producer_digest(producer, tmp_path) == expected.hexdigest()
+
+
+# ---- platform-6w: the solve producer lists what its results come from ----
+
+# The stored solution's contract and its names: a change there changes what a solve stores
+SOLUTION_CONTRACTS = ("services/contracts/astronomy.py", "services/contracts/designation.py",
+                      "services/contracts/designation_tables.py", "services/contracts/catalog_reference.py")
+# Data the solve reads; SHA256SUMS stands for the star tiles, which the provenance tests hold to it
+SOLVE_DATA = ("apps/web/public/catalog/stars/gaia-dr3/SHA256SUMS", "apps/web/public/catalog/stars/gaia-dr3/manifest.json",
+              "apps/web/public/catalog/stars/gaia-dr3/bright-star-merge.json",
+              "apps/web/public/catalog/stars/designations/designations.json",
+              "apps/web/public/catalog/stars/designation-links/links.json",
+              "apps/web/public/catalog/constellations/bounds.json", "apps/web/public/catalog/deepsky/openngc.json")
+
+
+def _science_modules_the_solve_imports() -> set[str]:
+    """Every `services/science` module the solve's job module imports, found by reading its imports (modulefinder,
+    with only the repository on its path), so the test process's own imports do not count."""
+    import modulefinder
+
+    finder = modulefinder.ModuleFinder(path=[str(REPO)])
+    finder.run_script(str(REPO / "services" / "ingest" / "jobs.py"))
+    return {name.replace(".", "/") + ".py" for name in finder.modules
+            if name.startswith("services.science.") and (REPO / (name.replace(".", "/") + ".py")).is_file()}
+
+
+def test_every_science_module_the_solve_imports_its_solution_contract_and_its_data_are_listed() -> None:
+    files = set(ingest_jobs.SOLVE_PRODUCER.files)
+    imported = _science_modules_the_solve_imports()
+    assert len(imported) >= 25, "the finder reads the solve's imports"
+    assert sorted(imported - files) == [], "a science module the solve imports is not in its producer's files"
+    assert sorted(set(SOLUTION_CONTRACTS) - files) == []
+    assert sorted(set(SOLVE_DATA) - files) == []
+    assert all((REPO / path).is_file() for path in files)

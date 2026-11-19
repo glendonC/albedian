@@ -750,9 +750,10 @@ def run_solve_job(
 # The code a solve's results come from (design 3.5, platform-6): the job module with its decoders, the searches and
 # what they read, the predicted sky and the pose, and the child that runs the searches. A unit that changes results
 # raises the revision, and every stored solve of an older revision runs again at its next start; one that does not
-# change results updates only the pinned digest (tests/fixtures/producer_digests.json). [proposed] The list is the
-# design's, with horizon_solver.py, which solver.py imports for the skyline pose; the catalog's tile modules,
-# wcs_models.py and the designations are not listed
+# change results updates only the pinned digest (tests/fixtures/producer_digests.json). The list (platform-6w): every
+# services/science module the solve imports (the guard's test finds them by reading its imports, so a new one cannot
+# slip by), the stored solution's contract and its names, and the data it reads, with SHA256SUMS standing for the star
+# tiles, which the provenance tests hold to it. The runner and the stores are bookkeeping, not results
 SOLVE_PRODUCER_FILES = (
     "services/ingest/jobs.py",
     "services/science/detector.py",
@@ -768,6 +769,32 @@ SOLVE_PRODUCER_FILES = (
     "services/science/deep_sky_catalog.py",
     "services/science/deep_sky_projection.py",
     "services/science/deep_sky_selection.py",
+    "services/science/catalog_all_sky.py",
+    "services/science/catalog_model.py",
+    "services/science/catalog_orion.py",
+    "services/science/catalog_tile_binary.py",
+    "services/science/catalog_tile_constants.py",
+    "services/science/catalog_tile_healpix.py",
+    "services/science/catalog_tile_merge.py",
+    "services/science/catalog_tile_scalars.py",
+    "services/science/catalog_tiles.py",
+    "services/science/coherent_stack.py",
+    "services/science/designations.py",
+    "services/science/optical_flow.py",
+    "services/science/radiometry.py",
+    "services/science/stellar_parameters.py",
+    "services/science/wcs_models.py",
+    "services/contracts/astronomy.py",
+    "services/contracts/catalog_reference.py",
+    "services/contracts/designation.py",
+    "services/contracts/designation_tables.py",
+    "apps/web/public/catalog/stars/gaia-dr3/SHA256SUMS",
+    "apps/web/public/catalog/stars/gaia-dr3/manifest.json",
+    "apps/web/public/catalog/stars/gaia-dr3/bright-star-merge.json",
+    "apps/web/public/catalog/stars/designations/designations.json",
+    "apps/web/public/catalog/stars/designation-links/links.json",
+    "apps/web/public/catalog/constellations/bounds.json",
+    "apps/web/public/catalog/deepsky/openngc.json",
 )
 # Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose
 # field of view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives
