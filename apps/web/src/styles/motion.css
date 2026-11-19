@@ -259,9 +259,10 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
 }
 
-/* A line that names a simulated layer (Real sky, there): its Simulated tag comes in at once, with the layer, so the
-   layer never shows without it (AGENTS.md 1.2; measured live 19 Nov 17:31); its words keep their 120 ms. Leaving,
-   the line goes whole, above. */
+/* A line that names a simulated layer (Real sky, there): its Simulated tag stands at full as the line mounts, so the
+   layer never shows without it (AGENTS.md 1.2; measured live 19 Nov 17:31 and 17:40): no fade of its own, since a
+   fade starts only at the next drawn frame and the first Real sky draw can hold the page while the layer's own fade
+   runs on. Its words keep their 120 ms. Leaving, the line goes whole, above. */
 .reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving) {
   animation: none;
 }
@@ -271,7 +272,21 @@
 }
 
 .reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving) > [data-evidence-class="simulated"] {
-  animation: look-mo-frame-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+  animation: none;
+}
+
+/* At phone width the there screen's disclosure is the readout's tag row (no status line shows there): it stands at
+   full as the readout mounts, the rest of the readout on its words' time */
+.flight-readout.is-phone {
+  animation: none;
+}
+
+.flight-readout.is-phone > * {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+}
+
+.flight-readout.is-phone > .flight-readout__tagrow {
+  animation: none;
 }
 
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this

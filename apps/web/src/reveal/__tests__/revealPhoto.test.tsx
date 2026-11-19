@@ -1044,7 +1044,10 @@ describe('the status line comes in at its moment\'s time', () => {
 // stays until the layer has gone.
 describe('the Simulated tag shows whenever a simulated layer does', () => {
   const momentOf = () => q('[data-testid="reveal-status"]')?.getAttribute('data-moment') ?? null;
-  it('brings a simulated line\'s tag in at once while its words wait their 120 ms, and lets a leaving line go whole', () => {
+  // The tag stands at full as its line mounts, with no fade of its own: a fade starts only at the next drawn frame,
+  // and the first Real sky draw can hold the page for 200 ms while the layer's own fade runs on (measured at phone
+  // width, 17:40)
+  it('shows a simulated line\'s tag at full as it mounts while its words wait their 120 ms, and lets a leaving line go whole', () => {
     const rules: Record<string, Record<string, string>> = {};
     postcss.parse(motionCss).walkRules((rule) => {
       if (rule.parent?.type !== 'root') return;
@@ -1056,7 +1059,11 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     const line = '.reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving)';
     expect(rules[line]).toEqual({ animation: 'none' });
     expect(rules[`${line} > *`]).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
-    expect(rules[`${line} > [data-evidence-class="simulated"]`]).toEqual({ animation: 'look-mo-frame-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both' });
+    expect(rules[`${line} > [data-evidence-class="simulated"]`]).toEqual({ animation: 'none' });
+    // At phone width the readout carries the disclosure: its tag row at full as it mounts, the rest on its words' time
+    expect(rules['.flight-readout.is-phone']).toMatchObject({ animation: 'none' });
+    expect(rules['.flight-readout.is-phone > *']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both' });
+    expect(rules['.flight-readout.is-phone > .flight-readout__tagrow']).toEqual({ animation: 'none' });
     expect(rules['.reveal-status.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
   });
 
