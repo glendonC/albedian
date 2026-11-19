@@ -531,6 +531,11 @@ export interface SolveOptions {
   pollMs?: number;
   /** A person's alignment (D24's Solve from here), sent as the solve's body: that solve is its own job (SOLVER's route). */
   alignment?: PersonAlignment;
+  /**
+   * That alignment refused outright (C15): the route's 422 for an upload with no capture time or place, in its own
+   * sentence. The solve did not stop, so no failure is told and nothing is followed.
+   */
+  onRefused?: (sentence: string) => void;
 }
 
 /** The word a canceled job shows, alone: the state's own name (UIUX-jobs-QUESTION.md, D2). */
@@ -765,7 +770,15 @@ export async function solveStoredUpload(
       `/api/ingest/${sha256}/solve?wait=false`,
       options?.alignment ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(options.alignment) } : { method: 'POST' }
     );
-    if (!solveRes.ok) throw new Error(await serverReason(solveRes));
+    if (!solveRes.ok) {
+      const detail = await serverDetail(solveRes);
+      const asset = receipt.sourceAsset;
+      if (solveRes.status === 422 && options?.alignment && options.onRefused && detail && (!asset.capturedAtUTC || !asset.observerLocation)) {
+        options.onRefused(detail);
+        return ingestedSession;
+      }
+      throw new Error(detail ?? statusInWords(solveRes.status));
+    }
     job = parseFollowedJob(await solveRes.json());
   } catch (err) {
     return solveDidNotFinish(err, null);

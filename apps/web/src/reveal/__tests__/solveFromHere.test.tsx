@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PersonAlignmentSchema, type IngestReceipt } from '@albedian/contracts';
 import { personAlignmentOf, type AlignPose } from '../alignPose.js';
 import { solveStoredUpload } from '../../services/apiClient.js';
+import { poseReceipt, sample } from '../../components/__tests__/poseSessions.js';
 import { WorkingScreen } from '../WorkingScreen.js';
 import type { Arrival } from '../arrival.js';
 
@@ -50,6 +51,25 @@ describe('solveStoredUpload with an alignment', () => {
     expect(calls[0]!.init?.method).toBe('POST');
     expect((calls[0]!.init?.headers as Record<string, string>)['content-type']).toBe('application/json');
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual(alignment);
+  });
+
+  // C15 (UIUX-alignwords-READY.md, ruled 17:46): refused outright for an upload with no capture time or place
+  const NO_TIME = 'Your photo does not say when it was taken, so its sky cannot be lined up by hand.';
+  const refusedWith = async (receipt: IngestReceipt) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ detail: NO_TIME }), { status: 422 }));
+    const refused: string[] = [];
+    const events: string[] = [];
+    await solveStoredUpload(receipt, { alignment: personAlignmentOf({ azDeg: 200, altDeg: 30, rollDeg: 0, fovXDeg: 50, aspect: 0.75 }), pollMs: 0, onRefused: (s) => refused.push(s), onEvent: (e) => events.push(e.kind) });
+    return { refused, events };
+  };
+  it("tells the route's sentence as a refusal, not a stop, when the upload has no capture time or place", async () => {
+    const placed = poseReceipt(sample('horizon_predicted_only'), 'image');
+    const { capturedAtUTC: _time, metadataSources, ...asset } = placed.sourceAsset;
+    const noTime = { ...placed, sourceAsset: { ...asset, metadataSources: { observerLocation: metadataSources!.observerLocation } }, hints: { location: placed.hints.location } } as IngestReceipt;
+    expect(await refusedWith(noTime)).toEqual({ refused: [NO_TIME], events: [] });
+  });
+  it('tells a 422 for an upload with its time and place as the stop it is (the web never sends a body the contract refuses)', async () => {
+    expect(await refusedWith(poseReceipt(sample('horizon_predicted_only'), 'image'))).toEqual({ refused: [], events: ['failed'] });
   });
 });
 

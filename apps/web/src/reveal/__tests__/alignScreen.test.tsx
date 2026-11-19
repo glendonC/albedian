@@ -297,6 +297,17 @@ describe('after Solve from here', () => {
     expect(q('[data-testid="early-marks"] circle')).not.toBeNull();
   });
 
+  it("refused outright for no time or place (C15): the route's sentence, the marks gone, Restore only, no tag", () => {
+    const session = unmatched();
+    const sentence = 'Your photo does not say when it was taken, so its sky cannot be lined up by hand.';
+    show(session, { alignedFrom: { ...keptOf(session), refusal: sentence }, onRestore: () => {}, restoration: { phase: 'idle' } as Restoration });
+    const status = q('.reveal-status.is-unmatched')!;
+    expect([...status.querySelectorAll('.align-refused p')].map((p) => p.textContent)).toEqual([sentence]);
+    expect([...status.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Restore']);
+    expect(q('[data-testid="early-marks"]')).toBeNull();
+    expect(status.querySelector('.look-tag')).toBeNull();
+  });
+
   it('Line it up again reopens aligning at the kept pose', () => {
     const session = unmatched();
     show(session, { alignedFrom: keptOf(session) });

@@ -118,6 +118,17 @@ export const ALIGN_FALLBACK_FOV_DEG = 50;
 export type AlignStart = { kind: 'heading' } | { kind: 'brightest'; name: string };
 
 /**
+ * The alignment the last Solve from here was sent from, for one upload; `refusal` is the route's own sentence when
+ * that solve was refused outright (C15: an upload with no capture time or place).
+ */
+export interface AlignedFrom {
+  sha256: string;
+  pose: AlignPose;
+  from: AlignStart;
+  refusal?: string;
+}
+
+/**
  * The start: the file's recorded heading when there is one, else facing the brightest predicted target above the
  * horizon; the lens's field of view; the horizon at the photo's foot; no turn. None with nothing above the horizon to
  * face. (No contract carries the file's heading yet, so today every start faces the brightest.)

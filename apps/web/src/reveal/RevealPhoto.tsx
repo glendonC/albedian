@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { alignReadout, alignStartWords, alignTargets, personAlignmentOf, placedAtPose, startPose, type AlignPose, type AlignStart } from './alignPose.js';
+import { alignReadout, alignStartWords, alignTargets, personAlignmentOf, placedAtPose, startPose, type AlignedFrom, type AlignPose, type AlignStart } from './alignPose.js';
 import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
 import { EARLY_SOURCE_WORDS, earlyPoseOf } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
@@ -96,7 +96,7 @@ export interface RevealPhotoProps {
   /** Solve from here (D24 step 2): the person's alignment, sent as the solve's body, the pose and where it started. */
   onSolveFromHere?: (alignment: PersonAlignment, pose: AlignPose, from: AlignStart) => void;
   /** The alignment a solve was last sent from for this upload (D24 steps 4 and 5): kept after a refusal, named on a match. */
-  alignedFrom?: { sha256: string; pose: AlignPose; from: AlignStart } | null;
+  alignedFrom?: AlignedFrom | null;
   /**
    * The sky the solve predicted from an early pose while it ran (the lock-on, D25), kept after the job ended: on the
    * laptop its marks travel to the solve's places on the first arrival once the check passed, and stay still and amber
@@ -385,7 +385,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // The alignment the last Solve from here was sent from, for this upload only
   const kept = alignedFrom && session.sourceAsset && alignedFrom.sha256 === session.sourceAsset.sha256 ? alignedFrom : null;
   const aligning = alignAllowed ? aligningState : null;
-  const keptRefused = kept && !phone && alignAllowed && !aligning ? kept : null;
+  const keptRefused = kept && kept.refusal === undefined && !phone && alignAllowed && !aligning ? kept : null;
+  // C15 (UIUX-alignwords-READY.md, ruled 17:46): refused outright for an upload with no capture time or place, the
+  // route's sentence in the refusal line's place, the marks gone, only Restore (it needs neither). No Try again
+  const keptRefusal = kept?.refusal !== undefined && !phone && status.kind === 'unmatched' && !aligning && !compareShown ? kept.refusal : null;
   const alignOffered = alignAllowed && alignStart !== null && restoration?.phase !== 'working';
   // Refused after an early pose (D25 point 5): its marks stay over the no-match reveal
   const earlyKept = early !== null && frame !== null && status.kind === 'unmatched' && !aligning && !skyShown && !compareShown && !bareFrame;
@@ -568,6 +571,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 {alignStartWords(aligning.from)}
               </p>
             </>
+          ) : keptRefusal !== null ? (
+            <div className="align-refused">
+              <p className="reveal-status__lead">{keptRefusal}</p>
+              {restoreOffered && (
+                <div className="align-refused__acts">
+                  <SecondAction label="Restore" onClick={() => onRestore?.()} />
+                </div>
+              )}
+            </div>
           ) : keptRefused ? (
             // Refused after Solve from here (D24 step 4): the alignment kept, drawn as predicted at its pose
             <div className="align-refused">

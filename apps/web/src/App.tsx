@@ -8,7 +8,7 @@ import {
   PersonAlignment,
   orientedSize,
 } from '@albedian/contracts';
-import { alignTargets, placedAtPose, type AlignPose, type AlignStart } from './reveal/alignPose.js';
+import { alignTargets, placedAtPose, type AlignedFrom, type AlignPose, type AlignStart } from './reveal/alignPose.js';
 import {
   createEmptyObservationSession,
   dispatchAlbedianAction,
@@ -414,7 +414,7 @@ export const App: React.FC = () => {
   // until another file is chosen
   const solveHereRef = useRef(0);
   const solveHereAgainRef = useRef<(() => void) | null>(null);
-  const [alignedFrom, setAlignedFrom] = useState<{ sha256: string; pose: AlignPose; from: AlignStart } | null>(null);
+  const [alignedFrom, setAlignedFrom] = useState<AlignedFrom | null>(null);
   const handleSolveFromHere = (alignment: PersonAlignment, pose: AlignPose, from: AlignStart) => {
     const asset = session.sourceAsset;
     if (!asset) return;
@@ -437,6 +437,12 @@ export const App: React.FC = () => {
         },
         onEvent: (event) => {
           if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
+        },
+        // C15: refused outright, not stopped: back to the photo, the route's sentence in the refusal line's place
+        onRefused: (sentence) => {
+          if (solveHereRef.current !== token) return;
+          setArrival(null);
+          setAlignedFrom((prev) => (prev && prev.sha256 === asset.sha256 ? { ...prev, refusal: sentence } : prev));
         },
       });
     };
