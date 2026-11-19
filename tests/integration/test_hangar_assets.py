@@ -45,7 +45,11 @@ def test_every_built_file_is_within_its_budget() -> None:
     for name, model in FACTS["models"].items():
         for level, f in model["files"].items():
             size = (HANGAR_DIR / f["path"]).stat().st_size
-            assert size == f["bytes"] <= BUDGET_BYTES[level], (name, level)
+            budget = {**BUDGET_BYTES, **CRAFTS[name].get("budget_bytes", {})}[level]
+            assert size == f["bytes"] <= f["budgetBytes"] == budget, (name, level)
+            # a craft's own budget is only ever for its close view, and never past twice the shared one
+            assert level == "lod0" or budget == BUDGET_BYTES[level]
+            assert budget <= 2 * BUDGET_BYTES[level]
 
 
 def test_over_budget_is_refused() -> None:
@@ -77,8 +81,15 @@ def test_the_entries_are_the_recipes_own() -> None:
 def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
     for name, model in FACTS["models"].items():
         sf = model["scaleFrom"]
-        assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
-        assert _nasa_page(sf["page"]) and str(sf["metres"]) in sf["quote"]
+        assert _nasa_page(sf["page"]) and sf["quote"]
+        if sf.get("native"):
+            # NASA's model built in metres: the suited height must sit in the size NASA states a suit fits
+            assert CRAFTS[name]["scale_from"]["native"] is True
+            height = model["boundsM"]["max"][1] - model["boundsM"]["min"][1]
+            assert 1.5 < height < 2.3, (name, height)
+        else:
+            assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
+            assert str(sf["metres"]) in sf["quote"]
 
 
 def _gltf(path: Path) -> dict:

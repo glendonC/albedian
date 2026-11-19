@@ -65,6 +65,14 @@ CHANGES = {
         "materials of that kind, the others keeping NASA's own colour, faces that lie flat within a small angle "
         "merged, and the normals made again, smooth within an angle and sharp beyond it."
     ),
+    # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit")
+    "lod0_suit": (
+        "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts "
+        "joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is "
+        "built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping "
+        "NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem "
+        "covered with the suit's white fabric, and the normals made again, smooth within an angle and sharp beyond it."
+    ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
         "with the craft's facts), and textures at most 1024 pixels on a side."
@@ -74,6 +82,10 @@ CHANGES = {
         "is listed with the craft's facts), and textures at most 512 pixels on a side."
     ),
     "picker": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP.",
+    "picker_render": (
+        "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels "
+        "square, since NASA's own preview of this model is a screenshot of its modelling program."
+    ),
 }
 
 # Photo atlas material rules, on the texture's sRGB values: hue in degrees, saturation and value in 0..1.
@@ -86,6 +98,7 @@ ROUGHNESS = {"gold": 0.28, "dark": 0.52, "white": 0.62, "grey": 0.36}
 METALLIC = {"gold": 1.0, "dark": 0.0, "white": 0.0, "grey": 0.7}
 RELIEF_STRENGTH = {"gold": 2.2, "dark": 1.6, "white": 0.4, "grey": 0.5}
 RELIEF_BLUR_PX = 3  # the high-pass radius, in source pixels, that separates wrinkles from the photo's broad shading
+PICKER_SAMPLES = 32  # Cycles samples for a rendered picker picture
 PAINT_OUT_BAND_PX = 3  # the band around a painted-out box whose median colour fills it
 
 
@@ -250,6 +263,13 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
             out = nt.nodes.new("ShaderNodeGroup")
             out.node_tree = material_output_group()
             links.new(sep.outputs[0], out.inputs["Occlusion"])
+    elif spec["role"] == "textured":
+        # NASA's own texture as the base colour (a printed label, a flag), with a flat metalness and roughness.
+        base = nt.nodes.new("ShaderNodeTexImage")
+        base.image = src_img
+        links.new(base.outputs["Color"], bsdf.inputs["Base Color"])
+        bsdf.inputs["Metallic"].default_value = spec["metallic"]
+        bsdf.inputs["Roughness"].default_value = spec["roughness"]
     elif spec["role"] == "pbr":
         # A flat physically based material for a part NASA's model names (gold mirror, silver blanket, black paint).
         bsdf.inputs["Base Color"].default_value = (*spec["base"], 1.0)
@@ -303,6 +323,41 @@ def resized(img: bpy.types.Image, edge: int, suffix: str) -> bpy.types.Image:
     return copy
 
 
+def render_picker(obj: bpy.types.Object, path: Path) -> None:
+    """The picker's picture where NASA's own preview cannot serve: the rebuilt model from its front quarter, Cycles,
+    one key light, transparent background, PICKER_EDGE pixels on its longer side, WebP."""
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = PICKER_SAMPLES
+    scene.cycles.use_denoising = True
+    scene.render.film_transparent = True
+    scene.render.resolution_x = PICKER_EDGE
+    scene.render.resolution_y = PICKER_EDGE
+    scene.render.image_settings.file_format = "WEBP"
+    scene.render.image_settings.color_mode = "RGBA"
+    scene.render.image_settings.quality = 88
+    world = bpy.data.worlds.new("picker") if scene.world is None else scene.world
+    scene.world = world
+    world.use_nodes = True
+    next(n for n in world.node_tree.nodes if n.type == "BACKGROUND").inputs["Strength"].default_value = 0.15
+    key = bpy.data.objects.new("picker_key", bpy.data.lights.new("picker_key", "SUN"))
+    key.data.energy = 4.0
+    key.rotation_euler = Vector((0.6, 1.0, -0.7)).normalized().to_track_quat("-Z", "Y").to_euler()
+    scene.collection.objects.link(key)
+    cam = bpy.data.objects.new("picker_cam", bpy.data.cameras.new("picker_cam"))
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+    corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+    centre = sum(corners, Vector()) / 8
+    radius = max((c - centre).length for c in corners)
+    fov = cam.data.angle
+    view = Vector((-0.55, -1.0, 0.3)).normalized()  # the front quarter (forward is Blender -Y), a little above
+    cam.location = centre + view * (radius / math.sin(fov / 2))
+    cam.rotation_euler = (centre - cam.location).to_track_quat("-Z", "Y").to_euler()
+    scene.render.filepath = str(path)
+    bpy.ops.render.render(write_still=True)
+
+
 def export_level(obj: bpy.types.Object, level: str, path: Path) -> None:
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
@@ -340,8 +395,9 @@ def main() -> None:
     folder = REPO_ROOT / CACHE / src["local"]
     model = folder / src["file"]
     check_source(model, src["bytes"], src["sha256"])
-    picture = folder / src["picture"]
-    check_source(picture, src["picture_bytes"], src["picture_sha256"])
+    picture = folder / src["picture"] if src.get("picture") else None
+    if picture is not None:
+        check_source(picture, src["picture_bytes"], src["picture_sha256"])
     out = (REPO_ROOT / args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
 
@@ -374,18 +430,41 @@ def main() -> None:
     for ob in [o for o in bpy.context.scene.objects if o is not craft]:
         bpy.data.objects.remove(ob, do_unlink=True)
 
-    # Scale and origin from the part NASA states a dimension of.
+    # Faces NASA's file holds twice (a second copy of a part under another material) come out first.
     me = craft.data
+    if recipe.get("drop_materials"):
+        drop = {i for i, m in enumerate(me.materials) if m and m.name in recipe["drop_materials"]}
+        if len(drop) != len(recipe["drop_materials"]):
+            raise SystemExit("a material the recipe drops is not in the model")
+        import bmesh
+
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index in drop], context="FACES")
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+        bm.to_mesh(me)
+        bm.free()
+        me.update()
+
+    # Scale and origin from the part NASA states a dimension of, or NASA's model as built in metres.
     sf = recipe["scale_from"]
-    if sf["metres"] is None:
-        raise SystemExit("the recipe has no sourced dimension to scale from")
-    mat_index = [i for i, m in enumerate(me.materials) if m and m.name == sf["material"]]
-    vidx = sorted({v for p in me.polygons if p.material_index in mat_index for v in p.vertices})
-    co = np.array([me.vertices[i].co for i in vidx])
-    axis = "xyz".index(sf["axis"])
-    extent = co[:, axis].max() - co[:, axis].min()
-    centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())
-    scale = sf["metres"] / extent
+    if sf.get("native"):
+        co = np.empty(len(me.vertices) * 3, dtype=np.float64)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        extent = float(co[:, 2].max() - co[:, 2].min())
+        centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())
+        scale = 1.0
+    else:
+        if sf["metres"] is None:
+            raise SystemExit("the recipe has no sourced dimension to scale from")
+        mat_index = [i for i, m in enumerate(me.materials) if m and m.name == sf["material"]]
+        vidx = sorted({v for p in me.polygons if p.material_index in mat_index for v in p.vertices})
+        co = np.array([me.vertices[i].co for i in vidx])
+        axis = "xyz".index(sf["axis"])
+        extent = co[:, axis].max() - co[:, axis].min()
+        centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())
+        scale = sf["metres"] / extent
     m = orient_matrix(recipe["forward"], recipe["up"]) @ Matrix.Diagonal((scale, scale, scale, 1.0)) @ Matrix.Translation(-centre)
     me.transform(m)
     me.update()
@@ -465,6 +544,10 @@ def main() -> None:
                 img.filepath_raw = str(maps / f"{bpy.path.clean_name(img.name)}.png")
                 img.file_format = "PNG"
                 img.save()
+    if picture is None:
+        render_picker(craft, out / f"{args.craft}_picker.webp")
+        print(f"HANGAR {args.craft} scale {scale:.6f} metres per source unit, scale part extent {extent:.4f}")
+        return
     pic = bpy.data.images.load(str(picture))
     w, h = pic.size
     k = PICKER_EDGE / max(w, h)

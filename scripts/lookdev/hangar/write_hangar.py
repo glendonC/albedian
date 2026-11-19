@@ -124,13 +124,18 @@ def build_facts(models: list[str]) -> dict:
                 "bytes": p.stat().st_size,
                 "triangles": st["triangles"],
                 "textureEdgeMax": TEXTURE_EDGE[level],
-                "budgetBytes": BUDGET_BYTES[level],
+                "budgetBytes": {**BUDGET_BYTES, **recipe.get("budget_bytes", {})}[level],
             }
             if level == "lod0":
                 bounds = {"min": st["min"], "max": st["max"]}
         pic = HANGAR_DIR / m / f"{m}_picker.webp"
         files["picker"] = {"path": f"{m}/{m}_picker.webp", "bytes": pic.stat().st_size, "edgePx": PICKER_EDGE, "budgetBytes": BUDGET_BYTES["picker"]}
         sf = recipe["scale_from"]
+        scale_from = (
+            {"native": True, "page": sf["page"], "quote": sf["quote"]}
+            if sf.get("native")
+            else {"part": sf["material"], "metres": sf["metres"], "page": sf["page"], "quote": sf["quote"]}
+        )
         out_models[m] = {
             "title": recipe["title"],
             "kind": recipe["kind"],
@@ -138,7 +143,7 @@ def build_facts(models: list[str]) -> dict:
             "boundsM": bounds,
             "bodyRadiusM": recipe["body_radius_m"],
             "lodTriangleShare": recipe.get("lod_ratio", LOD_RATIO),
-            "scaleFrom": {"part": sf["material"], "metres": sf["metres"], "page": sf["page"], "quote": sf["quote"]},
+            "scaleFrom": scale_from,
         }
     entries = [e for e in HANGAR if e["model"] in out_models]
     return {
@@ -183,8 +188,14 @@ def build_record(models: list[str]) -> dict:
     for m in models:
         src = CRAFTS[m]["source"]
         base = f"{NASA3D_RAW}/{_quoted(src['folder'])}/"
+        model_url = src.get("url") or f"{base}{_quoted(src['file'])}"
         command = f"blender -b --factory-startup -P {BUILD_SCRIPT} -- --craft {m} --out apps/web/public/models/hangar/{m}"
-        model_note = f"Built from {base}{_quoted(src['file'])} ({src['bytes']} bytes, SHA-256 {src['sha256']}); scaled from the dimension hangar/hangar.json names with its NASA page."
+        scaled = (
+            "kept at the metre scale NASA's model is built in"
+            if CRAFTS[m]["scale_from"].get("native")
+            else "scaled from the dimension hangar/hangar.json names with its NASA page"
+        )
+        model_note = f"Built from {model_url} ({src['bytes']} bytes, SHA-256 {src['sha256']}); {scaled}."
         for level in LEVELS:
             files.append(
                 {
@@ -195,13 +206,19 @@ def build_record(models: list[str]) -> dict:
                     "note": model_note,
                 }
             )
+        if src.get("picture"):
+            picker_sentence = BUILD_SENTENCES["picker"]
+            picker_note = f"From NASA's render {base}{_quoted(src['picture'])} ({src['picture_bytes']} bytes, SHA-256 {src['picture_sha256']})."
+        else:
+            picker_sentence = BUILD_SENTENCES["picker_render"]
+            picker_note = f"Rendered from this folder's lod0 build of {model_url}."
         files.append(
             {
                 "path": f"hangar/{m}/{m}_picker.webp",
                 "sha256": sha256_file(HANGAR_DIR / m / f"{m}_picker.webp"),
                 "sources": [MODELS_SOURCE],
-                "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES["picker"]},
-                "note": f"From NASA's render {base}{_quoted(src['picture'])} ({src['picture_bytes']} bytes, SHA-256 {src['picture_sha256']}).",
+                "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": picker_sentence},
+                "note": picker_note,
             }
         )
     files.append(

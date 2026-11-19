@@ -184,6 +184,62 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A",
         "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep"
       }
+    },
+    "emu": {
+      "title": "Extravehicular Mobility Unit",
+      "kind": "suit",
+      "files": {
+        "lod0": {
+          "path": "emu/emu_lod0.glb",
+          "bytes": 6597932,
+          "triangles": 108931,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 7000000
+        },
+        "lod1": {
+          "path": "emu/emu_lod1.glb",
+          "bytes": 1452656,
+          "triangles": 21786,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "emu/emu_lod2.glb",
+          "bytes": 576392,
+          "triangles": 8472,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "emu/emu_picker.webp",
+          "bytes": 3094,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.568,
+          -1.002,
+          -0.707
+        ],
+        "max": [
+          0.567,
+          1.002,
+          0.707
+        ]
+      },
+      "bodyRadiusM": 1.1,
+      "lodTriangleShare": {
+        "lod0": 0.45,
+        "lod1": 0.09,
+        "lod2": 0.035
+      },
+      "scaleFrom": {
+        "native": true,
+        "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf",
+        "quote": "95th percentile male (6'2\" tall"
+      }
     }
   },
   "entries": [
@@ -348,6 +404,38 @@
           "value": 2.74,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A",
           "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep"
+        }
+      ]
+    },
+    {
+      "id": "astronaut-emu",
+      "name": "Extravehicular Mobility Unit",
+      "model": "emu",
+      "travel": null,
+      "facts": [
+        {
+          "key": "massKg",
+          "value": 145,
+          "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf",
+          "quote": "weighs approximately 319 lb (145 kg) on Earth"
+        },
+        {
+          "key": "fits",
+          "value": "5 ft to 6 ft 2 in",
+          "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf",
+          "quote": "95th percentile male (6'2\" tall"
+        },
+        {
+          "key": "spacewalkHours",
+          "value": "six to eight",
+          "page": "https://www.nasa.gov/suits-and-rovers/spacesuits/",
+          "quote": "each excursion typically six to eight hours in duration"
+        },
+        {
+          "key": "firstUsed",
+          "value": "Space Shuttle Program, 1980s",
+          "page": "https://www.nasa.gov/suits-and-rovers/spacesuits/",
+          "quote": "debuted during the Space Shuttle Program in the 1980s"
         }
       ]
     }

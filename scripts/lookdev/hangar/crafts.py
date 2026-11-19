@@ -164,6 +164,61 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.8,
         "changes": "photo",
     },
+    "emu": {
+        "title": "Extravehicular Mobility Unit",
+        "kind": "suit",
+        "source": {
+            "id": "nasa3d-extravehicular-mobility-unit",
+            "title": "Extravehicular Mobility Unit, NASA 3D Resources",
+            "folder": "Extravehicular Mobility Unit",
+            "file": "Extravehicular Mobility Unit.glb",
+            "url": "https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb",
+            "page": "https://science.nasa.gov/3d-resources/extravehicular-mobility-unit/",
+            "bytes": 3_448_904,
+            "sha256": "4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372",
+            # NASA's preview of this model is a screenshot of its modelling program, so the picker's picture is
+            # rendered from the rebuilt model instead.
+            "picture": None,
+            "local": "emu",
+        },
+        "drop_objects": [],
+        # Second copies of parts NASA's file holds twice: the same faces again under these materials, one of them
+        # wearing the flag texture by mistake.
+        "drop_materials": [
+            "EMU:emusuit21_emusuit5_blinn1SG",
+            "EMU:emusuit21_emusuit5_blinn3SG",
+            "EMU:emusuit21_emusuit5_jetpack2SG",
+            "EMU:emusuit21_emusuit5_lambert5SG",
+        ],
+        # The suit stands up +Z and faces +Y in the import frame (its visor and chest controls there, the backpack at
+        # -Y): it moves the way it faces, so the chase camera behind it sees the backpack.
+        "forward": (0.0, 1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's model is built in metres (glTF's unit): 2.00 m suited, inside the fit NASA states up to 6 ft 2 in.
+        "scale_from": {
+            "native": True,
+            "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf",
+            "quote": "95th percentile male (6'2\" tall",
+        },
+        "materials": {
+            "EMU:emusuit21_lambert8SG": {"role": "pbr", "base": (0.93, 0.93, 0.93), "metallic": 0.0, "roughness": 1.0},
+            "EMU:emusuit21_lambert9SG": {"role": "textured", "metallic": 0.0, "roughness": 0.9},
+            "EMU:emusuit21_lambert7SG": {"role": "textured", "metallic": 0.0, "roughness": 0.7},
+            # The visor and the helmet's gold parts: NASA's file gives them gold but matte, the visor part see-through;
+            # seen from outside the visor is a gold film.
+            "EMU:emusuit21_blinn1SG": {"role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.1},
+            "EMU:emusuit21_blinn3SG": {"role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.1},
+            "EMU:emusuit21_emusuit4_justbody_blinn3SG": {"role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.1},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 40.0,
+        # Below about 45 percent, decimating NASA's overlapping fabric layers leaves dark streaks on the arms, so the
+        # close view keeps 45 percent under its own budget; the chase view's level stays within the shared one.
+        "lod_ratio": {"lod0": 0.45, "lod1": 0.09, "lod2": 0.035},
+        "budget_bytes": {"lod0": 7_000_000},
+        "body_radius_m": 1.1,
+        "changes": "suit",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -239,6 +294,19 @@ HANGAR: list[dict] = [
             {"key": "massKg", "value": 258, "page": "https://science.nasa.gov/mission/pioneer-10/", "quote": "Spacecraft Mass 569 pounds (258 kilograms)"},
             {"key": "heading", "value": "Aldebaran", "page": "https://science.nasa.gov/mission/pioneer-10/", "quote": "generally heading in the direction of the red star Aldebaran"},
             {"key": "dishDiameterM", "value": 2.74, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A", "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep"},
+        ],
+    },
+    {
+        # A spacesuit is worn near a spacecraft, never flown between stars: no speed (D26 item 5).
+        "id": "astronaut-emu",
+        "name": "Extravehicular Mobility Unit",
+        "model": "emu",
+        "travel": None,
+        "facts": [
+            {"key": "massKg", "value": 145, "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf", "quote": "weighs approximately 319 lb (145 kg) on Earth"},
+            {"key": "fits", "value": "5 ft to 6 ft 2 in", "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf", "quote": "95th percentile male (6'2\" tall"},
+            {"key": "spacewalkHours", "value": "six to eight", "page": "https://www.nasa.gov/suits-and-rovers/spacesuits/", "quote": "each excursion typically six to eight hours in duration"},
+            {"key": "firstUsed", "value": "Space Shuttle Program, 1980s", "page": "https://www.nasa.gov/suits-and-rovers/spacesuits/", "quote": "debuted during the Space Shuttle Program in the 1980s"},
         ],
     },
 ]
