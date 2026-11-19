@@ -328,10 +328,14 @@ def case_searches_in_the_callers_process(client, store, tmp_path, monkeypatch) -
 
 def _pose_spy(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     # Stands in for the predicted sky: asks for the frames a pose would read and keeps their times, sizes and means (a
-    # photo's own decoded frame and the same photo read again by ffmpeg differ in their means)
+    # photo's own decoded frame and the same photo read again by ffmpeg differ in their means). Each try is named
+    # with the solution it completes: the early one before the search (platform-10c), then the solve's own (whether
+    # it has findings, not how many: a clip's count rests on its decoded pixels)
     seen: list[Any] = []
 
     def complete_sky(solution: Any, asset: Any, *, frames: Any) -> Any:
+        seen.append(f"the sky was tried on a solution {solution.status} "
+                    f"{'with findings' if solution.findings else 'with no finding'}")
         seen.extend([time_s, list(frame.shape), str(frame.dtype), float(frame.mean())] for time_s, frame in frames())
         return solution
 
@@ -353,8 +357,17 @@ def case_pose_frames_of_a_photo(client, store, tmp_path, monkeypatch) -> dict[st
 
 
 def case_pose_frames_of_a_clip(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
+    # A clip's spread frames are decoded once, for both tries of the sky
     sha = _stored(client, _clip(tmp_path), "video/mp4")
-    return {"sha": sha, "worker": _stopping_worker(monkeypatch), "pose": _pose_spy(monkeypatch), "floats": False}
+    seen = _pose_spy(monkeypatch)
+    decode = ingest_jobs._decode_spread_frames
+
+    def spread(path: Any, asset: Any) -> list[Any]:
+        seen.append("the clip decoder was asked")
+        return decode(path, asset)
+
+    monkeypatch.setattr(ingest_jobs, "_decode_spread_frames", spread)
+    return {"sha": sha, "worker": _stopping_worker(monkeypatch), "pose": seen, "floats": False}
 
 
 CASES = {name.removeprefix("case_"): fn for name, fn in dict(globals()).items() if name.startswith("case_")}

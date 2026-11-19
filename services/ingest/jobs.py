@@ -544,7 +544,7 @@ class SolveContext:
     `run_solve_job`) the searches run in the shared child under the process lock, as before. `child` is the group
     slot's worker and `stop` its job's stop event; `on_pass(stage, number, label)` is told each search as it starts,
     `on_span(first, count, start_sec, end_sec)` a clip's decoded frames, `check_cancel()` is asked between steps, and
-    `remaining_s()` bounds the search.
+    `remaining_s()` bounds the search, and `on_predicted_sky(solution)` is given the sky a pose places before it.
     """
 
     sha256: str
@@ -562,6 +562,8 @@ class SolveContext:
     on_span: Optional[Callable[[int, int, float, float], None]] = None
     check_cancel: Callable[[], None] = lambda: None
     remaining_s: Optional[Callable[[], float]] = None
+    # Told the sky predicted from a pose known before the search, as a contract dict (the lock-on, platform-10c)
+    on_predicted_sky: Optional[Callable[[dict[str, Any]], None]] = None
 
 
 def solve_upload(ctx: SolveContext) -> ObservationSolution:
@@ -645,6 +647,18 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         sha256=sha256,
         solution_id=solution_id,
     )
+    read_for_pose: list[list[tuple[float, np.ndarray]]] = []
+
+    def pose_frames() -> list[tuple[float, np.ndarray]]:
+        # What the head-worn Moon pose searches, read only when a pose could follow: a photo's own frame, or a
+        # clip's frames spread over its whole length, each alone and never stacked; read once for both tries
+        if not read_for_pose:
+            read_for_pose.append([(0.0, frames[0])] if media_kind == "image" else _decode_spread_frames(original, asset))
+        return read_for_pose[0]
+
+    if ctx.on_predicted_sky is not None:
+        _publish_early_sky(ctx.on_predicted_sky, asset, sha256, solution_id, pose_frames)
+        ctx.check_cancel()
     limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
     if ctx.remaining_s is not None:
         # The search keeps its own bound, and never runs past what is left of its job's
@@ -689,13 +703,6 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     if solution.quality.held_out_pair_count > 0:
         # Recorded only when a held-out star was compared; a solve that stopped earlier ran no verification
         ctx.report({"stage": "verify", "unit": "steps", "done": 1, "total": 1})
-
-    def pose_frames() -> list[tuple[float, np.ndarray]]:
-        # What the head-worn Moon pose searches, read only when a pose could follow: a photo's own frame, or a
-        # clip's frames spread over its whole length, each alone and never stacked
-        if media_kind == "image":
-            return [(0.0, frames[0])]
-        return _decode_spread_frames(original, asset)
 
     # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
     # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
@@ -847,6 +854,25 @@ def _write_partial(path: Path, payload: dict[str, Any]) -> None:
         os.fsync(handle.fileno())
 
 
+def _publish_early_sky(publish: Callable[[dict[str, Any]], None], asset: Mapping[str, Any], sha256: str,
+                       solution_id: str, frames: Callable[[], list[tuple[float, np.ndarray]]]) -> None:
+    """The lock-on (REQ-JOB-2.7, platform-10c): before the search, the sky is completed onto an empty unresolved
+    solution by the same `complete_sky` that ends the solve; when a pose places it (an approximate solution with
+    its pose estimate) the job publishes it at once. The empty start adds no finding and no sentence of its own,
+    so only the sky's own words reach a screen. No pose, or any failure here, publishes nothing: the solve and its
+    final sky run as before."""
+    try:
+        # No detection, so no finding and no limitation; its one warning is dropped before anything reads it, and a
+        # pose's result names its own pose solver
+        start = replace(_build_unresolved_solution([], solution_id, asset["id"], sha256, 0.0, None, None, None,
+                                                   "", "", triangle_solver_identity(get_catalog_stars())), warnings=[])
+        early = complete_sky(start, asset, frames=frames)
+        if early.status == "approximate" and early.pose_estimate is not None:
+            publish(early.to_contract_dict())
+    except Exception:  # noqa: BLE001 - the early sky is an extra; the solve's own path is unchanged
+        return
+
+
 def run_solve_kind(ctx: JobContext) -> KindResult:
     """The solve of one stored upload as a job of the runner: the chain of `solve_upload`, with the runner's progress,
     passes, frame span, cancel and child, then the solution checked by its contract, written as a partial and
@@ -872,6 +898,7 @@ def run_solve_kind(ctx: JobContext) -> KindResult:
         on_span=ctx.input_span,
         check_cancel=ctx.check_cancel,
         remaining_s=ctx.remaining_s,
+        on_predicted_sky=ctx.predicted_sky,
     )
     try:
         solution = solve_upload(solve_ctx)

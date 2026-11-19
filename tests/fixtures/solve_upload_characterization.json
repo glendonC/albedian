@@ -40058,6 +40058,36 @@
    }
   ],
   "pose": [
+   "the sky was tried on a solution unresolved with no finding",
+   "the clip decoder was asked",
+   [
+    "<float>",
+    [
+     120,
+     160
+    ],
+    "float64",
+    "<float>"
+   ],
+   [
+    "<float>",
+    [
+     120,
+     160
+    ],
+    "float64",
+    "<float>"
+   ],
+   [
+    "<float>",
+    [
+     120,
+     160
+    ],
+    "float64",
+    "<float>"
+   ],
+   "the sky was tried on a solution unresolved with findings",
    [
     "<float>",
     [
@@ -40836,6 +40866,17 @@
    }
   ],
   "pose": [
+   "the sky was tried on a solution unresolved with no finding",
+   [
+    0.0,
+    [
+     120,
+     160
+    ],
+    "float64",
+    7.15125
+   ],
+   "the sky was tried on a solution unresolved with findings",
    [
     0.0,
     [

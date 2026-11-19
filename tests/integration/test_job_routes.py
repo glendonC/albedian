@@ -557,3 +557,64 @@ def test_the_predicted_sky_route_serves_a_running_solves_sky_and_nothing_else(
     ended = _until_state(client, job["id"], ("succeeded",))
     assert "predictedSkyAtUTC" in ended
     assert client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky").status_code == 404
+
+
+def _sky_of(sha: str) -> dict[str, Any]:
+    fixture = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "observation_solution_contract.json")
+                         .read_text(encoding="utf-8"))["valid"]["approximate_with_pose"]
+    text = json.dumps(fixture).replace(fixture["sourceAssetId"], f"src_{sha[:16]}")
+    if fixture.get("sourceSha256"):
+        text = text.replace(fixture["sourceSha256"], sha)
+    return {**json.loads(text), "id": f"sol_{sha[:16]}"}
+
+
+@pytest.mark.parametrize("early", ["a pose", "no pose", "an error"])
+def test_a_solve_places_the_predicted_sky_before_its_search_when_a_pose_is_known_and_publishes_it_first(
+        real: dict[str, Any], monkeypatch: pytest.MonkeyPatch, early: str) -> None:
+    """platform-10c, REQ-JOB-2.7: before the search, the solve completes an empty unresolved solution with the sky
+    (the same `complete_sky` that ends it); when that places the sky by a pose, the job publishes it before the search
+    starts. No pose, or an error there, publishes nothing, and the solve goes on as before."""
+    from services.contracts.astronomy import parse_observation_solution
+
+    client = real["client"]
+    body = _png(_starfield())
+    assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
+    sha = hashlib.sha256(body).hexdigest()
+    real_complete, real_chain = ingest_jobs.complete_sky, ingest_jobs._solve_chain
+    early_calls: list[str] = []
+
+    def complete(solution: Any, asset: Any, *, frames: Any = None) -> Any:
+        if solution.status == "unresolved" and not solution.findings and not solution.warnings:
+            early_calls.append(early)
+            if early == "a pose":
+                return parse_observation_solution(_sky_of(sha))
+            if early == "an error":
+                raise RuntimeError("the pose search failed")
+        return real_complete(solution, asset, frames=frames)
+
+    searching, release = threading.Event(), threading.Event()
+
+    def chain(*args: Any, **kwargs: Any) -> Any:
+        searching.set()
+        assert release.wait(BOUND_S), "the test never released the search"
+        return real_chain(*args, **kwargs)
+
+    monkeypatch.setattr(ingest_jobs, "complete_sky", complete)
+    monkeypatch.setattr(ingest_jobs, "_solve_chain", chain)
+    monkeypatch.setattr(ingest_jobs, "_SOLVE_IN_PROCESS", True)
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    assert searching.wait(BOUND_S)
+    live = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    sky = client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky")
+    assert early_calls == [early], "the sky is tried once before the search"
+    if early == "a pose":
+        assert "predictedSkyAtUTC" in live, "published before the search began"
+        assert sky.status_code == 200 and sky.json() == _sky_of(sha)
+    else:
+        assert "predictedSkyAtUTC" not in live and sky.status_code == 404
+    release.set()
+    ended = _until_state(client, job["id"], ("succeeded", "failed"))
+    assert ended["state"] == "succeeded", ended.get("error")
+    assert ("predictedSkyAtUTC" in ended) is (early == "a pose")
+    stored = json.loads((real["store"].folder(sha) / "solutions" / f"{ended['id']}.json").read_text(encoding="utf-8"))
+    assert parse_observation_solution(stored).id == f"sol_{sha[:16]}"
