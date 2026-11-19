@@ -1416,6 +1416,191 @@ def _(f: Files) -> None:
 
 
 # =============================================================================================
+# The hangar (scripts/lookdev/hangar/build_craft.py and write_hangar.py): rows made from the record itself, one set per
+# file, so each craft the record lists has its rows; every row is a form row, in its sentence's own words.
+# =============================================================================================
+
+HANGAR_FACTS = "models/hangar/hangar.json"
+HANGAR_EDGE = {"lod1": 1024, "lod2": 512}  # the sentences' own limits ("at most 1024 pixels", "at most 512 pixels")
+
+
+def _hangar_entries() -> list[dict[str, Any]]:
+    record = json.loads((PUBLIC / "models" / "PROVENANCE.json").read_text(encoding="utf-8"))
+    return [e for e in record["files"] if e["path"].startswith("hangar/") and e["producedBy"]["method"] == "script"]
+
+
+def glb_triangles(data: bytes) -> int:
+    gltf, _ = glb(data)
+    return sum(gltf["accessors"][p["indices"]]["count"] // 3 for m in gltf["meshes"] for p in m["primitives"])
+
+
+def glb_bounds(data: bytes) -> tuple[list[float], list[float]]:
+    gltf, _ = glb(data)
+    lo, hi = [math.inf] * 3, [-math.inf] * 3
+    for m in gltf["meshes"]:
+        for p in m["primitives"]:
+            a = gltf["accessors"][p["attributes"]["POSITION"]]
+            lo = [min(x, y) for x, y in zip(lo, a["min"])]
+            hi = [max(x, y) for x, y in zip(hi, a["max"])]
+    return [round(x, 3) for x in lo], [round(x, 3) for x in hi]
+
+
+def glb_images(data: bytes) -> list[tuple[str, bytes]]:
+    gltf, binary = glb(data)
+    out = []
+    for im in gltf.get("images", []):
+        view = gltf["bufferViews"][im["bufferView"]]
+        start = view.get("byteOffset", 0)
+        out.append((im.get("mimeType", ""), binary[start : start + view["byteLength"]]))
+    return out
+
+
+def glb_with_extra_image(data: bytes, payload: bytes) -> bytes:
+    """`data` whose first image is `payload`, appended to the binary chunk as a view of its own."""
+    gltf, binary = glb(data)
+    start = len(binary) + (-len(binary) % 4)
+    binary = binary + b"\0" * (start - len(binary)) + payload
+    binary += b"\0" * (-len(binary) % 4)
+    gltf["bufferViews"].append({"buffer": 0, "byteOffset": start, "byteLength": len(payload)})
+    gltf["images"][0]["bufferView"] = len(gltf["bufferViews"]) - 1
+    gltf["buffers"][0]["byteLength"] = len(binary)
+    text = json.dumps(gltf).encode()
+    text += b" " * (-len(text) % 4)
+    body = struct.pack("<I4s", len(text), b"JSON") + text + struct.pack("<I4s", len(binary), b"BIN\0") + binary
+    return struct.pack("<4sII", b"glTF", 2, 12 + len(body)) + body
+
+
+def _hangar_model(rel: str) -> tuple[str, str]:
+    # models/hangar/<model>/<model>_<level>.glb
+    name = rel.rsplit("/", 1)[1].rsplit(".", 1)[0]
+    model, level = name.rsplit("_", 1)
+    return model, level
+
+
+def _hangar_level_rows(rel: str, changes: str) -> None:
+    model, level = _hangar_model(rel)
+
+    def counts(f: Files) -> None:
+        # Its triangles and its true size in metres are what hangar.json gives for it
+        facts = f.json(HANGAR_FACTS)["models"][model]
+        data = f.bytes(rel)
+        assert glb_triangles(data) == facts["files"][level]["triangles"]
+        if level == "lod0":
+            lo, hi = glb_bounds(data)
+            assert lo == facts["boundsM"]["min"] and hi == facts["boundsM"]["max"]
+        else:
+            assert glb_triangles(data) < f.json(HANGAR_FACTS)["models"][model]["files"]["lod0"]["triangles"]
+
+    def counts_wrong(f: Files) -> None:
+        gltf, _ = glb(f.bytes(rel))
+        prim = gltf["meshes"][0]["primitives"][0]
+        gltf["accessors"][prim["indices"]]["count"] += 3
+        gltf["accessors"][prim["attributes"]["POSITION"]]["max"][0] += 1.0
+        f.set_bytes(rel, glb_with(gltf, f.bytes(rel)))
+
+    words = "Rebuilt from NASA's model, not copied" if level == "lod0" else "The same rebuild as lod0 with"
+    assert words in changes, (rel, words)
+    claim(rel, words)(counts).wrong(counts_wrong)
+
+    if level in HANGAR_EDGE:
+        edge = HANGAR_EDGE[level]
+        words = f"textures at most {edge} pixels on a side"
+        assert words in changes, (rel, words)
+
+        def edges(f: Files) -> None:
+            for _, payload in glb_images(f.bytes(rel)):
+                assert max(image(payload).size) <= edge
+
+        def edges_wrong(f: Files) -> None:
+            buffer = io.BytesIO()
+            Image.new("RGB", (edge + 8, 4), (9, 9, 9)).save(buffer, "WEBP")
+            data = f.bytes(rel)
+            if not glb_images(data):  # a model with no texture: the wrong copy gives it one too large
+                gltf, _ = glb(data)
+                gltf["images"] = [{"bufferView": 0, "mimeType": "image/webp"}]
+                data = glb_with(gltf, data)
+            f.set_bytes(rel, glb_with_extra_image(data, buffer.getvalue()))
+
+        claim(rel, words)(edges).wrong(edges_wrong)
+
+    if "re-encoded as WebP" in changes and glb_images(_bytes(rel)):
+
+        def webp(f: Files) -> None:
+            gltf, _ = glb(f.bytes(rel))
+            images = glb_images(f.bytes(rel))
+            assert images and "EXT_texture_webp" in gltf.get("extensionsUsed", [])
+            for mime, payload in images:
+                assert mime == "image/webp" and image(payload).format == "WEBP"
+
+        def webp_wrong(f: Files) -> None:
+            f.set_bytes(rel, glb_with_extra_image(f.bytes(rel), tiny("PNG")))
+
+        claim(rel, "re-encoded as WebP")(webp).wrong(webp_wrong)
+
+
+def _hangar_picker_rows(rel: str, changes: str) -> None:
+    words = "176 pixels"
+    assert words in changes, rel
+
+    def picker(f: Files) -> None:
+        im = image(f.bytes(rel))
+        assert im.format == "WEBP" and max(im.size) == 176
+        if "square" in changes:
+            assert im.size == (176, 176)
+
+    def picker_wrong(f: Files) -> None:
+        f.set_bytes(rel, tiny("WEBP"))
+
+    claim(rel, words)(picker).wrong(picker_wrong)
+
+
+def _hangar_facts_rows(rel: str, changes: str) -> None:
+    measured = "measured from its own glb"
+    typed = "typed from the NASA page named beside it, with a short quote from that page"
+    assert measured in changes and typed in changes
+
+    def sizes(f: Files) -> None:
+        for model, facts in f.json(rel)["models"].items():
+            for level, entry in facts["files"].items():
+                path = f"models/hangar/{entry['path']}"
+                assert entry["bytes"] == len(f.bytes(path)), path
+                if level.startswith("lod"):
+                    assert entry["triangles"] == glb_triangles(f.bytes(path)), path
+            lo, hi = glb_bounds(f.bytes(f"models/hangar/{facts['files']['lod0']['path']}"))
+            assert facts["boundsM"] == {"min": lo, "max": hi}, model
+
+    def sizes_wrong(f: Files) -> None:
+        first = next(iter(f.json(rel)["models"].values()))
+        first["files"]["lod0"]["bytes"] += 1
+
+    def quoted(f: Files) -> None:
+        for entry in f.json(rel)["entries"]:
+            rows = list(entry["facts"]) + ([entry["travel"]] if entry["travel"] else [])
+            for row in rows:
+                assert row["page"].startswith("https://") and ".nasa.gov/" in row["page"] and row["quote"].strip()
+                value = row.get("value", row.get("speedKmS"))
+                if isinstance(value, (int, float)) and not row.get("derivedFrom"):
+                    assert str(value) in row["quote"], row
+
+    def quoted_wrong(f: Files) -> None:
+        f.json(rel)["entries"][0]["facts"][0]["quote"] = ""
+
+    claim(rel, measured)(sizes).wrong(sizes_wrong)
+    claim(rel, typed)(quoted).wrong(quoted_wrong)
+
+
+for _entry in _hangar_entries():
+    _rel = "models/" + _entry["path"]
+    _changes = _entry["producedBy"]["changes"]
+    if _rel == HANGAR_FACTS:
+        _hangar_facts_rows(_rel, _changes)
+    elif _rel.endswith("_picker.webp"):
+        _hangar_picker_rows(_rel, _changes)
+    else:
+        _hangar_level_rows(_rel, _changes)
+
+
+# =============================================================================================
 # The rows, and that every script-made file has some
 # =============================================================================================
 
@@ -1447,4 +1632,5 @@ def test_every_script_made_file_has_its_claims_here() -> None:
         for entry in data["files"] + data["fileSets"]:
             if entry["producedBy"]["method"] == "script":
                 made.add(str((record.parent / (entry.get("path") or entry["checksums"])).relative_to(PUBLIC)))
-    assert made == {c.file for c in CLAIMS} and len(made) == 25
+    # The hangar's files get their rows from the record itself, so only the others are counted here
+    assert made == {c.file for c in CLAIMS} and len({m for m in made if not m.startswith("models/hangar/")}) == 25
