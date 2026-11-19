@@ -789,7 +789,7 @@ export const SpatialObservatoryViewport: React.FC<
               corners={!clipShaded}
             />
           )}
-          {predictedSkyShown && <PredictedSkyScreen session={session} onHome={() => setEntryStageActive(true)} />}
+          {predictedSkyShown && <PredictedSkyScreen session={session} onHome={() => setEntryStageActive(true)} skyPose={readSkyPose} />}
           {!revealShown && !predictedSkyShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
             <CelestialMarkerOverlay
               session={session}

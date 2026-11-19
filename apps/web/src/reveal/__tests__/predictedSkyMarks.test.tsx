@@ -1,0 +1,74 @@
+import { describe, expect, it } from 'vitest';
+import type { CelestialFinding, ObservationSolution } from '@albedian/contracts';
+import { POSE } from '../../components/__tests__/poseSessions.js';
+import { placeSkyMarks, predictedSkyMarks, SKY_NAMED_RING_PX, SKY_UNNAMED_RING_PX } from '../predictedSkyMarks.js';
+import type { CameraSkyPose } from '../../spatial/cosmosRenderer.js';
+
+// D33 item 4 (UIUX-predsky-READY.md, decided 12:45), D20's rule (UIUX-aimnames-DECIDED-BY-LEAD.md): every predicted star
+// brighter than magnitude 3.2 in view keeps its amber dashed ring; a ring gets its name only when the star has a proper
+// name and its name box fits on screen and runs into no brighter star's name and no ring; brightest first; right of
+// the ring, else left; a named ring r 6.5, an unnamed one r 4.5.
+
+const W = 1440;
+const H = 900;
+const at = (id: string, name: string | null, xPx: number, yPx: number) => ({ id, name, xPx, yPx });
+
+describe('placeSkyMarks: names by D20', () => {
+  it('names a lone star right of its ring at r 6.5, and a star with no proper name gets an r 4.5 ring', () => {
+    const marks = placeSkyMarks([at('a', 'Vega', 700, 400), at('b', null, 300, 300)], W, H, 13);
+    expect(marks).toEqual([
+      { id: 'a', xPx: 700, yPx: 400, r: SKY_NAMED_RING_PX, name: 'Vega', nameOnLeft: false },
+      { id: 'b', xPx: 300, yPx: 300, r: SKY_UNNAMED_RING_PX, name: null, nameOnLeft: false },
+    ]);
+    expect([SKY_NAMED_RING_PX, SKY_UNNAMED_RING_PX]).toEqual([6.5, 4.5]);
+  });
+
+  it('flips a name left near the right edge, and drops it where it fits neither side', () => {
+    const [right] = placeSkyMarks([at('a', 'Fomalhaut', W - 20, 400)], W, H, 13);
+    expect(right).toMatchObject({ name: 'Fomalhaut', nameOnLeft: true });
+    const [tight] = placeSkyMarks([at('a', 'Fomalhaut and a much longer name than fits', 150, 400)], 300, H, 13);
+    expect(tight).toMatchObject({ name: null, r: SKY_UNNAMED_RING_PX });
+  });
+
+  it('keeps every ring clear of names: a name that would cover any ring goes to the other side, or is not drawn', () => {
+    // Arcturus's right box would cover Izar's ring, 40 px right of it, so its name goes left; Izar's own name fits right
+    const marks = placeSkyMarks([at('bright', 'Arcturus', 600, 400), at('faint', 'Izar', 640, 402)], W, H, 13);
+    expect(marks.map((m) => [m.name, m.nameOnLeft])).toEqual([['Arcturus', true], ['Izar', false]]);
+    // Rings on both sides of the faintest: its name fits neither, so its ring is drawn unnamed and smaller
+    const boxed = placeSkyMarks([at('a', 'Arcturus', 625, 400), at('b', 'Muphrid', 680, 400), at('c', 'Izar', 650, 402)], W, H, 13);
+    expect(boxed.map((m) => [m.name, m.nameOnLeft])).toEqual([['Arcturus', true], ['Muphrid', false], [null, false]]);
+    expect(boxed[2]).toMatchObject({ name: null, r: SKY_UNNAMED_RING_PX });
+  });
+
+  it("keeps a fainter star's name off a brighter star's name", () => {
+    // Izar's right side is taken by an unnamed ring, its left by Arcturus's name just above it
+    const marks = placeSkyMarks([at('a', 'Arcturus', 600, 400), at('b', 'Izar', 700, 406), at('c', null, 725, 406)], W, H, 13);
+    expect(marks.map((m) => [m.name, m.nameOnLeft])).toEqual([['Arcturus', false], [null, false], [null, false]]);
+  });
+
+  it('draws nothing off screen', () => {
+    expect(placeSkyMarks([at('a', 'Vega', -5, 400), at('b', 'Deneb', 700, H + 2)], W, H, 13)).toEqual([]);
+  });
+});
+
+describe('predictedSkyMarks: the predicted stars through the renderer camera', () => {
+  // The camera at the identity looks along ICRS -z, the south celestial pole, 60 degrees high
+  const POLE: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: W / H, limitingMagnitude: 6 };
+  const star = (id: string, magnitude: number, decDeg: number, commonName?: string, evidenceClass: CelestialFinding['evidenceClass'] = 'predicted') =>
+    ({ ...POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!, id, evidenceClass, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { ...POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!.catalogRef!, apparentMagnitude: magnitude, commonName } }) as CelestialFinding;
+  const sky = (findings: CelestialFinding[]): ObservationSolution => ({ ...POSE, findings });
+
+  it('rings the predicted stars of magnitude 3.2 or brighter in view, brightest first, and names them by their proper name', () => {
+    const marks = predictedSkyMarks(sky([star('finding-predicted-star-b', 2.0, -85, 'Beta'), star('finding-predicted-star-a', 0.5, -80, 'Alpha'), star('finding-predicted-star-faint', 4.0, -86, 'Faint')]), POLE, W, H);
+    expect(marks.map((m) => [m.id, m.name])).toEqual([['finding-predicted-star-a', 'Alpha'], ['finding-predicted-star-b', 'Beta']]);
+  });
+
+  it('draws no star behind the camera or out of view, and nothing that is not predicted', () => {
+    const marks = predictedSkyMarks(sky([star('finding-predicted-star-n', 1, 80, 'North'), star('finding-predicted-star-m', 1, -85, 'Matched', 'catalog_matched')]), POLE, W, H);
+    expect(marks).toEqual([]);
+  });
+
+  it('is none without a pose the renderer gives', () => {
+    expect(predictedSkyMarks(sky([star('finding-predicted-star-a', 0.5, -80, 'Alpha')]), null, W, H)).toEqual([]);
+  });
+});

@@ -3,6 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
+import type { CameraSkyPose } from '../../spatial/cosmosRenderer.js';
 import { createEmptyObservationSession, dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import fs from 'node:fs';
@@ -182,6 +183,30 @@ describe('the predicted sky in the app (laptop)', () => {
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }
+  });
+});
+
+describe("D20's marks on the predicted sky (item 4)", () => {
+  it('rings the bright predicted stars where the renderer draws them, names the ones with room, and follows the camera', async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const { predictedSkyMarks } = await import('../predictedSkyMarks.js');
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const star = (id: string, magnitude: number, decDeg: number, commonName: string) =>
+      ({ ...template, id, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { id, provider: 'Hipparcos', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: magnitude } }) as unknown as typeof template;
+    const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star('finding-predicted-star-a', 0.5, -80, 'Alpha'), star('finding-predicted-star-b', 2, -86, 'Beta')] } } as ObservationSession;
+    let pose: CameraSkyPose | null = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
+    act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose })));
+    const expected = predictedSkyMarks(session.observationSolution, pose, innerWidth, innerHeight);
+    expect(expected.length).toBe(2);
+    const circles = [...container.querySelectorAll('[data-testid="predicted-sky-rings"] circle')];
+    expect(circles.map((c) => [Number(c.getAttribute('cx')), Number(c.getAttribute('cy')), Number(c.getAttribute('r'))])).toEqual(expected.map((m) => [m.xPx, m.yPx, m.r]));
+    expect([...container.querySelectorAll('.predsky .align-layer__name')].map((n) => n.textContent)).toEqual(expected.filter((m) => m.name).map((m) => m.name));
+    // The camera turns away: the marks go with it on the next frame
+    pose = { ...pose!, cameraWorldQuaternion: [1, 0, 0, 0] };
+    await act(async () => await new Promise((r) => setTimeout(r, 50)));
+    expect(container.querySelectorAll('[data-testid="predicted-sky-rings"] circle')).toHaveLength(predictedSkyMarks(session.observationSolution, pose, innerWidth, innerHeight).length);
+    expect(predictedSkyMarks(session.observationSolution, pose, innerWidth, innerHeight)).toHaveLength(0);
   });
 });
 
