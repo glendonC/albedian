@@ -48,6 +48,14 @@ interface HangarFile {
   }[];
 }
 
+/**
+ * The craft's up at rest about its line of flight, by hangar model, where it is not the hangar's own up (the design lane's
+ * ruling of 19 Nov 13:32 in UIUX-pilot-READY.md): Voyager stands as D26's render shows it, its long boom (the model's
+ * -X) straight down the screen under the dish. Every other model keeps the hangar's +Y, the up of its picker picture
+ * (build_craft.py renders the pictures with the camera's up along it).
+ */
+const REST_UP: Readonly<Record<string, Vec3>> = { voyager: [1, 0, 0] };
+
 const AXES: Readonly<Record<string, Vec3>> = { '+X': [1, 0, 0], '-X': [-1, 0, 0], '+Y': [0, 1, 0], '-Y': [0, -1, 0], '+Z': [0, 0, 1], '-Z': [0, 0, -1] };
 
 /** The hangar's entries as crafts, in the hangar's own order; an entry whose model or frame cannot be read is left out. */
@@ -64,7 +72,7 @@ export function craftsOfHangar(file: HangarFile, base = '/models/hangar/'): Craf
     const t = entry.travel;
     const speed: CraftSpeed | null =
       t && t.relativeTo === 'Sun' && Number.isFinite(t.speedKmS) && t.speedKmS > 0 ? { kmS: t.speedKmS, relativeTo: 'the Sun', sourceUrl: t.page, asOf: t.asOf } : null;
-    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: forward, modelUp: up, speed }];
+    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: forward, modelUp: REST_UP[entry.model] ?? up, speed }];
   });
 }
 

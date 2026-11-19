@@ -149,7 +149,11 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(v.phoneModelUrl).toBe('/models/hangar/voyager/voyager_lod2.glb');
     expect(v.pictureUrl).toBe('/models/hangar/voyager/voyager_picker.webp');
     expect(v.modelForward).toEqual([0, 0, 1]);
-    expect(v.modelUp).toEqual([0, 1, 0]);
+    // D26's rest pose as the design lane ruled (13:32): Voyager stands with its long boom (the model's -X) straight down
+    expect(v.modelUp).toEqual([1, 0, 0]);
+    expect(CRAFTS['voyager-2']!.modelUp).toEqual([1, 0, 0]);
+    // Every other entry keeps the side up that is up in its picker picture: the hangar's +Y (build_craft.py's camera)
+    expect(Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager')).every((c) => c.modelUp.join() === '0,1,0')).toBe(true);
     expect(v.kind).toBe('craft');
     expect(CRAFTS['astronaut-emu']!.kind).toBe('suit');
     expect(Object.keys(CRAFTS)).toHaveLength(17);
@@ -228,6 +232,24 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const top = at([centre[0] + u[0] * 5, centre[1] + u[1] * 5, centre[2] + u[2] * 5]);
     const foot = at([centre[0] - u[0] * 5, centre[1] - u[1] * 5, centre[2] - u[2] * 5]);
     expect(Math.hypot(top.xPx - foot.xPx, top.yPx - foot.yPx)).toBeCloseTo(184, 3);
+  });
+
+  it('stands Voyager at rest with its boom straight down the screen and its dish above it (the 13:32 ruling)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 390, 844)!;
+    const scene = craftSceneOf(camera, CRAFTS['voyager-1']!, [0, 0, 0], 10, undefined, { xPx: 195, yPx: 298, diameterPx: 184 }, 8)!;
+    const toScreen844 = (p: Vec3) => {
+      const c = apply(scene.clipMatrix, p);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 390, yPx: ((1 - c[1] / c[3]) / 2) * 844 };
+    };
+    const at = (m: Vec3) => {
+      const w = apply(scene.modelMatrix, m);
+      return toScreen844([w[0], w[1], w[2]]);
+    };
+    const dish = at([0, 0, 0]);
+    const boomEnd = at([-12, 0, 0]);
+    expect(boomEnd.yPx - dish.yPx).toBeGreaterThan(100);
+    expect(Math.abs(boomEnd.xPx - dish.xPx)).toBeLessThan(0.15 * (boomEnd.yPx - dish.yPx));
   });
 });
 
