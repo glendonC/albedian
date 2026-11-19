@@ -174,6 +174,17 @@ describe('AskBar: typing a question', () => {
     expect(q('.ask-bar__field input')).not.toBeNull();
   });
 
+  it('opens the field from "/" while a button has focus, which keeps Space for its own press (FIELD walk-0900 item 3)', () => {
+    show();
+    const button = q('.ask-bar__type') as HTMLButtonElement;
+    button.focus();
+    expect(key(button, { key: '/' }).defaultPrevented).toBe(true);
+    expect(q('.ask-bar__field input')).not.toBeNull();
+    // A field keeps "/" as a character
+    const input = q('.ask-bar__field input') as HTMLInputElement;
+    expect(key(input, { key: '/' }).defaultPrevented).toBe(false);
+  });
+
   it('sends the words with Enter or the arrow, then closes, and sends nothing empty', () => {
     const onSend = vi.fn();
     show({ onSend });

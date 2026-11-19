@@ -24,11 +24,16 @@ export interface AskBarProps {
   onFlyOnYourOwn?: () => void;
 }
 
-/** Whether a key belongs to a field, a button or editable text rather than to the bar's keys. */
-function ownedByControl(target: EventTarget | null): boolean {
+/** Whether a key belongs to a field or editable text, which types it, rather than to the bar's keys. */
+function ownedByField(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   const tag = el?.tagName?.toLowerCase();
-  return tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button' || el?.isContentEditable === true;
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable === true;
+}
+
+/** Whether a key belongs to a field or to a button: a focused button takes Space as its own press, never "/". */
+function ownedByControl(target: EventTarget | null): boolean {
+  return ownedByField(target) || (target as HTMLElement | null)?.tagName?.toLowerCase() === 'button';
 }
 
 /**
@@ -68,8 +73,8 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || ownedByControl(event.target)) return;
-      if (canListen && (event.key === ' ' || event.code === 'Space')) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || ownedByField(event.target)) return;
+      if (canListen && (event.key === ' ' || event.code === 'Space') && !ownedByControl(event.target)) {
         event.preventDefault();
         if (!event.repeat) listen.current();
       } else if (event.key === '/') {
