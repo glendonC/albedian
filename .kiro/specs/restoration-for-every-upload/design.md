@@ -403,7 +403,19 @@ is a peak of 4 codes [proposed in REQ-RST-6.7]: the statistic, tiles of section 
 noise floored so that a star-shaped patch (Gaussian, sigma 1.3 px) of that peak reaches the variant threshold 5 times
 a margin of 2 [proposed: at 1.5 a star centred on a pixel corner failed the detector's own shape test], and a
 detection counts only when forced photometry on the variant itself verifies it, the rule of section 3 for stars.
-Clipped regions are left out and counted.
+Clipped regions are left out and counted. The search reads the statistic with every kept region (weight above 0) left
+out: 0 on its samples, and beside it the local mean taken from the samples outside it alone; the passes search the
+same way [proposed for restore-4e, AUDIT-B's finding A of 2026-11-19: the detector keeps one peak per 7 x 7 window, so
+a star's own light, or the step where a kept region's original samples meet the smoothed sky, hid a star of 4 codes
+painted 3 to 12 px from one of the original's stars, its SNR 57.3 beside the step's 57.5 on rp-b-01; a local mean that
+took the region's light in laid a negative lobe beside it, on which such a star failed the detector's shape tests.
+Tested and set aside: filling the region from the stored samples around it spread a painted star's light into the
+fill, 6 of 672 near-star trials passing on rp-b-05's crop; filling it from the original's samples brought back what
+the passes had dissolved, 13 of 672; adding the plain statistic's points beside kept regions left rp-b-03 whole
+rejected and rp-b-01's lattice refused only from 6 codes; leaving out 3.5 px past every core as well would hide what
+the passes make there, since a pass never changes a core and the core check sees only what reaches one]. Leaving
+regions out changes the detector's own measure of a tile, the star it measures and the gates set from it: on rp-b-03,
+in a tile 43 % left out, a lattice place in crushed black is refused from 10 codes, 8 before [tested].
 
 **Confirming** [decided 2026-11-18: the stricter rule above all]. A point is confirmed when one of the original's
 stars (section 3, each verified by forced photometry on the original's pixels) lies within 2.5 px of it, or when
@@ -411,6 +423,14 @@ every sample of its 3 x 3 is the original lifted and stored as the job stores it
 the store's own rounding]. Forced photometry asked at any place verified edges of the original's foreground and
 confirmed a painted star of 64 codes laid on one [tested]; a tolerance on the original's code scale lets a painted
 star through under a strong lift, since 4 stored codes shrink under half an original code [tested: arithmetic].
+
+**Kept cores** [proposed for restore-4e]. Every stored sample inside a kept core is the original lifted and stored as
+the job stores it, within 1 code of 65535: no step changes one (the filter takes the original sample there, the
+first-scale smoothing and the passes give it no weight) [tested: 0 samples differ on the design's five photos, whole
+and as crops]. Each connected group, by eight neighbours, of core samples that are not is an unconfirmed place at its
+centroid, counted among the variant's points and its unconfirmed points; the contract has no count of its own for it.
+A star of 4 codes, or of 2, painted with its centre in a kept region's 2 px edge changes a core sample by far more
+than that, so the search may leave the edge out [tested: P-RST-11's edge property, radii 2 to 12].
 
 **What is kept as recorded.** Star footprints, the radius by section 3's ring rule measured against the median of a
 far ring, 4 to 12 px beyond the largest radius allowed, at least 2 px [proposed: the detector's local background takes
@@ -468,7 +488,9 @@ and how many guard 2 refuses is for restore-7 to report.
 threshold 4 and at the gate's 5 (the detector picks its filter partly by the threshold it is given) [proposed], and
 for each unconfirmed point replaces its disc, the radius by section 3's rule on the working image, at least 3 px and 2
 px wider on each later pass, fading over 4 px [proposed], by the working image smoothed over 2 B3 levels with the kept
-cores given no weight; a point within 3 px of a kept core takes the original's samples instead, so the kept region
+regions, cores and edges, given no weight, the disc leaving every kept region's edge as it is [tested: a fill that
+took a lit region's edge in kept a point 3.2 px from its core, in a bay the region wraps round, through three passes
+on rp-b-03, restore-4e]; a point within 3 px of a kept core takes the original's samples instead, so the kept region
 grows over it. Kept cores are never touched. A later pass looks only in tiles the last pass changed (the detector
 works tile by tile). Each pass's count goes into the record.
 
@@ -483,8 +505,9 @@ the original's]. `sigma_F`: 1.4826 x MAD of the same flux at empty places of the
 the first 60 points of a fixed lattice that are 12 px clear of every footprint and clipped region (no random draw),
 measured once per radius
 and not compared against where it is not a positive number. `rejected` with `star_flux_changed` when any star has
-`|F_v - F_o| > 3 sigma_F` [proposed: measured worst 0.013 over 5736 stars of the five photos]. The flux check is what
-refuses a star painted onto a real one, which the point check confirms by the real star.
+`|F_v - F_o| > 3 sigma_F` [proposed: measured worst 0.013 over 5736 stars of the five photos]. A star painted onto a
+real one changes the real one's kept core and is refused as an unconfirmed place (restore-4e); the flux check stays,
+and a test holds its tolerance at 3 sigma_F from both sides.
 
 **The painted star test** (REQ-RST-6.7, P-RST-11). On the stored honest variant of a seeded synthetic scene, and of
 every real photo of the corpus: add a Gaussian patch (sigma 1.3 px) to the stored samples at a place of a fixed lattice
@@ -492,7 +515,13 @@ every real photo of the corpus: add a Gaussian patch (sigma 1.3 px) to the store
 larger, run the gate: refused, with the patch's place among the unconfirmed points. Each place that is not is tried
 again at rising peaks, and the least refused is recorded; at half the peak the count is recorded, not asserted. The
 sensitivity reached is stated per photo: the review script's `everyTrialCodes` [tested on the five photos: every place
-from 4 codes on most, 8 at the worst, a place in crushed black or a flat region].
+from 4 codes on most, 8 at the worst, a place in crushed black or a flat region]. Beside the original's own stars
+(restore-4e): a patch of 4 codes at 3, 4, 5, 6, 8, 10 and 12 px from each of 12 stars spread along the frame, in 8
+directions, each place inside the frame's margin and outside clipped regions: refused, for an unconfirmed point at the
+patch or a kept core's sample it changed; the peak is the lattice's, 4 codes or 5 pixel noises, and a place not refused
+is tried at rising peaks. [tested, restore-4e: the five crops, 3314 of 3314; the five photos whole, 3323 of 3326,
+the three on rp-b-03 beside one faint star in a structured sky, refused from 5 and 8 codes, under that photo's stated
+10; before restore-4e, AUDIT-B's probe passed 21 of 24 at 3 to 6 px on rp-b-05's crop].
 
 The first candidate, for the record: the detector on the luma with its local background at the star scale removed (the
 first two wavelet scales), found on the original's code scale with the lift undone, points at threshold 6 confirmed by

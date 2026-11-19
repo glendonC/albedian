@@ -32,6 +32,11 @@ PAINT_MARGIN_PX = 32
 PAINT_MIN_SPACING_PX = 48
 # A painted patch is drawn this far from its centre, 6 of its sigma [proposed: past that it adds under 1e-7 of its peak]
 PATCH_REACH_PX = 8
+# Places beside the original's own stars, from inside a star's kept disc out to where the lattice's clearance begins
+# [proposed for restore-4e: AUDIT-B's finding A, 2026-11-19, painted at 3, 4 and 6 px]
+NEAR_STAR_PX = (3, 4, 5, 6, 8, 10, 12)
+# each along this many directions, 45 degrees apart [proposed: at 12 px they lie 9 px apart, under the patch's reach]
+NEAR_STAR_DIRECTIONS = 8
 
 
 class PhotoError(Exception):
@@ -228,6 +233,29 @@ def painted_places(result: StillRestoration, count: int) -> list[tuple[int, int]
     return [lattice[i] for i in np.linspace(0, len(lattice) - 1, count).round().astype(int)]
 
 
+def near_star_places(result: StillRestoration, count: int) -> list[tuple[int, int, int, int]]:
+    """Places (x, y, star index, distance px) beside `count` of the original's stars, picked evenly along the stars
+    that lie PAINT_MARGIN_PX inside the frame: at each of NEAR_STAR_PX along NEAR_STAR_DIRECTIONS directions, rounded to
+    a sample, every place inside the frame's margin and outside every clipped region (the gate leaves those out)."""
+    field = result.context.field
+    height, width = field.clipped.shape
+    inside = [i for i, s in enumerate(field.stars)
+              if PAINT_MARGIN_PX <= s.x_px < width - PAINT_MARGIN_PX and PAINT_MARGIN_PX <= s.y_px < height - PAINT_MARGIN_PX]
+    if len(inside) > count:
+        inside = [inside[i] for i in np.linspace(0, len(inside) - 1, count).round().astype(int)]
+    places = []
+    for index in inside:
+        star = field.stars[index]
+        for distance in NEAR_STAR_PX:
+            for k in range(NEAR_STAR_DIRECTIONS):
+                angle = 2 * math.pi * k / NEAR_STAR_DIRECTIONS
+                x, y = int(round(star.x_px + distance * math.cos(angle))), int(round(star.y_px + distance * math.sin(angle)))
+                if PAINT_MARGIN_PX <= x < width - PAINT_MARGIN_PX and PAINT_MARGIN_PX <= y < height - PAINT_MARGIN_PX \
+                        and not field.clipped[y, x]:
+                    places.append((x, y, index, distance))
+    return places
+
+
 class Trials:
     """Painted trials on one restored still, each checked on the tiles its patch touches only: the gate's statistic
     is a sum over 5 x 5 samples and the detector works tile by tile, so the other tiles' points are those of the
@@ -236,7 +264,7 @@ class Trials:
     def __init__(self, result: StillRestoration):
         self.result = result
         self.luma = gate.stored_luma(result.stored)
-        self.image = gate.statistic_image(self.luma)
+        self.image = gate.search_statistic(self.luma, result.context.kept.left_out)
         self.grid = stars.tiles(*self.luma.shape)
 
     def painted_window(self, x: int, y: int, peak16: float) -> tuple[slice, slice, np.ndarray]:
@@ -249,9 +277,13 @@ class Trials:
         return rows, columns, window
 
     def refused(self, x: int, y: int, peak16: float) -> tuple[bool, float]:
-        """Whether the gate refuses the stored file with a star of `peak16` painted at (x, y), with an unconfirmed
-        point at the patch's place; and the largest snr found there."""
+        """Whether the gate refuses the stored file with a star of `peak16` painted at (x, y), for an unconfirmed
+        point at the patch's place or a kept core's sample the patch changed; and the largest snr found there."""
         rows, columns, window = self.painted_window(x, y, peak16)
+        core = self.result.context.kept.core[rows, columns]
+        expected = self.result.context.expected[rows, columns]
+        kept_changed = bool(core.any() and np.any(np.abs(window[core].astype(np.float64) - expected[core].astype(np.float64))
+                                                  > gate.UNCHANGED_TOLERANCE_CODES16))
         height, width = self.luma.shape
         # The statistic at a sample reads the luma 2 px around it: recompute it 4 px around the patch from a luma
         # window 8 px around it, whose cut edges lie 4 px or more from what is kept (a frame edge is mirrored alike)
@@ -259,7 +291,7 @@ class Trials:
         c0, c1 = max(0, columns.start - 8), min(width, columns.stop + 8)
         luma = self.luma[r0:r1, c0:c1].copy()
         luma[rows.start - r0:rows.stop - r0, columns.start - c0:columns.stop - c0] = gate.stored_luma(window)
-        local = gate.statistic_image(luma)
+        local = gate.search_statistic(luma, self.result.context.kept.left_out[r0:r1, c0:c1])
         k0, k1 = max(0, rows.start - 4), min(height, rows.stop + 4)
         j0, j1 = max(0, columns.start - 4), min(width, columns.stop + 4)
         image = self.image.copy()
@@ -269,9 +301,9 @@ class Trials:
         points, _ = gate.points_on(image, self.result.context.field.clipped, only_tiles=only)
         near = [p for p in points if math.hypot(p.x_px - x, p.y_px - y) <= stars.MATCH_RADIUS_PX]
         if not near:
-            return False, 0.0
+            return kept_changed, 0.0
         shifted = [stars.Point(p.x_px - columns.start, p.y_px - rows.start, p.snr, p.tile) for p in near]
-        same = gate.unchanged(shifted, window, self.result.context.expected[rows, columns])
+        same = gate.unchanged(shifted, window, expected)
         by_star = gate.on_a_star(near, self.result.context.original)
         unconfirmed = sum(not (s or b) for s, b in zip(same, by_star))
-        return unconfirmed > 0, max(p.snr for p in near)
+        return unconfirmed > 0 or kept_changed, max(p.snr for p in near)

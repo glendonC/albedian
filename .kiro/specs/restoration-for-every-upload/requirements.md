@@ -235,7 +235,10 @@ recorded, at the brightness it recorded.
      file's luma, with the detector's noise floored from the stated sensitivity and each point verified by forced
      photometry on the variant itself; a point is confirmed by one of the original's stars within the match
      radius or by samples that are the original's as stored (design section 7) [decided 2026-11-18 by the lead:
-     restore-4's measurements].
+     restore-4's measurements]. A patch painted beside one of the original's stars, 3 to 12 px from it in any
+     direction, SHALL be refused in every trial too; the search leaves kept regions out and every sample of a kept
+     core SHALL be the original's as stored (design section 7) [decided 2026-11-19 by the lead: AUDIT-B's finding
+     A, a star of 4 codes painted 3 to 6 px beside a real one passed in 21 of 24 trials].
   8. Points inside regions where the original is clipped at its largest code SHALL not be counted, and the record
      SHALL say how many were left out.
   9. THE statistic, the thresholds, the tile size, the match radius and the flux tolerance SHALL be recorded in
@@ -463,7 +466,9 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
   (star footprints, clipped blooms, bright regions) and from every clipped region, makes the gate reject with the
   patch's place among the unconfirmed points, in every trial; where a place does not at 4 codes, the least peak
   that it does is recorded and the photo's sensitivity is stated from them (design section 7) [decided 2026-11-18
-  by the lead].
+  by the lead]. A patch of 4 codes painted 3 to 12 px from one of the original's stars, in any direction, makes
+  the gate reject for an unconfirmed place in every trial; one painted with its centre in a kept region's edge
+  changes a kept core's sample [decided 2026-11-19 by the lead: restore-4e].
 - **P-RST-12** (REQ-RST-6.2, 6.6): for any synthetic star field with noise, every confirmed star's flux after the
   photo path, lift undone, is within the tolerance; with footprints switched off (a mutant) it is not.
 - **P-RST-13** (REQ-RST-6.3): after the dissolve passes the working image holds no unconfirmed point, or the pass

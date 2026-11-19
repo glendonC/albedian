@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cached_property, lru_cache
 
 import numpy as np
 from scipy import ndimage
@@ -148,13 +148,39 @@ def points_on(image: np.ndarray, clipped: np.ndarray, *, only_tiles: set[int] | 
     return points, left_out
 
 
+def search_statistic(luma: np.ndarray, left_out: np.ndarray | None) -> np.ndarray:
+    """The image the point search reads: the gate's statistic with the samples `left_out` left out (`Kept.left_out`:
+    every kept region, and every sample the exact check of a kept core reaches), the luma less the B3 average at step
+    1 of the samples around it that are not, and 0 on every sample that is. The detector keeps one peak per 7 x 7
+    window, so a kept region's own light, or the step where its original samples meet the smoothed sky, hid a star of
+    4 codes painted 10 and 12 px from a star on rp-b-01 and rp-b-05 (its SNR 57.3 beside the step's 57.5); and a local
+    mean that took the region's light in laid a negative lobe beside it, on which such a star failed the detector's
+    shape tests (restore-4e). A kept core's own samples are compared exactly instead (`kept_changed`), and a star
+    painted with its peak on a sample left out changes a core sample. Nothing is filled, so nothing the stored file
+    holds spreads; away from what is left out it is the gate's statistic itself."""
+    if left_out is None:
+        return statistic_image(luma)
+    region = np.asarray(left_out, dtype=bool)
+    if not region.any():
+        return statistic_image(luma)
+    luma = np.asarray(luma, dtype=np.float64)
+    keep = (~region).astype(np.float64)
+    total = noise.b3_smooth(keep, 1)
+    enough = total >= FILL_WEIGHT_FLOOR
+    background = noise.b3_smooth(luma * keep, 1) / np.where(enough, total, 1.0)
+    return np.where(region | ~enough, 0.0, luma - background)
+
+
 def variant_points(luma: np.ndarray, clipped: np.ndarray, *, only_tiles: set[int] | None = None,
-                   threshold: float = VARIANT_THRESHOLD_SNR) -> tuple[list[stars.Point], int]:
-    """The variant's points: on the gate's statistic of its luma (codes of 255), tile by tile, the detector's points
-    at `threshold` with the gate's noise floor that its own forced photometry verifies, duplicates merged; and how
-    many were left out inside clipped regions. The floor is the gate's whatever the threshold, so a dissolve pass at
-    a lower threshold looks at the same scale. `only_tiles` limits the search to some tiles."""
-    return points_on(statistic_image(luma), clipped, only_tiles=only_tiles, threshold=threshold)
+                   threshold: float = VARIANT_THRESHOLD_SNR, kept: "Kept | None" = None) -> tuple[list[stars.Point], int]:
+    """The variant's points: on the gate's statistic of its luma (codes of 255), with `kept`'s regions left out
+    (`search_statistic`), tile by tile, the detector's points at `threshold` with the gate's noise floor that its own
+    forced photometry verifies, duplicates merged; and how many were left out inside clipped regions. The floor is the
+    gate's whatever the threshold, so a dissolve pass at a lower threshold looks at the same scale. `only_tiles` limits
+    the search to some tiles. [tested, restore-4e: adding the plain statistic's points to these left rp-b-03 whole
+    rejected and rp-b-01's lattice refused from 6 codes, where these alone left both ready and rp-b-01 from 4]"""
+    return points_on(search_statistic(luma, None if kept is None else kept.left_out), clipped, only_tiles=only_tiles,
+                     threshold=threshold)
 
 
 @dataclass(frozen=True)
@@ -206,6 +232,35 @@ def unchanged(points: list[stars.Point], variant: np.ndarray, expected: np.ndarr
         here = np.abs(variant[rows, columns] - expected[rows, columns])
         found.append(bool(here.size > 0 and np.all(here <= UNCHANGED_TOLERANCE_CODES16)))
     return found
+
+
+def kept_changed(variant: np.ndarray, expected: np.ndarray, core: np.ndarray) -> list[stars.Point]:
+    """The places inside the kept cores where the stored file is not the original's: each connected group (eight
+    neighbours) of core samples where some channel differs from `expected` by more than UNCHANGED_TOLERANCE_CODES16,
+    as one place at the group's centroid (snr 0: no detector found it). Every step leaves a kept core as the original
+    recorded it (the filter takes the original sample there, the first-scale smoothing and the passes weight it 0), so
+    an honest file has none; a star painted beside one of the original's stars, where the detector keeps only the
+    brighter peak of its 7 x 7 window and merges what is within the match radius of a star, changes the star's core
+    instead (AUDIT-B's finding A, 2026-11-19: at 3 to 6 px a star of 4 codes passed the whole gate in 21 of 24 trials
+    on a public photo). Both are in 16 bit stored codes."""
+    core = np.asarray(core, dtype=bool)
+    if not core.any():
+        return []
+    rows, columns = np.nonzero(core)
+    difference = np.abs(np.asarray(variant)[rows, columns].astype(np.float64)
+                        - np.asarray(expected)[rows, columns].astype(np.float64))
+    differs = np.any(difference.reshape(rows.size, -1) > UNCHANGED_TOLERANCE_CODES16, axis=1)
+    if not differs.any():
+        return []
+    changed = np.zeros(core.shape, dtype=bool)
+    changed[rows[differs], columns[differs]] = True
+    labels, count = ndimage.label(changed, structure=np.ones((3, 3), dtype=bool))
+    grid = stars.tiles(*core.shape)
+    places = []
+    for y, x in ndimage.center_of_mass(changed, labels, range(1, count + 1)):
+        tile = next(i for i, t in enumerate(grid) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1)
+        places.append(stars.Point(float(x), float(y), 0.0, tile))
+    return places
 
 
 def confirmed(points: list[stars.Point], original: Original, variant: np.ndarray, expected: np.ndarray) -> list[bool]:
@@ -322,6 +377,14 @@ class Kept:
     @property
     def core(self) -> np.ndarray:
         return self.weight >= 1.0
+
+    @cached_property
+    def left_out(self) -> np.ndarray:
+        """The samples the point search leaves out, and the passes' fill and discs give no weight: every kept region's
+        (weight above 0), its core and its 2 px edge. The core is checked exactly (`kept_changed`); the edge is the
+        original's own samples blended with the smoothed sky, and a star painted with its peak there reaches the
+        core."""
+        return self.weight > 0
 
 
 # The sky a footprint's ring is measured against: the median of the ring this far beyond the largest radius allowed,
@@ -536,6 +599,7 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
     already found there, every one confirmed."""
     per_pass = []
     core = kept.core
+    left_out = kept.left_out.astype(np.float64)
     expected = to_stored(linear)
     near_core = ndimage.distance_transform_edt(~core) <= NEAR_CORE_PX if core.any() else np.zeros(core.shape, dtype=bool)
     grid = stars.tiles(*core.shape)
@@ -546,8 +610,10 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
         # The detector picks its filter partly from the threshold it is given, so the points at the dissolve's
         # threshold are not all the gate's: a pass takes both [tested: a point of SNR 18.9 under the gate's
         # threshold was found by no pass at 4 on photo 1, .lanetools/restore-4/trace.py]
-        lower, _ = variant_points(luma, kept.field.clipped, threshold=DISSOLVE_THRESHOLD_SNR, only_tiles=dirty)
-        at_gate, _ = variant_points(luma, kept.field.clipped, threshold=VARIANT_THRESHOLD_SNR, only_tiles=dirty)
+        lower, _ = variant_points(luma, kept.field.clipped, threshold=DISSOLVE_THRESHOLD_SNR, only_tiles=dirty,
+                                  kept=kept)
+        at_gate, _ = variant_points(luma, kept.field.clipped, threshold=VARIANT_THRESHOLD_SNR, only_tiles=dirty,
+                                    kept=kept)
         points = stars._merged(lower + at_gate)
         ok = confirmed(points, original, stored, expected)
         unconfirmed = [p for p, good in zip(points, ok) if not good]
@@ -563,8 +629,11 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
                                      max(radius, DISSOLVE_MIN_RADIUS_PX) + DISSOLVE_GROW_PX * index))
         smoothed = [p for p in placed if not near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
         kept_back = [p for p in placed if near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
-        fill = smooth_without(working, core.astype(np.float64), DISSOLVE_FILL_LEVELS)
-        weight = (disc_map(luma.shape, smoothed) * (1.0 - core))[..., None]
+        # The fill and the discs give a kept region's edge no weight, as its core: a fill that took the edge's light
+        # in kept a point 3.2 px from a lit region's core, in a bay the region wraps round, through three passes on
+        # rp-b-03 [tested: restore-4e]
+        fill = smooth_without(working, left_out, DISSOLVE_FILL_LEVELS)
+        weight = (disc_map(luma.shape, smoothed) * (1.0 - left_out))[..., None]
         working = weight * fill + (1.0 - weight) * working
         changed = weight[..., 0] > 0
         if kept_back:
@@ -625,12 +694,15 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
 
 def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np.ndarray,
              original_luminance: np.ndarray, variant_luminance: np.ndarray) -> GateOutcome:
-    """The gate on the stored file's codes: every point confirmed, and every measured star's flux within the
-    tolerance. `expected` is the original lifted and stored as the job stores it; the luminances are linear light,
-    the variant's with its lift undone."""
-    points, left_out = variant_points(stored_luma(stored), kept.field.clipped)
+    """The gate on the stored file's codes: every point confirmed, every kept core's samples the original's, and
+    every measured star's flux within the tolerance. A place where a kept core's samples changed counts among the
+    variant's points and its unconfirmed points (the contract's two counts; `kept_changed`). `expected` is the original
+    lifted and stored as the job stores it; the luminances are linear light, the variant's with its lift undone."""
+    points, left_out = variant_points(stored_luma(stored), kept.field.clipped, kept=kept)
     ok = confirmed(points, original, stored, expected)
-    unconfirmed_points = [p for p, good in zip(points, ok) if not good]
+    changed = kept_changed(stored, expected, kept.core)
+    unconfirmed_points = [p for p, good in zip(points, ok) if not good] + changed
+    points = points + changed
     measured, outside, worst, median = flux_check(kept.field, original_luminance, variant_luminance, kept.weight)
     if measured and median is None:
         measured, outside, worst = 0, 0, None

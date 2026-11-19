@@ -5,7 +5,8 @@ Covers, on synthetic stills written as 16 bit PNGs and decoded as any upload is:
 - An honest restoration ends `ready`: its stored file is the 16 bit PNG, read back to the codes the gate ran on, and
   its records are the contract's.
 - A star-shaped patch at the stated sensitivity painted into the stored file anywhere 12 px clear of every footprint
-  and clipped region is refused, with the patch's place among the unconfirmed points (P-RST-11).
+  and clipped region is refused, with the patch's place among the unconfirmed points (P-RST-11); painted 3 to 12 px
+  from one of the original's own stars, at any angle, it is refused for an unconfirmed place too (restore-4e).
 - After the dissolve passes no point of the working image is unconfirmed, or the passes ran out and the gate refuses
   (P-RST-13); with the passes switched off, the same scene ends `rejected` and keeps no file.
 - Two runs write the same bytes (P-RST-10); the graph names its steps in the job's order, each parameter with its
@@ -18,6 +19,8 @@ import math
 
 import numpy as np
 import pytest
+from hypothesis import HealthCheck, example, given, settings
+from hypothesis import strategies as st
 
 from photo_frames import star_field
 from services.contracts import media as contracts
@@ -76,6 +79,31 @@ def test_p_rst_11_a_painted_star_at_the_stated_sensitivity_is_refused_in_every_t
         assert any(math.hypot(p.x_px - x, p.y_px - y) <= stars.MATCH_RADIUS_PX for p in verdict.unconfirmed), (x, y)
 
 
+# Beside a star: from inside its kept disc out to where the lattice's clearance begins (AUDIT-B's finding A, 2026-11-19:
+# at 3 to 6 px a painted star of 4 codes passed the whole gate in 21 of 24 trials on a public photo)
+NEAR_STAR_PX = (3.0, float(photo.PAINT_CLEARANCE_PX))
+STAR_MARGIN_PX = 16
+
+
+@settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(which=st.integers(0, 10**6), distance=st.floats(*NEAR_STAR_PX), angle=st.floats(0.0, 2 * math.pi))
+@example(which=0, distance=3.0, angle=0.0)
+@example(which=1, distance=4.0, angle=0.0)
+@example(which=2, distance=6.0, angle=math.pi / 2)
+def test_p_rst_11_a_star_painted_beside_one_of_the_originals_stars_is_refused_in_every_trial(
+        honest, which: int, distance: float, angle: float) -> None:
+    height, width = honest.stored.shape[:2]
+    inside = [s for s in honest.context.kept.field.stars
+              if STAR_MARGIN_PX <= s.x_px < width - STAR_MARGIN_PX and STAR_MARGIN_PX <= s.y_px < height - STAR_MARGIN_PX]
+    assert len(inside) >= 10
+    star = inside[which % len(inside)]
+    x, y = star.x_px + distance * math.cos(angle), star.y_px + distance * math.sin(angle)
+    verdict = photo.check(honest, painted(honest.stored, x, y, gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT))
+    assert not verdict.gate["passed"], (star, distance, angle)
+    # Refused for a place the original does not confirm, not only for the neighbour's flux
+    assert verdict.gate["unconfirmedPointCount"] >= 1, (star, distance, angle, verdict.gate)
+
+
 def test_painted_places_lie_twelve_px_clear_of_every_footprint_and_clipped_region(honest) -> None:
     occupied = (honest.context.protected > 0) | honest.context.field.clipped
     for x, y in photo.painted_places(honest, 20):
@@ -117,6 +145,57 @@ def test_p_rst_10_two_runs_write_the_same_bytes(tmp_path) -> None:
     first, second = photo.restore_still(still), photo.restore_still(still)
     assert first.status == second.status
     assert first.data == second.data and np.array_equal(first.stored, second.stored)
+
+
+def test_a_trial_beside_a_star_on_the_tiles_its_patch_touches_agrees_with_the_whole_gate(honest) -> None:
+    trials = photo.Trials(honest)
+    peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
+    places = photo.near_star_places(honest, 3)
+    assert {distance for *_, distance in places} == set(photo.NEAR_STAR_PX)
+    assert len({index for _, _, index, _ in places}) == 3
+    for x, y, index, distance in places:
+        star = honest.context.field.stars[index]
+        assert abs(math.hypot(x - star.x_px, y - star.y_px) - distance) <= math.sqrt(0.5)
+        assert not honest.context.field.clipped[y, x]
+    # At 12 px every direction, 45 degrees apart, goes round a star whose ring lies inside the margin
+    rings = {i: [(x, y) for x, y, j, d in places if j == i and d == 12] for _, _, i, _ in places}
+    index, ring = max(rings.items(), key=lambda item: len(item[1]))
+    star = honest.context.field.stars[index]
+    turns = {round(math.degrees(math.atan2(y - star.y_px, x - star.x_px)) / 45) % 8 for x, y in ring}
+    assert turns == set(range(photo.NEAR_STAR_DIRECTIONS))
+    for x, y, _, _ in places[::4]:
+        for scale in (1.0, 0.25):
+            whole = photo.check(honest, painted(honest.stored, x, y, scale * peak16))
+            assert trials.refused(x, y, scale * peak16)[0] == (whole.gate["unconfirmedPointCount"] > 0), (x, y, scale)
+
+
+def test_the_trials_read_the_gates_own_search_image(honest) -> None:
+    # Outside a patch's window a trial reads the frame's image as the whole gate does: the detector's background and
+    # noise for a tile come from all of it
+    trials = photo.Trials(honest)
+    assert np.array_equal(trials.image, gate.search_statistic(trials.luma, honest.context.kept.left_out))
+
+
+def test_near_star_places_lie_outside_clipped_regions_and_inside_the_margin() -> None:
+    from types import SimpleNamespace
+    star = stars.Star(100.0, 100.0, 40.0, 3)
+    clipped = np.zeros((200, 200), dtype=bool)
+    clipped[:, 106:] = True
+    field = stars.StarField((star,), stars.footprint_map((200, 200), [star]), clipped, 1, 1, 0)
+    result = SimpleNamespace(context=SimpleNamespace(field=field))
+    places = photo.near_star_places(result, 4)
+    assert places and all(not clipped[y, x] for x, y, _, _ in places)
+    # Those east of the star at 6 px and more fall in the clipped region and are left out; those west are kept
+    assert (94, 100, 0, 6) in places and not any(x >= 106 for x, _, _, _ in places)
+    margin = photo.PAINT_MARGIN_PX
+
+    def at(x: float) -> list:
+        field = stars.StarField((stars.Star(x, 100.0, 40.0, 3),), np.zeros((200, 200)), np.zeros((200, 200), bool), 1, 1, 0)
+        return photo.near_star_places(SimpleNamespace(context=SimpleNamespace(field=field)), 4)
+
+    assert at(margin - 2.0) == []
+    inside = at(margin + 2.0)
+    assert inside and all(x >= margin for x, _, _, _ in inside) and len(inside) < len(photo.NEAR_STAR_PX) * 8
 
 
 def test_a_painted_trial_on_the_tiles_its_patch_touches_agrees_with_the_whole_gate(honest) -> None:
@@ -169,13 +248,18 @@ def test_the_first_scale_step_feeds_the_stored_file(tmp_path, monkeypatch) -> No
     assert len(np.unique(result.stored[outside], axis=0)) == 1
 
 
-def test_a_trial_on_one_of_the_originals_stars_is_not_refused(honest) -> None:
-    # A patch on a star is confirmed by the star; its flux is the flux check's to judge, not the point check's
+def test_a_trial_on_one_of_the_originals_stars_is_refused_for_the_stars_kept_core(honest) -> None:
+    # A patch on a star: the point search leaves the star's kept region out, so it reports no point there, but the
+    # star's own kept samples are no longer the original's, so the trial is refused (restore-4e; before it, the
+    # patch's point was the star's, confirmed by it, and such a patch passed)
     trials = photo.Trials(honest)
     star = max(honest.context.field.stars, key=lambda s: s.snr)
     x, y = int(round(star.x_px)), int(round(star.y_px))
-    refused, snr = trials.refused(x, y, 2 * gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT)
-    assert snr > 0 and not refused
+    peak16 = 2 * gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
+    refused, snr = trials.refused(x, y, peak16)
+    assert snr == 0.0 and refused
+    whole = photo.check(honest, painted(honest.stored, x, y, peak16))
+    assert not whole.gate["passed"] and any(p.snr == 0.0 for p in whole.unconfirmed)
 
 
 # restore-4d: the graph says the settings restore-4c named, each by its own step, with the values gate.py ran with

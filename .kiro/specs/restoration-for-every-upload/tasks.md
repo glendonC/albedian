@@ -120,6 +120,10 @@ pictures under `.cache/restore-review/<unit>/`.
     `services/media/encode.py`, `services/media/photo.py` (the photo path in the job's order), `scripts/restore_review.py`;
     the gate as design section 7 now says. Kind `restoration` is wired in `jobs.py` by restore-2b, since `jobs.py`
     comes with the runner. Its new settings get names in the media contract first, as restore-4c.
+  - restore-4e [decided 2026-11-19 by the lead: AUDIT-B's findings A and B on restore-4]: a star painted 3 to 12 px
+    from one of the original's stars is refused in every trial on every real photo, because the point search leaves
+    kept regions out and every sample of a kept core must be the original's as stored (design section 7); a test
+    holds the flux tolerance at 3 sigma_F from both sides. Before restore-2b serves anything.
 
 - [x] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with

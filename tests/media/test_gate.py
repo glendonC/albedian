@@ -22,6 +22,7 @@ from hypothesis import example, given, settings
 from hypothesis import strategies as st
 from scipy import ndimage
 
+from services.contracts import media as contracts
 from services.media import gate, noise, stars
 from services.science.detector import _build_gaussian_psf_kernel, detect_point_sources
 
@@ -216,6 +217,26 @@ def test_a_dissolve_never_touches_a_kept_core_and_grows_the_kept_region_over_a_p
     assert result.working[40, 40, 1] < working[40, 40, 1]
 
 
+def test_a_passs_fill_takes_no_light_from_a_kept_regions_edge_and_leaves_the_edge_as_it_was() -> None:
+    # A lit region kept up to its edge, and a point 4 px past its core, 2 px past its edge, beyond NEAR_CORE_PX: the
+    # fill that replaces the point reads the sky around it, not the edge's light, and the edge keeps its samples
+    # [restore-4e: on rp-b-03 a fill that took the edge's light in kept a point through three passes]
+    star = stars.Star(128.0, 128.0, 90.0, 6)
+    weight = stars.footprint_map((256, 256), [star])
+    field = stars.StarField((), weight, np.zeros((256, 256), bool), 0, 0, 0)
+    kept = gate.Kept(field, weight)
+    linear = np.full((256, 256, 3), 0.01) + 0.2 * (weight > 0)[..., None]
+    working = linear + gaussian((256, 256), 138.0, 128.0, 0.02)[..., None]
+    result = gate.dissolve(working, linear=linear, to_stored=lambda l: np.clip(l, 0, 1) * 65535,
+                           to_original_codes=lambda l: np.clip(l, 0, 1) * 255, original=gate.Original(np.zeros((0, 2))),
+                           kept=kept)
+    assert result.per_pass and result.per_pass[0] >= 1
+    # The sky is 0.01 and the point 0.02 over it: filled from the sky around it, under half the point is left
+    assert result.working[128, 138, 1] < 0.02, result.working[128, 138, 1]
+    edge = (weight > 0) & (weight < 1)
+    assert np.array_equal(result.working[edge], working[edge])
+
+
 def test_a_pass_that_looks_only_in_the_changed_tiles_ends_where_looking_everywhere_ends(monkeypatch) -> None:
     rng = np.random.default_rng(13)
     linear = 0.01 + 0.0005 * rng.standard_normal((600, 600, 3))
@@ -272,8 +293,8 @@ def test_a_pass_dissolves_a_point_the_detector_reports_only_at_the_gates_thresho
     kept = gate.Kept(field, np.zeros((256, 256)))
     real = gate.variant_points
 
-    def only_at_the_gate(luma, clipped, *, only_tiles=None, threshold=gate.VARIANT_THRESHOLD_SNR):
-        points, left = real(luma, clipped, only_tiles=only_tiles, threshold=threshold)
+    def only_at_the_gate(luma, clipped, *, only_tiles=None, threshold=gate.VARIANT_THRESHOLD_SNR, kept=None):
+        points, left = real(luma, clipped, only_tiles=only_tiles, threshold=threshold, kept=kept)
         return (points if threshold == gate.VARIANT_THRESHOLD_SNR else []), left
 
     monkeypatch.setattr(gate, "variant_points", only_at_the_gate)
@@ -282,6 +303,27 @@ def test_a_pass_dissolves_a_point_the_detector_reports_only_at_the_gates_thresho
                            original=gate.Original(np.zeros((0, 2))), kept=kept)
     assert result.per_pass and result.per_pass[0] == 1
     assert result.working[128, 128, 1] < working[128, 128, 1]
+
+
+def test_the_passes_search_as_the_gate_does_with_the_kept_regions_left_out(monkeypatch) -> None:
+    # A point the gate's search finds beside a kept region must be one the passes looked for, or an honest run ends
+    # rejected: both read `search_statistic` with the same weights
+    light, field, kept, original, expected = gate_scene()
+    linear = np.repeat(light[..., None], 3, axis=-1)
+    working = linear + gaussian((256, 256), 180.0, 60.0, 0.05)[..., None]
+    seen = []
+    real = gate.variant_points
+
+    def noted(*args, **kwargs):
+        seen.append(kwargs.get("kept"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(gate, "variant_points", noted)
+    gate.dissolve(working, linear=linear, to_stored=lambda l: np.clip(l, 0, 1) * 65535,
+                  to_original_codes=lambda l: np.clip(l, 0, 1) * 255, original=original, kept=kept)
+    gate.run_gate(np.round(np.clip(linear, 0, 1) * 65535).astype(np.uint16), original=original, kept=kept,
+                  expected=expected, original_luminance=light, variant_luminance=light)
+    assert seen and all(given is kept for given in seen)
 
 
 def gate_scene() -> tuple:
@@ -300,10 +342,17 @@ def test_the_gate_refuses_a_changed_star_for_its_flux_and_a_painted_point_for_it
     honest = gate.run_gate(expected.astype(np.uint16), original=original, kept=kept, expected=expected,
                            original_luminance=light, variant_luminance=light)
     assert honest.record["passed"] and honest.rejection is None
-    # The star brightened in place: on a star, so no point is unconfirmed, but its flux is not the original's
+    # The star brightened in place: its kept core is not the original's, one place there (restore-4e), and its flux
+    # is outside the tolerance too
     brighter = light + gaussian((256, 256), 100.0, 100.0, 0.05)
     stored = np.repeat(np.round(brighter * 65535)[..., None], 3, axis=-1)
     flux = gate.run_gate(stored.astype(np.uint16), original=original, kept=kept, expected=expected,
+                         original_luminance=light, variant_luminance=brighter)
+    assert flux.record["unconfirmedPointCount"] == 1 and flux.record["starsOutsideFluxTolerance"] == 1
+    assert not flux.record["passed"] and flux.rejection == "unconfirmed_points"
+    # Kept softly (no sample at weight 1, so no core to compare), the same star is refused for its flux alone
+    soft = gate.Kept(field, 0.99 * kept.weight)
+    flux = gate.run_gate(stored.astype(np.uint16), original=original, kept=soft, expected=expected,
                          original_luminance=light, variant_luminance=brighter)
     assert flux.record["unconfirmedPointCount"] == 0 and flux.record["starsOutsideFluxTolerance"] == 1
     assert not flux.record["passed"] and flux.rejection == "star_flux_changed"
@@ -313,6 +362,106 @@ def test_the_gate_refuses_a_changed_star_for_its_flux_and_a_painted_point_for_it
     point = gate.run_gate(stored.astype(np.uint16), original=original, kept=kept, expected=expected,
                           original_luminance=light, variant_luminance=painted)
     assert point.record["unconfirmedPointCount"] >= 1 and point.rejection == "unconfirmed_points"
+
+
+def test_a_kept_cores_sample_that_is_not_the_originals_is_an_unconfirmed_place() -> None:
+    light, field, kept, original, expected = gate_scene()
+    stored = expected.astype(np.uint16)
+    assert gate.kept_changed(stored, expected, kept.core) == []
+    # Inside the star's kept disc: one sample changed past the tolerance is one place, where it changed
+    changed = stored.copy()
+    changed[100, 103, 1] += 2
+    places = gate.kept_changed(changed, expected, kept.core)
+    assert [(p.x_px, p.y_px) for p in places] == [(103.0, 100.0)]
+    # At the tolerance, or outside every kept core, it is none
+    within = stored.copy()
+    within[100, 103, 1] += 1
+    outside = stored.copy()
+    outside[200, 200, 0] += 500
+    assert gate.kept_changed(within, expected, kept.core) == [] and gate.kept_changed(outside, expected, kept.core) == []
+    # Two separate changes are two places; samples touching, a diagonal neighbour too, are one
+    two = changed.copy()
+    two[97, 97, 2] -= 3
+    two[101, 104, 0] += 3
+    assert len(gate.kept_changed(two, expected, kept.core)) == 2
+    # The gate refuses it as a place the original does not confirm, with counts the contract takes
+    outcome = gate.run_gate(changed, original=original, kept=kept, expected=expected, original_luminance=light,
+                            variant_luminance=light)
+    assert not outcome.record["passed"] and outcome.rejection == "unconfirmed_points"
+    assert outcome.record["unconfirmedPointCount"] >= 1 and any(
+        (p.x_px, p.y_px) == (103.0, 100.0) for p in outcome.unconfirmed)
+    contracts.IntegrityGateResult.model_validate(outcome.record)
+
+
+@settings(max_examples=80, deadline=None)
+@given(radius=st.integers(gate.STAR_MIN_RADIUS_PX, 12), dx=st.floats(-0.5, 0.5), dy=st.floats(-0.5, 0.5),
+       beyond=st.floats(0.0, stars.FOOTPRINT_EDGE_PX + 0.5), angle=st.floats(0.0, 2 * math.pi),
+       ox=st.floats(-0.5, 0.5), oy=st.floats(-0.5, 0.5), scale=st.sampled_from([1.0, 0.5]))
+@example(radius=2, dx=0.5, dy=0.5, beyond=stars.FOOTPRINT_EDGE_PX + 0.5, angle=math.pi / 4, ox=0.5, oy=0.5, scale=0.5)
+def test_p_rst_11_a_star_painted_with_its_peak_on_a_sample_the_search_leaves_out_changes_a_core(
+        radius: int, dx: float, dy: float, beyond: float, angle: float, ox: float, oy: float, scale: float) -> None:
+    # The search leaves out every kept region, its core and its 2 px edge; a star painted anywhere whose peak
+    # sample is one of those, at the stated sensitivity or half of it, changes a core sample past the tolerance, so
+    # the exact check refuses what the search does not look at
+    star = stars.Star(64.0 + dx, 64.0 + dy, 20.0, radius)
+    kept = gate.Kept(stars.StarField((star,), np.zeros((128, 128)), np.zeros((128, 128), bool), 1, 1, 0),
+                     stars.footprint_map((128, 128), [star]))
+    x = star.x_px + (radius + beyond) * math.cos(angle) + ox
+    y = star.y_px + (radius + beyond) * math.sin(angle) + oy
+    if not kept.left_out[int(round(y)), int(round(x))]:
+        return
+    expected = np.full((128, 128, 3), 10000.0)
+    stored = np.round(expected + gaussian((128, 128), x, y, scale * gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT)[..., None])
+    assert gate.kept_changed(stored.astype(np.uint16), expected, kept.core), (radius, beyond, angle, scale)
+
+
+def test_the_search_leaves_out_every_kept_region_its_core_and_its_edge() -> None:
+    star = stars.Star(64.0, 64.0, 20.0, 4)
+    weight = stars.footprint_map((128, 128), [star])
+    kept = gate.Kept(stars.StarField((star,), weight, np.zeros((128, 128), bool), 1, 1, 0), weight)
+    assert np.array_equal(kept.left_out, weight > 0)
+    assert kept.left_out[64, 64 + 4 + 1] and not kept.left_out[64, 64 + 4 + stars.FOOTPRINT_EDGE_PX]
+    empty = gate.Kept(stars.StarField((), np.zeros((8, 8)), np.zeros((8, 8), bool), 0, 0, 0), np.zeros((8, 8)))
+    assert not empty.left_out.any()
+
+
+def test_the_search_statistic_leaves_kept_regions_out_and_is_the_gates_statistic_elsewhere() -> None:
+    # A kept region bright up to its edge, as a bright region's or a clipped bloom's light is, on a noisy sky
+    rng = np.random.default_rng(21)
+    star = stars.Star(48.0, 48.0, 90.0, 6)
+    weight = stars.footprint_map((96, 96), [star])
+    luma = 20.0 + 0.3 * rng.standard_normal((96, 96)) + 80.0 * (weight > 0)
+    plain, search = gate.statistic_image(luma), gate.search_statistic(luma, weight > 0)
+    region = weight > 0
+    # The B3 step-1 window is 5 x 5: a sample reads the region from 2 samples away along either axis
+    reach = ndimage.distance_transform_cdt(~region, metric="chessboard")
+    ring, far = (reach > 0) & (reach <= 2), reach > 2
+    assert np.all(search[region] == 0.0)
+    assert np.allclose(search[far], plain[far])
+    # Beside the region the gate's statistic takes the region's light into its local mean: a negative lobe; the
+    # search's local mean leaves it out, so the ring is the sky's own
+    assert plain[ring].mean() < -1.0 and abs(search[ring].mean()) < 0.2
+    assert np.array_equal(gate.search_statistic(luma, None), plain)
+    assert np.array_equal(gate.search_statistic(luma, np.zeros((96, 96))), plain)
+
+
+def test_a_stars_flux_is_refused_just_past_the_tolerance_and_kept_just_inside_it() -> None:
+    # Finding B of AUDIT-B (2026-11-19): the tolerance raised from 3 to 5 sigma_F passed every test. The star is
+    # brightened by a compact patch inside its aperture until its change is just over, then just under, the tolerance
+    rng = np.random.default_rng(14)
+    original = 0.01 + 0.0004 * rng.standard_normal((200, 200)) + gaussian((200, 200), 100.0, 100.0, 0.05)
+    star = stars.Star(100.0, 100.0, 50.0, 4)
+    footprint = stars.footprint_map((200, 200), [star])
+    field = stars.StarField((star,), footprint, np.zeros((200, 200), bool), 1, 1, 0)
+    sigma = gate.empty_aperture_sigma(original, star.radius_px, footprint, field.clipped)
+    before = gate.aperture_flux(original, 100.0, 100.0, star.radius_px, footprint > 0)
+    patch = gaussian((200, 200), 100.0, 100.0, 1.0, sigma=1.0)
+    unit = gate.aperture_flux(original + patch, 100.0, 100.0, star.radius_px, footprint > 0, original) - before
+    # The stated tolerance is 3 sigma_F (design section 7): the changes are absolute, so a changed constant fails
+    for change, outside in ((3.2, 1), (2.8, 0)):
+        variant = original + (change * sigma / unit) * patch
+        assert gate.flux_change_sigma(star, original, variant, footprint, field.clipped) == pytest.approx(change, abs=1e-6)
+        assert gate.flux_check(field, original, variant, footprint)[:2] == (1, outside), change
 
 
 def test_a_smoothed_disc_that_reaches_a_kept_core_stops_at_it() -> None:
