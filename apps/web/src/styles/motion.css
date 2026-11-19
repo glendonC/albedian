@@ -108,3 +108,13 @@
 .ask-bar > .look-main {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both;
 }
+
+/* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this
+   photo 20 ms later, then Ask out loud 20 ms after that. */
+.reveal-legend {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+}
+
+.ask-bar {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both;
+}

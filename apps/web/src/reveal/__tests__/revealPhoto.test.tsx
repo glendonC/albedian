@@ -818,3 +818,21 @@ describe('the matched marks arrive brightest first, all within a third of a seco
     });
   });
 });
+
+// The motion record (MOTION-READY-web.md, "Reveal parts"): the reveal's words arrive only once its marks are in (the
+// marks' span), as words in, 20 ms apart: the status first (its own unit), then In this photo, then Ask out loud
+describe('the reveal\'s words arrive after its marks', () => {
+  it('brings In this photo in after the marks, one stagger after the status\'s place', () => {
+    let found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.reveal-legend' && rule.parent?.type === 'root') {
+        rule.walkDecls((decl) => {
+          found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+        });
+      }
+    });
+    expect(found).toEqual({
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
+    });
+  });
+});
