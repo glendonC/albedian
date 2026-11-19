@@ -281,11 +281,12 @@ describe('craftFromSearch: the interim choice by page address', () => {
         { id: 'zero', name: 'Zero', model: 'm', travel: travel(0, 'Sun') },
         { id: 'negative', name: 'Negative', model: 'm', travel: travel(-3, 'Sun') },
         { id: 'nan', name: 'Not a number', model: 'm', travel: travel(Number.NaN, 'Sun') },
+        { id: 'infinite', name: 'Infinite', model: 'm', travel: travel(Number.POSITIVE_INFINITY, 'Sun') },
         { id: 'none', name: 'None', model: 'm', travel: null },
       ],
     };
     const crafts = craftsOfHangar(file);
-    expect(crafts.map((c) => [c.id, c.speed?.kmS ?? null])).toEqual([['sun', 15.3], ['earth', null], ['zero', null], ['negative', null], ['nan', null], ['none', null]]);
+    expect(crafts.map((c) => [c.id, c.speed?.kmS ?? null])).toEqual([['sun', 15.3], ['earth', null], ['zero', null], ['negative', null], ['nan', null], ['infinite', null], ['none', null]]);
     expect(crafts[0]!.speed).toEqual({ kmS: 15.3, relativeTo: 'the Sun', sourceUrl: 'https://science.nasa.gov/', asOf: '2024-01-01' });
   });
 
