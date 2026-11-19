@@ -226,7 +226,9 @@ describe("the phone reveal's rules are the approved page's", () => {
   });
 
   it('sets the phone answer as #p-answer does, and Ask out loud alone at the phone size at 772', () => {
-    expect(declarationsOf('.reveal-answer.is-phone')).toEqual({ left: '24px', right: '24px', top: '650px', width: 'auto' });
+    // A longer answer grows upward from where the picture's one-line answer ends, 764 px down, so it never runs under
+    // Ask out loud at 772 (the lead's answer 23:50 to WEB-UX-unit-phone-1-QUESTION.md, option A, INTERIM)
+    expect(declarationsOf('.reveal-answer.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 764px)', width: 'auto' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__q')).toEqual({ 'font-size': '13px', margin: '0 0 8px' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__s')).toEqual({ font: '300 22px / 1.15 var(--look-font-sans)', 'letter-spacing': '-0.03em' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__st')).toEqual({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px', 'margin-top': '12px', 'padding-top': '0', 'border-top': '0' });

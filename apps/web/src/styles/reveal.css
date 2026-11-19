@@ -1206,11 +1206,14 @@
   margin-right: 8px;
 }
 
-/* The answer at phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer) */
+/* The answer at phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer): it ends
+   where the picture's one-line answer ends, 764 px down, and a longer one grows upward from there, clear of Ask out loud
+   at 772 (the lead's answer 23:50, option A, INTERIM) */
 .reveal-answer.is-phone {
   left: 24px;
   right: 24px;
-  top: 650px;
+  top: auto;
+  bottom: calc(100% - 764px);
   width: auto;
 }
 .reveal-answer.is-phone .reveal-answer__q {
