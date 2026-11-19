@@ -6,7 +6,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObservationSolution, UploadJob } from '@albedian/contracts';
+import { orientedSize, type ObservationSolution, type UploadJob } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 import { restorationRows, type Restoration } from '../restoration.js';
@@ -160,7 +160,8 @@ describe('the restoration on the reveal (laptop)', () => {
     expect((compare.querySelector('.restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe('/api/media/x/variants/var_7e6f5a4b3c2d1e0f/file');
     expect(compare.querySelector('.restore-compare__line')).not.toBeNull();
     expect(q('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
-    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    // D15: the matched stars' marks stay over the compare, where they are on "Your photo"
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
     // The counts stay, as the approved compare draws them
     expect(q('.reveal-legend')).not.toBeNull();
   });
@@ -188,6 +189,131 @@ describe('the restoration on the reveal (laptop)', () => {
       compare.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 400 }));
     });
     expect(compare.className).not.toContain('is-drag');
+  });
+});
+
+describe('D15: marks over the compare and zooming both pictures together (UIUX-restoration-zoom-DECIDED-BY-LEAD.md)', () => {
+  // A photo far larger than its frame, so its real pixels lie well beyond the whole view (the sample is 960 by 540)
+  const big = () => {
+    const session = calibrated();
+    return { ...session, sourceAsset: { ...session.sourceAsset!, width: 9600, height: 5400 } };
+  };
+  const done = () => show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } }, { session: big() });
+  const compare = () => q('[data-testid="restore-compare"]') as HTMLElement;
+  const layers = () => [...compare().querySelectorAll('.restore-compare__layer')] as HTMLElement[];
+  const place = () => {
+    compare().getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 600, right: 400, bottom: 600, x: 0, y: 0, toJSON: () => ({}) });
+  };
+  const wheel = (deltaY: number, clientX = 200, clientY = 300) =>
+    act(() => {
+      compare().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY, clientX, clientY }));
+    });
+
+  it('draws the original under the restored picture in the compare, both in a zoom layer of their own', () => {
+    done();
+    expect(layers()).toHaveLength(2);
+    const original = compare().querySelector('.restore-compare__original img') as HTMLImageElement;
+    expect(original.getAttribute('src')).toBe(big().sourceAsset.uri);
+  });
+
+  it('zooms both together about the pointer with the wheel, no further than the real pixels, and the marks step aside', () => {
+    done();
+    place();
+    wheel(-300);
+    const [a, b] = layers().map((layer) => layer.style.transform);
+    expect(a).toBe(b);
+    expect(a).toMatch(/^translate\(-?[\d.]+px, -?[\d.]+px\) scale\(([\d.]+)\)$/);
+    const zoom = Number(/scale\(([\d.]+)\)/.exec(a!)![1]);
+    expect(zoom).toBeGreaterThan(1);
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    for (let i = 0; i < 40; i += 1) wheel(-500);
+    const most = Number(/scale\(([\d.]+)\)/.exec(layers()[0]!.style.transform)![1]);
+    // No further than the photo's real pixels: its upright width over the frame's
+    const asset = big().sourceAsset;
+    const upright = orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx;
+    expect(most).toBeCloseTo(upright / parseFloat(compare().style.width), 6);
+  });
+
+  it('adds up a burst of wheel steps in one frame, as a trackpad sends them', () => {
+    done();
+    place();
+    act(() => {
+      for (let i = 0; i < 4; i += 1) compare().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100, clientX: 200, clientY: 300 }));
+    });
+    const zoom = Number(/scale\(([\d.]+)\)/.exec(layers()[0]!.style.transform)![1]);
+    expect(zoom).toBeCloseTo(Math.exp(4 * 100 * 0.0015), 6);
+  });
+
+  it('pans both with a drag while zoomed, leaving the line, and moves the line with a press', () => {
+    done();
+    place();
+    wheel(-300);
+    const before = layers()[0]!.style.transform;
+    const split = compare().style.getPropertyValue('--split');
+    act(() => {
+      compare().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 200, clientY: 300 }));
+      compare().dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 260, clientY: 330 }));
+      compare().dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 260, clientY: 330 }));
+    });
+    expect(layers()[0]!.style.transform).not.toBe(before);
+    expect(layers()[0]!.style.transform).toBe(layers()[1]!.style.transform);
+    expect(compare().style.getPropertyValue('--split')).toBe(split);
+    act(() => {
+      compare().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 300 }));
+      compare().dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 100, clientY: 300 }));
+    });
+    expect(compare().style.getPropertyValue('--split')).toBe('25%');
+  });
+
+  it('stops a drag at the picture\'s edges, so the frame never shows past it', () => {
+    done();
+    place();
+    wheel(-300);
+    const drag = (dx: number, dy: number) =>
+      act(() => {
+        compare().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 200, clientY: 300 }));
+        compare().dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 200 + dx, clientY: 300 + dy }));
+        compare().dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 200 + dx, clientY: 300 + dy }));
+      });
+    const parts = () => /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(layers()[0]!.style.transform)!.slice(1).map(Number);
+    drag(3000, 3000);
+    expect(parts().slice(0, 2)).toEqual([0, 0]);
+    drag(-6000, -6000);
+    const [tx, ty, z] = parts();
+    expect(tx).toBeCloseTo(parseFloat(compare().style.width) * (1 - z!), 6);
+    expect(ty).toBeCloseTo(parseFloat(compare().style.height) * (1 - z!), 6);
+  });
+
+  it('returns to the whole photo on Esc, or on a second press of the current label', async () => {
+    done();
+    place();
+    // The line arrives at the middle first
+    await act(async () => await new Promise((r) => setTimeout(r, 40)));
+    wheel(-300);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+    wheel(-300);
+    const original = [...compare().querySelectorAll('button')].find((b) => b.textContent === 'Original') as HTMLButtonElement;
+    act(() => original.click());
+    expect(compare().style.getPropertyValue('--split')).toBe('100%');
+    expect(layers()[0]!.style.transform).not.toBe('translate(0px, 0px) scale(1)');
+    act(() => original.click());
+    expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
+  });
+
+  it('does not zoom a photo no larger than its frame, whose real pixels are the whole view', () => {
+    show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } });
+    place();
+    wheel(-300);
+    expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
+  });
+
+  it('shows the photo bare while Original pixels is pressed: no compare', () => {
+    show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } }, { originalPixels: true });
+    expect(q('[data-testid="restore-compare"]')).toBeNull();
   });
 });
 
@@ -221,6 +347,10 @@ describe("the restoration's rules are the approved page's", () => {
     // The cut is on an upright box, so it cuts the turned picture along the frame's own width
     expect(declarationsOf('.restore-compare__pic')).toEqual({ position: 'absolute', inset: '0', overflow: 'hidden', 'clip-path': 'inset(0 0 0 var(--split))' });
     expect(declarationsOf('.restore-compare__pic img')).toEqual({ position: 'absolute', display: 'block', 'object-fit': 'fill', 'max-width': 'none' });
+    // Each picture's zoom layer fills the frame and scales from its corner; the original fills its layer
+    expect(declarationsOf('.restore-compare__layer')).toEqual({ position: 'absolute', inset: '0', 'transform-origin': '0 0' });
+    expect(declarationsOf('.restore-compare__original')).toEqual({ position: 'absolute', inset: '0', overflow: 'hidden' });
+    expect(declarationsOf('.restore-compare__original img')).toEqual({ position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', 'object-fit': 'fill' });
     expect(declarationsOf('.restore-compare__line')).toEqual({ position: 'absolute', top: '0', bottom: '0', left: 'var(--split)', width: '1px', 'margin-left': '-0.5px', background: 'rgba(244, 243, 239, 0.85)' });
     expect(declarationsOf('.restore-compare:not(.is-drag) .restore-compare__pic')).toEqual({ transition: 'clip-path 0.4s cubic-bezier(0.08, 0.62, 0.1, 0.98)' });
     expect(declarationsOf('.restore-compare:not(.is-drag) .restore-compare__line')).toEqual({ transition: 'left 0.4s cubic-bezier(0.08, 0.62, 0.1, 0.98)' });

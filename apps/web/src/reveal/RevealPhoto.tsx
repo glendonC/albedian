@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { answerFindings, DISCLOSURES, type ObservationSession } from '@albedian/contracts';
+import { answerFindings, DISCLOSURES, orientedSize, type ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
@@ -245,7 +245,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const overPhoto = !phone && !there && !skyShown;
   const restoreOffered = overPhoto && onRestore !== undefined && restoration?.phase === 'idle' && session.sourceAsset?.mediaKind === 'image';
   const restoring = overPhoto && (restoration?.phase === 'working' || restoration?.phase === 'stopped');
-  const compareShown = overPhoto && restoration?.phase === 'done';
+  // Original pixels shows the photo bare, the compare too (D15)
+  const compareShown = overPhoto && restoration?.phase === 'done' && !originalPixels;
+  // While the compare is zoomed in, the marks step aside (D15)
+  const [compareZoomed, setCompareZoomed] = useState(false);
+  useEffect(() => {
+    if (!compareShown) setCompareZoomed(false);
+  }, [compareShown]);
+  const asset = session.sourceAsset;
+  const uprightWidth = asset ? orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx : 0;
 
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
@@ -260,11 +268,20 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
-      {compareShown && frame && restoration?.phase === 'done' && <RestoreCompare rect={frame} src={restoration.variantUrl} fade={SIDE_FADE} orientation={restoration.orientation} />}
+      {compareShown && frame && restoration?.phase === 'done' && asset && (
+        <RestoreCompare
+          rect={frame}
+          src={restoration.variantUrl}
+          originalSrc={asset.uri}
+          fade={SIDE_FADE}
+          orientation={restoration.orientation}
+          maxZoom={uprightWidth / Math.max(1, frame.widthPx)}
+          onZoomed={setCompareZoomed}
+        />
+      )}
 
-      {!bareFrame && !earthOnly && !compareShown && (
+      {!bareFrame && !earthOnly && !(compareShown && compareZoomed) && (
       <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>
-
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg

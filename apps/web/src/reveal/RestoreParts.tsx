@@ -113,27 +113,101 @@ function afterPaint(callback: () => void): () => void {
   };
 }
 
+/** How far a wheel step zooms: one notch of a mouse (100) is about a sixth. */
+const WHEEL_ZOOM = 0.0015;
+/** A press that moves less than this is a press, not a drag. */
+const PRESS_SLOP_PX = 3;
+
+type Zoom = { z: number; tx: number; ty: number };
+const WHOLE: Zoom = { z: 1, tx: 0, ty: 0 };
+
 /**
  * The compare (D10; CMP_CSS and the page's script in .cache/uiux/restore): in the photo's own frame, the restored
- * picture over the original (drawn beneath by the photo stage), cut at the line. The line starts at the right edge
- * and glides to the middle; a press moves it there with the same glide, a held drag follows with none; "Original"
- * sends it to the right edge, "Restored" to the left.
+ * picture over the original, cut at the line. The line starts at the right edge and glides to the middle; a press
+ * moves it there with the same glide, a held drag follows with none; "Original" sends it to the right edge,
+ * "Restored" to the left. D15 (decided by the lead): the wheel, or a pinch (which a trackpad sends as a wheel), zooms
+ * both pictures together about the pointer, up to the photo's real pixels; a drag then moves both and a press still
+ * moves the line; Esc, or a second press on the current label, returns to the whole photo. Zooming has no movement of
+ * its own (the MOTION record states none).
  */
-export const RestoreCompare: React.FC<{ rect: PhotoRect; src: string; fade?: string; orientation?: DisplayOrientation }> = ({
-  rect,
-  src,
-  fade,
-  orientation = { quarterTurnsClockwise: 0, mirrored: false },
-}) => {
+export const RestoreCompare: React.FC<{
+  rect: PhotoRect;
+  src: string;
+  /** The original, drawn inside the compare so it zooms with the restoration. */
+  originalSrc: string;
+  fade?: string;
+  orientation?: DisplayOrientation;
+  /** The zoom that shows the photo's real pixels; never less than whole. */
+  maxZoom?: number;
+  /** Told whether the compare is zoomed in, so the marks can step aside. */
+  onZoomed?: (zoomed: boolean) => void;
+}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed }) => {
   const box = useRef<HTMLDivElement>(null);
-  const down = useRef(false);
+  const down = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [split, setSplit] = useState(100);
   const [drag, setDrag] = useState(false);
+  const [zoom, setZoom] = useState<Zoom>(WHOLE);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const zoomed = zoom.z > 1;
   useEffect(() => afterPaint(() => setSplit(50)), [src]);
-  const at = (clientX: number) => {
+  useEffect(() => onZoomed?.(zoomed), [zoomed, onZoomed]);
+
+  // Points in the frame's own pixels, whatever size it is drawn at
+  const local = (clientX: number, clientY: number) => {
     const r = box.current!.getBoundingClientRect();
-    return Math.max(0, Math.min(100, (100 * (clientX - r.left)) / Math.max(1, r.width)));
+    return {
+      x: ((clientX - r.left) * rect.widthPx) / Math.max(1, r.width),
+      y: ((clientY - r.top) * rect.heightPx) / Math.max(1, r.height),
+      fraction: Math.max(0, Math.min(100, (100 * (clientX - r.left)) / Math.max(1, r.width))),
+    };
   };
+  const clamped = (next: Zoom): Zoom => ({
+    z: next.z,
+    tx: Math.min(0, Math.max(rect.widthPx * (1 - next.z), next.tx)),
+    ty: Math.min(0, Math.max(rect.heightPx * (1 - next.z), next.ty)),
+  });
+  const limit = Math.max(1, maxZoom);
+
+  // The wheel needs a listener that may cancel the page's own scroll
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return undefined;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const at = local(event.clientX, event.clientY);
+      const current = zoomRef.current;
+      const z = Math.max(1, Math.min(limit, current.z * Math.exp(-event.deltaY * WHEEL_ZOOM)));
+      // The point under the pointer stays under it
+      const px = (at.x - current.tx) / current.z;
+      const py = (at.y - current.ty) / current.z;
+      const next = z === 1 ? WHOLE : clamped({ z, tx: at.x - px * z, ty: at.y - py * z });
+      // Held at once, so a burst of wheel steps in one frame (a trackpad's) adds up
+      zoomRef.current = next;
+      setZoom(next);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  });
+
+  // Esc returns to the whole photo while zoomed in, before anything else hears it
+  useEffect(() => {
+    if (!zoomed) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setZoom(WHOLE);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [zoomed]);
+
+  const label = (edge: number) => () => {
+    if (split === edge) setZoom(WHOLE);
+    else setSplit(edge);
+  };
+  const layer = { transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})` };
   const style = {
     left: `${rect.leftPx}px`,
     top: `${rect.topPx}px`,
@@ -152,31 +226,51 @@ export const RestoreCompare: React.FC<{ rect: PhotoRect; src: string; fade?: str
       onPointerDown={(event) => {
         if ((event.target as Element).closest('.restore-compare__label')) return;
         box.current?.setPointerCapture?.(event.pointerId);
-        down.current = true;
-        setSplit(at(event.clientX));
+        down.current = { x: event.clientX, y: event.clientY, moved: false };
+        if (!zoomed) setSplit(local(event.clientX, event.clientY).fraction);
       }}
       onPointerMove={(event) => {
-        if (!down.current) return;
+        const start = down.current;
+        if (!start) return;
+        if (zoomed) {
+          if (!start.moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) < PRESS_SLOP_PX) return;
+          const from = local(start.x, start.y);
+          const to = local(event.clientX, event.clientY);
+          start.moved = true;
+          start.x = event.clientX;
+          start.y = event.clientY;
+          setZoom((current) => clamped({ z: current.z, tx: current.tx + to.x - from.x, ty: current.ty + to.y - from.y }));
+          return;
+        }
         setDrag(true);
-        setSplit(at(event.clientX));
+        setSplit(local(event.clientX, event.clientY).fraction);
       }}
-      onPointerUp={() => {
-        down.current = false;
+      onPointerUp={(event) => {
+        const start = down.current;
+        down.current = null;
         setDrag(false);
+        if (zoomed && start && !start.moved) setSplit(local(event.clientX, event.clientY).fraction);
       }}
       onPointerCancel={() => {
-        down.current = false;
+        down.current = null;
         setDrag(false);
       }}
     >
+      <div className="restore-compare__original">
+        <div className="restore-compare__layer" style={layer}>
+          <img src={originalSrc} alt="" draggable={false} />
+        </div>
+      </div>
       {/* Cut on an upright box; inside it the variant, stored as the camera wrote it, is turned upright: mirrored
           first, then turned clockwise, as the contract's orientation reads (the verdict on unit-restore-2) */}
       <div className="restore-compare__pic">
-        <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
+        <div className="restore-compare__layer" style={layer}>
+          <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
+        </div>
       </div>
       <span className="restore-compare__line" aria-hidden="true" />
-      <SecondAction part="restore-compare__label is-left" label="Original" onClick={() => setSplit(100)} />
-      <SecondAction part="restore-compare__label is-right" label="Restored" onClick={() => setSplit(0)} />
+      <SecondAction part="restore-compare__label is-left" label="Original" onClick={label(100)} />
+      <SecondAction part="restore-compare__label is-right" label="Restored" onClick={label(0)} />
     </div>
   );
 };
