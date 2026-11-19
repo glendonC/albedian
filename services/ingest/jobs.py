@@ -858,9 +858,13 @@ def run_solve_job(
 
 # What the job record names as the code that made its solution (design 3.5); platform-6 guards its revision
 SOLVE_PRODUCER = Producer("albedian.solve_chain", 1)
-# [proposed until platform-5b measures it] The whole solve job's bound: today's step bounds sum to 300 s (60 s decode,
-# 180 s search, 60 s spread frames) and detection, stacking and the predicted sky run untimed in the server thread
-SOLVE_JOB_TIME_LIMIT_SEC = 600.0
+# The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
+# tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
+# spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
+# most 18.2 s over 13 owner clips and 20 public photos at load 7 to 12 [tested, platform-5b report]. The bound is the
+# 300 s and four times that, in whole minutes [proposed: room for a slower machine and a larger file, as the body
+# limits take four times their largest body]
+SOLVE_JOB_TIME_LIMIT_SEC = 420.0
 # The solve kind's own sentences for a job past its whole bound and for a result that could not be stored (the job
 # contract's, platform-5s; the lead's answer of 2026-11-18): a time limit is not an internal error
 SOLVE_JOB_TIME_LIMIT_REASON = "The solve stopped at its time limit."

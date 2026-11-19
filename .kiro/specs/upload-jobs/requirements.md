@@ -266,7 +266,10 @@ The spec was accepted as the plan with seven rulings. Each is written in where i
 7. **The scratch file left by `_write_json`.** Its fix and its test go into the runner unit. `tasks.md`, platform-5.
 
 ## What is open
-- [open] The solve kind's whole-job bound: its step bounds sum to 300 s, but detection, stacking and the predicted sky
-  run in the server process untimed. Set in platform-5 from measured real-case durations.
-- [open] Whether a solve slows enough beside a running restoration to need one slot for both groups; measured in
-  platform-5 once the restoration exists.
+- Answered in platform-5b [tested]: the solve kind's whole-job bound is 420 s, its steps' 300 s and four times the
+  18.2 s its untimed server-thread part took at most over 13 owner clips and 20 public photos (load 7 to 12), in whole
+  minutes (design 3.4).
+- Answered in platform-5b for now [tested, with a stand-in]: a solve beside a media job that keeps one core busy in its
+  child ran 13.3 s against 13.3 s alone (a clip, medians of three) and 17.2 s against 16.3 s (a photo, one run 23.5 s),
+  at load 8 to 26; the two groups keep a slot each. [open] Measured again once the restoration's own pool exists
+  (REQ-RST-8.9), which the stand-in does not model.

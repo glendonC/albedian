@@ -278,6 +278,14 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   (`DECODE_TIMEOUT_SEC`) + 180 s search + 60 s spread frames (`kiro/sky`, its own `DECODE_TIMEOUT_SEC` deadline) =
   300 s, but detection, stacking and `complete_sky` run in the server thread with no bound of their own and have not
   been timed on the real case; the unit reports `.lead/kiro/real_case.zsh 1` durations with `uptime`'s load.
+- As built in platform-5b [tested]: `SOLVE_JOB_TIME_LIMIT_SEC` is 420 s. The steps' own bounds come to 300 s on the
+  longest chain (a HEIC photo's tile probe and tile decode, 60 s each, and the search; or a clip's decode, the search
+  and its spread frames). Each step timed on 13 owner clips and 20 of the 60 public photos through the runner, at load
+  7 to 12: the untimed part (stacking, detection, the predicted sky less its spread frames) took at most 18.2 s (a
+  24.2 MP photo's detection), about 0.75 s per megapixel for a photo and 1.6 s for a clip's 8 stacked frames; the
+  longest job ran 69.9 s. The bound is 300 s and four times 18.2 s, in whole minutes [proposed: the body limits' four
+  times]; it leaves 120 s for the untimed part, about 160 MP of photo or 73 MP of clip at those rates [inference]. No
+  clip had a recorded time and place, so no spread frames were read: that step is held by its own 60 s bound.
 - `run_solve_job` stays as a thin wrapper (start, wait, return the record) for the tests and scripts that call it.
 - As built in platform-3 [tested], a pure refactor: `solve_upload(ctx)` holds the chain from the decode to
   `complete_sky`, moved as it is; `run_solve_job` keeps the job around it (the queued record, the stage table, the

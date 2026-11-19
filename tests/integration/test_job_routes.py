@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import math
 import io
 import json
 import shutil
@@ -434,3 +435,24 @@ def test_a_start_that_waits_and_joins_an_active_job_waits_for_it(setup: dict[str
     waiter.join(BOUND_S)
     (answer,) = answers
     assert answer.status_code == 201 and answer.json()["id"] == first["id"] and answer.json()["state"] == "succeeded"
+
+
+# ---- platform-5b: the solve job's whole bound, from measured real cases ----
+
+# The largest server-thread time measured outside every step's own bound (stacking, detection and the predicted sky
+# less its spread frames) over the 13 owner clips and 20 of the 60 public real photos, at load 7 to 12 on this laptop
+# (.units/platform-5b/steps.txt, 2026-11-18): 18.2 s, a 24.2 MP photo's detection
+MEASURED_UNTIMED_MAX_S = 18.2
+
+
+def test_the_solve_jobs_bound_is_its_steps_bounds_and_four_times_its_largest_untimed_part_in_whole_minutes() -> None:
+    """The step bounds of the longest chain: a HEIC photo's tile probe and tile decode (two decoder bounds) and the
+    search, or a clip's decode, the search and its spread frames; either is 300 s. Four times the measured untimed
+    part is room for a slower machine and a larger file, as the body limits take four times their largest body."""
+    decoder, search = ingest_jobs.DECODE_TIMEOUT_SEC, ingest_jobs.SOLVE_TIME_LIMIT_SEC
+    steps = max(2 * decoder + search, decoder + search + decoder)
+    assert steps == 300
+    expected = math.ceil((steps + 4 * MEASURED_UNTIMED_MAX_S) / 60.0) * 60.0
+    assert expected == 420.0
+    assert ingest_jobs.SOLVE_JOB_TIME_LIMIT_SEC == expected
+    assert ingest_jobs.SOLVE_KIND.time_limit_s({"mediaKind": "image"}, None) == expected
