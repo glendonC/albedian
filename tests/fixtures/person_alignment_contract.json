@@ -1,0 +1,445 @@
+{
+ "about": "Samples for a person's alignment of the predicted sky (D24), written by tests/integration/test_person_alignment_contract.py and judged alike by the Zod schema (packages/contracts/src/alignment.ts) and the Python parser (services/contracts/alignment.py).",
+ "format": "albedian.person-alignment",
+ "formatVersion": 1,
+ "source": "person",
+ "uncertaintyDeg": 10.0,
+ "fovMaxDeg": 175.0,
+ "convention": {
+  "frame": "topocentric_sea_level",
+  "azimuth": "true_north_through_east",
+  "altitude": "apparent_airless",
+  "roll": "upright_frame_positive_clockwise"
+ },
+ "valid": [
+  {
+   "name": "a person's alignment",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "the horizon at the frame's centre, looking north",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 0.0,
+    "centerAzDeg": 0.0,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "the zenith",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 90.0,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "below the horizon (a frame tilted down)",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": -90.0,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "azimuth just under a full turn",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 359.999,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "roll a half turn either way",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": 180.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "roll minus a half turn",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -180.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "the widest field the contract takes",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 175.0
+   }
+  },
+  {
+   "name": "a narrow telephoto field",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 0.5
+   }
+  },
+  {
+   "name": "integers for every number",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 30,
+    "centerAzDeg": 200,
+    "rollDeg": 0,
+    "fovDiagonalDeg": 70
+   }
+  }
+ ],
+ "invalid": [
+  {
+   "name": "another format",
+   "alignment": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "format version 2",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 2,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "format version as text",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": "1",
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "format version true",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": true,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "no format",
+   "alignment": {
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "another source",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "record",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "no source",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "altitude above the zenith",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 90.001,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "altitude below the nadir",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": -90.001,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "azimuth a full turn",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 360.0,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "azimuth negative",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": -0.001,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "roll past a half turn",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": 180.001,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "roll past minus a half turn",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -180.001,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "a field of view of 0",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 0.0
+   }
+  },
+  {
+   "name": "a negative field of view",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": -10.0
+   }
+  },
+  {
+   "name": "a field of view past the widest",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 175.001
+   }
+  },
+  {
+   "name": "an altitude as text",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": "31.5",
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "an altitude that is true",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": true,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "an altitude that is null",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": null,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "no altitude",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "no azimuth",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "no roll",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "fovDiagonalDeg": 72.7
+   }
+  },
+  {
+   "name": "no field of view",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0
+   }
+  },
+  {
+   "name": "an unknown key",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAltDeg": 31.5,
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7,
+    "uncertaintyDeg": 5.0
+   }
+  },
+  {
+   "name": "a Python field name",
+   "alignment": {
+    "format": "albedian.person-alignment",
+    "formatVersion": 1,
+    "source": "person",
+    "centerAzDeg": 204.25,
+    "rollDeg": -3.0,
+    "fovDiagonalDeg": 72.7,
+    "center_alt_deg": 31.5
+   }
+  },
+  {
+   "name": "a list",
+   "alignment": []
+  },
+  {
+   "name": "text",
+   "alignment": "albedian.person-alignment"
+  },
+  {
+   "name": "null",
+   "alignment": null
+  }
+ ]
+}
