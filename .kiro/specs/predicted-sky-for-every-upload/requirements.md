@@ -380,11 +380,12 @@ rare required cases seeded by `@example` or `examples`.
 
 ## Decisions taken by the lead (2026-11-10) [proposed, open to the owner]
 - Head roll assumed level within 10 deg either way; the skyline 0 to 3 deg above the true horizon.
-- The head-worn field of view range for the Meta Ray-Ban Display glasses: the maker publishes 100 deg for the
-  Ray-Ban Meta glasses' ultra-wide camera without naming the axis (ray-ban.com), and no figure was found for the
-  Display model; its clip frames (1344 x 1792) are smaller than the 1440 x 1920 video size retailers list, so a crop
-  may narrow it [inference]. The profile takes 80 to 110 deg diagonal, the range the phone benchmark already uses
-  for its modelled head-worn class (`research/benchmarks/phone_photos/cameras.py`), labelled [open].
+- The head-worn field of view range for the Meta Ray-Ban Display glasses: Meta publishes "100° field of view,
+  left-oriented" for the Display model's camera without naming the axis, and its video as "1440x1920 pixels @30 Fps"
+  (meta.com/ai-glasses/compare and the model's specification sheet, read at source 2026-11-18) [verified]; the
+  owner's clip frames (1264 x 1680 to 1408 x 1888) are smaller, stabilised and de-warped crops, so a crop narrows it
+  [inference]. The profile takes 80 to 110 deg diagonal, the range the phone benchmark already uses for its modelled
+  head-worn class (`research/benchmarks/phone_photos/cameras.py`), labelled [open].
 - An ambiguous plate solve becomes `predicted_only` when the predicted sky is added (its quality and warnings stay),
   so the person is offered the sky.
 
