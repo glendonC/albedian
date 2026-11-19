@@ -123,8 +123,10 @@ export function revealMarks(session: ObservationSession, viewportWidthPx: number
   return placed.map(({ finding, kind, position }) => {
     const picked = finding.id === pickedId;
     const magnitude = finding.catalogRef?.apparentMagnitude;
+    // The picked star keeps its name; a star with no name keeps its mark and no label, its card naming it (INTERIM:
+    // .lead/uiux/UIUX-unnamed-QUESTION.md)
     const wanted =
-      picked ||
+      (picked && (kind !== 'catalog' || namedStar(finding))) ||
       (kind === 'catalog'
         ? namedStar(finding) && magnitude !== undefined && magnitude < NAME_MAGNITUDE_LIMIT
         : predictedNamed.has(finding.id));

@@ -11,7 +11,7 @@ import { POSE, poseSession, sample } from '../../components/__tests__/poseSessio
 import { SIDE_FADE, SourcePhotoStage } from '../../components/SourcePhotoStage.js';
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { cornerPaths } from '../cornerPaths.js';
-import { revealMarks } from '../revealMarks.js';
+import { leaderPath, revealMarks } from '../revealMarks.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
@@ -104,9 +104,13 @@ describe('revealMarks: only what the approved picture marks', () => {
     } as ObservationSolution;
     const names = (session: ObservationSession) => revealMarks(session, VIEW.w, VIEW.h).map((mark) => mark.name);
     expect(names(poseSession(numbered))).toEqual(['Betelgeuse', null, 'Aldebaran']);
-    // Picked, it is named by its title whatever that is
+    // Picked, a star with no name keeps its mark and no label: its card names it (the nameless card, INTERIM: UIUX-unnamed-QUESTION.md)
     const rigel = numbered.findings.find((f) => f.title === 'HIP 24436')!;
-    expect(names({ ...poseSession(numbered), selectedFindingId: rigel.id })).toEqual(['Betelgeuse', 'HIP 24436', 'Aldebaran']);
+    const picked = revealMarks({ ...poseSession(numbered), selectedFindingId: rigel.id }, VIEW.w, VIEW.h);
+    expect(picked.map((mark) => mark.name)).toEqual(['Betelgeuse', null, 'Aldebaran']);
+    // Its line to the card starts at its ring
+    const mark = picked.find((m) => m.picked)!;
+    expect(leaderPath(mark, VIEW.w).startsWith(`M${Number((mark.xPx + 28).toFixed(1))} ${mark.yPx}`)).toBe(true);
   });
 
   it('marks nothing as catalog matched on a solve that did not pass its independent check', () => {
@@ -268,6 +272,14 @@ describe('RevealPhoto: a sky that is not matched to stars', () => {
     expect([...mark.querySelectorAll('circle')].map((c) => [c.getAttribute('r'), c.getAttribute('stroke-dasharray')])).toEqual([['7', '2.8 2.6']]);
     expect(mark.querySelector('path')).toBeNull();
     expect(mark.querySelector('.reveal-mark__halo')).toBeNull();
+    // Picked, it keeps its name: a predicted object is named by its title, catalog row or not
+    expect(mark.querySelector('.reveal-mark__name')!.textContent).toBe(object.title);
+    const rowless = {
+      ...session,
+      selectedFindingId: object.id,
+      observationSolution: { ...session.observationSolution!, findings: session.observationSolution!.findings.map((f) => (f.id === object.id ? { ...f, catalogRef: undefined } : f)) },
+    } as ObservationSession;
+    expect(revealMarks(rowless, VIEW.w, VIEW.h).find((m) => m.picked)!.name).toBe(object.title);
   });
 
   it("says the app's own sentence with no tag and no mark when nothing lines the sky up, and lists only the classes the photo has", () => {

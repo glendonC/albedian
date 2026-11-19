@@ -42,11 +42,23 @@ const CATALOG_DISTANCE_METHODS: ReadonlySet<string> = new Set(['geometric_parall
 /** A constellation's name in full ("Lyra") for its code ("Lyr"), from the contract's own table. */
 const CONSTELLATION_NAME: ReadonlyMap<string, string> = new Map(DESIGNATION_CONSTELLATIONS.map(([code, name]) => [code, name]));
 
+/**
+ * A star with no name, whose title is its catalog number (INTERIM: .lead/uiux/UIUX-unnamed-QUESTION.md, waiting on the
+ * owner): its catalog's name as the title ("Gaia DR3", "Hipparcos"), its number in that catalog on the small line.
+ */
+function namelessParts(finding: CelestialFinding): { title: string; number: string } | null {
+  const ref = finding.catalogRef;
+  if (!ref || finding.title !== ref.catalogSourceId) return null;
+  const number = ref.catalogSourceId.split(/\s+/).at(-1) ?? ref.catalogSourceId;
+  return { title: ref.provider, number };
+}
+
 export function starCardFacts(finding: CelestialFinding): StarCardFacts {
   const ref = finding.catalogRef;
+  const nameless = namelessParts(finding);
   const designation = ref?.bayerDesignation !== undefined && ref.bayerDesignation !== finding.title ? ref.bayerDesignation : null;
   const constellation = ref ? (CONSTELLATION_NAME.get(ref.constellation) ?? null) : null;
-  const subParts = [designation, constellation].filter((part): part is string => part !== null);
+  const subParts = [nameless ? nameless.number : designation, constellation].filter((part): part is string => part !== null);
 
   const numbers: StarCardNumber[] = [];
   const distance = finding.inferredDistancePc;
@@ -73,10 +85,11 @@ export function starCardFacts(finding: CelestialFinding): StarCardFacts {
 
   return {
     evidenceClass: finding.evidenceClass,
-    title: finding.title,
+    title: nameless ? nameless.title : finding.title,
     subLine: subParts.length > 0 ? subParts.join(' · ') : null,
     numbers,
-    sourceLine: ref ? `${ref.releaseVersion} · ${ref.catalogSourceId}` : null,
+    // A nameless star's title and small line already say what the catalog line would
+    sourceLine: ref && !nameless ? `${ref.releaseVersion} · ${ref.catalogSourceId}` : null,
     canGoThere: findingCanEnterSpace(finding),
     notes,
   };

@@ -88,6 +88,29 @@ describe('starCardFacts: a catalog matched star', () => {
   });
 });
 
+describe('starCardFacts: a star with no name (INTERIM: UIUX-unnamed-QUESTION.md)', () => {
+  const nameless = (provider: 'Gaia DR3' | 'Hipparcos', id: string) =>
+    ({ ...withRef({ provider, catalogSourceId: id, commonName: id, bayerDesignation: undefined, constellation: 'Cen' }), title: id }) as CelestialFinding;
+
+  it("titles it by its catalog's name and puts its number in that catalog with the constellation on the small line", () => {
+    const facts = starCardFacts(nameless('Gaia DR3', 'Gaia DR3 6125166320994675456'));
+    expect(facts.title).toBe('Gaia DR3');
+    expect(facts.subLine).toBe('6125166320994675456 · Centaurus');
+    // The title and the small line already say what the catalog line would
+    expect(facts.sourceLine).toBeNull();
+    const hip = starCardFacts(nameless('Hipparcos', 'HIP 71683'));
+    expect(hip.title).toBe('Hipparcos');
+    expect(hip.subLine).toBe('71683 · Centaurus');
+  });
+
+  it('keeps the number alone where the constellation has no full name, and changes nothing for a star with a name', () => {
+    const facts = starCardFacts({ ...nameless('Gaia DR3', 'Gaia DR3 6125166320994675456'), catalogRef: { ...nameless('Gaia DR3', 'Gaia DR3 6125166320994675456').catalogRef!, constellation: 'Xyz' } } as CelestialFinding);
+    expect(facts.subLine).toBe('6125166320994675456');
+    expect(starCardFacts(acrux).title).toBe('Acrux');
+    expect(starCardFacts(acrux).sourceLine).not.toBeNull();
+  });
+});
+
 describe('starCardFacts: what a finding does not have is left out', () => {
   it('leaves the designation out of the line under the name when it is the name, and keeps the constellation', () => {
     expect(starCardFacts({ ...withRef({ commonName: 'HIP 60718' }), title: 'Alpha1 Crux' }).subLine).toBe('Crux');
