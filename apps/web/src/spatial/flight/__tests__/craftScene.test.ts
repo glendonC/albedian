@@ -159,7 +159,14 @@ describe('craftFromSearch: the interim choice by page address', () => {
       expect(CRAFTS[id]!.modelForward).toEqual([0, -1, 0]);
     }
     // Every other entry keeps its line of flight (+Z) and the side up that is up in its picker picture (+Y)
-    const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && c.id !== 'hubble' && c.id !== 'gemini');
+    // The 17:24 ruling, checked live against the pictures (hangar-2b): Spitzer's tube up with its sunshield behind it
+    // (the turn the other way round, so the shield's side faces away), Dawn's wings straight across with their faces
+    // to the camera; Juno, MESSENGER, OSIRIS-REx and MRO already stand as their pictures do in the hangar's frame
+    expect([CRAFTS.spitzer!.modelForward, CRAFTS.spitzer!.modelUp]).toEqual([[0, 1, 0], [0, 0, 1]]);
+    expect([CRAFTS.dawn!.modelForward, CRAFTS.dawn!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn']);
+    const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
+    expect(['juno', 'messenger', 'osiris-rex', 'mro'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
     expect(CRAFTS['voyager-1']!.modelForward).toEqual([0, 0, 1]);
     expect(v.kind).toBe('craft');
@@ -299,6 +306,21 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(Math.abs(tubeEnd.xPx - centre.xPx)).toBeLessThan(0.15 * (centre.yPx - tubeEnd.yPx));
     // The panels' axis (+Y) runs along the line of sight, so it moves far less on screen than the tube
     expect(Math.hypot(panelEnd.xPx - centre.xPx, panelEnd.yPx - centre.yPx)).toBeLessThan(0.35 * (centre.yPx - tubeEnd.yPx));
+  });
+
+  it('stands Spitzer at rest with its tube up the screen, as its picture does (hangar-2b)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 1440, 900)!;
+    const scene = craftSceneOf(camera, CRAFTS.spitzer!, [0, 0, 0], 4, undefined, undefined, 2.5)!;
+    const at = (m: Vec3) => {
+      const w = apply(scene.modelMatrix, m);
+      const c = apply(scene.clipMatrix, [w[0], w[1], w[2]]);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 1440, yPx: ((1 - c[1] / c[3]) / 2) * 900 };
+    };
+    const centre = at([0, 0, 0]);
+    const top = at([0, 0, 2.5]);
+    expect(centre.yPx - top.yPx).toBeGreaterThan(100);
+    expect(Math.abs(top.xPx - centre.xPx)).toBeLessThan(0.15 * (centre.yPx - top.yPx));
   });
 });
 

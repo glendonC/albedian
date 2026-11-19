@@ -56,6 +56,8 @@ interface HangarFile {
  * - 17:10: a craft that never travels rests as its picture stands it: Hubble's tube and Gemini's nose (the model's +Z,
  *   their long axis) up the screen, a quarter turn about the screen's horizontal axis from the line of flight, so the
  *   model's +Y, its picture's up, faces the camera.
+ * - 17:24, checked live against the pictures: Spitzer's tube up with its sunshield behind it (the turn the other way
+ *   round, so the shield's side faces away); Dawn's wings straight across with their faces to the camera.
  * Every other model keeps the hangar's frame: +Z its line of flight, +Y the up of its picker picture (build_craft.py
  * renders the pictures with the camera's up along it).
  */
@@ -63,6 +65,8 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   voyager: { up: [1, 0, 0] },
   hubble: { forward: [0, -1, 0], up: [0, 0, 1] },
   gemini: { forward: [0, -1, 0], up: [0, 0, 1] },
+  spitzer: { forward: [0, 1, 0], up: [0, 0, 1] },
+  dawn: { forward: [0, -1, 0], up: [0, 0, 1] },
 };
 
 const AXES: Readonly<Record<string, Vec3>> = { '+X': [1, 0, 0], '-X': [-1, 0, 0], '+Y': [0, 1, 0], '-Y': [0, -1, 0], '+Z': [0, 0, 1], '-Z': [0, 0, -1] };
