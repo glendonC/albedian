@@ -37,15 +37,19 @@ const grouped = (n: number) => n.toLocaleString('en-US');
  * `starSearchRan` says whether a star search ran for this solution (it did for every upload: services/ingest/jobs.py
  * runs the detector and the plate solver before it writes one); only then may a line speak of points of light.
  */
-/** The note SCIENCE writes for a photo whose file names no time zone (services/science/predicted_sky.py). */
-const NO_TIME_ZONE = 'The file names no time zone for its capture time';
+/**
+ * The notes SCIENCE writes in two sentences so the screen can show the first (services/science/predicted_sky.py): a
+ * file that names no time zone (C5), and a photo whose file lends its time or place from the iPhone's record (C13).
+ */
+const FIRST_SENTENCE_NOTES: readonly string[] = ['The file names no time zone for its capture time', "The photo's file has no "];
 
 /**
- * A warning as it shows on screen: the missing time zone note by its first sentence only, every other warning whole
- * (C5, UIUX-words-DECIDED-BY-LEAD.md); the whole note stays in the solution's record.
+ * A warning as it shows on screen: those notes by their first sentence only, every other warning whole (C5,
+ * UIUX-words-DECIDED-BY-LEAD.md; C13, UIUX-pointingwords-DECIDED-BY-LEAD.md); the whole note stays in the solution's
+ * record.
  */
 export function onScreenWarning(warning: string): string {
-  if (!warning.startsWith(NO_TIME_ZONE)) return warning;
+  if (!FIRST_SENTENCE_NOTES.some((start) => warning.startsWith(start))) return warning;
   const end = warning.indexOf('. ');
   return end < 0 ? warning : warning.slice(0, end + 1);
 }

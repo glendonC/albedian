@@ -176,3 +176,27 @@ describe('the missing time zone note on screen (C5)', () => {
     expect(onScreenWarning('The file names no time zone for its capture time.')).toBe('The file names no time zone for its capture time.');
   });
 });
+
+describe("the iPhone record's warnings on screen (C13, UIUX-pointingwords-DECIDED-BY-LEAD.md)", () => {
+  it('shows the first sentence only of each lent-moment warning; the second stays in the record', () => {
+    expect(
+      onScreenWarning("The photo's file has no time or place, so the sky is predicted for the time your iPhone recorded, by its own clock, and where it was, to within 8 m. That can move the predicted sky by up to 0.3 arcseconds.")
+    ).toBe("The photo's file has no time or place, so the sky is predicted for the time your iPhone recorded, by its own clock, and where it was, to within 8 m.");
+    expect(
+      onScreenWarning("The photo's file has no place, so the sky is predicted for where your iPhone was, to within 5,000 m, the rough location you allowed. That can move the predicted sky by up to 2.1 arcseconds.")
+    ).toBe("The photo's file has no place, so the sky is predicted for where your iPhone was, to within 5,000 m, the rough location you allowed.");
+    // One sentence, whole
+    const timeOnly = "The photo's file has no time, so the sky is predicted for the time your iPhone recorded, by its own clock.";
+    expect(onScreenWarning(timeOnly)).toBe(timeOnly);
+  });
+
+  it('leaves the record-not-used note and every other warning whole', () => {
+    const notUsed = 'The iPhone record stored with this photo belongs to another photo, so it was not used.';
+    expect(onScreenWarning(notUsed)).toBe(notUsed);
+    const two = 'The photo has no time. Something else follows.';
+    expect(onScreenWarning(two)).toBe(two);
+    // Only a note that starts so: the words inside another warning do not cut it
+    const inside = "Read with care: the photo's file has no lens data. The field of view was measured instead.";
+    expect(onScreenWarning(inside)).toBe(inside);
+  });
+});
