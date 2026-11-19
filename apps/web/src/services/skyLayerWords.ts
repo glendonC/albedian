@@ -53,12 +53,13 @@ export function withinAboutDeg(pose: PoseEstimate): number {
  * Why the points of light in a recording did not give its sky, from what a star search found: too few to try, or
  * how many it found and could not match for sure. Points of light, not stars: noise and ground lights are detected
  * too. Only for a solution a star search ran for (StarSearchFacts): no other solver's count is one of points of light.
+ * The count is written with a thousands comma ("31,371"), as the approved no-match reveal writes it.
  */
-function unmatchedSentence(solution: ObservationSolution): string {
+export function unmatchedSentence(solution: ObservationSolution): string {
   const detected = solution.quality?.detectedCandidateCount;
   if (detected === undefined) return 'The points of light could not be matched to stars.';
   if (detected < SOLVER_MIN_DETECTIONS) return 'Too few points of light to match to stars.';
-  return `Found ${detected} points of light, but could not match them to stars for sure.`;
+  return `Found ${detected.toLocaleString('en-US')} points of light, but could not match them to stars for sure.`;
 }
 
 /**

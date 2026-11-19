@@ -1,6 +1,6 @@
 import { hasVerifiedWcs, type EvidenceClass, type ObservationSession, type ObservationSolution } from '@albedian/contracts';
 import { linedUpSky } from '../components/poseProjection.js';
-import { poseBasisSentence, poseUncertaintySentence, skyLayerSentence } from '../services/skyLayerWords.js';
+import { poseBasisSentence, poseUncertaintySentence, skyLayerSentence, unmatchedSentence } from '../services/skyLayerWords.js';
 
 /**
  * The words of the reveal's status block and legend, each from the solution itself.
@@ -9,7 +9,10 @@ import { poseBasisSentence, poseUncertaintySentence, skyLayerSentence } from '..
  *   stars landed", the solver's own counts.
  * - Lined up by a pose estimate and not solved (estimate, decided 2026-11-12): the Predicted tag, the estimate's own
  *   sentences as the app already words them (services/skyLayerWords.ts), and the decided line that no star is matched.
- * - Neither (the lead's answer of 2026-11-18): the app's own sentence for that outcome, with no tag.
+ * - Neither (no-match reveal, approved 2026-11-18 20:37): the app's own sentence for that outcome, with no tag, and
+ *   "Show predicted sky" when a predicted sky can be opened, as main's "Show Predicted Sky" was offered (a solution
+ *   predicted only, or lined up roughly with no pose). The button says what "You can open..." said, so the sentence
+ *   after a star search is its first part alone.
  * The solve's warnings follow, word for word (cautions, decided 2026-11-12).
  */
 
@@ -17,11 +20,15 @@ import { poseBasisSentence, poseUncertaintySentence, skyLayerSentence } from '..
 export const ESTIMATE_MARKS_LINE = 'No star in it is matched yet; every mark is drawn from the catalog.';
 
 export interface RevealStatus {
+  /** Which layout the status block takes. */
+  kind: 'calibrated' | 'estimate' | 'unmatched';
   /** The evidence tag over the lines: Predicted for a sky lined up by an estimate, none otherwise. */
   tag: EvidenceClass | null;
   lines: string[];
   /** The solve's own warnings, word for word and in order. */
   warnings: string[];
+  /** Whether "Show predicted sky" is offered: a predicted sky can be opened and nothing else shows the sky. */
+  predictedSky: boolean;
 }
 
 const grouped = (n: number) => n.toLocaleString('en-US');
@@ -41,17 +48,22 @@ export function revealStatus(session: ObservationSession, starSearchRan = true):
     if (quality.heldOutPairCount > 0) {
       lines.push(`${grouped(quality.heldOutInliers)} of ${grouped(quality.heldOutPairCount)} held-out stars landed`);
     }
-    return { tag: null, lines, warnings };
+    return { kind: 'calibrated', tag: null, lines, warnings, predictedSky: false };
   }
   const linedUp = linedUpSky(session);
   if (linedUp.kind === 'shown' && asset) {
     return {
+      kind: 'estimate',
       tag: 'predicted',
       lines: [`${poseBasisSentence(linedUp.pose, asset.mediaKind)} ${poseUncertaintySentence(linedUp.pose)}`, ESTIMATE_MARKS_LINE],
       warnings,
+      predictedSky: false,
     };
   }
-  return { tag: null, lines: [skyLayerSentence(solution, asset, { starSearchRan })], warnings };
+  const predictedSky = solution?.status === 'predicted_only' || solution?.status === 'approximate';
+  const line =
+    solution?.status === 'predicted_only' && starSearchRan ? unmatchedSentence(solution) : skyLayerSentence(solution, asset, { starSearchRan });
+  return { kind: 'unmatched', tag: null, lines: [line], warnings, predictedSky };
 }
 
 export interface EvidenceCount {

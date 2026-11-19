@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec } from '@albedian/design-system';
-import { EvidenceTag, LookIcon, Logo } from '../look/index.js';
+import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { leaderPath, revealMarks, type RevealMark } from './revealMarks.js';
@@ -25,6 +25,8 @@ export interface RevealPhotoProps {
   onGoThere?: (findingId: string) => void;
   /** The card's close button, Esc, or a tap on empty sky. */
   onCloseCard?: () => void;
+  /** "Show predicted sky" on a reveal no star was matched on (no-match reveal, approved 2026-11-18). */
+  onShowPredictedSky?: () => void;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
 }
@@ -74,6 +76,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onToggleOriginalPixels,
   onGoThere,
   onCloseCard,
+  onShowPredictedSky,
   viewportWidthPx,
   viewportHeightPx,
 }) => {
@@ -140,6 +143,26 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <Logo sizePx={21} />
       </button>
 
+      {status.kind === 'unmatched' ? (
+        <div className="reveal-status is-unmatched" data-testid="reveal-status" role="status">
+          {status.lines.map((line) => (
+            <p key={line} className="reveal-status__lead">
+              {line}
+            </p>
+          ))}
+          {status.predictedSky && <MainAction label="Show predicted sky" onClick={() => onShowPredictedSky?.()} />}
+          {status.warnings.length > 0 && (
+            <ul className="reveal-status__warns">
+              {status.warnings.map((warning) => (
+                <li key={warning}>
+                  <LookIcon name="info" />
+                  <span>{warning}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
       <div className="reveal-status" data-testid="reveal-status" role="status">
         {status.tag && <EvidenceTag evidenceClass={status.tag} />}
         {status.lines.map((line) => (
@@ -154,6 +177,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           </p>
         ))}
       </div>
+      )}
 
       {picked && (
         <StarCard

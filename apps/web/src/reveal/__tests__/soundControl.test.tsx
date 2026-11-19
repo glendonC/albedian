@@ -229,5 +229,7 @@ describe("the sound control's rules are the approved page's", () => {
   it('puts the row at the top right, 8 px between its parts, and draws the speaker at 16 px', () => {
     expect(declarationsOf('.reveal-nav')).toEqual({ position: 'fixed', right: '32px', top: '26px', 'z-index': '35', display: 'flex', gap: '8px', 'align-items': 'flex-start', 'font-family': 'var(--look-font-sans)', color: 'var(--look-ink)' });
     expect(declarationsOf('.sound-control .look-icon')).toEqual({ '--look-ic': '16px' });
+    // A view that cannot open stays in place at 60 percent (no-match reveal)
+    expect(declarationsOf('.reveal-nav .look-views__item:disabled')).toEqual({ opacity: '0.6' });
   });
 });

@@ -10,6 +10,7 @@ import {
   poseUncertaintySentence,
   skyLayerSentence,
   solveStoppedSentence,
+  unmatchedSentence,
   withinAboutDeg,
 } from '../skyLayerWords';
 
@@ -150,6 +151,13 @@ describe('skyLayerSentence: one plain line for each layer (REQ-SKY-6.1)', () => 
     expect(skyLayerSentence(detected(40), photo({ mediaKind: 'video' }), SEARCHED)).toBe(
       "Found 40 points of light, but could not match them to stars for sure. You can open the sky predicted for your clip's time and place."
     );
+    // The count is written with a thousands comma, as the approved no-match reveal writes it
+    expect(skyLayerSentence(detected(31371), photo(), SEARCHED)).toBe(
+      "Found 31,371 points of light, but could not match them to stars for sure. You can open the sky predicted for your photo's time and place."
+    );
+    expect(unmatchedSentence(detected(31371))).toBe('Found 31,371 points of light, but could not match them to stars for sure.');
+    expect(unmatchedSentence(detected(5))).toBe('Too few points of light to match to stars.');
+    expect(unmatchedSentence({ ...base, quality: undefined } as ObservationSolution)).toBe('The points of light could not be matched to stars.');
     for (const n of [6, 7, 40, 1000]) expect(skyLayerSentence(detected(n), photo(), SEARCHED)).not.toMatch(/too few/i);
   });
 
@@ -205,7 +213,7 @@ describe('skyLayerSentence: one plain line for each layer (REQ-SKY-6.1)', () => 
           const kind = mediaKind === 'video' ? 'clip' : 'photo';
           const line = skyLayerSentence(solution, photo({ mediaKind }), { starSearchRan });
           const found =
-            count < 6 ? 'Too few points of light to match to stars.' : `Found ${count} points of light, but could not match them to stars for sure.`;
+            count < 6 ? 'Too few points of light to match to stars.' : `Found ${count.toLocaleString('en-US')} points of light, but could not match them to stars for sure.`;
           expect(line).toBe(starSearchRan ? `${found} ${openSky(kind)}` : openSky(kind));
           if (!starSearchRan) expect(line).not.toMatch(/points? of light|found|too few|\d/i);
         }

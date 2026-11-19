@@ -257,9 +257,48 @@ describe('RevealPhoto: a sky that is not matched to stars', () => {
   it("says the app's own sentence with no tag and no mark when nothing lines the sky up, and lists only the classes the photo has", () => {
     show(poseSession(sample('horizon_predicted_only')));
     expect(q('.reveal-status .look-tag')).toBeNull();
-    expect(all('.reveal-status__line')).toHaveLength(1);
+    expect(all('.reveal-status__lead')).toHaveLength(1);
     expect(q('.reveal-mark')).toBeNull();
     expect(all('.reveal-legend__row .look-tag').map((t) => t.getAttribute('data-evidence-class'))).toEqual(['predicted']);
+  });
+
+  it('leads with the sentence at its own size, offers Show predicted sky as the one main button, and lists the warnings after a hairline (no-match reveal)', () => {
+    const base = sample('horizon_predicted_only');
+    const onShowPredictedSky = vi.fn();
+    const solution = { ...base, warnings: ['First warning.', 'Second warning.'], quality: { ...base.quality!, detectedCandidateCount: 31371 } } as ObservationSolution;
+    show(poseSession(solution), { onShowPredictedSky });
+    expect(q('.reveal-status')!.className).toBe('reveal-status is-unmatched');
+    expect(q('.reveal-status__lead')!.textContent).toBe('Found 31,371 points of light, but could not match them to stars for sure.');
+    expect(q('.reveal-status__line')).toBeNull();
+    expect(q('.reveal-status__warning')).toBeNull();
+    const main = all('button.look-main');
+    expect(main).toHaveLength(1);
+    expect(main[0]!.textContent).toBe('Show predicted sky');
+    expect(main[0]!.querySelector('.look-main__circle path')!.getAttribute('d')).toBe(LOOK_ICON_PATHS['arrow-right']);
+    act(() => (main[0] as HTMLButtonElement).click());
+    expect(onShowPredictedSky).toHaveBeenCalledTimes(1);
+    // The button sits between the sentence and the warnings
+    const order = [...q('.reveal-status')!.children].map((el) => el.className);
+    expect(order).toEqual(['reveal-status__lead', 'look-main look-size-compact', 'reveal-status__warns']);
+    const warns = all('ul.reveal-status__warns > li');
+    expect(warns.map((li) => li.textContent)).toEqual(['First warning.', 'Second warning.']);
+    for (const li of warns) expect(li.querySelector('path')!.getAttribute('d')).toBe(LOOK_ICON_PATHS.info);
+    expect(q('.reveal-mark')).toBeNull();
+  });
+
+  it('shows no Show predicted sky where no predicted sky can be opened, and no warnings list when there is none', () => {
+    show(poseSession({ ...sample('plate_too_few_sources'), warnings: [] } as ObservationSolution));
+    expect(q('.reveal-status')!.className).toBe('reveal-status is-unmatched');
+    expect(q('.reveal-status__lead')).not.toBeNull();
+    expect(q('button.look-main')).toBeNull();
+    expect(q('.reveal-status__warns')).toBeNull();
+  });
+
+  it('keeps the calibrated status as it was, with no main button', () => {
+    show(calibrated());
+    expect(q('.reveal-status')!.className).toBe('reveal-status');
+    expect(q('.reveal-status__lead')).toBeNull();
+    expect(q('button.look-main')).toBeNull();
   });
 
   it('shows no legend for a photo with no finding', () => {
@@ -300,6 +339,34 @@ describe("the reveal's rules are the approved pages'", () => {
     expect(declarationsOf('.reveal-legend__title')).toEqual({ margin: '0 0 2px', 'font-size': '13px', color: 'var(--look-ink-3)' });
     expect(declarationsOf('.reveal-legend__row')).toEqual({ display: 'flex', 'align-items': 'center', gap: '14px', margin: '0' });
     expect(declarationsOf('.reveal-legend__count')).toEqual({ width: '92px', 'font-size': '26px', 'letter-spacing': '-0.04em', 'font-variant-numeric': 'tabular-nums' });
+  });
+
+  it('sets the no-match sentence, its button and its warnings as the approved page does', () => {
+    expect(declarationsOf('.reveal-status.is-unmatched')).toEqual({ top: '74px', width: '306px' });
+    expect(declarationsOf('.reveal-status__lead')).toEqual({
+      margin: '0 0 18px',
+      font: '300 24px / 1.2 var(--look-font-sans)',
+      'letter-spacing': '-0.03em',
+      color: 'var(--look-ink)',
+      'text-wrap': 'balance',
+    });
+    expect(declarationsOf('.reveal-status__warns')).toEqual({
+      'list-style': 'none',
+      margin: '26px 0 0',
+      padding: '16px 0 0',
+      'border-top': '1px solid var(--look-hair)',
+      display: 'grid',
+      gap: '9px',
+    });
+    expect(declarationsOf('.reveal-status__warns li')).toEqual({
+      '--look-ic': '13px',
+      display: 'flex',
+      gap: '7px',
+      'font-size': '12px',
+      'line-height': '1.45',
+      color: 'var(--look-ink-3)',
+    });
+    expect(declarationsOf('.reveal-status__warns .look-i')).toEqual({ flex: 'none', 'margin-top': '2px' });
   });
 
   it('sets a warning in 12 px at the quietest ink with a 13 px icon', () => {

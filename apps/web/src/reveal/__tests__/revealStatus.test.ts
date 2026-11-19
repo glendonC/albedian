@@ -3,7 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
-import { skyLayerSentence } from '../../services/skyLayerWords.js';
+import { skyLayerSentence, unmatchedSentence } from '../../services/skyLayerWords.js';
+import { poseSession } from '../../components/__tests__/poseSessions.js';
 import { ESTIMATE_MARKS_LINE, evidenceCounts, revealStatus } from '../revealStatus.js';
 
 // The reveal's status block and legend (reveal, approved 2026-11-12; estimate and cautions, decided the same night;
@@ -57,7 +58,10 @@ describe('revealStatus: not matched to stars', () => {
       const session = sessionWith(solution);
       const status = revealStatus(session);
       expect(status.tag).toBeNull();
-      expect(status.lines).toEqual([skyLayerSentence(solution, session.sourceAsset, { starSearchRan: true })]);
+      // A predicted sky that can be opened has its own button, so the sentence for a star search leaves out "You can open"
+      expect(status.lines).toEqual([
+        solution.status === 'predicted_only' ? unmatchedSentence(solution) : skyLayerSentence(solution, session.sourceAsset, { starSearchRan: true }),
+      ]);
       expect(status.warnings).toEqual(solution.warnings ?? []);
     }
   );
@@ -85,6 +89,54 @@ describe('revealStatus: not matched to stars', () => {
   it('has nothing to say before there is a solution', () => {
     const session = sessionWith(calibrated, { observationSolution: undefined });
     expect(revealStatus(session).lines).toEqual([skyLayerSentence(undefined, session.sourceAsset, { starSearchRan: true })]);
+  });
+});
+
+describe('revealStatus: which layout, and whether a predicted sky can be opened (no-match reveal, approved 2026-11-18 20:37)', () => {
+  const predictedOnly = samples['horizon_predicted_only']!;
+  const found = (n: number): ObservationSolution => ({ ...predictedOnly, poseEstimate: undefined, quality: { ...predictedOnly.quality!, detectedCandidateCount: n } }) as ObservationSolution;
+
+  it('says how many points of light were found, with a thousands comma, and offers the predicted sky', () => {
+    const status = revealStatus(sessionWith(found(31371)));
+    expect(status.kind).toBe('unmatched');
+    expect(status.tag).toBeNull();
+    expect(status.lines).toEqual(['Found 31,371 points of light, but could not match them to stars for sure.']);
+    expect(status.predictedSky).toBe(true);
+    expect(revealStatus(sessionWith(found(5))).lines).toEqual(['Too few points of light to match to stars.']);
+  });
+
+  it('keeps the whole sentence, "You can open" too, when no star search ran', () => {
+    const session = sessionWith(found(31371));
+    expect(revealStatus(session, false).lines).toEqual([skyLayerSentence(session.observationSolution, session.sourceAsset, { starSearchRan: false })]);
+    expect(revealStatus(session, false).predictedSky).toBe(true);
+  });
+
+  it('offers the predicted sky for a rough line-up with no pose, as main did, in its own sentence', () => {
+    const rough = { ...samples['horizon_approximate']!, poseEstimate: undefined } as ObservationSolution;
+    const session = sessionWith(rough);
+    const status = revealStatus(session);
+    expect(status.kind).toBe('unmatched');
+    expect(status.lines).toEqual([skyLayerSentence(rough, session.sourceAsset, { starSearchRan: true })]);
+    expect(status.predictedSky).toBe(true);
+  });
+
+  it('offers no predicted sky where none can be opened: unresolved, pending, no solution, or calibrated but not verified', () => {
+    for (const key of ['plate_too_few_sources', 'plate_wcs_failed_verification', 'pending_unsolved']) {
+      const status = revealStatus(sessionWith(samples[key]!));
+      expect(status.kind, key).toBe('unmatched');
+      expect(status.predictedSky, key).toBe(false);
+    }
+    expect(revealStatus(sessionWith(calibrated, { observationSolution: undefined })).predictedSky).toBe(false);
+    const unverified = revealStatus(sessionWith(withQuality({ passedIndependentVerification: false })));
+    expect(unverified.kind).toBe('unmatched');
+    expect(unverified.predictedSky).toBe(false);
+  });
+
+  it('keeps the calibrated and the estimate layouts, neither with the predicted sky button', () => {
+    expect(revealStatus(sessionWith(calibrated))).toMatchObject({ kind: 'calibrated', predictedSky: false });
+    const estimate = revealStatus(poseSession());
+    expect(estimate.kind).toBe('estimate');
+    expect(estimate.predictedSky).toBe(false);
   });
 });
 

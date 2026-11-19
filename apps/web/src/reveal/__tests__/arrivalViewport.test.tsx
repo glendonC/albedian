@@ -7,6 +7,9 @@ import { createEmptyObservationSession } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { HOME_SCREEN, choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 import type { Arrival } from '../arrival.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // The working screen in the app (unit 1c): while an upload is on its way to a solved sky the window shows the photo,
 // bare, and the approved rows, and none of the pieces that come after the solve.
@@ -62,6 +65,10 @@ afterEach(() => {
 
 const noop = () => {};
 const q = (selector: string) => container.querySelector(selector);
+// The contract's own predicted-only solution (a star search found points of light and matched none)
+const PREDICTED_ONLY = (JSON.parse(
+  fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../tests/fixtures/python_contract_solutions.json'), 'utf8')
+) as Record<string, NonNullable<ObservationSession['observationSolution']>>)['horizon_predicted_only']!;
 const WORKING = '[data-testid="working-screen"]';
 const STAGE = '[data-testid="source-photo-stage"]';
 
@@ -391,6 +398,88 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(mask()).toContain('56px');
     renderViewport(session, { selectedFinding: session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId) });
     expect(q('.reveal-card__acts .look-second')!.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('puts the view pills before the Sound circle: Your photo current, Real sky ready, 3D only with a star it can fly to', () => {
+    open(storedPhoto());
+    const nav = q('.reveal-nav')!;
+    expect([...nav.children].map((el) => el.className)).toEqual(['look-views look-size-compact', 'sound-control is-off']);
+    const pills = [...nav.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+    expect(nav.querySelector('[role="group"]')!.getAttribute('aria-label')).toBe('View');
+    expect(pills.map((b) => b.textContent)).toEqual(['Your photo', 'Real sky', '3D']);
+    expect(pills.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+    expect(pills.map((b) => b.disabled)).toEqual([false, false, true]);
+    // With a star the app can fly to, 3D is ready (the window is past the home already)
+    const session = pickedSession();
+    renderViewport(session, { selectedFinding: session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId) });
+    expect([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].map((b) => b.disabled)).toEqual([false, false, false]);
+  });
+
+  it('keeps Real sky unpressable on a solve calibrated in word only, and 3D on a picked star the app cannot fly to', () => {
+    const base = storedPhoto();
+    const solution = base.observationSolution!;
+    // The contract refuses an unverified calibrated solve, so it is given after the session is built
+    const unverified = { ...base, observationSolution: { ...solution, quality: { ...solution.quality!, passedIndependentVerification: false } } } as ObservationSession;
+    open(unverified);
+    const disabled = () => [...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].map((b) => b.disabled);
+    expect(disabled()).toEqual([false, true, true]);
+    // A picked star with no distance to fly to: 3D stays unpressable
+    const star = solution.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    const noDistance = {
+      ...base,
+      selectedFindingId: star.id,
+      observationSolution: { ...solution, findings: solution.findings.map((f) => (f.id === star.id ? { ...f, inferredDistancePc: undefined } : f)) },
+    } as ObservationSession;
+    renderViewport(noDistance, { selectedFinding: noDistance.observationSolution!.findings.find((f) => f.id === star.id) });
+    expect(disabled()).toEqual([false, false, true]);
+  });
+
+  it('opens the measured sky from Real sky, flies to the picked star from 3D, and does nothing from Your photo', () => {
+    const onRunUtterance = vi.fn();
+    const sessions: ObservationSession[] = [];
+    const session = pickedSession();
+    const title = session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId)!.title;
+    open(session, { onRunUtterance, setSession: (update: (prev: ObservationSession) => ObservationSession) => sessions.push(update(session)) });
+    const pill = (label: string) => [...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === label)!;
+    act(() => pill('Your photo').click());
+    expect(sessions).toHaveLength(0);
+    expect(onRunUtterance).not.toHaveBeenCalled();
+    act(() => pill('Real sky').click());
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]!.spatialView.mode).toBe('registered_sky');
+    // Measured: the registered sky of a verified solve
+    expect(sessions[0]!.lastStatusBanner).toMatch(/^Calibrated sky registered/);
+    act(() => pill('3D').click());
+    expect(onRunUtterance).toHaveBeenCalledTimes(1);
+    expect(onRunUtterance).toHaveBeenCalledWith(`Take me to ${title}`, 'pointer');
+  });
+
+  it('keeps Real sky and 3D in place at 60 percent and not pressable when no star was matched, and opens the predicted sky from Show predicted sky', () => {
+    const sessions: ObservationSession[] = [];
+    const base = storedPhoto();
+    const unmatched = { ...base, observationSolution: { ...PREDICTED_ONLY, poseEstimate: undefined }, selectedFindingId: null } as ObservationSession;
+    open(unmatched, { setSession: (update: (prev: ObservationSession) => ObservationSession) => sessions.push(update(unmatched)) });
+    const pills = [...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+    expect(pills.map((b) => b.textContent)).toEqual(['Your photo', 'Real sky', '3D']);
+    expect(pills.map((b) => b.disabled)).toEqual([false, true, true]);
+    act(() => (q('.reveal-status button.look-main') as HTMLButtonElement).click());
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]!.spatialView.mode).toBe('registered_sky');
+    expect(sessions[0]!.lastStatusBanner).toBe('Showing predicted sky model from recorded timestamp and location (separate from source pixels).');
+  });
+
+  it('shows no view pills outside the photo view, the Sound circle staying', () => {
+    const base = storedPhoto();
+    open({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    expect(q('.reveal-nav [role="group"]')).toBeNull();
+    expect(q('.reveal-nav .sound-control')).not.toBeNull();
+  });
+
+  it('shows no view pills on a phone', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    open(storedPhoto());
+    expect(q('.reveal-nav')).toBeNull();
+    expect(q('[role="group"][aria-label="View"]')).toBeNull();
   });
 
   it('runs Go there as the words "Take me to" the star, once per press, and clears the picked star on Close', () => {

@@ -244,6 +244,45 @@
   margin-top: 2px;
 }
 
+/* No star matched (no-match reveal, approved 2026-11-18 20:37; #um-photo in .cache/uiux/unmatched/screen/um-photo.html):
+   the app's sentence large, "Show predicted sky" under it when a predicted sky can open, then the warnings after a
+   hairline */
+.reveal-status.is-unmatched {
+  top: 74px;
+  width: 306px;
+}
+
+.reveal-status__lead {
+  margin: 0 0 18px;
+  font: 300 24px / 1.2 var(--look-font-sans);
+  letter-spacing: -0.03em;
+  color: var(--look-ink);
+  text-wrap: balance;
+}
+
+.reveal-status__warns {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--look-hair);
+  display: grid;
+  gap: 9px;
+}
+
+.reveal-status__warns li {
+  --look-ic: 13px;
+  display: flex;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--look-ink-3);
+}
+
+.reveal-status__warns .look-i {
+  flex: none;
+  margin-top: 2px;
+}
+
 /* How many findings the photo has of each evidence class */
 .reveal-legend {
   position: absolute;
@@ -562,6 +601,11 @@
   align-items: flex-start;
   font-family: var(--look-font-sans);
   color: var(--look-ink);
+}
+
+/* A view that cannot open stays in place at 60 percent (no-match reveal: .ab-seg .is-off) */
+.reveal-nav .look-views__item:disabled {
+  opacity: 0.6;
 }
 
 .sound-control {

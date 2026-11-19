@@ -217,7 +217,8 @@ describe('the Sound circle above phone width, after the home', () => {
     expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
     expect(container.querySelector('.alb-audio-notes')).toBeNull();
     expect(container.querySelector(`a[href="${AUDIO_NOTICES_URL}"]`)).toBeNull();
-    expect(container.querySelector('.reveal-nav')!.textContent).toBe(AUDIO_DISCLOSURE);
+    // The sound control says nothing but the sentence (the view pills beside it are their own part)
+    expect(container.querySelector('.reveal-nav .sound-control')!.textContent).toBe(AUDIO_DISCLOSURE);
 
     clickAudio();
     expect(soundNote()).toBeNull();

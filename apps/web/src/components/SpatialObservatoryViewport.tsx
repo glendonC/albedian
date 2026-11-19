@@ -6,7 +6,10 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import type { RenderLayerSet } from '@albedian/contracts';
+import { hasVerifiedWcs, type RenderLayerSet } from '@albedian/contracts';
+import { dispatchAlbedianAction } from '@albedian/observation';
+import { ViewPills } from '../look/index.js';
+import { findingCanEnterSpace } from './askSuggestions.js';
 import {
   SparkPortalRenderer,
   SpatialScaleRegime,
@@ -481,6 +484,35 @@ export const SpatialObservatoryViewport: React.FC<
     [entryStageActive]
   );
 
+  // The sky the solve allows: measured over a verified solve, predicted otherwise (as main's panel opened it)
+  const showSky = useCallback(
+    (mode: 'measured' | 'predicted') =>
+      setSession((cur) => {
+        const solution = cur.observationSolution;
+        if (!solution) return cur;
+        return dispatchAlbedianAction(cur, {
+          type: 'sky.show',
+          requestId: `ui-sky-show-${cur.viewRevision}`,
+          expectedViewRevision: cur.viewRevision,
+          mode,
+          observationSolutionId: solution.id,
+        }).session;
+      }),
+    [setSession]
+  );
+
+  // The views over the photo (reveal, approved 2026-11-12; no-match reveal, 2026-11-18): Real sky over a verified
+  // solve; 3D toward the picked star when the app can fly to it, as its card's Go there does (the lead's question
+  // pills-1); a view that cannot open stays in place, not pressable
+  const solution = session.observationSolution;
+  const realSkyOpens = solution !== undefined && solution.status === 'calibrated' && hasVerifiedWcs(solution);
+  const pickedFinding = solution?.findings.find((finding) => finding.id === session.selectedFindingId) ?? null;
+  const threeDOpens = pickedFinding !== null && findingCanEnterSpace(pickedFinding);
+  const handleView = (view: string) => {
+    if (view === 'sky' && realSkyOpens) showSky('measured');
+    if (view === '3d' && pickedFinding && threeDOpens) onRunUtterance(`Take me to ${pickedFinding.title}`, 'pointer');
+  };
+
   const handleToggleSound = useCallback(() => {
     const next = observatoryAudio.toggle();
     setSoundEnabled(next);
@@ -554,6 +586,7 @@ export const SpatialObservatoryViewport: React.FC<
                 if (title) onRunUtterance(`Take me to ${title}`, 'pointer');
               }}
               onCloseCard={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
+              onShowPredictedSky={() => showSky('predicted')}
             />
           )}
           {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
@@ -698,10 +731,22 @@ export const SpatialObservatoryViewport: React.FC<
         </header>
       )}
 
-      {/* The row at the top right of every laptop screen after the home: the Sound circle (the view pills join it
-          in their own unit); none on the home, which has its own, nor while a photo is being worked on */}
+      {/* The row at the top right of every laptop screen after the home: the view pills over the photo, then the Sound
+          circle; none on the home, which has its own, nor while a photo is being worked on */}
       {!phone && !entryStageActive && !arrival && (
         <div className="reveal-nav" data-hud-interactive="true">
+          {revealShown && (
+            <ViewPills
+              label="View"
+              views={[
+                { id: 'photo', label: 'Your photo' },
+                { id: 'sky', label: 'Real sky', disabled: !realSkyOpens },
+                { id: '3d', label: '3D', disabled: !threeDOpens },
+              ]}
+              current="photo"
+              onSelect={handleView}
+            />
+          )}
           <SoundControl on={soundEnabled} onToggle={handleToggleSound} level={volumeLevel} onLevel={setVolumeLevel} disclosure={audioDisclosure} />
         </div>
       )}
