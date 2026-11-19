@@ -226,6 +226,9 @@ def material_output_group() -> bpy.types.NodeTree:
 
 
 def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy.types.Material:
+    if spec["role"] == "keep":
+        # NASA's own physically based material, kept as NASA made it (gold foil with its own normal map).
+        return source_mat
     src_img = next((n.image for n in source_mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image), None)
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True

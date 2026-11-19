@@ -66,7 +66,15 @@ def test_every_entry_names_a_built_model_and_every_number_its_nasa_page_and_quot
         travel = entry["travel"]
         if travel is not None:
             assert travel["speedKmS"] > 0 and travel["relativeTo"] == "Sun"
-            assert _nasa_page(travel["page"]) and str(travel["speedKmS"]) in travel["quote"]
+            assert _nasa_page(travel["page"])
+            derived = travel.get("derivedFrom")
+            if derived is None:
+                assert str(travel["speedKmS"]) in travel["quote"]
+            else:
+                # NASA's own figure in other units, converted: one mile 1.609344 km, one year 365.25 days
+                assert derived["quoted"] in travel["quote"]
+                km_s = derived["milesPerYear"] * 1.609344 / (365.25 * 86400)
+                assert abs(km_s - travel["speedKmS"]) < 0.05, km_s
         for fact in entry["facts"]:
             assert _nasa_page(fact["page"]) and fact["quote"].strip() == fact["quote"] != ""
             if isinstance(fact["value"], (int, float)):

@@ -167,7 +167,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "b7efded4a3902a7b20c44e9b8b6886d4d47d9b6e39e45468f07a8575c0089406",
+      "sha256": "0f7e9bb1a398f9e40cfed2f1b50e300d7e31c175e90c529af8838d830260f59b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -237,6 +237,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.png (518892 bytes, SHA-256 a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10)."
+    },
+    {
+      "path": "hangar/newhorizons/newhorizons_lod0.glb",
+      "sha256": "0234ff6f0c35d527e5799360c862c62cb50e690a59ea124cdf67484d13a15584",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb (3293532 bytes, SHA-256 cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/newhorizons/newhorizons_lod1.glb",
+      "sha256": "c8ff54a9ac5f65076a298adfcfa1327f7805d4631a695f941f2b119676a22379",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb (3293532 bytes, SHA-256 cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/newhorizons/newhorizons_lod2.glb",
+      "sha256": "f32756252eaf17b13e51230e91c10287cef074c59cefd9c4c7fd7de7a84b7703",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb (3293532 bytes, SHA-256 cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/newhorizons/newhorizons_picker.webp",
+      "sha256": "0670ea88cff1336721aae17e7a50f6faeadea471f8b4bebd8c368690311d069f",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/s/spacecraft_th_new_horizons.jpg (14212 bytes, SHA-256 cd5fa2e0638249d975cf8817842a049585ba081f3e362deb458e9eff9b72da5b)."
     },
     {
       "path": "hangar/pioneer10/pioneer10_lod0.glb",

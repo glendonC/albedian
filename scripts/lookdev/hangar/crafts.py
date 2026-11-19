@@ -219,6 +219,48 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.1,
         "changes": "suit",
     },
+    "newhorizons": {
+        "title": "New Horizons",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-new-horizons",
+            "title": "New Horizons, NASA 3D Resources",
+            "folder": "New Horizons",
+            "file": "New_Horizons.glb",
+            "url": "https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb",
+            "page": "https://science.nasa.gov/resource/new-horizons-3d-model/",
+            "bytes": 3_293_532,
+            "sha256": "cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f",
+            # NASA's own render of this model, the preview its resource page shows.
+            "picture": "spacecraft_th_new_horizons.jpg",
+            "picture_url": "https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/s/spacecraft_th_new_horizons.jpg",
+            "picture_bytes": 14_212,
+            "picture_sha256": "cd5fa2e0638249d975cf8817842a049585ba081f3e362deb458e9eff9b72da5b",
+            "local": "newhorizons",
+        },
+        # The source's unit cube at the root (a see-through helper) is not part of the craft.
+        "drop_objects": ["_root"],
+        # The dish faces +Z in the import frame (the equipment box below it) and faces Earth, so the craft travels
+        # along -Z; the RTG reaches along -Y, so +Y is up and the RTG hangs below.
+        "forward": (0.0, 0.0, -1.0),
+        "up": (0.0, 1.0, 0.0),
+        "scale_from": {
+            "material": "AO_dish",
+            "axis": "x",
+            "metres": 2.1,
+            "page": "https://www.nasa.gov/wp-content/uploads/2015/03/139889main_presskit12_05.pdf",
+            "quote": "A 2.1-meter (83-inch) diameter antenna dish",
+        },
+        "materials": {
+            "tex_01": {"role": "photo_atlas"},
+            "tex_02": {"role": "photo_atlas"},
+            "foil_gold": {"role": "keep"},
+            "AO_dish": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
+            "AO_1": {"role": "painted", "base": (0.10, 0.10, 0.10), "roughness": 0.5, "occlusion_from_source": True},
+        },
+        "body_radius_m": 1.6,
+        "changes": "photo",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -307,6 +349,26 @@ HANGAR: list[dict] = [
             {"key": "fits", "value": "5 ft to 6 ft 2 in", "page": "https://www.nasa.gov/wp-content/uploads/2015/07/2019_07_ea_emu.pdf", "quote": "95th percentile male (6'2\" tall"},
             {"key": "spacewalkHours", "value": "six to eight", "page": "https://www.nasa.gov/suits-and-rovers/spacesuits/", "quote": "each excursion typically six to eight hours in duration"},
             {"key": "firstUsed", "value": "Space Shuttle Program, 1980s", "page": "https://www.nasa.gov/suits-and-rovers/spacesuits/", "quote": "debuted during the Space Shuttle Program in the 1980s"},
+        ],
+    },
+    {
+        "id": "new-horizons",
+        "name": "New Horizons",
+        "model": "newhorizons",
+        # NASA's mission page gives the speed as a distance a year, with no date; the km/s is that figure converted
+        # (one mile 1.609344 km, one year 365.25 days), and the test checks the arithmetic.
+        "travel": {
+            "speedKmS": 15.3,
+            "relativeTo": "Sun",
+            "asOf": None,
+            "page": "https://science.nasa.gov/mission/new-horizons/",
+            "quote": "speeding away from the Earth and Sun at a rate of about 300 million miles per year",
+            "derivedFrom": {"quoted": "300 million miles per year", "milesPerYear": 300_000_000},
+        },
+        "facts": [
+            {"key": "launch", "value": "2006-01-19", "page": "https://science.nasa.gov/mission/new-horizons/", "quote": "Jan. 19, 2006 / 19:00:00 UT"},
+            {"key": "massKg", "value": 478, "page": "https://science.nasa.gov/mission/new-horizons/", "quote": "Spacecraft Mass 1,054 pounds (478 kilograms)"},
+            {"key": "dishDiameterM", "value": 2.1, "page": "https://www.nasa.gov/wp-content/uploads/2015/03/139889main_presskit12_05.pdf", "quote": "A 2.1-meter (83-inch) diameter antenna dish"},
         ],
     },
 ]
