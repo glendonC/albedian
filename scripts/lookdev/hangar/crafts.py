@@ -692,6 +692,48 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 14.0,
         "changes": "flat",
     },
+    "iss": {
+        "title": "International Space Station",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-international-space-station-d-igoal",
+            "title": "International Space Station (ISS) (D) (IGOAL), NASA 3D Resources",
+            "folder": "International Space Station (ISS) (D) (IGOAL)",
+            "file": "International Space Station (ISS).glb",
+            "bytes": 95_875_648,
+            "sha256": "57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d",
+            "picture": "International Space Station (ISS) (D) (IGOAL).png",
+            "picture_bytes": 1_628_716,
+            "picture_sha256": "cb4800bf76b9ab76c44fd0ecea7ec47c4230bd3293b8bda6626ebb8d1128493a",
+            "local": "iss",
+        },
+        "drop_objects": [],
+        # The pressurised modules line up along X in the import frame and the truss along Y: forward along the
+        # modules, up +Z, so the chase camera sees the station's length ahead and the arrays to either side.
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # The model's whole extent along the truss to NASA's end-to-end figure.
+        "scale_from": {
+            "material": None,
+            "axis": "y",
+            "metres": 109,
+            "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+            "quote": "The space station is 356 feet (109 meters) end-to-end",
+        },
+        # Sixty parts, each with NASA's colour, metal and normal maps up to 4096 px; several modules' maps carry NASA,
+        # ESA and JAXA marks. Each part takes the mean of its maps (no mark survives an average), keeping NASA's alpha
+        # where it cuts a lattice.
+        "material_rules": [{"match": [""], "role": "maps_mean"}],
+        "strip_unused_layers": True,
+        "smooth_deg": 30.0,
+        # Thousands of small parts set a floor under decimation: the far levels leave out those under a size.
+        "lod_ratio": {"lod0": 0.03, "lod1": 0.008, "lod2": 0.0025},
+        "drop_parts_under_m": {"lod1": 0.5, "lod2": 3.0},
+        "budget_bytes": {"lod0": 8_000_000},
+        "texture_edge": {"lod1": 256, "lod2": 128},
+        "body_radius_m": 30.0,
+        "changes": "mean",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -923,6 +965,19 @@ HANGAR: list[dict] = [
             {"key": "firstLaunch", "value": "1981-04-12", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1981-034A", "quote": "Launch Date: 1981-04-12"},
             {"key": "lengthFt", "value": 122, "page": "https://www.nasa.gov/reference/the-space-shuttle/", "quote": "Length 122 feet"},
             {"key": "wingspanFt", "value": 78, "page": "https://www.nasa.gov/reference/the-space-shuttle/", "quote": "Wingspan 78 feet"},
+        ],
+    },
+    {
+        # The station orbits Earth, never travels between stars: no speed.
+        "id": "iss",
+        "name": "International Space Station",
+        "model": "iss",
+        "travel": None,
+        "facts": [
+            {"key": "lengthM", "value": 109, "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "The space station is 356 feet (109 meters) end-to-end"},
+            {"key": "massKg", "value": "419,725", "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "Mass: 925,335 pounds (419,725 kilograms)"},
+            {"key": "orbitMinutes", "value": 90, "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "orbiting Earth about every 90 minutes"},
+            {"key": "occupiedSince", "value": "2000-11", "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "The space station has been continuously occupied since November 2000."},
         ],
     },
 ]

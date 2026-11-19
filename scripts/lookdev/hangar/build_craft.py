@@ -73,6 +73,14 @@ CHANGES = {
         "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
         "sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
+    "lod0_mean": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; each part given one colour, metalness and "
+        "roughness, the mean of NASA's own maps over its opaque pixels, so no mark printed in a map survives, with "
+        "NASA's alpha kept as a mask where it cuts a lattice, faces NASA's file keeps apart at shared corners welded, "
+        "the normals made again, smooth within an angle and sharp beyond it, and the masks encoded as WebP."
+    ),
     # lod0 for a suit of NASA's flat colours (recipe "changes": "suit_flat")
     "lod0_suit_flat": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z "
@@ -129,6 +137,9 @@ RELIEF_STRENGTH = {"gold": 2.2, "dark": 1.6, "white": 0.4, "grey": 0.5}
 RELIEF_BLUR_PX = 3  # the high-pass radius, in source pixels, that separates wrinkles from the photo's broad shading
 SPEC_ROUGH_AT_BLACK = 0.9  # roughness where a specular map is black
 SPEC_ROUGH_AT_WHITE = 0.3  # roughness where it is white
+MEAN_EDGE = 128  # maps are averaged at this size
+MEAN_ROUGHNESS_FACTOR = 0.5  # NASA's ISS materials multiply their green channel by 0.5 for roughness
+MASK_EDGE = 512  # a kept alpha mask's largest edge
 PICKER_SAMPLES = 32  # Cycles samples for a rendered picker picture
 PAINT_OUT_BAND_PX = 3  # the band around a painted-out box whose median colour fills it
 
@@ -340,6 +351,79 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
         nmap = nt.nodes.new("ShaderNodeNormalMap")
         links.new(nrm.outputs["Color"], nmap.inputs["Color"])
         links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
+    elif spec["role"] == "maps_mean":
+        # One colour, metalness and roughness per part, the mean of NASA's own maps over the part's opaque pixels, so
+        # no mark printed in a map survives; where NASA cuts the part with its colour map's alpha (a lattice, a
+        # mesh), that alpha is kept as a mask on a texture of the one colour.
+        nodes = source_mat.node_tree.nodes
+        src_bsdf = next(n for n in nodes if n.type == "BSDF_PRINCIPLED")
+
+        def upstream_image(socket):
+            stack = [socket]
+            while stack:
+                s = stack.pop()
+                for link in s.links:
+                    n = link.from_node
+                    if n.type == "TEX_IMAGE" and n.image is not None:
+                        return n.image, link.from_socket.name
+                    stack.extend(i for i in n.inputs if i.is_linked)
+            return None, None
+
+        def small(img):
+            copy = img.copy()
+            copy.scale(min(img.size[0], MEAN_EDGE), min(img.size[1], MEAN_EDGE))
+            arr = image_array(copy)
+            bpy.data.images.remove(copy)
+            return arr
+
+        base_img, _ = upstream_image(src_bsdf.inputs["Base Color"])
+        alpha_linked = src_bsdf.inputs["Alpha"].is_linked
+        if base_img is not None:
+            px = small(base_img)
+            weight = px[..., 3] if alpha_linked else np.ones(px.shape[:2], dtype=np.float32)
+            weight = np.where(weight > 0.5, 1.0, 0.0)
+            if weight.sum() == 0:
+                weight = np.ones_like(weight)
+            srgb = px[..., :3]
+            lin = np.where(srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4)
+            colour = (lin * weight[..., None]).sum((0, 1)) / weight.sum()
+        else:
+            colour = np.array(src_bsdf.inputs["Base Color"].default_value[:3], dtype=np.float32)
+        metal_img, metal_socket = upstream_image(src_bsdf.inputs["Metallic"])
+        rough_img, _ = upstream_image(src_bsdf.inputs["Roughness"])
+        metallic = float(src_bsdf.inputs["Metallic"].default_value)
+        roughness = float(src_bsdf.inputs["Roughness"].default_value)
+        if metal_img is not None:
+            m = small(metal_img)
+            metallic = float(m[..., 2].mean())  # glTF's metal-roughness packing: blue is metalness
+            if rough_img is metal_img:
+                factor = MEAN_ROUGHNESS_FACTOR
+                rough_math = next((n for n in nodes if n.type == "MATH" and n.operation == "MULTIPLY"), None)
+                if rough_math is not None:
+                    factor = next((float(i.default_value) for i in rough_math.inputs if not i.is_linked), factor)
+                roughness = float(m[..., 1].mean()) * factor
+        bsdf.inputs["Metallic"].default_value = min(max(metallic, 0.0), 1.0)
+        bsdf.inputs["Roughness"].default_value = min(max(roughness, 0.0), 1.0)
+        if alpha_linked and base_img is not None:
+            w, h = base_img.size
+            k = min(1.0, MASK_EDGE / max(w, h))
+            mask_src = base_img.copy()
+            mask_src.scale(max(1, round(w * k)), max(1, round(h * k)))
+            arr = image_array(mask_src)
+            bpy.data.images.remove(mask_src)
+            enc = np.where(colour <= 0.0031308, colour * 12.92, 1.055 * np.power(np.maximum(colour, 0), 1 / 2.4) - 0.055)
+            arr[..., :3] = enc
+            mask = new_image(f"{name}_colour_mask", arr, non_color=False)
+            mask.alpha_mode = "STRAIGHT"
+            tex = nt.nodes.new("ShaderNodeTexImage")
+            tex.image = mask
+            links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+            cut = nt.nodes.new("ShaderNodeMath")
+            cut.operation = "ROUND"
+            links.new(tex.outputs["Alpha"], cut.inputs[0])
+            links.new(cut.outputs[0], bsdf.inputs["Alpha"])
+        else:
+            bsdf.inputs["Base Color"].default_value = (*[float(c) for c in colour], 1.0)
     elif spec["role"] == "textured":
         # NASA's own texture as the base colour (a printed label, a flag), with a flat metalness and roughness.
         base = nt.nodes.new("ShaderNodeTexImage")
@@ -398,6 +482,39 @@ def resized(img: bpy.types.Image, edge: int, suffix: str) -> bpy.types.Image:
     copy.scale(max(1, round(w * k)), max(1, round(h * k)))
     copy.pack()
     return copy
+
+
+def drop_small_parts(obj: bpy.types.Object, metres: float) -> int:
+    """Remove each loose part whose bounding box is under `metres` across: at a far level it covers under a pixel."""
+    import bmesh
+
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    seen: set[int] = set()
+    doomed = []
+    removed = 0
+    for start in bm.verts:
+        if start.index in seen:
+            continue
+        part = [start]
+        seen.add(start.index)
+        i = 0
+        while i < len(part):
+            for e in part[i].link_edges:
+                o = e.other_vert(part[i])
+                if o.index not in seen:
+                    seen.add(o.index)
+                    part.append(o)
+            i += 1
+        co = np.array([v.co for v in part])
+        if np.linalg.norm(co.max(0) - co.min(0)) < metres:
+            doomed.extend(part)
+            removed += 1
+    bmesh.ops.delete(bm, geom=doomed, context="VERTS")
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    return removed
 
 
 def render_picker(obj: bpy.types.Object, path: Path) -> None:
@@ -506,6 +623,12 @@ def main() -> None:
     craft.data.validate(verbose=False, clean_customdata=False)
     for ob in [o for o in bpy.context.scene.objects if o is not craft]:
         bpy.data.objects.remove(ob, do_unlink=True)
+    if recipe.get("strip_unused_layers"):
+        # Vertex colour layers and UV sets past the first, which no material here reads, would ride into every glb.
+        for layer in list(craft.data.color_attributes):
+            craft.data.color_attributes.remove(layer)
+        while len(craft.data.uv_layers) > 1:
+            craft.data.uv_layers.remove(craft.data.uv_layers[-1])
 
     # Faces NASA's file holds twice (a second copy of a part under another material) come out first.
     me = craft.data
@@ -576,9 +699,17 @@ def main() -> None:
 
     # Materials: one per recipe entry, so parts sharing a rule share one material (one draw each in three.js).
     built: dict[str, bpy.types.Material] = {}
+    unassigned = None
+    for slot in craft.material_slots:
+        if slot.material is None:
+            # a part NASA's file gives no material: Blender's own default surface, through the recipe's rules
+            if unassigned is None:
+                unassigned = bpy.data.materials.new("unassigned")
+                unassigned.use_nodes = True
+            slot.material = unassigned
     for slot in craft.material_slots:
         key, spec = material_for(recipe, slot.material.name)
-        if spec["role"] == "nasa_flat":
+        if spec["role"] in ("nasa_flat", "maps_mean"):
             key = f"{key}_{slot.material.name}"
         if key not in built:
             built[key] = build_material(f"{args.craft}_{key}" if key.startswith("rule") else f"{args.craft}_{slot.material.name}", spec, slot.material)
@@ -648,6 +779,10 @@ def main() -> None:
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.modifier_apply(modifier=dec.name)
             obj.data.validate(verbose=False, clean_customdata=False)
+        small = recipe.get("drop_parts_under_m", {}).get(level)
+        if small:
+            removed = drop_small_parts(obj, small)
+            print(f"HANGAR {args.craft} {level} parts under {small} m removed {removed}")
         export_level(obj, level, out / f"{args.craft}_{level}.glb")
         tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
         print(f"HANGAR {args.craft} {level} triangles {tris} of {tris0}")

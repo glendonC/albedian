@@ -403,7 +403,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "acf3d39c3bc5d075b8043e3c232f7ae31c86e62f8b9796251484ecb869f36f4b",
+      "sha256": "58a13a3d76c561e737851b29e7a433e7818095f41fdba5e1bcb1abe84e894dc6",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -473,6 +473,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.png (673364 bytes, SHA-256 2c400cfa23cf6602202db163dea3c26e5b601aecb0ea50fb7d3407a1cb21c4ea)."
+    },
+    {
+      "path": "hangar/iss/iss_lod0.glb",
+      "sha256": "55fe30a1794b766391117263d72f7a4f9b17e3797fae27fc97edd8d30c3350df",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; each part given one colour, metalness and roughness, the mean of NASA's own maps over its opaque pixels, so no mark printed in a map survives, with NASA's alpha kept as a mask where it cuts a lattice, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the masks encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/iss/iss_lod1.glb",
+      "sha256": "1af7ecaa311648ee5b554c680d8c357bfabc6670c41114606f78594f7022c32a",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/iss/iss_lod2.glb",
+      "sha256": "e31d3013c9a1c061c3e2c781546fe07e303c6dd7b46869c921d8d6ce3e397433",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/iss/iss_picker.webp",
+      "sha256": "4a40413482a781195f329cc69d8631fa9ddf70124e04bd0837018bb5bf357725",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29.png (1628716 bytes, SHA-256 cb4800bf76b9ab76c44fd0ecea7ec47c4230bd3293b8bda6626ebb8d1128493a)."
     },
     {
       "path": "hangar/jwst/jwst_lod0.glb",

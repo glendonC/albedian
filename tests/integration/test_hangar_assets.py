@@ -131,7 +131,8 @@ def test_the_true_size_is_metres_of_a_real_craft() -> None:
     for name, model in FACTS["models"].items():
         lo, hi = model["boundsM"]["min"], model["boundsM"]["max"]
         extent = [b - a for a, b in zip(lo, hi)]
-        assert all(0 < e < 40 for e in extent), (name, extent)
+        # metres, not inches or centimetres: nothing in the hangar is past the station's 109 m
+        assert all(0 < e < 120 for e in extent), (name, extent)
         assert model["bodyRadiusM"] < max(extent)
 
 
@@ -155,7 +156,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
     rules = recipe.get("material_rules", [])
     assert recipe.get("materials") or rules
     if rules:
-        assert rules[-1]["match"] == [""] and rules[-1]["role"] == "nasa_flat"
+        assert rules[-1]["match"] == [""] and rules[-1]["role"] in {"nasa_flat", "maps_mean"}
         for rule in rules:
             if rule["role"] == "pbr":
                 assert all(0 <= c <= 1 for c in rule["base"]) and 0 <= rule["metallic"] <= 1 and 0 < rule["roughness"] <= 1

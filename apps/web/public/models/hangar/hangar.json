@@ -807,6 +807,63 @@
         "quote": "Length 122 feet",
         "quotedFt": 122
       }
+    },
+    "iss": {
+      "title": "International Space Station",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "iss/iss_lod0.glb",
+          "bytes": 5436360,
+          "triangles": 81212,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 8000000
+        },
+        "lod1": {
+          "path": "iss/iss_lod1.glb",
+          "bytes": 992380,
+          "triangles": 11365,
+          "textureEdgeMax": 256,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "iss/iss_lod2.glb",
+          "bytes": 506940,
+          "triangles": 4902,
+          "textureEdgeMax": 128,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "iss/iss_picker.webp",
+          "bytes": 8512,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -54.452,
+          -16.844,
+          -40.228
+        ],
+        "max": [
+          54.452,
+          16.686,
+          40.226
+        ]
+      },
+      "bodyRadiusM": 30.0,
+      "lodTriangleShare": {
+        "lod0": 0.03,
+        "lod1": 0.008,
+        "lod2": 0.0025
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 109,
+        "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+        "quote": "The space station is 356 feet (109 meters) end-to-end"
+      }
     }
   },
   "entries": [
@@ -1243,6 +1300,38 @@
           "value": 78,
           "page": "https://www.nasa.gov/reference/the-space-shuttle/",
           "quote": "Wingspan 78 feet"
+        }
+      ]
+    },
+    {
+      "id": "iss",
+      "name": "International Space Station",
+      "model": "iss",
+      "travel": null,
+      "facts": [
+        {
+          "key": "lengthM",
+          "value": 109,
+          "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+          "quote": "The space station is 356 feet (109 meters) end-to-end"
+        },
+        {
+          "key": "massKg",
+          "value": "419,725",
+          "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+          "quote": "Mass: 925,335 pounds (419,725 kilograms)"
+        },
+        {
+          "key": "orbitMinutes",
+          "value": 90,
+          "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+          "quote": "orbiting Earth about every 90 minutes"
+        },
+        {
+          "key": "occupiedSince",
+          "value": "2000-11",
+          "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+          "quote": "The space station has been continuously occupied since November 2000."
         }
       ]
     }
