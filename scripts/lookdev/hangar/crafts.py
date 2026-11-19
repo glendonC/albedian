@@ -1925,7 +1925,7 @@ HANGAR: list[dict] = [
         "model": "vanallen",
         "travel": None,
         "facts": [
-            {"key": "launch", "value": "2012-08-30", "page": "https://science.nasa.gov/mission/van-allen-probes/", "quote": "NASA’s Van Allen Probes A and B launched on Aug. 30, 2012."},
+            {"key": "launch", "value": "2012-08-30", "page": "https://science.nasa.gov/mission/van-allen-probes/", "quote": "NASA's Van Allen Probes A and B launched on Aug. 30, 2012"},
             {"key": "massKg", "value": 591.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "RBSP-A has a mass of 591.6 kg, including 129.6 kg of instrumentation, exclusive of propellant."},
             {"key": "bodyDiameterM", "value": 1.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."},
             {"key": "bodyLengthM", "value": 1.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."},
