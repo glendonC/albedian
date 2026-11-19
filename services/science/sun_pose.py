@@ -1,5 +1,6 @@
 """The Sun as the beacon by day, its first pieces (sky-6a; spec predicted-sky-for-every-upload REQ-SKY-4.3): the Sun's
-place seen from the photo's place, the Sun's core in a day frame, and the clock check that comes before any Sun pose.
+place seen from the photo's place, the Sun's core in a day frame, and the clock check that comes before any Sun pose;
+and the skyline of a day frame (sky-6b), the step below the Sun in the columns about it.
 
 Measured on two public daytime photos (.lead/kiro/reports/SCIENCE-INGEST/sky-6-research.md) [tested]: the Sun's
 clipped core is 4.5 to 6.2 times its disk across (its bloom), thousands of single clipped specks (glitter on water)
@@ -17,7 +18,7 @@ from scipy import ndimage
 
 from services.science.catalog import require_place
 from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides
-from services.science.pose_estimate import Refusal, TopocentricMoon
+from services.science.pose_estimate import SKYLINE_NOISE_FLOOR, Refusal, Skyline, TopocentricMoon
 
 # The nominal solar radius, 695,700 km [verified: IAU 2015 Resolution B3]
 SUN_RADIUS_KM = 695_700.0
@@ -27,10 +28,30 @@ SUN_CORE_CODES = 10.0
 # [proposed] A core smaller than this many pixels across is a speck (glitter, a star of light), never the Sun
 MIN_SUN_CORE_DIAMETER_PX = 6.0
 
+# sky-6b, the day skyline [proposed, measured on two public photos: sky-6-research.md]. The columns a sixth of the
+# frame's width either side of the Sun's; each row's median over them, smoothed by a Gaussian of this many rows
+DAY_SKYLINE_HALF_BAND = 1.0 / 6.0
+DAY_SKYLINE_SMOOTHING_ROWS = 6.0
+# A step is the smoothed profile's change over this many rows either side of a row
+DAY_SKYLINE_REACH_ROWS = 12
+# Its noise: each row's median absolute deviation over the band, their median over this many rows above the step
+DAY_SKYLINE_NOISE_ROWS = 240
+# Rows tried, every so many, from three reaches below the Sun's glare
+DAY_SKYLINE_ROW_STEP = 4
+# The highest step stands at least this many times its noise, and this many times any step more than
+# DAY_SKYLINE_APART_ROWS from it (the two photos: 12.5 and 6.7 against next bests of 2.2 and 1.4)
+DAY_SKYLINE_MIN_SNR = 5.0
+DAY_SKYLINE_MIN_RATIO = 2.5
+DAY_SKYLINE_APART_ROWS = 60
+
 _NO_SUN = "The Sun was not found in the frame: "
 NO_SUN = _NO_SUN + "no bright region larger than a speck stands at the frame's brightest level."
 SUN_BLOOM = _NO_SUN + "its brightest region is wider than the Sun's glare could be at the camera's widest field of view."
 SUN_EDGE = _NO_SUN + "its brightest region touches the edge of the frame, so its centre cannot be measured."
+NO_DAY_SKYLINE = (
+    "The sky is not lined up over the picture: no single skyline stands out below the Sun, where the sky meets the "
+    "ground or the water."
+)
 
 
 @dataclass(frozen=True)
@@ -101,3 +122,48 @@ def clock_check(measured_height_deg: float, predicted_alt_deg: float, *, toleran
         f"skyline in the picture, but {predicted_alt_deg:.1f} degrees at the photo's recorded time, so the camera's "
         "clock or its time zone looks wrong.",
     )
+
+
+def find_day_skyline(luma: np.ndarray, core: SunCore) -> Skyline | Refusal:
+    """The skyline of an upright day frame below the Sun's core: in the columns DAY_SKYLINE_HALF_BAND of the width
+    either side of the Sun's, each row's median, smoothed; every DAY_SKYLINE_ROW_STEP rows from three reaches below
+    the glare, the step over DAY_SKYLINE_REACH_ROWS either side against the noise of the rows above (each row's
+    median absolute deviation over the band, 1.4826 times their median over DAY_SKYLINE_NOISE_ROWS, at least
+    SKYLINE_NOISE_FLOOR), of either sign, so water darker or brighter than the sky is found alike. The highest such
+    step is the skyline when it reaches DAY_SKYLINE_MIN_SNR and DAY_SKYLINE_MIN_RATIO times every step more than
+    DAY_SKYLINE_APART_ROWS from it; its row is the steepest within its reach, to a fraction by a parabola, its half
+    width half the rows about it where the slope is at least half its peak. Else none (no_skyline)."""
+    luma = np.asarray(luma, dtype=np.float64)
+    height, width = luma.shape
+    half = max(1, int(width * DAY_SKYLINE_HALF_BAND))
+    centre = int(round(core.x_px))
+    band = luma[:, max(0, centre - half) : min(width, centre + half)]
+    medians = np.median(band, axis=1)
+    deviation = np.median(np.abs(band - medians[:, None]), axis=1)
+    profile = ndimage.gaussian_filter1d(medians, DAY_SKYLINE_SMOOTHING_ROWS)
+    reach = DAY_SKYLINE_REACH_ROWS
+    start = int(math.ceil(core.y_px + core.diameter_px))
+    scored: list[tuple[float, int]] = []
+    for row in range(start + 3 * reach, height - reach, DAY_SKYLINE_ROW_STEP):
+        above = deviation[max(start, row - DAY_SKYLINE_NOISE_ROWS) : row - reach]
+        noise = max(1.4826 * float(np.median(above)), SKYLINE_NOISE_FLOOR)
+        scored.append((abs(float(profile[row + reach] - profile[row - reach])) / noise, row))
+    if not scored:
+        return Refusal("no_skyline", NO_DAY_SKYLINE)
+    snr, row = max(scored)
+    rivals = [s for s, r in scored if abs(r - row) > DAY_SKYLINE_APART_ROWS]
+    if snr < DAY_SKYLINE_MIN_SNR or (rivals and max(rivals) * DAY_SKYLINE_MIN_RATIO > snr):
+        return Refusal("no_skyline", NO_DAY_SKYLINE)
+    slope = np.abs(np.gradient(profile))
+    lo = max(1, row - reach)
+    peak = lo + int(np.argmax(slope[lo : min(height - 1, row + reach + 1)]))
+    offset = 0.0
+    curve = float(slope[peak - 1] - 2.0 * slope[peak] + slope[peak + 1]) if peak + 1 < height else 0.0
+    if curve < 0.0:
+        offset = 0.5 * float(slope[peak - 1] - slope[peak + 1]) / curve
+    first = last = peak
+    while first > 0 and slope[first - 1] >= slope[peak] / 2.0:
+        first -= 1
+    while last < height - 1 and slope[last + 1] >= slope[peak] / 2.0:
+        last += 1
+    return Skyline(row=float(peak) + offset, half_width_px=(last - first + 1) / 2.0, step_snr=snr)

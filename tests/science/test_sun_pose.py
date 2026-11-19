@@ -94,3 +94,57 @@ def test_the_clock_check_refuses_a_sun_whose_height_disagrees_with_the_photo_s_t
 def test_the_clock_check_needs_a_positive_tolerance() -> None:
     with pytest.raises(ValueError):
         sp.clock_check(10.0, 10.0, tolerance_deg=0.0)
+
+
+# sky-6b: the skyline of a day frame, the highest step below the Sun in the columns about it
+
+
+def _day_with(horizon: int | None, *, water: float = 110.0, seed: int = 0, sun: tuple[float, float] = (450.0, 250.0)) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float64)
+    frame = 140.0 + 50.0 * yy / H + 60.0 * np.exp(-np.hypot(xx - sun[0], yy - sun[1]) / 200.0)
+    frame[np.hypot(xx - sun[0], yy - sun[1]) <= 50.0] = 255.0
+    if horizon is not None:
+        frame[horizon:] = water + 3.0 * rng.standard_normal((H - horizon, W))
+        for _ in range(300):
+            frame[rng.integers(horizon + 5, H), rng.integers(0, W)] = 255.0
+    return np.clip(frame + 2.0 * rng.standard_normal((H, W)), 0, 255)
+
+
+@pytest.mark.parametrize(("horizon", "water"), [(700, 110.0), (950, 110.0), (520, 120.0), (800, 235.0)])
+def test_the_day_skyline_is_the_step_below_the_sun_of_either_sign(horizon: int, water: float) -> None:
+    frame = _day_with(horizon, water=water)
+    core = sp.find_sun_core(frame, max_diameter_px=500.0)
+    assert isinstance(core, sp.SunCore)
+    sky = sp.find_day_skyline(frame, core)
+    assert isinstance(sky, sp.Skyline), sky
+    assert abs(sky.row - horizon) <= 2.0
+    assert sky.step_snr >= sp.DAY_SKYLINE_MIN_SNR
+
+
+def test_a_day_frame_with_no_skyline_gives_none_over_twenty_seeds() -> None:
+    for seed in range(20):
+        frame = _day_with(None, seed=seed)
+        core = sp.find_sun_core(frame, max_diameter_px=500.0)
+        assert isinstance(core, sp.SunCore)
+        sky = sp.find_day_skyline(frame, core)
+        assert isinstance(sky, Refusal) and sky.kind == "no_skyline", (seed, sky)
+
+
+def test_a_single_faint_step_below_the_sun_is_no_skyline() -> None:
+    # The only step below the Sun, 8 codes against a sky noise of 2: unique, but under DAY_SKYLINE_MIN_SNR
+    rng = np.random.default_rng(4)
+    frame = _day_with(None, seed=4)
+    frame[800:] = np.clip(frame[800:] - 8.0 + 0.5 * rng.standard_normal((H - 800, W)), 0, 255)
+    core = sp.find_sun_core(frame, max_diameter_px=500.0)
+    assert isinstance(core, sp.SunCore)
+    sky = sp.find_day_skyline(frame, core)
+    assert isinstance(sky, Refusal) and sky.kind == "no_skyline", sky
+
+
+def test_two_skylines_as_strong_as_each_other_give_none() -> None:
+    frame = _day_with(700)
+    frame[950:] = np.clip(frame[950:] - 60.0, 0, 255)
+    core = sp.find_sun_core(frame, max_diameter_px=500.0)
+    sky = sp.find_day_skyline(frame, core)
+    assert isinstance(sky, Refusal) and sky.kind == "no_skyline"
