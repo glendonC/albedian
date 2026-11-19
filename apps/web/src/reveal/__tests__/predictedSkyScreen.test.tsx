@@ -181,11 +181,21 @@ describe('the predicted sky in the app (laptop)', () => {
     expect(q('.reveal-nav .look-views')).toBeNull();
   });
 
-  it('is not drawn at phone width, which keeps today\'s screen until its own unit', () => {
+  it("at phone width: the close circle top left, the readout from top 584 with the time and place on one line, Back to Moment at the foot", () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
     try {
       renderViewport(predictedSky());
-      expect(q('[data-testid="predicted-sky"]')).toBeNull();
+      const screen = q('[data-testid="predicted-sky"]')!;
+      expect(screen.className).toBe('predsky is-phone');
+      expect(screen.querySelector('.reveal-word')).toBeNull();
+      expect(screen.querySelector('.predsky-top button[aria-label="Close"]')).not.toBeNull();
+      const status = screen.querySelector('.predsky-status')!;
+      expect([...status.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__facts']);
+      expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W']);
+      expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);
+      expect(q('.ask-bar')!.className).toContain('is-phone');
+      const text = container.textContent ?? '';
+      for (const old of ['Saved checkpoint', 'PRD', 'MIXED EVIDENCE']) expect(text).not.toContain(old);
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }
@@ -233,6 +243,13 @@ describe("the predicted sky's rules are the record's", () => {
   it("lies over the sky's canvas, as the reveal does, taking no pointer but its own controls", () => {
     expect(declarationsOf('.predsky')).toEqual({ position: 'fixed', inset: '0', 'z-index': '30', 'pointer-events': 'none' });
     expect(declarationsOf('.reveal-photo')['z-index']).toBe('30');
+  });
+
+  it('places the phone readout from top 584, 24 px from the sides, the heading at 20 px, names at 11 px', () => {
+    expect(declarationsOf('.predsky.is-phone .predsky-status')).toEqual({ left: '24px', right: '24px', top: '584px', width: 'auto' });
+    expect(declarationsOf('.predsky.is-phone .predsky-status__lead')).toEqual({ 'font-size': '20px' });
+    expect(declarationsOf('.predsky.is-phone .align-layer__name')).toEqual({ 'font-size': '11px' });
+    expect(declarationsOf('.predsky-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', 'pointer-events': 'auto' });
   });
 
   it('sets the heading 14 px under the tag at 24 px light, the disclosure 12 px under it, the facts after a hairline', () => {

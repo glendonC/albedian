@@ -210,8 +210,8 @@ export const SpatialObservatoryViewport: React.FC<
     if (!flightShown) setPhoneSteering(false);
   }, [flightShown]);
   const skyOver = realSkyShown || flightShown;
-  // D33: the sky Show predicted sky opens, on the laptop, in place of the old panel (UIUX-predsky-READY.md)
-  const predictedSkyShown = !phone && !flightShown && isPredictedSkyShown(session);
+  // D33: the sky Show predicted sky opens, in place of the old panel (UIUX-predsky-READY.md), at phone width too
+  const predictedSkyShown = !flightShown && isPredictedSkyShown(session);
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
   // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
   // pieces until their own units
@@ -789,7 +789,7 @@ export const SpatialObservatoryViewport: React.FC<
               corners={!clipShaded}
             />
           )}
-          {predictedSkyShown && <PredictedSkyScreen session={session} onHome={() => setEntryStageActive(true)} skyPose={readSkyPose} />}
+          {predictedSkyShown && <PredictedSkyScreen session={session} onHome={() => setEntryStageActive(true)} skyPose={readSkyPose} phone={phone} />}
           {!revealShown && !predictedSkyShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
             <CelestialMarkerOverlay
               session={session}
@@ -841,7 +841,7 @@ export const SpatialObservatoryViewport: React.FC<
               onSend={(text) => onRunUtterance(text, 'text')}
               onBack={flightShown || predictedSkyShown ? backToMoment : undefined}
               leaving={returning}
-              phone={phoneReveal}
+              phone={phoneReveal || (phone && predictedSkyShown)}
               onFlyOnYourOwn={arrived && !freeFlight ? () => setFreeFlight(true) : undefined}
               onAutopilot={flightShown && phoneReveal && phoneSteering ? () => setPhoneSteering(false) : undefined}
             />

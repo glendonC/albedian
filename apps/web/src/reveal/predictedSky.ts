@@ -36,6 +36,12 @@ export function formatSkyPlace(latDeg: number, lonDeg: number): string {
   return `${Math.abs(latDeg).toFixed(2)}° ${latDeg >= 0 ? 'N' : 'S'} · ${Math.abs(lonDeg).toFixed(2)}° ${lonDeg >= 0 ? 'E' : 'W'}`;
 }
 
+/** At phone width the time and place are one line, "{time} · {place}" (item "Build, phone"). */
+export function phoneFacts(words: PredictedSkyWords): string[] {
+  const values = words.facts.filter((fact) => fact !== PREDICTED_SKY_CATALOGUES);
+  return values.length > 0 ? [values.join(' · ')] : [];
+}
+
 export function predictedSkyWords(session: ObservationSession): PredictedSkyWords {
   const asset = session.sourceAsset;
   const kind = asset?.mediaKind === 'video' ? 'clip' : 'photo';

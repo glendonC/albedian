@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
-import { EvidenceTag, Logo } from '../look/index.js';
+import { EvidenceTag, IconButton, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
-import { predictedSkyWords } from './predictedSky.js';
+import { phoneFacts, predictedSkyWords } from './predictedSky.js';
 import { predictedSkyMarks, type Box } from './predictedSkyMarks.js';
 
 /** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
 function clearOf(status: HTMLElement | null): Box[] {
-  const rects = [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar')]
+  // On the phone: the readout from top 584 and the close circle
+  const rects = [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar'), document.querySelector('.predsky-top')]
     .filter((el): el is Element => el !== null)
     .map((el) => el.getBoundingClientRect())
     .filter((r) => r.width > 0 && r.height > 0);
@@ -26,7 +27,7 @@ import '../styles/reveal.css';
  * stars brighter than magnitude 3.2, placed where the renderer's camera draws them, followed frame by frame. The
  * horizon and the cardinal letters are the renderer's (SPATIAL's file; asked in WEB-UX-predsky-2-FILES.md).
  */
-export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome: () => void; skyPose?: () => CameraSkyPose | null }> = ({ session, onHome, skyPose }) => {
+export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome: () => void; skyPose?: () => CameraSkyPose | null; phone?: boolean }> = ({ session, onHome, skyPose, phone = false }) => {
   const words = predictedSkyWords(session);
   // The renderer's camera, followed frame by frame; a new pose only when it changed
   const [pose, setPose] = useState<CameraSkyPose | null>(null);
@@ -48,9 +49,11 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
   }, [skyPose]);
   const size = useViewportSize();
   const status = useRef<HTMLDivElement>(null);
-  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, 13, clearOf(status.current));
+  // Names at 11 px on the phone, 13 on the laptop
+  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, phone ? 11 : 13, clearOf(status.current));
+  const facts = phone ? phoneFacts(words) : words.facts;
   return (
-    <div className="predsky" data-testid="predicted-sky" data-evidence-class="predicted">
+    <div className={phone ? 'predsky is-phone' : 'predsky'} data-testid="predicted-sky" data-evidence-class="predicted">
       <svg className="align-layer__rings" data-testid="predicted-sky-rings" aria-hidden="true" focusable="false">
         {marks.map((mark) => (
           <circle key={mark.id} cx={mark.xPx} cy={mark.yPx} r={mark.r} />
@@ -67,15 +70,22 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
           </span>
         )
       )}
-      <button type="button" className="reveal-word" data-testid="predicted-sky-home" onClick={onHome}>
-        <Logo sizePx={21} />
-      </button>
+      {phone ? (
+        // The approved phone There frame: the close circle top left
+        <div className="predsky-top">
+          <IconButton label="Close" icon="x" size="phone" onClick={onHome} />
+        </div>
+      ) : (
+        <button type="button" className="reveal-word" data-testid="predicted-sky-home" onClick={onHome}>
+          <Logo sizePx={21} />
+        </button>
+      )}
       <div ref={status} className="reveal-status predsky-status" data-testid="reveal-status" data-moment="predicted-sky" role="status">
         <EvidenceTag evidenceClass="predicted" />
         <p className="predsky-status__lead">{words.heading}</p>
         <p className="predsky-status__note">{words.note}</p>
         <div className="predsky-status__facts">
-          {words.facts.map((fact) => (
+          {facts.map((fact) => (
             <p key={fact}>{fact}</p>
           ))}
         </div>

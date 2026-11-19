@@ -1792,3 +1792,27 @@
 .predsky-status .look-tag {
   margin-bottom: 0;
 }
+
+/* D33 at phone width (UIUX-predsky-READY.md, Build, phone): the close circle top left, as the phone There frame; the
+   readout from top 584, 24 px from the sides, the heading at 20 px; names at 11 px */
+.predsky-top {
+  position: absolute;
+  left: 20px;
+  top: 60px;
+  pointer-events: auto;
+}
+
+.predsky.is-phone .predsky-status {
+  left: 24px;
+  right: 24px;
+  top: 584px;
+  width: auto;
+}
+
+.predsky.is-phone .predsky-status__lead {
+  font-size: 20px;
+}
+
+.predsky.is-phone .align-layer__name {
+  font-size: 11px;
+}
