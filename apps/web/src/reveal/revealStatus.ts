@@ -46,11 +46,14 @@ const FIRST_SENTENCE_NOTES: readonly string[] = [
   'The file names no time zone for its capture time',
   "The photo's file has no ",
   "This photo's sky is so even that the smallest steps in its brightness",
+  // C22: the stars alone placed a photo whose moment the iPhone lent
+  'The stars alone lined this photo up;',
 ];
 
 /**
  * A warning as it shows on screen: those notes by their first sentence only, every other warning whole (C5,
- * UIUX-words-DECIDED-BY-LEAD.md; C13, UIUX-pointingwords-DECIDED-BY-LEAD.md; C14, UIUX-countwords-DECIDED-BY-LEAD.md;
+ * UIUX-words-DECIDED-BY-LEAD.md; C13, UIUX-pointingwords-DECIDED-BY-LEAD.md; C14, UIUX-countwords-DECIDED-BY-LEAD.md; C22,
+ * UIUX-blindwords-READY.md;
  * FIELD); the whole note stays in the solution's record.
  */
 export function onScreenWarning(warning: string): string {

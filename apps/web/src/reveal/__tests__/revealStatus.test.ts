@@ -227,3 +227,18 @@ describe("the count warning's words on screen (C14)", () => {
     expect(revealStatus(session).warnings.join(' ')).not.toContain(RECORD);
   });
 });
+
+// C22 (UIUX-blindwords-READY.md, decided by the lead 17:08; SCIENCE-INGEST's blind-words): when the stars alone lined up
+// a photo whose moment the iPhone lent, the warning shows its first sentence; the second stays in the record (C5)
+describe("the moment-blind warning's words on screen (C22)", () => {
+  const RECORD = 'A search at that moment matched nothing, so it may be off; the stars were matched without it.';
+  const SCREENS = [
+    'The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded, which the stars do not confirm.',
+    'The stars alone lined this photo up; what is predicted on it is drawn for where your iPhone was, which the stars do not confirm.',
+    'The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded and where it was, which the stars do not confirm.',
+  ];
+
+  it('shows the first sentence only, in each case of what was lent', () => {
+    for (const screen of SCREENS) expect(onScreenWarning(`${screen} ${RECORD}`)).toBe(screen);
+  });
+});
