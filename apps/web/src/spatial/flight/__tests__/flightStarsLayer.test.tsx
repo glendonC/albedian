@@ -3,12 +3,14 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { raDecToUnitVector, resolveFindingParsecPosition } from '@albedian/camera-rig';
+import { pixelToWorldWCS, raDecToUnitVector, resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
-import { FLIGHT_LOAD_LIMIT_MAG } from '../flightFrame.js';
+import { FLIGHT_LOAD_LIMIT_MAG, flightCameraOf } from '../flightFrame.js';
+import { noDistanceStarsOnScreen } from '../flightRings.js';
+import { starViewOfFlight } from '../starView.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -145,5 +147,36 @@ describe('FlightStarsLayer', () => {
     expect(calls.drawArrays.length).toBeGreaterThan(draws);
     expect(calls.bufferData.length).toBe(uploads);
     expect(Number(layer().getAttribute('data-from-earth-pc'))).toBeCloseTo(Math.hypot(...halfway.spatialView.observerOriginParsec), 3);
+  });
+
+  it('tells the page how many stars with no distance it draws in the window, summed over its tiles (D27 item 2)', async () => {
+    const { gl } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    let deliver: ((t: CatalogStarCoreTile) => void) | null = null;
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      deliver = onTile;
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const session = there();
+    const camera = flightCameraOf(session, 1440, 900)!;
+    // A star with no distance where the window's centre looks, one behind the camera, and one with a distance
+    const m = camera.screenToStored;
+    const centre = pixelToWorldWCS(m[0] * 720 + m[1] * 450 + m[2], m[3] * 720 + m[4] * 450 + m[5], camera.wcs);
+    const ahead = raDecToUnitVector(centre.raDeg, centre.decDeg);
+    const three = (pix: number): CatalogStarCoreTile => ({
+      layer: 0, order: 0, pix, count: 3, positionBits: 32,
+      directions: new Float32Array([...ahead, -ahead[0], -ahead[1], -ahead[2], ...ahead]),
+      magnitude: new Float32Array([4, 4, 4]), colorIndex: new Float32Array([0.5, 0.5, 0.5]),
+      distancePc: new Float32Array([Number.NaN, Number.NaN, 120]), flags: new Uint8Array([0, 0, 1]), byteLength: 0,
+    });
+    const onNoDistanceCount = vi.fn();
+    await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, onNoDistanceCount })));
+    await act(async () => await Promise.resolve());
+    await act(async () => deliver!(three(1)));
+    expect(onNoDistanceCount).toHaveBeenLastCalledWith(1);
+    await act(async () => deliver!(three(2)));
+    expect(onNoDistanceCount).toHaveBeenLastCalledWith(2);
+    expect(layer().getAttribute('data-no-distance-on-screen')).toBe('2');
+    expect(noDistanceStarsOnScreen(three(1), starViewOfFlight(camera))).toBe(1);
   });
 });

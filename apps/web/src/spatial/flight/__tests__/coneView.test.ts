@@ -95,6 +95,23 @@ describe('coneGeometryOf: the cone from the solve and the matched stars (D28 ite
     expect(coneGeometryOf(session)!.insideCount).toBe(onPhoto.length);
   });
 
+  it('counts a matched star with no usable distance inside too, while its distances come from the others alone', () => {
+    const session = thereWithStarsOnPhoto();
+    const all = coneGeometryOf(session)!;
+    const matched = session.observationSolution!.findings.filter((f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc);
+    expect(all.insideCount).toBeGreaterThan(1);
+    // The nearest matched star loses its distance: it is still one of the photo's stars inside, on the sky sphere
+    const nearest = matched.reduce((a, b) => (a.inferredDistancePc!.median <= b.inferredDistancePc!.median ? a : b));
+    const findings = session.observationSolution!.findings.map((f) =>
+      f.id === nearest.id ? { ...f, inferredDistancePc: undefined, cartesianParsecICRS: undefined, catalogRef: f.catalogRef ? { ...f.catalogRef, bailerJonesDistancePc: undefined } : undefined } : f
+    );
+    expect(placeFinding(findings.find((f) => f.id === nearest.id)!).kind).toBe('sky_sphere');
+    const g = coneGeometryOf({ ...session, observationSolution: { ...session.observationSolution!, findings } } as ObservationSession)!;
+    expect(g.insideCount).toBe(all.insideCount);
+    expect(g.farthestPc).toBe(all.farthestPc);
+    expect(g.nearestPc).toBeGreaterThan(all.nearestPc!);
+  });
+
   it('draws a cone of a stated drawing length when no matched star has a distance, and claims no distance', () => {
     const session = there();
     const findings = session.observationSolution!.findings.map((f) => ({ ...f, inferredDistancePc: undefined, cartesianParsecICRS: undefined, catalogRef: f.catalogRef ? { ...f.catalogRef, bailerJonesDistancePc: undefined } : undefined }));
