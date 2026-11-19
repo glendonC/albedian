@@ -1875,3 +1875,17 @@
   font-size: 12px;
   color: var(--look-ink-3);
 }
+
+/* D34: a clip's compare on the laptop, where the clip fills the window: the labels 18 px down at the corners of the
+   window's middle band (left and right 400), not on the logo or the views */
+.restore-compare.is-clip .restore-compare__label {
+  top: 18px;
+}
+
+.restore-compare.is-clip .restore-compare__label.is-left {
+  left: 400px;
+}
+
+.restore-compare.is-clip .restore-compare__label.is-right {
+  right: 400px;
+}

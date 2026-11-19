@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useElapsedRows } from './elapsedRows.js';
+import { followParent } from './clipSync.js';
 import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
@@ -163,7 +164,20 @@ export const RestoreCompare: React.FC<{
   maxZoom?: number;
   /** Told whether the compare is zoomed in, so the marks can step aside. */
   onZoomed?: (zoomed: boolean) => void;
-}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed }) => {
+  /**
+   * A clip (D34): the stage's own playing original, the parent of the one clock. The restored clip is drawn over it,
+   * muted, cut at the line, following it by Topaz's rule (clipSync.ts); the original is not drawn again, and the clip
+   * does not zoom.
+   */
+  clipParent?: HTMLVideoElement | null;
+}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent }) => {
+  const clip = clipParent !== undefined;
+  const restoredClip = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const child = restoredClip.current;
+    if (!clip || !clipParent || !child) return undefined;
+    return followParent(clipParent, child);
+  }, [clip, clipParent, src]);
   const box = useRef<HTMLDivElement>(null);
   const down = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [split, setSplit] = useState(100);
@@ -230,7 +244,8 @@ export const RestoreCompare: React.FC<{
     else setSplit(edge);
   };
   const layer = { transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})` };
-  const labelTop = compareLabelTop(rect.topPx);
+  // A clip's labels sit 18 px down at the window's middle band, clear of the logo and the views (D34 item 1)
+  const labelTop = clip ? null : compareLabelTop(rect.topPx);
   const style = {
     left: `${rect.leftPx}px`,
     top: `${rect.topPx}px`,
@@ -243,7 +258,7 @@ export const RestoreCompare: React.FC<{
   return (
     <div
       ref={box}
-      className={drag ? 'restore-compare is-drag' : 'restore-compare'}
+      className={`restore-compare${clip ? ' is-clip' : ''}${drag ? ' is-drag' : ''}`}
       data-testid="restore-compare"
       data-hud-interactive="true"
       style={style}
@@ -280,16 +295,22 @@ export const RestoreCompare: React.FC<{
         setDrag(false);
       }}
     >
-      <div className="restore-compare__original">
-        <div className="restore-compare__layer" style={layer}>
-          <img src={originalSrc} alt="" draggable={false} />
+      {!clip && (
+        <div className="restore-compare__original">
+          <div className="restore-compare__layer" style={layer}>
+            <img src={originalSrc} alt="" draggable={false} />
+          </div>
         </div>
-      </div>
+      )}
       {/* Cut on an upright box; inside it the variant, stored as the camera wrote it, is turned upright: mirrored
           first, then turned clockwise, as the contract's orientation reads (the verdict on unit-restore-2) */}
       <div className="restore-compare__pic">
         <div className="restore-compare__layer" style={layer}>
-          <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
+          {clip ? (
+            <video ref={restoredClip} src={src} muted playsInline preload="auto" aria-hidden="true" style={turnedPicture(rect, orientation)} />
+          ) : (
+            <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
+          )}
         </div>
       </div>
       <span className="restore-compare__line" aria-hidden="true" />

@@ -680,6 +680,7 @@ export const SpatialObservatoryViewport: React.FC<
           {revealShown && (
             <RevealPhoto
               lockOnSky={lockOnSky}
+              clipVideo={clipVideo}
               session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
               onAligningChange={setPhoneAligning}

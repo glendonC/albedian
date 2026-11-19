@@ -99,6 +99,8 @@ export interface RevealPhotoProps {
    * at the early pose when it was refused.
    */
   lockOnSky?: ObservationSolution | null;
+  /** A clip's playing original on the stage: the parent of D34's one clock when its restoration is compared. */
+  clipVideo?: HTMLVideoElement | null;
   onSelectFinding: (findingId: string, pointerCoords?: { xPx: number; yPx: number }) => void;
   /** The logo, pressed: back to the home. */
   onHome: () => void;
@@ -243,6 +245,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   viewportHeightPx,
   restoration,
   lockOnSky = null,
+  clipVideo = null,
   onRestore,
   onCancelRestore,
   onAligningChange,
@@ -356,7 +359,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // The restoration (D10), on the laptop over the photo itself: offered while idle on a still, its steps in the counts'
   // place while it works or once it stopped, the compare once done
   const overPhoto = !phone && !there && !skyShown;
-  const restoreOffered = overPhoto && onRestore !== undefined && restoration?.phase === 'idle' && session.sourceAsset?.mediaKind === 'image';
+  // A clip is restored too now (restore-7; D34 compares it), so Restore is offered on a photo or a clip
+  const restoreOffered = overPhoto && onRestore !== undefined && restoration?.phase === 'idle' && session.sourceAsset !== undefined;
   const restoring = overPhoto && (restoration?.phase === 'working' || restoration?.phase === 'stopped');
   // Original pixels shows the photo bare, the compare too (D15)
   const compareShown = overPhoto && restoration?.phase === 'done' && !originalPixels;
@@ -642,8 +646,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           originalSrc={asset.uri}
           fade={SIDE_FADE}
           orientation={shownVersion && shownVersion.id !== restoration.job.variantId ? shownVersion.orientation : restoration.orientation}
-          maxZoom={uprightWidth / Math.max(1, frame.widthPx)}
+          maxZoom={asset.mediaKind === 'video' ? 1 : uprightWidth / Math.max(1, frame.widthPx)}
           onZoomed={setCompareZoomed}
+          clipParent={asset.mediaKind === 'video' ? clipVideo : undefined}
         />
       )}
 
