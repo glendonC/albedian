@@ -41,6 +41,7 @@ final class CameraSession: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
     private var pending: [Int64: (Result<Shot, Failure>) -> Void] = [:]
     private var exposureAtShutter: [Int64: Double] = [:]
     private var typeAtShutter: [Int64: PhotoContentType] = [:]
+    private var beganAtShutter: (@Sendable (Double) -> Void)?
 
     /// Sets up the session with the back wide-angle camera.
     func configure() -> Failure? {
@@ -63,6 +64,60 @@ final class CameraSession: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
 
     func start() { queue.async { self.session.startRunning() } }
     func stop() { queue.async { self.session.stopRunning() } }
+
+    /// The field of view across the portrait preview: the active format's horizontal field of view (the corrected one
+    /// while distortion correction is on) carried to the format's short side, which a portrait preview shows across
+    /// [inference: which axis "horizontal" means is an iPhone check]. Nil without a camera or a reported field of view.
+    var previewAcrossFieldOfViewDeg: Double? {
+        guard let device else { return nil }
+        let format = device.activeFormat
+        let horizontal = Double(device.isGeometricDistortionCorrectionEnabled ? format.geometricDistortionCorrectedVideoFieldOfView : format.videoFieldOfView)
+        let size = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        guard horizontal > 0, horizontal < 180, size.width > 0, size.height > 0 else { return nil }
+        let ratio = Double(min(size.width, size.height)) / Double(max(size.width, size.height))
+        return 2 * atan(tan(horizontal * .pi / 360) * ratio) * 180 / .pi
+    }
+
+    /// One long exposure (mobile-7): the format's longest duration at the ISO that carries the meter's light
+    /// (`NightExposure.plan`), then one photo as `shoot` takes it, then the camera's own exposure again. `began` is called
+    /// with the exposure's length the device set, when the camera starts the capture.
+    func shootLong(began: @escaping @Sendable (Double) -> Void, _ done: @escaping @Sendable (Result<Shot, Failure>) -> Void) {
+        guard let device else { return done(.failure(.noCamera)) }
+        let format = device.activeFormat
+        guard let plan = NightExposure.plan(meterDurationSec: CMTimeGetSeconds(device.exposureDuration), meterISO: Double(device.iso),
+                                            maxDurationSec: CMTimeGetSeconds(format.maxExposureDuration),
+                                            minISO: Double(format.minISO), maxISO: Double(format.maxISO)) else {
+            return done(.failure(.cameraNotUsable(code: nil)))
+        }
+        do {
+            try device.lockForConfiguration()
+        } catch {
+            return done(.failure(.cameraNotUsable(code: (error as NSError).code)))
+        }
+        let duration = CMTime(seconds: plan.durationSec, preferredTimescale: 1_000_000)
+        device.setExposureModeCustom(duration: duration, iso: Float(plan.iso)) { [weak self] _ in
+            device.unlockForConfiguration()
+            guard let self else { return }
+            self.lock.withLock { self.beganAtShutter = began }
+            self.shoot { result in
+                if (try? device.lockForConfiguration()) != nil {
+                    if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+                    device.unlockForConfiguration()
+                }
+                done(result)
+            }
+        }
+    }
+
+    func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
+        let id = resolvedSettings.uniqueID
+        let (began, exposure) = lock.withLock { () -> (((Double) -> Void)?, Double?) in
+            let began = beganAtShutter
+            beganAtShutter = nil
+            return (began, exposureAtShutter[id])
+        }
+        if let began, let exposure, exposure.isFinite { began(exposure) }
+    }
 
     /// Takes one photo and reports it once the camera has written it.
     func shoot(_ done: @escaping @Sendable (Result<Shot, Failure>) -> Void) {

@@ -48,6 +48,7 @@ struct CompanionRoot: View {
             case .home: HomeScreen(model: model)
             case .credits: CreditsScreen(model: model)
             case .aim: AimScreen(model: model)
+            case .holdStill: HoldStillScreen(model: model)
             case .afterShot: AfterShotScreen(model: model)
             case .pairing: ConnectScreen(model: model)
             case .result: ResultScreen(model: model)

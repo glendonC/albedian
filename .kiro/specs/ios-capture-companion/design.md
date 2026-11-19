@@ -222,6 +222,14 @@ existing layers apply (a beacon pose, else `predicted_only`), with the reason in
    (`setExposureModeCustom(duration:iso:completionHandler:)`, up to `activeFormat.maxExposureDuration`) or a bracket
    (`AVCapturePhotoBracketSettings`), each frame its own upload with its own record; stacking on the laptop is a later
    spec [proposed].
+   Settled by the lead on 2026-11-18 for the submission: one long exposure, not a set. The capture button takes one
+   photo at the active format's `maxExposureDuration`, at the ISO that carries the camera meter's light to that
+   duration (the meter's ISO times its duration over the longest), held within `minISO` to `maxISO`
+   (`NightExposure.plan`), then gives the camera its continuous auto exposure back. The record's motion window spans
+   that exposure (the length the device reports at the shutter). The hold-still screen draws the length, the ring
+   filling over it from the camera's `willCapturePhotoFor`, and the second crosshair from the attitude's turn since
+   then (`NightExposure.crosshairOffset`; its direction waits on mobile-1's quaternion check). A second tap stops: the
+   photo in flight is not kept. A set of frames waits for the stacking spec, after the submission.
 2. Whether the phone-photo solver accepts the hint: no, today. `solve_phone_photo` takes `fov_diagonal_deg` and no
    centre (`services/science/phone_photo_solver.py:1455`), the triangle solver takes `hint_ra_deg` and
    `hint_dec_deg` (`services/science/solver.py:409`), and `_solve_chain` passes a hint to neither

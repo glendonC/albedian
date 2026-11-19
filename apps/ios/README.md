@@ -67,6 +67,9 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
   `StoredFrame.placeCovering`, counts by evidence class). `CompanionModel` runs them on the camera, the store, the
   uploader and the solve. The home's Milky Way is a crop of the web's eso0932a panorama (`notices/eso`), the light
   weight is the web's own Geist variable font, and the three new icons come from the pinned Phosphor package.
+- Night exposure (unit mobile-7): the capture button takes one photo at the format's longest exposure with the meter's
+  light carried to it (`NightExposure.plan`, `CameraSession.shootLong`), shown on the approved hold-still screen
+  (`Screens/HoldStillScreen.swift`): the length, the ring filling over the real exposure, the gyroscope's crosshair.
 - `AlbedianCapture/`: the app: two plain screens in the system's default style (the pipeline run by hand with sample
   values, cancelling any in-flight upload when rebuilt, and `CaptureCheckScreen`), plus in `DEBUG` builds
   `ControlsGallery` showing the approved controls together. `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,

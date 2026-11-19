@@ -141,6 +141,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
 - [ ] 13. mobile-7: night exposures (open question 1 of the design)
   - A custom long exposure or a bracket, each frame its own photo and record; stacking stays on the laptop, in a
     later spec.
+  - Settled 2026-11-18 (design 8.1): one long exposure at `maxExposureDuration`, ISO from the meter within the
+    format's range, one photo and one record, with the approved hold-still screen; no set of frames.
   - Needs first: mobile-2; that later spec.
   - Only on an iPhone: every part.
   - _Requirements: REQ-IOS-1.1, 1.2_

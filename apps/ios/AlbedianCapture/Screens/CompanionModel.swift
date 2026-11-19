@@ -17,7 +17,7 @@ struct KeptShot: Equatable {
 @MainActor
 @Observable
 final class CompanionModel {
-    enum Screen: Equatable { case home, credits, aim, afterShot, pairing, result }
+    enum Screen: Equatable { case home, credits, aim, holdStill, afterShot, pairing, result }
 
     private(set) var screen: Screen = .home
     private(set) var shot: KeptShot?
@@ -35,6 +35,14 @@ final class CompanionModel {
     private let uploads = UploadCoordinator()
     private let solver = SolveCoordinator()
     private var shooting = false
+    /// The long exposure under way (mobile-7): its length as the device set it, when the camera began it, and the
+    /// attitude then, for the second crosshair; a second tap stops, and the photo then in flight is not kept.
+    private(set) var exposureSec: Double?
+    private(set) var exposureBegan: Date?
+    private(set) var startAttitude: PointingRecord.Quaternion?
+    private var stopRequested = false
+    /// Debug builds only: the stand-in's fixed time into the exposure, so its capture holds still.
+    private(set) var standInElapsedSec: Double?
 
     init(pairing: PairingKeeper = PairingKeeper()) {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -87,17 +95,41 @@ final class CompanionModel {
 
     // MARK: The shot
 
+    /// The capture button: one long exposure, with "Hold still" while it runs (arrive iPhone 4).
     func shoot() {
         guard !shooting, cameraProblem == nil else { return }
         shooting = true
-        camera.shoot { [weak self] result in
+        stopRequested = false
+        exposureSec = nil
+        exposureBegan = nil
+        startAttitude = nil
+        screen = .holdStill
+        camera.shootLong(began: { [weak self] seconds in
+            Task { @MainActor in self?.began(seconds) }
+        }, { [weak self] result in
             Task { @MainActor in self?.keep(result) }
-        }
+        })
     }
 
+    private func began(_ seconds: Double) {
+        exposureSec = seconds
+        exposureBegan = Date()
+        startAttitude = currentAttitude
+    }
+
+    /// The second tap: back to aiming; the photo the camera is taking is not kept.
+    func stopExposure() {
+        stopRequested = true
+        screen = .aim
+    }
+
+    /// The newest attitude Core Motion reported.
+    var currentAttitude: PointingRecord.Quaternion? { recorder?.status.lastSample?.quaternion }
+
     private func keep(_ result: Result<CameraSession.Shot, CameraSession.Failure>) {
-        guard case .success(let taken) = result else {
+        guard !stopRequested, case .success(let taken) = result else {
             shooting = false
+            if screen == .holdStill { screen = .aim }
             return
         }
         let recorder = recorder
@@ -109,6 +141,7 @@ final class CompanionModel {
         switch step {
         case .couldNotWriteJSON:
             shooting = false
+            screen = .aim
             return
         case .none: wire = nil
         case .wire(let bytes): wire = bytes
@@ -122,7 +155,10 @@ final class CompanionModel {
             }
             guard let self else { return }
             self.shooting = false
-            guard let kept else { return }
+            guard let kept, !self.stopRequested else {
+                if self.screen == .holdStill { self.screen = .aim }
+                return
+            }
             self.show(KeptShot(photo: photo, contentType: type, recordWire: wire, sha256: kept.sha256))
         }
     }
@@ -193,6 +229,15 @@ final class CompanionModel {
     /// then sends it. `-AlbedianOpen credits|pairing` opens that screen.
     func runFromLaunchArguments() {
         let args = ProcessInfo.processInfo.arguments
+        // The hold-still layout with the mockup's own numbers (1.1 s, 0.6 s in), for the owner's look at it in the
+        // simulator, which has no camera: a stand-in, never a capture
+        if args.contains("-AlbedianHoldStillLayout") {
+            screen = .holdStill
+            exposureSec = 1.1
+            exposureBegan = Date()
+            standInElapsedSec = 0.6
+            return
+        }
         if let index = args.firstIndex(of: "-AlbedianOpen"), args.indices.contains(index + 1) {
             screen = args[index + 1] == "credits" ? .credits : args[index + 1] == "pairing" ? .pairing : screen
         }
