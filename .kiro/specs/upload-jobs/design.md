@@ -287,6 +287,16 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   times]; it leaves 120 s for the untimed part, about 160 MP of photo or 73 MP of clip at those rates [inference]. No
   clip had a recorded time and place, so no spread frames were read: that step is held by its own 60 s bound.
 - `run_solve_job` stays as a thin wrapper (start, wait, return the record) for the tests and scripts that call it.
+- As built in platform-5c [tested]: `run_solve_job(store, sha256, on_transition=None)` starts the runner's solve job
+  (or joins the active one, or answers the current succeeded one), waits for it and returns the record it ended
+  with; `on_transition` is a listener the runner tells the record and its every change, and an error it raises
+  reaches the caller once the job has ended, never stopping the job. A file not stored still raises
+  FileNotFoundError. `_SOLVE_WORKER`, `_SOLVE_LOCK`, `solve_time_limit_s` (tests set `SOLVE_TIME_LIMIT_SEC`),
+  `_stored_reason`, `read_solve_job` and `read_solve_job_by_id` are gone, so no code writes `job.json` or
+  `solution.json` again; `_write_json` stays for tests that stand for an upload solved before the runner. A
+  failed record reads the clock once. The characterization's pins were written again on purpose: the runner's
+  records and results, the solve kind's fixed sentences, a job id's random half named, and the runner's
+  once-a-second writes off in the test so its writes do not depend on the machine's speed.
 - As built in platform-3 [tested], a pure refactor: `solve_upload(ctx)` holds the chain from the decode to
   `complete_sky`, moved as it is; `run_solve_job` keeps the job around it (the queued record, the stage table, the
   writes of `solution.json` and `job.json`, the failed record on any error) and builds the context. `SolveContext`

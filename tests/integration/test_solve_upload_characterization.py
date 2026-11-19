@@ -1,15 +1,20 @@
-"""What a solve job returns and writes, pinned before the solve chain moved into one function (platform-3; upload
-jobs design 3.4, REQ-JOB-1.5).
+"""What a solve job returns and writes (upload jobs design 3.4, REQ-JOB-1.5), pinned so that a change of the chain
+shows as a change of these pins.
 
 Each case runs `run_solve_job` on a synthetic upload, or on a stored one with one step made to fail, and records
 everything a caller can see: the record it returns or the error it raises, every job transition it reports, every
-file it writes (name, read-only or not, and content), and the folder's files with their modes. The record was
-written from the code before the move (`ALBEDIAN_UPDATE_SOLVE_CHARACTERIZATION=1`) and must not change after it.
+record and result the job store writes (name, read-only or not, and content), and the upload's job and solution
+files with their modes. The pins were first written from the code before the chain moved into one function
+(platform-3), and written again on purpose when `run_solve_job` became the runner's thin wrapper (platform-5c): the
+records are the job contract's, under `jobs/` and `solutions/`, and a failure is its kind's fixed sentence
+(`ALBEDIAN_UPDATE_SOLVE_CHARACTERIZATION=1`). A job id's random half is pinned as `<job random>`; the runner
+writes a record when a stage ends or a pass changes, and its once-a-second writes are switched off here so the
+writes do not depend on the machine's speed.
 
 A written solution is pinned whole: every key in order, every finding in order with every text it carries, and
 every number, floats compared within `REL_TOL` and `ABS_TOL` by `math.isclose`, never byte for byte. What a
 solution takes from the upload (its capture time and place) is compared with what the case sent, field by field,
-and pinned only as the name of what it must equal. The test owns the clock: each `datetime.now` the job reads
+and pinned only as the name of what it must equal. The test owns the runner's clock: each `datetime.now` it reads
 answers the next of the case's own instants, and each stamp is pinned as the read that made it (`<now 0>` is the
 first read). The clip cases leave out their decoded measurements and pin `heldOutInliers` to stay under the six-inlier
 verification gate: CI encodes and decodes with lossy `libx264` across platforms and two ffmpeg versions, which may
@@ -39,8 +44,11 @@ from PIL import Image
 import pytest
 
 from services.api import app
+from services.contracts.ingest import format_utc
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
+from services.ingest import runner as job_runner
+from services.ingest.job_store import JobStore
 from services.ingest.store import IngestStore
 from services.science.bounded_worker import WorkerTimeout
 from services.science.predicted_sky import predicted_sky_findings
@@ -113,7 +121,7 @@ def _clip(tmp_path: Path, frames: int = 3) -> bytes:
 
 
 class FakeWorker:
-    """Stands in for the shared solve child: reports the given events, then raises, and keeps what it was asked."""
+    """Stands in for the solve group's child: reports the given events, then raises, and keeps what it was asked."""
 
     def __init__(self, events: list[tuple[Any, ...]], error: BaseException) -> None:
         self.events = events
@@ -121,7 +129,7 @@ class FakeWorker:
         self.asked: list[dict[str, Any]] = []
 
     def call(self, fn: Callable[..., Any], args: tuple, kwargs: dict, *, timeout_s: float, progress_kwarg: str,
-             on_event: Callable[..., None]) -> Any:
+             on_event: Callable[..., None], stop: Any = None) -> Any:
         image, detections, width, height = args
         self.asked.append({"fn": fn.__name__, "image": None if image is None else [list(image.shape), str(image.dtype)],
                            "detections": len(detections), "size": [width, height], "kwargs": dict(sorted(kwargs.items())),
@@ -183,7 +191,7 @@ def case_decode_refuses_the_file(client, store, tmp_path, monkeypatch) -> dict[s
     sha = _stored(client, _png(_small_field()), "image/png")
     original = store.original(sha)
     monkeypatch.setattr(ingest_jobs, "_decode_luma_frames",
-                        _fail_with(ingest_jobs.SolveJobError(f"The decoder could not read {original}: " + "x" * 600)))
+                        _fail_with(ingest_jobs.SolveJobError(f"The decoder could not read the file: {original}: " + "x" * 600)))
     return {"sha": sha}
 
 
@@ -202,21 +210,21 @@ def case_detect_fails(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
 def case_solve_fails(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
     sha = _stored(client, _png(_small_field()), "image/png")
     worker = FakeWorker([("solver", "triangle"), ("candidate", 0, 84)], RuntimeError("child broke"))
-    monkeypatch.setattr(ingest_jobs, "_SOLVE_WORKER", worker)
+    monkeypatch.setitem(job_runner._SLOT_WORKERS, "solve", worker)
     return {"sha": sha, "worker": worker}
 
 
 def case_solve_stops_at_its_bound_before_a_candidate(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
     sha = _stored(client, _png(_small_field()), "image/png")
     worker = FakeWorker([("solver", "triangle")], WorkerTimeout("stopped"))
-    monkeypatch.setattr(ingest_jobs, "_SOLVE_WORKER", worker)
+    monkeypatch.setitem(job_runner._SLOT_WORKERS, "solve", worker)
     return {"sha": sha, "worker": worker, "limit": 7.5}
 
 
 def case_solve_stops_at_its_bound_after_candidates(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
     sha = _stored(client, _png(_small_field(), exif=_moment_exif()), "image/png")
     worker = FakeWorker([("solver", "phone_photo"), ("candidate", 0, 84), ("candidate", 30, 84)], WorkerTimeout("stopped"))
-    monkeypatch.setattr(ingest_jobs, "_SOLVE_WORKER", worker)
+    monkeypatch.setitem(job_runner._SLOT_WORKERS, "solve", worker)
     return {"sha": sha, "worker": worker, "sent": ("time", "place")}
 
 
@@ -225,7 +233,7 @@ def case_solve_stops_at_its_bound_with_a_place_and_no_time(client, store, tmp_pa
     # search built it with
     sha = _stored(client, _png(_small_field(), exif=_moment_exif(with_time=False)), "image/png")
     worker = FakeWorker([("solver", "triangle")], WorkerTimeout("stopped"))
-    monkeypatch.setattr(ingest_jobs, "_SOLVE_WORKER", worker)
+    monkeypatch.setitem(job_runner._SLOT_WORKERS, "solve", worker)
     return {"sha": sha, "worker": worker, "sent": ("place",)}
 
 
@@ -237,17 +245,17 @@ def case_predicted_sky_fails(client, store, tmp_path, monkeypatch) -> dict[str, 
 
 def case_solution_write_fails(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
     sha = _stored(client, _png(np.zeros((48, 64))), "image/png")
-    return {"sha": sha, "fail_write": "solution.json"}
+    return {"sha": sha, "fail_write": "solution"}
 
 
 def case_first_job_write_fails(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
     sha = _stored(client, _png(np.zeros((48, 64))), "image/png")
-    return {"sha": sha, "fail_write": "job.json"}
+    return {"sha": sha, "fail_write": "record"}
 
 
 def _stopping_worker(monkeypatch: pytest.MonkeyPatch) -> FakeWorker:
     worker = FakeWorker([], WorkerTimeout("stopped"))
-    monkeypatch.setattr(ingest_jobs, "_SOLVE_WORKER", worker)
+    monkeypatch.setitem(job_runner._SLOT_WORKERS, "solve", worker)
     return worker
 
 
@@ -312,7 +320,7 @@ def case_camera_with_a_focal_length_in_words(client, store, tmp_path, monkeypatc
 
 
 def case_searches_in_the_callers_process(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
-    # The test-only switch: the chain runs here, and the shared child, which would refuse, is never asked
+    # The test-only switch: the chain runs here, and the group's child, which would refuse, is never asked
     sha = _stored(client, _png(np.zeros((48, 64))), "image/png")
     monkeypatch.setattr(ingest_jobs, "_SOLVE_IN_PROCESS", True)
     return {"sha": sha, "worker": _stopping_worker(monkeypatch)}
@@ -370,7 +378,7 @@ class Clock:
 
     def stamps(self) -> dict[str, str]:
         """Each read's text as the job writes it, to the read's name; two reads never write the same text."""
-        named = {ingest_jobs.format_utc(moment): f"<now {index}>" for index, moment in enumerate(self.reads)}
+        named = {format_utc(moment): f"<now {index}>" for index, moment in enumerate(self.reads)}
         assert len(named) == len(self.reads), "two clock reads write the same text"
         return named
 
@@ -385,6 +393,11 @@ class Clock:
         return ClockedDatetime
 
 
+# The runner's job id: the hash's first 16 hex characters and 16 random ones, pinned with its random part named
+JOB_ID = re.compile(r"(job_[0-9a-f]{16})[0-9a-f]{16}")
+JOB_RANDOM = r"\1<job random>"
+
+
 def _scrub(value: Any, sha: str, root: Path, stamps: dict[str, str]) -> Any:
     if isinstance(value, dict):
         return {k: _scrub(v, sha, root, stamps) for k, v in value.items()}
@@ -393,6 +406,7 @@ def _scrub(value: Any, sha: str, root: Path, stamps: dict[str, str]) -> Any:
     if isinstance(value, str):
         if value in stamps:
             return stamps[value]
+        value = JOB_ID.sub(JOB_RANDOM, value)
         return value.replace(str(root), "<store>").replace(sha, "<sha256 sent>").replace(sha[:16], "<sha16 sent>")
     return value
 
@@ -406,7 +420,7 @@ def _against_upload(record: dict[str, Any], sent: tuple[str, ...], name: str) ->
     moment and place, every finding in order, floats within the tolerances) and the solve child's time and place."""
     where = f"{name}: "
     for write in record["writes"]:
-        if write["file"] != "solution.json":
+        if not write["file"].startswith("solutions/"):
             continue
         solution = write["payload"]
         location = solution.get("observerLocation")
@@ -436,7 +450,7 @@ def _against_upload(record: dict[str, Any], sent: tuple[str, ...], name: str) ->
             expected = [
                 f.to_contract_dict(source_asset_id=solution["sourceAssetId"])
                 for f in predicted_sky_findings(
-                    ingest_jobs.format_utc(SENT["moment"] + timedelta(seconds=solution["frameTimeSec"])),
+                    format_utc(SENT["moment"] + timedelta(seconds=solution["frameTimeSec"])),
                     SENT["latDeg"], SENT["lonDeg"], solution_id=solution["id"],
                     source_sha256=solution["sourceSha256"], exclude_ids=matched,
                     # the EXIF names its own offset, so no time zone was worked out from the place
@@ -448,7 +462,7 @@ def _against_upload(record: dict[str, Any], sent: tuple[str, ...], name: str) ->
             solution["findings"] = [*others, *([PREDICTED_MARK] * len(predicted))]
     for asked in record["worker"] or []:
         kwargs = asked["kwargs"]
-        assert kwargs["obs_utc_iso"] == (ingest_jobs.format_utc(SENT["moment"]) if "time" in sent else None), \
+        assert kwargs["obs_utc_iso"] == (format_utc(SENT["moment"]) if "time" in sent else None), \
             where + "the solve child was not given the sent moment"
         kwargs["obs_utc_iso"] = "<sent moment>" if "time" in sent else None
         for key, arg in (("latDeg", "lat_deg"), ("lonDeg", "lon_deg")):
@@ -506,24 +520,35 @@ def run_case(name: str, client: TestClient, store: IngestStore, tmp_path: Path, 
     setup = CASES[name](client, store, tmp_path, monkeypatch)
     sha = setup["sha"]
     writes: list[dict[str, Any]] = []
-    real_write = ingest_jobs._write_json
+    real_write, real_publish = JobStore.write_record, JobStore.publish
 
-    def recording_write(folder: Path, filename: str, payload: dict[str, Any], *, read_only: bool = False) -> dict[str, Any]:
+    def recording_write(jobs: JobStore, payload: dict[str, Any]) -> dict[str, Any]:
         written = json.loads(json.dumps(payload))
-        writes.append({"file": filename, "readOnly": read_only, "payload": written})
-        if setup.get("fail_write") == filename:
+        ended = written["state"] not in ("queued", "running")
+        writes.append({"file": f"jobs/{written['id']}.json", "readOnly": ended, "payload": written})
+        if setup.get("fail_write") == "record" and len(writes) == 1:
             raise OSError(28, "No space left on device")
-        return real_write(folder, filename, payload, read_only=read_only)
+        return real_write(jobs, payload)
 
-    monkeypatch.setattr(ingest_jobs, "_write_json", recording_write)
+    def recording_publish(jobs: JobStore, partial: Path, target: Path) -> None:
+        writes.append({"file": f"solutions/{target.name}", "readOnly": True,
+                       "payload": json.loads(partial.read_text(encoding="utf-8"))})
+        if setup.get("fail_write") == "solution":
+            raise OSError(28, "No space left on device")
+        real_publish(jobs, partial, target)
+
+    monkeypatch.setattr(JobStore, "write_record", recording_write)
+    monkeypatch.setattr(JobStore, "publish", recording_publish)
     clock = clock or Clock()
-    monkeypatch.setattr(ingest_jobs, "datetime", clock.as_datetime())
+    monkeypatch.setattr(job_runner, "datetime", clock.as_datetime())
+    # A record at a stage's end and at a pass change, never on the machine's speed
+    monkeypatch.setattr(job_runner, "WRITE_INTERVAL_SEC", float("inf"))
     transitions: list[dict[str, Any]] = []
     kwargs: dict[str, Any] = {}
     if setup.get("listen", True):
         kwargs["on_transition"] = transitions.append
     if "limit" in setup:
-        kwargs["solve_time_limit_s"] = setup["limit"]
+        monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", setup["limit"])
     result: dict[str, Any] = {}
 
     def run() -> None:
@@ -540,9 +565,11 @@ def run_case(name: str, client: TestClient, store: IngestStore, tmp_path: Path, 
     folder = store.folder(sha)
     files = {}
     if folder.is_dir():
-        for path in sorted(folder.iterdir()):
-            if path.name.startswith(("job", "solution")) or path.name.startswith("."):
-                files[path.name] = oct(stat.S_IMODE(path.stat().st_mode))
+        for path in folder.rglob("*"):
+            rel = path.relative_to(folder)
+            if rel.parts[0] in ("jobs", "solutions", "job.json", "solution.json") or path.name.startswith("."):
+                files[_scrub(JOB_ID.sub(JOB_RANDOM, str(rel)), sha, store.root, {})] = oct(stat.S_IMODE(path.stat().st_mode))
+        files = dict(sorted(files.items()))
     record = {
         **outcome,
         "transitions": transitions,
@@ -593,7 +620,7 @@ def _pinned() -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_a_solve_job_returns_and_writes_what_it_did_before_the_chain_moved(
+def test_a_solve_job_returns_and_writes_what_it_is_pinned_to(
     name: str, client: TestClient, store: IngestStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     record = run_case(name, client, store, tmp_path, monkeypatch)
@@ -619,7 +646,7 @@ def test_a_refused_start_answers_as_before(client: TestClient) -> None:
 
 
 # A path's case and the state its job ends in: one that succeeds, one that fails, one the decoder refuses, one
-# stopped at its bound, and one that raises after recording its failure
+# stopped at its bound, and one whose decode fails unexpectedly (the kind's internal error)
 STAMP_PATHS = {
     "photo_that_solves": "succeeded",
     "detect_fails": "failed",
@@ -630,14 +657,14 @@ STAMP_PATHS = {
 
 
 def _job_records(record: dict[str, Any]) -> list[dict[str, Any]]:
-    return [w["payload"] for w in record["writes"] if w["file"] == "job.json"]
+    return [w["payload"] for w in record["writes"] if w["file"].startswith("jobs/")]
 
 
 @pytest.mark.parametrize("name", sorted(STAMP_PATHS))
 def test_each_stamp_holds_the_moment_it_must(
     name: str, client: TestClient, store: IngestStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The job reads the clock three times, in order: created, started, finished. Every record it writes and
+    """The runner reads the clock three times, in order: created, started, finished. Every record it writes and
     every transition it reports holds the read its field names, exactly, and nothing else."""
     record = run_case(name, client, store, tmp_path, monkeypatch, clock=Clock())
     assert record["clockReads"] == 3, f"{name}: {record['clockReads']} clock reads"

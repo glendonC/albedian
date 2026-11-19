@@ -181,6 +181,7 @@ class _Job:
         self.published: list[Path] = []
         self.pending_pass: dict[str, dict[str, Any]] = {}
         self.pass_raised: dict[str, bool] = {}
+        self.listeners: list[Callable[[dict[str, Any]], None]] = []
         self.deadline = float("inf")
 
     @property
@@ -253,8 +254,10 @@ class Runner:
 
     # ---- Starting ----
 
-    def start(self, sha256: str, kind_name: str, request: Optional[dict[str, Any]] = None) -> tuple[dict[str, Any], bool]:
-        """(record, created): an active job joined, the current succeeded one answered, or a new queued job."""
+    def start(self, sha256: str, kind_name: str, request: Optional[dict[str, Any]] = None, *,
+              listener: Optional[Callable[[dict[str, Any]], None]] = None) -> tuple[dict[str, Any], bool]:
+        """(record, created): an active job joined, the current succeeded one answered, or a new queued job. A
+        `listener` of a job this process runs is told its record as served now and after every change, to its end."""
         kind = _KINDS.get(kind_name)
         if kind is None:
             raise ValueError("no kind of that name is registered")
@@ -274,12 +277,13 @@ class Runner:
                     raise RuntimeError("the runner has stopped")
                 joined = self._keys.get(key)
                 if joined is not None:
-                    return self._served(self._jobs[joined]), False
+                    return self._listened(self._jobs[joined], listener), False
                 if self.store.try_hold(lock):
                     handed = False
                     try:
                         answer, created, handed = self._start_held(kind, key, lock, request, upload, original)
-                        return answer, created
+                        job = self._jobs.get(answer["id"]) if handed else None
+                        return (self._listened(job, listener) if job is not None else answer), created
                     finally:
                         if not handed:
                             self.store.release(lock)
@@ -318,6 +322,14 @@ class Runner:
             record["graphId"] = subject
         written = self.store.write_record(record)
         return self._served(self._adopt(kind, written, lock, upload, original)), True, True
+
+    def _listened(self, job: _Job, listener: Optional[Callable[[dict[str, Any]], None]]) -> dict[str, Any]:
+        """The job's record as served now, told first to a new listener, which then hears every change."""
+        served = self._served(job)
+        if listener is not None:
+            job.listeners.append(listener)
+            _tell(listener, served)
+        return served
 
     def _created_at(self) -> datetime:
         """Now, and at least a millisecond after the last job this runner made, so creation order is total."""
@@ -590,14 +602,12 @@ class Runner:
         past the job's bound, the kind's time-limit sentence."""
         if job.stop_cause == "deadline" or time.monotonic() >= job.deadline:
             reason = job.kind.time_limit_reason
-        fallback = self._ended_record(job, "failed", error=job.kind.internal_error_reason)
-        if reason is None:
-            return fallback
-        record = self._ended_record(job, "failed", error=reason)
+        # One read of the clock: the fallback sentence ends the job at the same moment
+        record = self._ended_record(job, "failed", error=reason or job.kind.internal_error_reason)
         try:
             UploadJob.model_validate(record)
         except (ValidationError, ValueError):
-            return fallback
+            return {**record, "error": job.kind.internal_error_reason}
         return record
 
     def _finish(self, job: _Job, keep_results: bool = False) -> None:
@@ -637,6 +647,10 @@ class Runner:
         one, so a full disk never stops the work mid-step."""
         with job.write_lock:
             with self._cond:
+                if job.listeners:
+                    told = self._served(job)
+                    for listener in job.listeners:
+                        _tell(listener, told)
                 if not force and time.monotonic() - job.last_write < WRITE_INTERVAL_SEC:
                     return
                 snapshot = {k: v for k, v in copy.deepcopy(job.record).items() if k != "queueAhead"}
@@ -753,6 +767,14 @@ class SlotWorker:
 
 
 _SLOT_WORKERS: dict[str, SlotWorker] = {group: SlotWorker() for group in GROUPS}
+
+
+def _tell(listener: Callable[[dict[str, Any]], None], record: dict[str, Any]) -> None:
+    """A listener is told a copy; one that raises never stops the job, and only the kind of its error is logged."""
+    try:
+        listener(copy.deepcopy(record))
+    except Exception as error:  # noqa: BLE001 - a listener's failure never stops the job
+        LOG.error("job listener error: %s", type(error).__name__)
 
 
 def _count(value: Any) -> bool:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 from pathlib import Path
 import shutil
 import stat
@@ -30,10 +31,10 @@ from PIL import Image
 import pytest
 
 from services.api import app
-from services.contracts.ingest import SolveJob
 from services.contracts.jobs import UploadJob
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
+from services.ingest.job_store import JobStore
 from services.ingest.store import IngestStore
 
 FFMPEG = shutil.which("ffmpeg")
@@ -100,7 +101,7 @@ def test_clip_decode_and_detect_emit_only_measured_transitions(client: TestClien
     seen: dict[str, list[tuple[int, int | None]]] = {"decode": [], "detect": []}
 
     def on_transition(job: dict[str, Any]) -> None:
-        SolveJob.model_validate(job)
+        UploadJob.model_validate({k: v for k, v in job.items() if k != "queueAhead"})
         for entry in job["stages"]:
             if entry["stage"] in seen:
                 point = (entry["done"], entry.get("total"))
@@ -134,19 +135,16 @@ def test_unexpected_error_fails_the_job_with_a_generic_reason(
         raise error_type(f"/private/owner/folder/{title} could not be read")
 
     monkeypatch.setattr(ingest_jobs, "detect_point_sources", boom)
-    with pytest.raises(error_type):
-        ingest_jobs.run_solve_job(store, sha)
-
-    job = ingest_jobs.read_solve_job(store, sha)
-    assert job is not None
-    SolveJob.model_validate(job)
+    job = ingest_jobs.run_solve_job(store, sha)
+    assert JobStore(store).read_job(job["id"]) == job
+    UploadJob.model_validate(job)
     assert job["state"] == "failed"
     assert job["error"] == ingest_jobs.UNEXPECTED_ERROR_REASON
     for fragment in ("/private", "owner", "Sentinel", "could not be read", error_type.__name__, "no solution"):
         assert fragment not in job["error"]
 
 
-def test_a_decoder_message_is_stored_without_the_path_and_bounded(
+def test_a_decoder_message_is_stored_as_its_fixed_sentence_without_the_path(
     client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sha = _upload(client, _png(_starfield()), "image/png")
@@ -158,12 +156,10 @@ def test_a_decoder_message_is_stored_without_the_path_and_bounded(
 
     monkeypatch.setattr(ingest_jobs, "_decode_luma_frames", decode_fails)
     job = ingest_jobs.run_solve_job(store, sha)
-    SolveJob.model_validate(job)
-    assert job["state"] == "failed"
-    assert job["error"].startswith("The decoder could not read the file: the upload: Invalid data")
-    assert original not in job["error"]
-    assert str(store.folder(sha)) not in job["error"]
-    assert len(job["error"]) <= ingest_jobs.MAX_STORED_ERROR_CHARS
+    UploadJob.model_validate(job)
+    # The decoder's own words never reach the record (the job contract's fixed sentences, platform-5)
+    assert (job["state"], job["error"]) == ("failed", "The decoder could not read the file.")
+    assert original not in json.dumps(job) and str(store.folder(sha)) not in json.dumps(job)
 
 
 def test_job_and_solution_files_are_owner_only(client: TestClient, store: IngestStore) -> None:
@@ -174,12 +170,6 @@ def test_job_and_solution_files_are_owner_only(client: TestClient, store: Ingest
     # The runner's records: read-only once the job has ended, as its solution is
     assert stat.S_IMODE((folder / "jobs" / f"{job['id']}.json").stat().st_mode) == 0o400
     assert stat.S_IMODE((folder / "solutions" / f"{job['id']}.json").stat().st_mode) == 0o400
-    # Today's job, which tests and scripts still run, writes today's two files
-    assert ingest_jobs.run_solve_job(store, sha)["state"] == "succeeded"
-    assert stat.S_IMODE((folder / "job.json").stat().st_mode) == 0o600
-    assert stat.S_IMODE((folder / "solution.json").stat().st_mode) == 0o400
-    before = {name: (folder / name).stat().st_ino for name in ("job.json", "solution.json")}
-    assert ingest_jobs.run_solve_job(store, sha)["state"] == "succeeded"
-    for name, mode in (("job.json", 0o600), ("solution.json", 0o400)):
-        assert (folder / name).stat().st_ino != before[name], f"{name} was not rewritten"
-        assert stat.S_IMODE((folder / name).stat().st_mode) == mode
+    # Today's two files are never written: run_solve_job is the runner's own job, and answers the current one
+    assert ingest_jobs.run_solve_job(store, sha) == job
+    assert not (folder / "job.json").exists() and not (folder / "solution.json").exists()

@@ -1,8 +1,10 @@
 """Solve jobs for stored uploads (roadmap Track 1 M1): real byte, frame and candidate denominators.
 
 Runs astrometric point-source detection, triangle-matching plate solving and held-out WCS verification on a
-stored upload in `IngestStore`, recording a schema-validated `SolveJob` (`job.json`) and its contract
-`ObservationSolution` (`solution.json`) alongside the upload's `original.<ext>` and `record.json`.
+stored upload in `IngestStore`, as the solve kind of the upload job runner (`services/ingest/runner.py`): a checked
+`UploadJob` record under the upload's `jobs/` and its contract `ObservationSolution` under `solutions/`, beside the
+upload's `original.<ext>` and `record.json`. Records today's code wrote (`job.json`, `solution.json`) are read by the
+job store and never written again.
 Every stage reports a real denominator (`bytes` stored, `frames` decoded and detected, `candidates` evaluated
 in the triplet pool or `steps` when too few detections exist for triplet search, and `steps` for held-out
 verification). After the solve, the solution is completed with the sky predicted for the upload's own recorded time
@@ -14,9 +16,7 @@ over it, each at its own presentation time (`_decode_spread_frames`).
 from __future__ import annotations
 
 from collections.abc import Mapping
-import copy
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
 from fractions import Fraction
 import json
 import math
@@ -34,13 +34,12 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 from services.contracts.astronomy import parse_observation_solution
-from services.contracts.ingest import JOB_ID_PATTERN, SolveJob, format_utc
 from services.contracts.jobs import SOLVE_FAILURE_SENTENCES
 from services.ingest.job_store import JobStore
-from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, Producer
+from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, NoUpload, Producer, runner_for
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.science.detector import _to_luma_2d, detect_point_sources, noise_limit_warnings, stack_video_frames_for_calibration
-from services.science.bounded_worker import BoundedWorker, WorkerTimeout
+from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
     PHONE_SOLVER_IDENTITY,
@@ -59,10 +58,6 @@ MAX_POSE_FRAMES = 16
 SOLVE_TIME_LIMIT_SEC = 180.0
 # Exists only so tests can spy on the solvers: True runs the chain in the caller's process, unbounded. Never set in production
 _SOLVE_IN_PROCESS = False
-# The searches share one child process, started on the first solve and kept, so it imports the solvers and loads
-# the star tiles once; a stop at the bound ends it and the next solve starts a fresh one
-_SOLVE_WORKER = BoundedWorker()
-_SOLVE_LOCK = threading.Lock()
 DECODE_TIMEOUT_SEC = 60
 
 
@@ -73,26 +68,17 @@ class SolveJobError(Exception):
 UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error."
 # Generic, so no capture value an error message might hold is stored
 PREDICTED_SKY_FAILED = "The predicted sky could not be computed."
-# A stored reason stays short: the contract allows 2000 characters, and a decoder can print far more
-MAX_STORED_ERROR_CHARS = 500
-
-
-def _stored_reason(message: str, original: Path) -> str:
-    """A SolveJobError message as stored: the upload's path replaced and the text cut to a bounded length."""
-    text = message.replace(str(original), "the upload")
-    if len(text) > MAX_STORED_ERROR_CHARS:
-        text = text[: MAX_STORED_ERROR_CHARS - 3].rstrip() + "..."
-    return text
-
-
 def job_id_for_sha256(sha256: str) -> str:
-    """Deterministic `SolveJob.id` for a stored upload's SHA-256."""
+    """The 16-character job id today's solve records carry for a stored upload's SHA-256 (`job.json`)."""
     if not re.fullmatch(r"^[0-9a-f]{64}$", sha256):
         raise ValueError("sha256 must be 64 lowercase hexadecimal characters")
     return f"job_{sha256[:16]}"
 
 
 def _write_json(folder: Path, filename: str, payload: dict[str, Any], *, read_only: bool = False) -> dict[str, Any]:
+    """A JSON file written in one step (a scratch file replaced onto it). Nothing in the product writes today's
+    `job.json` or `solution.json` any more; tests write them with this to stand for an upload solved before the
+    runner."""
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / filename
     scratch = folder / f".{filename}-{secrets.token_hex(8)}.tmp"
@@ -108,35 +94,6 @@ def _write_json(folder: Path, filename: str, payload: dict[str, Any], *, read_on
         scratch.unlink(missing_ok=True)
     _fsync_dir(folder)
     return json.loads(target.read_text(encoding="utf-8"))
-
-
-def read_solve_job(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
-    """The stored `SolveJob` for `sha256`, or `None` when no job has been run for it."""
-    path = store.folder(sha256) / "job.json"
-    if not path.is_file():
-        return None
-    job = json.loads(path.read_text(encoding="utf-8"))
-    SolveJob.model_validate(job)
-    return job
-
-
-def read_solve_job_by_id(store: IngestStore, job_id: str) -> Optional[dict[str, Any]]:
-    """Look up a stored `SolveJob` by its `job_<hex>` identifier."""
-    if not re.fullmatch(JOB_ID_PATTERN, job_id):
-        raise ValueError("job_id must match ^job_[0-9a-f]{16,64}$")
-    prefix = job_id.removeprefix("job_")
-    bucket = store.root / prefix[:2]
-    if not bucket.is_dir():
-        return None
-    for entry in sorted(bucket.iterdir()):
-        if entry.is_dir() and re.fullmatch(r"^[0-9a-f]{64}$", entry.name) and entry.name.startswith(prefix):
-            job_path = entry / "job.json"
-            if job_path.is_file():
-                job = json.loads(job_path.read_text(encoding="utf-8"))
-                if job.get("id") == job_id:
-                    SolveJob.model_validate(job)
-                    return job
-    return None
 
 
 def read_solution(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
@@ -693,29 +650,17 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
     else:
         try:
-            if ctx.child is not None:
-                # The job's group slot runs one job at a time, so its child is free; a cancel or the job's bound
-                # stops the child and every process it started (WorkerStopped)
-                solution = ctx.child().call(
-                    _solve_chain,
-                    (solve_image, detections, width, height),
-                    chain_kwargs,
-                    timeout_s=limit_s,
-                    progress_kwarg="on_event",
-                    on_event=on_event,
-                    stop=ctx.stop,
-                )
-            else:
-                # One solve at a time in the shared child; the bound counts from the call, once the child is free
-                with _SOLVE_LOCK:
-                    solution = _SOLVE_WORKER.call(
-                        _solve_chain,
-                        (solve_image, detections, width, height),
-                        chain_kwargs,
-                        timeout_s=limit_s,
-                        progress_kwarg="on_event",
-                        on_event=on_event,
-                    )
+            # The group's one child, which runs one job at a time; a cancel or the job's bound stops it and every
+            # process it started (WorkerStopped)
+            solution = ctx.child().call(
+                _solve_chain,
+                (solve_image, detections, width, height),
+                chain_kwargs,
+                timeout_s=limit_s,
+                progress_kwarg="on_event",
+                on_event=on_event,
+                stop=ctx.stop,
+            )
         except WorkerTimeout:
             stopped_at_bound = True
             identity = PHONE_SOLVER_IDENTITY if running_solver[0] == "phone_photo" else triangle_solver_identity(get_catalog_stars())
@@ -764,94 +709,30 @@ def run_solve_job(
     sha256: str,
     *,
     on_transition: Callable[[dict[str, Any]], None] | None = None,
-    solve_time_limit_s: float | None = None,
 ) -> dict[str, Any]:
-    """Execute a `SolveJob` for `sha256` with real stage denominators and persist `job.json` and `solution.json`."""
-    record = store.read_record(sha256)
-    original = store.original(sha256)
-    if record is None or original is None:
-        raise FileNotFoundError(f"No stored upload for {sha256}")
+    """The solve of a stored upload as the runner runs it, waited for (upload jobs design 3.4, platform-5c): a new
+    job, the active one joined, or the current succeeded one; the record it ended with. `on_transition` is told the
+    record and every change of it while this process runs the job. For the tests and scripts that solve directly;
+    the routes call the runner. Raises FileNotFoundError for an upload that is not stored."""
+    runner = runner_for(store)
+    raised: list[BaseException] = []
 
-    asset = record["sourceAsset"]
-    width = int(asset["width"])
-    height = int(asset["height"])
-    media_kind = str(asset["mediaKind"])
-    byte_size = int(asset.get("byteSize") or original.stat().st_size)
-    folder = store.folder(sha256)
-    job_id = job_id_for_sha256(sha256)
+    def listener(record: dict[str, Any]) -> None:
+        # The runner never lets a listener stop the job; what it raised is raised here once the job has ended
+        try:
+            on_transition(record)  # type: ignore[misc]
+        except BaseException as error:  # noqa: BLE001 - raised again below, to the caller
+            raised.append(error)
 
-    created_dt = datetime.now(timezone.utc)
-    stage_map: dict[str, dict[str, Any]] = {
-        "store": {"stage": "store", "unit": "bytes", "done": byte_size, "total": byte_size},
-    }
-    stage_order = ("store", "decode", "detect", "solve", "verify")
-
-    def ordered_stages() -> list[dict[str, Any]]:
-        return [copy.deepcopy(stage_map[name]) for name in stage_order if name in stage_map]
-
-    def emit(
-        state: str,
-        *,
-        started_dt: datetime | None = None,
-        finished_dt: datetime | None = None,
-        solution_id: str | None = None,
-        error: str | None = None,
-        persist: bool = True,
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "id": job_id,
-            "sourceAssetSha256": sha256,
-            "state": state,
-            "createdAtUTC": format_utc(created_dt),
-            "stages": ordered_stages(),
-        }
-        if started_dt is not None:
-            payload["startedAtUTC"] = format_utc(started_dt)
-        if finished_dt is not None:
-            payload["finishedAtUTC"] = format_utc(finished_dt)
-        if solution_id is not None:
-            payload["solutionId"] = solution_id
-        if error is not None:
-            payload["error"] = error
-        SolveJob.model_validate(payload)
-        if persist:
-            _write_json(folder, "job.json", payload)
-        if on_transition is not None:
-            on_transition(copy.deepcopy(payload))
-        return payload
-
-    emit("queued")
-    started_dt = max(datetime.now(timezone.utc), created_dt)
-
-    def report(stage: dict[str, Any], *, persist: bool = True, announce: bool = True) -> None:
-        stage_map[stage["stage"]] = stage
-        if announce:
-            emit("running", started_dt=started_dt, persist=persist)
-
-    context = SolveContext(
-        sha256=sha256,
-        original=original,
-        asset=asset,
-        width=width,
-        height=height,
-        media_kind=media_kind,
-        report=report,
-        reports_often=on_transition is not None,
-        time_limit_s=solve_time_limit_s,
-    )
     try:
-        solution = solve_upload(context)
-        _write_json(folder, "solution.json", solution.to_contract_dict(), read_only=True)
-        finished_dt = max(datetime.now(timezone.utc), started_dt)
-        return emit("succeeded", started_dt=started_dt, finished_dt=finished_dt, solution_id=solution.id)
-    except SolveJobError as exc:
-        finished_dt = max(datetime.now(timezone.utc), started_dt)
-        return emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=_stored_reason(str(exc), original))
-    except Exception:
-        # Never leave a job running forever; the reason stays generic so no path or capture value is stored
-        finished_dt = max(datetime.now(timezone.utc), started_dt)
-        emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=UNEXPECTED_ERROR_REASON)
-        raise
+        record, _ = runner.start(sha256, "solve", listener=listener if on_transition is not None else None)
+    except NoUpload:
+        raise FileNotFoundError(f"No stored upload for {sha256}") from None
+    ended = runner.wait(record["id"])
+    assert ended is not None
+    if raised:
+        raise raised[0]
+    return ended
 
 
 # ---- The solve kind of the upload job runner (upload jobs design 3.4, platform-5) ----

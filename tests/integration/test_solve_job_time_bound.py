@@ -26,9 +26,10 @@ from PIL import Image
 import pytest
 
 from services.api import app
-from services.contracts.ingest import SolveJob
+from services.contracts.jobs import UploadJob
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
+from services.ingest import runner as job_runner
 from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
 from services.science.solver import triangle_solver_identity
@@ -74,9 +75,9 @@ def _dense_png(width: int = 1600, height: int = 1200, sources: int = 2500) -> by
 
 
 def _warm_the_solve_child() -> None:
-    """Start the shared child and load the solve chain's modules in it: the chain on no detections returns at once.
-    A bound that follows then stops a search, not the child's start-up or its imports."""
-    ingest_jobs._SOLVE_WORKER.call(
+    """Start the solve group's child and load the solve chain's modules in it: the chain on no detections returns
+    at once. A bound that follows then stops a search, not the child's start-up or its imports."""
+    job_runner._SLOT_WORKERS["solve"].call(
         ingest_jobs._solve_chain,
         (None, [], 1, 1),
         dict(camera_meta=False, camera_label=None, fov_hint=None, obs_utc_iso=None, lat_deg=None, lon_deg=None,
@@ -87,7 +88,8 @@ def _warm_the_solve_child() -> None:
     )
 
 
-def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(client: TestClient, store: IngestStore) -> None:
+def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(
+        client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch) -> None:
     body = _dense_png()
     assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
     sha = hashlib.sha256(body).hexdigest()
@@ -95,10 +97,11 @@ def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(client: T
 
     _warm_the_solve_child()
     started = time.monotonic()
-    job = ingest_jobs.run_solve_job(store, sha, on_transition=seen.append, solve_time_limit_s=LIMIT_S)
+    monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", LIMIT_S)
+    job = ingest_jobs.run_solve_job(store, sha, on_transition=seen.append)
     elapsed = time.monotonic() - started
 
-    SolveJob.model_validate(job)
+    UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
     assert elapsed < LIMIT_S + MARGIN_S, f"took {elapsed:.1f} s"
     solution = ingest_jobs.read_solution(store, sha)
@@ -123,14 +126,16 @@ def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(client: T
     assert in_the_search or before_the_first, solve
 
 
-def test_a_stop_before_any_candidate_is_not_a_finished_step(client: TestClient, store: IngestStore) -> None:
+def test_a_stop_before_any_candidate_is_not_a_finished_step(
+        client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch) -> None:
     body = _dense_png(320, 240, 200)
     assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
     sha = hashlib.sha256(body).hexdigest()
     # A fresh child cannot even start within 0.05 s, so no candidate is ever counted
-    ingest_jobs._SOLVE_WORKER.close()
-    job = ingest_jobs.run_solve_job(store, sha, solve_time_limit_s=0.05)
-    SolveJob.model_validate(job)
+    job_runner._SLOT_WORKERS["solve"].close()
+    monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", 0.05)
+    job = ingest_jobs.run_solve_job(store, sha)
+    UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
     stages = {entry["stage"]: entry for entry in job["stages"]}
     assert stages["solve"] == {"stage": "solve", "unit": "steps", "done": 0, "total": 1}
@@ -168,16 +173,18 @@ def _star_jpeg_with_camera(model: str) -> bytes:
     return buf.getvalue()
 
 
-def test_a_stopped_phone_photo_search_names_the_phone_solver(client: TestClient, store: IngestStore) -> None:
+def test_a_stopped_phone_photo_search_names_the_phone_solver(
+        client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch) -> None:
     body = _star_jpeg_with_camera("Simulated Phone")
     resp = client.post("/api/ingest", content=body, headers={"content-type": "image/jpeg"})
     assert resp.status_code == 201, resp.text
     assert (resp.json()["sourceAsset"].get("cameraMetadata") or {}).get("model") == "Simulated Phone"
     sha = hashlib.sha256(body).hexdigest()
-    # Start the shared child first, so the bound below stops the search, not the child's start-up
-    ingest_jobs._SOLVE_WORKER.call(operator.add, (1, 1), timeout_s=30.0)
+    # Start the group's child first, so the bound below stops the search, not the child's start-up
+    job_runner._SLOT_WORKERS["solve"].call(operator.add, (1, 1), timeout_s=30.0)
     limit = 2.0
-    job = ingest_jobs.run_solve_job(store, sha, solve_time_limit_s=limit)
+    monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", limit)
+    job = ingest_jobs.run_solve_job(store, sha)
     assert job["state"] == "succeeded"
     solution = ingest_jobs.read_solution(store, sha)
     # The frame records a time and a place, so the stopped search ends with the sky predicted for them (REQ-SKY-1.2)
@@ -193,21 +200,21 @@ def test_a_stopped_phone_photo_search_names_the_phone_solver(client: TestClient,
 def test_a_job_given_no_limit_stops_its_search_at_the_products_own_bound(
     client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The job's default limit is SOLVE_TIME_LIMIT_SEC itself, read when the job runs: the bound the shared child is
-    called with when no limit is passed, as the router passes none. The constant is set to another value, and the
+    """The job's default limit is SOLVE_TIME_LIMIT_SEC itself, read when the job runs: the bound the solve group's
+    child is called with, as the router runs it. The constant is set to another value, and the
     bound follows it, so a default taken from any other number, even one equal to 180, fails here. The call is spied
     on and goes through, so the job runs as it does in use."""
     body = _dense_png(320, 240, 200)
     assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
     sha = hashlib.sha256(body).hexdigest()
     bounds: list[float] = []
-    real = ingest_jobs._SOLVE_WORKER.call
+    real = job_runner._SLOT_WORKERS["solve"].call
 
     def spy(*args: Any, **kwargs: Any) -> Any:
         bounds.append(kwargs["timeout_s"])
         return real(*args, **kwargs)
 
-    monkeypatch.setattr(ingest_jobs._SOLVE_WORKER, "call", spy)
+    monkeypatch.setattr(job_runner._SLOT_WORKERS["solve"], "call", spy)
     monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", 123.5)
     job = ingest_jobs.run_solve_job(store, sha)
     assert job["state"] == "succeeded"

@@ -409,14 +409,14 @@ def test_the_search_keeps_its_own_bound_and_never_runs_past_what_is_left_of_its_
     client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
     sha = hashlib.sha256(body).hexdigest()
     asked: list[float] = []
-    real_call = ingest_jobs.BoundedWorker.call
+    real_call = job_runner.SlotWorker.call
 
     def spy(worker: Any, *args: Any, timeout_s: float, **kwargs: Any) -> Any:
         asked.append(timeout_s)
         return real_call(worker, *args, timeout_s=timeout_s, **kwargs)
 
     monkeypatch.setattr(ingest_jobs, "SOLVE_JOB_TIME_LIMIT_SEC", job_bound)
-    monkeypatch.setattr(ingest_jobs.BoundedWorker, "call", spy)
+    monkeypatch.setattr(job_runner.SlotWorker, "call", spy)
     assert client.post(f"/api/ingest/{sha}/solve").json()["state"] == "succeeded"
     (timeout,) = asked
     assert search_bound - 30.0 < timeout <= search_bound
@@ -456,3 +456,42 @@ def test_the_solve_jobs_bound_is_its_steps_bounds_and_four_times_its_largest_unt
     assert expected == 420.0
     assert ingest_jobs.SOLVE_JOB_TIME_LIMIT_SEC == expected
     assert ingest_jobs.SOLVE_KIND.time_limit_s({"mediaKind": "image"}, None) == expected
+
+
+# ---- platform-5c: today's run_solve_job is the runner's thin wrapper ----
+
+
+def test_run_solve_job_starts_the_runners_job_waits_for_it_and_writes_none_of_todays_files(real: dict[str, Any]) -> None:
+    client, store = real["client"], real["store"]
+    body = _png(_starfield())
+    client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
+    sha = hashlib.sha256(body).hexdigest()
+    seen: list[dict[str, Any]] = []
+    ended = ingest_jobs.run_solve_job(store, sha, on_transition=seen.append)
+    UploadJob.model_validate(ended)
+    assert ended["state"] == "succeeded" and ended["kind"] == "solve" and len(ended["id"]) == len("job_") + 32
+    assert not (store.folder(sha) / "job.json").exists() and not (store.folder(sha) / "solution.json").exists()
+    assert (store.folder(sha) / "solutions" / f"{ended['id']}.json").is_file()
+    assert [s["state"] for s in seen][0] == "queued" and seen[-1] == ended
+    assert {s["state"] for s in seen} == {"queued", "running", "succeeded"}
+    for snapshot in seen:
+        UploadJob.model_validate({k: v for k, v in snapshot.items() if k != "queueAhead"})
+    assert client.get(f"/api/ingest/jobs/{ended['id']}").json() == ended
+    with pytest.raises(FileNotFoundError):
+        ingest_jobs.run_solve_job(store, "f" * 64)
+    assert not hasattr(ingest_jobs, "_SOLVE_WORKER") and not hasattr(ingest_jobs, "_SOLVE_LOCK")
+
+
+def test_an_on_transition_that_raises_never_stops_the_job_and_its_error_reaches_the_caller(real: dict[str, Any]) -> None:
+    client, store = real["client"], real["store"]
+    body = _png(_starfield())
+    client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
+    sha = hashlib.sha256(body).hexdigest()
+
+    def refuse(record: dict[str, Any]) -> None:
+        raise ValueError("a listener's own check failed")
+
+    with pytest.raises(ValueError, match="a listener's own check failed"):
+        ingest_jobs.run_solve_job(store, sha, on_transition=refuse)
+    ended = JobStore(store).newest_solve(sha)
+    assert ended["state"] == "succeeded", "the job itself ran to its end"

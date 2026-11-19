@@ -636,25 +636,14 @@ def _solution_ingest_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool
 
 
 def _characterization_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool, Any]]:
-    """solve_upload_characterization.json: what `run_solve_job` returned, reported and wrote in each case, as today's
-    code wrote it, so the job contract is expected to take each record (with its placeholders read back into values
-    of their form: each `<now k>` the characterization's own clock instant, the sent hash and size made-up values,
-    and, as for today's other records, `kind: "solve"` and on a started job the solve samples' producer).
-    The exception, named: `decode_refuses_the_file` stands for one of the nine failure texts today's solve job can
-    store that the job contract refuses (`test_every_failure_text_todays_solve_job_can_store_is_judged` finds all
-    fourteen from the code and pins the nine). Its error keeps the decoder's own words ("The decoder could not read
-    the upload: " and what the decoder said); the job contract takes only its kind's fixed sentences (platform-1,
-    design 3.8 as built), so it refuses those three records (the returned one, the last transition and the last
-    job.json write) by that rule, and SolveJob, which judges today's records, takes them."""
+    """solve_upload_characterization.json: what `run_solve_job` returned, reported and wrote in each case. Since
+    platform-5c it is the runner's job, so the job contract is expected to take every record as it is, with its
+    placeholders read back into values of their form: each `<now k>` the characterization's own clock instant, a job
+    id's random half zeros, the sent hash and size made-up values."""
     out = []
     for case, record in data.items():
         for where, job in _job_shaped_with_paths(record, ""):
-            # A stand-in for the nine refused texts, each given its fixed sentence by the runner (platform-5, the
-            # spec's task 5): refused by this rule, by name
-            refused = case == "decode_refuses_the_file" and job["state"] == "failed"
-            accepted: Any = jobs.M_FAILURE if refused else True
-            out.append((f"{case} {where}: a {job['state']} record", job, accepted,
-                        _todays_record_but_its_gap(_unplaced(job))))
+            out.append((f"{case} {where}: a {job['state']} record", job, True, _unplaced(job)))
     return out
 
 
@@ -674,6 +663,10 @@ def _unplaced(value: Any) -> Any:
             return ingest.format_utc(CHARACTERIZATION_CLOCK + timedelta(minutes=int(now.group(1))))
         if value == "<bytes sent>":
             return 1000
+        if value == "<float>":
+            # A clip case's decoded measurement, left out for its lossy decode (a frame span's times among them)
+            return 0.0
+        value = value.replace("<job random>", "0" * 16)
         return value.replace("<sha256 sent>", CHARACTERIZATION_HASH).replace("<sha16 sent>", CHARACTERIZATION_HASH[:16])
     return value
 
@@ -714,9 +707,9 @@ def _fixture_disagreements(folder: Path) -> tuple[list[str], list[str], int]:
 def test_every_job_shaped_sample_in_every_fixture_is_judged_as_its_fixture_says() -> None:
     unread, wrong, judged = _fixture_disagreements(FIXTURES)
     assert unread == [] and wrong == [], (unread, wrong[:10], len(wrong))
-    # the four readers judge 2,672 job-shaped samples on 2026-11-13: 1,827 in the two contract fixtures, 6 in the
-    # solution contract's ingest section, 839 in the solve chain's characterization
-    assert judged >= 2672
+    # the four readers judge 2,900 job-shaped samples on 2026-11-18: 1,833 in the two contract fixtures, 6 in the
+    # solution contract's ingest section, 1,061 in the solve chain's characterization (the runner's, since platform-5c)
+    assert judged >= 2900
 
 
 def test_the_fixture_check_finds_an_unread_job_and_a_wrong_verdict(tmp_path: Path) -> None:
@@ -751,9 +744,17 @@ def _characterization_with(tmp_path: Path, change: Callable[[dict[str, Any]], No
     return wrong
 
 
-def test_a_record_refused_by_another_rule_than_the_one_named_is_a_wrong_verdict(tmp_path: Path) -> None:
-    """One of the three expected refused by the failure rule, given a fixed sentence and a finish before its start: the
-    contract still refuses it, by the times rule alone, and the check names the record and the rule it expected."""
+def test_a_record_refused_by_another_rule_than_the_one_named_is_a_wrong_verdict(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A record a reader expects refused by the failure rule, given a fixed sentence and a finish before its start: the
+    contract still refuses it, by the times rule alone, and the check names the record and the rule it expected. (No
+    fixture names such a record since platform-5c; a reader here does, as the characterization's did.)"""
+    def expecting_the_failure_rule(data: dict[str, Any]) -> list[tuple[str, Any, Any, Any]]:
+        return [(where, sample, jobs.M_FAILURE if where.startswith("decode_refuses_the_file returned") else accepted,
+                 record) for where, sample, accepted, record in _characterization_verdicts(data)]
+
+    monkeypatch.setitem(JOB_FIXTURE_READERS, CHARACTERIZATION, expecting_the_failure_rule)
+
     def change(data: dict[str, Any]) -> None:
         returned = data["decode_refuses_the_file"]["returned"]
         returned["error"] = "The solve stopped on an internal error."
@@ -779,31 +780,12 @@ def test_a_succeeded_record_finished_before_it_started_is_a_wrong_verdict(tmp_pa
     assert _characterization_with(tmp_path, change) == found and len(found) == 1
 
 
-# ---- Every failure text today's solve job can store (platform-3's fourth version) ----
+# ---- Every failure text the solve can raise, and the fixed sentence the solve kind stores for it ----
 
 REPO = Path(__file__).resolve().parents[2]
-STAND_IN_ORIGINAL = Path("/stand-in/original.heic")
-# What the job contract does with each, by name. A failure text added to the solve job, or one changed, fails the test
-# below until it is added here. The nine refused each get their kind's fixed sentence from the runner (platform-5, the
-# spec's task 5), which drops the decoder's own words and sizes.
-TAKEN_FAILURE_TEXTS = {
-    "ffmpeg is not installed to decode the upload.",
-    solve_job.HEIF_PROBE_REFUSAL,
-    solve_job.TILE_DECODE_REFUSAL,
-    "The decoder did not write one frame for every tile.",
-    solve_job.UNEXPECTED_ERROR_REASON,
-}
-REFUSED_FAILURE_TEXTS = {
-    "The decoder wrote a frame without a PGM header.",
-    "The decoder wrote an unexpected {width}x{height} frame with maximum value {maxval}.",
-    "The decoder's last frame is cut short.",
-    f"ffmpeg took longer than {solve_job.DECODE_TIMEOUT_SEC} s to decode the upload.",
-    "The decoder could not read the file: {msg}",
-    "The decoder could not read the file: no frame bytes produced",
-    "The decoder produced a {frame.shape[1]}x{frame.shape[0]} frame, not the stored {width}x{height}.",
-    "The file's tile grids do not give one {width}x{height} image.",
-    "The file's tile grid does not cover the stored {width}x{height} image.",
-}
+# A failure text added to the solve, or one changed, fails the test of SOLVE_KIND_SENTENCES below until it is pinned
+# there (platform-3's fourth version found them; platform-5 gave each its fixed sentence; since platform-5c nothing
+# stores a text as it was raised).
 
 
 def _text_forms(node: ast.expr, function: Optional[ast.AST], module: Any, where: str) -> list[str]:
@@ -863,8 +845,8 @@ def _failure_texts_in(source: str, rel: str, module: Any) -> dict[str, list[str]
 
 
 def _storable_failure_texts() -> dict[str, list[str]]:
-    """Every failure text today's solve job can store, found in the code: each `SolveJobError(...)` under `services/`
-    (the solve job stores its text through `_stored_reason`) and the internal error; each with where it is written."""
+    """Every failure text the solve can raise, found in the code: each `SolveJobError(...)` under `services/` (the
+    solve kind stores each as its fixed sentence) and the internal error; each with where it is written."""
     found: dict[str, list[str]] = {}
     for path in sorted((REPO / "services").rglob("*.py")):
         source = path.read_text(encoding="utf-8")
@@ -893,27 +875,6 @@ def _refused_by_the_failure_rule_alone(why: str) -> bool:
     the record before the rules are read, so a refusal that names a rule names no field error.)"""
     rules = [getattr(jobs, n) for n in dir(jobs) if n.startswith("M_") and getattr(jobs, n) in why]
     return rules == [jobs.M_FAILURE]
-
-
-def test_every_failure_text_todays_solve_job_can_store_is_judged() -> None:
-    """Each text as `_stored_reason` stores it, set as the error of the characterization's failed record that the job
-    contract takes (decode_fails_unexpectedly's), and judged as the fixture check judges it. A text with a slot is
-    judged with the slot as written, and no fixed sentence fits its pattern, so no filling of it is taken either."""
-    data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
-    base = next(j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed")
-    assert verdict(_todays_record_but_its_gap(_unplaced(base)))[0], "the base record is taken as it is"
-    taken, refused = set(), set()
-    for text in _storable_failure_texts():
-        stored = solve_job._stored_reason(text, STAND_IN_ORIGINAL)
-        ok, why = verdict(_todays_record_but_its_gap(_unplaced({**base, "error": stored})))
-        if ok:
-            taken.add(text)
-        else:
-            assert _refused_by_the_failure_rule_alone(why), (text, why)
-            refused.add(text)
-        assert _fixed_sentences_fitting(text) == [], f"a filling of {text!r} may be taken"
-    assert (len(taken | refused), len(refused)) == (14, 9)
-    assert (taken, refused) == (TAKEN_FAILURE_TEXTS, REFUSED_FAILURE_TEXTS)
 
 
 # What the runner's solve kind stores for each failure text (platform-5): one of its fixed sentences, the decoder's own
@@ -948,7 +909,7 @@ def test_every_failure_text_the_solve_kind_can_store_becomes_one_of_its_fixed_se
     """Each text today's solve job can raise, as written and with its slots filled as they are when the job runs, is
     stored by the runner's solve kind as the sentence pinned above, which the job contract takes on a failed record."""
     data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
-    base = next(j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed")
+    base = _unplaced(next(j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed"))
     found = set(_storable_failure_texts())
     assert found == set(SOLVE_KIND_SENTENCES), "a failure text was added or changed: pin what the solve kind stores"
     for text, sentence in SOLVE_KIND_SENTENCES.items():
@@ -957,7 +918,7 @@ def test_every_failure_text_the_solve_kind_can_store_becomes_one_of_its_fixed_se
             stored = solve_job.solve_failure_sentence(form)
             assert stored == sentence, (form, stored)
             assert stored in jobs.SOLVE_FAILURE_SENTENCES and stored != jobs.INTERRUPTED_SENTENCE
-            assert verdict(_todays_record_but_its_gap(_unplaced({**base, "error": stored})))[0], form
+            assert verdict({**base, "error": stored})[0], form
     assert solve_job.solve_failure_sentence("Some other text /private/owner/file.heic") == (
         solve_job.UNEXPECTED_ERROR_REASON), "a text no rule names gives the internal error, never itself"
 
@@ -983,8 +944,7 @@ def test_the_failure_text_finder_reads_every_form_and_refuses_one_it_cannot_read
 
 def test_a_refusal_counts_as_the_failure_rules_only_when_it_names_that_one_error() -> None:
     data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
-    base = _todays_record_but_its_gap(_unplaced(next(
-        j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed")))
+    base = _unplaced(next(j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed"))
     wrong_text = {**base, "error": "Not a fixed sentence."}
     assert _refused_by_the_failure_rule_alone(verdict(wrong_text)[1])
     taken, why = verdict({**wrong_text, "finishedAtUTC": "2000-01-01T00:00:00Z"})

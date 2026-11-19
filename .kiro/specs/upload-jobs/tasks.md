@@ -43,7 +43,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
     a stored solution the contract refuses is never served (409 with one plain sentence); a start solves it again.
   - _Requirements: REQ-JOB-3.1 to 3.5, REQ-JOB-5.1 to 5.8, REQ-JOB-9_
 
-- [ ] 5. platform-5: the runner and its routes (REQ-JOB-1, 2, 3.6, 4, 7; P-JOB-1, 2, 4, 5, 7, 8)
+- [x] 5. platform-5: the runner and its routes (REQ-JOB-1, 2, 3.6, 4, 7; P-JOB-1, 2, 4, 5, 7, 8)
   - `services/ingest/runner.py` (3.2); the solve kind registered (3.4); `wait=false` and the cancel route (3.6);
     `tests/fixtures/api_surface.json` regenerated.
   - The stop hook and the process group in `services/science/bounded_worker.py` (3.3) [decided 2026-11-11: added to
@@ -63,7 +63,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - After tasks 3 and 4. The restoration lane wires its kinds and routes to the runner only after this lands.
   - Split by the lead (2026-11-18): [x] 5s, the solve's time-limit and storing sentences in the job contract;
     [x] 5a, the runner, the solve kind, the routes, the stop hook, the scratch fix and the nine texts mapped;
-    [x] 5b, the measured time bound and the slots question; [ ] 5c, `run_solve_job` as the runner's thin wrapper.
+    [x] 5b, the measured time bound and the slots question; [x] 5c, `run_solve_job` as the runner's thin wrapper.
   - _Requirements: REQ-JOB-1.1 to 1.4, 1.6, REQ-JOB-2.1 to 2.6, REQ-JOB-3.6, 3.7, REQ-JOB-4.1 to 4.5,
     REQ-JOB-7.1 to 7.4_
 

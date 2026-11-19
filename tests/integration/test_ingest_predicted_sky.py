@@ -48,6 +48,7 @@ from services.api import app
 from services.contracts.jobs import UploadJob
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
+from services.ingest import runner as job_runner
 from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
 from services.science.camera_profiles import META_RAY_BAN_DISPLAY_MODEL
@@ -207,11 +208,13 @@ def test_a_calibrated_photo_keeps_its_solution_and_gains_only_what_it_did_not_ma
     _assert_no_leak(solution, job)
 
 
-def test_a_search_stopped_at_its_time_limit_still_shows_the_predicted_sky(client: TestClient, store: IngestStore) -> None:
+def test_a_search_stopped_at_its_time_limit_still_shows_the_predicted_sky(
+        client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch) -> None:
     sha, _ = _upload(client, _png(_few_stars(240, 320, 40)))
     # A fresh child cannot start within 0.05 s, so the search stops at its bound before any candidate
-    ingest_jobs._SOLVE_WORKER.close()
-    job = ingest_jobs.run_solve_job(store, sha, solve_time_limit_s=0.05)
+    job_runner._SLOT_WORKERS["solve"].close()
+    monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", 0.05)
+    job = ingest_jobs.run_solve_job(store, sha)
     assert job["state"] == "succeeded"
     assert {entry["stage"]: entry for entry in job["stages"]}["solve"] == {"stage": "solve", "unit": "steps", "done": 0, "total": 1}
     solution = ingest_jobs.read_solution(store, sha)

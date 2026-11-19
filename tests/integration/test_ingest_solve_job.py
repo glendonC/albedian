@@ -378,7 +378,8 @@ def test_pbt_recorded_job_history_obeys_solve_job_contract_at_every_step(
         assert snapshots[-1] == final_job and final_job["state"] == "succeeded"
 
         for snap in snapshots:
-            SolveJob.model_validate(snap)
+            # A served record of a queued job adds the jobs ahead of it, never stored
+            UploadJob.model_validate({k: v for k, v in snap.items() if k != "queueAhead"})
             for stage_entry in snap["stages"]:
                 assert stage_entry["total"] is not None and stage_entry["total"] > 0
                 assert 0 <= stage_entry["done"] <= stage_entry["total"]
