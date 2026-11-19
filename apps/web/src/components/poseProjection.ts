@@ -127,7 +127,8 @@ export function projectThroughPose(
     if (!p.visible) return null;
     sweptPx = Math.max(sweptPx, Math.hypot(p.uPx - nominal.uPx, p.vPx - nominal.vPx));
   }
-  const centroidPx = centroidTermPx(sky, wcs, nominal, pose.beaconCentroidUncertaintyDeg);
+  // A pose from the phone's attitude has no beacon, so no centroid term
+  const centroidPx = centroidTermPx(sky, wcs, nominal, pose.beaconCentroidUncertaintyDeg ?? 0);
   if (centroidPx === null) return null;
   return { xPx: nominal.uPx, yPx: nominal.vPx, ringPx: sweptPx + centroidPx };
 }

@@ -367,6 +367,22 @@ describe('the lined-up layer in plain words (REQ-SKY-6.3, 6.4)', () => {
     );
   });
 
+  it('says a sky lined up from the phone in the approved words, with no bright spot and no beacon term (UIUX-pose-phrase-APPROVED.md)', () => {
+    const base = sample('pose_moon_level_head').poseEstimate!;
+    const { beacon: _beacon, beaconCentroidUncertaintyDeg: _term, ...rest } = base;
+    const phone = { ...rest, method: 'device_attitude', maxCenterOffsetDeg: 2.3 } as unknown as typeof base;
+    expect(withinAboutDeg(phone)).toBe(3);
+    expect(poseBasisSentence(phone, 'image')).toBe(
+      'Lined up by which way the phone pointed. Drawn by the app, not measured in your photo, and not checked against stars.'
+    );
+    const approximate = { ...sample('pose_moon_level_head'), poseEstimate: phone } as ObservationSolution;
+    expect(skyLayerSentence(approximate, photo(), SEARCHED)).toBe('Lined up by which way the phone pointed, within about 3 degrees; not checked against stars.');
+    // No bright spot was taken to be anything: the sentence keeps only what holds for any pose
+    expect(poseUncertaintySentence(phone)).toBe(
+      'Within about 3 degrees at the middle of the frame. Each dashed ring shows how far its marker may be off, if those assumptions hold.'
+    );
+  });
+
   it('gives the uncertainty in whole degrees rounded up, names the bright spot as taken to be the beacon, and says what the rings show', () => {
     const pose = sample('pose_moon_level_head').poseEstimate!;
     expect(withinAboutDeg(pose)).toBe(3);

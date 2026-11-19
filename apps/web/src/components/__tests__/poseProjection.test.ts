@@ -71,8 +71,18 @@ describe('projectThroughPose on the synthetic pose sample (P-SKY-8, REQ-SKY-6.2)
     expect(lined.yPx).toBeCloseTo(observed.yPx, 0);
   });
 
+  it('gives a pose from the phone\'s attitude, which has no beacon, rings of the swept distance alone', () => {
+    const { beacon: _b, beaconCentroidUncertaintyDeg: _c, ...rest } = POSE.poseEstimate!;
+    const phone = { ...POSE, poseEstimate: { ...rest, method: 'device_attitude' } } as unknown as typeof POSE;
+    const placed = stars(phone).map((f) => [f, projectThroughPose(f, phone, FRAME)] as const).filter(([, p]) => p !== null);
+    expect(placed.length).toBeGreaterThan(0);
+    for (const [finding, lined] of placed) {
+      expect(lined!.ringPx).toBeCloseTo(largestSweptDistancePx(finding, phone), 6);
+    }
+  });
+
   it('places the five predicted stars inside the frame, each ring the largest swept distance plus the centroid term', () => {
-    const centroidDeg = POSE.poseEstimate!.beaconCentroidUncertaintyDeg;
+    const centroidDeg = POSE.poseEstimate!.beaconCentroidUncertaintyDeg!;
     const placed = stars(POSE).map((f) => [f, projectThroughPose(f, POSE, FRAME)] as const).filter(([, p]) => p !== null);
     expect(placed.length).toBe(5);
     for (const [finding, lined] of placed) {

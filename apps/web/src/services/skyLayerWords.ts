@@ -24,11 +24,13 @@ export interface StarSearchFacts {
 const EPHEMERIS_FROM_MS = Date.UTC(1800, 0, 1);
 const EPHEMERIS_UNTIL_MS = Date.UTC(2051, 0, 1);
 
-const BEACON_NAMES: Record<PoseEstimate['beacon'], string> = { moon: 'Moon', sun: 'Sun' };
+const BEACON_NAMES: Record<NonNullable<PoseEstimate['beacon']>, string> = { moon: 'Moon', sun: 'Sun' };
 // What each pose method takes to be so when it lines the frame up (packages/contracts/src/astronomy.ts
 // PoseEstimateSchema). A pose fit takes one bright spot to be the Moon or the Sun; nothing in one frame proves that
-// it is, so every line says the spot was taken to be one and never that it is one
+// it is, so every line says the spot was taken to be one and never that it is one. The phone's own attitude takes no
+// spot to be anything (UIUX-pose-phrase-APPROVED.md, the owner's yes of 18 Nov 20:58)
 const POSE_TAKEN: Record<PoseEstimate['method'], string> = {
+  device_attitude: 'which way the phone pointed',
   moon_camera_profile_level_head: "taking a bright spot to be the Moon, with the camera's field of view and a level head",
   moon_horizon: 'taking a bright spot to be the Moon, with the skyline taken to be level',
   sun_horizon: 'taking a bright spot to be the Sun, with the skyline taken to be level',
@@ -43,10 +45,11 @@ const plural = (n: number, one: string, many: string): string => `${n} ${n === 1
 
 /**
  * How far off a lined-up sky may be at the middle of the frame, in whole degrees rounded up: the largest offset of
- * the frame centre across the sweep plus the beacon's centroid term (design component 8).
+ * the frame centre across the sweep plus the beacon's centroid term (design component 8); a pose from the phone's
+ * attitude has no beacon, so no such term.
  */
 export function withinAboutDeg(pose: PoseEstimate): number {
-  return Math.ceil(pose.maxCenterOffsetDeg + pose.beaconCentroidUncertaintyDeg);
+  return Math.ceil(pose.maxCenterOffsetDeg + (pose.beaconCentroidUncertaintyDeg ?? 0));
 }
 
 /**
@@ -150,7 +153,9 @@ export function poseBasisSentence(pose: PoseEstimate, mediaKind: 'image' | 'vide
  */
 export function poseUncertaintySentence(pose: PoseEstimate): string {
   const n = withinAboutDeg(pose);
-  return `Within about ${plural(n, 'degree', 'degrees')} at the middle of the frame, less near the bright spot taken to be the ${BEACON_NAMES[pose.beacon]} and more away from it. Each dashed ring shows how far its marker may be off, if those assumptions hold.`;
+  // Only a beacon pose holds a bright spot in place; the phone's attitude takes none, so that clause is left out
+  const nearSpot = pose.beacon ? `, less near the bright spot taken to be the ${BEACON_NAMES[pose.beacon]} and more away from it` : '';
+  return `Within about ${plural(n, 'degree', 'degrees')} at the middle of the frame${nearSpot}. Each dashed ring shows how far its marker may be off, if those assumptions hold.`;
 }
 
 /**
