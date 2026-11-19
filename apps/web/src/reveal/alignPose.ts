@@ -71,20 +71,32 @@ export interface AlignTarget {
   magnitude: number | null;
 }
 
+/**
+ * Whether a finding is one drawn while aligning or locking on, and its name and magnitude: a predicted planet, or a
+ * predicted star of magnitude ALIGN_MAGNITUDE_LIMIT or brighter. None for anything else.
+ */
+export function alignTargetOf(finding: CelestialFinding): { name: string; magnitude: number | null } | null {
+  if (finding.evidenceClass !== 'predicted') return null;
+  const magnitude = finding.catalogRef?.apparentMagnitude ?? null;
+  const planet = PLANET.test(finding.id);
+  if (!planet && !(STAR.test(finding.id) && magnitude !== null && magnitude <= ALIGN_MAGNITUDE_LIMIT)) return null;
+  return { name: finding.title.replace(/ \(Predicted Ephemeris\)$/, ''), magnitude };
+}
+
+/** Brightest first, a planet the record gives no magnitude ahead of the stars, as the design's page orders them. */
+export const brightestFirst = (a: { magnitude: number | null }, b: { magnitude: number | null }) => (a.magnitude ?? -1) - (b.magnitude ?? -1);
+
 /** The targets, brightest first: predicted, with an altitude and azimuth for the photo's time and place. */
 export function alignTargets(solution: ObservationSolution | undefined): AlignTarget[] {
   if (!solution) return [];
   return solution.findings
     .flatMap((finding) => {
       const sky = finding.skyPosition;
-      if (finding.evidenceClass !== 'predicted' || sky?.altDeg === undefined || sky.azDeg === undefined) return [];
-      const magnitude = finding.catalogRef?.apparentMagnitude ?? null;
-      const planet = PLANET.test(finding.id);
-      if (!planet && !(STAR.test(finding.id) && magnitude !== null && magnitude <= ALIGN_MAGNITUDE_LIMIT)) return [];
-      return [{ finding, name: finding.title.replace(/ \(Predicted Ephemeris\)$/, ''), altDeg: sky.altDeg, azDeg: sky.azDeg, magnitude }];
+      const target = alignTargetOf(finding);
+      if (!target || sky?.altDeg === undefined || sky.azDeg === undefined) return [];
+      return [{ finding, name: target.name, altDeg: sky.altDeg, azDeg: sky.azDeg, magnitude: target.magnitude }];
     })
-    // Brightest first, a planet the record gives no magnitude ahead of the stars, as the design's page orders them
-    .sort((a, b) => (a.magnitude ?? -1) - (b.magnitude ?? -1));
+    .sort(brightestFirst);
 }
 
 /** [proposed] The field across when the file gives no 35 mm equivalent focal length: no record words one. */

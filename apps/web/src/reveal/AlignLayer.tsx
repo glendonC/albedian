@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { dragPose, projectAltAz, scalePose, turnPose, type AlignPose, type AlignTarget } from './alignPose.js';
+import type { PlacedTarget } from './earlyPose.js';
 
 /**
  * The aligning layer (D24, UIUX-align-READY.md): over the photo's own frame, the predicted targets through the person's
@@ -26,18 +27,29 @@ export interface AlignMark {
 
 export const ALIGN_RING_PX = 6.5;
 
-/** Each target inside the frame, and its name where it fits: right of the ring, else left, inside the frame, clear of names placed before it. */
+/** Each target inside the frame through the pose, and its name where it fits (placeMarks). */
 export function alignMarks(targets: readonly AlignTarget[], pose: AlignPose, rect: FrameRect, fontPx: number): AlignMark[] {
+  const placed = targets.flatMap((target) => {
+    const at = projectAltAz(target.altDeg, target.azDeg, pose);
+    return at ? [{ id: target.finding.id, name: target.name, u: at.u, v: at.v }] : [];
+  });
+  return placeMarks(placed, rect, fontPx);
+}
+
+/**
+ * Each place inside the frame (u and v shares of its width and height), in the order given, and its name where it fits:
+ * right of the ring, else left, inside the frame, clear of names placed before it.
+ */
+export function placeMarks(placed: readonly PlacedTarget[], rect: FrameRect, fontPx: number): AlignMark[] {
   const r = ALIGN_RING_PX;
   const boxes: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
   const marks: AlignMark[] = [];
-  for (const target of targets) {
-    const at = projectAltAz(target.altDeg, target.azDeg, pose);
-    if (!at || at.u < 0 || at.u > 1 || at.v < 0 || at.v > 1) continue;
-    const x = rect.leftPx + at.u * rect.widthPx;
-    const y = rect.topPx + at.v * rect.heightPx;
+  for (const target of placed) {
+    if (target.u < 0 || target.u > 1 || target.v < 0 || target.v > 1) continue;
+    const x = rect.leftPx + target.u * rect.widthPx;
+    const y = rect.topPx + target.v * rect.heightPx;
     const width = target.name.length * fontPx * 0.56;
-    let mark: AlignMark = { id: target.finding.id, xPx: x, yPx: y, name: null, nameOnLeft: false };
+    let mark: AlignMark = { id: target.id, xPx: x, yPx: y, name: null, nameOnLeft: false };
     for (const left of [false, true]) {
       const b = { x0: left ? x - r - 6 - width : x + r + 4, x1: left ? x - r - 4 : x + r + 6 + width, y0: y - fontPx, y1: y + fontPx * 0.5 };
       if (b.x0 < rect.leftPx + 2 || b.x1 > rect.leftPx + rect.widthPx - 2) continue;
@@ -55,8 +67,8 @@ export function alignMarks(targets: readonly AlignTarget[], pose: AlignPose, rec
  * The same rings and names, still: the lock-on's early marks (D25), drawn where an early pose puts the predicted sky,
  * with no hands on them.
  */
-export const StillAlignMarks: React.FC<{ rect: FrameRect; pose: AlignPose; targets: readonly AlignTarget[] }> = ({ rect, pose, targets }) => {
-  const marks = alignMarks(targets, pose, rect, 13);
+export const StillAlignMarks: React.FC<{ rect: FrameRect; placed: readonly PlacedTarget[] }> = ({ rect, placed }) => {
+  const marks = placeMarks(placed, rect, 13);
   return (
     <div className="align-layer is-still" data-testid="early-marks" style={{ left: `${rect.leftPx}px`, top: `${rect.topPx}px`, width: `${rect.widthPx}px`, height: `${rect.heightPx}px` }}>
       <MarksDrawing marks={marks} rect={rect} />

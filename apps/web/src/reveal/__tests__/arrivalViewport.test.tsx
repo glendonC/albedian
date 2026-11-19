@@ -7,7 +7,7 @@ import { createEmptyObservationSession, dispatchAlbedianAction } from '@albedian
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { HOME_SCREEN, choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 import type { Arrival } from '../arrival.js';
-import { clipPoseSolution, poseSession } from '../../components/__tests__/poseSessions.js';
+import { clipPoseSolution, POSE, poseReceipt, poseSession } from '../../components/__tests__/poseSessions.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -953,5 +953,24 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(onRunUtterance).toHaveBeenCalledWith(`Take me to ${title}`, 'pointer');
     press('Close');
     expect(sessions.at(-1)!.selectedFindingId).toBeNull();
+  });
+});
+
+describe('the lock-on, wired (D25): the sky the running solve predicted from an early pose', () => {
+  const posed = () => storedPhoto({ sourceAsset: { ...poseReceipt(POSE, 'image').sourceAsset, uri: 'blob:photo' } });
+  const RUNNING_JOB = { id: 'job_0123456789abcdef', state: 'running', stages: [] };
+
+  it("draws the served sky's named targets over the photo with the Moon's words while the job runs", () => {
+    renderViewport(posed(), { arrival: arrival({ job: RUNNING_JOB, early: POSE, widthPx: 960, heightPx: 540 }) });
+    expect(q('[data-testid="work-early"] .work-early__from')!.textContent).toBe('Placed from the Moon: predicted until matched.');
+    expect(container.querySelectorAll('[data-testid="early-marks"] circle').length).toBeGreaterThan(0);
+  });
+
+  it('is the approved working screen while no sky is served, and for a sky of another upload', () => {
+    renderViewport(posed(), { arrival: arrival({ job: RUNNING_JOB, widthPx: 960, heightPx: 540 }) });
+    expect(q('[data-testid="work-early"]')).toBeNull();
+    expect(q('[data-testid="early-marks"]')).toBeNull();
+    renderViewport(posed(), { arrival: arrival({ job: RUNNING_JOB, early: { ...POSE, sourceSha256: 'f'.repeat(64) }, widthPx: 960, heightPx: 540 }) });
+    expect(q('[data-testid="work-early"]')).toBeNull();
   });
 });

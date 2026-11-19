@@ -6,16 +6,13 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { CelestialFinding } from '@albedian/contracts';
-import { sample } from '../../components/__tests__/poseSessions.js';
 import type { Arrival } from '../arrival.js';
-import { fovFrom35mm, type AlignPose, type AlignTarget } from '../alignPose.js';
 import { EARLY_SOURCE_WORDS, WorkingScreen, type EarlyPose } from '../WorkingScreen.js';
 
 // The lock-on's early state (D25, UIUX-lockon-READY.md point 1; the lk-early screen): while the solve job runs and an
 // early pose exists, the predicted stars it places over the photo as amber dashed rings, and at the status place
-// "Matching the stars.", where the pose came from, Cancel (D2) and the job's rows. No record carries an early pose yet
-// (PLATFORM's partial result, lead 07:51), so these tests give one by hand.
+// "Matching the stars.", where the pose came from, Cancel (D2) and the job's rows. The places come from the served
+// predicted sky (earlyPose.ts, lockOnWired.test.ts); these tests give them by hand, as shares of the shown photo.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,15 +25,14 @@ const arrival = (over: Partial<Arrival> = {}): Arrival =>
   ({ fileName: 'night.jpg', byteSize: BYTES, stored: true, widthPx: 3024, heightPx: 4032, job: RUNNING, failure: null, ...over }) as Arrival;
 const RECT = { leftPx: 382.5, topPx: 0, widthPx: 675, heightPx: 900 };
 
-const finding = sample('horizon_predicted_only').findings.find((f) => f.evidenceClass === 'predicted')!;
-const fov = fovFrom35mm(26, 4 / 3);
-const POSE: AlignPose = { azDeg: 200, altDeg: fov.y / 2, rollDeg: 0, fovXDeg: fov.x, aspect: 4 / 3 };
-const TARGETS: AlignTarget[] = [
-  { finding: { ...finding, id: 'finding-predicted-star-hip-71683' } as CelestialFinding, name: 'Rigil Kentaurus', altDeg: fov.y / 2, azDeg: 200, magnitude: -0.01 },
-  { finding: { ...finding, id: 'finding-predicted-star-hip-68702' } as CelestialFinding, name: 'Hadar', altDeg: fov.y / 2 + 5, azDeg: 205, magnitude: 0.61 },
-  { finding: { ...finding, id: 'finding-predicted-star-hip-1' } as CelestialFinding, name: 'Behind', altDeg: 10, azDeg: 20, magnitude: 1 },
-];
-const EARLY: EarlyPose = { pose: POSE, source: 'pointing', targets: TARGETS };
+const EARLY: EarlyPose = {
+  source: 'pointing',
+  marks: [
+    { id: 'finding-predicted-star-hip-71683', name: 'Rigil Kentaurus', u: 0.5, v: 0.5 },
+    { id: 'finding-predicted-star-hip-68702', name: 'Hadar', u: 0.62, v: 0.38 },
+    { id: 'finding-predicted-star-hip-1', name: 'Outside', u: 1.4, v: 0.5 },
+  ],
+};
 
 let container: HTMLDivElement;
 let root: Root;
@@ -71,7 +67,7 @@ describe('the early state', () => {
     expect(container.querySelectorAll('.work-cancel')).toHaveLength(1);
   });
 
-  it('draws the targets in the frame through the early pose as still amber rings with names, and none behind it', () => {
+  it('draws the marks inside the frame as still amber rings with names, and none outside it', () => {
     show({ early: EARLY });
     const marks = q('[data-testid="early-marks"]')!;
     expect(marks.className).toBe('align-layer is-still');

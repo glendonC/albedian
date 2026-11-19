@@ -4,7 +4,7 @@ import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { StillAlignMarks } from './AlignLayer.js';
-import type { AlignPose, AlignTarget } from './alignPose.js';
+import { EARLY_SOURCE_WORDS, type EarlyPose } from './earlyPose.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -25,27 +25,13 @@ export interface WorkingScreenProps {
   /** At phone width (D2, jp-run and jp-queued): only the step the job is on, under the photo in the reveal's slot. */
   phone?: boolean;
   /**
-   * The lock-on's early pose (D25), while the solve job runs: the predicted sky it places, and where it came from. No
-   * record carries one yet (PLATFORM's partial result): until then none is given and the screen is as approved.
+   * The lock-on's early pose (D25), while the solve job runs: the predicted sky it places, and where it came from
+   * (earlyPose.ts, from the job's served predicted sky). None: the screen is as approved.
    */
   early?: EarlyPose | null;
 }
 
-export type EarlySource = 'pointing' | 'moon' | 'alignment' | 'compass';
-export interface EarlyPose {
-  pose: AlignPose;
-  source: EarlySource;
-  targets: readonly AlignTarget[];
-}
-
-/** Where the early pose came from, in the decided words (UIUX-lockon-READY.md point 1). */
-export const EARLY_SOURCE_WORDS: Readonly<Record<EarlySource, string>> = {
-  pointing: 'Placed from where your iPhone pointed: predicted until matched.',
-  moon: 'Placed from the Moon: predicted until matched.',
-  alignment: 'Placed from your alignment: predicted until matched.',
-  // Only if SCIENCE accepts the compass and lens as a start (the record's own condition)
-  compass: "Placed from your photo's compass heading and lens: predicted until matched.",
-};
+export { EARLY_SOURCE_WORDS, type EarlyPose, type EarlySource } from './earlyPose.js';
 
 const ROW_CLASS: Readonly<Record<StageRow['state'], string>> = {
   done: 'work-step is-done',
@@ -171,7 +157,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       <button type="button" className="work-word" data-testid="working-home" onClick={() => onHome?.()}>
         <Logo sizePx={21} />
       </button>
-      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} pose={shownEarly.pose} targets={shownEarly.targets} />}
+      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} placed={shownEarly.marks} />}
       {shownEarly ? (
         <div className="work-early" data-testid="work-early">
           <p className="work-early__lead">Matching the stars.</p>

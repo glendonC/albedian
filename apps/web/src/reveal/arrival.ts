@@ -1,4 +1,4 @@
-import { JOB_STAGES, orientedSize, type IngestReceipt } from '@albedian/contracts';
+import { JOB_STAGES, orientedSize, type IngestReceipt, type ObservationSolution } from '@albedian/contracts';
 import type { UploadEvent } from '../services/apiClient.js';
 
 /**
@@ -46,6 +46,8 @@ export interface Arrival {
   job: ArrivalJob | null;
   /** Set when the upload or the solve ended with no sky: the sentence shown, and whether the same work can start again. */
   failure: { sentence: string; canTryAgain: boolean } | null;
+  /** The sky the solve predicted from an early pose, once served (the lock-on, D25); predicted throughout. */
+  early?: ObservationSolution;
 }
 
 export type StageState = 'done' | 'now' | 'next' | 'failed';
@@ -171,6 +173,8 @@ export function arrivalAfter(arrival: Arrival | null, event: UploadEvent): Arriv
       };
     case 'job':
       return { ...arrival, job: event.job };
+    case 'early':
+      return { ...arrival, early: event.solution };
     case 'failed':
       return { ...arrival, job: event.job ?? arrival.job, failure: { sentence: event.sentence, canTryAgain: true } };
     case 'solved':

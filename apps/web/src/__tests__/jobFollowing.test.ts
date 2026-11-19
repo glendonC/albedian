@@ -160,3 +160,84 @@ describe('cancelJob', () => {
     await expect(cancelJob(running.id)).rejects.toThrow('no solve job with that id is stored');
   });
 });
+
+describe('the sky a running solve predicted from an early pose (D25, platform-10a and 10b)', () => {
+  const POSED = solutions['pose_moon_level_head']!;
+  const early = { ...POSED, sourceSha256: sha256, sourceAssetId: assetId };
+  const skyUrl = `GET /api/ingest/jobs/${running.id}/predicted-sky`;
+  const named = { ...running, predictedSkyAtUTC: running.startedAtUTC };
+
+  /** As server(), with the job's predicted sky route answering `sky` (a body, or a status alone). */
+  function posedServer(records: unknown[], sky: { body?: unknown; status: number }) {
+    const calls: string[] = [];
+    const queue = [...records];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      calls.push(`${init?.method ?? 'GET'} ${url}`);
+      if (url === `/api/ingest/${sha256}/solve?wait=false`) return json(queue.shift(), 202);
+      if (url.endsWith('/predicted-sky')) return sky.body === undefined ? new Response('{"detail":"no predicted sky is served for that job"}', { status: sky.status }) : json(sky.body, sky.status);
+      if (url.startsWith('/api/ingest/jobs/')) return json(queue.shift());
+      if (url === `/api/ingest/${sha256}/solution`) return json(solution);
+      return new Response('Not found', { status: 404 });
+    });
+    return calls;
+  }
+  async function followPosed(records: unknown[], sky: { body?: unknown; status: number }) {
+    const calls = posedServer(records, sky);
+    const events: UploadEvent[] = [];
+    await solveStoredUpload(receipt, { onEvent: (event) => events.push(event), pollMs: 0 });
+    return { calls, events };
+  }
+  const kinds = (events: UploadEvent[]) => events.map((e) => (e.kind === 'job' || e.kind === 'solved' ? `${e.kind}:${e.job.state}` : e.kind));
+
+  it('reads it once the record names it, tells it as early, and reads it only once', async () => {
+    const { calls, events } = await followPosed([running, named, named, succeededJob], { body: early, status: 200 });
+    expect(calls.filter((c) => c === skyUrl)).toHaveLength(1);
+    expect(calls.indexOf(skyUrl)).toBe(calls.indexOf(jobUrl) + 1);
+    expect(kinds(events)).toEqual(['job:running', 'job:running', 'early', 'job:running', 'job:succeeded', 'solved:succeeded']);
+    const told = events.find((e) => e.kind === 'early');
+    expect(told?.kind === 'early' && told.solution.poseEstimate?.method).toBe('moon_camera_profile_level_head');
+    expect(told?.kind === 'early' && told.solution.status).toBe('approximate');
+  });
+
+  it('reads it from the record the start answers with, when that one names it already', async () => {
+    const { calls, events } = await followPosed([named, succeededJob], { body: early, status: 200 });
+    expect(calls.slice(0, 2)).toEqual([`POST /api/ingest/${sha256}/solve?wait=false`, skyUrl]);
+    expect(kinds(events)).toEqual(['job:running', 'early', 'job:succeeded', 'solved:succeeded']);
+  });
+
+  it('never reads it for a job that has ended, though its record names it', async () => {
+    const ended = { ...succeededJob, predictedSkyAtUTC: succeededJob.startedAtUTC };
+    const { calls } = await followPosed([running, ended], { body: early, status: 200 });
+    expect(calls.some((c) => c.endsWith('/predicted-sky'))).toBe(false);
+  });
+
+  it('never reads it for a record that does not name it', async () => {
+    const { calls } = await followPosed([running, running, succeededJob], { body: early, status: 200 });
+    expect(calls.some((c) => c.endsWith('/predicted-sky'))).toBe(false);
+  });
+
+  it('tells nothing, and goes on following, when the route answers 404 or with a sky that is not an approximate one with its pose', async () => {
+    const { poseEstimate: _pose, ...unposed } = early;
+    for (const sky of [{ status: 404 }, { body: { nonsense: true }, status: 200 }, { body: solution, status: 200 }, { body: unposed, status: 200 }]) {
+      vi.restoreAllMocks();
+      const { events } = await followPosed([running, named, succeededJob], sky);
+      expect(kinds(events)).toEqual(['job:running', 'job:running', 'job:succeeded', 'solved:succeeded']);
+    }
+  });
+
+  it('tells nothing, and goes on following, when the read itself fails', async () => {
+    const calls: string[] = [];
+    const queue: unknown[] = [running, named, succeededJob];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      calls.push(url);
+      if (url.endsWith('/predicted-sky')) throw new TypeError('Failed to fetch');
+      if (url === `/api/ingest/${sha256}/solution`) return json(solution);
+      return json(queue.shift(), url.endsWith('wait=false') ? 202 : 200);
+    });
+    const events: UploadEvent[] = [];
+    await solveStoredUpload(receipt, { onEvent: (event) => events.push(event), pollMs: 0 });
+    expect(kinds(events)).toEqual(['job:running', 'job:running', 'job:succeeded', 'solved:succeeded']);
+  });
+});

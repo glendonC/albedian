@@ -510,12 +510,14 @@ async function fetchAnswer(input: string, init?: RequestInit): Promise<Response>
 
 /**
  * What happened to an upload on its way to a solved sky, as it happens: the receipt (the file is stored from then
- * on), each record of the solve job the server answers with, and how it ended. A failure carries the one sentence a
- * person reads: the job's own error, word for word, or, when no job record says why, that the solve stopped.
+ * on), each record of the solve job the server answers with, the sky it predicted from an early pose once its record
+ * names one (the lock-on, D25), and how it ended. A failure carries the one sentence a person reads: the job's own
+ * error, word for word, or, when no job record says why, that the solve stopped.
  */
 export type UploadEvent =
   | { kind: 'stored'; receipt: IngestReceipt }
   | { kind: 'job'; job: FollowedJob }
+  | { kind: 'early'; solution: ObservationSolution }
   | { kind: 'solved'; job: FollowedJob }
   | { kind: 'failed'; sentence: string; job: FollowedJob | null };
 
@@ -582,6 +584,19 @@ export async function followJob(
     if (options.signal?.aborted) throw new Error('stopped following');
   }
   return current;
+}
+
+/**
+ * The sky a running solve predicted from a pose it knew before its search ended (platform-10b:
+ * `GET /api/ingest/jobs/{id}/predicted-sky`): an approximate solution with its pose estimate. None when the route
+ * answers otherwise (404 before the record names it, after the job ends, or for another job) or with anything else.
+ */
+export async function readPredictedSky(jobId: string): Promise<ObservationSolution | null> {
+  const res = await fetchAnswer(`/api/ingest/jobs/${encodeURIComponent(jobId)}/predicted-sky`);
+  if (!res.ok) return null;
+  const parsed = ObservationSolutionSchema.safeParse(await res.json().catch(() => undefined));
+  if (!parsed.success || parsed.data.status !== 'approximate' || parsed.data.poseEstimate === undefined) return null;
+  return parsed.data;
 }
 
 /**
@@ -696,6 +711,15 @@ export async function solveStoredUpload(
   };
 
   const sha256 = receipt.sourceAsset.sha256;
+  // The lock-on (D25): once a running record names the sky predicted from an early pose, it is read once and told; a
+  // read that fails tells nothing, so the working screen stays as approved
+  let earlyRead = false;
+  const tellEarly = async (record: FollowedJob) => {
+    if (earlyRead || record.state !== 'running' || !('predictedSkyAtUTC' in record) || record.predictedSkyAtUTC === undefined) return;
+    earlyRead = true;
+    const sky = await readPredictedSky(record.id).catch(() => null);
+    if (sky) options?.onEvent?.({ kind: 'early', solution: sky });
+  };
   let job: FollowedJob;
   try {
     const solveRes = await fetchAnswer(`/api/ingest/${sha256}/solve?wait=false`, { method: 'POST' });
@@ -705,6 +729,7 @@ export async function solveStoredUpload(
     return solveDidNotFinish(err, null);
   }
   options?.onEvent?.({ kind: 'job', job });
+  await tellEarly(job);
   const pollMs = options?.pollMs ?? JOB_POLL_MS;
   while (job.state === 'queued' || job.state === 'running') {
     await new Promise((resolve) => setTimeout(resolve, pollMs));
@@ -716,6 +741,7 @@ export async function solveStoredUpload(
       return solveDidNotFinish(err, job);
     }
     options?.onEvent?.({ kind: 'job', job });
+    await tellEarly(job);
   }
   if (job.state === 'canceled') {
     const stored = ObservationSessionSchema.parse({

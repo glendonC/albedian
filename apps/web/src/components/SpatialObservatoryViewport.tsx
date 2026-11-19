@@ -43,6 +43,7 @@ import { HomeScreen } from './HomeScreen.js';
 import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
+import { earlyPoseOf } from '../reveal/earlyPose.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
@@ -710,6 +711,7 @@ export const SpatialObservatoryViewport: React.FC<
             onCancel={onCancelJob}
             onUploadAnother={(file) => onFileChosen?.(file)}
             onHome={() => setEntryStageActive(true)}
+            early={earlyPoseOf(arrival.early, session.sourceAsset)}
           />
         </>
       )}
