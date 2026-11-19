@@ -3,7 +3,7 @@
 What the screen sends with "Solve from here" (D24, line it up yourself): the pose the person left the drawn sky at,
 the frame centre's altitude and azimuth, its roll and its diagonal field of view, with source "person". It is the
 person's, never a measurement: the solver takes it only as a search hint, searching within the contract's stated
-uncertainty of the centre (`PERSON_ALIGNMENT_UNCERTAINTY_DEG`, [proposed] until align-2 measures it on public photos),
+uncertainty of the centre (`PERSON_ALIGNMENT_UNCERTAINTY_DEG`, [tested] by align-2 on public photos),
 and the unchanged held-out gate alone decides whether the photo becomes calibrated. A refused gate keeps the alignment
 as the person's, predicted, never observed or catalog matched.
 
@@ -30,8 +30,12 @@ PERSON_ALIGNMENT_FORMAT_VERSION = 1
 PERSON_ALIGNMENT_SOURCE = "person"
 # The predicted sky's own convention, and the roll's
 PERSON_ALIGNMENT_CONVENTION = {**SKY_CONTEXT_CONVENTION, "roll": "upright_frame_positive_clockwise"}
-# [proposed] How far from the person's centre the solver searches, in degrees: align-2 measures it on public photos
-# (an alignment within it leads to a correct solve, a wrong one never to a false solve) and sets it from the numbers
+# How far from the person's centre the solver searches, in degrees [tested, align-2 on 19 November: the 13 public photos
+# with a place that no star search matched, the person simulated from astrometry.net's solution; on the four a search
+# at the right field of view matches, an alignment 0 to 10 degrees off gave a correct solve in 24 of 26 tries, 15 and
+# 20 degrees off none; no wrong
+# solve among 80 calibrated results, and none of 76 wrong alignments or random skies calibrated;
+# .lead/kiro/reports/SOLVER/align-2-measure.md]
 PERSON_ALIGNMENT_UNCERTAINTY_DEG = 10.0
 # The widest diagonal field of view taken, as a pose estimate's
 PERSON_ALIGNMENT_FOV_MAX_DEG = 175.0
