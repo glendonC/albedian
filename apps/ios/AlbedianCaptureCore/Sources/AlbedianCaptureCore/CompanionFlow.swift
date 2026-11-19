@@ -17,8 +17,8 @@ public struct PhoneKeptValues: KeptValues, @unchecked Sendable {
     }
 }
 
-/// The laptop's address, typed once and kept on the phone (UIUX-connect-APPROVED): the person types what follows the
-/// fixed "http://", and the address is kept only after a send to it went through, so later sends go straight there.
+/// The laptop's address, typed once and kept on the phone (UIUX-connect-APPROVED): what follows the fixed "http://" or
+/// the whole address the laptop prints, kept only after a send to it went through, so later sends go straight there.
 public final class PairingKeeper: Sendable {
     public static let key = "albedian.laptop-address"
     /// Shown in front of the field, never typed.
@@ -29,8 +29,11 @@ public final class PairingKeeper: Sendable {
     public init(values: any KeptValues = PhoneKeptValues()) { self.values = values }
 
     /// The pairing address the typed text makes, or nil when it is not one (`LaptopAddress`: a local network host only).
+    /// A typed leading "http://", in any case, is the fixed scheme itself, so the address the laptop prints whole is
+    /// taken as it is and the scheme is never doubled.
     public static func address(typed: String) -> LaptopAddress? {
-        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.prefix(fixedScheme.count).lowercased() == fixedScheme { text = String(text.dropFirst(fixedScheme.count)) }
         guard !text.isEmpty else { return nil }
         return LaptopAddress(fixedScheme + text)
     }
