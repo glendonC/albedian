@@ -9,9 +9,12 @@
  * nothing heard, or recognition refusing to start) reports the stop exactly once, so the app never stays in a
  * listening state with no capture running.
  *
- * In Chrome the recognition runs on a remote service, so with no internet a capture ends in a 'network'
- * error. The sentence for each ending says plainly why it stopped and that the typed command bar still
- * works, since every command runs the same way typed.
+ * Where the browser can say whether English runs on the device (SpeechRecognition.available, Chrome 139 and later), a
+ * capture asks for on-device recognition when it is there, and asks for the language pack on the press when it can be
+ * downloaded, so speech works with no internet after one download made at home (FIELD field-3). Otherwise, and in a
+ * browser that cannot say, Chrome's recognition runs on a remote service, and with no internet a capture ends in a
+ * 'network' error. The sentence for each ending says plainly why it stopped and that the typed command bar still
+ * works, since every command runs the same way typed. Nothing on screen names where recognition runs.
  */
 
 export const SPEECH_UNAVAILABLE =
@@ -58,8 +61,22 @@ export interface SpeechRecognitionLike {
   onend: (() => void) | null;
   /** The browser opened the microphone, after any permission prompt (Web Speech API audiostart). */
   onaudiostart: (() => void) | null;
+  /** Recognition must run on the device (Web Speech API processLocally); absent where the browser has none. */
+  processLocally?: boolean;
   start(): void;
 }
+
+/** What a browser says about recognising a language on the device, and how it is asked for the pack (Web Speech API). */
+interface OnDeviceOptions {
+  langs: string[];
+  processLocally?: boolean;
+}
+export type SpeechRecognitionConstructor = (new () => SpeechRecognitionLike) & {
+  available?: (options: OnDeviceOptions) => Promise<string>;
+  install?: (options: OnDeviceOptions) => Promise<boolean>;
+};
+
+const LANG = 'en-US';
 
 export interface SpeechCaptureHandlers {
   /** The capture started; the microphone is not open yet, and the browser may be asking for it. */
@@ -84,10 +101,7 @@ export interface SpeechCaptureHandlers {
  * Starts one capture with the browser's recognition constructor, or reports SPEECH_UNAVAILABLE when the
  * browser has none.
  */
-export function startSpeechCapture(
-  Recognition: (new () => SpeechRecognitionLike) | undefined,
-  handlers: SpeechCaptureHandlers
-): void {
+export function startSpeechCapture(Recognition: SpeechRecognitionConstructor | undefined, handlers: SpeechCaptureHandlers): void {
   if (!Recognition) {
     handlers.onStopped(SPEECH_UNAVAILABLE);
     return;
@@ -101,33 +115,55 @@ export function startSpeechCapture(
     handlers.onStopped(banner);
   };
 
-  let rec: SpeechRecognitionLike;
-  try {
-    rec = new Recognition();
-    rec.lang = 'en-US';
-    rec.interimResults = handlers.onWords !== undefined;
-    rec.onresult = (event) => {
-      // One capture hands over its words once
-      if (stopped || heard) return;
-      const results = Array.from(event.results);
-      const transcript = results.map((result) => result[0]?.transcript ?? '').join('').trim();
-      if (!transcript) return;
-      const settled = results.at(-1)?.isFinal !== false;
-      handlers.onWords?.(transcript, settled);
-      if (!settled) return;
-      heard = true;
-      handlers.onTranscript(transcript);
-    };
-    // After words were heard the command has already answered, so a late error or end keeps its banner.
-    rec.onerror = (event) => stop(heard ? null : speechErrorBanner(event.error));
-    rec.onend = () => stop(heard ? null : speechErrorBanner('no-speech'));
-    rec.onaudiostart = () => {
-      if (!stopped) handlers.onListening();
-    };
-    rec.start();
-  } catch {
-    stop(STOPPED);
+  const begin = (onDevice: boolean) => {
+    let rec: SpeechRecognitionLike;
+    try {
+      rec = new Recognition();
+      rec.lang = LANG;
+      if (onDevice) rec.processLocally = true;
+      rec.interimResults = handlers.onWords !== undefined;
+      rec.onresult = (event) => {
+        // One capture hands over its words once
+        if (stopped || heard) return;
+        const results = Array.from(event.results);
+        const transcript = results.map((result) => result[0]?.transcript ?? '').join('').trim();
+        if (!transcript) return;
+        const settled = results.at(-1)?.isFinal !== false;
+        handlers.onWords?.(transcript, settled);
+        if (!settled) return;
+        heard = true;
+        handlers.onTranscript(transcript);
+      };
+      // After words were heard the command has already answered, so a late error or end keeps its banner.
+      rec.onerror = (event) => stop(heard ? null : speechErrorBanner(event.error));
+      rec.onend = () => stop(heard ? null : speechErrorBanner('no-speech'));
+      rec.onaudiostart = () => {
+        if (!stopped) handlers.onListening();
+      };
+      rec.start();
+    } catch {
+      stop(STOPPED);
+    }
+  };
+
+  // A browser that cannot say where recognition runs starts at once, as before
+  if (typeof Recognition.available !== 'function') {
+    begin(false);
+    if (!stopped) handlers.onAsking();
     return;
   }
-  if (!stopped) handlers.onAsking();
+  handlers.onAsking();
+  const options: OnDeviceOptions = { langs: [LANG], processLocally: true };
+  Recognition.available(options).then(
+    (state) => {
+      // Asked for on the press, which a download needs; this capture uses the browser's service meanwhile
+      if (state === 'downloadable' && typeof Recognition.install === 'function') {
+        Promise.resolve()
+          .then(() => Recognition.install!(options))
+          .catch(() => false);
+      }
+      begin(state === 'available');
+    },
+    () => begin(false)
+  );
 }

@@ -206,3 +206,85 @@ describe('@albedian/web push-to-talk speech capture', () => {
     vi.restoreAllMocks();
   });
 });
+
+// On-device recognition (FIELD field-3, the lead's answer 23:50): where the browser can say whether English runs on the
+// device, a capture asks it to; a language pack it can download is asked for on the press; nothing new is shown
+describe('on-device recognition where the browser offers it', () => {
+  type Availability = 'available' | 'downloadable' | 'downloading' | 'unavailable';
+  function deviceRecognition(availability: Availability, installs = true) {
+    const asked: Array<{ langs: string[]; processLocally?: boolean }> = [];
+    const installed: Array<{ langs: string[]; processLocally?: boolean }> = [];
+    class DeviceRecognition extends FakeRecognition {
+      processLocally = false;
+      static available(options: { langs: string[]; processLocally?: boolean }) {
+        asked.push(options);
+        return Promise.resolve(availability);
+      }
+      static install(options: { langs: string[]; processLocally?: boolean }) {
+        installed.push(options);
+        return Promise.resolve(installs);
+      }
+    }
+    return { Ctor: DeviceRecognition, asked, installed };
+  }
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const last = () => FakeRecognition.last as FakeRecognition & { processLocally?: boolean };
+
+  it('runs on the device when English is there, says it is asking at once and starts once the browser has answered', async () => {
+    const { Ctor, asked, installed } = deviceRecognition('available');
+    FakeRecognition.last = undefined;
+    const { calls } = capture(Ctor);
+    expect(calls.asking).toBe(1);
+    await settle();
+    expect(asked).toEqual([{ langs: ['en-US'], processLocally: true }]);
+    expect(installed).toEqual([]);
+    expect(last().started).toBe(true);
+    expect(last().processLocally).toBe(true);
+    expect(last().lang).toBe('en-US');
+  });
+
+  it('asks for the language pack on the press when it can be downloaded, and uses the browser\'s service this time', async () => {
+    const { Ctor, installed } = deviceRecognition('downloadable');
+    capture(Ctor);
+    await settle();
+    expect(installed).toEqual([{ langs: ['en-US'], processLocally: true }]);
+    expect(last().started).toBe(true);
+    expect(last().processLocally).toBe(false);
+  });
+
+  it('uses the browser\'s service while the pack downloads or where the device cannot, and asks for no download', async () => {
+    for (const availability of ['downloading', 'unavailable'] as const) {
+      const { Ctor, installed } = deviceRecognition(availability);
+      capture(Ctor);
+      await settle();
+      expect(installed).toEqual([]);
+      expect(last().started).toBe(true);
+      expect(last().processLocally).toBe(false);
+    }
+  });
+
+  it('still starts when the browser\'s answer fails, and reports the stop once if start refuses after it', async () => {
+    class Failing extends FakeRecognition {
+      static available() {
+        return Promise.reject(new DOMException('blocked', 'InvalidStateError'));
+      }
+    }
+    capture(Failing);
+    await settle();
+    expect(last().started).toBe(true);
+    class FailingRefusing extends RefusingRecognition {
+      static available() {
+        return Promise.resolve('available');
+      }
+    }
+    const { calls } = capture(FailingRefusing);
+    await settle();
+    expect(calls.stopped).toEqual(['Speech recognition stopped. Type the command below.']);
+  });
+
+  it('starts at once, as before, in a browser that cannot say', () => {
+    FakeRecognition.last = undefined;
+    capture(FakeRecognition);
+    expect(last().started).toBe(true);
+  });
+});
