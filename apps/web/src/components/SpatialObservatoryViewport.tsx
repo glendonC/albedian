@@ -90,6 +90,8 @@ export interface SpatialObservatoryViewportProps {
   arrival?: Arrival | null;
   /** Starts the failed upload's work again (the working screen's Try again). */
   onTryAgain?: () => void;
+  /** Asks the server to cancel the upload's job (the working screen's Cancel, D2). */
+  onCancelJob?: () => Promise<unknown> | void;
   /** The answer to the last question, or a command's refusal, shown in the card's place over the laptop reveal. */
   answer?: ShownAnswer | null;
   onCloseAnswer?: () => void;
@@ -177,6 +179,7 @@ export const SpatialObservatoryViewport: React.FC<
   heardWords = null,
   canListen = true,
   onTryAgain,
+  onCancelJob,
 }) => {
   const windowSize = useViewportSize();
   // The approved laptop reveal shows over the photo, above phone width; the phone keeps its sheets until its own unit
@@ -680,6 +683,7 @@ export const SpatialObservatoryViewport: React.FC<
             arrival={arrival}
             photoRect={photoFrameMismatch ? null : sessionPhotoRect(session, windowSize.widthPx, windowSize.heightPx)}
             onTryAgain={() => onTryAgain?.()}
+            onCancel={onCancelJob}
             onUploadAnother={(file) => onFileChosen?.(file)}
             onHome={() => setEntryStageActive(true)}
           />

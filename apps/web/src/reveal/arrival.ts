@@ -21,7 +21,13 @@ export const STAGE_WORDS: Readonly<Record<ArrivalStage, string>> = {
 
 /** The part of a job record the rows read: a SolveJob or an UploadJob of the contract both fit. */
 export interface ArrivalJob {
+  /** The job's id, for Cancel; absent in records the rows alone read. */
+  readonly id?: string;
   readonly state: string;
+  /** How many jobs are ahead of a queued one (the runner's served count). */
+  readonly queueAhead?: number;
+  /** When a cancel was asked of a running job. */
+  readonly cancelRequestedAtUTC?: string;
   readonly stages: ReadonlyArray<{ readonly stage: string; readonly unit: string; readonly done: number; readonly total: number | null }>;
   readonly error?: string;
 }

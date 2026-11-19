@@ -150,7 +150,13 @@ function held() {
 }
 
 /** The app on a server whose answers to each route come from the given queues, in order; returns the calls made. */
-async function renderApp(routes: { ingest: Array<() => Promise<Response>>; solve?: Array<() => Promise<Response>>; solution?: Array<() => Promise<Response>> }) {
+async function renderApp(routes: {
+  ingest: Array<() => Promise<Response>>;
+  solve?: Array<() => Promise<Response>>;
+  solution?: Array<() => Promise<Response>>;
+  jobs?: Array<() => Promise<Response>>;
+  cancel?: Array<() => Promise<Response>>;
+}) {
   const calls: string[] = [];
   vi.stubGlobal(
     'fetch',
@@ -158,7 +164,18 @@ async function renderApp(routes: { ingest: Array<() => Promise<Response>>; solve
       const url = String(input);
       if (url === '/api/media/discover') return json({ items: [] });
       calls.push(`${init?.method ?? 'GET'} ${url}`);
-      const queue = url === '/api/ingest' ? routes.ingest : url.endsWith('/solve?wait=false') ? routes.solve : url.endsWith('/solution') ? routes.solution : undefined;
+      const queue =
+        url === '/api/ingest'
+          ? routes.ingest
+          : url.endsWith('/solve?wait=false')
+            ? routes.solve
+            : url.endsWith('/solution')
+              ? routes.solution
+              : url.endsWith('/cancel')
+                ? routes.cancel
+                : url.startsWith('/api/ingest/jobs/')
+                  ? routes.jobs
+                  : undefined;
       const next = queue?.shift();
       if (!next) throw new Error(`no answer planned for ${url}`);
       return next();
@@ -271,6 +288,25 @@ describe('the app follows an upload on the working screen', () => {
     expect(q('[data-testid="source-photo-stage"] img')!.getAttribute('src')).toBe('blob:arrival-1');
     expect(q('.alb-lusion-header')).not.toBeNull();
     expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve?wait=false`, `GET /api/ingest/${sha256}/solution`]);
+  });
+
+  it('shows a queued job with its count ahead and Cancel, which asks the server to cancel that job; the canceled job then reads "Canceled" (D2, INTERIM)', async () => {
+    const jobId = `job_${sha256.slice(0, 16)}`;
+    const queued = { id: jobId, sourceAssetSha256: sha256, state: 'queued', createdAtUTC: '2026-11-19T05:00:00Z', stages: [{ stage: 'store', unit: 'bytes', done: 2_382_523, total: 2_382_523 }] };
+    const canceled = { ...queued, state: 'canceled', finishedAtUTC: '2026-11-19T05:00:02Z' };
+    const calls = await renderApp({
+      ingest: [async () => json(receipt, 201)],
+      solve: [async () => json(queued, 202)],
+      cancel: [async () => json(canceled)],
+      jobs: [async () => json(canceled)],
+    });
+    chooseOnHome(readableFile('night.jpg'));
+    await waitUntil(() => expect(q('.work-acts button')!.textContent).toBe('Cancel'));
+    expect(q('.work-why p')!.textContent).toBe('Queued');
+    act(() => (q('.work-acts button') as HTMLButtonElement).click());
+    await waitUntil(() => expect(calls).toContain(`POST /api/ingest/jobs/${jobId}/cancel`));
+    await waitUntil(() => expect(q('.work-why p')!.textContent).toBe('Canceled'));
+    expect([...container.querySelectorAll('.work-acts button')].map((b) => b.textContent)).toEqual(['Try again', 'Upload another']);
   });
 
   it("shows a failed job's own sentence and stage, and Try again runs the same solve without sending the file again", async () => {

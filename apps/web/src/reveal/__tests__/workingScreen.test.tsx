@@ -375,3 +375,81 @@ describe("the working screen's rules are the approved pages'", () => {
     for (const rule of rules) expect(rule).not.toMatch(/transition|animation/);
   });
 });
+
+// A job that waits, is canceled or was left unfinished (UIUX-jobs-QUESTION.md, D2, INTERIM): Cancel sits where Try
+// again sits on a failed job; a queued job says "Queued" and its own count of jobs ahead; once pressed, Cancel stays
+// pressed and greyed until the job has really stopped. A canceled or interrupted job is the failed job's screen.
+describe('Cancel on a job that waits or works (D2, INTERIM)', () => {
+  const QUEUED = arrival({ job: { id: 'job_a', state: 'queued', queueAhead: 1, stages: [stage('store', 'bytes', BYTES, BYTES)] } });
+  const cancelButton = () => [...container.querySelectorAll('.work-acts button')].find((b) => b.textContent === 'Cancel') as HTMLButtonElement | undefined;
+
+  it('says "Queued" and the jobs ahead, with Cancel under it and no Try again', () => {
+    show({ arrival: QUEUED, onCancel: noop });
+    expect(q('.work-why p')!.textContent).toBe('Queued · 1 ahead');
+    expect(q('.work-why p span')!.textContent).toBe(' · 1 ahead');
+    expect(cancelButton()!.className).toContain('work-cancel');
+    expect([...container.querySelectorAll('.work-acts button')].map((b) => b.textContent)).toEqual(['Cancel']);
+    expect(q('.work-screen')!.className).toBe('work-screen');
+  });
+
+  it('says only "Queued" when no job is ahead', () => {
+    show({ arrival: arrival({ job: { ...QUEUED.job!, queueAhead: 0 } }), onCancel: noop });
+    expect(q('.work-why p')!.textContent).toBe('Queued');
+  });
+
+  it('puts Cancel alone above the rows while the job works', () => {
+    show({ arrival: arrival({ job: { ...WORKING_JOB, id: 'job_a' } }), onCancel: noop });
+    expect(q('.work-why p')).toBeNull();
+    expect(cancelButton()).toBeDefined();
+  });
+
+  it('asks once, then holds Cancel pressed and greyed until the job stops', async () => {
+    const onCancel = vi.fn(() => new Promise<void>(() => {}));
+    show({ arrival: arrival({ job: { ...WORKING_JOB, id: 'job_a' } }), onCancel });
+    act(() => cancelButton()!.click());
+    act(() => cancelButton()!.click());
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(cancelButton()!.className).toContain('is-asked');
+    expect(cancelButton()!.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('shows it held when the job record says a cancel was asked, and lets it go if the server refuses', async () => {
+    show({ arrival: arrival({ job: { ...WORKING_JOB, id: 'job_a', cancelRequestedAtUTC: '2026-11-19T05:00:00Z' } }), onCancel: noop });
+    expect(cancelButton()!.className).toContain('is-asked');
+    let refuse: (e: Error) => void = () => {};
+    const onCancel = vi.fn(() => new Promise<void>((_, reject) => (refuse = reject)));
+    show({ arrival: arrival({ job: { ...WORKING_JOB, id: 'job_b' } }), onCancel });
+    act(() => cancelButton()!.click());
+    expect(cancelButton()!.className).toContain('is-asked');
+    await act(async () => {
+      refuse(new Error('no solve job with that id is stored'));
+      await Promise.resolve();
+    });
+    expect(cancelButton()!.className).not.toContain('is-asked');
+  });
+
+  it('has no Cancel before the job exists, once it stopped, or with no way to cancel', () => {
+    show({ arrival: arrival({ job: null, stored: false }), onCancel: noop });
+    expect(cancelButton()).toBeUndefined();
+    show({ arrival: FAILED, onCancel: noop });
+    expect(cancelButton()).toBeUndefined();
+    show({ arrival: arrival({ job: { ...WORKING_JOB, id: 'job_a' } }) });
+    expect(cancelButton()).toBeUndefined();
+  });
+
+  it('shows a canceled job as the failed job, its word "Canceled" with Try again and Upload another', () => {
+    show({ arrival: arrival({ job: { ...WORKING_JOB, state: 'canceled' }, failure: { sentence: 'Canceled', canTryAgain: true } }), onCancel: noop });
+    expect(q('.work-why p')!.textContent).toBe('Canceled');
+    expect([...container.querySelectorAll('.work-acts button')].map((b) => b.textContent)).toEqual(['Try again', 'Upload another']);
+  });
+
+  it("sets the count ahead in the third ink and a held Cancel as the record draws it", () => {
+    expect(declarationsOf('.work-why p span')).toEqual({ color: 'var(--look-ink-3)' });
+    expect(declarationsOf('.work-acts .look-second.is-asked')).toEqual({
+      background: 'var(--look-wash)',
+      color: 'var(--look-ink-3)',
+      'border-color': 'var(--look-hair)',
+      cursor: 'default',
+    });
+  });
+});

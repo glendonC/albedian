@@ -16,6 +16,7 @@ import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
 import {
   DiscoveredMediaItem,
   UploadRefusedError,
+  cancelJob,
   failureReason,
   fetchDiscoveredMedia,
   solveStoredUpload,
@@ -430,6 +431,7 @@ export const App: React.FC = () => {
         uploadRefusal={uploadRefusal}
         arrival={arrival}
         onTryAgain={handleTryAgain}
+        onCancelJob={() => (arrival?.job?.id ? cancelJob(arrival.job.id) : undefined)}
         answer={answer && answer.photoKey === photoKeyOf(session) ? answer : null}
         heardWords={heardWords}
         canListen={canListen}

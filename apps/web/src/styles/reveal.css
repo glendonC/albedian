@@ -164,6 +164,19 @@
   text-wrap: balance;
 }
 
+/* A queued job's count of jobs ahead, in the third ink (D2, INTERIM) */
+.work-why p span {
+  color: var(--look-ink-3);
+}
+
+/* Cancel, once pressed: held pressed and greyed until the job has really stopped (D2, INTERIM) */
+.work-acts .look-second.is-asked {
+  background: var(--look-wash);
+  color: var(--look-ink-3);
+  border-color: var(--look-hair);
+  cursor: default;
+}
+
 .work-acts {
   display: flex;
   gap: 10px;
