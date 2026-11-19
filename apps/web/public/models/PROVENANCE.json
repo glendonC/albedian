@@ -479,7 +479,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "bafbc3c5d39eb200c489c4aa4c470b146995c585ef8ce5025f36c74d16e27315",
+      "sha256": "9cb6b385e6e7ebec593e84894b24c520f001e8ce6fd5737d3d2595137397f48a",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1021,6 +1021,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29.png (1026954 bytes, SHA-256 529bc6463d2b3436ba1d0d692db24afa83dc4dc822fde893647edd621b0f1bb9)."
+    },
+    {
+      "path": "hangar/near/near_lod0.glb",
+      "sha256": "a4dec394162a6bc94ed1c8882dbd416b9c600ef6c58ba35711776bb7ec097937",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft near --out apps/web/public/models/hangar/near",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and gold foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, a small printed label in the photo painted over in the colour around it, the silver foil made metal foil, the solar panels keeping their texture with one roughness and no metalness, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/NEAR%20Shoemaker/NEAR%20Shoemaker.glb (701808 bytes, SHA-256 f3de2f87c97685b207be97e80d7cdca37d1567dd68204e1feb2d85f90e3adb0c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/near/near_lod1.glb",
+      "sha256": "760d22bc832b1ce99174dd630488f74c6a1dee5f7e485a6d2acbf6b8c1ab34bf",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft near --out apps/web/public/models/hangar/near",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/NEAR%20Shoemaker/NEAR%20Shoemaker.glb (701808 bytes, SHA-256 f3de2f87c97685b207be97e80d7cdca37d1567dd68204e1feb2d85f90e3adb0c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/near/near_lod2.glb",
+      "sha256": "776b6290b1a014ebe25a2e3c2036c55d24e72fe4cacaa307f5f29106df440140",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft near --out apps/web/public/models/hangar/near",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/NEAR%20Shoemaker/NEAR%20Shoemaker.glb (701808 bytes, SHA-256 f3de2f87c97685b207be97e80d7cdca37d1567dd68204e1feb2d85f90e3adb0c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/near/near_picker.webp",
+      "sha256": "4637a730325acc99446415ff986e1298d4334fecce7b0b63abb2cbac003984e9",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft near --out apps/web/public/models/hangar/near",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/NEAR%20Shoemaker/NEAR%20Shoemaker.png (696697 bytes, SHA-256 18180fa36bba129763365110478c3fc0e1dcfa74c61bdd3b2b828cc54534bbc4)."
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod0.glb",

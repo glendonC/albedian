@@ -1202,6 +1202,51 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.5,
         "changes": "photo",
     },
+    "near": {
+        "title": "NEAR Shoemaker",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-near-shoemaker",
+            "title": "NEAR Shoemaker, NASA 3D Resources",
+            "folder": "NEAR Shoemaker",
+            "file": "NEAR Shoemaker.glb",
+            "bytes": 701_808,
+            "sha256": "f3de2f87c97685b207be97e80d7cdca37d1567dd68204e1feb2d85f90e3adb0c",
+            "picture": "NEAR Shoemaker.png",
+            "picture_bytes": 696_697,
+            "picture_sha256": "18180fa36bba129763365110478c3fc0e1dcfa74c61bdd3b2b828cc54534bbc4",
+            "local": "near",
+        },
+        "drop_objects": [],
+        # The fixed high-gain dish is at -Z in the import frame and faces Earth, so the craft is flown along +Z, away from
+        # it, as Voyager is; the four solar panels spread in the XY plane, so +Y is up.
+        "forward": (0.0, 0.0, 1.0),
+        "up": (0.0, 1.0, 0.0),
+        # Scale from the dish, NASA's silver foil part, 1.5036 units across, to NSSDC's 1.5 m (NASA's model is in
+        # metres). A check: the four panels then reach 5.25 m across, the body and two 1.8 m panels.
+        "scale_from": {
+            "material": "foil_silver",
+            "axis": "x",
+            "metres": 1.5,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A",
+            "quote": "a fixed 1.5 m X-band high-gain radio antenna",
+        },
+        "materials": {
+            "tex_01": {
+                "role": "photo_atlas",
+                # The maker's two-line label on the photographed circuit panel Dawn's texture also holds, illegible.
+                "paint_out": [{"box": (124, 758, 168, 773), "what": "a printed label"}],
+            },
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            # The panels' cells under cover glass: NASA's texture kept, no metalness.
+            "shiny_panels": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "body_radius_m": 1.4,
+        "changes": "photo_label",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1614,6 +1659,24 @@ HANGAR: list[dict] = [
             {"key": "body", "value": "about 1.17 by 1.17 by 1.7 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "a rectangular box approximately 1.17 x 1.17 x 1.7 meters in size"},
             {"key": "marsOrbit", "value": "1997-09-12", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "was inserted into an elliptical capture orbit at 01:17 UT 12 September 1997"},
             {"key": "contactLost", "value": "2006-11-02", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "contact with the spacecraft was lost on 2 November 2006"},
+        ],
+    },
+    {
+        # NEAR Shoemaker orbited the asteroid Eros and landed on it: no speed between stars. NSSDC's Facts in Brief box
+        # gives 487 kg where the mission page gives 805 kg; the mission page's figure is used, in its own words.
+        "id": "near-shoemaker",
+        "name": "NEAR Shoemaker",
+        "model": "near",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1996-02-17", "page": "https://science.nasa.gov/mission/near-shoemaker/", "quote": "Feb. 17, 1996 / 20:43:27 UT"},
+            {"key": "massKg", "value": 805, "page": "https://science.nasa.gov/mission/near-shoemaker/", "quote": "1,775 pounds (805 kilograms)"},
+            {"key": "dishM", "value": 1.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A", "quote": "a fixed 1.5 m X-band high-gain radio antenna"},
+            {"key": "bodySideM", "value": 1.7, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A", "quote": "approximately 1.7 m on a side"},
+            {"key": "solarPanels", "value": "four, 1.8 by 1.2 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A", "quote": "four 1.8 by 1.2 meter gallium arsenide solar panels"},
+            {"key": "erosOrbit", "value": "2000-02-14", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A", "quote": "Orbit insertion around Eros occurred on 14 February 2000 at 15:33 UT"},
+            {"key": "landedOnEros", "value": "2001-02-12", "page": "https://science.nasa.gov/mission/near-shoemaker/", "quote": "just south of a saddle-shaped feature named Himeros, on Feb. 12, 2001, at 19:44 UT."},
+            {"key": "lastContact", "value": "2001-02-28", "page": "https://science.nasa.gov/mission/near-shoemaker/", "quote": "Last contact with NEAR was Feb. 28, 2001, the spacecraft having succumbed to the extreme cold."},
         ],
     },
 ]
