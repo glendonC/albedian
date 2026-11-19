@@ -541,6 +541,32 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(onRunUtterance).not.toHaveBeenCalled();
   });
 
+  it('opens keyboard help on "?" after the home on the laptop, the 3D keys listed only in the 3D view (INTERIM)', () => {
+    const press = () => act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }));
+    });
+    const labels = () => [...container.querySelectorAll('.keys-help__row span:first-child')].map((s) => s.textContent);
+    open(storedPhoto());
+    press();
+    expect(q('.keys-help [role="dialog"]')).not.toBeNull();
+    expect(labels()).not.toContain('Move in 3D');
+    act(() => root.unmount());
+    root = createRoot(container);
+    const base = storedPhoto();
+    open({ ...base, spatialView: { ...base.spatialView, mode: 'catalog_3d' } } as ObservationSession);
+    press();
+    expect(labels()).toContain('Move in 3D');
+  });
+
+  it('has no keyboard help on a phone', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    open(storedPhoto());
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }));
+    });
+    expect(q('.keys-help')).toBeNull();
+  });
+
   it('draws the approved card for the picked star, and not the old card', () => {
     open(pickedSession());
     expect(q(CARD)).not.toBeNull();

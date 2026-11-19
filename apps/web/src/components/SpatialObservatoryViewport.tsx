@@ -48,6 +48,7 @@ import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
 import { canDrawRealSky, isRealSkyShown } from '../reveal/RealSkyLayer.js';
 import { flightReadout, isFlightShown } from '../reveal/flightView.js';
+import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
@@ -804,6 +805,10 @@ export const SpatialObservatoryViewport: React.FC<
 
       {/* The row at the top right of every laptop screen after the home: the view pills over the photo, then the Sound
           circle; none on the home, which has its own, nor while a photo is being worked on */}
+      {/* Keyboard help on "?" (INTERIM: UIUX-keys-QUESTION.md), on the laptop after the home; the 3D view's keys are
+          listed only where that view is on screen */}
+      {!phone && !entryStageActive && !arrival && <KeyboardHelp threeD={!revealShown} />}
+
       {!phone && !entryStageActive && !arrival && (
         <div className="reveal-nav" data-hud-interactive="true">
           {revealShown && (

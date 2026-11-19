@@ -979,3 +979,77 @@
     animation: none;
   }
 }
+
+/* Keyboard help (INTERIM: .lead/uiux/UIUX-keys-QUESTION.md; #kh-open in .cache/uiux/keys/screen/kh-open.html), with no
+   movement until the MOTION record has the owner's yes */
+.keys-help {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+}
+
+.keys-help__veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.keys-help__card {
+  position: relative;
+  width: 420px;
+  box-sizing: border-box;
+  padding: 18px 22px 10px;
+  border-radius: 18px;
+  background: #111112;
+  border: 1px solid var(--look-hair);
+  color: var(--look-ink);
+  font-family: var(--look-font-sans);
+  outline: none;
+}
+
+.keys-help__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.keys-help__title {
+  font: 400 20px / 1 var(--look-font-sans);
+  letter-spacing: -0.025em;
+}
+
+/* The close circle at 32 px, as the page draws it */
+.keys-help__close {
+  --look-h: 32px;
+}
+
+.keys-help__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  border-top: 1px solid var(--look-hair);
+  font: 400 15px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+}
+
+.keys-help__keys {
+  display: flex;
+  gap: 5px;
+}
+
+.keys-help kbd {
+  min-width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid rgba(244, 243, 239, 0.28);
+  display: inline-grid;
+  place-items: center;
+  font: 400 12px / 1 var(--look-font-sans);
+  color: var(--look-ink-2);
+}
