@@ -227,7 +227,7 @@ export const RealSkyLayer: React.FC<{
   }, [session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx]);
 
   return (
-    <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
+    <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas ref={canvas} className="real-sky__canvas" width={Math.round(viewportWidthPx * dpr)} height={Math.round(viewportHeightPx * dpr)} />
       {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? phoneRealSkyShade(viewportHeightPx, { there }) : realSkyShade(rect, viewportWidthPx) }} />}
     </div>

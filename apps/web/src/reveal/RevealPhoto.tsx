@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { answerFindings, type ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
@@ -9,6 +9,12 @@ import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
 import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
+import { CraftPicker, PilotTrip } from '../spatial/flight/PilotPieces.js';
+import { FlightClock } from '../spatial/flight/pilotReadout.js';
+import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
+import { noDistanceSentence } from '../spatial/flight/flightRings.js';
+import { isConeViewOn } from '../spatial/flight/coneView.js';
+import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { phoneSlotRect } from './phoneSlot.js';
 import { PhoneNoMatch } from './PhoneNoMatch.js';
 
@@ -21,6 +27,18 @@ export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.words
 /** What the view there is, word for word from the approved fly record: the spec's sentence, then the layer's sources. */
 const THERE_DISCLOSURE =
   'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.';
+
+/**
+ * There on the laptop, in the flight through the stars (D27, UIUX-flight-READY.md item 4), word for word and in order:
+ * the spec's sentence, the stars' line, the rings' line, the no-distance count when any, the dimmed panorama's credit.
+ * The cone view (cone-1) keeps the first two: no rings and no panorama are drawn there.
+ */
+const FLIGHT_LINES = {
+  spec: 'Drawn or computed by the app; not measured in the source recording.',
+  stars: 'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
+  rings: 'Rings: the stars your photo matched.',
+  milkyWay: 'Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.',
+} as const;
 import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { oneDecimal, type FlightReadout } from './flightView.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
@@ -153,6 +171,18 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // Whether the panorama is on screen: the status says Simulated only then, and the photo's own status otherwise (while
   // it loads, when it cannot be drawn, with Original pixels pressed: the verdict on unit-realsky-1)
   const [skyDrawn, setSkyDrawn] = useState(false);
+  // The flight through the stars: the craft flown (D26; the page address may ask for one), the drawn stars kept on the
+  // sky sphere (D27 item 2), the flight's own measured travel time, and the cone view (cone-1)
+  const [craft, setCraft] = useState<Craft | null>(() => (typeof window === 'undefined' ? null : craftFromSearch(window.location.search)));
+  const [noDistance, setNoDistance] = useState(0);
+  const clock = useRef(new FlightClock());
+  const phase = session.spatialView?.transitionPhase;
+  const [flightSeconds, setFlightSeconds] = useState<number | null>(null);
+  useEffect(() => {
+    clock.current.observe(phase, performance.now());
+    setFlightSeconds(clock.current.seconds);
+  }, [phase]);
+  const cone = there && isConeViewOn(session);
   const skyOnScreen = skyShown && skyDrawn && !originalPixels;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
   const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
@@ -172,17 +202,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
-      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} />}
+      {skyMounted && !originalPixels && !cone && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} />}
       {rect && <PhotoCorners rect={rect} />}
 
-      {!phone && !bareFrame && picked && marks.some((mark) => mark.picked) && (
+      {!phone && !bareFrame && !cone && picked && marks.some((mark) => mark.picked) && (
         <svg className={marks.find((mark) => mark.picked)!.kind === 'predicted' ? 'reveal-leader is-predicted' : 'reveal-leader'} data-testid="reveal-leader" aria-hidden="true" focusable="false">
           <path pathLength={1} d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
         </svg>
       )}
 
-      {!bareFrame && (
+      {!bareFrame && !cone && (
       <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
@@ -229,10 +259,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
       {phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} />
-      ) : phone && (!skyOnScreen || there) ? null : there && skyOnScreen ? (
+      ) : phone && (!skyOnScreen || there) ? null : there && (skyOnScreen || cone) ? (
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
-          <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
+          <p className="reveal-status__line">{FLIGHT_LINES.spec}</p>
+          <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
+          {!cone && <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>}
+          {!cone && noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
+          {!cone && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
         </div>
       ) : skyOnScreen ? (
         <div key="real-sky" className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" data-moment="real-sky" role="status">
@@ -280,7 +314,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
 
-      {!answer && flight && (
+      {!answer && flight && !cone && (
         <section className={phone ? 'flight-readout is-phone' : 'flight-readout'} data-testid="flight-readout" aria-label={flight.name}>
           <EvidenceTag evidenceClass="simulated" />
           {/* On the phone, where no status line shows, the readout says what the view is (AGENTS.md 1.2) */}
@@ -304,8 +338,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <span>from Earth</span>
             </div>
           </div>
+          {!phone && craft && picked && placeFinding(picked).kind === 'at_distance' && (
+            <PilotTrip craft={craft} starName={flight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} />
+          )}
         </section>
       )}
+
+      {there && !phone && !cone && <CraftPicker craft={craft} onPick={setCraft} />}
 
       {!answer && !there && picked && (
         <StarCard

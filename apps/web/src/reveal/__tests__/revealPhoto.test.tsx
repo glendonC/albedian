@@ -465,7 +465,6 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
 
 describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => {
   const READOUT = '[data-testid="flight-readout"]';
-  const DISCLOSURE = 'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.';
   const rigelPicked = () => {
     const session = calibrated();
     const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
@@ -485,12 +484,54 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('.flight-readout__note')).toBeNull();
   });
 
-  it('says what the view is: the Simulated tag and the spec\'s sentence with the layer\'s sources, word for word', () => {
+  it('says what the view is: the Simulated tag and the flight\'s lines, word for word (D27 item 4, decided 19 Nov)', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
     const status = q('[data-testid="reveal-status"]')!;
     expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
-    expect(status.querySelector('.reveal-status__line')!.textContent).toBe(DISCLOSURE);
+    // No star layer draws here, so no star is counted and the count's sentence is left out
+    expect([...status.querySelectorAll('.reveal-status__line')].map((p) => p.textContent)).toEqual([
+      'Drawn or computed by the app; not measured in the source recording.',
+      'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
+      'Rings: the stars your photo matched.',
+      'Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.',
+    ]);
+  });
+
+  it('offers the craft picker there on the laptop, and the craft\'s real trip under the distances once one flies (D26)', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    const pill = q('[data-testid="craft-picker"] > button') as HTMLButtonElement;
+    expect(pill.textContent).toBe('Your view');
+    expect(q('[data-testid="pilot-trip"]')).toBeNull();
+    act(() => pill.click());
+    act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
+    expect(q('[data-testid="pilot-trip"]')!.textContent).toContain('to Rigel at its real speed, 17.0 km/s');
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true });
+    expect(q('[data-testid="craft-picker"]')).toBeNull();
+  });
+
+  it('leaves out what is only true from Earth in the cone view: the panorama, the marks, the readout, the rings and the panorama\'s line (cone-1)', () => {
+    const { session } = rigelPicked();
+    const flying = { ...session, spatialView: { ...session.spatialView, mode: 'catalog_3d' }, machines: { ...session.machines, navigation: 'space' } } as ObservationSession;
+    const before = window.location.href;
+    (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    window.history.replaceState(null, '', '/?view=cone');
+    try {
+      show(flying, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+      expect(q('[data-testid="real-sky"]')).toBeNull();
+      expect(q('[data-testid="reveal-marks"]')).toBeNull();
+      expect(q('[data-testid="reveal-leader"]')).toBeNull();
+      expect(q(READOUT)).toBeNull();
+      expect(q('[data-testid="craft-picker"]')).toBeNull();
+      expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).toEqual([
+        'Drawn or computed by the app; not measured in the source recording.',
+        'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
+      ]);
+    } finally {
+      window.history.replaceState(null, '', before);
+      delete (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
   });
 
   it('keeps the photo\'s own status there while the sky is not drawn, the readout staying (the verdict on unit-realsky-1)', () => {

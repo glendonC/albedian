@@ -895,6 +895,12 @@
   opacity: 1;
 }
 
+/* In the flight through the stars the panorama's own stars are as seen from Earth, so it is dimmed to 0.3 (D27 item 3,
+   UIUX-flight-READY.md); its movement into 0.3 is MOTION's, until then it changes with the view */
+.real-sky.is-there.is-shown {
+  opacity: 0.3;
+}
+
 .real-sky__canvas,
 .real-sky__shade {
   position: absolute;
