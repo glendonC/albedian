@@ -28,16 +28,53 @@ export interface RevealMark {
   uncertaintyPx: number | null;
 }
 
-/** The gap from a mark's centre to its name, and a name's width per character at 13 px, as the approved page sets them. */
+/**
+ * Which marks get a name on a crowded photo: the design lane's rule for the calibrated sample
+ * (.lead/uiux/UIUX-sample-b01-NOTE.md point 2), an interim for the owner's review. A name is drawn for the picked
+ * star, and for a named star brighter than this magnitude whose name does not run into another mark. The approved
+ * picture, drawn on a photo with 17 matched stars, names every named star.
+ */
+export const NAME_MAGNITUDE_LIMIT = 3.2;
+/** The gap from a mark's centre to its name: 19 px at 13 px type, 25 px for the picked star's 15 px. */
 export const NAME_GAP_PX = 19;
-const NAME_PX_PER_CHAR = 7.2;
+const PICKED_NAME_GAP_PX = 25;
+/** A name's width for its letters: 0.56 of its type size each, as the design lane's pages measure it. */
+const NAME_EM_PER_CHAR = 0.56;
+/** The room a mark keeps around its centre (its ring, gap and ticks, and 2 px), and a name's margin at each end. */
+const MARK_ROOM_PX = 14;
+const NAME_MARGIN_PX = 3;
+
+interface Box {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+const overlap = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+
+/** The box a name takes beside its mark, on the right or the left: from 0.8 of its size above the centre to 0.5 below. */
+function nameBox(xPx: number, yPx: number, name: string, picked: boolean, left: boolean): Box {
+  const size = picked ? 15 : 13;
+  const width = name.length * size * NAME_EM_PER_CHAR;
+  const start = left ? xPx - (picked ? PICKED_NAME_GAP_PX : NAME_GAP_PX) : xPx + (picked ? PICKED_NAME_GAP_PX : NAME_GAP_PX);
+  return {
+    x0: (left ? start - width : start) - NAME_MARGIN_PX,
+    x1: (left ? start : start + width) + NAME_MARGIN_PX,
+    y0: yPx - size * 0.8,
+    y1: yPx + size * 0.5,
+  };
+}
+
+/** A star with a name of its own (a proper name or a designation), not titled by its catalog number. */
+function namedStar(finding: CelestialFinding): boolean {
+  return finding.catalogRef !== undefined && finding.title !== finding.catalogRef.catalogSourceId;
+}
 
 /** Where the picked star's card sits in a window this wide (32 px from the right edge, 320 wide), and its top. */
 export const CARD_WIDTH_PX = 320;
 export const CARD_RIGHT_PX = 32;
 export const CARD_TOP_PX = 118;
-/** A picked name's start past its mark's centre and its width per character at 15 px, as the approved page sets them. */
-const PICKED_NAME_GAP_PX = 25;
+/** The picked name's width per character at 15 px for the line to the card, as the approved page's own line has it. */
 const PICKED_NAME_PX_PER_CHAR = 8.75;
 
 /**
@@ -71,23 +108,46 @@ export function revealMarks(session: ObservationSession, viewportWidthPx: number
     return [{ finding, kind: (catalog ? 'catalog' : 'predicted') as RevealMarkKind, position }];
   });
 
-  const named = chooseLabelledFindingIds(
-    placed.map((mark) => mark.finding),
+  // Predicted objects (drawn only where a pose lines the sky up) keep the budget of names the app already gives them
+  const predictedNamed = chooseLabelledFindingIds(
+    placed.filter((mark) => mark.kind === 'predicted').map((mark) => mark.finding),
     viewportWidthPx,
     [pickedId]
   );
+  const left = rect.leftPx;
   const right = rect.leftPx + rect.widthPx;
+  const rooms = placed.map(({ finding, position }) => ({
+    id: finding.id,
+    box: { x0: position.xPx - MARK_ROOM_PX, x1: position.xPx + MARK_ROOM_PX, y0: position.yPx - MARK_ROOM_PX, y1: position.yPx + MARK_ROOM_PX },
+  }));
   return placed.map(({ finding, kind, position }) => {
     const picked = finding.id === pickedId;
-    // Named: the picked star, and within the budget the predicted objects and the stars with a proper name
-    const name = picked || named.has(finding.id) ? finding.title : null;
+    const magnitude = finding.catalogRef?.apparentMagnitude;
+    const wanted =
+      picked ||
+      (kind === 'catalog'
+        ? namedStar(finding) && magnitude !== undefined && magnitude < NAME_MAGNITUDE_LIMIT
+        : predictedNamed.has(finding.id));
+    let name: string | null = wanted ? finding.title : null;
+    let nameOnLeft = false;
+    if (name !== null) {
+      const runsInto = (box: Box) => rooms.some((room) => room.id !== finding.id && overlap(box, room.box));
+      // To the right, unless that crosses the photo's right edge
+      nameOnLeft = nameBox(position.xPx, position.yPx, name, picked, false).x1 - NAME_MARGIN_PX > right;
+      // The picked star keeps its name where its place gives it; any other name gives way to a mark
+      if (!picked && runsInto(nameBox(position.xPx, position.yPx, name, false, nameOnLeft))) {
+        const other = nameBox(position.xPx, position.yPx, name, false, !nameOnLeft);
+        if (runsInto(other) || other.x1 > right || other.x0 < left) name = null;
+        else nameOnLeft = !nameOnLeft;
+      }
+    }
     return {
       finding,
       kind,
       xPx: position.xPx,
       yPx: position.yPx,
       name,
-      nameOnLeft: name !== null && position.xPx + NAME_GAP_PX + NAME_PX_PER_CHAR * name.length > right,
+      nameOnLeft: name !== null && nameOnLeft,
       picked,
       uncertaintyPx: kind === 'predicted' ? (position.ringPx ?? null) : null,
     };
