@@ -632,12 +632,12 @@ def test_noise_tail_is_raised_above_the_target_only(count: int, flagged: bool) -
     # statistic scored the frame (matched or whitened)
     luma = 100.0 + np.random.default_rng(18).normal(0.0, 1.0, (1000, 2000))
     bg = np.full_like(luma, 100.0)
-    limits = detector._all_limits(luma, luma, bg, 1.0, None, _statistic_with(detector.NegativeImage(count, 1.0)))
+    limits = detector._all_limits(luma, luma, bg, 1.0, None, _statistic_with(detector.NegativeImage(count, 1.0)), sigma_bg=1.0)
     assert ("noise_tail" in limits) is flagged
     whitened_stat = _statistic_with(
         detector.NegativeImage(0, 1.0), name="whitened", negative_whitened=detector.NegativeImage(count, 1.0)
     )
-    assert ("noise_tail" in detector._all_limits(luma, luma, bg, 1.0, None, whitened_stat)) is flagged
+    assert ("noise_tail" in detector._all_limits(luma, luma, bg, 1.0, None, whitened_stat, sigma_bg=1.0)) is flagged
 
 
 def test_the_record_carries_the_used_statistics_negative_figure() -> None:

@@ -771,8 +771,8 @@ SOLVE_PRODUCER_FILES = (
 # (solve-search-2) and the horizon search at any roll (the high-pointing prior), which calibrate photos that were
 # unresolved; 6, a still's 35 mm hint scaled to its stored frame (fov-1), which calibrates 16:9 phone photos that
 # were unresolved; 7, the phone solver's refinement trained on half its tight pairs, which matches photos it did not
-# (refine-1)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 7, SOLVE_PRODUCER_FILES)
+# (refine-1); 8, the words when a floor set a frame's noise, once beside the near-black warning (field-8b)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 8, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

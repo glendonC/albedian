@@ -6,12 +6,14 @@ one rounding error, whose spread is the step over sqrt(12) (a uniform quantiser'
 Quantization Noise, 2008, chapter 5). The stack itself sits on a grid N times finer, or none once frames are shifted
 by fractions of a pixel, so the detector's own floor (the stack's measured step over sqrt(12), else 0.001) falls far
 below it, and the ripples of one code in a black sky pass as points. `stack_rounding_noise` gives the frames' own
-rounding noise for the caller to hand the detector as `noise_floor`.
+rounding noise for the caller to hand the detector as `noise_floor`. A frame whose noise a floor sets says its count is
+not controlled, in the words the design lane gave (C14, FIELD field-8b), once.
 All frames here are simulated.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 import math
 
 import numpy as np
@@ -75,3 +77,51 @@ def test_the_floor_stops_one_code_ripples_counting_as_points_and_keeps_a_star() 
     # Without the frames' floor the ripples pass by the dozen; with it a quarter as many at most, the star among them
     assert len(without) > 20
     assert len(floored) * 4 < len(without)
+
+
+# C14 (.lead/uiux, decided by the lead at 09:58 on 19 Nov): the first sentence is the one shown on screen, the second
+# stays in the record
+C14_SCREEN = (
+    "This photo's sky is so even that the smallest steps in its brightness can pass for points of light, so some of the "
+    "points counted are those steps, not stars."
+)
+C14_RECORD = "The detector takes one brightness step as the sky's noise, so the count's false rate is not controlled."
+
+
+def test_the_noise_floor_words_are_the_decided_ones_screen_sentence_first() -> None:
+    assert detector.NOISE_LIMIT_WORDS["noise_floor"] == f"{C14_SCREEN} {C14_RECORD}"
+
+
+def test_a_frame_whose_noise_the_floor_sets_says_its_count_is_not_controlled() -> None:
+    frames = _still_dark_frames()
+    composite = detector.stack_video_frames_for_calibration(frames).composite_luma
+    floored = detector.frame_measures(composite, noise_floor=detector.stack_rounding_noise(frames))
+    assert "noise_floor" in floored.noise_limits
+    assert detector.NOISE_LIMIT_WORDS["noise_floor"] in detector.noise_limit_warnings(floored)
+    # The same stack and the same pixels found by detection carry the flag too
+    found = detector.detect_point_sources(composite, noise_floor=detector.stack_rounding_noise(frames))
+    assert found and all("noise_floor" in d.frame.noise_limits for d in found)
+    verified = detector.verify_candidates_on_original_pixels(
+        composite, found, noise_floor=detector.stack_rounding_noise(frames)
+    )
+    assert verified and all("noise_floor" in d.frame.noise_limits for d in verified)
+    # A sky with three codes of read noise sets its own noise: no flag, no words
+    rng = np.random.default_rng(11)
+    noisy = np.round(np.clip(40.0 + rng.normal(0.0, 3.0, (240, 320)), 0, 255))
+    measured = detector.frame_measures(noisy)
+    assert "noise_floor" not in measured.noise_limits
+    assert detector.NOISE_LIMIT_WORDS["noise_floor"] not in detector.noise_limit_warnings(measured)
+
+
+def test_a_count_not_controlled_is_said_once() -> None:
+    words = detector.NOISE_LIMIT_WORDS
+    frames = _still_dark_frames()
+    measures = detector.frame_measures(
+        detector.stack_video_frames_for_calibration(frames).composite_luma, noise_floor=detector.stack_rounding_noise(frames)
+    )
+    both = replace(measures, noise_limits=("near_black_clip", "noise_floor", "noise_tail"))
+    # Near the black clip its own words already say the count is not controlled: said once
+    assert detector.noise_limit_warnings(both) == [words["near_black_clip"]]
+    assert detector.noise_limit_warnings(replace(measures, noise_limits=("noise_floor",))) == [words["noise_floor"]]
+    assert detector.noise_limit_warnings_for(("noise_floor", "noise_tail")) == [words["noise_floor"]]
+    assert detector.noise_limit_warnings_for(()) == []

@@ -658,6 +658,14 @@ NOISE_LIMIT_WORDS = {
         "finds more points on pure noise than its stated rate, so the count of detected points is points above the "
         "threshold on a frame whose false rate is not controlled."
     ),
+    # A sky that varies by less than its own steps: its noise is the steps', not one measured, so the count's false
+    # rate is not the stated one. The design lane's words (C14, decided by the lead on 19 Nov; FIELD field-8b): the
+    # first sentence for the screen, the second for the record
+    "noise_floor": (
+        "This photo's sky is so even that the smallest steps in its brightness can pass for points of light, so some of "
+        "the points counted are those steps, not stars. The detector takes one brightness step as the sky's noise, so "
+        "the count's false rate is not controlled."
+    ),
 }
 
 
@@ -666,7 +674,18 @@ def noise_limit_warnings(measures: FrameMeasures) -> list[str]:
     recorded with the result (FrameMeasures.noise_limits) and reaches no warning, since on a real photo the negative
     image's peaks count real dark structure too and miss what lies near stars, and it fired on 22 of the public
     corpus's 26 photos [tested, realsky-4 report]."""
-    return [NOISE_LIMIT_WORDS[flag] for flag in measures.noise_limits if flag in NOISE_LIMIT_WORDS]
+    return noise_limit_warnings_for(measures.noise_limits)
+
+
+# Flags whose words already say a frame's count is not controlled: with one of them "noise_floor" adds no words
+_COUNT_NOT_CONTROLLED_SAID_BY = ("near_black_clip",)
+
+
+def noise_limit_warnings_for(limits: Sequence[str]) -> list[str]:
+    """The plain words of each flag in `limits` that has words, in order; "noise_floor" none where another flag's words
+    already say the count is not controlled (`_COUNT_NOT_CONTROLLED_SAID_BY`), so that is said once."""
+    said = any(flag in limits for flag in _COUNT_NOT_CONTROLLED_SAID_BY)
+    return [NOISE_LIMIT_WORDS[flag] for flag in limits if flag in NOISE_LIMIT_WORDS and not (flag == "noise_floor" and said)]
 
 
 def _noise_limits(luma: np.ndarray, bg: np.ndarray, sigma_eff: float, sky_mask: np.ndarray | None) -> tuple[str, ...]:
@@ -1249,11 +1268,15 @@ def _frame_measures(statistic: DetectionStatistic, limits: tuple[str, ...]) -> F
 
 def _all_limits(
     image: np.ndarray, luma: np.ndarray, bg: np.ndarray, sigma_eff: float, sky_mask: np.ndarray | None,
-    statistic: DetectionStatistic,
+    statistic: DetectionStatistic, *, sigma_bg: float,
 ) -> tuple[str, ...]:
-    """`_noise_limits`, and "noise_tail" when the used statistic's negative-image count at the threshold is above the
-    stated target over the frame's area (FALSE_TARGET_PER_MP)."""
+    """`_noise_limits`; "noise_floor" when a floor set the pixel noise, the measured `sigma_bg` being under it
+    (`_effective_sigma`: the data's rounding noise, 0.001, or a caller's floor; FIELD field-8b); and "noise_tail" when
+    the used statistic's negative-image count at the threshold is above the stated target over the frame's area
+    (FALSE_TARGET_PER_MP). "noise_floor" is reported only, never fed to the statistic's choice as "near_black_clip" is."""
     limits = list(_noise_limits(luma, bg, sigma_eff, sky_mask))
+    if float(sigma_eff) > float(sigma_bg):
+        limits.append("noise_floor")
     estimate = (statistic.negative_whitened if statistic.name == "whitened" else statistic.negative_matched).figure
     if estimate > FALSE_TARGET_PER_MP * luma.size / 1e6:
         limits.append("noise_tail")
@@ -1270,7 +1293,7 @@ def frame_measures(
     sigma_eff = _effective_sigma(sigma_bg, image, noise_floor)
     limits = _noise_limits(luma, bg, sigma_eff, sky_mask)
     statistic = _detection_statistic(luma, luma - bg, sky_mask, sigma_eff, float(snr_threshold), limits)
-    return _frame_measures(statistic, _all_limits(image, luma, bg, sigma_eff, sky_mask, statistic))
+    return _frame_measures(statistic, _all_limits(image, luma, bg, sigma_eff, sky_mask, statistic, sigma_bg=sigma_bg))
 
 
 def matched_filter_noise(
@@ -1536,7 +1559,7 @@ def detect_point_sources(
         if det is not None:
             detections.append(det)
 
-    measures = _frame_measures(statistic, _all_limits(image_luma, luma, bg, sigma_eff, sky_mask, statistic))
+    measures = _frame_measures(statistic, _all_limits(image_luma, luma, bg, sigma_eff, sky_mask, statistic, sigma_bg=sigma_bg))
     detections = [replace(d, frame=measures) for d in detections]
     detections.sort(key=lambda d: d.snr, reverse=True)
     return detections
@@ -1646,7 +1669,9 @@ def verify_candidates_on_original_pixels(
             seen_peaks.add((y0, x0))
             verified.append(det)
 
-    measures = _frame_measures(statistic, _all_limits(original_image, luma, bg, sigma_eff, sky_mask, statistic))
+    measures = _frame_measures(
+        statistic, _all_limits(original_image, luma, bg, sigma_eff, sky_mask, statistic, sigma_bg=sigma_bg)
+    )
     verified = [replace(d, frame=measures) for d in verified]
     verified.sort(key=lambda d: d.snr, reverse=True)
     return verified

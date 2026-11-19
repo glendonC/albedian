@@ -335,7 +335,7 @@ def test_a_calibrated_phone_solution_says_its_frames_worded_flags_after_its_own_
     plain, said = solve(detections), solve(flagged)
     assert plain.status == said.status == "calibrated"
     assert not any(words in plain.warnings for words in detector.NOISE_LIMIT_WORDS.values())
-    assert said.warnings == [*plain.warnings, *(detector.NOISE_LIMIT_WORDS[flag] for flag in flags)]
+    assert said.warnings == [*plain.warnings, *detector.noise_limit_warnings_for(flags)]
 
 
 def test_solve_phone_photo_solves_kannala_brandt_fisheye_ultrawide(
@@ -494,7 +494,7 @@ def test_too_few_sources_for_a_solution_still_says_the_frames_worded_flags(ci00_
         source_sha256=hashlib.sha256(frame.jpeg_bytes).hexdigest(), detections=detections,
     )
     assert solution.status == "unresolved"
-    assert all(solution.warnings.count(detector.NOISE_LIMIT_WORDS[flag]) == 1 for flag in flags), solution.warnings
+    assert all(solution.warnings.count(words) == 1 for words in detector.noise_limit_warnings_for(flags)), solution.warnings
 
 
 def test_stellar_pool_ranks_by_flux_over_local_noise_not_tile_snr() -> None:
