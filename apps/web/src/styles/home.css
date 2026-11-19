@@ -1,7 +1,8 @@
 /* The approved home (arrive, 2026-11-12) and its Credits page (laid out as the Credits page approved for the
    iPhone the same day). The controls are the approved parts in look.css; these rules only place them. The values at
    1440 by 900 are the mockup's; the rules for narrower and shorter windows are [proposed], since the mockup is drawn
-   at 1440 by 900 only. Nothing here moves: no animation and no transition. */
+   at 1440 by 900 only. What moves here moves by the motion record (.lead/uiux/motion/MOTION-READY-web.md): the drop
+   overlay's frame and words, a refused upload's words, and the Credits page's frame, title and rows. */
 
 .home-screen {
   position: fixed;
