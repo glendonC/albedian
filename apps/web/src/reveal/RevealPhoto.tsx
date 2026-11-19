@@ -125,6 +125,8 @@ export interface RevealPhotoProps {
   phoneSteering?: boolean;
   /** On the phone, told when a drag on the sky takes the steering. */
   onPhoneSteer?: () => void;
+  /** On the phone, told when the steering must end without Autopilot (your photo's view opened). */
+  onEndPhoneSteer?: () => void;
   /** A press on the sky during free flight hands the camera back: the flight ends. */
   onEndFreeFlight?: () => void;
   /** At phone width (reveal, approved, iPhone 1): smaller marks, the counts under the photo, no logo, status or corners. */
@@ -229,6 +231,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onEndFreeFlight,
   phoneSteering = false,
   onPhoneSteer,
+  onEndPhoneSteer,
   phone = false,
   viewportWidthPx,
   viewportHeightPx,
@@ -304,6 +307,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     if (!there || cone) setSteeringAsked(false);
   }, [there, cone]);
   const steering = there && !cone && (phone ? phoneSteering : steeringAsked || freeFlight);
+  // Your photo's view ends the phone's steering, as it ends the laptop's (no Autopilot left offered where nothing steers)
+  useEffect(() => {
+    if (phone && cone && phoneSteering) onEndPhoneSteer?.();
+  }, [phone, cone, phoneSteering]);
   const [steered, setSteered] = useState<{ fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null>(null);
   // What is only true from Earth (the panorama, the photo-frame marks) leaves in the cone view and while steering
   const earthOnly = cone || steering;

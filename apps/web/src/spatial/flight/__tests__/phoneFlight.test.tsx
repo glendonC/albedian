@@ -75,7 +75,7 @@ function rigelThere(): ObservationSession {
   return { ...session, selectedFindingId: rigel.id } as ObservationSession;
 }
 
-function showPhone(more: { phoneSteering?: boolean; onPhoneSteer?: () => void } = {}) {
+function showPhone(more: { phoneSteering?: boolean; onPhoneSteer?: () => void; onEndPhoneSteer?: () => void } = {}) {
   act(() => {
     root.render(
       createElement(RevealPhoto, {
@@ -266,6 +266,14 @@ describe('Your photo\'s view at phone width (D30 item 7)', () => {
     expect(title.textContent).toBe("Your photo's view");
     expect(title.style.fontSize).toBe('15px');
     expect(all('[data-testid="cone-readout"] .flight-readout__stat span').map((x) => x.textContent)).toEqual(['of your stars inside', 'to the farthest']);
+  });
+
+  it('ends the phone\'s steering when it opens, so Autopilot does not stay offered where nothing steers', () => {
+    const onEndPhoneSteer = vi.fn();
+    showPhone({ phoneSteering: true, onPhoneSteer: () => {}, onEndPhoneSteer });
+    expect(onEndPhoneSteer).not.toHaveBeenCalled();
+    click(q('[data-testid="cone-pill"]'));
+    expect(onEndPhoneSteer).toHaveBeenCalledTimes(1);
   });
 
   it('holds D28\'s disclosure lines in the sheet behind the circle', () => {

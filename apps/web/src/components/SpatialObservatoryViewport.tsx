@@ -764,6 +764,7 @@ export const SpatialObservatoryViewport: React.FC<
               onEndFreeFlight={() => setFreeFlight(false)}
               phoneSteering={phoneSteering}
               onPhoneSteer={() => setPhoneSteering(true)}
+              onEndPhoneSteer={() => setPhoneSteering(false)}
               corners={!clipShaded}
             />
           )}
