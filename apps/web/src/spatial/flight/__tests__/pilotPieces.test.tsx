@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CRAFTS } from '../crafts.js';
 import { CraftPicker, PilotTrip } from '../PilotPieces.js';
-import { FlightClock } from '../pilotReadout.js';
+import { FlightClock, CRAFT_CHOICES } from '../pilotReadout.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -30,7 +30,7 @@ describe('CraftPicker (D26 item 3, D35)', () => {
     await act(async () => (pill as HTMLButtonElement).click());
     const rows = [...container.querySelectorAll('[role="option"]')];
     expect(rows.slice(0, 3).map((r) => r.textContent)).toEqual(['Your viewno craft', 'Voyager 117.0 km/s', 'Voyager 215.4 km/s']);
-    expect(rows).toHaveLength(18);
+    expect(rows).toHaveLength(CRAFT_CHOICES.length);
     expect(rows.filter((r) => r.getAttribute('aria-selected') === 'true').map((r) => r.getAttribute('data-craft'))).toEqual(['voyager-1']);
     // D35 items 1 and 3: the hangar's two kinds as headings, not pressable; the list scrolls within 470 px
     expect([...container.querySelectorAll('[data-testid="craft-picker-heading"]')].map((h) => h.textContent)).toEqual(['Spacecraft', 'Spacesuits']);

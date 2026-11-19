@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CRAFTS } from '../crafts.js';
+import { CRAFTS, HANGAR_CRAFTS } from '../crafts.js';
 import { CRAFT_CHOICES, pilotReadout, threeFigureYears, CRAFT_GROUPS, craftSpeedSource, craftGroups } from '../pilotReadout.js';
 
 const LY_PER_PC = 3.261563777;
@@ -70,26 +70,28 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
 
 describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3, D35 items 1 and 2)', () => {
   it('starts with your view, then the craft leaving the Solar System fastest first, the other craft by name, then the suits in the hangar\'s order', () => {
-    expect(CRAFT_CHOICES.map((c) => [c.id, c.name, c.detail])).toEqual([
-      [null, 'Your view', 'no craft'],
+    // D35's rules over whatever the hangar holds (ASSETS adds entries): your view first; under Spacecraft the craft
+    // that travel, fastest first, then the others by name; under Spacesuits the suits in the hangar's order
+    const rows = CRAFT_CHOICES.map((c) => [c.id, c.name, c.detail] as const);
+    expect(rows[0]).toEqual([null, 'Your view', 'no craft']);
+    expect(rows.slice(1, 5)).toEqual([
       ['voyager-1', 'Voyager 1', '17.0 km/s'],
       ['voyager-2', 'Voyager 2', '15.4 km/s'],
       ['new-horizons', 'New Horizons', '15.3 km/s'],
       ['pioneer-10', 'Pioneer 10', '12.2 km/s'],
-      ['apollo-lm', 'Apollo Lunar Module', 'to the Moon'],
-      ['gemini', 'Gemini', 'near Earth'],
-      ['hubble', 'Hubble Space Telescope', 'near Earth'],
-      ['iss', 'International Space Station', 'near Earth'],
-      ['jwst', 'James Webb Space Telescope', 'near Earth'],
-      ['parker-solar-probe', 'Parker Solar Probe', 'around the Sun'],
-      ['shuttle', 'Space Shuttle', 'near Earth'],
-      ['astronaut-emu', 'Extravehicular Mobility Unit', ''],
-      ['z2', 'Z-2', ''],
-      ['mercury-suit', 'Mercury spacesuit', ''],
-      ['mark-iii', 'Mark III spacesuit', ''],
-      ['aces', 'Advanced Crew Escape Suit', ''],
-      ['gemini-suit', 'Gemini spacesuit', ''],
     ]);
-    expect(CRAFT_GROUPS.map((g) => [g.heading, g.choices.length])).toEqual([['Spacecraft', 11], ['Spacesuits', 6]]);
+    const [craft, suits] = CRAFT_GROUPS;
+    const travelling = craft!.choices.filter((c) => CRAFTS[c.id!]!.speed);
+    const others = craft!.choices.filter((c) => !CRAFTS[c.id!]!.speed);
+    expect(craft!.choices).toEqual([...travelling, ...others]);
+    expect(others.map((c) => c.name)).toEqual([...others.map((c) => c.name)].sort((x, y) => x.localeCompare(y, 'en')));
+    expect(suits!.choices.map((c) => c.id)).toEqual(HANGAR_CRAFTS.filter((c) => c.kind === 'suit').map((c) => c.id));
+    expect(suits!.choices.every((c) => c.detail === '')).toBe(true);
+    expect(CRAFT_CHOICES).toHaveLength(1 + HANGAR_CRAFTS.length);
+    // D35 item 2's places for the craft it names
+    const detail = (id: string) => CRAFT_CHOICES.find((c) => c.id === id)!.detail;
+    expect(['jwst', 'hubble', 'iss', 'shuttle', 'gemini'].map(detail)).toEqual(['near Earth', 'near Earth', 'near Earth', 'near Earth', 'near Earth']);
+    expect([detail('apollo-lm'), detail('parker-solar-probe')]).toEqual(['to the Moon', 'around the Sun']);
+
   });
 });

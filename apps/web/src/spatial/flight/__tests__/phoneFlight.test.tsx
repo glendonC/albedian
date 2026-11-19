@@ -9,6 +9,7 @@ import { phoneThereScrim } from '../../../reveal/RealSkyLayer.js';
 import { AskBar } from '../../../reveal/AskBar.js';
 import { PHONE_CRAFT_DIAMETER_PX, PHONE_SKY_TOP_PX, phoneCraftFraming, type CraftFraming } from '../craftScene.js';
 import type { Craft } from '../crafts.js';
+import { CRAFT_CHOICES } from '../pilotReadout.js';
 
 // D30 (UIUX-phone3d-READY.md): the flight behind a NASA craft at phone width. WebGL 2 is not in jsdom, so both drawn
 // layers are stand-ins; the star layer's stand-in records the craft and the framing it is asked to draw.
@@ -141,7 +142,7 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     expect(Number(sheet.style.zIndex)).toBeGreaterThan(30);
     expect(sheet.parentElement).toBe(document.body);
     const rows = all('[role="option"]');
-    expect(rows).toHaveLength(18);
+    expect(rows).toHaveLength(CRAFT_CHOICES.length);
     expect(rows.every((r) => (r as HTMLElement).style.height === '52px')).toBe(true);
     expect(rows[0]!.getAttribute('aria-selected')).toBe('true');
     expect(rows[0]!.textContent).toContain('Your view');

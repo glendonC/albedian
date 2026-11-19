@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CRAFTS, CRAFT_FRAMING, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
+import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
@@ -156,7 +156,9 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager')).every((c) => c.modelUp.join() === '0,1,0')).toBe(true);
     expect(v.kind).toBe('craft');
     expect(CRAFTS['astronaut-emu']!.kind).toBe('suit');
-    expect(Object.keys(CRAFTS)).toHaveLength(17);
+    // Every hangar entry, however many the hangar holds
+    expect(Object.keys(CRAFTS)).toHaveLength(HANGAR_CRAFTS.length);
+    expect(HANGAR_CRAFTS.length).toBeGreaterThanOrEqual(17);
     expect(craftModelUrl(v, false)).toBe(v.modelUrl);
     expect(craftModelUrl(v, true)).toBe(v.phoneModelUrl);
   });
