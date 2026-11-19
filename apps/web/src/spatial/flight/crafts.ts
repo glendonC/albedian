@@ -49,12 +49,21 @@ interface HangarFile {
 }
 
 /**
- * The craft's up at rest about its line of flight, by hangar model, where it is not the hangar's own up (the design lane's
- * ruling of 19 Nov 13:32 in UIUX-pilot-READY.md): Voyager stands as D26's render shows it, its long boom (the model's
- * -X) straight down the screen under the dish. Every other model keeps the hangar's +Y, the up of its picker picture
- * (build_craft.py renders the pictures with the camera's up along it).
+ * A craft's attitude at rest, by hangar model, where it is not the hangar's own frame (the design lane's rulings in
+ * UIUX-pilot-READY.md): the model axis drawn along the way the camera looks (`forward`) and the one drawn up the screen.
+ * - 13:32: Voyager stands as D26's render shows it, its long boom (the model's -X) straight down under the dish, its line
+ *   of flight kept.
+ * - 17:10: a craft that never travels rests as its picture stands it: Hubble's tube and Gemini's nose (the model's +Z,
+ *   their long axis) up the screen, a quarter turn about the screen's horizontal axis from the line of flight, so the
+ *   model's +Y, its picture's up, faces the camera.
+ * Every other model keeps the hangar's frame: +Z its line of flight, +Y the up of its picker picture (build_craft.py
+ * renders the pictures with the camera's up along it).
  */
-const REST_UP: Readonly<Record<string, Vec3>> = { voyager: [1, 0, 0] };
+const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly up: Vec3 }>> = {
+  voyager: { up: [1, 0, 0] },
+  hubble: { forward: [0, -1, 0], up: [0, 0, 1] },
+  gemini: { forward: [0, -1, 0], up: [0, 0, 1] },
+};
 
 const AXES: Readonly<Record<string, Vec3>> = { '+X': [1, 0, 0], '-X': [-1, 0, 0], '+Y': [0, 1, 0], '-Y': [0, -1, 0], '+Z': [0, 0, 1], '-Z': [0, 0, -1] };
 
@@ -72,7 +81,7 @@ export function craftsOfHangar(file: HangarFile, base = '/models/hangar/'): Craf
     const t = entry.travel;
     const speed: CraftSpeed | null =
       t && t.relativeTo === 'Sun' && Number.isFinite(t.speedKmS) && t.speedKmS > 0 ? { kmS: t.speedKmS, relativeTo: 'the Sun', sourceUrl: t.page, asOf: t.asOf } : null;
-    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: forward, modelUp: REST_UP[entry.model] ?? up, speed }];
+    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, speed }];
   });
 }
 

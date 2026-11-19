@@ -152,8 +152,16 @@ describe('craftFromSearch: the interim choice by page address', () => {
     // D26's rest pose as the design lane ruled (13:32): Voyager stands with its long boom (the model's -X) straight down
     expect(v.modelUp).toEqual([1, 0, 0]);
     expect(CRAFTS['voyager-2']!.modelUp).toEqual([1, 0, 0]);
-    // Every other entry keeps the side up that is up in its picker picture: the hangar's +Y (build_craft.py's camera)
-    expect(Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager')).every((c) => c.modelUp.join() === '0,1,0')).toBe(true);
+    // The 17:10 ruling: Hubble and Gemini, which never travel, rest as their pictures stand them: their long axis (the
+    // model's +Z) up the screen, a quarter turn about the screen's horizontal axis from their line of flight
+    for (const id of ['hubble', 'gemini']) {
+      expect(CRAFTS[id]!.modelUp).toEqual([0, 0, 1]);
+      expect(CRAFTS[id]!.modelForward).toEqual([0, -1, 0]);
+    }
+    // Every other entry keeps its line of flight (+Z) and the side up that is up in its picker picture (+Y)
+    const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && c.id !== 'hubble' && c.id !== 'gemini');
+    expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
+    expect(CRAFTS['voyager-1']!.modelForward).toEqual([0, 0, 1]);
     expect(v.kind).toBe('craft');
     expect(CRAFTS['astronaut-emu']!.kind).toBe('suit');
     // Every hangar entry, however many the hangar holds
@@ -272,6 +280,25 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const crafts = craftsOfHangar(file);
     expect(crafts.map((c) => [c.id, c.speed?.kmS ?? null])).toEqual([['sun', 15.3], ['earth', null], ['zero', null], ['negative', null], ['nan', null], ['none', null]]);
     expect(crafts[0]!.speed).toEqual({ kmS: 15.3, relativeTo: 'the Sun', sourceUrl: 'https://science.nasa.gov/', asOf: '2024-01-01' });
+  });
+
+  it('stands Hubble at rest with its tube up the screen and its panels lying back from it, not seen end-on (the 17:10 ruling)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 1440, 900)!;
+    const scene = craftSceneOf(camera, CRAFTS.hubble!, [0, 0, 0], 10, undefined, undefined, 6)!;
+    const at = (m: Vec3) => {
+      const w = apply(scene.modelMatrix, m);
+      const c = apply(scene.clipMatrix, [w[0], w[1], w[2]]);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 1440, yPx: ((1 - c[1] / c[3]) / 2) * 900 };
+    };
+    const centre = at([0, 0, 0]);
+    const tubeEnd = at([0, 0, 6]);
+    const panelEnd = at([0, 6, 0]);
+    // The tube (+Z) runs up the screen, nearly straight
+    expect(centre.yPx - tubeEnd.yPx).toBeGreaterThan(100);
+    expect(Math.abs(tubeEnd.xPx - centre.xPx)).toBeLessThan(0.15 * (centre.yPx - tubeEnd.yPx));
+    // The panels' axis (+Y) runs along the line of sight, so it moves far less on screen than the tube
+    expect(Math.hypot(panelEnd.xPx - centre.xPx, panelEnd.yPx - centre.yPx)).toBeLessThan(0.35 * (centre.yPx - tubeEnd.yPx));
   });
 });
 
