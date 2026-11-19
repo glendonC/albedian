@@ -13,7 +13,7 @@ pictures under `.cache/restore-review/<unit>/`.
     `.kiro/specs/media-experiment-runtime/tasks.md`; `.kiro/specs/export-and-provenance/tasks.md`.
   - Docs only. Measurements behind it: `design.md`, "Measured facts". Landed on `main` as `b59ae181`.
 
-- [ ] 1. restore-1: the contracts (REQ-RST-10; P-RST-20)
+- [x] 1. restore-1: the contracts (REQ-RST-10; P-RST-20)
   - `packages/contracts/src/media.ts`: the shapes of `design.md` section 14, and the removals listed there. No job
     schema and no job id pattern of its own: it adds the upload job runner's `JOB_ID_PATTERN`, which moves here
     (the upload jobs spec, design 3.8); the job is `UploadJobSchema` (platform-1).
@@ -35,8 +35,9 @@ pictures under `.cache/restore-review/<unit>/`.
     removed field is read anywhere; `pnpm typecheck` and `pnpm verify:contracts` pass. Nothing produces a record
     yet.
   - _Requirements: REQ-RST-10.1 to 10.4_
+  - Landed on `main` as `e9cdd008`.
 
-- [ ] 2a. restore-2a: colour, the still decode, the 16 bit PNG, the variant store and the display copy as plain
+- [x] 2a. restore-2a: colour, the still decode, the 16 bit PNG, the variant store and the display copy as plain
   functions (REQ-RST-1.2, 1.3, 1.5, 1.6, REQ-RST-2.1 to 2.4, REQ-RST-3.1 to 3.6; P-RST-1, 3, 4, 5, 6) [decided
   2026-11-12 by the lead: the part of restore-2 that needs no runner, so restore-4 need not wait for platform-5]
   - New: `services/media/colour.py` (the four transfer functions, the matrices, the ranges, chroma up at its siting
@@ -53,6 +54,7 @@ pictures under `.cache/restore-review/<unit>/`.
     decoded original and is stored with modes 0400 and 0700 without overwriting; a changed sample fails
     verification; the original's hash and mode are untouched.
   - _Requirements: REQ-RST-1.2, 1.3, 1.5, 1.6, 2.1 to 2.4, 3.1 to 3.6_
+  - Landed on `main` as `ee2436c5`.
 
 - [ ] 2b. restore-2b: the job and the routes (REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, REQ-RST-8; P-RST-18, 19)
   - New: `services/media/jobs.py` (registers the kinds `display_copy` and `restoration` on the upload job runner,
@@ -70,7 +72,7 @@ pictures under `.cache/restore-review/<unit>/`.
   - Done when: a HEIC upload gets a PNG the browser draws, listed and served by its hash.
   - _Requirements: REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, 8.1 to 8.8, 8.10_
 
-- [ ] 3. restore-3: the photo path as pure functions (REQ-RST-4, REQ-RST-5, REQ-RST-6.1, 6.2, REQ-RST-8.9; P-RST-2,
+- [x] 3. restore-3: the photo path as pure functions (REQ-RST-4, REQ-RST-5, REQ-RST-6.1, 6.2, REQ-RST-8.9; P-RST-2,
   7, 8, 9, 10, 12)
   - New: `services/media/stars.py`, `services/media/noise.py`, `services/media/spatial.py`,
     `services/media/tone.py`; tests under `tests/media/`. These take arrays and return arrays and records; the
@@ -88,8 +90,9 @@ pictures under `.cache/restore-review/<unit>/`.
   - Done when: the properties hold; the constants test of REQ-RST-4.7 passes; the noise table matches a known
     synthetic noise within 20 percent; no output sample leaves the range of its inputs.
   - _Requirements: REQ-RST-4.1 to 4.8, 5.1 to 5.4, 6.1, 6.2, 8.9_
+  - Landed on `main` as `0145388b`, with restore-3b as `1ce89d58`.
 
-- [ ] 4. restore-4: the integrity gate, and photos restored end to end (REQ-RST-6, REQ-RST-12; P-RST-11, 13)
+- [x] 4. restore-4: the integrity gate, and photos restored end to end (REQ-RST-6, REQ-RST-12; P-RST-11, 13)
   - New: `services/media/gate.py` (the variant's points, confirmation, the dissolve passes, flux),
     `services/media/encode.py` (stills), `scripts/restore_review.py`; tests under `tests/media/`.
   - Changed: `services/media/jobs.py` (kind `restoration` for stills).
@@ -113,8 +116,12 @@ pictures under `.cache/restore-review/<unit>/`.
     ends `rejected` with its count and no file, in every trial on every real photo; a `rejected` attempt is stored
     and never listed as a variant.
   - _Requirements: REQ-RST-6.1 to 6.9, 6.12, 6.13, 12.1, 12.3, 12.4_
+  - Built [decided 2026-11-18 by the lead: rulings on restore-4's measurements]: `services/media/gate.py`,
+    `services/media/encode.py`, `services/media/photo.py` (the photo path in the job's order), `scripts/restore_review.py`;
+    the gate as design section 7 now says. Kind `restoration` is wired in `jobs.py` by restore-2b, since `jobs.py`
+    comes with the runner. Its new settings get names in the media contract first, as restore-4c.
 
-- [ ] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
+- [x] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with
     the frame times stamped and the audio copied, the rotation pass, the checks on the stored clip); tests under
     `tests/media/`. It moves bytes, planes and times only, and imports nothing from restore-2a, restore-2b or restore-3.
@@ -127,6 +134,7 @@ pictures under `.cache/restore-review/<unit>/`.
     original's packet hash and times; peak memory does not grow with the clip's length; all eight display
     orientations read back.
   - _Requirements: REQ-RST-3.7, 7.5, 7.6, 7.7, 7.9, 7.10_
+  - Landed on `main` as `be094f02`.
 
 - [x] 6. restore-6: registration and the temporal step (REQ-RST-7.1 to 7.4, 7.8, REQ-RST-6.10, 6.11; P-RST-14, 22)
   - New: `services/media/temporal.py`; tests under `tests/media/`. Needs the noise table of restore-3.

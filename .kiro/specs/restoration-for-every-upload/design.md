@@ -386,42 +386,41 @@ judge, and the values are set from those [decided 2026-11-11: these are choices 
 
 ### 7. The dissolve passes and the gate (`services/media/gate.py`)
 
-**The statistic** [decided 2026-11-11: the detector's own statistic refused none of 40 painted stars on the most
-lifted crop (M10), so it cannot be the gate as it stands]. Unit restore-4 chooses the statistic by measurement.
-The first candidate is the detector on the luma with its local background at the star scale removed: the luma
-minus its B3 smoothing at steps 1 and 2, that is, the first two wavelet scales only, the same on the variant and on
-the original. Measured for that candidate (the numbers are in M10): on four of the five crops it refused nearly
-every painted star at a peak of 6 codes; on the most lifted crop it still let some through at the two higher
-peaks tried there; and on every crop it flagged points of the honest variants, because the edge-stopping filter
-leaves compact structure that statistic sees.
-- What it has to reach (REQ-RST-6.7): on every real photo of the corpus, lifted as the job lifts it, a
-  star-shaped patch (a Gaussian of sigma 1.3 px) painted into the stored variant with a peak of at least five
-  times the variant's pixel noise around it and at least 4 codes of 255 is refused in every trial. The pixel noise
-  is 1.4826 x MAD of the stored variant's luma minus its local median, in the patch's tile [proposed, both
-  numbers and the measure: at the nearest peaks tried, the candidate at threshold 6 refused 38 and 39 of 40 on two
-  of the five crops and 40 of 40 on the other three, so the unit has a threshold or a statistic to find, or a
-  value to restate with its numbers].
-- Honest points the stricter statistic flags are dissolved by the passes below, so an honest run still ends
-  `ready`. The unit reports, per real photo: the painted stars refused, the honest points flagged and dissolved,
-  and what the dissolving costs in visible detail (the before and after pictures and the fine sky noise left).
-- If no statistic meets both on the real photos, the unit says "unsolved on real data" with the numbers, and the
-  job keeps answering that restorations are not built: none is served.
-- The attempt records which statistic ran (`statistic` in the gate result, section 14). A statistic that is
-  neither of the two listed there is a contract change and lands first as its own unit.
+Unit restore-4 chose what follows by measurement on the design's five photos, whole and as crops [decided 2026-11-18
+by the lead: items 1 to 8 of `.lead/kiro/reports/RESTORE-PHOTO/restore-4-gate.md`]. The first candidate below the
+line was measured and replaced: the detector's statistic as stars.py called it refused 0 of 40 painted stars on photo
+4's crop, and without its stale floor the passes never converged, because the detector counts every sharp edge of a
+denoised variant (its bright-impulse rule) and divides by the variant's own noise, far under anything a person sees
+[tested: restore-4's report].
 
-**Finding the variant's points.** The image is brought to the original's code scale: for the gate, the stored
-file decoded (section 1) with its lift undone and encoded with the original's transfer as unrounded codes; for a
-dissolve pass, the working image encoded the same way. Then the luma as in section 3, the chosen statistic, the
-same tiles, each tile's `sigma_m` measured on this image, `detect_point_sources(tile, snr_threshold=6,
-noise_floor=sigma_m)` keeping `snr >= 6`, and clipped regions left out.
+**Two statistics** [decided 2026-11-18]. The stars of section 3 are found by `detector`, the detector with its own
+noise. The dissolve passes and the gate find points with `detector_local_background_removed`, here the luma less its
+B3 smoothing at step 1, the first wavelet scale [tested: at steps 1 and 2 the night-mode photo's blotches hid 34 of
+40 painted stars from the gate, at step 1 one]. The attempt records each step's own.
 
-**Confirming.** `verify_candidates_on_original_pixels(original tile, points, noise_floor=the original tile's
-sigma_m)`. A point is confirmed when a verified detection lies within 2.5 px [proposed: the function looks 2 px
-around a candidate; half a pixel more for the centroid]. The function's own floor of 4.75 applies.
+**Finding the variant's points.** In the stored file's own codes, on the scale of 255, where the stated sensitivity
+is a peak of 4 codes [proposed in REQ-RST-6.7]: the statistic, tiles of section 3, `detect_point_sources` with its
+noise floored so that a star-shaped patch (Gaussian, sigma 1.3 px) of that peak reaches the variant threshold 5 times
+a margin of 2 [proposed: at 1.5 a star centred on a pixel corner failed the detector's own shape test], and a
+detection counts only when forced photometry on the variant itself verifies it, the rule of section 3 for stars.
+Clipped regions are left out and counted.
 
-Why 6 against 4.75 [proposed]: with the detector's own statistic, at equal thresholds three of five crops showed 4
-to 10 unconfirmed points from chance disagreement near the threshold; at 6 they showed 0 to 3, and at 8 none
-(M11). These are the starting values for the statistic restore-4 chooses.
+**Confirming** [decided 2026-11-18: the stricter rule above all]. A point is confirmed when one of the original's
+stars (section 3, each verified by forced photometry on the original's pixels) lies within 2.5 px of it, or when
+every sample of its 3 x 3 is the original lifted and stored as the job stores it, within 1 code of 65535 [proposed:
+the store's own rounding]. Forced photometry asked at any place verified edges of the original's foreground and
+confirmed a painted star of 64 codes laid on one [tested]; a tolerance on the original's code scale lets a painted
+star through under a strong lift, since 4 stored codes shrink under half an original code [tested: arithmetic].
+
+**What is kept as recorded.** Star footprints, the radius by section 3's ring rule measured against the median of a
+far ring, 4 to 12 px beyond the largest radius allowed, at least 2 px [proposed: the detector's local background takes
+a bright halo for sky; radius 1 kept a plus sign of 5 samples that showed as crosses]; each clipped component's bloom,
+by the same rule from its own extent; and light standing 50 pixel noises over the 20th percentile of its 65 px
+neighbourhood, with the light joined to it down to 20 [proposed: lamps, lit ground and their halos, which averages
+that give kept samples no weight darken by up to 12 codes of 255]. Inside the cores nothing changes.
+
+**Before the passes**, outside the kept cores, the working image is smoothed over 3 B3 levels with the cores given no
+weight [proposed: on photo 3 whole, one level left 41 points after the passes, two 6, three none].
 
 **Confirming a clip's point on its frames together** [decided 2026-11-11: a real star too faint for one frame is
 in the original pixels of many frames, so showing it paints nothing]. For frame `k` made with help from
@@ -464,38 +463,41 @@ Measured on the owner's clips with the detector's own statistic (M16): an averag
 90 to 415 points per crop that the single frame does not confirm. How many of those the frames together confirm
 and how many guard 2 refuses is for restore-7 to report.
 
-**Dissolve passes** (pipeline, before the lift and the encode). For each unconfirmed point of the working image:
-its footprint by the rule of section 3 measured on the working image, at least 3 px and one pixel wider on each
-later pass, and inside it the working image is replaced by `flat`, the same B3 cascade of the filter's input (the
-original for a still, the merged frame for a clip) with every weight 1 and no footprints (plain linear smoothing,
-computed once when first needed). At most three passes. Each pass's count goes into the record. Measured with the
-detector's own statistic: passes needed 0, 1, 0, 2 and 1 on the five crops (M7).
+**Dissolve passes** (pipeline, before the encode). At most three. Each pass finds the working image's points, as the
+16 bit codes will be stored [tested: half a code made a point the passes never saw unrounded], at the dissolve's
+threshold 4 and at the gate's 5 (the detector picks its filter partly by the threshold it is given) [proposed], and
+for each unconfirmed point replaces its disc, the radius by section 3's rule on the working image, at least 3 px and 2
+px wider on each later pass, fading over 4 px [proposed], by the working image smoothed over 2 B3 levels with the kept
+cores given no weight; a point within 3 px of a kept core takes the original's samples instead, so the kept region
+grows over it. Kept cores are never touched. A later pass looks only in tiles the last pass changed (the detector
+works tile by tile). Each pass's count goes into the record.
 
-This erases compact light that the original pixels do not confirm: for a still its one frame, for a clip frame
-made with neighbours its frames together.
+**The gate** (on the stored file read back). `rejected` with `unconfirmed_points` when any point is unconfirmed, in any
+frame. Then flux: for every confirmed star of section 3 whose aperture and annulus touch neither the border nor a
+clipped region, the aperture sum of the linear luminance minus the mean of an annulus outside every other kept region,
+aperture radius the star's footprint radius (at least 2 px), annulus from 3 to 7 px beyond it [proposed]. `F_o` on the
+original; `F_v` on the variant with the lift undone, against the original's own annulus, so the star's own light is
+compared and not the sky the restoration smoothed around it [tested: against each image's own annulus median, a
+noisy sky's median under its mean dimmed 364 of 1571 stars of photo 1 by up to 90 sigma_F with every aperture sample
+the original's]. `sigma_F`: 1.4826 x MAD of the same flux at empty places of the original,
+the first 60 points of a fixed lattice that are 12 px clear of every footprint and clipped region (no random draw),
+measured once per radius
+and not compared against where it is not a positive number. `rejected` with `star_flux_changed` when any star has
+`|F_v - F_o| > 3 sigma_F` [proposed: measured worst 0.013 over 5736 stars of the five photos]. The flux check is what
+refuses a star painted onto a real one, which the point check confirms by the real star.
 
-**The gate** (on the stored file). `rejected` with `unconfirmed_points` when any point is unconfirmed, in any
-frame. Then flux: for every confirmed star of section 3 whose footprint touches neither the border nor a clipped
-region, the aperture sum of the linear luminance minus the median of an annulus, aperture radius the star's
-footprint radius (at least 2 px), annulus from 3 to 7 px beyond it [proposed]. `F_o` on the original, `F_v` on the
-variant with the lift undone. `sigma_F`: 1.4826 x MAD of the same aperture sum at 60 empty places of the original,
-the first 60 points of a fixed lattice that are 12 px clear of every footprint and clipped region (no random
-draw) [proposed: 60 and 12 are the prototype's values]. `rejected` with `star_flux_changed` when any star has
-`|F_v - F_o| > 3 sigma_F` [proposed: measured worst
-2.53 on six images, medians 0.16 to 0.57 (M12); 3 leaves a margin and is to be re-measured on whole photos].
+**The painted star test** (REQ-RST-6.7, P-RST-11). On the stored honest variant of a seeded synthetic scene, and of
+every real photo of the corpus: add a Gaussian patch (sigma 1.3 px) to the stored samples at a place of a fixed lattice
+12 px clear of every kept and clipped region, with a peak of 4 codes of 255 or 5 pixel noises around it, whichever is
+larger, run the gate: refused, with the patch's place among the unconfirmed points. Each place that is not is tried
+again at rising peaks, and the least refused is recorded; at half the peak the count is recorded, not asserted. The
+sensitivity reached is stated per photo: the review script's `everyTrialCodes` [tested on the five photos: every place
+from 4 codes on most, 8 at the worst, a place in crushed black or a flat region].
 
-**What the detector's own statistic can see** [tested, M10]. It refuses a painted star when its matched response,
-lift undone, reaches the variant threshold times the tile's `sigma_m`. For a star-shaped patch of sigma 1.3 px
-that is a peak of about `6 sigma_m / 2.29` (2.29 is the kernel's response to that shape, by arithmetic). Where the
-variant's leftover noise is blotchy and lifted, `sigma_m` is large and a visible painted star passes: none of 40
-at 14 codes on the most lifted crop. That is why the statistic is to be chosen by restore-4 (above).
-
-**The painted star test** (REQ-RST-6.7, P-RST-11). On the stored honest variant of a seeded synthetic scene, and
-of every real photo of the corpus lifted as the job lifts it: add a Gaussian patch (sigma 1.3 px) to the stored
-samples at a place 12 px clear of every footprint and clipped region, with a peak at the stated sensitivity, write
-it back, run the gate: `rejected`, unconfirmed count at least 1, the patch's place among them, in every trial (40
-places per photo, on a fixed lattice). And at half that peak the test records, without asserting, how many were
-refused, so the limit stays visible.
+The first candidate, for the record: the detector on the luma with its local background at the star scale removed (the
+first two wavelet scales), found on the original's code scale with the lift undone, points at threshold 6 confirmed by
+forced photometry at their own places, the dissolve filling with the plain cascade of the original over 3 levels
+[proposed in restore-0; replaced by the above, tested in restore-4].
 
 ### 8. Encoding and storing a still (`services/media/encode.py`, `services/media/png16.py`)
 

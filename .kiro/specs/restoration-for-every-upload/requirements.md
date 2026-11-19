@@ -226,13 +226,16 @@ recorded, at the brightness it recorded.
   7. THE gate SHALL refuse a painted star [decided 2026-11-11: the detector's own statistic refused none of 40
      painted stars on the most lifted crop, so it cannot be the gate as it stands]. On every real photo of the
      corpus, lifted as the job lifts it, a star-shaped patch painted into the stored variant at the stated
-     sensitivity SHALL be refused in every trial. The stated sensitivity is a peak, in the stored variant's own
-     code values, of at least five times the variant's pixel noise around the patch and at least 4 codes of 255
+     sensitivity SHALL be refused in every trial. The stated sensitivity is a peak, in the stored variant's own code
+     values, of at least five times the variant's pixel noise around the patch and at least 4 codes of 255
      [proposed first value, in what a person sees and not in the statistic's own units, so no statistic can meet
-     it by definition; restore-4 states the value it reaches]. Unit restore-4 SHALL choose the gate's statistic by
-     measurement; the detector's statistic with the local background at the star scale removed is the first
-     candidate. The same statistic SHALL find the stars of criterion 1, the points of criterion 3 and the points
-     of criterion 5.
+     it by definition]; restore-4 states the value it reaches on each photo [tested 2026-11-18: 4 codes at 397 of
+     400 places of the design's five photos, every place from 8 codes]. The stars of criterion 1 SHALL be found by
+     the detector's own statistic, and the points of criteria 3 and 5 by the first wavelet scale of the stored
+     file's luma, with the detector's noise floored from the stated sensitivity and each point verified by forced
+     photometry on the variant itself; a point is confirmed by one of the original's stars within the match
+     radius or by samples that are the original's as stored (design section 7) [decided 2026-11-18 by the lead:
+     restore-4's measurements].
   8. Points inside regions where the original is clipped at its largest code SHALL not be counted, and the record
      SHALL say how many were left out.
   9. THE statistic, the thresholds, the tile size, the match radius and the flux tolerance SHALL be recorded in
@@ -456,8 +459,11 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
   variant files with the same SHA-256.
 - **P-RST-11** (REQ-RST-6.5, 6.7, 6.12): for a seeded synthetic scene and, under the `local_dataset` marker, for
   every real photo of the corpus lifted as the job lifts it: the honest run ends `ready`; adding one star-shaped
-  patch at the stated sensitivity, anywhere at least 12 px from a confirmed star and from a clipped region, makes
-  the gate reject with an unconfirmed count of at least 1, in every trial.
+  patch at the stated sensitivity, at a place of a fixed lattice at least 12 px from every region kept as recorded
+  (star footprints, clipped blooms, bright regions) and from every clipped region, makes the gate reject with the
+  patch's place among the unconfirmed points, in every trial; where a place does not at 4 codes, the least peak
+  that it does is recorded and the photo's sensitivity is stated from them (design section 7) [decided 2026-11-18
+  by the lead].
 - **P-RST-12** (REQ-RST-6.2, 6.6): for any synthetic star field with noise, every confirmed star's flux after the
   photo path, lift undone, is within the tolerance; with footprints switched off (a mutant) it is not.
 - **P-RST-13** (REQ-RST-6.3): after the dissolve passes the working image holds no unconfirmed point, or the pass

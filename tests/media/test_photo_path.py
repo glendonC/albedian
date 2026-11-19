@@ -16,9 +16,9 @@ from hypothesis import strategies as st
 
 from photo_frames import DESIGN_PHOTOS, LUMA, PHOTO_PATHS, REPO_ROOT, photo_crop, run_photo_path, star_field
 from services.contracts import media as contracts
-from services.media import noise, spatial, stars, tone
+from services.media import encode, gate, noise, photo, spatial, stars, tone
 
-MODULES = (stars, noise, spatial, tone)
+MODULES = (stars, noise, spatial, tone, gate, encode, photo)
 # A constant names its source (REQ-RST-4.7): a label of the repository's own (design.md, "Labels") in its comment
 SOURCE_MARKERS = ("[proposed", "[verified", "[tested", "[decided")
 # The gate's flux tolerance, in empty-aperture sigma (design section 7) [proposed there]; restore-4 owns it
