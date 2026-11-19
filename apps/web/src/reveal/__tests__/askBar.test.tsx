@@ -611,3 +611,36 @@ describe('Back to Moment pressed: the bar\'s words leave as the flight flies bac
     });
   });
 });
+
+// The motion record ("Anything else": words out): pressed, Fly on your own leaves on words out as free flight starts
+describe('Fly on your own leaves on words out when pressed', () => {
+  it('stays for the words-out time, leaving and inert, then is gone', () => {
+    vi.useFakeTimers();
+    try {
+      show({ onBack: noop, onFlyOnYourOwn: noop });
+      const fly = q('.ask-bar__fly') as HTMLElement;
+      expect(fly.classList.contains('is-leaving')).toBe(false);
+      show({ onBack: noop });
+      expect(q('.ask-bar__fly')).toBe(fly);
+      expect(fly.classList.contains('is-leaving')).toBe(true);
+      expect(fly.hasAttribute('inert')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      expect(q('.ask-bar__fly')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('.ask-bar__fly')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('times it in motion.css', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        rules[rule.selector] = { ...(rules[rule.selector] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.ask-bar__fly.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+  });
+});

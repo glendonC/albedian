@@ -237,6 +237,11 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
 
+/* Pressed, it leaves on words out as free flight starts */
+.ask-bar__fly.is-leaving {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
 /* The status line: each moment (your photo, Real sky, there, nothing matched) is its own element, so a view change
    brings the new line in at the words' delay, 120 ms after the old one went. While the reveal arrives it waits for the
    marks' span instead; there, it comes in between the flight's two halves, with the readout. */
