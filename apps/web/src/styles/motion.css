@@ -65,7 +65,7 @@
 
 /* A star picked: its mark turns white in the colour time; the leader line draws from the star to the card as the card's
    frame; the card's lines arrive top first, 20 ms apart, 120 ms after the frame. On a phone the card rises from the
-   bottom edge as Apple's sheet does. Let go: the card and the line go at once (an exit would need them kept mounted). */
+   bottom edge as Apple's sheet does. Let go: the card's lines leave last first, the line with the top one (below). */
 .reveal-marks {
   --mark-step: max(0ms, calc((var(--look-mo-span-marks) - var(--look-mo-dur-mark)) / max(1, var(--mark-n) - 1)));
 }
