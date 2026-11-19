@@ -69,6 +69,8 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
       'No real travel time: NEAR Shoemaker flew to the asteroid Eros and landed on it in 2001.',
       'No real travel time: MAVEN orbits Mars.',
     ]);
+    // The 18:05 ruling (cassini-1)
+    expect([CRAFT_CHOICES.find((c) => c.id === 'cassini')!.detail, none('cassini')]).toEqual(['around Saturn', 'No real travel time: Cassini orbited Saturn until its mission ended in 2017.']);
     // No craft of the hangar is left with neither a speed nor a sentence
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);

@@ -32,6 +32,8 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   'mars-global-surveyor': 'around Mars',
   'near-shoemaker': 'to Eros',
   maven: 'around Mars',
+  // The 18:05 ruling (cassini-1)
+  cassini: 'around Saturn',
 };
 
 /** D35 item 5 and the 17:24 ruling: each named craft's sentence in place of a trip time, word for word. */
@@ -50,6 +52,7 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   'mars-global-surveyor': 'No real travel time: Mars Global Surveyor orbited Mars until contact was lost in 2006.',
   'near-shoemaker': 'No real travel time: NEAR Shoemaker flew to the asteroid Eros and landed on it in 2001.',
   maven: 'No real travel time: MAVEN orbits Mars.',
+  cassini: 'No real travel time: Cassini orbited Saturn until its mission ended in 2017.',
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */
