@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import math
 import os
 import subprocess
 import sys
@@ -120,6 +121,75 @@ def near_stars(result: photo.StillRestoration, count: int) -> dict:
             "notRefused": [r for r in rows if not r["refused"]]}
 
 
+def raised_trials(result: photo.StillRestoration, count: int, near: int) -> dict:
+    """A sample, and 2 x 2 and 3 x 3 clusters, raised in every channel to the stated peak at each place
+    (`stated_peak`) over the larger of the stored and the original's own sample (and, as AUDIT-B probed, by the stated
+    peak on the stored sample alone, counted beside it), at the lattice (`count` places), beside `near` of the
+    original's stars (photo.near_star_places) and on the kept edges of those stars (a sample of weight between 0 and 1
+    in each of 8 directions); refused for any reason the gate gives (restore-4f). A place is not tried where it lies in
+    a clipped region."""
+    trials = photo.Trials(result)
+    weight, clipped = result.context.kept.weight, result.context.field.clipped
+    height, width = weight.shape
+    families = {"lattice": [(x, y) for x, y in photo.painted_places(result, count)],
+                "nearStar": [(x, y) for x, y, _, _ in photo.near_star_places(result, near)]}
+    edge = []
+    for _, _, index, distance in photo.near_star_places(result, near):
+        if distance != photo.NEAR_STAR_PX[0]:
+            continue
+        star = result.context.field.stars[index]
+        for k in range(photo.NEAR_STAR_DIRECTIONS):
+            angle = 2 * math.pi * k / photo.NEAR_STAR_DIRECTIONS
+            for step in np.arange(0.5, star.radius_px + stars_edge_px() + 1, 0.5):
+                x = int(round(star.x_px + step * math.cos(angle)))
+                y = int(round(star.y_px + step * math.sin(angle)))
+                if 0 <= x < width and 0 <= y < height and 0 < weight[y, x] < 1:
+                    edge.append((x, y))
+                    break
+    families["keptEdge"] = sorted(set(edge))
+    out = {}
+    # Pairs and a line of three single samples 2 px apart, along a row, a column and a diagonal (AUDIT-B's restore-4f
+    # verdict: each lay on the other's ring), on the lattice and beside the stars
+    for family in ("lattice", "nearStar"):
+        for name, step, count in (("PairRow", (0, 2), 2), ("PairColumn", (2, 0), 2), ("PairDiagonal", (2, 2), 2),
+                                  ("LineRow", (0, 2), 3)):
+            rows = []
+            for x, y in families[family]:
+                span = [(x + k * step[1], y + k * step[0]) for k in range(count)]
+                if any(not (0 <= px < width and 0 <= py < height) or clipped[py, px] for px, py in span):
+                    continue
+                peak16, _ = stated_peak(trials.luma, x, y)
+                rows.append({"x": x, "y": y, "refused": trials.refused_spaced(x, y, peak16, step, count)})
+            out[f"{family}{name}"] = {"trials": len(rows), "refused": sum(r["refused"] for r in rows),
+                                      "refusedOnStored": None, "everyTrialCodes": None,
+                                      "notRefused": [r for r in rows if not r["refused"]][:20]}
+    for family, places in families.items():
+        for size in (1, 2, 3):
+            rows = []
+            for x, y in places:
+                if clipped[y:y + size, x:x + size].any():
+                    continue
+                peak16, _ = stated_peak(trials.luma, x, y)
+                refused = trials.refused_raised(x, y, peak16, size)
+                least = peak16 / gate.CODES_PER_8_BIT if refused else next(
+                    (float(c) for c in LADDER if c * gate.CODES_PER_8_BIT > peak16
+                     and trials.refused_raised(x, y, c * gate.CODES_PER_8_BIT, size)), None)
+                rows.append({"x": x, "y": y, "refused": refused, "leastRefusedCodes": least,
+                             "refusedOnStored": trials.refused_raised(x, y, peak16, size, over_original=False)})
+            least = [r["leastRefusedCodes"] for r in rows]
+            out[f"{family}{size}"] = {"trials": len(rows), "refused": sum(r["refused"] for r in rows),
+                                      "everyTrialCodes": None if any(v is None for v in least) else max(least, default=None),
+                                      "refusedOnStored": sum(r["refusedOnStored"] for r in rows),
+                                      "notRefused": [r for r in rows if not r["refused"]][:20]}
+    return out
+
+
+def stars_edge_px() -> int:
+    from services.media import stars
+
+    return stars.FOOTPRINT_EDGE_PX
+
+
 def view8(samples: np.ndarray) -> np.ndarray:
     return samples if samples.dtype == np.uint8 else np.round(samples / 257.0).astype(np.uint8)
 
@@ -158,6 +228,7 @@ def review(photo_id: str, args: argparse.Namespace) -> dict:
               "changedSettings": args.changed}
     record["painted"] = painted(result, args.trials)
     record["nearStars"] = near_stars(result, args.near_stars)
+    record["raised"] = raised_trials(result, args.trials, args.near_stars)
     if args.pictures:
         suffix = ('' if args.target is None else f'-target{args.target}') + ('' if args.quantisation_bound is None else f'-q{args.quantisation_bound:g}')
         write_pictures(args.out, f"{photo_id}{'-crop' if args.crop else ''}{suffix}", still, result)
@@ -204,12 +275,15 @@ def main() -> int:
         with (args.out / "review.jsonl").open("a") as handle:
             handle.write(json.dumps({k: v for k, v in record.items() if k != "painted"} | {"painted": {k: v for k, v in record["painted"].items() if k != "places"}}) + "\n")
         near = record["nearStars"]
+        raised = record["raised"]
+        raised_line = ", ".join(f"{k} {v['refused']}/{v['trials']}" + ("" if v["refusedOnStored"] is None else f" ({v['refusedOnStored']} on stored)")
+                                for k, v in raised.items())
         print(f"{name}: {record['status']}, unconfirmed {record['gate']['unconfirmedPointCount']}, passes "
               f"{record['measured'].get('dissolvedPerPass')}, painted {record['painted']['refused']} of "
               f"{record['painted']['trials']} at the stated sensitivity, every place from "
               f"{record['painted']['everyTrialCodes']} codes, beside stars {near['refused']} of {near['trials']} "
-              f"({near['refusedAtHalf']} at half, every place from {near['everyTrialCodes']} codes), "
-              f"{record['secondsToRestore']} s", flush=True)
+              f"({near['refusedAtHalf']} at half, every place from {near['everyTrialCodes']} codes), raised: "
+              f"{raised_line}, {record['secondsToRestore']} s", flush=True)
     return 0
 
 

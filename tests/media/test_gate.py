@@ -339,7 +339,9 @@ def gate_scene() -> tuple:
 
 def test_the_gate_refuses_a_changed_star_for_its_flux_and_a_painted_point_for_itself() -> None:
     light, field, kept, original, expected = gate_scene()
-    honest = gate.run_gate(expected.astype(np.uint16), original=original, kept=kept, expected=expected,
+    # Stored as the job stores it: the kept edge the original blended with the stored sky around it (restore-4f)
+    stored = gate.kept_samples(expected, expected, kept.weight).astype(np.uint16)
+    honest = gate.run_gate(stored, original=original, kept=kept, expected=expected,
                            original_luminance=light, variant_luminance=light)
     assert honest.record["passed"] and honest.rejection is None
     # The star brightened in place: its kept core is not the original's, one place there (restore-4e), and its flux
@@ -350,8 +352,9 @@ def test_the_gate_refuses_a_changed_star_for_its_flux_and_a_painted_point_for_it
                          original_luminance=light, variant_luminance=brighter)
     assert flux.record["unconfirmedPointCount"] == 1 and flux.record["starsOutsideFluxTolerance"] == 1
     assert not flux.record["passed"] and flux.rejection == "unconfirmed_points"
-    # Kept softly (no sample at weight 1, so no core to compare), the same star is refused for its flux alone
-    soft = gate.Kept(field, 0.99 * kept.weight)
+    # With no kept region to compare (restore-4f makes a kept edge exact too), the same star is refused for its flux
+    # alone: its point is the star's, confirmed by it
+    soft = gate.Kept(field, np.zeros_like(kept.weight))
     flux = gate.run_gate(stored.astype(np.uint16), original=original, kept=soft, expected=expected,
                          original_luminance=light, variant_luminance=brighter)
     assert flux.record["unconfirmedPointCount"] == 0 and flux.record["starsOutsideFluxTolerance"] == 1
@@ -443,6 +446,178 @@ def test_the_search_statistic_leaves_kept_regions_out_and_is_the_gates_statistic
     assert plain[ring].mean() < -1.0 and abs(search[ring].mean()) < 0.2
     assert np.array_equal(gate.search_statistic(luma, None), plain)
     assert np.array_equal(gate.search_statistic(luma, np.zeros((96, 96))), plain)
+
+
+def test_a_kept_edge_is_the_original_blended_with_the_stored_sky_and_a_change_in_it_is_a_place() -> None:
+    rng = np.random.default_rng(31)
+    star = stars.Star(64.0, 64.0, 20.0, 4)
+    weight = stars.footprint_map((128, 128), [star])
+    expected = np.round(20000 + 300 * rng.standard_normal((128, 128, 3)))
+    stored = np.round(20000 + 40 * rng.standard_normal((128, 128, 3)))
+    must = gate.kept_samples(stored, expected, weight)
+    core, edge, outside = weight >= 1, (weight > 0) & (weight < 1), weight == 0
+    assert np.array_equal(must[core], expected[core]) and np.array_equal(must[outside], stored[outside])
+    # An edge sample lies between the original's and the sky's, by its weight, and reads no kept sample
+    fill = gate.smooth_without(stored, (weight > 0).astype(np.float64), gate.KEPT_EDGE_FILL_LEVELS)
+    w = weight[edge][:, None]
+    assert np.array_equal(must[edge], np.round(w * expected[edge] + (1 - w) * fill[edge]))
+    changed_inside = stored.copy()
+    changed_inside[64, 64] += 9999
+    assert np.array_equal(gate.kept_samples(changed_inside, expected, weight)[edge], must[edge])
+    # A file stored so is honest, exactly; one edge sample raised is one place there
+    honest = must.astype(np.uint16)
+    assert gate.kept_changed(honest, gate.kept_samples(honest, expected, weight), weight > 0) == []
+    ys, xs = np.nonzero(edge)
+    raised = honest.copy()
+    raised[ys[0], xs[0]] += 2
+    places = gate.kept_changed(raised, gate.kept_samples(raised, expected, weight), weight > 0)
+    assert [(p.x_px, p.y_px) for p in places] == [(float(xs[0]), float(ys[0]))]
+
+
+def test_a_pass_dissolves_a_raised_sample_the_original_does_not_hold() -> None:
+    rng = np.random.default_rng(34)
+    linear = np.full((256, 256, 3), 0.1) + 0.00002 * rng.standard_normal((256, 256, 3))
+    working = linear.copy()
+    working[100, 120] += 0.012  # about 3 codes of 255 in the stored file
+    field = stars.StarField((), np.zeros((256, 256)), np.zeros((256, 256), bool), 0, 0, 0)
+    result = gate.dissolve(working, linear=linear, to_stored=lambda l: np.clip(l, 0, 1) * 65535,
+                           to_original_codes=lambda l: np.clip(l, 0, 1) * 255, original=gate.Original(np.zeros((0, 2))),
+                           kept=gate.Kept(field, np.zeros((256, 256))))
+    assert result.per_pass and result.per_pass[0] == 1
+    assert result.working[100, 120, 1] - linear[100, 120, 1] < 0.003
+
+
+def test_a_points_own_samples_are_the_originals_leaving_out_the_kept_samples_beside_it() -> None:
+    expected = np.full((9, 9, 3), 1000.0)
+    variant = expected.copy()
+    variant[4, 5] += 300
+    point = [stars.Point(4.0, 4.0, 9.0, 0)]
+    assert gate.unchanged(point, variant, expected) == [False]
+    kept = np.zeros((9, 9), bool)
+    kept[4, 5] = True
+    assert gate.unchanged(point, variant, expected, kept) == [True]
+    assert gate.confirmed(point, gate.Original(np.zeros((0, 2))), variant, expected, kept) == [True]
+
+
+def test_a_kept_edge_sample_the_fill_cannot_reach_is_the_originals_so_a_stored_file_checks_exactly() -> None:
+    # An edge sample deep in a kept region, every free sample past the fill's reach: the fill keeps its own value
+    # through every level, so its blend would read itself; it is the original's, as a core's [restore-4f: rp-b-01's
+    # and rp-b-04's crops ended rejected for 1 and 6 such samples]
+    weight = np.ones((80, 80))
+    weight[:, :4] = 0.0
+    weight[40, 40] = 0.5
+    expected = np.full((80, 80, 3), 30000.0)
+    working = np.full((80, 80, 3), 12345.0)
+    must = gate.kept_samples(working, expected, weight)
+    assert np.array_equal(must[40, 40], expected[40, 40])
+    stored = must.astype(np.uint16)
+    assert gate.kept_changed(stored, gate.kept_samples(stored, expected, weight), weight > 0) == []
+
+
+@pytest.mark.parametrize("size", [1, 2, 3])
+def test_a_raised_sample_or_small_cluster_is_a_place_and_an_edge_a_gradient_or_the_originals_own_is_not(size: int) -> None:
+    rng = np.random.default_rng(32)
+    luma = 40.0 + 0.2 * rng.standard_normal((96, 96))
+    clipped, none = np.zeros((96, 96), bool), np.zeros((96, 96), bool)
+    assert gate.raised_places(luma, luma, none, clipped) == []
+    block = luma.copy()
+    block[40:40 + size, 50:50 + size] += gate.RAISE_CODES + 0.8
+    places = gate.raised_places(block, luma, none, clipped)
+    assert len(places) == 1 and 50 <= places[0].x_px < 50 + size and 40 <= places[0].y_px < 40 + size
+    # Under the threshold, in a clipped region, or no brighter than the original's own samples there, it is none
+    low = luma.copy()
+    low[40:40 + size, 50:50 + size] += gate.RAISE_CODES - 0.8
+    assert gate.raised_places(low, luma, none, clipped) == []
+    at_clip = clipped.copy()
+    at_clip[40:40 + size, 50:50 + size] = True
+    assert gate.raised_places(block, luma, none, at_clip) == []
+    assert gate.raised_places(block, block, none, clipped) == []
+    # A step and a steep gradient the original holds, its noise apart, are not raised: a step's ring is uneven, and
+    # on a plane the ring's mean is the centre
+    step = luma + 30.0 * (np.arange(96)[None, :] >= 48)
+    noisy_step = step + 1.5 * rng.standard_normal((96, 96))
+    assert gate.raised_places(step, noisy_step, none, clipped) == []
+    slope = luma + 2.0 * np.arange(96)[None, :]
+    assert gate.raised_places(slope, slope + 1.5 * rng.standard_normal((96, 96)), none, clipped) == []
+    on_slope = slope.copy()
+    on_slope[40:40 + size, 50:50 + size] += gate.RAISE_CODES + 0.8
+    assert len(gate.raised_places(on_slope, slope, none, clipped)) == 1
+
+
+def test_a_sample_within_2_px_of_the_frames_edge_is_not_compared() -> None:
+    # Its ring would leave the frame, and a padded ring repeats the edge's samples; the frame's outer 2 px are left
+    # out, as the detector leaves out its own border
+    luma = np.full((40, 40), 30.0)
+    for x, y in ((1, 20), (20, 0), (38, 20), (20, 39)):
+        raised = luma.copy()
+        raised[y, x] += 10.0
+        assert gate.raised_places(raised, luma, np.zeros((40, 40), bool), np.zeros((40, 40), bool)) == [], (x, y)
+    inside = luma.copy()
+    inside[2, 20] += 10.0
+    assert len(gate.raised_places(inside, luma, np.zeros((40, 40), bool), np.zeros((40, 40), bool))) == 1
+
+
+def test_the_gate_and_the_passes_confirm_a_points_own_samples_with_the_kept_ones_left_out(monkeypatch) -> None:
+    # A kept edge is stored as a blend, not the original's samples, so a point whose 3 x 3 reaches one would never be
+    # the original's own: both the passes and the gate leave the kept samples out of that comparison [restore-4f: on
+    # rp-b-01's and rp-b-05's crops such points ended unconfirmed once the edges were stored exactly]
+    light, field, kept, original, expected = gate_scene()
+    linear = np.repeat(light[..., None], 3, axis=-1)
+    working = linear + gaussian((256, 256), 180.0, 60.0, 0.05)[..., None]
+    seen = []
+    real = gate.confirmed
+
+    def noted(points, original_, variant, expected_, ignore=None):
+        seen.append(ignore)
+        return real(points, original_, variant, expected_, ignore)
+
+    monkeypatch.setattr(gate, "confirmed", noted)
+    gate.dissolve(working, linear=linear, to_stored=lambda l: np.clip(l, 0, 1) * 65535,
+                  to_original_codes=lambda l: np.clip(l, 0, 1) * 255, original=original, kept=kept)
+    gate.run_gate(gate.kept_samples(expected, expected, kept.weight).astype(np.uint16), original=original, kept=kept,
+                  expected=expected, original_luminance=light, variant_luminance=light)
+    assert seen and all(mask is kept.left_out for mask in seen)
+
+
+@pytest.mark.parametrize("step", [(0, 2), (2, 0), (2, 2), (2, -2)])
+@pytest.mark.parametrize("count", [2, 3])
+def test_raised_samples_2_px_apart_do_not_hide_each_other(step: tuple[int, int], count: int) -> None:
+    # Each lies on the other's ring: counted in that ring's unevenness, a pair 2 px apart in a row passed at 4 codes
+    # in 7 of 10 trials (AUDIT-B's restore-4f verdict); a line of three passed at 32 codes in 2 of 10
+    rng = np.random.default_rng(36)
+    luma = 40.0 + 0.2 * rng.standard_normal((96, 96))
+    none = np.zeros((96, 96), bool)
+    for codes in (gate.SENSITIVITY_PEAK_CODES, 4 * gate.SENSITIVITY_PEAK_CODES, 8 * gate.SENSITIVITY_PEAK_CODES):
+        raised = luma.copy()
+        for k in range(count):
+            raised[40 + k * step[0], 40 + k * step[1]] += codes
+        places = gate.raised_places(raised, luma, none, none)
+        assert len(places) == count, (step, count, codes, places)
+
+
+def test_a_dense_pattern_of_raised_samples_is_raised_although_its_rings_hold_little_else() -> None:
+    # Every second sample raised over a patch: each ring is mostly the others, so a ring left without them is too
+    # sparse to read; such a sample is a raise all the same
+    luma = np.full((64, 64), 30.0)
+    raised = luma.copy()
+    raised[20:44:2, 20:44:2] += 8.0
+    places = gate.raised_places(raised, luma, np.zeros((64, 64), bool), np.zeros((64, 64), bool))
+    assert len(places) == 12 * 12
+
+
+    rng = np.random.default_rng(33)
+    star = stars.Star(48.0, 48.0, 90.0, 4)
+    weight = stars.footprint_map((96, 96), [star])
+    luma = 40.0 + 0.2 * rng.standard_normal((96, 96)) + 200.0 * (weight > 0)
+    left_out, clipped = weight > 0, np.zeros((96, 96), bool)
+    assert gate.raised_places(luma, luma, left_out, clipped) == []
+    beside = luma.copy()
+    beside[48, 48 + 4 + 2 + 1] += gate.RAISE_CODES + 0.8
+    places = gate.raised_places(beside, luma, left_out, clipped)
+    assert [(p.x_px, p.y_px) for p in places] == [(55.0, 48.0)]
+    # Reading the kept star's light, the same ring would have hidden it
+    unmasked = gate.raised_places(beside, luma, np.zeros((96, 96), bool), clipped)
+    assert (55.0, 48.0) not in [(p.x_px, p.y_px) for p in unmasked]
 
 
 def test_a_stars_flux_is_refused_just_past_the_tolerance_and_kept_just_inside_it() -> None:

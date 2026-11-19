@@ -217,9 +217,12 @@ def _verified_by_photometry(points: list[stars.Point], image: np.ndarray) -> lis
     return confirmed
 
 
-def unchanged(points: list[stars.Point], variant: np.ndarray, expected: np.ndarray) -> list[bool]:
+def unchanged(points: list[stars.Point], variant: np.ndarray, expected: np.ndarray,
+              ignore: np.ndarray | None = None) -> list[bool]:
     """For each point, whether every sample of every channel within UNCHANGED_RADIUS_PX of it differs from the
-    original's own, lifted and stored (`expected`), by at most UNCHANGED_TOLERANCE_CODES16. Both are in 16 bit
+    original's own, lifted and stored (`expected`), by at most UNCHANGED_TOLERANCE_CODES16, leaving out the samples
+    `ignore` holds (a kept region's, which `kept_changed` checks against what they must be: a kept edge is not the
+    original's samples, so a point beside one would never count as the original's, restore-4f). Both are in 16 bit
     stored codes."""
     variant = np.asarray(variant, dtype=np.float64)
     expected = np.asarray(expected, dtype=np.float64)
@@ -230,19 +233,149 @@ def unchanged(points: list[stars.Point], variant: np.ndarray, expected: np.ndarr
         rows = slice(max(0, y - UNCHANGED_RADIUS_PX), min(height, y + UNCHANGED_RADIUS_PX + 1))
         columns = slice(max(0, x - UNCHANGED_RADIUS_PX), min(width, x + UNCHANGED_RADIUS_PX + 1))
         here = np.abs(variant[rows, columns] - expected[rows, columns])
+        if ignore is not None:
+            here = here[~np.asarray(ignore[rows, columns], dtype=bool)]
         found.append(bool(here.size > 0 and np.all(here <= UNCHANGED_TOLERANCE_CODES16)))
     return found
 
 
+# A kept region's edge is the original blended, by the edge's weight, with the B3 average over this many levels of the
+# stored samples around it that no kept region holds [proposed for restore-4f: the first-scale smoothing's levels, a
+# reach of 14 px, past a 2 px edge; so the edge, like the core, is what the gate can compute from the original and the
+# stored file, and a sample raised in it is found exactly (AUDIT-B's finding C: one raised in the edge passed)]
+KEPT_EDGE_FILL_LEVELS = 3
+# The largest 16 bit code [verified: 2**16 - 1]
+TOP_CODE16 = 65535.0
+
+
+def kept_samples(stored: np.ndarray, expected: np.ndarray, weight: np.ndarray) -> np.ndarray:
+    """What the stored file's samples must be, in 16 bit codes: in a kept core (weight 1) the original lifted and
+    stored (`expected`); in a kept edge (weight between 0 and 1) the weight times that and the rest times the B3
+    average, over KEPT_EDGE_FILL_LEVELS levels, of the stored samples around it outside every kept region, rounded,
+    or the original's where no such sample lies within the average's reach; elsewhere the stored samples themselves. The edge's average reads no kept sample, so the gate computes the same
+    from the stored file read back as the job did before storing it."""
+    stored = np.asarray(stored, dtype=np.float64)
+    expected = np.asarray(expected, dtype=np.float64)
+    weight = np.asarray(weight, dtype=np.float64)
+    out = np.where((weight >= 1.0)[..., None], expected, stored)
+    edge = (weight > 0) & (weight < 1.0)
+    if edge.any():
+        # A last channel, 1 on free samples, tells which edge samples the fill reached from free samples: one it did
+        # not keeps its own value through every level, so its blend would read itself; it is the original's instead
+        free = (weight <= 0).astype(np.float64)
+        filled = smooth_without(np.concatenate([stored, free[..., None]], axis=-1), (weight > 0).astype(np.float64),
+                                KEPT_EDGE_FILL_LEVELS)
+        reached = filled[..., -1] > 0.5
+        blend = np.clip(np.round(weight[..., None] * expected + (1.0 - weight[..., None]) * filled[..., :-1]), 0,
+                        TOP_CODE16)
+        out = np.where((edge & reached)[..., None], blend, out)
+        out = np.where((edge & ~reached)[..., None], expected, out)
+    return out
+
+
+# A sample is raised when its luma stands this far over the mean of the 16 samples 2 px around it that no kept region
+# holds, and as far over the original's own sample there [proposed for restore-4f: half the stated sensitivity's floor
+# of 4 codes; on the design's five photos whole, a sample raised to 4 codes over the larger of the stored and the
+# original's own sample reaches it at 1121 of 1122 lattice and near-star places, and 10, 196, 981, 1 and 9 honest
+# samples do, which the passes dissolve, .lanetools/restore-4f/measure7.py]
+RAISE_CODES = SENSITIVITY_PEAK_CODES / 2
+# The ring: the 16 samples 2 px from a sample, the 5 x 5 less its 3 x 3 [proposed for restore-4f: past a 3 x 3
+# cluster's own samples, so a cluster of up to 3 x 3 stands over it whole]
+RAISE_RING = np.pad(np.zeros((3, 3), dtype=bool), 1, constant_values=True)
+# The ring is read only where this many of its 16 samples are free of kept regions [proposed: half of them, so its
+# mean and plane rest on both sides of the sample]
+RAISE_RING_LEAST = 8
+
+
+# The ring's offsets (dy, dx) in row order [proposed: RAISE_RING's own samples]
+RAISE_OFFSETS = [(dy, dx) for dy in range(-2, 3) for dx in range(-2, 3) if max(abs(dy), abs(dx)) == 2]
+# and a second ring 3 px out, the 7 x 7 less its 5 x 5 [proposed for restore-4f: raised samples 2 px apart lie on each
+# other's first ring, not on this one; a cluster of up to 5 x 5 stands over it whole]
+RAISE_OFFSETS_OUTER = [(dy, dx) for dy in range(-3, 4) for dx in range(-3, 4) if max(abs(dy), abs(dx)) == 3]
+
+
+def ring_rise(luma: np.ndarray, left_out: np.ndarray,
+              offsets: list[tuple[int, int]] = RAISE_OFFSETS) -> tuple[np.ndarray, np.ndarray]:
+    """Per sample: its luma less the mean of the samples of its ring (`offsets`: RAISE_OFFSETS, 2 px around it, or
+    RAISE_OFFSETS_OUTER, 3 px) that no kept region holds, and the largest distance of those samples from their own least-squares plane (on a plane the ring's
+    mean is the centre's value, so a gradient raises nothing; a step's ring holds a sample as far from its plane as
+    the step raises the centre); NaN where fewer than half of them are free, and within the ring's reach of the
+    frame's edge, where a padded ring would repeat the edge's samples. Computed in strips of 64 rows."""
+    luma = np.asarray(luma, dtype=np.float64)
+    height, width = luma.shape
+    rise = np.full((height, width), np.nan)
+    uneven = np.full((height, width), np.nan)
+    reach = max(max(abs(dy), abs(dx)) for dy, dx in offsets)
+    least = RAISE_RING_LEAST * len(offsets) // len(RAISE_OFFSETS)
+    padded = np.pad(np.where(np.asarray(left_out, dtype=bool), np.nan, luma), reach, mode="edge")
+    dys = np.array([dy for dy, _ in offsets], dtype=np.float64)[:, None, None]
+    dxs = np.array([dx for _, dx in offsets], dtype=np.float64)[:, None, None]
+    for y0 in range(0, height, 64):
+        y1 = min(height, y0 + 64)
+        stack = np.stack([padded[reach + y0 + dy:reach + y1 + dy, reach + dx:reach + dx + width] for dy, dx in offsets])
+        valid = np.isfinite(stack)
+        count = valid.sum(axis=0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mean = np.where(valid, stack, 0.0).sum(axis=0) / count
+            centred = np.where(valid, stack - mean, 0.0)
+            wx, wy = np.where(valid, dxs, 0.0), np.where(valid, dys, 0.0)
+            b = (centred * wx).sum(axis=0) / (wx**2).sum(axis=0)
+            c = (centred * wy).sum(axis=0) / (wy**2).sum(axis=0)
+            far = np.where(valid, np.abs(centred - b * dxs - c * dys), 0.0).max(axis=0)
+        enough = count >= least
+        rise[y0:y1] = np.where(enough, luma[y0:y1] - mean, np.nan)
+        uneven[y0:y1] = np.where(enough, far, np.nan)
+    rise[:reach, :] = rise[-reach:, :] = np.nan
+    rise[:, :reach] = rise[:, -reach:] = np.nan
+    return rise, uneven
+
+
+def raised_places(luma: np.ndarray, original_luma: np.ndarray, left_out: np.ndarray, clipped: np.ndarray, *,
+                  only_tiles: set[int] | None = None) -> list[stars.Point]:
+    """The samples outside every kept region and clipped region that stand far above both their neighbourhood and the
+    original (AUDIT-B's wording, 2026-11-19): luma (codes of 255) over their ring's mean (`ring_rise`) by RAISE_CODES
+    more than the farthest of the ring's samples lies from its plane (a step's ring holds one as far as the step
+    raises the centre, so an edge is not raised; a smooth sky's ring lies on its plane), and RAISE_CODES or more over
+    the original
+    lifted and stored at that sample (`original_luma`: a sample no brighter than the original recorded there is the
+    original's). Each connected group (eight neighbours) is one place at its highest sample (snr 0: no detector found
+    it). A single sample or a cluster of up to 3 x 3 stands over its first ring whole, up to 5 x 5 over its second;
+    a sample counts when either ring shows it, so raised samples 2 or 3 px apart do not hide each other. The detector
+    counts only star-shaped points, so one sample raised by up to 64 codes passed the gate (AUDIT-B's finding C)."""
+    luma = np.asarray(luma, dtype=np.float64)
+    left_out = np.asarray(left_out, dtype=bool)
+    open_ = ~left_out & ~np.asarray(clipped, dtype=bool)
+    over_original = luma - np.asarray(original_luma, dtype=np.float64) >= RAISE_CODES
+    # Two rings, 2 and 3 px out: raised samples 2 px apart lie on each other's first ring and lend it their
+    # unevenness (AUDIT-B's restore-4f verdict: a pair in a row passed at 4 codes in 7 of 10 trials), but off the
+    # second; 3 px apart, the other way round; a pattern of every second sample is off the second ring too
+    raised = np.zeros(luma.shape, dtype=bool)
+    for offsets in (RAISE_OFFSETS, RAISE_OFFSETS_OUTER):
+        rise, residual = ring_rise(luma, left_out, offsets)
+        with np.errstate(invalid="ignore"):
+            raised |= open_ & over_original & (rise - residual >= RAISE_CODES)
+    if not raised.any():
+        return []
+    labels, count = ndimage.label(raised, structure=np.ones((3, 3), dtype=bool))
+    grid = stars.tiles(*luma.shape)
+    places = []
+    for y, x in ndimage.maximum_position(np.where(raised, luma, -np.inf), labels, range(1, count + 1)):
+        tile = next(i for i, t in enumerate(grid) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1)
+        if only_tiles is None or tile in only_tiles:
+            places.append(stars.Point(float(x), float(y), 0.0, tile))
+    return places
+
+
 def kept_changed(variant: np.ndarray, expected: np.ndarray, core: np.ndarray) -> list[stars.Point]:
-    """The places inside the kept cores where the stored file is not the original's: each connected group (eight
-    neighbours) of core samples where some channel differs from `expected` by more than UNCHANGED_TOLERANCE_CODES16,
-    as one place at the group's centroid (snr 0: no detector found it). Every step leaves a kept core as the original
-    recorded it (the filter takes the original sample there, the first-scale smoothing and the passes weight it 0), so
-    an honest file has none; a star painted beside one of the original's stars, where the detector keeps only the
-    brighter peak of its 7 x 7 window and merges what is within the match radius of a star, changes the star's core
-    instead (AUDIT-B's finding A, 2026-11-19: at 3 to 6 px a star of 4 codes passed the whole gate in 21 of 24 trials
-    on a public photo). Both are in 16 bit stored codes."""
+    """The places inside `core` (a kept region's samples) where the stored file is not what it must be (`expected`:
+    `kept_samples`, or the original lifted and stored for a core alone): each connected group (eight neighbours) of
+    samples where some channel differs by more than UNCHANGED_TOLERANCE_CODES16, as one place at the group's centroid
+    (snr 0: no detector found it). Every step leaves a kept core as the original recorded it (the filter takes the
+    original sample there, the first-scale smoothing and the passes weight it 0), and the job stores each kept edge as
+    `kept_samples` computes it, so an honest file has none; a star painted beside one of the original's stars, where
+    the detector keeps only the brighter peak of its 7 x 7 window and merges what is within the match radius of a star,
+    changes the star's core instead (AUDIT-B's finding A, 2026-11-19: at 3 to 6 px a star of 4 codes passed the whole
+    gate in 21 of 24 trials on a public photo). Both are in 16 bit stored codes."""
     core = np.asarray(core, dtype=bool)
     if not core.any():
         return []
@@ -263,13 +396,14 @@ def kept_changed(variant: np.ndarray, expected: np.ndarray, core: np.ndarray) ->
     return places
 
 
-def confirmed(points: list[stars.Point], original: Original, variant: np.ndarray, expected: np.ndarray) -> list[bool]:
+def confirmed(points: list[stars.Point], original: Original, variant: np.ndarray, expected: np.ndarray,
+              ignore: np.ndarray | None = None) -> list[bool]:
     """Whether each point is the original's: its own samples are (`variant` against `expected`, in 16 bit stored
     codes), or one of the original's stars, each verified by forced photometry on the original's pixels (criterion
     1), lies within the match radius of it. Forced photometry asked at any place verified the original's edges and
     texture there: a painted star of 64 codes laid on a beach edge of photo 1 was confirmed, and edges of the
     original's foreground are no star [tested: .lanetools/restore-4/flux_dbg.py]."""
-    return [same or star for same, star in zip(unchanged(points, variant, expected), on_a_star(points, original))]
+    return [same or star for same, star in zip(unchanged(points, variant, expected, ignore), on_a_star(points, original))]
 
 
 def on_a_star(points: list[stars.Point], original: Original) -> list[bool]:
@@ -601,6 +735,7 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
     core = kept.core
     left_out = kept.left_out.astype(np.float64)
     expected = to_stored(linear)
+    expected_luma = stored_luma(expected)
     near_core = ndimage.distance_transform_edt(~core) <= NEAR_CORE_PX if core.any() else np.zeros(core.shape, dtype=bool)
     grid = stars.tiles(*core.shape)
     dirty: set[int] | None = None
@@ -614,8 +749,9 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
                                   kept=kept)
         at_gate, _ = variant_points(luma, kept.field.clipped, threshold=VARIANT_THRESHOLD_SNR, only_tiles=dirty,
                                     kept=kept)
-        points = stars._merged(lower + at_gate)
-        ok = confirmed(points, original, stored, expected)
+        points = stars._merged(lower + at_gate + raised_places(luma, expected_luma, kept.left_out, kept.field.clipped,
+                                                               only_tiles=dirty))
+        ok = confirmed(points, original, stored, expected, kept.left_out)
         unconfirmed = [p for p, good in zip(points, ok) if not good]
         if not unconfirmed:
             break
@@ -694,13 +830,16 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
 
 def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np.ndarray,
              original_luminance: np.ndarray, variant_luminance: np.ndarray) -> GateOutcome:
-    """The gate on the stored file's codes: every point confirmed, every kept core's samples the original's, and
-    every measured star's flux within the tolerance. A place where a kept core's samples changed counts among the
-    variant's points and its unconfirmed points (the contract's two counts; `kept_changed`). `expected` is the original
+    """The gate on the stored file's codes: every point confirmed, a raised sample or small cluster among the points
+    (`raised_places`), every kept region's samples what they must be (`kept_samples`), and every measured star's flux
+    within the tolerance. A place where a kept region's samples changed counts among the variant's points and its
+    unconfirmed points (the contract's two counts; `kept_changed`). `expected` is the original
     lifted and stored as the job stores it; the luminances are linear light, the variant's with its lift undone."""
-    points, left_out = variant_points(stored_luma(stored), kept.field.clipped, kept=kept)
-    ok = confirmed(points, original, stored, expected)
-    changed = kept_changed(stored, expected, kept.core)
+    luma = stored_luma(stored)
+    points, left_out = variant_points(luma, kept.field.clipped, kept=kept)
+    points = stars._merged(points + raised_places(luma, stored_luma(expected), kept.left_out, kept.field.clipped))
+    ok = confirmed(points, original, stored, expected, kept.left_out)
+    changed = kept_changed(stored, kept_samples(stored, expected, kept.weight), kept.left_out)
     unconfirmed_points = [p for p, good in zip(points, ok) if not good] + changed
     points = points + changed
     measured, outside, worst, median = flux_check(kept.field, original_luminance, variant_luminance, kept.weight)

@@ -185,11 +185,15 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
         unchangedToleranceCodes=gate.UNCHANGED_TOLERANCE_CODES16)})
     steps.append({"kind": "lift", "version": tone.STEP_VERSION, "parameters": lift.parameters()})
     steps.append({"kind": "encode", "version": STEP_VERSION, "parameters": _encode_parameters()})
-    stored = transfer.encode16(tone.apply_lift(dissolved.working, lift.beta))
+    expected = transfer.encode16(tone.apply_lift(linear, lift.beta))
+    # Every kept region stored as the gate computes it: a core the original's, an edge the original blended with the
+    # stored sky around it (restore-4f)
+    stored = gate.kept_samples(transfer.encode16(tone.apply_lift(dissolved.working, lift.beta)), expected,
+                               kept.weight).astype(np.uint16)
     data = encode.write_still(stored, still.icc_profile)
     read_back = encode.read_still(data)
     lap("encode")
-    context = Context(original, kept, transfer, lift.beta, top, luminance, transfer.encode16(tone.apply_lift(linear, lift.beta)))
+    context = Context(original, kept, transfer, lift.beta, top, luminance, expected)
     verdict = check_full(context, read_back)
     lap("gate")
     measured["dissolvedPerPass"] = dissolved.per_pass
@@ -276,34 +280,102 @@ class Trials:
         window = np.clip(np.round(stored[rows, columns] + patch[..., None]), 0, encode.CODE_STEPS).astype(np.uint16)
         return rows, columns, window
 
+    def raised_window(self, x: int, y: int, peak16: float, size: int = 1,
+                      over_original: bool = True) -> tuple[slice, slice, np.ndarray]:
+        """A `size` x `size` block whose first sample is (x, y), raised in every channel so that each sample's luma
+        stands `peak16` over the larger of its own and the original's own luma there (`over_original`, the trial a
+        raised sample the original does not hold is refused for), or by `peak16` on the stored sample alone
+        (AUDIT-B's probe of 2026-11-19), restore-4f."""
+        stored = self.result.stored
+        rows = slice(y, min(stored.shape[0], y + size))
+        columns = slice(x, min(stored.shape[1], x + size))
+        lift = np.zeros(stored[rows, columns].shape[:2])
+        if over_original:
+            below = gate.stored_luma(self.result.context.expected[rows, columns]) - self.luma[rows, columns]
+            lift = np.maximum(below, 0.0) * gate.CODES_PER_8_BIT
+        window = np.clip(np.round(stored[rows, columns].astype(np.float64) + (lift + peak16)[..., None]), 0,
+                         encode.CODE_STEPS).astype(np.uint16)
+        return rows, columns, window
+
     def refused(self, x: int, y: int, peak16: float) -> tuple[bool, float]:
-        """Whether the gate refuses the stored file with a star of `peak16` painted at (x, y), for an unconfirmed
-        point at the patch's place or a kept core's sample the patch changed; and the largest snr found there."""
+        """Whether the gate refuses the stored file with a star of `peak16` painted at (x, y), and the largest snr
+        found there (`refused_window`)."""
         rows, columns, window = self.painted_window(x, y, peak16)
-        core = self.result.context.kept.core[rows, columns]
-        expected = self.result.context.expected[rows, columns]
-        kept_changed = bool(core.any() and np.any(np.abs(window[core].astype(np.float64) - expected[core].astype(np.float64))
-                                                  > gate.UNCHANGED_TOLERANCE_CODES16))
+        return self.refused_window(rows, columns, window, x, y)
+
+    def refused_raised(self, x: int, y: int, peak16: float, size: int = 1, over_original: bool = True) -> bool:
+        """Whether the gate refuses the stored file with a `size` x `size` block at (x, y) raised (`raised_window`)."""
+        rows, columns, window = self.raised_window(x, y, peak16, size, over_original)
+        return self.refused_window(rows, columns, window, x, y)[0]
+
+    def refused_spaced(self, x: int, y: int, peak16: float, step: tuple[int, int], count: int) -> bool:
+        """Whether the gate refuses the stored file with `count` single samples raised so (`raised_window`), the
+        first at (x, y), each `step` (dy, dx) from the last: a pair or a line of samples apart (AUDIT-B's restore-4f
+        verdict)."""
+        places = [(x + k * step[1], y + k * step[0]) for k in range(count)]
+        x0, x1 = min(p[0] for p in places), max(p[0] for p in places) + 1
+        y0, y1 = min(p[1] for p in places), max(p[1] for p in places) + 1
+        rows, columns = slice(y0, y1), slice(x0, x1)
+        window = self.result.stored[rows, columns].copy()
+        for px, py in places:
+            _, _, sample = self.raised_window(px, py, peak16, 1)
+            window[py - y0, px - x0] = sample[0, 0]
+        return self.refused_window(rows, columns, window, x, y)[0]
+
+    def refused_window(self, rows: slice, columns: slice, window: np.ndarray, x: int, y: int) -> tuple[bool, float]:
+        """Whether the gate refuses the stored file with `window` in place of its samples at (rows, columns): for a
+        kept region's sample within the edge fill's reach of the change that is not what it must be, for a raised
+        sample or small cluster in the change that the original does not confirm, or for an unconfirmed point within
+        the match radius of (x, y); and the largest snr found there."""
+        context = self.result.context
+        kept = context.kept
         height, width = self.luma.shape
+        expected = context.expected[rows, columns]
+        # A kept edge's samples read the stored sky within the fill's reach: they are recomputed from a window twice
+        # that reach around the change, and compared within the reach of it
+        reach = 2 * (2**gate.KEPT_EDGE_FILL_LEVELS - 1)
+        margin = 2 * reach + 4
+        b0, b1 = max(0, rows.start - margin), min(height, rows.stop + margin)
+        a0, a1 = max(0, columns.start - margin), min(width, columns.stop + margin)
+        stored = self.result.stored[b0:b1, a0:a1].astype(np.float64)
+        stored[rows.start - b0:rows.stop - b0, columns.start - a0:columns.stop - a0] = window
+        must = gate.kept_samples(stored, context.expected[b0:b1, a0:a1], kept.weight[b0:b1, a0:a1])
+        inner = (slice(max(0, rows.start - reach) - b0, min(height, rows.stop + reach) - b0),
+                 slice(max(0, columns.start - reach) - a0, min(width, columns.stop + reach) - a0))
+        region = kept.left_out[b0:b1, a0:a1][inner]
+        kept_changed = bool(region.any() and np.any(np.abs(stored[inner][region] - must[inner][region])
+                                                    > gate.UNCHANGED_TOLERANCE_CODES16))
+        # A raised sample or cluster: its ring is 2 px around it, read from the same window
+        luma_window = gate.stored_luma(stored)
+        places = gate.raised_places(luma_window, gate.stored_luma(context.expected[b0:b1, a0:a1]),
+                                    kept.left_out[b0:b1, a0:a1], context.field.clipped[b0:b1, a0:a1])
+        inside = [p for p in places if rows.start <= p.y_px + b0 < rows.stop and columns.start <= p.x_px + a0 < columns.stop]
+        raised = False
+        if inside:
+            framed = [stars.Point(p.x_px + a0, p.y_px + b0, p.snr, p.tile) for p in inside]
+            shifted = [stars.Point(p.x_px - columns.start, p.y_px - rows.start, p.snr, p.tile) for p in framed]
+            same = gate.unchanged(shifted, window, expected, kept.left_out[rows, columns])
+            by_star = gate.on_a_star(framed, context.original)
+            raised = any(not (s or b) for s, b in zip(same, by_star))
         # The statistic at a sample reads the luma 2 px around it: recompute it 4 px around the patch from a luma
         # window 8 px around it, whose cut edges lie 4 px or more from what is kept (a frame edge is mirrored alike)
         r0, r1 = max(0, rows.start - 8), min(height, rows.stop + 8)
         c0, c1 = max(0, columns.start - 8), min(width, columns.stop + 8)
         luma = self.luma[r0:r1, c0:c1].copy()
         luma[rows.start - r0:rows.stop - r0, columns.start - c0:columns.stop - c0] = gate.stored_luma(window)
-        local = gate.search_statistic(luma, self.result.context.kept.left_out[r0:r1, c0:c1])
+        local = gate.search_statistic(luma, kept.left_out[r0:r1, c0:c1])
         k0, k1 = max(0, rows.start - 4), min(height, rows.stop + 4)
         j0, j1 = max(0, columns.start - 4), min(width, columns.stop + 4)
         image = self.image.copy()
         image[k0:k1, j0:j1] = local[k0 - r0:k1 - r0, j0 - c0:j1 - c0]
         only = {i for i, tile in enumerate(self.grid)
                 if tile.x0 < columns.stop and columns.start < tile.x1 and tile.y0 < rows.stop and rows.start < tile.y1}
-        points, _ = gate.points_on(image, self.result.context.field.clipped, only_tiles=only)
+        points, _ = gate.points_on(image, context.field.clipped, only_tiles=only)
         near = [p for p in points if math.hypot(p.x_px - x, p.y_px - y) <= stars.MATCH_RADIUS_PX]
         if not near:
-            return kept_changed, 0.0
+            return kept_changed or raised, 0.0
         shifted = [stars.Point(p.x_px - columns.start, p.y_px - rows.start, p.snr, p.tile) for p in near]
-        same = gate.unchanged(shifted, window, expected)
-        by_star = gate.on_a_star(near, self.result.context.original)
+        same = gate.unchanged(shifted, window, expected, kept.left_out[rows, columns])
+        by_star = gate.on_a_star(near, context.original)
         unconfirmed = sum(not (s or b) for s, b in zip(same, by_star))
-        return unconfirmed > 0 or kept_changed, max(p.snr for p in near)
+        return unconfirmed > 0 or kept_changed or raised, max(p.snr for p in near)

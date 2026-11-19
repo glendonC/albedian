@@ -238,7 +238,11 @@ recorded, at the brightness it recorded.
      restore-4's measurements]. A patch painted beside one of the original's stars, 3 to 12 px from it in any
      direction, SHALL be refused in every trial too; the search leaves kept regions out and every sample of a kept
      core SHALL be the original's as stored (design section 7) [decided 2026-11-19 by the lead: AUDIT-B's finding
-     A, a star of 4 codes painted 3 to 6 px beside a real one passed in 21 of 24 trials].
+     A, a star of 4 codes painted 3 to 6 px beside a real one passed in 21 of 24 trials]. A single sample or a
+     cluster of up to 3 x 3 standing the stated sensitivity over both its surroundings and the original's own
+     samples there SHALL be refused in every trial, anywhere, and every sample of a kept region SHALL be what the
+     gate computes from the original and the stored file (design section 7) [decided 2026-11-19 by the lead:
+     AUDIT-B's finding C, one raised sample passed at 4 to 64 codes].
   8. Points inside regions where the original is clipped at its largest code SHALL not be counted, and the record
      SHALL say how many were left out.
   9. THE statistic, the thresholds, the tile size, the match radius and the flux tolerance SHALL be recorded in
@@ -468,7 +472,12 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
   that it does is recorded and the photo's sensitivity is stated from them (design section 7) [decided 2026-11-18
   by the lead]. A patch of 4 codes painted 3 to 12 px from one of the original's stars, in any direction, makes
   the gate reject for an unconfirmed place in every trial; one painted with its centre in a kept region's edge
-  changes a kept core's sample [decided 2026-11-19 by the lead: restore-4e].
+  changes a kept core's sample [decided 2026-11-19 by the lead: restore-4e]. A single sample, or a 2 x 2 or 3 x 3
+  cluster, on the lattice, beside a star or on a kept edge, each sample raised in every channel to the stated peak
+  over the larger of its own luma and the original's own luma there, makes the gate reject in every trial (the
+  trial model: a sample counts as made up only when it stands above both what the stored file holds around it and
+  what the original recorded there) [decided 2026-11-19 by the lead: restore-4f]; so does a pair or a line of three
+  such samples 2 px apart along a row, a column or a diagonal [AUDIT-B's restore-4f verdict].
 - **P-RST-12** (REQ-RST-6.2, 6.6): for any synthetic star field with noise, every confirmed star's flux after the
   photo path, lift undone, is within the tolerance; with footprints switched off (a mutant) it is not.
 - **P-RST-13** (REQ-RST-6.3): after the dissolve passes the working image holds no unconfirmed point, or the pass

@@ -1,6 +1,6 @@
 {
  "albedian.restore": {
-  "revision": 1,
+  "revision": 2,
   "files": [
    "services/media/jobs.py",
    "services/media/photo.py",
@@ -16,7 +16,7 @@
    "services/media/tone.py",
    "services/science/detector.py"
   ],
-  "digest": "7e50c52e808ddae22f734c5cc5f63db8690a3c3ef1642557d0324319512b735e"
+  "digest": "4cb34c2ca1fd0c188da5f63df2cac68d037f6901f5f747fbcbc6788fc0fa21cd"
  },
  "albedian.solve_chain": {
   "revision": 6,

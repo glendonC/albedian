@@ -124,6 +124,10 @@ pictures under `.cache/restore-review/<unit>/`.
     from one of the original's stars is refused in every trial on every real photo, because the point search leaves
     kept regions out and every sample of a kept core must be the original's as stored (design section 7); a test
     holds the flux tolerance at 3 sigma_F from both sides. Before restore-2b serves anything.
+  - restore-4f [decided 2026-11-19 by the lead: AUDIT-B's finding C on restore-4e, model B of the trials]: a single
+    sample or a cluster of up to 3 x 3 standing the stated sensitivity over both its surroundings and the original's
+    own samples is refused in every trial on every real photo; kept edges are stored as the gate computes them, so
+    every kept sample is checked exactly (design section 7). Before any person sees a restoration.
 
 - [x] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with

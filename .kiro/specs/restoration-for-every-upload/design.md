@@ -432,6 +432,29 @@ centroid, counted among the variant's points and its unconfirmed points; the con
 A star of 4 codes, or of 2, painted with its centre in a kept region's 2 px edge changes a core sample by far more
 than that, so the search may leave the edge out [tested: P-RST-11's edge property, radii 2 to 12].
 
+**Kept edges** [proposed for restore-4f]. The job stores each kept edge sample (weight between 0 and 1) as its weight
+times the original lifted and stored, plus the rest times the B3 average over 3 levels of the stored samples around
+it outside every kept region, rounded; where no such sample lies within the average's 14 px reach, as the original's.
+The average reads no kept sample, so the gate computes every kept sample, core and edge, from the original and the
+stored file read back, and compares it within 1 code of 65535: a raised sample in a kept region is refused at any
+size from one code up [tested: AUDIT-B's finding C of 2026-11-19 had one raised in the edge pass at 4 to 64 codes].
+
+**Raised samples** [proposed for restore-4f]. Outside kept regions and clipped regions, a sample is a point when its
+luma stands 2 codes of 255 (half the stated floor) over the mean of the 16 samples 2 px around it that no kept region
+holds, by more than the farthest of those samples lies from their own plane, and 2 codes over the original's own
+sample there: far above both its neighbourhood and what the original recorded (AUDIT-B's wording). On a plane the
+ring's mean is the centre's value, so a gradient raises nothing; a step's ring holds a sample as far from its plane as
+the step raises the centre, so an edge is not raised; a single sample or a cluster of up to 3 x 3 stands over its ring
+whole. A second ring 3 px out (the 7 x 7 less its 5 x 5) is read the same way, and a sample counts when either ring
+shows it: raised samples 2 px apart lie on each other's first ring and lend it their unevenness, but off the second;
+3 px apart, the other way round [tested: AUDIT-B's restore-4f verdict, a pair 2 px apart in a row passed at 4 codes in 7
+of 10 trials with one ring; leaving candidates out of each other's rings instead set aside, since it took the edge
+column out of an edge's rings]. Such a point is confirmed as any point is, and the passes dissolve those the original
+does not confirm. Set
+aside [tested]: the ring's largest sample (a gradient hid a raised sample); its median (it flagged faint stars); a
+star's shape test (a 2 x 2 cluster cannot be told from a star centred on a pixel corner); no condition on the original
+(15, 690, 6210, 24 and 283 honest samples on the five photos whole, rp-b-03's lit foreground texture).
+
 **What is kept as recorded.** Star footprints, the radius by section 3's ring rule measured against the median of a
 far ring, 4 to 12 px beyond the largest radius allowed, at least 2 px [proposed: the detector's local background takes
 a bright halo for sky; radius 1 kept a plus sign of 5 samples that showed as crosses]; each clipped component's bloom,
@@ -519,9 +542,18 @@ from 4 codes on most, 8 at the worst, a place in crushed black or a flat region]
 (restore-4e): a patch of 4 codes at 3, 4, 5, 6, 8, 10 and 12 px from each of 12 stars spread along the frame, in 8
 directions, each place inside the frame's margin and outside clipped regions: refused, for an unconfirmed point at the
 patch or a kept core's sample it changed; the peak is the lattice's, 4 codes or 5 pixel noises, and a place not refused
-is tried at rising peaks. [tested, restore-4e: the five crops, 3314 of 3314; the five photos whole, 3323 of 3326,
-the three on rp-b-03 beside one faint star in a structured sky, refused from 5 and 8 codes, under that photo's stated
-10; before restore-4e, AUDIT-B's probe passed 21 of 24 at 3 to 6 px on rp-b-05's crop].
+is tried at rising peaks [tested, restore-4e: the five crops, 3314 of 3314; the five photos whole, 3323 of 3326, the
+three on rp-b-03 beside one faint star in a structured sky, refused from 5 and 8 codes, under that photo's stated 10,
+and 3326 of 3326 after restore-4f; before restore-4e, AUDIT-B's probe passed 21 of 24 at 3 to 6 px on rp-b-05's
+crop]. Raised samples (restore-4f): a single sample and 2 x 2 and 3 x 3 clusters on the lattice, beside the stars and
+on their kept edges, each sample raised in every channel to the stated peak over the larger of its own luma and the
+original's own there [decided 2026-11-19 by the lead: a sample counts as made up only when it stands above both]:
+refused, for any reason the gate gives [tested, restore-4f: the five crops, 11496 of 11496; the five photos whole,
+11467 of 11470, the three at one place of rp-b-03 whose sky the smoothing lifted 45 codes over the original's crushed
+black, its ring uneven by 2.3 codes, refused from 8 codes, under that photo's stated 10]. Raised by the peak over the
+stored sample alone, as AUDIT-B probed, the count is recorded: where the original's own sample is that bright, the
+raised one is not brighter than what the original recorded [tested: on the lattice 166, 186 and 200 of 200 for a
+sample, 2 x 2 and 3 x 3 on the crops, 177, 192 and 199 whole; beside stars and on kept edges every one].
 
 The first candidate, for the record: the detector on the luma with its local background at the star scale removed (the
 first two wavelet scales), found on the original's code scale with the lift undone, points at threshold 6 confirmed by

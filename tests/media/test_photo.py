@@ -6,7 +6,9 @@ Covers, on synthetic stills written as 16 bit PNGs and decoded as any upload is:
   its records are the contract's.
 - A star-shaped patch at the stated sensitivity painted into the stored file anywhere 12 px clear of every footprint
   and clipped region is refused, with the patch's place among the unconfirmed points (P-RST-11); painted 3 to 12 px
-  from one of the original's own stars, at any angle, it is refused for an unconfirmed place too (restore-4e).
+  from one of the original's own stars, at any angle, it is refused for an unconfirmed place too (restore-4e); and a
+  single sample or a cluster of up to 3 x 3 raised by the stated sensitivity, anywhere on the lattice or beside a
+  star, is refused for an unconfirmed place (restore-4f).
 - After the dissolve passes no point of the working image is unconfirmed, or the passes ran out and the gate refuses
   (P-RST-13); with the passes switched off, the same scene ends `rejected` and keeps no file.
 - Two runs write the same bytes (P-RST-10); the graph names its steps in the job's order, each parameter with its
@@ -104,6 +106,59 @@ def test_p_rst_11_a_star_painted_beside_one_of_the_originals_stars_is_refused_in
     assert verdict.gate["unconfirmedPointCount"] >= 1, (star, distance, angle, verdict.gate)
 
 
+def raised(result: photo.StillRestoration, x: int, y: int, peak16: float, size: int) -> np.ndarray:
+    """The stored file with a `size` x `size` block whose first sample is (x, y) raised in every channel so that each
+    sample's luma stands `peak16` over the larger of its own and the original's own luma there."""
+    rows, columns, window = photo.Trials(result).raised_window(x, y, peak16, size)
+    out = result.stored.copy()
+    out[rows, columns] = window
+    return out
+
+
+def raised_spaced(result: photo.StillRestoration, x: int, y: int, peak16: float, step: tuple[int, int],
+                  count: int) -> np.ndarray:
+    """The stored file with `count` single samples raised so (model B), the first at (x, y), `step` (dy, dx) apart."""
+    out = result.stored.copy()
+    trials = photo.Trials(result)
+    for k in range(count):
+        rows, columns, window = trials.raised_window(x + k * step[1], y + k * step[0], peak16, 1)
+        out[rows, columns] = window
+    return out
+
+
+@settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(which=st.integers(0, 10**6), size=st.sampled_from([1, 2, 3, -2, -3]), beside=st.booleans(),
+       distance=st.floats(*NEAR_STAR_PX), angle=st.floats(0.0, 2 * math.pi))
+@example(which=0, size=1, beside=False, distance=3.0, angle=0.0)
+@example(which=1, size=1, beside=True, distance=6.0, angle=0.0)
+@example(which=2, size=3, beside=False, distance=3.0, angle=0.0)
+@example(which=3, size=-2, beside=False, distance=3.0, angle=0.0)
+@example(which=4, size=-3, beside=True, distance=8.0, angle=0.0)
+def test_p_rst_11_a_raised_sample_or_small_cluster_is_refused_in_every_trial(
+        honest, which: int, size: int, beside: bool, distance: float, angle: float) -> None:
+    # AUDIT-B's finding C of 2026-11-19: one sample raised by 4 to 64 codes passed the whole gate anywhere, because the
+    # gate counted only star-shaped points; a restored picture says nothing was generated, so a sample or small
+    # cluster standing the stated sensitivity over both its surroundings and the original's own sample is refused
+    height, width = honest.stored.shape[:2]
+    if beside:
+        inside = [s for s in honest.context.kept.field.stars
+                  if STAR_MARGIN_PX <= s.x_px < width - STAR_MARGIN_PX and STAR_MARGIN_PX <= s.y_px < height - STAR_MARGIN_PX]
+        star = inside[which % len(inside)]
+        x, y = int(round(star.x_px + distance * math.cos(angle))), int(round(star.y_px + distance * math.sin(angle)))
+    else:
+        places = photo.painted_places(honest, 20)
+        x, y = places[which % len(places)]
+    peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
+    # A negative size is a pair (-2) or a line of three (-3) of single samples 2 px apart, along a row, a column or a
+    # diagonal by `which` (AUDIT-B's restore-4f verdict: each lay on the other's ring and hid it)
+    steps = [(0, 2), (2, 0), (2, 2), (2, -2)]
+    stored = (raised(honest, x, y, peak16, size) if size > 0
+              else raised_spaced(honest, x, y, peak16, steps[which % len(steps)], -size))
+    verdict = photo.check(honest, stored)
+    assert not verdict.gate["passed"], (x, y, size, beside)
+    assert verdict.gate["unconfirmedPointCount"] >= 1, (x, y, size, beside, verdict.gate)
+
+
 def test_painted_places_lie_twelve_px_clear_of_every_footprint_and_clipped_region(honest) -> None:
     occupied = (honest.context.protected > 0) | honest.context.field.clipped
     for x, y in photo.painted_places(honest, 20):
@@ -196,6 +251,18 @@ def test_near_star_places_lie_outside_clipped_regions_and_inside_the_margin() ->
     assert at(margin - 2.0) == []
     inside = at(margin + 2.0)
     assert inside and all(x >= margin for x, _, _, _ in inside) and len(inside) < len(photo.NEAR_STAR_PX) * 8
+
+
+def test_a_raised_trial_on_its_window_agrees_with_the_whole_gate(honest) -> None:
+    trials = photo.Trials(honest)
+    peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
+    places = photo.painted_places(honest, 4) + [(x, y) for x, y, _, d in photo.near_star_places(honest, 2) if d == 8]
+    for x, y in places:
+        for size in (1, 2):
+            for scale in (1.0, 0.25):
+                whole = photo.check(honest, raised(honest, x, y, scale * peak16, size))
+                assert trials.refused_raised(x, y, scale * peak16, size) == (whole.gate["unconfirmedPointCount"] > 0), (
+                    x, y, size, scale)
 
 
 def test_a_painted_trial_on_the_tiles_its_patch_touches_agrees_with_the_whole_gate(honest) -> None:
