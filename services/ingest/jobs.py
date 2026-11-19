@@ -16,7 +16,7 @@ over it, each at its own presentation time (`_decode_spread_frames`).
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from fractions import Fraction
 import json
@@ -36,9 +36,19 @@ from PIL import Image, UnidentifiedImageError
 
 from services.contracts.astronomy import parse_observation_solution
 from services.contracts.jobs import SOLVE_FAILURE_SENTENCES
+from services.contracts.alignment import PersonAlignment
 from services.contracts.pointing import PointingRecord
 from services.ingest.job_store import JobStore
-from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, NoUpload, Producer, runner_for
+from services.ingest.runner import (
+    JobContext,
+    JobKind,
+    JobRefusal,
+    KindResult,
+    NoUpload,
+    Producer,
+    runner_for,
+    solve_subject,
+)
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.ingest.store_pointing import PointingUnreadable, read_stored_pointing
 from services.science.detector import (
@@ -57,6 +67,7 @@ from services.science.phone_photo_solver import (
 )
 from services.science.catalog import altaz_to_icrs
 from services.science.predicted_sky import LentMoment, _place as _recorded_place, complete_sky
+from services.science.person_hint import person_hint, stored_axes_icrs
 from services.science.record_hint import RecordAttitude, RecordHint, record_attitude, record_hint
 from services.science.solver import angular_separation_deg
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
@@ -460,6 +471,8 @@ def _solve_chain(
     hint_radius_deg: float | None = None,
     triangle_radius_deg: float | None = None,
     moment_lent: str | None = None,
+    person_axes: Sequence[tuple[float, float]] | None = None,
+    person_fov_deg: float | None = None,
     **chain: Any,
 ):
     """The searches (`_solve_chain_once`), with a pointing record's centre hint first when there is one; when the
@@ -472,7 +485,15 @@ def _solve_chain(
     nothing calibrated, the searches once more
     with no time and no place, so the phone solver's whole-sky blind search runs as it would for the photo alone, its
     solution kept only when it calibrates (the lead's answer of 2026-11-19 13:20: a lent moment must never cost a photo
-    a solve it gets alone). The predicted sky still uses the lent moment."""
+    a solve it gets alone). The predicted sky still uses the lent moment.
+
+    A solve from a person's alignment (`person_fov_deg`, with `person_axes` the pose in the stored frame) runs its own
+    searches instead (`_solve_person_chain`). It runs no unhinted search: the upload's plain solve is its own job."""
+    if person_fov_deg is not None:
+        return _solve_person_chain(
+            solve_image, detections, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
+            hint_radius_deg=hint_radius_deg, person_axes=person_axes, person_fov_deg=person_fov_deg, **chain,
+        )
     solution = _solve_chain_once(
         solve_image, detections, width, height, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
         hint_radius_deg=hint_radius_deg, triangle_radius_deg=triangle_radius_deg, **chain,
@@ -495,6 +516,72 @@ def _solve_chain(
                 blind, observed_at_utc=chain.get("obs_utc_iso"), observer_lat=chain.get("lat_deg"),
                 observer_lon=chain.get("lon_deg"), warnings=[*blind.warnings, BLIND_LENT_WORDS[moment_lent]],
             )
+    return solution
+
+
+# The fields of view the last search of an aligned solve sweeps, as factors of the person's, nearest first: nine rungs
+# 3 percent apart over 12 either side, since one search locks only within about 3 percent of the true field [tested,
+# align-2 on the 13 public photos the job leaves predicted only: 18 of 25 correct with the person's field 10 percent
+# off either way, the hint at the person's field alone 2 of 16; .lead/kiro/reports/SOLVER/align-2-measure.md]
+PERSON_FOV_SWEEP = (1.0, 0.97, 1.03, 0.94, 1.06, 0.91, 1.09, 0.88, 1.12)
+
+
+def _solve_person_chain(
+    solve_image: np.ndarray,
+    detections: list,
+    *,
+    on_event: Callable[..., None],
+    hint_ra_deg: float | None,
+    hint_dec_deg: float | None,
+    hint_radius_deg: float | None,
+    person_axes: Sequence[tuple[float, float]] | None,
+    person_fov_deg: float,
+    camera_label: str | None,
+    obs_utc_iso: str | None,
+    lat_deg: float | None,
+    lon_deg: float | None,
+    source_asset_id: str,
+    sha256: str,
+    solution_id: str,
+    **_unused: Any,
+):
+    """The searches of a solve from a person's alignment (align-2w), in the order measured on public photos: the
+    person's pose as the answer, refined and verified (it alone matched three photos no search found, within about
+    half a degree); then the horizon search near the person's centre at the person's field of view; then the same
+    over the fine sweep of the field (`PERSON_FOV_SWEEP`). The first that calibrates is kept, else the last. Every
+    search holds the person's hint, and the held-out gate is the same as for any solve: a wrong alignment can lose a
+    match but never make one. All run in the one child under the chain's one bound."""
+
+    def on_candidate(done: int, total: int) -> None:
+        on_event("candidate", done, total)
+
+    phone = dict(
+        obs_utc_iso=obs_utc_iso, observer_lat=lat_deg, observer_lon=lon_deg, camera_label=camera_label,
+        source_asset_id=source_asset_id, source_sha256=sha256, solution_id=solution_id, on_candidate=on_candidate,
+        hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg,
+    )
+    steps: list[dict[str, Any]] = []
+    if person_axes is not None:
+        steps.append({"fov_diagonal_deg": person_fov_deg, "seed_axes_icrs": list(person_axes)})
+    steps.append({"fov_diagonal_deg": person_fov_deg})
+    steps.append({"fov_candidates_deg": [person_fov_deg * k for k in PERSON_FOV_SWEEP]})
+    solution = None
+    for step in steps:
+        on_event("solver", "phone_photo")
+        solution = solve_phone_photo(solve_image, **phone, **step)
+        if solution.status == "calibrated":
+            break
+    return _with_noise_words(solution, detections)
+
+
+def _with_noise_words(solution: Any, detections: list) -> Any:
+    """The frame's flags in plain words (detector.noise_limit_warnings), whichever search made the solution: the
+    phone solver adds them itself, the plate solver does not (realsky-4)."""
+    measures = next((d.frame for d in detections if getattr(d, "frame", None) is not None), None)
+    if measures is not None:
+        extra = [words for words in noise_limit_warnings(measures) if words not in solution.warnings]
+        if extra:
+            solution = replace(solution, warnings=[*solution.warnings, *extra])
     return solution
 
 
@@ -609,14 +696,7 @@ def _solve_chain_once(
             )
             if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
                 solution = phone_sol
-    # The frame's flags in plain words (detector.noise_limit_warnings), whichever search made the solution: the phone
-    # solver adds them itself, the plate solver does not (realsky-4)
-    measures = next((d.frame for d in detections if getattr(d, "frame", None) is not None), None)
-    if measures is not None:
-        extra = [words for words in noise_limit_warnings(measures) if words not in solution.warnings]
-        if extra:
-            solution = replace(solution, warnings=[*solution.warnings, *extra])
-    return solution
+    return _with_noise_words(solution, detections)
 
 
 @dataclass(frozen=True)
@@ -803,6 +883,48 @@ def pointing_hint_for(
     return hint, warning
 
 
+def person_search_hint(asset: Mapping[str, Any], alignment: PersonAlignment) -> SearchHint:
+    """The searches' hint from a person's alignment (align-2w): its centre read as airless, as the drawn sky is, at
+    the photo's own time and place (the route takes an alignment only for an upload with both); the contract's stated
+    uncertainty and the person's field of view."""
+    captured, place = asset.get("capturedAtUTC"), _recorded_place(asset)
+    if not isinstance(captured, str) or captured == "" or place is None:
+        raise ValueError("An alignment needs the photo's time and place.")
+    hint = person_hint(alignment, captured, place[0], place[1])
+    return SearchHint(hint.center_alt_deg, hint.center_az_deg, hint.ra_deg, hint.dec_deg, hint.uncertainty_deg,
+                      hint.fov_diagonal_deg)
+
+
+def person_pose_axes(asset: Mapping[str, Any], alignment: PersonAlignment) -> list[tuple[float, float]] | None:
+    """The person's pose as the stored frame's three directions (person_hint.stored_axes_icrs): the person aligned
+    the frame as displayed, the solver's camera is the stored pixels'. None for a mirrored display."""
+    captured, place = asset.get("capturedAtUTC"), _recorded_place(asset)
+    orientation = asset.get("displayOrientation") or {}
+    turns = int(orientation.get("quarterTurnsClockwise", 0)) if isinstance(orientation, Mapping) else 0
+    mirrored = bool(orientation.get("mirrored", False)) if isinstance(orientation, Mapping) else False
+    axes = stored_axes_icrs(alignment, str(captured), place[0], place[1], quarter_turns_clockwise=turns,
+                            mirrored=mirrored)
+    return None if axes is None else list(axes)
+
+
+def person_pointing_hint(
+    solution: ObservationSolution, search: SearchHint, alignment: PersonAlignment, sha256: str, width: int, height: int
+) -> PointingHint:
+    """The solution's pointing hint for a solve from a person's alignment (align-1b's shape): a search hint only,
+    never the pose or the moment, with the person's roll and field of view and, on a calibrated solution, how far the
+    verified centre lay from the person's. The alignment stays the person's: never observed, never catalog matched."""
+    offset: float | None = None
+    if solution.status == "calibrated" and solution.wcs is not None:
+        ra, dec = solution.wcs.pixel_to_world(width / 2.0, height / 2.0)
+        offset = min(180.0, angular_separation_deg(ra, dec, search.ra_deg, search.dec_deg))
+    return PointingHint(
+        source_asset_sha256=sha256, used_as=("search_hint",), time_from="file", place_from="file",
+        center_alt_deg=search.alt_deg, center_az_deg=search.az_deg, uncertainty_deg=search.uncertainty_deg,
+        verified_center_offset_deg=offset, source="person", roll_deg=float(alignment.roll_deg),
+        fov_diagonal_deg=float(alignment.fov_diagonal_deg),
+    )
+
+
 @dataclass(frozen=True)
 class SolveContext:
     """What the solve chain needs from the job around it: the stored upload, a way to report a stage's progress, and
@@ -841,6 +963,8 @@ class SolveContext:
     on_predicted_sky: Optional[Callable[[dict[str, Any]], None]] = None
     record_moment: Optional[RecordMoment] = None
     record_unusable: bool = False
+    # The person's alignment the job ran from (its record's request, align-2w); None for a plain solve
+    alignment: Optional[Mapping[str, Any]] = None
 
 
 def solve_upload(ctx: SolveContext) -> ObservationSolution:
@@ -856,7 +980,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # Where the file holds no recorded time or no place, the stored record's stand in for the searches and the
     # predicted sky, and the hint says so; the receipt keeps the file's own
     asset, moment_hint = lend_record_moment(ctx.asset, ctx.record_moment, sha256)
-    search = record_search_hint(asset, ctx.record_moment)
+    # A person's alignment is the solve's hint in place of the record's (align-2w): the person lined it up after
+    alignment = None if ctx.alignment is None else PersonAlignment.model_validate(dict(ctx.alignment))
+    search = record_search_hint(asset, ctx.record_moment) if alignment is None else person_search_hint(asset, alignment)
 
     def on_decode_progress(done: int, total: int | None) -> None:
         ctx.report({"stage": "decode", "unit": "frames", "done": done, "total": total}, persist=done == total)
@@ -898,7 +1024,10 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # The 35 mm tag names the whole sensor; a still's frame may be a part of it (a 16:9 mode, a crop), so its own
     # field of view is the tag's scaled to the stored frame (fov-1); a clip's tag stands as written
     fov_hint = camera_fov_hint_deg(camera_meta, (width, height) if media_kind == "image" else None)
-    if fov_hint is None and search is not None and search.fov_diagonal_deg is not None:
+    if alignment is not None:
+        # The field the person scaled the drawn sky to is the first search's
+        fov_hint = float(alignment.fov_diagonal_deg)
+    elif fov_hint is None and search is not None and search.fov_diagonal_deg is not None:
         # The record's field of view and zoom when the file states no 35 mm focal length (pointing-4)
         fov_hint = search.fov_diagonal_deg
     obs_utc_iso = asset.get("capturedAtUTC")
@@ -937,6 +1066,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         # The record lent the time or the place: the blind search stays open to the photo (the lead, 13:20)
         moment_lent=_what_was_lent(moment_hint),
     )
+    if alignment is not None:
+        chain_kwargs.update(person_axes=person_pose_axes(asset, alignment), person_fov_deg=float(alignment.fov_diagonal_deg))
+
     read_for_pose: list[list[tuple[float, np.ndarray]]] = []
 
     def pose_frames() -> list[tuple[float, np.ndarray]]:
@@ -952,7 +1084,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         hint, _ = pointing_hint_for(unsolved, moment_hint, search, sha256, width, height)
         return _sky_from_record(moment_hint, ctx.record_moment, hint), hint
 
-    if ctx.on_predicted_sky is not None:
+    # A solve from a person's alignment publishes no early sky: the person's own alignment is already drawn, and a
+    # pose's guess would replace it on the screen (PLATFORM's read of the wiring)
+    if ctx.on_predicted_sky is not None and alignment is None:
         _publish_early_sky(ctx.on_predicted_sky, asset, sha256, solution_id, pose_frames, record_sky)
         ctx.check_cancel()
     limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
@@ -1004,7 +1138,10 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         solution = replace(solution, warnings=[*solution.warnings, RECORD_NOT_USED])
     # The hint the solution states, judged against the verified centre before the predicted sky adds its own last
     # warning; it is attached after, since only a calibrated solution has an offset and the sky keeps it calibrated
-    pointing_hint, hint_warning = pointing_hint_for(solution, moment_hint, search, sha256, width, height)
+    if alignment is not None and search is not None:
+        pointing_hint, hint_warning = person_pointing_hint(solution, search, alignment, sha256, width, height), None
+    else:
+        pointing_hint, hint_warning = pointing_hint_for(solution, moment_hint, search, sha256, width, height)
     if hint_warning is not None:
         solution = replace(solution, warnings=[*solution.warnings, hint_warning])
 
@@ -1012,8 +1149,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
     # one generic warning
     try:
+        # A solve from a person's alignment states the person's hint, never a pose from the record
         solution = complete_sky(solution, asset, frames=pose_frames,
-                                **_sky_from_record(moment_hint, ctx.record_moment, pointing_hint))
+                                **_sky_from_record(moment_hint, ctx.record_moment if alignment is None else None, pointing_hint))
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
     if pointing_hint is not None and solution.pointing_hint is None:
@@ -1103,6 +1241,7 @@ SOLVE_PRODUCER_FILES = (
     "apps/web/public/catalog/constellations/bounds.json",
     "apps/web/public/catalog/deepsky/openngc.json",
     "services/science/record_hint.py",
+    "services/science/person_hint.py",
 )
 # Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose field of
 # view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives in a matched or
@@ -1121,8 +1260,10 @@ SOLVE_PRODUCER_FILES = (
 # joins the files), which narrows the searches of photos with a record and states the hint in their solutions; 13, a
 # pointing record's attitude as an approximate pose when the stars do not solve (pointing-5), which lines up photos with
 # a record that were predicted only; 14, a predicted or matched star's place and brightness cautions in the design
-# lane's C24 words, so stored solutions take the new words
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 14, SOLVE_PRODUCER_FILES)
+# lane's C24 words, so stored solutions take the new words; 15, a solve from a person's alignment (align-2w,
+# whose person_hint.py joins the files): the pose, the hint and the field sweep, and the person's pointing hint in
+# its solution; a plain solve's results are unchanged
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 15, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
@@ -1248,6 +1389,7 @@ def run_solve_kind(ctx: JobContext) -> KindResult:
         on_predicted_sky=ctx.predicted_sky,
         record_moment=record_moment,
         record_unusable=record_unusable,
+        alignment=ctx.request,
     )
     try:
         solution = solve_upload(solve_ctx)
@@ -1286,4 +1428,6 @@ SOLVE_KIND = JobKind(
     store_failure_reason=RESULT_NOT_STORED,
     initial_stages=_solve_store_stage,
     results_valid=_solve_results_valid,
+    # A solve from a person's alignment is its own piece of work, keyed by the alignment (align-2r, align-2w)
+    subject=solve_subject,
 )

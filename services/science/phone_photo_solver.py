@@ -73,6 +73,7 @@ from services.science.detector import (
     frame_measures,
     noise_limit_warnings,
 )
+from services.science.person_hint import camera_rotation
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
@@ -352,6 +353,9 @@ def _true_altitude_deg(apparent_alt_deg: np.ndarray) -> np.ndarray:
         h = np.clip(h - f / (1.0 + slope), REFRACTION_FLOOR_DEG, 90.5)
     return np.where(below, a - floor_shift, h)
 
+
+# The widest field a pose or a sweep may give, as a person's alignment's (services/contracts/alignment.py)
+SEED_FOV_MAX_DEG = 175.0
 
 # The warnings a person reads under a result, in the design lane's words (C16, decided 2026-11-19 12:45:
 # .lead/uiux/UIUX-solvewords-READY.md); the no-match result shows them verbatim
@@ -2122,6 +2126,8 @@ def solve_phone_photo(
     hint_ra_deg: float | None = None,
     hint_dec_deg: float | None = None,
     hint_radius_deg: float | None = None,
+    seed_axes_icrs: Sequence[tuple[float, float]] | None = None,
+    fov_candidates_deg: Sequence[float] | None = None,
 ) -> ObservationSolution:
     """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification.
 
@@ -2135,7 +2141,13 @@ def solve_phone_photo(
 
     A centre hint (`hint_ra_deg`, `hint_dec_deg`, `hint_radius_deg`: a pointing record's, pointing-4) narrows the
     horizon search of a photo with a time and a place in both solves: it keeps only rotations whose axis lies within
-    the radius. It never changes the catalog or the gate."""
+    the radius. It never changes the catalog or the gate.
+
+    A person's alignment (align-2w, D24) adds two ways in, each with the gate unchanged: `seed_axes_icrs`, the frame's
+    centre and a step toward its right and its bottom edges as ICRS directions (person_hint.stored_axes_icrs), is
+    tried as the search's answer in one solve, refined and verified as any candidate, with no search; and
+    `fov_candidates_deg` is the field-of-view sweep the horizon search tries in place of the camera's or the given
+    field. A pose far from the truth is refused by the gate, so it can lose a solve but never make one."""
     if detections is None:
         raw_luma = _to_luma_2d(image)
         luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2145,6 +2157,7 @@ def solve_phone_photo(
         camera_label=camera_label, fov_diagonal_deg=fov_diagonal_deg, catalog_stars=catalog_stars,
         source_asset_id=source_asset_id, source_sha256=source_sha256, frame_time_sec=frame_time_sec,
         solution_id=solution_id, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg,
+        seed_axes_icrs=seed_axes_icrs, fov_candidates_deg=fov_candidates_deg,
     )
     first_total = [0]
 
@@ -2159,7 +2172,8 @@ def solve_phone_photo(
 
     first = _solve_phone_photo_with(image, attitude_prior=_upright_prior_takes, on_candidate=first_counts, **common)
     horizon = obs_utc_iso is not None and observer_lat is not None and observer_lon is not None and catalog_stars is None
-    if first.status == "calibrated" or not horizon:
+    # A pose tried as the answer is one solve: no search runs, so a second prior has nothing to keep
+    if first.status == "calibrated" or not horizon or seed_axes_icrs is not None:
         return first
     return _solve_phone_photo_with(image, attitude_prior=_attitude_prior_takes, on_candidate=second_counts, **common)
 
@@ -2183,6 +2197,8 @@ def _solve_phone_photo_with(
     hint_ra_deg: float | None = None,
     hint_dec_deg: float | None = None,
     hint_radius_deg: float | None = None,
+    seed_axes_icrs: Sequence[tuple[float, float]] | None = None,
+    fov_candidates_deg: Sequence[float] | None = None,
 ) -> ObservationSolution:
     """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes."""
     require_source_sha256(source_sha256)
@@ -2193,6 +2209,12 @@ def _solve_phone_photo_with(
         raise ValueError("A centre hint gives its right ascension, declination and radius together.")
     if hint_radius_deg is not None and not 0.0 < hint_radius_deg <= 180.0:
         raise ValueError("A centre hint's radius lies in (0, 180] degrees.")
+    if seed_axes_icrs is not None and len(seed_axes_icrs) != 3:
+        raise ValueError("A pose to try gives the frame's centre, its right step and its down step.")
+    if fov_candidates_deg is not None and (
+        len(fov_candidates_deg) == 0 or not all(0.0 < float(f) <= SEED_FOV_MAX_DEG for f in fov_candidates_deg)
+    ):
+        raise ValueError(f"A field-of-view sweep names one or more fields in (0, {SEED_FOV_MAX_DEG:g}] degrees.")
 
     raw_luma = _to_luma_2d(image)
     luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2231,7 +2253,13 @@ def _solve_phone_photo_with(
         if has_time_and_place
         else None
     )
-    fov_models = _candidate_fovs_and_models(camera_label, fov_diagonal_deg)
+    fov_models = (
+        _candidate_fovs_and_models(camera_label, fov_diagonal_deg)
+        if fov_candidates_deg is None
+        else [(float(f), "brown-conrady") for f in fov_candidates_deg]
+    )
+    if seed_axes_icrs is not None and sky_frame is None:
+        raise ValueError("A pose to try needs the photo's time and place.")
 
     tile_index = _get_tile_index()
     # Stars move by their proper motion to the capture time when there is one; without one they stay at the
@@ -2254,7 +2282,17 @@ def _solve_phone_photo_with(
         epoch_limitations = ()
     initial_wcs: PhoneCameraWCS | None = None
 
-    if sky_frame is not None and catalog_stars is None:
+    if seed_axes_icrs is not None:
+        # The pose as the search's answer (align-2w): the camera in this sky frame from its three directions, at the
+        # first field of view; refined and verified below as any candidate. A mirrored pose gives no camera
+        rotation = camera_rotation(seed_axes_icrs, sky_frame)
+        if rotation is not None:
+            seed_fov, seed_lens = fov_models[0]
+            initial_wcs = PhoneCameraWCS.from_rotation_and_intrinsics(
+                rot_matrix=rotation, fov_diagonal_deg=seed_fov, width=width, height=height, lens_model=seed_lens,
+                sky_frame=sky_frame,
+            )
+    elif sky_frame is not None and catalog_stars is None:
         row_idx_b, ra_b, dec_b, _ = tile_index.query_bright(v_limit=6.3, max_stars=3500, epoch_jyear=epoch_jyear)
         enu_b = sky_frame.icrs_to_sky_vec(ra_b, dec_b)
         above = enu_b[:, 2] > math.sin(math.radians(0.5))
