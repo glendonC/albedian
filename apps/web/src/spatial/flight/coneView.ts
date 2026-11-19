@@ -105,15 +105,32 @@ function rotate(v: Vec3, k: Vec3, angle: number): Vec3 {
   return add(add(mul(v, c), mul(cross(k, v), s)), mul(k, dot(k, v) * (1 - c)));
 }
 
+/** Where the orbit camera starts, in cone lengths from the cone's middle: out to the side, and above. */
+export interface ConeStart {
+  readonly outLengths: number;
+  readonly upLengths: number;
+}
+
+/** D28's start on the laptop: 1.25 lengths out to the side and 0.25 above. */
+export const LAPTOP_CONE_START: ConeStart = { outLengths: 1.25, upLengths: 0.25 };
+
 /**
- * The orbit camera: D28's start beside the cone (the picture's camera: from the cone's middle, 1.25 lengths out to the
- * side and 0.25 above, looking at the middle), turned rigidly round Earth and brought closer by the zoom.
+ * D30 item 7 at phone width, from the design page's own camera (.cache/uiux/phone3d/build.mjs): 1.5 lengths out and
+ * 0.15 above, the view rolled a quarter turn so the cone stands upright, its middle at 271 px (halfway between the top
+ * bar's foot at 104 and the cone readout's top at 482, less 22), Earth at its foot just above the readout.
  */
-export function conePose(geometry: ConeGeometry, orbit: ConeOrbit): { positionPc: Vec3; rows: WcsCameraRows } {
+export const PHONE_CONE_START: ConeStart = { outLengths: 1.5, upLengths: 0.15 };
+export const PHONE_CONE_CENTRE_Y_PX = 271;
+
+/**
+ * The orbit camera: D28's start beside the cone (the picture's camera: from the cone's middle, out to the side and a
+ * little above, looking at the middle), turned rigidly round Earth and brought closer by the zoom.
+ */
+export function conePose(geometry: ConeGeometry, orbit: ConeOrbit, start: ConeStart = LAPTOP_CONE_START): { positionPc: Vec3; rows: WcsCameraRows } {
   const { axis, top, lengthPc: L } = geometry;
   const side = unit(cross(axis, top));
   const mid = mul(axis, 0.5 * L);
-  const eye0 = add(add(mid, mul(side, 1.25 * L)), mul(top, 0.25 * L));
+  const eye0 = add(add(mid, mul(side, start.outLengths * L)), mul(top, start.upLengths * L));
   const f0 = unit(sub(mid, eye0));
   const r0 = unit(cross(f0, top));
   const u0 = cross(r0, f0);
@@ -133,13 +150,26 @@ export function zoomConeOrbit(orbit: ConeOrbit, wheelDeltaY: number): ConeOrbit 
   return { ...orbit, zoom: Math.max(0.05, Math.min(4, orbit.zoom * Math.exp(wheelDeltaY * 0.001))) };
 }
 
-/** The star layer's camera in the cone view: a plain pinhole 50 degrees across; none without a verified solve. */
-export function coneStarView(session: ObservationSession, orbit: ConeOrbit, viewportWidthPx: number, viewportHeightPx: number): StarView | null {
+/** A pinch as the wheel's delta (D30 item 7): fingers spread from `prevPx` to `nowPx` apart bring the camera that much closer. */
+export function pinchWheelDelta(prevPx: number, nowPx: number): number {
+  return prevPx > 0 && nowPx > 0 ? 1000 * Math.log(prevPx / nowPx) : 0;
+}
+
+/**
+ * The star layer's camera in the cone view: a plain pinhole 50 degrees across; none without a verified solve. On the
+ * phone (D30 item 7) it starts from the phone's place and is rolled a quarter turn (the cone's axis, across the laptop's
+ * view, runs up the phone's), its middle at the phone's height.
+ */
+export function coneStarView(session: ObservationSession, orbit: ConeOrbit, viewportWidthPx: number, viewportHeightPx: number, phone = false): StarView | null {
   const flight = flightCameraOf(session, viewportWidthPx, viewportHeightPx);
   const geometry = coneGeometryOf(session);
   if (!flight || !geometry) return null;
   const fovVerticalDeg = (2 * Math.atan(Math.tan((CONE_FOV_ACROSS_DEG * Math.PI) / 360) * (viewportHeightPx / viewportWidthPx)) * 180) / Math.PI;
-  return starViewOfOrbit(conePose(geometry, orbit), fovVerticalDeg, viewportWidthPx, viewportHeightPx, flight.referencePc);
+  const pose = conePose(geometry, orbit, phone ? PHONE_CONE_START : LAPTOP_CONE_START);
+  if (!phone) return starViewOfOrbit(pose, fovVerticalDeg, viewportWidthPx, viewportHeightPx, flight.referencePc);
+  // A quarter turn about the line of sight: the screen's right is the camera's down, its up the camera's right
+  const rolled = { positionPc: pose.positionPc, rows: { x: mul(pose.rows.y, -1), y: pose.rows.x, z: pose.rows.z } };
+  return { ...starViewOfOrbit(rolled, fovVerticalDeg, viewportWidthPx, viewportHeightPx, flight.referencePc), crpixY: PHONE_CONE_CENTRE_Y_PX };
 }
 
 export interface ConeScene {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { EvidenceTag } from '../../look/index.js';
-import { coneReadout, type ConeGeometry } from './coneView.js';
+import { CONE_LINES, coneReadout, type ConeGeometry } from './coneView.js';
+import { PhoneTagRow } from './PilotPieces.js';
 
 /**
  * D28 (decided 19 Nov, UIUX-cone-READY.md): the way into your photo's view and its readout. The pill sits right of
@@ -19,7 +20,8 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
     // D30 item 3 on the phone: one row at top 712, left 24, 10 apart, 44 px high
     style={phone ? { position: 'absolute', left: 24, right: 24, top: 712, display: 'flex', gap: 10, pointerEvents: 'auto' } : { position: 'absolute', left: 36, bottom: 32, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
   >
-    {!cone && craftPill}
+    {/* On the laptop the craft pill leaves in the cone view (D28); D30's phone row keeps both */}
+    {(!cone || phone) && craftPill}
     {showCone && <button
       type="button"
       className={phone ? 'look-second look-size-phone' : 'look-second look-size-compact'}
@@ -33,8 +35,37 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
   </div>
 );
 
-export const ConeReadout: React.FC<{ geometry: ConeGeometry }> = ({ geometry }) => {
+export const ConeReadout: React.FC<{ geometry: ConeGeometry; phone?: boolean; hidden?: boolean; onDetails?: () => void }> = ({ geometry, phone = false, hidden = false, onDetails }) => {
   const r = coneReadout(geometry);
+  if (phone) {
+    // D30 item 7: in the flight readout's place: the tag and the circle, the first sentence, the view's name at 15 px,
+    // D28's two numbers and its nearest line at 13 px; the rest of D28's lines behind the circle
+    return (
+      <section className="flight-readout is-phone" data-testid="cone-readout" aria-label="Your photo's view" style={hidden ? { visibility: 'hidden' } : undefined}>
+        <PhoneTagRow open={false} onToggle={() => onDetails?.()} />
+        <p className="flight-readout__note">{CONE_LINES.spec}</p>
+        <p data-testid="cone-title" style={{ margin: '0 0 10px', fontSize: 15, color: INK }}>
+          Your photo&apos;s view
+        </p>
+        <div className="flight-readout__stats">
+          <div className="flight-readout__stat">
+            <b>{r.inside}</b>
+            <span>of your stars inside</span>
+          </div>
+          {r.farthestLy !== null && (
+            <div className="flight-readout__stat">
+              <b>
+                {r.farthestLy}
+                <small>ly</small>
+              </b>
+              <span>to the farthest</span>
+            </div>
+          )}
+        </div>
+        {r.nearestLine && <p style={{ margin: '12px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>{r.nearestLine}</p>}
+      </section>
+    );
+  }
   return (
     <section className="flight-readout" data-testid="cone-readout" aria-label="Your photo's view">
       <EvidenceTag evidenceClass="simulated" />

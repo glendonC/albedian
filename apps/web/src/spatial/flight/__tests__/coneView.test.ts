@@ -11,6 +11,7 @@ import {
   CONE_LENGTH_WITHOUT_DISTANCES_PC,
   CONE_LINES,
   CONE_ORBIT_START,
+  PHONE_CONE_CENTRE_Y_PX,
   PHOTO_AT_NEAREST,
   coneGeometryOf,
   conePose,
@@ -18,6 +19,7 @@ import {
   coneSceneOf,
   coneStarView,
   dragConeOrbit,
+  pinchWheelDelta,
   zoomConeOrbit,
 } from '../coneView.js';
 
@@ -124,6 +126,36 @@ describe('coneGeometryOf: the cone from the solve and the matched stars (D28 ite
   });
 });
 
+describe('coneStarView at phone width: the cone upright (D30 item 7)', () => {
+  it('rolls the camera a quarter turn so the cone stands upright, Earth at its foot and the far end above, the middle at D30\'s height', () => {
+    const session = thereWithStarsOnPhoto();
+    const g = coneGeometryOf(session)!;
+    const view = coneStarView(session, CONE_ORBIT_START, 390, 844, true)!;
+    const pin = pinholeOfView(view);
+    const at = (depth: number) => {
+      const p: Vec3 = [g.axis[0] * depth - view.observerPc[0], g.axis[1] * depth - view.observerPc[1], g.axis[2] * depth - view.observerPc[2]];
+      return pinholeScreenOf(pin, p)!;
+    };
+    const earth = at(0);
+    const mid = at(0.5 * g.lengthPc);
+    const far = at(g.lengthPc);
+    expect(PHONE_CONE_CENTRE_Y_PX).toBe(271);
+    expect(mid.xPx).toBeCloseTo(195, 6);
+    expect(mid.yPx).toBeCloseTo(PHONE_CONE_CENTRE_Y_PX, 6);
+    // Upright: the axis runs up the screen, Earth below the far end, both near the middle across
+    expect(earth.yPx).toBeGreaterThan(far.yPx + 150);
+    expect(Math.abs(earth.xPx - far.xPx)).toBeLessThan(0.25 * Math.abs(earth.yPx - far.yPx));
+    // Earth just above the readout, the far end under the top bar
+    expect(earth.yPx).toBeLessThan(482);
+    expect(far.yPx).toBeGreaterThan(104);
+    // The laptop's view is unchanged: the axis runs across
+    const laptop = coneStarView(session, CONE_ORBIT_START, W, H)!;
+    const lp = pinholeOfView(laptop);
+    const le = pinholeScreenOf(lp, [-laptop.observerPc[0], -laptop.observerPc[1], -laptop.observerPc[2]])!;
+    expect(Math.abs(le.yPx - H / 2)).toBeLessThan(Math.abs(le.xPx - W / 2));
+  });
+});
+
 describe('conePose and coneStarView: beside the cone, turning round Earth (D28 items 7 and 8)', () => {
   it('starts with the cone\'s middle at the window\'s centre and the whole cone in view', () => {
     const session = thereWithStarsOnPhoto();
@@ -184,6 +216,10 @@ describe('conePose and coneStarView: beside the cone, turning round Earth (D28 i
     expect(zoomConeOrbit(s, 100).zoom).toBeCloseTo(Math.exp(0.1), 12);
     expect(zoomConeOrbit(s, 1e6).zoom).toBe(4);
     expect(zoomConeOrbit(s, -1e6).zoom).toBe(0.05);
+    // D30 item 7: two fingers spread to twice their distance come twice as close; brought together, go back
+    expect(zoomConeOrbit(s, pinchWheelDelta(100, 200)).zoom).toBeCloseTo(0.5, 12);
+    expect(zoomConeOrbit(s, pinchWheelDelta(200, 100)).zoom).toBeCloseTo(2, 12);
+    expect(pinchWheelDelta(150, 150)).toBe(0);
   });
 });
 

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { ObservationSession } from '@albedian/contracts';
 import { pinholeScreenOf, type PhotoPinhole, type Vec3 } from '@albedian/camera-rig';
 import { pinholeOfView, type StarView } from './starView.js';
-import { coneSceneOf, type ConeGeometry } from './coneView.js';
+import { coneSceneOf, pinchWheelDelta, type ConeGeometry } from './coneView.js';
 import { placeFinding } from './flightFrame.js';
 import type { ScreenBox } from './flightRings.js';
 
@@ -217,21 +217,35 @@ export const ConeLayer: React.FC<{
     setState('drawn');
   });
 
-  // A drag turns round Earth, the wheel (a trackpad's pinch arrives as one) comes closer; nothing moves after the hand
+  // A drag turns round Earth, the wheel (a trackpad's pinch arrives as one) or two fingers' pinch on a touch screen
+  // (D30 item 7) comes closer; nothing moves after the hand
   useEffect(() => {
     const el = holder.current;
     if (!el) return undefined;
     let last: { x: number; y: number } | null = null;
+    const fingers = new Map<number, { x: number; y: number }>();
+    const spread = () => {
+      const [a, b] = [...fingers.values()];
+      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    };
     const down = (e: PointerEvent) => {
-      last = { x: e.clientX, y: e.clientY };
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      last = fingers.size === 1 ? { x: e.clientX, y: e.clientY } : null;
       el.setPointerCapture?.(e.pointerId);
     };
     const move = (e: PointerEvent) => {
+      if (fingers.size >= 2 && fingers.has(e.pointerId)) {
+        const before = spread();
+        fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        onWheel(pinchWheelDelta(before, spread()));
+        return;
+      }
       if (!last) return;
       onDrag(e.clientX - last.x, e.clientY - last.y);
       last = { x: e.clientX, y: e.clientY };
     };
-    const up = () => {
+    const up = (e: PointerEvent) => {
+      fingers.delete(e.pointerId);
       last = null;
     };
     const wheel = (e: WheelEvent) => {

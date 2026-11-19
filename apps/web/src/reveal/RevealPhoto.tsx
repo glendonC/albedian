@@ -674,24 +674,27 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {there && (
-        // On the phone "Your photo's view" waits for its phone readout (D30 item 7, phone-1c)
-        <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} showCone={!phone} />
+        <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} />
       )}
-      {phone && there && !cone && details && (
+      {phone && there && details && (
         <DetailsSheet
-          lines={[
-            FLIGHT_LINES.spec,
-            FLIGHT_LINES.stars,
-            FLIGHT_LINES.rings,
-            ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
-            ...(steering ? [] : [FLIGHT_LINES.milkyWay]),
-            ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
-            ...(craft ? [CRAFT_PICKER_FOOT] : []),
-          ]}
+          lines={
+            cone
+              ? [CONE_LINES.spec, CONE_LINES.view, CONE_LINES.stars, CONE_LINES.rings, ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : [])]
+              : [
+                  FLIGHT_LINES.spec,
+                  FLIGHT_LINES.stars,
+                  FLIGHT_LINES.rings,
+                  ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
+                  ...(steering ? [] : [FLIGHT_LINES.milkyWay]),
+                  ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
+                  ...(craft ? [CRAFT_PICKER_FOOT] : []),
+                ]
+          }
           onClose={() => setDetails(false)}
         />
       )}
-      {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} />}
+      {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} phone={phone} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
       {!answer && !there && picked && (
         <StarCard

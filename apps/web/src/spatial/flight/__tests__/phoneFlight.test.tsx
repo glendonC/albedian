@@ -248,3 +248,37 @@ describe('Steering on a touch screen (D30 item 6)', () => {
     expect(all('[data-testid="ask-bar"] button').map((b) => b.textContent)).not.toContain('Autopilot');
   });
 });
+
+describe('Your photo\'s view at phone width (D30 item 7)', () => {
+  it('shows the pill beside the craft\'s, and pressed, the readout as D28\'s in the flight readout\'s place', () => {
+    showPhone();
+    const pill = q('[data-testid="cone-pill"]') as HTMLButtonElement;
+    expect(pill.className).toContain('look-size-phone');
+    click(pill);
+    expect(pill.getAttribute('aria-pressed')).toBe('true');
+    expect(q('[data-testid="craft-picker"]')).not.toBeNull();
+    expect(q('[data-testid="flight-readout"]')).toBeNull();
+    const readout = q('[data-testid="cone-readout"]')!;
+    expect(readout.className).toBe('flight-readout is-phone');
+    expect(readout.querySelector('[data-testid="details-circle"]')).not.toBeNull();
+    expect(readout.querySelector('.flight-readout__note')!.textContent).toBe('Drawn or computed by the app; not measured in the source recording.');
+    const title = readout.querySelector('[data-testid="cone-title"]') as HTMLElement;
+    expect(title.textContent).toBe("Your photo's view");
+    expect(title.style.fontSize).toBe('15px');
+    expect(all('[data-testid="cone-readout"] .flight-readout__stat span').map((x) => x.textContent)).toEqual(['of your stars inside', 'to the farthest']);
+  });
+
+  it('holds D28\'s disclosure lines in the sheet behind the circle', () => {
+    showPhone();
+    click(q('[data-testid="cone-pill"]'));
+    click(q('[data-testid="cone-readout"] [data-testid="details-circle"]'));
+    expect(all('[data-testid="details-sheet"] li').map((li) => li.textContent)).toEqual([
+      'Drawn or computed by the app; not measured in the source recording.',
+      "Your photo's view: the part of the sky your photo holds, from its solve, out to its farthest matched star with a measured distance.",
+      'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances.',
+      'Rings: the stars your photo matched.',
+      '3 stars have no measured distance, so they stay where they appear from Earth.',
+    ]);
+    expect((q('[data-testid="cone-readout"]') as HTMLElement).style.visibility).toBe('hidden');
+  });
+});
