@@ -312,7 +312,9 @@ describe("the predicted sky's disclosure from its first frame (the lead's rule, 
     const motion = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
     const rules: Record<string, string> = {};
     postcss.parse(motion).walkRules((rule) => {
-      if (rule.selector.replace(/\s+/g, ' ') === '.predsky .reveal-status' && rule.parent?.type === 'root') rule.walkDecls((d) => (rules[d.prop] = d.value));
+      if (rule.selector.replace(/\s+/g, ' ') === '.predsky .reveal-status' && rule.parent?.type === 'root') rule.walkDecls((d) => {
+        rules[d.prop] = d.value;
+      });
     });
     expect(rules).toEqual({ animation: 'none' });
   });
