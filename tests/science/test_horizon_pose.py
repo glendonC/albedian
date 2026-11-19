@@ -395,11 +395,13 @@ def test_a_frame_too_short_for_the_band_is_no_skyline_and_a_skyline_is_frozen() 
         skyline.row = 0.0  # type: ignore[misc]
 
 
-def test_the_no_skyline_sentence_names_the_band_and_the_step_it_looked_for() -> None:
+def test_the_no_skyline_sentence_says_why_first_and_its_measure_second() -> None:
+    # C21 (.lead/uiux/UIUX-skylinewords-READY.md, decided 2026-11-19 13:20): the reason in plain words first, which the
+    # warnings list shows; the band and the step looked for in a second sentence, kept in the record (C5's rule)
     assert pe.NO_SKYLINE == (
-        "The sky is not lined up over the picture: no skyline was found (no row between 38 and 72 percent of the way "
-        "down the picture below which it turns brighter by at least 10 times the sky's noise), so the Moon cannot be "
-        "lined up with a horizon."
+        "The sky is not lined up over the picture: no skyline was found to line the Moon up with. A skyline here is a "
+        "row 38 to 72 percent of the way down below which the picture turns brighter by at least 10 times the sky's "
+        "noise."
     )
 
 

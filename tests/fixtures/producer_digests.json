@@ -23,7 +23,7 @@
   "digest": "10c57ba10c23bc3537ad8873985b628260448668d6834c9d099fad6e41b6c3f3"
  },
  "albedian.solve_chain": {
-  "revision": 15,
+  "revision": 16,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -68,6 +68,6 @@
    "services/science/record_hint.py",
    "services/science/person_hint.py"
   ],
-  "digest": "3f1b9da5d65cd1d11c9cf2e4427b352a8663e2613dac2c2bc2c0fdc9958e0561"
+  "digest": "8a131bccb78ce7799c430bb65f5912d083905960f2a049ca7730755c800b70a5"
  }
 }

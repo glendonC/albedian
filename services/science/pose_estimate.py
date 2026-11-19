@@ -816,10 +816,12 @@ HORIZON_FOV_DIAGONAL_RANGE_DEG = (20.0, 130.0)
 # edge is cut by the skyline; a band thinner than this many rows is no sky to search
 MIN_SKY_ROWS = 16
 
+# C21's two sentences (.lead/uiux/UIUX-skylinewords-READY.md, decided 2026-11-19 13:20): the reason in plain words,
+# which the warnings list shows, then the band and the step looked for, kept in the record (C5's rule)
 NO_SKYLINE = (
-    _NOT_LINED_UP + f"no skyline was found (no row between {SKYLINE_BAND[0] * 100:.0f} and "
-    f"{SKYLINE_BAND[1] * 100:.0f} percent of the way down the picture below which it turns brighter by at least "
-    f"{SKYLINE_MIN_STEP_SNR:g} times the sky's noise), so the Moon cannot be lined up with a horizon."
+    _NOT_LINED_UP + "no skyline was found to line the Moon up with. "
+    f"A skyline here is a row {SKYLINE_BAND[0] * 100:.0f} to {SKYLINE_BAND[1] * 100:.0f} percent of the way down below "
+    f"which the picture turns brighter by at least {SKYLINE_MIN_STEP_SNR:g} times the sky's noise."
 )
 HORIZON_REFUSALS = ("fit", "fov", "size")
 
