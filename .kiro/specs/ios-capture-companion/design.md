@@ -183,11 +183,20 @@ none, so unit pointing-3 (contract only, both languages, fixtures) needs exactly
   `centerAzDeg` and `uncertaintyDeg`, and `verifiedCenterOffsetDeg` present only on a `calibrated` solution
   (REQ-IOS-2.2). Rules: `pose_estimate` only with a `poseEstimate` whose method is `device_attitude`; a pose with
   that method only with a `pointingHint` that says so.
-- The place and time: a photo from the app carries no GPS, so `SourceAsset.observerLocation` would come from the
-  record. `METADATA_CONTAINERS` (`packages/contracts/src/media.ts`, `services/contracts/ingest.py`) gains
-  `pointing_record`, and the receipt rule "observerLocation must be the location hint, or absent" gains: or, when
-  the file holds no place, the record's allowed place with source `pointing_record`. The same for `capturedAtUTC`
-  when the photo holds no recorded time.
+- The place and time (the lead's decision of 2026-11-18, replacing the receipt path first proposed here): the
+  receipt stays the file's own and never changes after upload, so `SourceAsset`, `METADATA_CONTAINERS` and the
+  receipt rule are unchanged. A photo from the app carries no GPS, so a solution that needs a place takes the
+  record's allowed place, and a time the record's `capturedAtDeviceClockUTC` when the photo holds no recorded time;
+  the solution says where each came from in `pointingHint.timeFrom` and `pointingHint.placeFrom` (`file` or
+  `record`), two fields and not one, since a photo may hold its own time and no place [inference: whether
+  `AVCapturePhoto` writes an EXIF time is still the [open] device check of mobile-2]. A solution with a pointing
+  hint has both `observedAtUTC` and `observerLocation`: the hint is lined up in the sky of a time and a place.
+- As built in pointing-3 [tested]: `beacon` and `beaconCentroidUncertaintyDeg` present exactly for the three beacon
+  methods; `pointingHint.usedAs` lists each use at most once, `search_hint` before `pose_estimate`;
+  `uncertaintyDeg` in (0, 180]; `verifiedCenterOffsetDeg` in [0, 180], present exactly on a `calibrated` solution;
+  each rule between the hint and its solution is named at the field it needs when that field is missing, else at
+  the hint's own field, in the same sentence on the three readings (`astronomy.ts`, `services/contracts/astronomy.py`
+  and `services/science/wcs_models.py`).
 
 Then unit pointing-5 (science): `complete_sky` (`services/science/predicted_sky.py`) takes the stored record. With a
 measured heading and no calibrated solve, the status is `approximate` with a `device_attitude` pose: the nominal WCS

@@ -56,8 +56,13 @@ POSE_METHOD_BEACONS = {
     "moon_horizon": "moon",
     "sun_horizon": "sun",
 }
-POSE_METHODS = tuple(POSE_METHOD_BEACONS)
+# A pose from the phone's pointing record has no beacon (ios-capture-companion design component 6)
+DEVICE_ATTITUDE = "device_attitude"
+POSE_METHODS = (*POSE_METHOD_BEACONS, DEVICE_ATTITUDE)
 POSE_BEACONS = ("moon", "sun")
+# How a solve used the phone's pointing record, in this order, and where a solution's time and place came from
+POINTING_USES = ("search_hint", "pose_estimate")
+MOMENT_SOURCES = ("file", "record")
 MIN_SWEPT_WCS = 2
 MAX_SWEPT_WCS = 27
 # Rounding room when a swept WCS's field of view is compared with the nominal one's, in degrees [proposed: a
@@ -221,6 +226,21 @@ BEACON_OF_ITS_METHOD = (
 )
 POSE_BELONGS = "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off."
 APPROXIMATE_NEEDS_POSE = "An approximate solution states how far its WCS may be off, so it carries a pose estimate."
+BEACON_TERMS = (
+    "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device "
+    "attitude names neither."
+)
+HINT_RECORDING = "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256."
+HINT_POSE = (
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the "
+    "device attitude."
+)
+HINT_USES = "A pointing hint lists each use at most once, search_hint before pose_estimate."
+HINT_OFFSET = "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+HINT_MOMENT = (
+    "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
+    "observerLocation."
+)
 SWEPT_ON_THE_NOMINAL_CRPIX = (
     "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame."
 )
@@ -513,6 +533,9 @@ DEGREES_0_TO_360 = NumberRule("degrees0to360", ge=0.0, le=360.0)
 DEGREES_90 = NumberRule("degrees90", ge=-90.0, le=90.0)
 DEGREES_180 = NumberRule("degrees180", ge=-180.0, le=180.0)
 FIELD_OF_VIEW = NumberRule("fieldOfView", gt=0.0, le=175.0)
+# A pointing hint's stated uncertainty and a verified centre's offset from it: angles on the sky, at most half a turn
+HINT_UNCERTAINTY = NumberRule("hintUncertaintyDeg", gt=0.0, le=180.0)
+SKY_OFFSET = NumberRule("skyOffsetDeg", ge=0.0, le=180.0)
 DISTORTION = NumberRule("distortion", ge=-0.25, le=0.25)
 COUNT = NumberRule("count", ge=0.0, le=MAX_SAFE_INTEGER, integer=True)
 POSITIVE_COUNT = NumberRule("positiveCount", gt=0.0, le=MAX_SAFE_INTEGER, integer=True)
@@ -549,6 +572,8 @@ SOLUTION_STATUS = ChoiceRule("solutionStatus", SOLUTION_STATUSES)
 EVIDENCE_CLASS = ChoiceRule("evidenceClass", tuple(EVIDENCE_CLASSES))
 POSE_METHOD = ChoiceRule("poseMethod", POSE_METHODS)
 POSE_BEACON = ChoiceRule("poseBeacon", POSE_BEACONS)
+POINTING_USE = ChoiceRule("pointingUse", POINTING_USES)
+MOMENT_SOURCE = ChoiceRule("momentSource", MOMENT_SOURCES)
 PROJECTION = ChoiceRule("projection", ("TAN",))
 PARITY = ChoiceRule("parity", (1, -1))
 CATALOG_PROVIDER = ChoiceRule("catalogProvider", tuple(CATALOG_PROVIDERS))
@@ -737,7 +762,8 @@ class PoseEstimate(_Contract):
     against stars."""
 
     method: Annotated[str, POSE_METHOD]
-    beacon: Annotated[str, POSE_BEACON]
+    # Present exactly for the methods that line up from a beacon, as is the beacon's uncertainty below
+    beacon: Optional[Annotated[str, POSE_BEACON]] = None
     center_alt_deg: Degrees90
     center_az_deg: Degrees0To360
     roll_deg: Degrees180
@@ -746,12 +772,34 @@ class PoseEstimate(_Contract):
     assumptions: _listed(NonEmptyText, 1)
     swept_wcs: _listed(WCSCalibrationModel, MIN_SWEPT_WCS, MAX_SWEPT_WCS)
     max_center_offset_deg: NonNegative
-    beacon_centroid_uncertainty_deg: NonNegative
+    beacon_centroid_uncertainty_deg: Optional[NonNegative] = None
 
     @model_validator(mode="after")
     def _rules(self) -> PoseEstimate:
-        if POSE_METHOD_BEACONS[self.method] != self.beacon:
-            raise _refusal("PoseEstimate", [(("beacon",), BEACON_OF_ITS_METHOD)])
+        issues = pose_beacon_issues(self.method, self.beacon, self.beacon_centroid_uncertainty_deg)
+        if issues:
+            raise _refusal("PoseEstimate", issues)
+        return self
+
+
+class PointingHint(_Contract):
+    """How a solve used the phone's pointing record (`pointingHint`): the record's photo, what it was used as, the
+    hinted frame centre in altitude and azimuth with its stated uncertainty, the verified centre's offset from it on a
+    calibrated solution, and where the solution's time and place came from. Never a measurement of the sky."""
+
+    source_asset_sha256: Sha256
+    used_as: _listed(Annotated[str, POINTING_USE], 1, len(POINTING_USES))
+    center_alt_deg: Degrees90
+    center_az_deg: Degrees0To360
+    uncertainty_deg: Annotated[float, HINT_UNCERTAINTY]
+    verified_center_offset_deg: Optional[Annotated[float, SKY_OFFSET]] = None
+    time_from: Annotated[str, MOMENT_SOURCE]
+    place_from: Annotated[str, MOMENT_SOURCE]
+
+    @model_validator(mode="after")
+    def _rules(self) -> PointingHint:
+        if not listed_once_each_in_order(self.used_as, POINTING_USES):
+            raise _refusal("PointingHint", [(("usedAs",), HINT_USES)])
         return self
 
 
@@ -832,6 +880,7 @@ class ObservationSolution(_Contract):
     findings: _listed(CelestialFinding)
     warnings: _listed(Text)
     pose_estimate: Optional[PoseEstimate] = None
+    pointing_hint: Optional[PointingHint] = None
 
     @property
     def has_verified_wcs(self) -> bool:
@@ -947,12 +996,59 @@ def detection_issues(statistic: str, noise_limits: Any, widths: tuple[float, flo
     return issues
 
 
+def pose_beacon_issues(method: str, beacon: Any, beacon_uncertainty: Any) -> list[Issue]:
+    """A beacon method names its beacon and the beacon's uncertainty, and the beacon is the method's; the device
+    attitude names neither."""
+    issues: list[Issue] = []
+    lines_up_from = POSE_METHOD_BEACONS.get(method)
+    for key, value in (("beacon", beacon), ("beaconCentroidUncertaintyDeg", beacon_uncertainty)):
+        if (value is None) != (lines_up_from is None):
+            issues.append(((key,), BEACON_TERMS))
+    if lines_up_from is not None and beacon is not None and beacon != lines_up_from:
+        issues.append((("beacon",), BEACON_OF_ITS_METHOD))
+    return issues
+
+
+def pointing_hint_issues(
+    status: str, source_sha256: Any, has_time: bool, has_place: bool, pose_method: Any, hint: Any
+) -> list[Issue]:
+    """The rules between a pointing hint and its solution: the hint's photo is the solution's, it is used as the pose
+    exactly when the pose is the device attitude's, it states the verified offset exactly on a calibrated solution,
+    and a solution with a hint has a time and a place."""
+    # Each issue is named where it is: at a field the rule needs when that field is missing, else at the hint's own
+    issues: list[Issue] = []
+    device_pose = pose_method == DEVICE_ATTITUDE
+    if hint is None:
+        if device_pose:
+            issues.append((("pointingHint",), HINT_POSE))
+        return issues
+    if source_sha256 is None:
+        issues.append((("sourceSha256",), HINT_RECORDING))
+    elif hint.source_asset_sha256 != source_sha256:
+        issues.append((("pointingHint", "sourceAssetSha256"), HINT_RECORDING))
+    if "pose_estimate" in hint.used_as and pose_method is None:
+        issues.append((("poseEstimate",), HINT_POSE))
+    elif ("pose_estimate" in hint.used_as) != device_pose:
+        issues.append((("pointingHint", "usedAs"), HINT_POSE))
+    if (hint.verified_center_offset_deg is not None) != (status == "calibrated"):
+        issues.append((("pointingHint", "verifiedCenterOffsetDeg"), HINT_OFFSET))
+    if not has_time:
+        issues.append((("observedAtUTC",), HINT_MOMENT))
+    if not has_place:
+        issues.append((("observerLocation",), HINT_MOMENT))
+    return issues
+
+
 def _solution_issues(solution: ObservationSolution) -> list[Issue]:
     issues: list[Issue] = []
     status, quality, pose, nominal = solution.status, solution.quality, solution.pose_estimate, solution.wcs
     # REQ-SKY-5.4: an approximate solution says how far its WCS may be off
     if pose is None and status == "approximate":
         issues.append((("poseEstimate",), APPROXIMATE_NEEDS_POSE))
+    issues += pointing_hint_issues(
+        status, solution.source_sha256, solution.observed_at_utc is not None, solution.observer_location is not None,
+        None if pose is None else pose.method, solution.pointing_hint,
+    )
     if pose is not None:
         if status != "approximate" or nominal is None:
             issues.append((("poseEstimate",), POSE_BELONGS))
@@ -1060,6 +1156,7 @@ FAMILY: dict[str, type[BaseModel]] = {
     "CatalogDistance": CatalogDistance,
     "WCSCalibrationModel": WCSCalibrationModel,
     "PoseEstimate": PoseEstimate,
+    "PointingHint": PointingHint,
     "ObserverLocation": ObserverLocation,
     "SolverIdentity": SolverIdentity,
     "SolutionQuality": SolutionQuality,

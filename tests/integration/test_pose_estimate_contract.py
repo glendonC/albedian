@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 import hashlib
 import json
@@ -22,10 +23,12 @@ from hypothesis import example, given, settings, strategies as st
 import numpy as np
 import pytest
 
+from services.contracts import astronomy as contract
 from services.science.catalog import altaz_to_icrs, angular_separation_deg, get_star_by_name, icrs_to_altaz
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
+    PointingHint,
     PoseEstimate,
     SolutionQuality,
     SolverIdentity,
@@ -444,3 +447,159 @@ def test_fixture_pose_sample_lines_up_the_moon_off_centre_and_spreads_its_stars(
             spreads.append(max(math.hypot(x - points[0][0], y - points[0][1]) for x, y in points[1:]))
     assert len(spreads) >= 3
     assert min(spreads) > 0.5
+
+
+# ---- A pose from the device attitude and the pointing hint (pointing-3; ios-capture-companion design component 6) ----
+
+BEACON_TERMS = (
+    "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device "
+    "attitude names neither."
+)
+HINT_POSE = (
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the "
+    "device attitude."
+)
+HINT_USES = "A pointing hint lists each use at most once, search_hint before pose_estimate."
+HINT_OFFSET = "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+HINT_RECORDING = "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256."
+HINT_MOMENT = (
+    "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
+    "observerLocation."
+)
+
+
+def device_pose(**overrides: Any) -> PoseEstimate:
+    fields: dict[str, Any] = {"method": "device_attitude", "beacon": None, "beacon_centroid_uncertainty_deg": None,
+                              "fov_source": "A synthetic pointing record for contract tests", **overrides}
+    return pose_estimate(9, **fields)
+
+
+def hint(**overrides: Any) -> PointingHint:
+    fields: dict[str, Any] = {
+        "source_asset_sha256": RECORD_SHA, "used_as": ("search_hint", "pose_estimate"), "center_alt_deg": 33.0,
+        "center_az_deg": 224.0, "uncertainty_deg": 12.0, "time_from": "record", "place_from": "record", **overrides,
+    }
+    return PointingHint(**fields)
+
+
+def hinted(status: str = "approximate", *, pose: PoseEstimate | None = None, pointing: PointingHint | None = None,
+           **more: Any) -> ObservationSolution:
+    # The base carries a pose when approximate (REQ-SKY-5.4); the replace sets the pose each case asks for
+    base = solution(status, pose=pose_estimate() if status == "approximate" else None)
+    return replace(base, pose_estimate=pose, pointing_hint=pointing, **more)
+
+
+def test_a_pose_from_the_device_attitude_names_no_beacon() -> None:
+    pose = device_pose()
+    written = pose.to_contract_dict()
+    assert written["method"] == "device_attitude"
+    assert "beacon" not in written and "beaconCentroidUncertaintyDeg" not in written
+    for key, value in (("beacon", "moon"), ("beacon_centroid_uncertainty_deg", 0.004)):
+        with pytest.raises(ValueError, match="names neither"):
+            device_pose(**{key: value})
+    for key in ("beacon", "beacon_centroid_uncertainty_deg"):
+        with pytest.raises(ValueError, match="names neither"):
+            pose_estimate(9, **{key: None})
+
+
+def test_a_pointing_hint_rides_with_its_solution_by_the_contracts_rules() -> None:
+    written = hinted(pose=device_pose(), pointing=hint()).to_contract_dict()
+    assert written["pointingHint"] == {
+        "sourceAssetSha256": RECORD_SHA, "usedAs": ["search_hint", "pose_estimate"], "centerAltDeg": 33.0,
+        "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
+    }
+    assert "pointingHint" not in solution(pose=pose_estimate()).to_contract_dict()
+    # Only narrowing the search, on a solution with no pose: no offset, since nothing was verified
+    assert hinted("predicted_only", pointing=hint(used_as=("search_hint",))).to_contract_dict()["pointingHint"]["usedAs"] == ["search_hint"]
+    refused = (
+        (HINT_POSE, dict(pose=device_pose())),
+        (HINT_POSE, dict(pose=device_pose(), pointing=hint(used_as=("search_hint",)))),
+        (HINT_POSE, dict(pose=pose_estimate(9), pointing=hint())),
+        (HINT_POSE, dict(pointing=hint())),
+        (HINT_OFFSET, dict(pose=device_pose(), pointing=hint(verified_center_offset_deg=1.0))),
+        (HINT_RECORDING, dict(pose=device_pose(), pointing=hint(source_asset_sha256="ab" * 32))),
+        (HINT_MOMENT, dict(pose=device_pose(), pointing=hint(), observed_at_utc=None)),
+        (HINT_MOMENT, dict(pose=device_pose(), pointing=hint(), observer_lat=None, observer_lon=None)),
+    )
+    for message, parts in refused:
+        with pytest.raises(ValueError) as caught:
+            hinted(**parts)
+        assert str(caught.value) == message, parts
+
+
+def test_a_pointing_hint_keeps_its_own_bounds() -> None:
+    for used_as in ((), ("pose_estimate", "search_hint"), ("search_hint", "search_hint"), ("search_hint", "pose_estimate", "search_hint"), ("blind",)):
+        with pytest.raises(ValueError):
+            hint(used_as=used_as)
+    for key, value in (("center_alt_deg", 90.5), ("center_az_deg", -0.5), ("uncertainty_deg", 0.0), ("uncertainty_deg", 180.5),
+                       ("verified_center_offset_deg", -0.1), ("verified_center_offset_deg", 180.5), ("time_from", "phone"),
+                       ("place_from", None), ("center_alt_deg", True), ("uncertainty_deg", float("nan"))):
+        with pytest.raises(ValueError):
+            hint(**{key: value})
+    for key, value in (("center_alt_deg", -90.0), ("center_az_deg", 360.0), ("uncertainty_deg", 180.0),
+                       ("verified_center_offset_deg", 0.0), ("verified_center_offset_deg", 180.0)):
+        assert getattr(hint(**{key: value}), key) == value
+
+
+# P-SKY-7b (pointing-3): the same oracle and the same payloads as the property of that name in
+# packages/contracts/src/__tests__/observation-solution-contract.test.ts, judged by the Python parser
+SOLUTION_FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "observation_solution_contract.json"
+SOLUTION_SAMPLES = json.loads(SOLUTION_FIXTURE.read_text(encoding="utf-8"))["valid"]
+HINT_BASES = {
+    "calibrated": "calibrated_with_a_pointing_hint",
+    "approximate": "approximate_with_device_attitude_pose",
+    "predicted_only": "predicted_only_with_a_search_hint",
+}
+HINT_USE_LISTS = (["search_hint"], ["pose_estimate"], ["search_hint", "pose_estimate"], ["pose_estimate", "search_hint"],
+                  ["search_hint", "search_hint"])
+
+
+def _hinted_payload(spec: dict[str, Any]) -> dict[str, Any]:
+    out = copy.deepcopy(SOLUTION_SAMPLES[HINT_BASES[spec["status"]]])
+    out.pop("poseEstimate", None)
+    out.pop("pointingHint", None)
+    if spec["pose"] == "moon":
+        out["poseEstimate"] = copy.deepcopy(SOLUTION_SAMPLES["approximate_with_pose"]["poseEstimate"])
+    if spec["pose"] == "device":
+        out["poseEstimate"] = copy.deepcopy(SOLUTION_SAMPLES["approximate_with_device_attitude_pose"]["poseEstimate"])
+    if spec["hint"]:
+        pointing = copy.deepcopy(SOLUTION_SAMPLES["approximate_with_device_attitude_pose"]["pointingHint"])
+        pointing["usedAs"] = list(HINT_USE_LISTS[spec["uses"]])
+        pointing["sourceAssetSha256"] = out["sourceSha256"] if spec["same_recording"] else "ab" * 32
+        if spec["offset"]:
+            pointing["verifiedCenterOffsetDeg"] = 3.5
+        out["pointingHint"] = pointing
+    if not spec["time"]:
+        out.pop("observedAtUTC", None)
+    if not spec["place"]:
+        out.pop("observerLocation", None)
+    return out
+
+
+def _hint_oracle(spec: dict[str, Any]) -> bool:
+    uses = HINT_USE_LISTS[spec["uses"]]
+    # A pose only on an approximate solution, and an approximate one always has one (REQ-SKY-5.4)
+    pose_ok = (spec["pose"] == "none") == (spec["status"] != "approximate")
+    moment_ok = spec["status"] == "calibrated" or (spec["time"] and spec["place"])
+    if not spec["hint"]:
+        return pose_ok and moment_ok and spec["pose"] != "device"
+    uses_ok = len(uses) == 1 or uses == ["search_hint", "pose_estimate"]
+    return (pose_ok and moment_ok and uses_ok and spec["same_recording"] and ("pose_estimate" in uses) == (spec["pose"] == "device")
+            and spec["offset"] == (spec["status"] == "calibrated") and spec["time"] and spec["place"])
+
+
+@settings(max_examples=400, deadline=None)
+@given(spec=st.fixed_dictionaries({
+    "status": st.sampled_from(sorted(HINT_BASES)), "pose": st.sampled_from(("none", "moon", "device")),
+    "hint": st.booleans(), "uses": st.integers(0, len(HINT_USE_LISTS) - 1), "offset": st.booleans(),
+    "time": st.booleans(), "place": st.booleans(), "same_recording": st.booleans(),
+}))
+def test_p_sky_7b_the_pointing_hint_follows_its_solution(spec: dict[str, Any]) -> None:
+    payload = _hinted_payload(spec)
+    try:
+        parsed = contract.parse_observation_solution(payload)
+    except ValueError:
+        assert not _hint_oracle(spec), spec
+        return
+    assert _hint_oracle(spec), spec
+    assert parsed.to_contract_dict() == payload

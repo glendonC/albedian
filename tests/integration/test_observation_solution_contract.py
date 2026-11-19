@@ -211,6 +211,21 @@ SAYS = {
     ),
     "pose_belongs": "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off.",
     "approximate_needs_pose": "An approximate solution states how far its WCS may be off, so it carries a pose estimate.",
+    "beacon_terms": (
+        "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device "
+        "attitude names neither."
+    ),
+    "hint_recording": "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256.",
+    "hint_pose": (
+        "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the "
+        "device attitude."
+    ),
+    "hint_uses": "A pointing hint lists each use at most once, search_hint before pose_estimate.",
+    "hint_offset": "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution.",
+    "hint_moment": (
+        "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
+        "observerLocation."
+    ),
     "swept_crpix": "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame.",
     "swept_size": (
         "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, "
@@ -463,12 +478,36 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     valid["approximate_with_pose_narrower_by_the_tolerance"] = at_fields_of_view(2 * tol, (2 * tol, 2 * tol), (2 * tol, tol), (tol, tol))
     # The smaller scale wider by exactly the tolerance, and the nominal scale wider by it horizontally
     valid["approximate_with_pose_wider_by_the_tolerance"] = at_fields_of_view(tol, (2 * tol, 2 * tol), (2 * tol, tol), (tol, tol))
+    # A pose from the phone's pointing record (ios-capture-companion design component 6): no beacon, the hint used as
+    # the search hint and the pose; a calibrated solve the hint only narrowed, with the verified centre's offset; a
+    # predicted-only one whose search the hint narrowed. Hand-built numbers, no real record
+    device_pose = {key: value for key, value in pose.items() if key not in ("beacon", "beaconCentroidUncertaintyDeg")}
+    device_pose.update(
+        method="device_attitude",
+        fovSource="The pointing record's field of view and zoom (a synthetic record for contract tests).",
+        assumptions=["The attitude and the heading are as the phone's sensors reported them."],
+    )
+    hint = {
+        "sourceAssetSha256": SHA, "usedAs": ["search_hint", "pose_estimate"], "centerAltDeg": 33.0, "centerAzDeg": 224.0,
+        "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
+    }
+    valid["approximate_with_device_attitude_pose"] = _solution(
+        "sol-contract-device-pose", "approximate", **moment, solver=SOLVER, wcs=WCS, quality=UNVERIFIED,
+        findings=[_pixels_only("sol-contract-device-pose")], warnings=[], poseEstimate=device_pose, pointingHint=hint,
+    )
+    valid["calibrated_with_a_pointing_hint"] = {
+        **copy.deepcopy(valid["calibrated_at_the_gate"]),
+        "pointingHint": {**hint, "usedAs": ["search_hint"], "verifiedCenterOffsetDeg": 3.5, "timeFrom": "file"},
+    }
+    valid["predicted_only_with_a_search_hint"] = {
+        **copy.deepcopy(valid["predicted_only"]), "pointingHint": {**hint, "usedAs": ["search_hint"]},
+    }
     # In an approximate solution, the status a pose estimate has, an observed finding may hold the pose fit's residual
     # (the lead's ruling of 2026-11-12 on the observed Moon; the horizon solver writes its beacon so)
     with_fit_residual = copy.deepcopy(valid["approximate"])
     with_fit_residual["findings"][0]["evidence"].update(OBSERVED_FIT_RESIDUAL)
     valid["approximate_with_an_observed_fit_residual"] = with_fit_residual
-    return valid, {"rigel": rigel, "simulated": simulated, "predicted_star": predicted_star, "pose": pose}
+    return valid, {"rigel": rigel, "simulated": simulated, "predicted_star": predicted_star, "pose": pose, "hint": hint}
 
 
 def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[dict[str, Any]]:
@@ -637,6 +676,42 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         drop(["wcs"]), says=(SAYS["pose_belongs"],))
     bad("approximate_without_a_pose", "approximate", "an approximate solution that does not say how far its WCS may be off",
         ["poseEstimate"], drop(["poseEstimate"]), says=(SAYS["approximate_needs_pose"],))
+    # A pose from the device attitude and the pointing hint (pointing-3)
+    device, hinted, searched = "approximate_with_device_attitude_pose", "calibrated_with_a_pointing_hint", "predicted_only_with_a_search_hint"
+    bad("device_pose_with_a_beacon", device, "a pose from the device attitude that names a beacon", ["poseEstimate.beacon"],
+        put(["poseEstimate", "beacon"], "moon"), says=(SAYS["beacon_terms"],))
+    bad("device_pose_with_a_beacon_uncertainty", device, "a pose from the device attitude with a beacon's uncertainty",
+        ["poseEstimate.beaconCentroidUncertaintyDeg"], put(["poseEstimate", "beaconCentroidUncertaintyDeg"], 0.004),
+        says=(SAYS["beacon_terms"],))
+    bad("beacon_pose_without_its_beacon", "approximate_with_pose", "a Moon pose that names no beacon", ["poseEstimate.beacon"],
+        drop(["poseEstimate", "beacon"]), says=(SAYS["beacon_terms"],))
+    bad("beacon_pose_without_its_uncertainty", "approximate_with_pose", "a Moon pose with no beacon uncertainty",
+        ["poseEstimate.beaconCentroidUncertaintyDeg"], drop(["poseEstimate", "beaconCentroidUncertaintyDeg"]),
+        says=(SAYS["beacon_terms"],))
+    bad("device_pose_without_a_hint", device, "a pose from the device attitude with no pointing hint", ["pointingHint"],
+        drop(["pointingHint"]), says=(SAYS["hint_pose"],))
+    bad("device_pose_with_a_search_hint_only", device, "a pose from the device attitude whose hint was only a search hint",
+        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["search_hint"]), says=(SAYS["hint_pose"],))
+    bad("hint_as_the_pose_of_a_moon_pose", "approximate_with_pose", "a hint used as the pose of a pose lined up from the Moon",
+        ["pointingHint.usedAs"], put(["pointingHint"], parts["hint"]), says=(SAYS["hint_pose"],))
+    bad("hint_as_the_pose_with_no_pose", searched, "a hint used as the pose of a solution with no pose", ["poseEstimate"],
+        put(["pointingHint", "usedAs"], ["search_hint", "pose_estimate"]), says=(SAYS["hint_pose"],))
+    bad("hint_of_another_recording", hinted, "a hint that names another recording", ["pointingHint.sourceAssetSha256"],
+        put(["pointingHint", "sourceAssetSha256"], "ab" * 32), says=(SAYS["hint_recording"],))
+    bad("hint_of_no_recording", searched, "a hint on a solution that names no recording", ["sourceSha256"],
+        drop(["sourceSha256"]), says=(SAYS["hint_recording"],))
+    bad("hint_used_twice_alike", hinted, "a hint that lists a use twice", ["pointingHint.usedAs"],
+        put(["pointingHint", "usedAs"], ["search_hint", "search_hint"]), says=(SAYS["hint_uses"],))
+    bad("hint_uses_out_of_order", device, "a hint that lists its uses out of order", ["pointingHint.usedAs"],
+        put(["pointingHint", "usedAs"], ["pose_estimate", "search_hint"]), says=(SAYS["hint_uses"],))
+    bad("hint_offset_on_an_approximate_solution", device, "a verified offset on a solution with no verified WCS",
+        ["pointingHint.verifiedCenterOffsetDeg"], put(["pointingHint", "verifiedCenterOffsetDeg"], 1.0), says=(SAYS["hint_offset"],))
+    bad("calibrated_hint_without_its_offset", hinted, "a calibrated solution's hint with no verified offset",
+        ["pointingHint.verifiedCenterOffsetDeg"], drop(["pointingHint", "verifiedCenterOffsetDeg"]), says=(SAYS["hint_offset"],))
+    bad("hint_without_a_time", hinted, "a hint on a solution with no capture time", ["observedAtUTC"],
+        drop(["observedAtUTC"]), says=(SAYS["hint_moment"],))
+    bad("hint_without_a_place", hinted, "a hint on a solution with no place", ["observerLocation"],
+        drop(["observerLocation"]), says=(SAYS["hint_moment"],))
     bad("swept_wcs_on_another_centre_pixel", "approximate_with_pose", "a swept WCS on another crpixX",
         ["poseEstimate.sweptWcs.1"], put(["poseEstimate", "sweptWcs", 1, "crpixX"], 480.5), says=(SAYS["swept_crpix"],))
     bad("swept_wcs_same_scale_other_field_of_view", "approximate_with_pose",
@@ -963,6 +1038,7 @@ def build_fixture() -> dict[str, Any]:
         "SolverIdentity": {"sample": "calibrated", "path": ["solver"]},
         "ObserverLocation": {"sample": "calibrated", "path": ["observerLocation"]},
         "PoseEstimate": {"sample": "approximate_with_pose", "path": ["poseEstimate"]},
+        "PointingHint": {"sample": "approximate_with_device_attitude_pose", "path": ["pointingHint"]},
     }
     with_unnamed_keys = patched(
         valid["approximate"],

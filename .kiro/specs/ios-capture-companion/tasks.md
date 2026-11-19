@@ -27,10 +27,13 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     `tests/integration/test_pointing_route.py`.
   - _Requirements: REQ-IOS-1.1, REQ-IOS-4.1, REQ-IOS-6.1_
 
-- [ ] 3. pointing-3: the contract changes a pose from the record needs (design component 6)
+- [x] 3. pointing-3: the contract changes a pose from the record needs (design component 6)
   - `device_attitude` in `PoseEstimateSchema` with `beacon` and `beaconCentroidUncertaintyDeg` tied to the beacon
     methods; `ObservationSolutionSchema.pointingHint`; the `pointing_record` metadata container and the receipt
     rule for a place or time from the record. Both languages, fixtures, PBT both sides, as sky-1 did.
+  - As decided on 2026-11-18: no metadata container and no receipt change; the solution's `pointingHint` says where
+    its time and place came from (`timeFrom`, `placeFrom`). The web's phrase for a `device_attitude` pose
+    (`apps/web/src/services/skyLayerWords.ts`) is worded by UIUX and landed by WEB-UX in the same batch.
   - _Requirements: REQ-IOS-2.2, REQ-IOS-6.2_
 
 - [ ] 4. pointing-4: the record as a search hint (REQ-IOS-2.1, 2.2; P1, P2)

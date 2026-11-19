@@ -1044,6 +1044,57 @@
     {}
    ]
   },
+  "hintUncertaintyDeg": {
+   "type": "number",
+   "gt": 0.0,
+   "le": 180.0,
+   "accept": [
+    5e-324,
+    135.0,
+    135,
+    180.0
+   ],
+   "refuse": [
+    0.0,
+    -5e-324,
+    -0.0,
+    180.00000000000003,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "momentSource": {
+   "type": "choice",
+   "values": [
+    "file",
+    "record"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "FILE",
+    "file ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
   "noiseLimit": {
    "type": "choice",
    "values": [
@@ -1165,6 +1216,24 @@
     {}
    ]
   },
+  "pointingUse": {
+   "type": "choice",
+   "values": [
+    "search_hint",
+    "pose_estimate"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "SEARCH_HINT",
+    "search_hint ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
   "poseBeacon": {
    "type": "choice",
    "values": [
@@ -1188,7 +1257,8 @@
    "values": [
     "moon_camera_profile_level_head",
     "moon_horizon",
-    "sun_horizon"
+    "sun_horizon",
+    "device_attitude"
    ],
    "accept": [],
    "refuse": [
@@ -1404,6 +1474,38 @@
     {}
    ]
   },
+  "skyOffsetDeg": {
+   "type": "number",
+   "ge": 0.0,
+   "le": 180.0,
+   "accept": [
+    0.0,
+    135.0,
+    135,
+    180.0,
+    -0.0
+   ],
+   "refuse": [
+    -5e-324,
+    180.00000000000003,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
   "solutionStatus": {
    "type": "choice",
    "values": [
@@ -1534,6 +1636,10 @@
    },
    "poseEstimate": {
     "schema": "PoseEstimate",
+    "optional": true
+   },
+   "pointingHint": {
+    "schema": "PointingHint",
     "optional": true
    }
   },
@@ -1819,7 +1925,8 @@
     "rule": "poseMethod"
    },
    "beacon": {
-    "rule": "poseBeacon"
+    "rule": "poseBeacon",
+    "optional": true
    },
    "centerAltDeg": {
     "rule": "degrees90"
@@ -1851,7 +1958,38 @@
     "rule": "nonNegative"
    },
    "beaconCentroidUncertaintyDeg": {
-    "rule": "nonNegative"
+    "rule": "nonNegative",
+    "optional": true
+   }
+  },
+  "PointingHint": {
+   "sourceAssetSha256": {
+    "rule": "sha256"
+   },
+   "usedAs": {
+    "rule": "pointingUse",
+    "array": true,
+    "minItems": 1,
+    "maxItems": 2
+   },
+   "centerAltDeg": {
+    "rule": "degrees90"
+   },
+   "centerAzDeg": {
+    "rule": "degrees0to360"
+   },
+   "uncertaintyDeg": {
+    "rule": "hintUncertaintyDeg"
+   },
+   "verifiedCenterOffsetDeg": {
+    "rule": "skyOffsetDeg",
+    "optional": true
+   },
+   "timeFrom": {
+    "rule": "momentSource"
+   },
+   "placeFrom": {
+    "rule": "momentSource"
    }
   },
   "ObserverLocation": {
@@ -1948,7 +2086,8 @@
    "frameTimeSec": "frame_time_sec",
    "observedAtUTC": "observed_at_utc",
    "observerLocation": "observer_location",
-   "poseEstimate": "pose_estimate"
+   "poseEstimate": "pose_estimate",
+   "pointingHint": "pointing_hint"
   },
   "CelestialFinding": {
    "observationSolutionId": "observation_solution_id",
@@ -2028,6 +2167,16 @@
    "sweptWcs": "swept_wcs",
    "maxCenterOffsetDeg": "max_center_offset_deg",
    "beaconCentroidUncertaintyDeg": "beacon_centroid_uncertainty_deg"
+  },
+  "PointingHint": {
+   "sourceAssetSha256": "source_asset_sha256",
+   "usedAs": "used_as",
+   "centerAltDeg": "center_alt_deg",
+   "centerAzDeg": "center_az_deg",
+   "uncertaintyDeg": "uncertainty_deg",
+   "verifiedCenterOffsetDeg": "verified_center_offset_deg",
+   "timeFrom": "time_from",
+   "placeFrom": "place_from"
   },
   "ObserverLocation": {
    "latDeg": "lat_deg",
@@ -2182,6 +2331,12 @@
    "sample": "approximate_with_pose",
    "path": [
     "poseEstimate"
+   ]
+  },
+  "PointingHint": {
+   "sample": "approximate_with_device_attitude_pose",
+   "path": [
+    "pointingHint"
    ]
   }
  },
@@ -3430,6 +3585,310 @@
     ],
     "maxCenterOffsetDeg": 0.4,
     "beaconCentroidUncertaintyDeg": 0.004
+   }
+  },
+  "approximate_with_device_attitude_pose": {
+   "id": "sol-contract-device-pose",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-device-pose",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [],
+   "poseEstimate": {
+    "method": "device_attitude",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "The pointing record's field of view and zoom (a synthetic record for contract tests).",
+    "assumptions": [
+     "The attitude and the heading are as the phone's sensors reported them."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4
+   },
+   "pointingHint": {
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "search_hint",
+     "pose_estimate"
+    ],
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "uncertaintyDeg": 12.0,
+    "timeFrom": "record",
+    "placeFrom": "record"
+   }
+  },
+  "calibrated_with_a_pointing_hint": {
+   "id": "sol-contract-gate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 6,
+    "heldOutPairCount": 6,
+    "heldOutInliers": 6,
+    "medianResidualPx": 3.0,
+    "p95ResidualPx": 3.0,
+    "medianResidualArcsec": 378.0,
+    "passedIndependentVerification": true,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "whitened",
+     "noiseLimits": [],
+     "starProfile": {
+      "sigmaMajorPx": 2.1,
+      "sigmaMinorPx": 1.6,
+      "angleRad": 0.5,
+      "stars": 37
+     }
+    }
+   },
+   "findings": [],
+   "warnings": [],
+   "pointingHint": {
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "search_hint"
+    ],
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "uncertaintyDeg": 12.0,
+    "timeFrom": "file",
+    "placeFrom": "record",
+    "verifiedCenterOffsetDeg": 3.5
+   }
+  },
+  "predicted_only_with_a_search_hint": {
+   "id": "sol-contract-predicted",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "predicted_only",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-predicted-star-rigel",
+     "observationSolutionId": "sol-contract-predicted",
+     "evidenceClass": "predicted",
+     "title": "Rigel",
+     "subtitle": "Predicted star (hand-built contract sample)",
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050116735294871,
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ],
+     "evidence": {
+      "id": "ev-finding-predicted-star-rigel",
+      "evidenceClass": "predicted",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false,
+      "catalogReferenceId": "star-rigel"
+     }
+    }
+   ],
+   "warnings": [],
+   "pointingHint": {
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "search_hint"
+    ],
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "uncertaintyDeg": 12.0,
+    "timeFrom": "record",
+    "placeFrom": "record"
    }
   },
   "approximate_with_an_observed_fit_residual": {
@@ -5457,6 +5916,352 @@
    ],
    "messages": [
     "An approximate solution states how far its WCS may be off, so it carries a pose estimate."
+   ]
+  },
+  {
+   "name": "device_pose_with_a_beacon",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "beacon"
+     ],
+     "value": "moon"
+    }
+   ],
+   "reason": "a pose from the device attitude that names a beacon",
+   "paths": [
+    "poseEstimate.beacon"
+   ],
+   "messages": [
+    "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device attitude names neither."
+   ]
+  },
+  {
+   "name": "device_pose_with_a_beacon_uncertainty",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "beaconCentroidUncertaintyDeg"
+     ],
+     "value": 0.004
+    }
+   ],
+   "reason": "a pose from the device attitude with a beacon's uncertainty",
+   "paths": [
+    "poseEstimate.beaconCentroidUncertaintyDeg"
+   ],
+   "messages": [
+    "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device attitude names neither."
+   ]
+  },
+  {
+   "name": "beacon_pose_without_its_beacon",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "poseEstimate",
+      "beacon"
+     ]
+    }
+   ],
+   "reason": "a Moon pose that names no beacon",
+   "paths": [
+    "poseEstimate.beacon"
+   ],
+   "messages": [
+    "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device attitude names neither."
+   ]
+  },
+  {
+   "name": "beacon_pose_without_its_uncertainty",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "poseEstimate",
+      "beaconCentroidUncertaintyDeg"
+     ]
+    }
+   ],
+   "reason": "a Moon pose with no beacon uncertainty",
+   "paths": [
+    "poseEstimate.beaconCentroidUncertaintyDeg"
+   ],
+   "messages": [
+    "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device attitude names neither."
+   ]
+  },
+  {
+   "name": "device_pose_without_a_hint",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint"
+     ]
+    }
+   ],
+   "reason": "a pose from the device attitude with no pointing hint",
+   "paths": [
+    "pointingHint"
+   ],
+   "messages": [
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude."
+   ]
+  },
+  {
+   "name": "device_pose_with_a_search_hint_only",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "search_hint"
+     ]
+    }
+   ],
+   "reason": "a pose from the device attitude whose hint was only a search hint",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude."
+   ]
+  },
+  {
+   "name": "hint_as_the_pose_of_a_moon_pose",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint"
+     ],
+     "value": {
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "usedAs": [
+       "search_hint",
+       "pose_estimate"
+      ],
+      "centerAltDeg": 33.0,
+      "centerAzDeg": 224.0,
+      "uncertaintyDeg": 12.0,
+      "timeFrom": "record",
+      "placeFrom": "record"
+     }
+    }
+   ],
+   "reason": "a hint used as the pose of a pose lined up from the Moon",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude."
+   ]
+  },
+  {
+   "name": "hint_as_the_pose_with_no_pose",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "search_hint",
+      "pose_estimate"
+     ]
+    }
+   ],
+   "reason": "a hint used as the pose of a solution with no pose",
+   "paths": [
+    "poseEstimate"
+   ],
+   "messages": [
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude."
+   ]
+  },
+  {
+   "name": "hint_of_another_recording",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "sourceAssetSha256"
+     ],
+     "value": "abababababababababababababababababababababababababababababababab"
+    }
+   ],
+   "reason": "a hint that names another recording",
+   "paths": [
+    "pointingHint.sourceAssetSha256"
+   ],
+   "messages": [
+    "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256."
+   ]
+  },
+  {
+   "name": "hint_of_no_recording",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "sourceSha256"
+     ]
+    }
+   ],
+   "reason": "a hint on a solution that names no recording",
+   "paths": [
+    "sourceSha256"
+   ],
+   "messages": [
+    "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256."
+   ]
+  },
+  {
+   "name": "hint_used_twice_alike",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "search_hint",
+      "search_hint"
+     ]
+    }
+   ],
+   "reason": "a hint that lists a use twice",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint lists each use at most once, search_hint before pose_estimate."
+   ]
+  },
+  {
+   "name": "hint_uses_out_of_order",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "pose_estimate",
+      "search_hint"
+     ]
+    }
+   ],
+   "reason": "a hint that lists its uses out of order",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint lists each use at most once, search_hint before pose_estimate."
+   ]
+  },
+  {
+   "name": "hint_offset_on_an_approximate_solution",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "verifiedCenterOffsetDeg"
+     ],
+     "value": 1.0
+    }
+   ],
+   "reason": "a verified offset on a solution with no verified WCS",
+   "paths": [
+    "pointingHint.verifiedCenterOffsetDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+   ]
+  },
+  {
+   "name": "calibrated_hint_without_its_offset",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "verifiedCenterOffsetDeg"
+     ]
+    }
+   ],
+   "reason": "a calibrated solution's hint with no verified offset",
+   "paths": [
+    "pointingHint.verifiedCenterOffsetDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+   ]
+  },
+  {
+   "name": "hint_without_a_time",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "observedAtUTC"
+     ]
+    }
+   ],
+   "reason": "a hint on a solution with no capture time",
+   "paths": [
+    "observedAtUTC"
+   ],
+   "messages": [
+    "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation."
+   ]
+  },
+  {
+   "name": "hint_without_a_place",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "observerLocation"
+     ]
+    }
+   ],
+   "reason": "a hint on a solution with no place",
+   "paths": [
+    "observerLocation"
+   ],
+   "messages": [
+    "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation."
    ]
   },
   {
@@ -8224,10 +9029,10 @@
   ]
  },
  "keyCases": {
-  "levels": 159,
-  "dropped": 1905,
-  "refusedUnknown": 49,
-  "refusedWhenRenamed": 758,
-  "leftOutWhenRenamed": 83
+  "levels": 191,
+  "dropped": 2283,
+  "refusedUnknown": 69,
+  "refusedWhenRenamed": 918,
+  "leftOutWhenRenamed": 97
  }
 }

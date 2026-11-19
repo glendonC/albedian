@@ -501,6 +501,10 @@ export const WCSCalibrationModelSchema = z.object({
 export type WCSCalibrationModel = z.infer<typeof WCSCalibrationModelSchema>;
 
 // The beacon each pose method lines up from: the Moon for the two Moon methods, the Sun for sun_horizon
+/** A pose from the phone's pointing record names no beacon (ios-capture-companion design component 6). */
+export const DEVICE_ATTITUDE = 'device_attitude';
+const POSE_BEACON_TERMS =
+  "A pose estimate lined up from a beacon names the beacon and its centroid's uncertainty; one from the device attitude names neither.";
 const POSE_METHOD_BEACONS = {
   moon_camera_profile_level_head: 'moon',
   moon_horizon: 'moon',
@@ -517,8 +521,9 @@ const POSE_METHOD_BEACONS = {
  */
 export const PoseEstimateSchema = z
   .object({
-    method: z.enum(['moon_camera_profile_level_head', 'moon_horizon', 'sun_horizon']),
-    beacon: z.enum(['moon', 'sun']),
+    method: z.enum(['moon_camera_profile_level_head', 'moon_horizon', 'sun_horizon', DEVICE_ATTITUDE]),
+    // Present exactly for the methods that line up from a beacon, as is the beacon's uncertainty below
+    beacon: z.enum(['moon', 'sun']).optional(),
     centerAltDeg: z.number().min(-90).max(90),
     centerAzDeg: z.number().min(0).max(360),
     rollDeg: z.number().min(-180).max(180),
@@ -530,10 +535,16 @@ export const PoseEstimateSchema = z
     // The beacon term, one number: the beacon centroid's own uncertainty (for the head-worn Moon pose, the Moon's
     // predicted radius plus its ephemeris's stated uncertainty) plus the frame term, at most what drawing every
     // position through the pose's one rotation leaves out
-    beaconCentroidUncertaintyDeg: z.number().nonnegative().finite(),
+    beaconCentroidUncertaintyDeg: z.number().nonnegative().finite().optional(),
   })
   .superRefine((pose, ctx) => {
-    if (POSE_METHOD_BEACONS[pose.method] !== pose.beacon) {
+    const linesUpFrom = pose.method === DEVICE_ATTITUDE ? undefined : POSE_METHOD_BEACONS[pose.method];
+    (['beacon', 'beaconCentroidUncertaintyDeg'] as const).forEach((key) => {
+      if ((pose[key] === undefined) !== (linesUpFrom === undefined)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: POSE_BEACON_TERMS });
+      }
+    });
+    if (linesUpFrom !== undefined && pose.beacon !== undefined && pose.beacon !== linesUpFrom) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['beacon'],
@@ -542,6 +553,45 @@ export const PoseEstimateSchema = z
     }
   });
 export type PoseEstimate = z.infer<typeof PoseEstimateSchema>;
+
+/** How a solve used the phone's pointing record, in this order, and where a solution's time and place came from. */
+export const POINTING_USES = ['search_hint', 'pose_estimate'] as const;
+export const MOMENT_SOURCES = ['file', 'record'] as const;
+const HINT_RECORDING = "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256.";
+const HINT_POSE =
+  "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude.";
+const HINT_OFFSET = "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution.";
+const HINT_MOMENT =
+  'A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation.';
+
+/**
+ * How a solve used the phone's pointing record (ios-capture-companion design component 6): the record's photo, what
+ * it was used as, the hinted frame centre in altitude and azimuth with its stated uncertainty, the verified centre's
+ * offset from it on a calibrated solution (REQ-IOS-2.2), and where the solution's time and place came from: the
+ * file's own metadata or the record. Never a measurement of the sky. `ObservationSolutionSchema` ties it to the
+ * solution's photo, status, pose and moment. Its Python mirror is `PointingHint` in services/science/wcs_models.py.
+ */
+export const PointingHintSchema = z
+  .object({
+    sourceAssetSha256: SourceSha256Schema,
+    usedAs: z.array(z.enum(POINTING_USES)).min(1).max(POINTING_USES.length),
+    centerAltDeg: z.number().min(-90).max(90),
+    centerAzDeg: z.number().min(0).max(360),
+    uncertaintyDeg: z.number().positive().max(180),
+    verifiedCenterOffsetDeg: z.number().min(0).max(180).optional(),
+    timeFrom: z.enum(MOMENT_SOURCES),
+    placeFrom: z.enum(MOMENT_SOURCES),
+  })
+  .superRefine((hint, ctx) => {
+    if (!listsEachOnceInOrder(hint.usedAs, POINTING_USES)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['usedAs'],
+        message: 'A pointing hint lists each use at most once, search_hint before pose_estimate.',
+      });
+    }
+  });
+export type PointingHint = z.infer<typeof PointingHintSchema>;
 
 /**
  * Whether a solution's WCS passed independent held-out verification, the only way pixels
@@ -626,6 +676,8 @@ export const ObservationSolutionSchema = z
     warnings: z.array(z.string()),
     // How far an approximate solution's WCS may be off: present only on an approximate solution with a WCS
     poseEstimate: PoseEstimateSchema.optional(),
+    // How the solve used the phone's pointing record, when it had one
+    pointingHint: PointingHintSchema.optional(),
   })
   .superRefine((solution, ctx) => {
     const quality = solution.quality;
@@ -637,6 +689,24 @@ export const ObservationSolutionSchema = z
         path: ['poseEstimate'],
         message: 'An approximate solution states how far its WCS may be off, so it carries a pose estimate.',
       });
+    }
+    // The pointing hint's rules, each named where it is: at a field a rule needs when that field is missing
+    const hint = solution.pointingHint;
+    const devicePose = pose?.method === DEVICE_ATTITUDE;
+    const flag = (path: (string | number)[], message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+    if (hint === undefined) {
+      if (devicePose) flag(['pointingHint'], HINT_POSE);
+    } else {
+      if (solution.sourceSha256 === undefined) flag(['sourceSha256'], HINT_RECORDING);
+      else if (hint.sourceAssetSha256 !== solution.sourceSha256) flag(['pointingHint', 'sourceAssetSha256'], HINT_RECORDING);
+      const asPose = hint.usedAs.includes('pose_estimate');
+      if (asPose && pose === undefined) flag(['poseEstimate'], HINT_POSE);
+      else if (asPose !== devicePose) flag(['pointingHint', 'usedAs'], HINT_POSE);
+      if ((hint.verifiedCenterOffsetDeg !== undefined) !== (solution.status === 'calibrated')) {
+        flag(['pointingHint', 'verifiedCenterOffsetDeg'], HINT_OFFSET);
+      }
+      if (solution.observedAtUTC === undefined) flag(['observedAtUTC'], HINT_MOMENT);
+      if (solution.observerLocation === undefined) flag(['observerLocation'], HINT_MOMENT);
     }
     if (pose !== undefined) {
       if (solution.status !== 'approximate' || solution.wcs === undefined) {

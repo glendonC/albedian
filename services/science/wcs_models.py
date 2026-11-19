@@ -761,7 +761,8 @@ class PoseEstimate:
     with a WCS, every swept WCS on that WCS's crpix and of its width and height."""
 
     method: str
-    beacon: str
+    # The beacon and its term below are None exactly for a pose from the device attitude (the contract's rule)
+    beacon: str | None
     center_alt_deg: float
     center_az_deg: float
     roll_deg: float
@@ -773,18 +774,16 @@ class PoseEstimate:
     # The beacon term, one number: the beacon centroid's own uncertainty (for the head-worn Moon pose, the Moon's
     # predicted radius plus its ephemeris's stated uncertainty) plus the frame term, at most what drawing every
     # position through the pose's one rotation leaves out
-    beacon_centroid_uncertainty_deg: float
+    beacon_centroid_uncertainty_deg: float | None
 
     def __post_init__(self) -> None:
         if self.method not in POSE_METHODS:
             raise ContractRefusal(f"A pose estimate's method is one of {', '.join(POSE_METHODS)} (got {self.method!r}).")
-        if self.beacon not in POSE_BEACONS:
+        if self.beacon is not None and self.beacon not in POSE_BEACONS:
             raise ContractRefusal(f"A pose estimate's beacon is the moon or the sun (got {self.beacon!r}).")
-        if POSE_METHOD_BEACONS[self.method] != self.beacon:
-            raise ContractRefusal(
-                "A pose estimate's beacon is the one its method lines up from: the moon for "
-                "moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon."
-            )
+        issues = contract.pose_beacon_issues(self.method, self.beacon, self.beacon_centroid_uncertainty_deg)
+        if issues:
+            raise ContractRefusal(issues[0][1])
         for name, value, lo, hi in (
             ("center_alt_deg", self.center_alt_deg, -90.0, 90.0),
             ("center_az_deg", self.center_az_deg, 0.0, 360.0),
@@ -798,7 +797,7 @@ class PoseEstimate:
             )
         for name, value in (
             ("max_center_offset_deg", self.max_center_offset_deg),
-            ("beacon_centroid_uncertainty_deg", self.beacon_centroid_uncertainty_deg),
+            *((("beacon_centroid_uncertainty_deg", self.beacon_centroid_uncertainty_deg),) if self.beacon is not None else ()),
         ):
             # Not negative and finite, as the contract's .nonnegative().finite(): NaN fails both comparisons, and
             # json.dumps would write an infinity as Infinity, which is not JSON
@@ -831,9 +830,14 @@ class PoseEstimate:
         object.__setattr__(self, "swept_wcs", swept)
 
     def to_contract_dict(self) -> dict:
+        beacon = {} if self.beacon is None else {"beacon": self.beacon}
+        beacon_term = (
+            {} if self.beacon_centroid_uncertainty_deg is None
+            else {"beaconCentroidUncertaintyDeg": float(self.beacon_centroid_uncertainty_deg)}
+        )
         return {
             "method": self.method,
-            "beacon": self.beacon,
+            **beacon,
             "centerAltDeg": float(self.center_alt_deg),
             "centerAzDeg": float(self.center_az_deg),
             "rollDeg": float(self.roll_deg),
@@ -842,8 +846,64 @@ class PoseEstimate:
             "assumptions": list(self.assumptions),
             "sweptWcs": [wcs.to_contract_dict() for wcs in self.swept_wcs],
             "maxCenterOffsetDeg": float(self.max_center_offset_deg),
-            "beaconCentroidUncertaintyDeg": float(self.beacon_centroid_uncertainty_deg),
+            **beacon_term,
         }
+
+
+@dataclass(frozen=True)
+class PointingHint:
+    """How a solve used the phone's pointing record, as the contract's PointingHint: the record's photo, what it was
+    used as (`search_hint`, `pose_estimate`, or both, in that order), the hinted frame centre's altitude and azimuth
+    with the uncertainty the record states, the verified centre's offset from it on a calibrated solution, and where
+    the solution's time and place came from (`file` or `record`). Never a measurement of the sky. `ObservationSolution`
+    ties it to its own photo, status, pose and moment."""
+
+    source_asset_sha256: str
+    used_as: tuple[str, ...]
+    center_alt_deg: float
+    center_az_deg: float
+    uncertainty_deg: float
+    time_from: str
+    place_from: str
+    verified_center_offset_deg: float | None = None
+
+    def __post_init__(self) -> None:
+        require_source_sha256(self.source_asset_sha256)
+        if not isinstance(self.used_as, (list, tuple)) or not 1 <= len(self.used_as) <= len(contract.POINTING_USES):
+            raise ContractRefusal("A pointing hint names one or two uses.")
+        used_as = tuple(self.used_as)
+        if any(use not in contract.POINTING_USES for use in used_as) or not contract.listed_once_each_in_order(
+            used_as, contract.POINTING_USES
+        ):
+            raise ContractRefusal(contract.HINT_USES)
+        for name, value, lo, hi, open_low in (
+            ("center_alt_deg", self.center_alt_deg, -90.0, 90.0, False),
+            ("center_az_deg", self.center_az_deg, 0.0, 360.0, False),
+            ("uncertainty_deg", self.uncertainty_deg, 0.0, 180.0, True),
+        ):
+            if not _is_number(value) or not (lo < value if open_low else lo <= value) or not value <= hi:
+                raise ContractRefusal(f"A pointing hint's {name} lies in {'(' if open_low else '['}{lo:g}, {hi:g}] (got {value!r}).")
+        offset = self.verified_center_offset_deg
+        if offset is not None and (not _is_number(offset) or not 0.0 <= offset <= 180.0):
+            raise ContractRefusal(f"A pointing hint's verified_center_offset_deg lies in [0, 180] (got {offset!r}).")
+        for name, value in (("time_from", self.time_from), ("place_from", self.place_from)):
+            if value not in contract.MOMENT_SOURCES:
+                raise ContractRefusal(f"A pointing hint's {name} is file or record (got {value!r}).")
+        object.__setattr__(self, "used_as", used_as)
+
+    def to_contract_dict(self) -> dict:
+        result = {
+            "sourceAssetSha256": self.source_asset_sha256,
+            "usedAs": list(self.used_as),
+            "centerAltDeg": float(self.center_alt_deg),
+            "centerAzDeg": float(self.center_az_deg),
+            "uncertaintyDeg": float(self.uncertainty_deg),
+            "timeFrom": self.time_from,
+            "placeFrom": self.place_from,
+        }
+        if self.verified_center_offset_deg is not None:
+            result["verifiedCenterOffsetDeg"] = float(self.verified_center_offset_deg)
+        return result
 
 
 @dataclass(frozen=True)
@@ -869,6 +929,8 @@ class ObservationSolution:
     warnings: list[str] = field(default_factory=list)
     # How far an approximate solution's WCS may be off: present only on an approximate solution with a WCS
     pose_estimate: PoseEstimate | None = field(default=None, kw_only=True)
+    # How the solve used the phone's pointing record, when it had one (the contract's rules, through its own parser)
+    pointing_hint: PointingHint | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         # What the contract holds each of these to on its own: ids that are not empty, a real hash for the recording,
@@ -908,6 +970,13 @@ class ObservationSolution:
                     "Every swept WCS of a pose estimate has the nominal WCS's width and height: "
                     "all of them describe the same frame."
                 )
+        hint_issues = contract.pointing_hint_issues(
+            self.status, self.source_sha256, self.observed_at_utc is not None,
+            self.observer_lat is not None and self.observer_lon is not None,
+            None if self.pose_estimate is None else self.pose_estimate.method, self.pointing_hint,
+        )
+        if hint_issues:
+            raise ContractRefusal(hint_issues[0][1])
         if self.status == "pending":
             if self.quality is not None:
                 raise ContractRefusal("A pending solution has no quality: no solver has run, so nothing was counted.")
@@ -1030,6 +1099,8 @@ class ObservationSolution:
             result["wcs"] = self.wcs.to_contract_dict()
         if self.pose_estimate is not None:
             result["poseEstimate"] = self.pose_estimate.to_contract_dict()
+        if self.pointing_hint is not None:
+            result["pointingHint"] = self.pointing_hint.to_contract_dict()
         # Judged by the contract's own parser before it leaves: nothing is stored or served that the TypeScript
         # schema would refuse. A refusal names the path and the rule, never the value
         contract.parse_observation_solution(result)

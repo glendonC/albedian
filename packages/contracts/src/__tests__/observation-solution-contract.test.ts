@@ -28,6 +28,7 @@ import {
   PROFILE_MIN_SIGMA_PX,
   PROFILE_MIN_STARS,
   PoseEstimateSchema,
+  PointingHintSchema,
   SHA256_HEX_PATTERN,
   SWEPT_FOV_TOLERANCE_DEG,
   ScientificEvidenceSchema,
@@ -175,6 +176,7 @@ const SCHEMAS: Record<string, z.ZodTypeAny> = {
   SolverIdentity: solutionShape.solver.unwrap(),
   ObserverLocation: solutionShape.observerLocation.unwrap(),
   PoseEstimate: PoseEstimateSchema,
+  PointingHint: PointingHintSchema,
 };
 /** The objects whose keys the contract states, by schema: a closed one (z.object().strict()) refuses any other key. */
 const OBJECTS: Record<string, z.AnyZodObject> = {
@@ -193,6 +195,7 @@ const OBJECTS: Record<string, z.AnyZodObject> = {
   SolverIdentity: solutionShape.solver.unwrap(),
   ObserverLocation: solutionShape.observerLocation.unwrap(),
   PoseEstimate: PoseEstimateSchema.innerType(),
+  PointingHint: PointingHintSchema.innerType(),
 };
 const SHAPES: Record<string, z.ZodRawShape> = {
   ObservationSolution: solutionShape,
@@ -210,6 +213,7 @@ const SHAPES: Record<string, z.ZodRawShape> = {
   SolverIdentity: solutionShape.solver.unwrap().shape,
   ObserverLocation: solutionShape.observerLocation.unwrap().shape,
   PoseEstimate: PoseEstimateSchema.innerType().shape,
+  PointingHint: PointingHintSchema.innerType().shape,
 };
 
 /** Every object of the family inside `value`, as the schema that judges it and where it is. */
@@ -244,7 +248,10 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     expect(fixture.rules['solutionStatus']!.values).toEqual(SolutionStatusSchema.options);
     expect(fixture.rules['evidenceClass']!.values).toEqual(EvidenceClassSchema.options);
     expect(fixture.rules['poseMethod']!.values).toEqual(PoseEstimateSchema.innerType().shape.method.options);
-    expect(fixture.rules['poseBeacon']!.values).toEqual(PoseEstimateSchema.innerType().shape.beacon.options);
+    expect(fixture.rules['poseBeacon']!.values).toEqual(PoseEstimateSchema.innerType().shape.beacon.unwrap().options);
+    expect(fixture.rules['pointingUse']!.values).toEqual(PointingHintSchema.innerType().shape.usedAs.element.options);
+    expect(fixture.rules['momentSource']!.values).toEqual(PointingHintSchema.innerType().shape.timeFrom.options);
+    expect(fixture.rules['momentSource']!.values).toEqual(PointingHintSchema.innerType().shape.placeFrom.options);
     expect(fixture.rules['catalogProvider']!.values).toEqual(referenceShape.provider.options);
     expect(fixture.rules['catalogObjectType']!.values).toEqual(referenceShape.objectType.options);
     expect(fixture.rules['catalogDistanceMethod']!.values).toEqual(referenceShape.bailerJonesDistancePc.unwrap().shape.method.options);
@@ -867,5 +874,69 @@ describe('scripts/verify-contracts.mjs: the contract constants it requires', () 
     expect(run.err).toContain(name);
     for (const other of CONSTANTS.filter((constant) => constant !== name)) expect(run.err).not.toContain(other);
     expect(run.out).not.toContain('[verify:contracts] OK');
+  });
+});
+
+// P-SKY-7b (pointing-3): a pose from the device attitude and the pointing hint, judged by the same oracle as
+// test_p_sky_7b_the_pointing_hint_follows_its_solution in tests/integration/test_pose_estimate_contract.py, on the
+// same payloads built from the fixture's valid samples
+describe('P-SKY-7b: the pointing hint follows its solution', () => {
+  const BASES = {
+    calibrated: 'calibrated_with_a_pointing_hint',
+    approximate: 'approximate_with_device_attitude_pose',
+    predicted_only: 'predicted_only_with_a_search_hint',
+  } as const;
+  const USES = [['search_hint'], ['pose_estimate'], ['search_hint', 'pose_estimate'], ['pose_estimate', 'search_hint'], ['search_hint', 'search_hint']];
+  const specArb = fc.record({
+    status: fc.constantFrom('calibrated', 'approximate', 'predicted_only'),
+    pose: fc.constantFrom('none', 'moon', 'device'),
+    hint: fc.boolean(),
+    uses: fc.nat({ max: USES.length - 1 }),
+    offset: fc.boolean(),
+    time: fc.boolean(),
+    place: fc.boolean(),
+    sameRecording: fc.boolean(),
+  });
+  type Spec = { status: keyof typeof BASES; pose: string; hint: boolean; uses: number; offset: boolean; time: boolean; place: boolean; sameRecording: boolean };
+  const valid = fixture.valid as Record<string, Record<string, unknown>>;
+
+  function build(spec: Spec): Record<string, unknown> {
+    const out = structuredClone(valid[BASES[spec.status]]!) as Record<string, unknown>;
+    delete out.poseEstimate;
+    delete out.pointingHint;
+    if (spec.pose === 'moon') out.poseEstimate = structuredClone(valid.approximate_with_pose!.poseEstimate);
+    if (spec.pose === 'device') out.poseEstimate = structuredClone(valid.approximate_with_device_attitude_pose!.poseEstimate);
+    if (spec.hint) {
+      const hint = structuredClone(valid.approximate_with_device_attitude_pose!.pointingHint) as Record<string, unknown>;
+      hint.usedAs = USES[spec.uses];
+      hint.sourceAssetSha256 = spec.sameRecording ? out.sourceSha256 : 'ab'.repeat(32);
+      if (spec.offset) hint.verifiedCenterOffsetDeg = 3.5;
+      out.pointingHint = hint;
+    }
+    if (!spec.time) delete out.observedAtUTC;
+    if (!spec.place) delete out.observerLocation;
+    return out;
+  }
+
+  function oracle(spec: Spec): boolean {
+    const uses = USES[spec.uses]!;
+    // A pose only on an approximate solution, and an approximate one always has one (REQ-SKY-5.4)
+    const poseOk = (spec.pose === 'none') === (spec.status !== 'approximate');
+    const momentOk = spec.status === 'calibrated' || (spec.time && spec.place);
+    if (!spec.hint) return poseOk && momentOk && spec.pose !== 'device';
+    const usesOk = uses.length === 1 || (uses[0] === 'search_hint' && uses[1] === 'pose_estimate');
+    return (
+      poseOk && momentOk && usesOk && spec.sameRecording && uses.includes('pose_estimate') === (spec.pose === 'device') &&
+      spec.offset === (spec.status === 'calibrated') && spec.time && spec.place
+    );
+  }
+
+  it('accepts a generated solution exactly when the oracle does', () => {
+    fc.assert(
+      fc.property(specArb, (spec) => {
+        expect(ObservationSolutionSchema.safeParse(build(spec as Spec)).success).toBe(oracle(spec as Spec));
+      }),
+      { numRuns: 400, seed: FC_SEED },
+    );
   });
 });
