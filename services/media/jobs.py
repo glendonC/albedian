@@ -41,8 +41,9 @@ MEDIA_PRODUCER_FILES = (
     "services/science/detector.py",
 )
 # Revisions: 1, the first (restore-2b); 2, kept edges stored as the gate computes them and samples raised over both
-# their surroundings and the original's own dissolved by the passes (restore-4f)
-MEDIA_PRODUCER = Producer("albedian.restore", 2, MEDIA_PRODUCER_FILES)
+# their surroundings and the original's own dissolved by the passes (restore-4f); 3, a stored still's colour
+# profile keeps its colour data and loses its text (restore-8b)
+MEDIA_PRODUCER = Producer("albedian.restore", 3, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base and seconds per megapixel of every frame [proposed in design section 11: three times the
 # prototype's still rate and a base for starting the child, probing and hashing]
 BOUND_BASE_SEC = 120.0

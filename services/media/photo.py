@@ -190,7 +190,7 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     # stored sky around it (restore-4f)
     stored = gate.kept_samples(transfer.encode16(tone.apply_lift(dissolved.working, lift.beta)), expected,
                                kept.weight).astype(np.uint16)
-    data = encode.write_still(stored, still.icc_profile)
+    data = encode.write_still(stored, profile_without_text(still.icc_profile))
     read_back = encode.read_still(data)
     lap("encode")
     context = Context(original, kept, transfer, lift.beta, top, luminance, expected)
@@ -379,3 +379,132 @@ class Trials:
         by_star = gate.on_a_star(near, context.original)
         unconfirmed = sum(not (s or b) for s, b in zip(same, by_star))
         return unconfirmed > 0 or kept_changed or raised, max(p.snr for p in near)
+
+
+# =============================================================================================
+# The stored file's colour profile: its colour data kept, its text not (REQ-RST-9.4; restore-8b)
+# =============================================================================================
+
+import hashlib  # noqa: E402
+import struct  # noqa: E402
+
+# The fixed text of the two text tags a profile keeps [proposed: plain words for the lead or the design lane to change;
+# no reader of the app shows them]
+PROFILE_DESCRIPTION = "Colour profile of the original"
+PROFILE_TEXT = "Text removed by Albedian"
+# The header's bytes, the tag count after them [tested: Little CMS's sRGB and Apple's Display P3 read whole so]
+_ICC_HEADER = 128
+# The tags a profile is rebuilt from, in the order they are written, each with the types it may have [inference: the
+# matrix and tone curve model of an RGB or grey display profile as the ICC specification has it, as recalled; tested:
+# Little CMS turns colours identically through the rebuilt sRGB]. Single XYZ numbers: the white and black points, the
+# three primaries, the luminance; tone curves; the chromatic adaptation matrix; the chromaticities; the code points.
+_ICC_COLOUR_TAGS = (
+    (b"wtpt", (b"XYZ ",)), (b"bkpt", (b"XYZ ",)), (b"lumi", (b"XYZ ",)), (b"chad", (b"sf32",)),
+    (b"rXYZ", (b"XYZ ",)), (b"gXYZ", (b"XYZ ",)), (b"bXYZ", (b"XYZ ",)),
+    (b"rTRC", (b"curv", b"para")), (b"gTRC", (b"curv", b"para")), (b"bTRC", (b"curv", b"para")),
+    (b"kTRC", (b"curv", b"para")), (b"chrm", (b"chrm",)), (b"cicp", (b"cicp",)),
+)
+# What a profile must hold to be rebuilt: an RGB one its white point, primaries and curves, a grey one its white
+# point and curve
+_ICC_NEEDED = {b"RGB ": (b"wtpt", b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC", b"gTRC", b"bTRC"), b"GRAY": (b"wtpt", b"kTRC")}
+_ICC_CLASSES = frozenset({b"scnr", b"mntr", b"prtr", b"spac"})
+# The parameters of each parametric curve function [tested: Little CMS's sRGB and Apple's Display P3 use function 3
+# with five; the other counts are the ICC specification's parametricCurveType as recalled, an inference]
+_PARA_COUNTS = {0: 1, 1: 3, 2: 4, 3: 5, 4: 7}
+
+
+def _colour_tag(kind: bytes, sig: bytes, body: bytes) -> Optional[bytes]:
+    """The tag written fresh from its colour numbers at the length its type defines, its reserved bytes zero; None
+    when the body is too short for its type or names a function or count it cannot hold."""
+    def numbers(start: int, length: int) -> Optional[bytes]:
+        return body[start:start + length] if len(body) >= start + length else None
+
+    if kind == b"XYZ ":
+        data = numbers(8, 12)
+    elif kind == b"sf32":
+        data = numbers(8, 36)  # chad, the 3 by 3 matrix
+    elif kind == b"curv":
+        count = int.from_bytes(body[8:12], "big") if len(body) >= 12 else None
+        entries = numbers(12, 2 * count) if count is not None else None
+        data = body[8:12] + entries if entries is not None else None
+    elif kind == b"para":
+        function = int.from_bytes(body[8:10], "big") if len(body) >= 10 else None
+        values = numbers(12, 4 * _PARA_COUNTS[function]) if function in _PARA_COUNTS else None
+        data = body[8:10] + bytes(2) + values if values is not None else None
+    elif kind == b"chrm":
+        channels = int.from_bytes(body[8:10], "big") if len(body) >= 10 else None
+        values = numbers(12, 8 * channels) if channels else None
+        data = body[8:12] + values if values is not None else None
+    else:  # cicp: primaries, transfer, matrix and range, a byte each
+        data = numbers(8, 4)
+    return kind + bytes(4) + data if data is not None else None
+
+
+def _text_tag(version: int, sig: bytes, text: str) -> bytes:
+    if version >= 4:
+        body = text.encode("utf-16-be")
+        return b"mluc" + bytes(4) + struct.pack(">II", 1, 12) + b"enUS" + struct.pack(">II", len(body), 28) + body
+    if sig == b"cprt":
+        return b"text" + bytes(4) + text.encode("ascii") + b"\x00"
+    # textDescriptionType: the ASCII text, no Unicode text and no ScriptCode text (its 67 bytes zero)
+    ascii_text = text.encode("ascii") + b"\x00"
+    return b"desc" + bytes(4) + struct.pack(">I", len(ascii_text)) + ascii_text + struct.pack(">IIHB", 0, 0, 0, 0) + bytes(67)
+
+
+def profile_without_text(profile: Optional[bytes]) -> Optional[bytes]:
+    """The original's ICC profile as a stored file carries it, built anew from its colour data alone: a fresh header
+    holding only the original's version, class, colour space, connection space, rendering intent and illuminant
+    (every other byte zero, the id the MD5 of the profile with its flags, intent and id zero [inference: the ICC
+    header's profile id, as recalled; tested: Little CMS reads it]), the description and the copyright written fresh
+    with the fixed words, and each colour tag of the matrix and curve model written from its numbers at the length its
+    type defines, identical ones shared. Every other byte of the original is left behind: its header's maker, model,
+    dates and reserved bytes, its other tags, the padding inside and between tags. None when there is no profile or one
+    it cannot rebuild so (not RGB or grey, not XYZ connected, a needed tag missing or cut short): a stored file then has
+    no profile rather than bytes it cannot check [decided 2026-11-19 by the lead at 07:31 and 08:34: the colour data
+    stays, nothing else does]."""
+    if not profile or len(profile) < _ICC_HEADER + 4:
+        return None
+    size = int.from_bytes(profile[0:4], "big")
+    count = int.from_bytes(profile[128:132], "big")
+    version, space = profile[8], profile[16:20]
+    # The tag table must fit inside the profile, which also bounds the count of tags
+    if (size > len(profile) or profile[36:40] != b"acsp" or 132 + 12 * count > size or version not in (2, 4)
+            or profile[12:16] not in _ICC_CLASSES or space not in _ICC_NEEDED or profile[20:24] != b"XYZ "):
+        return None
+    table_end, found = 132 + 12 * count, {}
+    for index in range(count):
+        sig, offset, length = struct.unpack(">4sII", profile[132 + 12 * index:144 + 12 * index])
+        if sig in found or offset < table_end or offset + length > size:
+            return None
+        found[sig] = profile[offset:offset + length]
+    tags = [(b"desc", _text_tag(version, b"desc", PROFILE_DESCRIPTION)), (b"cprt", _text_tag(version, b"cprt", PROFILE_TEXT))]
+    for sig, kinds in _ICC_COLOUR_TAGS:
+        body = found.get(sig)
+        if body is None:
+            continue
+        written = _colour_tag(body[:4], sig, body) if body[:4] in kinds else None
+        if written is None:
+            return None
+        tags.append((sig, written))
+    if not all(sig in dict(tags) for sig in _ICC_NEEDED[space]):
+        return None
+    start = 132 + 12 * len(tags)
+    blocks, placed, table = bytearray(), {}, bytearray()
+    for sig, data in tags:
+        if data not in placed:
+            blocks.extend(bytes(-len(blocks) % 4))
+            placed[data] = start + len(blocks)
+            blocks.extend(data)
+        table.extend(sig + struct.pack(">II", placed[data], len(data)))
+    blocks.extend(bytes(-len(blocks) % 4))
+    header = bytearray(_ICC_HEADER)
+    header[8:10], header[12:24], header[36:40] = profile[8:10], profile[12:24], b"acsp"
+    intent = int.from_bytes(profile[64:68], "big")
+    header[64:68] = struct.pack(">I", intent if intent <= 3 else 0)
+    header[68:80] = profile[68:80]
+    out = header + struct.pack(">I", len(tags)) + table + blocks
+    out[0:4] = struct.pack(">I", len(out))
+    zeroed = bytearray(out)
+    zeroed[44:48], zeroed[64:68] = bytes(4), bytes(4)
+    out[84:100] = hashlib.md5(bytes(zeroed)).digest()
+    return bytes(out)

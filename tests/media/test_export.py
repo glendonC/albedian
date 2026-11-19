@@ -8,9 +8,9 @@ Covers, through the API on a store of its own:
   and the manifest parses under the contract (P-RST-21).
 - The manifest names the upload's newest solution id when the job store names one, and no solution otherwise.
 - A synthetic upload planted with a file name, a capture time, a place, container tags (tEXt, iTXt, tIME, eXIf with a
-  camera make) and an ICC profile: the upload's record holds the name, the time, the place and the camera, and the
-  export holds none of them, in the manifest or in the exported file's chunks; the profile is kept byte for byte as
-  colour data, and its text tags hold none of them either (REQ-RST-9.4).
+  camera make) and an ICC profile with planted text in every kind of text tag: the upload's record holds the name, the
+  time, the place and the camera, and the export holds none of them, in the manifest or in the exported file's
+  chunks; the profile's colour data is kept byte for byte and its text tags hold only the fixed text (REQ-RST-9.4).
 - A rejected attempt has nothing to export, nor a variant whose attempt is not ready (REQ-RST-9.6); a malformed id is
   422; an unknown one, a folder or file reached through a link, a folder missing a record or naming another variant
   404; a type with no export yet (a clip) 501; a stored file that no longer hashes to its record is never served,
@@ -42,9 +42,10 @@ import pytest
 from fastapi.testclient import TestClient
 from hypothesis import example, given, settings
 from hypothesis import strategies as st
-from PIL import Image, ImageCms, TiffImagePlugin
+from PIL import Image, TiffImagePlugin
 from pydantic import ValidationError
 
+import icc_profiles as icc
 from photo_frames import star_field
 from services.api import create_app
 from services.contracts import media as contracts
@@ -52,7 +53,7 @@ from services.ingest import router as ingest_router
 from services.ingest.job_store import JobStore
 from services.ingest.store import IngestStore
 from services.media import jobs as media_jobs
-from services.media import png16, variants
+from services.media import photo, png16, variants
 
 ROOT = Path(__file__).resolve().parents[2]
 MEDIA_CONTRACT = ROOT / "tests" / "fixtures" / "media_contract.json"
@@ -74,9 +75,13 @@ Rat = TiffImagePlugin.IFDRational
 PLANTED_LAT = (Rat(10, 1), Rat(7, 1), Rat(2441616, 100000))
 PLANTED_LON = (Rat(20, 1), Rat(15, 1), Rat(335, 10))
 PLANTED_CHUNKS = (b"tEXt", b"iTXt", b"tIME", b"eXIf")
-# A real ICC profile, Little CMS's own sRGB as Pillow builds it (its text tags name it and say it is free to use), made
-# here so no profile file is copied into the repository
-PROFILE = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+# A real ICC profile, Little CMS's own sRGB as Pillow builds it (made here, so no profile file is copied into the
+# repository), with the planted name, title and other marks in every kind of text tag it can hold (restore-8b)
+PROFILE = icc.planted(icc.srgb(), {"desc": PLANTED_TITLE, "cprt": PLANTED_NAME, "dmnd": PLANTED_MAKE,
+                                   "dmdd": PLANTED_COMMENT, "vued": PLANTED_XMP, "mmod": PLANTED_EXIF_TIME,
+                                   "meta": PLANTED_UTC})
+# And the planted name in every other byte of it that is no colour data: free header bytes, padding, gaps (restore-8b v3)
+PROFILE = icc.planted_everywhere(PROFILE, PLANTED_NAME.encode("latin-1"))
 
 
 def chunk(kind: bytes, body: bytes) -> bytes:
@@ -137,26 +142,6 @@ def png_profile(data: bytes) -> bytes:
         position += 12 + length
     assert len(found) == 1, len(found)
     return found[0]
-
-
-def icc_text_tags(profile: bytes) -> dict[str, str]:
-    """Every text tag of an ICC profile by its signature: the `text`, `desc` (version 2) and `mluc` (version 4) tag
-    types [tested: read whole from Little CMS's sRGB and from Apple's Display P3 profile in a public photo]."""
-    def u32(at: int) -> int:
-        return int.from_bytes(profile[at:at + 4], "big")
-
-    tags = {}
-    for index in range(u32(128)):
-        sig, offset, size = profile[132 + 12 * index:136 + 12 * index], u32(136 + 12 * index), u32(140 + 12 * index)
-        kind = profile[offset:offset + 4]
-        if kind == b"text":
-            tags[sig.decode("latin-1")] = profile[offset + 8:offset + size].rstrip(b"\x00").decode("latin-1")
-        elif kind == b"desc":
-            tags[sig.decode("latin-1")] = profile[offset + 12:offset + 12 + u32(offset + 8)].rstrip(b"\x00").decode("latin-1")
-        elif kind == b"mluc":
-            records = [(u32(offset + 16 + 12 * r + 4), u32(offset + 16 + 12 * r + 8)) for r in range(u32(offset + 8))]
-            tags[sig.decode("latin-1")] = " ".join(profile[offset + at:offset + at + n].decode("utf-16-be") for n, at in records)
-    return tags
 
 
 def finished(client: TestClient, job: dict) -> dict:
@@ -287,15 +272,17 @@ def test_an_export_holds_no_name_time_place_or_container_tag_the_upload_was_plan
     kinds = png_chunk_kinds(exported)
     assert not set(kinds) & set(PLANTED_CHUNKS), kinds
     assert set(kinds) <= {b"IHDR", b"IDAT", b"IEND", b"iCCP", b"sRGB", b"gAMA", b"cHRM"}, kinds
-    # The colour profile is kept byte for byte: colour data the picture needs, not a capture tag [decided 2026-11-19 by
-    # the lead]; its text tags are the profile's own, with none of the planted name, time or place written into them
+    # The colour profile is built anew from its colour data alone [decided 2026-11-19 by the lead at 07:31 and 08:34]:
+    # it is the clean sRGB's rebuild byte for byte, and none of the planted text is left in it in any encoding
     kept = png_profile(exported)
-    assert kept == PROFILE
-    tags = icc_text_tags(kept)
-    assert set(tags) >= {"desc", "cprt"} and tags == icc_text_tags(PROFILE), tags
-    for value in tags.values():
-        for text in texts + [repr(lat), repr(lon), f"{lat:.6f}", f"{lon:.6f}", "2021"]:
-            assert text not in value, (value, text)
+    assert kept == photo.profile_without_text(icc.srgb())
+    before, after = icc.tag_data(icc.srgb()), icc.tag_data(kept)
+    assert all(after[sig] == before[sig] for sig in icc.COLOUR_SIGNATURES if sig in before)
+    assert set(icc.text_tags(kept)) == {b"desc", b"cprt"}
+    assert {text for _, text in icc.text_tags(kept).values()} == {photo.PROFILE_DESCRIPTION, photo.PROFILE_TEXT}
+    for text in texts + ["planted", "2021"]:
+        for encoding in ("latin-1", "utf-16-be"):
+            assert text.encode(encoding) not in kept, (text, encoding)
     manifest = json.loads(sidecar)
     keys, leaves = set(), []
     keys_and_leaves(manifest, keys, leaves)
@@ -485,7 +472,7 @@ def test_a_malformed_hash_or_id_is_422_and_an_unknown_one_404(restored, path: st
     assert client.get(path).status_code == status
 
 
-def test_a_display_copy_exports_with_its_own_disclosure(restored) -> None:
+def test_a_display_copy_exports_with_its_own_disclosure_and_no_text_of_the_originals_profile(restored) -> None:
     client, sha, _, _ = restored
     job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "display_copy"}).json())
     assert job["state"] == "succeeded", job
@@ -494,7 +481,15 @@ def test_a_display_copy_exports_with_its_own_disclosure(restored) -> None:
     manifest = json.loads(archive.read(f"{vid}.png.json"))
     contracts.ExportManifest.model_validate(manifest)
     assert manifest["disclosure"] == contracts.DISCLOSURES["display_copy"] and "gate" not in manifest["attempt"]
-    assert hashlib.sha256(archive.read(f"{vid}.png")).hexdigest() == manifest["variant"]["sha256"]
+    exported = archive.read(f"{vid}.png")
+    assert hashlib.sha256(exported).hexdigest() == manifest["variant"]["sha256"]
+    # The same rebuild as a restoration's (restore-8b, decided 2026-11-19 07:40 by the lead): the clean sRGB's
+    kept = png_profile(exported)
+    assert kept == photo.profile_without_text(icc.srgb())
+    assert {text for _, text in icc.text_tags(kept).values()} == {photo.PROFILE_DESCRIPTION, photo.PROFILE_TEXT}
+    for text in (PLANTED_TITLE, PLANTED_NAME, PLANTED_MAKE, PLANTED_COMMENT, PLANTED_XMP, PLANTED_EXIF_TIME, PLANTED_UTC):
+        for encoding in ("latin-1", "utf-16-be"):
+            assert text.encode(encoding) not in kept, (text, encoding)
 
 
 # =============================================================================================

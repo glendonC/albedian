@@ -349,9 +349,13 @@ made.
      deterministic filters. Nothing was generated."
   4. THE manifest SHALL hold no capture time, no place, no file name, no title and no path, and the exported file
      SHALL carry no container tag copied from the original [decided 2026-11-11: an export is made to be shared;
-     the owner can ask for their own metadata later]. The original's ICC colour profile is not such a tag: the
-     exported file SHALL keep it byte for byte, as colour data the picture needs to look right, and its text tags
-     SHALL hold none of the upload's title, capture time, place or file name [decided 2026-11-19 by the lead].
+     the owner can ask for their own metadata later]. Of the original's ICC colour profile, a stored still (a
+     restoration or a display copy) SHALL keep only the colour data: its profile SHALL be built anew, a fresh header
+     holding the original's version, class, colour spaces, rendering intent and illuminant with every other byte zero,
+     its description and copyright written with fixed text, and each colour tag of the matrix and curve model written
+     from its numbers at the length its type defines; nothing else of the original's profile (its other header bytes,
+     other tags, padding) SHALL reach the export, and a profile that cannot be rebuilt so is left out [decided
+     2026-11-19 by the lead at 07:31 and 08:34: the colour data stays, nothing else does].
   5. A still SHALL be exported as the PNG that is the variant.
   6. A `rejected` or `failed` attempt SHALL have nothing to export (404).
   7. THE manifest SHALL parse under `ExportManifestSchema` in both languages, and its variant hash SHALL equal the

@@ -280,15 +280,21 @@ def test_a_variant_is_created_when_its_attempt_finishes_not_when_it_starts(tmp_p
 
 
 @pytest.mark.parametrize("bits", [8, 16])
-def test_the_copy_carries_the_originals_icc_profile_byte_for_byte(tmp_path: Path, bits: int) -> None:
-    from test_decode import SRGB_PARA, icc_profile
+def test_the_copy_carries_the_originals_icc_colour_data_byte_for_byte_and_none_of_its_text(tmp_path: Path, bits: int) -> None:
+    import icc_profiles as icc
+    from services.media import photo
 
-    profile = icc_profile({b"rTRC": SRGB_PARA, b"gTRC": SRGB_PARA, b"bTRC": SRGB_PARA})
+    # Little CMS's sRGB with text planted in every kind of text tag (restore-8b, REQ-RST-9.4 as decided 2026-11-19)
+    profile = icc.planted(icc.srgb(), {key: f"planted {key} 5c7e" for key in ("desc", "cprt", "dmnd", "dmdd", "vued", "mmod", "meta")})
     rgb = np.random.default_rng(bits).integers(0, 2**bits, size=(3, 3, 3)).astype(np.uint16 if bits == 16 else np.uint8)
     root, folder, original, sha = stored_original(tmp_path, png_bytes(rgb, icc_profile=profile), "png")
     copy = variants.make_display_copy(root, folder, original, source_sha256=sha, job_id=JOB_ID, now=fixed_clock())
     with Image.open(copy.folder / "variant.png") as image:
-        assert image.info.get("icc_profile") == profile
+        kept = image.info.get("icc_profile")
+    assert kept == photo.profile_without_text(profile)
+    assert all(icc.tag_data(kept)[sig] == icc.tag_data(profile)[sig] for sig in icc.COLOUR_SIGNATURES if sig in icc.tag_data(profile))
+    assert b"planted" not in kept and "planted".encode("utf-16-be") not in kept
+    # The record names the original's profile [open: asked of the lead whether it names the written one]
     assert copy.variant["colour"]["iccProfileSha256"] == hashlib.sha256(profile).hexdigest()
 
 

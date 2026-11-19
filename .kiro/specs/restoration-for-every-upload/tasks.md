@@ -210,8 +210,10 @@ pictures under `.cache/restore-review/<unit>/`.
     `<variantId>.png.json`, the manifest, as review row D22 decided (`.lead/uiux/UIUX-export-READY.md`; section 12's
     two `albedian-` attachments are replaced by it); `GET .../manifest` answers the same sidecar. The manifest names
     the newest solution id the job store names. A synthetic upload planted with a file name, a capture time, a place,
-    a camera make and tEXt, iTXt, tIME and eXIf chunks exports none of them; its ICC profile is kept byte for byte,
-    with none of them in its text tags (REQ-RST-9.4, decided 2026-11-19). A clip's export waits for restore-7's
+    a camera make, tEXt, iTXt, tIME and eXIf chunks and text in every kind of ICC text tag exports none of them;
+    restore-8b builds the profile anew from its colour data alone (a fresh header, fixed text in the description
+    and copyright, each colour tag at its defined length), in a restoration and in a display copy (REQ-RST-9.4,
+    decided 2026-11-19; `tests/media/test_profile_text.py`). A clip's export waits for restore-7's
     stored file (501 until then) and, past 4 GiB, for zip64 [open].
   - _Requirements: REQ-RST-9.1 to 9.7_
 

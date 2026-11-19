@@ -37,7 +37,7 @@ from PIL import Image
 
 from services.contracts.ingest import format_utc
 from services.contracts.media import DISCLOSURES, MediaVariant, ProcessingAttempt, ProcessingGraph, variant_uri
-from services.media import decode, png16
+from services.media import decode, photo, png16
 
 # Raised by any unit that changes pixels (design section 9)
 PIPELINE_VERSION = "1.0.0"
@@ -174,13 +174,15 @@ def keep_attempt(source_folder: Path, attempt: dict[str, Any]) -> Path:
 
 def encode_png(still: decode.DecodedStill) -> bytes:
     """The copy's PNG: 8 bits by Pillow for an 8 bit original, 16 by png16.py for a deeper one, each with the
-    original's ICC profile byte for byte, no time and no text chunk (design section 8)."""
+    original's ICC colour data byte for byte and none of its text (`photo.profile_without_text`, restore-8b), no time
+    and no text chunk (design section 8)."""
+    profile = photo.profile_without_text(still.icc_profile)
     if still.samples.dtype == np.uint16:
-        return png16.write_png16(still.samples, still.icc_profile)
+        return png16.write_png16(still.samples, profile)
     out = io.BytesIO()
     options = {"compress_level": ZLIB_LEVEL}
-    if still.icc_profile:
-        options["icc_profile"] = still.icc_profile
+    if profile:
+        options["icc_profile"] = profile
     Image.fromarray(still.samples, "RGB").save(out, "PNG", **options)
     return out.getvalue()
 
