@@ -49,7 +49,7 @@ from services.media import colour as colour_math, decode, photo, png16
 # revision raises this too. Every graph and variant id hashes it: under one version for every revision, a photo
 # restored under revision 2 could not be restored again under 3, since the write refuses an id it holds (FIELD's
 # finding of 2026-11-19). Revisions 1 and 2 stored their variants under 1.0.0.
-PIPELINE_VERSION = "1.4.0"
+PIPELINE_VERSION = "1.5.0"
 # The version of each step this module writes [proposed: a step's own version, raised when what it does changes]
 STEP_VERSION = "1.0.0"
 # [decided 2026-11-11: REQ-RST-1.3, private files 0400 and folders 0700, matching services/ingest/store.py]

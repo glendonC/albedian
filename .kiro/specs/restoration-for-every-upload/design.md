@@ -454,8 +454,23 @@ of 10 trials with one ring; leaving candidates out of each other's rings instead
 column out of an edge's rings]. Such a point is confirmed as any point is, and the passes dissolve those the original
 does not confirm. Open limit [tested by AUDIT-B, 2026-11-19, the restore-4f v2 re-read]: a pattern that puts a
 raised partner on both rings of every raised sample (a row at 0, 2, 3 and 5 px) passed the whole gate in 3 of 10
-open-sky places of rp-b-05's crop at 4 codes, 2 at 8, 1 at 16 and none at 32; P-RST-11 states it, and restore-4g hardens
-the gate against it (proposed there: an unevenness its few most outlying samples cannot set, or flags in rounds). Set
+open-sky places of rp-b-05's crop at 4 codes, 2 at 8, 1 at 16 and none at 32; P-RST-11 states it. restore-4g
+[proposed, tested in it]: the candidates (samples over a ring's mean and the original by 2 codes, that their rings'
+unevenness hid) within 1 px of each other form a group, read against a ring 2 and 3 px round the whole group, its
+kept samples left out (no candidate can lie on it: one within 3 px of a member joins the group): the group's
+brightest sample over that ring's plane, beyond that ring's farthest residual, by 2 codes, is raised. A sample's
+partners then lie inside its group; an honest edge's fragment still has the step in its ring where the ring crosses
+the step, and the farthest residual keeps it (the noisy step, the gradient, and steps, ridges and lines of 8 to 32
+codes under the original's noise stay unraised). Open limit [tested]: a long group's ring reaches sky no single
+sample's ring reads, and where that sky is uneven by about half the sensitivity far from the group's top the group
+hides (restore-4g's first review: a row of eight on rp-b-04's crop stood 4.06 codes over the plane against a farthest
+residual of 2.10 at the ring's far end; rp-b-03 whole, 4.45 against 2.71; .lanetools/restore-4g/trace_partners.py).
+Set aside [tested]: reading each sample against the 24 ring samples nearest it (beside a step that ring's plane fits
+each side and the edge's bright side stood half the step over it: the noisy step of the unit tests was raised); the
+ring's unevenness as the residual one in 24 of its samples reach (it refused the first review's misses, but a long
+group along a noisy step, ridge or line then lost the few samples where its ring crosses the step and was raised: 7,
+15, 15 and 1 of 18 honest trials of a step of 16 codes, a diagonal step of 32, a ridge of 8 and a line of 12;
+.lanetools/restore-4g/lone_search.py). Set
 aside [tested]: the ring's largest sample (a gradient hid a raised sample); its median (it flagged faint stars); a
 star's shape test (a 2 x 2 cluster cannot be told from a star centred on a pixel corner); no condition on the original
 (15, 690, 6210, 24 and 283 honest samples on the five photos whole, rp-b-03's lit foreground texture).

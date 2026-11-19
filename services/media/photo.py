@@ -308,6 +308,19 @@ class Trials:
         rows, columns, window = self.raised_window(x, y, peak16, size, over_original)
         return self.refused_window(rows, columns, window, x, y)[0]
 
+    def refused_offsets(self, x: int, y: int, peak16: float, offsets: list[tuple[int, int]]) -> bool:
+        """Whether the gate refuses the stored file with single samples raised so (`raised_window`) at (x, y) plus
+        each (dy, dx) offset (AUDIT-B's restore-4f v2 patterns: partners on both rings)."""
+        places = [(x + dx, y + dy) for dy, dx in offsets]
+        x0, x1 = min(p[0] for p in places), max(p[0] for p in places) + 1
+        y0, y1 = min(p[1] for p in places), max(p[1] for p in places) + 1
+        rows, columns = slice(y0, y1), slice(x0, x1)
+        window = self.result.stored[rows, columns].copy()
+        for px, py in places:
+            _, _, sample = self.raised_window(px, py, peak16, 1)
+            window[py - y0, px - x0] = sample[0, 0]
+        return self.refused_window(rows, columns, window, x, y)[0]
+
     def refused_spaced(self, x: int, y: int, peak16: float, step: tuple[int, int], count: int) -> bool:
         """Whether the gate refuses the stored file with `count` single samples raised so (`raised_window`), the
         first at (x, y), each `step` (dy, dx) from the last: a pair or a line of samples apart (AUDIT-B's restore-4f

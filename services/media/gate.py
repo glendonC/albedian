@@ -349,6 +349,55 @@ def ring_rise(luma: np.ndarray, left_out: np.ndarray, offsets: list[tuple[int, i
     return rise, uneven
 
 
+# A group's ring lies this far from the group, the samples 2 and 3 px out [proposed for restore-4g: the two rings of a
+# single sample, drawn round the group]
+GROUP_RING_PX = (2, 3)
+def raised_groups(luma: np.ndarray, left_out: np.ndarray, candidate: np.ndarray) -> np.ndarray:
+    """The brightest sample of each group of candidates (samples over the original and over a ring's mean by
+    RAISE_CODES, which their rings' unevenness hid) that stands RAISE_CODES over a ring drawn round the whole group,
+    beyond that ring's farthest residual about its own plane. Candidates join a group within 1 px of each other, so a
+    raised sample's partners 2 or 3 px out lie inside its group and not on its ring (AUDIT-B's restore-4f v2
+    re-read: a row raised at 0, 2, 3 and 5 px passed in 3 of 10 places at 4 codes). The ring holds the samples 2 and 3
+    px from the group that no kept region holds (no candidate can lie on it: one within 3 px of a member joins the
+    group), and a ring of fewer than RAISE_RING_LEAST samples is not read. An honest edge's fragment has the step in its
+    ring where the ring crosses the step, and the farthest residual keeps it: read by the residual one in 24 of the
+    ring's samples reach, a long group along a noisy step, ridge or line was raised, since those few crossing samples
+    no longer counted [tested: .lanetools/restore-4g/lone_search.py, steps of 8 to 32 codes under the original's noise];
+    so a long group whose ring reaches sky uneven by about half the sensitivity far from its top still hides
+    (restore-4g's review: a row of eight on rp-b-04's crop stood 4.06 codes over its ring's plane, whose farthest
+    residual, 2.10 codes, lay 8 px from the top), an open limit."""
+    out = np.zeros(luma.shape, dtype=bool)
+    if not candidate.any():
+        return out
+    joined = ndimage.binary_dilation(candidate, structure=np.ones((3, 3), dtype=bool))
+    labels, count = ndimage.label(joined, structure=np.ones((3, 3), dtype=bool))
+    height, width = luma.shape
+    near, far = GROUP_RING_PX
+    for index, box in enumerate(ndimage.find_objects(labels), start=1):
+        r0, r1 = max(0, box[0].start - far - 1), min(height, box[0].stop + far + 1)
+        c0, c1 = max(0, box[1].start - far - 1), min(width, box[1].stop + far + 1)
+        members = (labels[r0:r1, c0:c1] == index) & candidate[r0:r1, c0:c1]
+        if members.sum() < 2:
+            continue
+        reach_far = ndimage.binary_dilation(members, structure=np.ones((3, 3), dtype=bool), iterations=far)
+        reach_near = ndimage.binary_dilation(members, structure=np.ones((3, 3), dtype=bool), iterations=near - 1)
+        ring = reach_far & ~reach_near & ~left_out[r0:r1, c0:c1] & ~candidate[r0:r1, c0:c1]
+        if ring.sum() < RAISE_RING_LEAST:
+            continue
+        ys, xs = np.nonzero(ring)
+        values = luma[r0:r1, c0:c1][ring]
+        design = np.column_stack([np.ones(ys.size), xs - xs.mean(), ys - ys.mean()])
+        coefficients, *_ = np.linalg.lstsq(design, values, rcond=None)
+        farthest = float(np.max(np.abs(values - design @ coefficients)))
+        my, mx = np.nonzero(members)
+        plane = coefficients[0] + coefficients[1] * (mx - xs.mean()) + coefficients[2] * (my - ys.mean())
+        tops = luma[r0:r1, c0:c1][members] - plane
+        if float(tops.max()) - farthest >= RAISE_CODES:
+            k = int(np.argmax(tops))
+            out[r0 + my[k], c0 + mx[k]] = True
+    return out
+
+
 def raised_places(luma: np.ndarray, original_luma: np.ndarray, left_out: np.ndarray, clipped: np.ndarray, *,
                   only_tiles: set[int] | None = None) -> list[stars.Point]:
     """The samples outside every kept region and clipped region that stand far above both their neighbourhood and the
@@ -369,11 +418,14 @@ def raised_places(luma: np.ndarray, original_luma: np.ndarray, left_out: np.ndar
     # unevenness (AUDIT-B's restore-4f verdict: a pair in a row passed at 4 codes in 7 of 10 trials), but off the
     # second; 3 px apart, the other way round; a pattern of every second sample is off the second ring too
     raised = np.zeros(luma.shape, dtype=bool)
+    candidate = np.zeros(luma.shape, dtype=bool)
     asked = open_ & over_original
     for offsets in (RAISE_OFFSETS, RAISE_OFFSETS_OUTER):
         rise, residual = ring_rise(luma, left_out, offsets, at=asked)
         with np.errstate(invalid="ignore"):
             raised |= asked & (rise - residual >= RAISE_CODES)
+            candidate |= asked & (rise >= RAISE_CODES)
+    raised |= raised_groups(luma, left_out, candidate & ~raised)
     if not raised.any():
         return []
     labels, count = ndimage.label(raised, structure=np.ones((3, 3), dtype=bool))

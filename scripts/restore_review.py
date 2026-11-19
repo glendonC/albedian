@@ -172,6 +172,23 @@ def raised_trials(result: photo.StillRestoration, count: int, near: int) -> dict
             out[f"{family}{name}"] = {"trials": len(rows), "refused": sum(r["refused"] for r in rows),
                                       "refusedOnStored": None, "everyTrialCodes": None,
                                       "notRefused": [r for r in rows if not r["refused"]][:20]}
+    # AUDIT-B's restore-4f v2 patterns: each raised sample with a partner 2 px and another 3 px out, and a row whose
+    # samples touch none of each other (restore-4g)
+    for family in ("lattice", "nearStar"):
+        for name, offsets in (("Partners4", [(0, 0), (0, 2), (0, 3), (0, 5)]),
+                              ("Partners8", [(0, c) for c in (0, 2, 3, 5, 6, 8, 9, 11)]),
+                              ("Partners2D", [(r, c) for r in (0, 3) for c in (0, 2, 3, 5)]),
+                              ("Partners0257", [(0, 0), (0, 2), (0, 5), (0, 7)])):
+            rows = []
+            for x, y in families[family]:
+                span = [(x + dx, y + dy) for dy, dx in offsets]
+                if any(not (0 <= px < width and 0 <= py < height) or clipped[py, px] for px, py in span):
+                    continue
+                peak16, _ = stated_peak(trials.luma, x, y)
+                rows.append({"x": x, "y": y, "refused": trials.refused_offsets(x, y, peak16, offsets)})
+            out[f"{family}{name}"] = {"trials": len(rows), "refused": sum(r["refused"] for r in rows),
+                                      "refusedOnStored": None, "everyTrialCodes": None,
+                                      "notRefused": [r for r in rows if not r["refused"]][:20]}
     for family, places in families.items():
         for size in (1, 2, 3):
             rows = []

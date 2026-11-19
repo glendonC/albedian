@@ -500,7 +500,22 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
   in 3, 2, 1 and 0 of 10 places at 4, 8, 16 and 32 codes; a row at 0, 2, 3, 5, 6, 8, 9 and 11 px in 1, 1, 0 and 0;
   rows 0 and 3 by columns 0, 2, 3 and 5 in 1, 1, 0 and 0. The restoration's steps are deterministic filters that
   generate no such pattern by construction; the gap is a hand-built adversarial pattern of faint samples, and
-  restore-4g hardens the gate against it [decided 2026-11-19 by the lead].
+  restore-4g hardens the gate against it [decided 2026-11-19 by the lead]. restore-4g: candidates within 1 px of
+  each other form a group, read against a ring drawn round the whole group, so a sample's partners lie inside its
+  group and not on its ring, the ring read by its farthest residual, which keeps an honest edge's step. Result
+  [tested, restore-4g's review, each sample raised at the stated sensitivity over the larger of the stored and the
+  original's own luma, the three patterns and a row at 0, 2, 5 and 7 px; .lanetools/restore-4g/run_review_1700.log]:
+  on the five design photos' 768 px crops and the five whole, every run ends ready with the stored file alone
+  passing, and every trial beside stars is refused (427 to 448 places a photo); on the lattice of 40 places a photo,
+  6 of 800 trials pass on the crops (rp-b-04's row of eight twice, rp-b-05's row of four twice, its row of eight and
+  rows by columns once each) and 10 of 800 on the whole photos (rp-b-03 4, at (2240, 2516), the restore-4f place
+  where a single raised sample also passes, and (2792, 2792); rp-b-04 6, the row of eight in four places). AUDIT-B's
+  probe form on rp-b-05's crop (its first 10 lattice places, the whole gate at 4, 8, 16 and 32 codes): 0 of 10 pass
+  for all four patterns, where restore-4f v2 passed 3, 2, 1 and 0 of 10 for the row of four. Open limit, smaller: a
+  group long enough that its ring reaches sky uneven by about half the sensitivity far from its top (traced at
+  rp-b-04's crop: four ring samples 2.1 to 2.7 codes over the plane 3 px past the row's end), and the restore-4f
+  place. Reading such a ring by the residual one in 24 of its samples reach left 4 and 4 of 800 instead of 6 and 10,
+  but raised honest edges, ridges and lines under the original's noise, so it is set aside (design section 7).
 - **P-RST-12** (REQ-RST-6.2, 6.6): for any synthetic star field with noise, every confirmed star's flux after the
   photo path, lift undone, is within the tolerance; with footprints switched off (a mutant) it is not.
 - **P-RST-13** (REQ-RST-6.3): after the dissolve passes the working image holds no unconfirmed point, or the pass

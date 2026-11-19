@@ -115,6 +115,16 @@ def raised(result: photo.StillRestoration, x: int, y: int, peak16: float, size: 
     return out
 
 
+def raised_at(result: photo.StillRestoration, x: int, y: int, peak16: float, offsets: list[tuple[int, int]]) -> np.ndarray:
+    """The stored file with single samples raised so (model B) at (x, y) plus each (dy, dx) offset."""
+    out = result.stored.copy()
+    trials = photo.Trials(result)
+    for dy, dx in offsets:
+        rows, columns, window = trials.raised_window(x + dx, y + dy, peak16, 1)
+        out[rows, columns] = window
+    return out
+
+
 def raised_spaced(result: photo.StillRestoration, x: int, y: int, peak16: float, step: tuple[int, int],
                   count: int) -> np.ndarray:
     """The stored file with `count` single samples raised so (model B), the first at (x, y), `step` (dy, dx) apart."""
@@ -127,13 +137,16 @@ def raised_spaced(result: photo.StillRestoration, x: int, y: int, peak16: float,
 
 
 @settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(which=st.integers(0, 10**6), size=st.sampled_from([1, 2, 3, -2, -3]), beside=st.booleans(),
+@given(which=st.integers(0, 10**6), size=st.sampled_from([1, 2, 3, -2, -3, -10, -11, -12]), beside=st.booleans(),
        distance=st.floats(*NEAR_STAR_PX), angle=st.floats(0.0, 2 * math.pi))
 @example(which=0, size=1, beside=False, distance=3.0, angle=0.0)
 @example(which=1, size=1, beside=True, distance=6.0, angle=0.0)
 @example(which=2, size=3, beside=False, distance=3.0, angle=0.0)
 @example(which=3, size=-2, beside=False, distance=3.0, angle=0.0)
 @example(which=4, size=-3, beside=True, distance=8.0, angle=0.0)
+@example(which=0, size=-10, beside=False, distance=3.0, angle=0.0)
+@example(which=1, size=-11, beside=False, distance=3.0, angle=0.0)
+@example(which=2, size=-12, beside=False, distance=3.0, angle=0.0)
 def test_p_rst_11_a_raised_sample_or_small_cluster_is_refused_in_every_trial(
         honest, which: int, size: int, beside: bool, distance: float, angle: float) -> None:
     # AUDIT-B's finding C of 2026-11-19: one sample raised by 4 to 64 codes passed the whole gate anywhere, because the
@@ -152,8 +165,15 @@ def test_p_rst_11_a_raised_sample_or_small_cluster_is_refused_in_every_trial(
     # A negative size is a pair (-2) or a line of three (-3) of single samples 2 px apart, along a row, a column or a
     # diagonal by `which` (AUDIT-B's restore-4f verdict: each lay on the other's ring and hid it)
     steps = [(0, 2), (2, 0), (2, 2), (2, -2)]
-    stored = (raised(honest, x, y, peak16, size) if size > 0
-              else raised_spaced(honest, x, y, peak16, steps[which % len(steps)], -size))
+    # -10 to -12: AUDIT-B's restore-4f v2 patterns, each raised sample with a partner on both rings (restore-4g)
+    partners = {-10: [(0, 0), (0, 2), (0, 3), (0, 5)], -11: [(0, c) for c in (0, 2, 3, 5, 6, 8, 9, 11)],
+                -12: [(r, c) for r in (0, 3) for c in (0, 2, 3, 5)]}
+    if size > 0:
+        stored = raised(honest, x, y, peak16, size)
+    elif size in partners:
+        stored = raised_at(honest, x, y, peak16, partners[size])
+    else:
+        stored = raised_spaced(honest, x, y, peak16, steps[which % len(steps)], -size)
     verdict = photo.check(honest, stored)
     assert not verdict.gate["passed"], (x, y, size, beside)
     assert verdict.gate["unconfirmedPointCount"] >= 1, (x, y, size, beside, verdict.gate)

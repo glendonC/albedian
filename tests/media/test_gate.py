@@ -337,6 +337,21 @@ def gate_scene() -> tuple:
     return light, field, gate.Kept(field, footprint), gate.Original.of(field), expected
 
 
+@pytest.mark.xfail(strict=True, reason="open [AUDIT-B, restore-7 read, 2026-11-19]: with no measured star keeping a "
+                   "positive flux ratio, run_gate drops the flux check, since the contract's medianFluxRatio must be "
+                   "positive whenever a star was measured; the fix needs that contract change (proposed to the lead)")
+def test_a_star_whose_light_is_gone_is_outside_the_flux_tolerance() -> None:
+    light, field, kept, original, expected = gate_scene()
+    stored = gate.kept_samples(expected, expected, kept.weight).astype(np.uint16)
+    # The variant's light with the star taken out and its place left darker than the sky: a flux ratio under 0, so
+    # no measured star keeps a positive one (taken out alone, the ratio stays just over 0 and the check refuses it)
+    gone = light - 1.5 * gaussian((256, 256), 100.0, 100.0, 0.3)
+    outcome = gate.run_gate(stored, original=original, kept=kept, expected=expected, original_luminance=light,
+                            variant_luminance=gone)
+    assert outcome.record["starsMeasured"] == 1 and outcome.record["starsOutsideFluxTolerance"] == 1, outcome.record
+    assert not outcome.record["passed"]
+
+
 def test_the_gate_refuses_a_changed_star_for_its_flux_and_a_painted_point_for_itself() -> None:
     light, field, kept, original, expected = gate_scene()
     # Stored as the job stores it: the kept edge the original blended with the stored sky around it (restore-4f)
@@ -605,6 +620,104 @@ def test_a_dense_pattern_of_raised_samples_is_raised_although_its_rings_hold_lit
     assert len(places) == 12 * 12
 
 
+# AUDIT-B's restore-4f v2 re-read: raised samples each with a partner 2 px and another 3 px out, so a partner on both
+# rings; (dy, dx) offsets from the first sample
+PARTNER_PATTERNS = {
+    "row 0 2 3 5": [(0, 0), (0, 2), (0, 3), (0, 5)],
+    "row 0 2 3 5 6 8 9 11": [(0, c) for c in (0, 2, 3, 5, 6, 8, 9, 11)],
+    "rows 0 3 by columns 0 2 3 5": [(r, c) for r in (0, 3) for c in (0, 2, 3, 5)],
+    # no two touching: a group joins only through the 1 px it grows by
+    "row 0 2 5 7": [(0, 0), (0, 2), (0, 5), (0, 7)],
+    # no two touching and each with a partner on both rings: only the 1 px join makes it a group (the "no 1 px join"
+    # mutant survived the patterns above)
+    "rows 0 3 by columns 0 2": [(r, c) for r in (0, 3) for c in (0, 2)],
+}
+
+
+@pytest.mark.parametrize("name", sorted(PARTNER_PATTERNS))
+def test_raised_samples_with_partners_on_both_rings_do_not_hide_each_other(name: str) -> None:
+    rng = np.random.default_rng(39)
+    luma = 40.0 + 0.2 * rng.standard_normal((96, 96))
+    none = np.zeros((96, 96), bool)
+    for codes in (gate.SENSITIVITY_PEAK_CODES, 2 * gate.SENSITIVITY_PEAK_CODES, 4 * gate.SENSITIVITY_PEAK_CODES):
+        raised = luma.copy()
+        for dy, dx in PARTNER_PATTERNS[name]:
+            raised[40 + dy, 30 + dx] += codes
+        places = gate.raised_places(raised, luma, none, none)
+        inside = [p for p in places if 40 <= p.y_px <= 43 and 30 <= p.x_px <= 41]
+        assert inside, (name, codes, places)
+
+
+def test_a_group_in_a_narrow_gap_between_kept_regions_is_read_on_the_few_ring_samples_it_has() -> None:
+    # The row of four in a gap of open sky 5 rows by 10 columns, kept regions all round: its group's ring keeps 26
+    # free samples, over the RAISE_RING_LEAST of 8 a ring needs (the "group ring too thin" mutant, 32, survived the
+    # tests above)
+    rng = np.random.default_rng(41)
+    luma = 40.0 + 0.2 * rng.standard_normal((96, 96))
+    left_out = np.ones((96, 96), bool)
+    left_out[38:43, 28:38] = False
+    clipped = np.zeros((96, 96), bool)
+    raised = luma.copy()
+    for dy, dx in PARTNER_PATTERNS["row 0 2 3 5"]:
+        raised[40 + dy, 30 + dx] += gate.SENSITIVITY_PEAK_CODES
+    places = gate.raised_places(raised, luma, left_out, clipped)
+    assert [p for p in places if p.y_px == 40 and 30 <= p.x_px <= 35], places
+
+
+def test_a_group_beside_a_kept_star_is_read_against_a_ring_without_the_stars_light() -> None:
+    # The row of four 1 px past a kept star's footprint: its group's ring crosses the footprint, whose light would
+    # hide the group (the "group ring reads kept samples" mutant survived every other test)
+    rng = np.random.default_rng(33)
+    star = stars.Star(48.0, 48.0, 90.0, 4)
+    weight = stars.footprint_map((96, 96), [star])
+    luma = 40.0 + 0.2 * rng.standard_normal((96, 96)) + 200.0 * (weight > 0)
+    left_out, clipped = weight > 0, np.zeros((96, 96), bool)
+    first = int(np.nonzero(left_out[48])[0].max()) + 2
+    raised = luma.copy()
+    for dy, dx in PARTNER_PATTERNS["row 0 2 3 5"]:
+        raised[48 + dy, first + dx] += gate.SENSITIVITY_PEAK_CODES
+    places = gate.raised_places(raised, luma, left_out, clipped)
+    assert [p for p in places if p.y_px == 48 and first <= p.x_px <= first + 5], places
+
+
+@pytest.mark.parametrize("scene", ["step 16", "diagonal step 32", "ridge 8", "line 12"])
+def test_an_honest_edge_ridge_or_line_under_the_originals_noise_is_not_raised(scene: str) -> None:
+    # The stored file clean, the original the same with its noise: the edge's bright side, where the original dipped,
+    # is over the original and over its rings' mean, a long group along the edge. Its ring crosses the step in a few
+    # samples, and its farthest residual keeps them: read by the residual one in 24 of the ring's samples reach, these
+    # scenes were raised in 7, 15, 15 and 1 of 18 trials [tested: .lanetools/restore-4g/lone_search.py]
+    kind, height = scene.rsplit(" ", 1)
+    yy, xx = np.mgrid[0:96, 0:96].astype(np.float64)
+    shape = {"step": xx >= 48, "diagonal step": xx + yy >= 96, "ridge": np.exp(-((xx - 48) ** 2) / 2.0),
+             "line": np.abs(xx - 48) < 0.5}[kind]
+    clean = 40.0 + float(height) * shape
+    none = np.zeros((96, 96), bool)
+    for seed in range(6):
+        for noise in (0.8, 1.5, 3.0):
+            noisy = clean + noise * np.random.default_rng(seed).standard_normal((96, 96))
+            assert gate.raised_places(clean, noisy, none, none) == [], (scene, seed, noise)
+
+
+@pytest.mark.xfail(strict=True, reason="open limit [tested, restore-4g]: a long group whose ring reaches sky uneven "
+                   "by about half the sensitivity far from its top hides, since the ring is read by its farthest "
+                   "residual, which keeps an honest edge's step (test_an_honest_edge_ridge_or_line...)")
+def test_a_long_group_is_read_near_each_of_its_samples_so_its_rings_length_does_not_hide_it() -> None:
+    # restore-4g's review: on rp-b-04's crop the row at 0, 2, 3, ..., 11 px passed at 4 codes in 2 of 40 places, its
+    # top 4.06 codes over its group ring's plane and that ring's farthest residual 2.10 codes, 8 px from the top: a
+    # long group's ring of 84 samples reaches sky a single sample's ring of 24 never reads. A faint smooth bump of the
+    # sky, 3 codes and 1 px, at the ring's far corner does the same: the whole ring's farthest residual is 2.5 codes,
+    # the top 4.0 [tested: .lanetools/restore-4g/synthetic_group.py 3.0 27]
+    yy, xx = np.mgrid[0:96, 0:96]
+    luma = 40.0 + 3.0 * np.exp(-((xx - 27) ** 2 + (yy - 37) ** 2) / 2.0)
+    none = np.zeros((96, 96), bool)
+    raised = luma.copy()
+    for dy, dx in PARTNER_PATTERNS["row 0 2 3 5 6 8 9 11"]:
+        raised[40 + dy, 30 + dx] += gate.SENSITIVITY_PEAK_CODES
+    places = gate.raised_places(raised, luma, none, none)
+    assert [p for p in places if p.y_px == 40 and 30 <= p.x_px <= 41], places
+
+
+def test_a_raised_sample_beside_a_kept_star_is_read_against_a_ring_without_the_stars_light() -> None:
     rng = np.random.default_rng(33)
     star = stars.Star(48.0, 48.0, 90.0, 4)
     weight = stars.footprint_map((96, 96), [star])
