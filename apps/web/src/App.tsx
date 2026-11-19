@@ -5,7 +5,10 @@ import {
   IngestReceipt,
   ObservationSession,
   ObservationSolution,
+  PersonAlignment,
+  orientedSize,
 } from '@albedian/contracts';
+import { alignTargets, placedAtPose, type AlignPose } from './reveal/alignPose.js';
 import {
   createEmptyObservationSession,
   dispatchAlbedianAction,
@@ -404,6 +407,32 @@ export const App: React.FC = () => {
   };
 
   // Try again: the same solve of the stored file, or the same file sent again when it never reached the server
+  // D24's Solve from here: the stored upload solved again from the person's alignment, its own job on the server. The
+  // working screen shows the sent state with the rings at their pose (placed now, from the sky on screen), then the
+  // reveal of what the solve found
+  const solveHereRef = useRef(0);
+  const handleSolveFromHere = (alignment: PersonAlignment, pose: AlignPose) => {
+    const asset = session.sourceAsset;
+    if (!asset) return;
+    const token = ++solveHereRef.current;
+    latestChoiceRef.current = null;
+    const kept = inFlightRef.current?.receipt;
+    const receipt: IngestReceipt = kept && kept.sourceAsset.sha256 === asset.sha256 ? kept : ({ sourceAsset: asset, hints: {}, alreadyStored: true } as IngestReceipt);
+    const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
+    const aligned = placedAtPose(alignTargets(session.observationSolution), pose);
+    setArrival({ fileName: asset.title, byteSize: asset.byteSize ?? 0, stored: true, widthPx: shown.widthPx, heightPx: shown.heightPx, job: null, failure: null, aligned });
+    void solveStoredUpload(receipt, {
+      alignment,
+      localObjectUrl: uploadedMediaUrl ?? undefined,
+      onSessionUpdate: (next) => {
+        if (solveHereRef.current === token) setSession(next);
+      },
+      onEvent: (event) => {
+        if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
+      },
+    });
+  };
+
   const handleTryAgain = () => {
     const inFlight = inFlightRef.current;
     if (!inFlight) return;
@@ -449,6 +478,7 @@ export const App: React.FC = () => {
         lockOnSky={lockOnSky}
         onTryAgain={handleTryAgain}
         onCancelJob={() => (arrival?.job?.id ? cancelJob(arrival.job.id) : undefined)}
+        onSolveFromHere={handleSolveFromHere}
         answer={answer && answer.photoKey === photoKeyOf(session) ? answer : null}
         heardWords={heardWords}
         canListen={canListen}

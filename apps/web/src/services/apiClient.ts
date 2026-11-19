@@ -14,6 +14,7 @@ import {
   UploadJobSchema,
   DisplayOrientationSchema,
   MediaVariantSchema,
+  type PersonAlignment,
   type DisplayOrientation,
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
@@ -528,6 +529,8 @@ export interface SolveOptions {
   onEvent?: (event: UploadEvent) => void;
   /** The wait between two reads of the job; JOB_POLL_MS unless a test says otherwise. */
   pollMs?: number;
+  /** A person's alignment (D24's Solve from here), sent as the solve's body: that solve is its own job (SOLVER's route). */
+  alignment?: PersonAlignment;
 }
 
 /** The word a canceled job shows, alone: the state's own name (UIUX-jobs-QUESTION.md, D2). */
@@ -758,7 +761,10 @@ export async function solveStoredUpload(
   };
   let job: FollowedJob;
   try {
-    const solveRes = await fetchAnswer(`/api/ingest/${sha256}/solve?wait=false`, { method: 'POST' });
+    const solveRes = await fetchAnswer(
+      `/api/ingest/${sha256}/solve?wait=false`,
+      options?.alignment ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(options.alignment) } : { method: 'POST' }
+    );
     if (!solveRes.ok) throw new Error(await serverReason(solveRes));
     job = parseFollowedJob(await solveRes.json());
   } catch (err) {

@@ -48,6 +48,8 @@ export interface Arrival {
   failure: { sentence: string; canTryAgain: boolean } | null;
   /** The sky the solve predicted from an early pose, once served (the lock-on, D25); predicted throughout. */
   early?: ObservationSolution;
+  /** A solve sent from the person's alignment (D24 step 3): the rings at their pose, as shares of the shown photo. */
+  aligned?: ReadonlyArray<{ id: string; name: string; u: number; v: number }>;
 }
 
 export type StageState = 'done' | 'now' | 'next' | 'failed';

@@ -1900,3 +1900,14 @@
   line-height: 1.45;
   color: var(--look-ink-2);
 }
+
+/* D24 at phone width (alp-align): "Solve from here" compact and centred at top 772 */
+.align-phone__solve {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 772px;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}

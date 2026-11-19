@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { alignReadout, alignStartWords, alignTargets, startPose, type AlignPose, type AlignStart } from './alignPose.js';
+import { alignReadout, alignStartWords, alignTargets, personAlignmentOf, startPose, type AlignPose, type AlignStart } from './alignPose.js';
 import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
 import { EARLY_SOURCE_WORDS, earlyPoseOf } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
-import type { ObservationSolution } from '@albedian/contracts';
+import type { ObservationSolution, PersonAlignment } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { readRestorations, saveFromServer, variantExportUrl, variantFileUrl, type StoredRestoration } from '../services/apiClient.js';
@@ -93,6 +93,8 @@ export interface RevealPhotoProps {
   onAligningChange?: (active: boolean) => void;
   /** Changed to cancel an alignment from outside: the phone's close circle while aligning. */
   cancelAligningToken?: number;
+  /** Solve from here (D24 step 2): the person's alignment, sent as the solve's body, and the pose it came from. */
+  onSolveFromHere?: (alignment: PersonAlignment, pose: AlignPose) => void;
   /**
    * The sky the solve predicted from an early pose while it ran (the lock-on, D25), kept after the job ended: on the
    * laptop its marks travel to the solve's places on the first arrival once the check passed, and stay still and amber
@@ -250,6 +252,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onCancelRestore,
   onAligningChange,
   cancelAligningToken = 0,
+  onSolveFromHere,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -476,11 +479,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
   const statusLine: React.ReactElement | null = phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
-        // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700; the close circle
-        // cancels. "Solve from here" at 772 waits on SOLVER's contract (lead 07:51)
+        // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
+        // compact and centred at 772; the close circle cancels
         <div className="align-phone" data-testid="reveal-status" role="status">
           <p className="align-phone__lead">Drag the stars onto the dots you see.</p>
           <p className="align-phone__help">Drag to move. Turn or pinch with two fingers.</p>
+          {onSolveFromHere && (
+            <div className="align-phone__solve">
+              <MainAction label="Solve from here" onClick={() => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose)} />
+            </div>
+          )}
         </div>
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />
@@ -535,8 +543,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               {downloadAction}
             </>
           ) : aligning ? (
-            // Aligning (D24): what to do, how, Cancel, then the live readout and where the start came from. "Solve from
-            // here" waits on SOLVER's alignment contract (the lead, 07:51)
+            // Aligning (D24): what to do, how, Solve from here and Cancel 10 px apart, then the live readout and where the
+            // start came from
             <>
               <p className="reveal-status__lead align-lead">Drag the stars onto the dots you see.</p>
               <div className="align-help">
@@ -545,6 +553,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 <span>Scroll or pinch to scale</span>
               </div>
               <div className="align-acts">
+                {onSolveFromHere && <MainAction label="Solve from here" onClick={() => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose)} />}
                 <SecondAction label="Cancel" onClick={() => setAligning(null)} />
               </div>
               <p className="align-readout" data-testid="align-readout">

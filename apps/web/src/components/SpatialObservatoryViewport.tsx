@@ -6,7 +6,8 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import { hasVerifiedWcs, type ObservationSolution, type RenderLayerSet } from '@albedian/contracts';
+import { hasVerifiedWcs, type ObservationSolution, type PersonAlignment, type RenderLayerSet } from '@albedian/contracts';
+import type { AlignPose } from '../reveal/alignPose.js';
 import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import { useCameraFlightAnimation } from '../hooks/useCameraFlightAnimation.js';
 import { IconButton, ViewPills } from '../look/index.js';
@@ -98,6 +99,8 @@ export interface SpatialObservatoryViewportProps {
   onTryAgain?: () => void;
   /** Asks the server to cancel the upload's job (the working screen's Cancel, D2). */
   onCancelJob?: () => Promise<unknown> | void;
+  /** Solve from here (D24 step 2): the person's alignment and the pose it came from. */
+  onSolveFromHere?: (alignment: PersonAlignment, pose: AlignPose) => void;
   /** The answer to the last question, or a command's refusal, shown in the card's place over the laptop reveal. */
   answer?: ShownAnswer | null;
   onCloseAnswer?: () => void;
@@ -154,6 +157,7 @@ export const SpatialObservatoryViewport: React.FC<
   uploadRefusal = null,
   arrival = null,
   lockOnSky = null,
+  onSolveFromHere,
   answer = null,
   onCloseAnswer,
   heardWords = null,
@@ -661,6 +665,7 @@ export const SpatialObservatoryViewport: React.FC<
             onUploadAnother={(file) => onFileChosen?.(file)}
             onHome={() => setEntryStageActive(true)}
             early={earlyPoseOf(arrival.early, session.sourceAsset)}
+            aligned={arrival.aligned ? { marks: arrival.aligned } : null}
           />
         </>
       )}
@@ -681,6 +686,7 @@ export const SpatialObservatoryViewport: React.FC<
             <RevealPhoto
               lockOnSky={lockOnSky}
               clipVideo={clipVideo}
+              onSolveFromHere={onSolveFromHere}
               session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
               onAligningChange={setPhoneAligning}

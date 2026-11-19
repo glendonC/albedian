@@ -5,7 +5,7 @@ import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { useElapsedRows } from './elapsedRows.js';
 import { StillAlignMarks } from './AlignLayer.js';
-import { EARLY_SOURCE_WORDS, type EarlyPose } from './earlyPose.js';
+import { EARLY_SOURCE_WORDS, type EarlyPose, type PlacedTarget } from './earlyPose.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -30,6 +30,11 @@ export interface WorkingScreenProps {
    * (earlyPose.ts, from the job's served predicted sky). None: the screen is as approved.
    */
   early?: EarlyPose | null;
+  /**
+   * D24 step 3, a solve sent from the person's alignment: the rings stay at their pose with "Matching near your
+   * alignment.", their source line as every early mark has (D25's decided words), Cancel and the solve's rows.
+   */
+  aligned?: { marks: readonly PlacedTarget[] } | null;
 }
 
 export { EARLY_SOURCE_WORDS, type EarlyPose, type EarlySource } from './earlyPose.js';
@@ -51,7 +56,7 @@ const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`
  * another, and the stage it stopped at keeps its count. Nothing here moves by itself: a row changes only when the
  * job's record does.
  */
-export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false, early = null }) => {
+export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false, early = null, aligned = null }) => {
   // C19 item 1: the row being worked shows the time passed when its step reports no total
   const rows = useElapsedRows(stageRows(arrival));
   const fileInput = useRef<HTMLInputElement>(null);
@@ -120,7 +125,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
 
   // The lock-on's early state (D25): the marks the early pose places, and at the status place what is happening, where
   // the pose came from, Cancel (D2) and the job's rows; a stopped job shows as approved
-  const shownEarly = failure === null ? early : null;
+  const shownEarly: EarlyPose | null = failure === null ? (aligned ? { source: 'alignment', marks: aligned.marks } : (early ?? null)) : null;
   const steps = (
         <ol className="work-steps">
           {rows.map((row, i) => (
@@ -163,7 +168,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       {shownEarly && photoRect && <StillAlignMarks rect={photoRect} placed={shownEarly.marks} />}
       {shownEarly ? (
         <div className="work-early" data-testid="work-early">
-          <p className="work-early__lead">Matching the stars.</p>
+          <p className="work-early__lead">{aligned ? 'Matching near your alignment.' : 'Matching the stars.'}</p>
           <p className="work-early__from">{EARLY_SOURCE_WORDS[shownEarly.source]}</p>
           {cancellable && (
             <div className="work-acts">

@@ -162,6 +162,28 @@ describe('aligning', () => {
     expect(q('[data-testid="reveal-legend"]')).not.toBeNull();
   });
 
+  it('offers Solve from here before Cancel, 10 px apart, which sends the pose as it stands (D24 step 2)', async () => {
+    const { personAlignmentOf, startPose } = await import('../alignPose.js');
+    const sent: unknown[] = [];
+    const session = unmatched();
+    show(session, { onSolveFromHere: (alignment: unknown) => sent.push(alignment) });
+    act(() => button('Line it up yourself')!.click());
+    const acts = [...container.querySelectorAll('.reveal-status.is-unmatched .align-acts button')];
+    expect(acts.map((b) => b.textContent)).toEqual(['Solve from here', 'Cancel']);
+    act(() => (acts[0] as HTMLButtonElement).click());
+    expect(sent).toEqual([personAlignmentOf(startPose(session)!.pose)]);
+  });
+
+  it('offers Solve from here at phone width, centred at the foot (alp-align, top 772)', () => {
+    const sent: unknown[] = [];
+    show(unmatched(), { phone: true, onSolveFromHere: (alignment: unknown) => sent.push(alignment) });
+    act(() => button('Line it up yourself')!.click());
+    const solve = q('.align-phone__solve button') as HTMLButtonElement;
+    expect(solve.textContent).toBe('Solve from here');
+    act(() => solve.click());
+    expect(sent).toHaveLength(1);
+  });
+
   it('moves with a drag, turns with Ctrl and drag, and scales with the wheel, the readout following', () => {
     start();
     const layer = q('[data-testid="align-layer"]') as HTMLElement;

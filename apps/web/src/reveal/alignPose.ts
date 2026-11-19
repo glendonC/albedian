@@ -1,5 +1,14 @@
 import { properName } from './predictedSkyMarks.js';
-import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
+import {
+  PERSON_ALIGNMENT_FORMAT,
+  PERSON_ALIGNMENT_FORMAT_VERSION,
+  PERSON_ALIGNMENT_FOV_MAX_DEG,
+  PERSON_ALIGNMENT_SOURCE,
+  type CelestialFinding,
+  type ObservationSession,
+  type ObservationSolution,
+  type PersonAlignment,
+} from '@albedian/contracts';
 
 /**
  * Line it up yourself (D24, UIUX-align-READY.md, decided by the lead 2026-11-19 07:40): a camera pose over the photo, the
@@ -154,6 +163,34 @@ export function turnPose(pose: AlignPose, deltaDeg: number): AlignPose {
 /** A scale: the field across multiplied by this factor, kept between 5 and 150 degrees. */
 export function scalePose(pose: AlignPose, factor: number): AlignPose {
   return { ...pose, fovXDeg: Math.max(5, Math.min(150, pose.fovXDeg * factor)) };
+}
+
+/** The targets inside the frame through a pose, as shares of the shown photo (the sent state's rings, D24 step 3). */
+export function placedAtPose(targets: readonly AlignTarget[], pose: AlignPose): Array<{ id: string; name: string; u: number; v: number }> {
+  return targets.flatMap((target) => {
+    const at = projectAltAz(target.altDeg, target.azDeg, pose);
+    return at && at.u >= 0 && at.u <= 1 && at.v >= 0 && at.v <= 1 ? [{ id: target.finding.id, name: target.name, u: at.u, v: at.v }] : [];
+  });
+}
+
+/**
+ * What "Solve from here" sends (D24 step 2; SOLVER's PersonAlignment contract): the person's pose, never a
+ * measurement: the frame centre's altitude and azimuth in the predicted sky's own convention, the turn of the upright
+ * frame (a positive turn puts the horizon's right side lower, in this drawing and in the solver alike), and the field
+ * across turned into the diagonal the contract takes.
+ */
+export function personAlignmentOf(pose: AlignPose): PersonAlignment {
+  const half = Math.tan(((pose.fovXDeg / 2) * Math.PI) / 180) * Math.hypot(1, pose.aspect);
+  const az = wrap360(pose.azDeg);
+  return {
+    format: PERSON_ALIGNMENT_FORMAT,
+    formatVersion: PERSON_ALIGNMENT_FORMAT_VERSION,
+    source: PERSON_ALIGNMENT_SOURCE,
+    centerAltDeg: Math.max(-90, Math.min(90, pose.altDeg)),
+    centerAzDeg: az >= 360 ? 0 : az,
+    rollDeg: pose.rollDeg,
+    fovDiagonalDeg: Math.min(PERSON_ALIGNMENT_FOV_MAX_DEG, (2 * Math.atan(half) * 180) / Math.PI),
+  };
 }
 
 /** The readout: "116° · 34° up · turned 0° · 53° across", whole degrees. */
