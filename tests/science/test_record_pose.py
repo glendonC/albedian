@@ -162,7 +162,7 @@ def test_the_pose_estimate_is_the_device_attitude_with_no_beacon_by_the_contract
     assert isinstance(pose, rh.RecordPose)
     estimate = pose.estimate
     assert (estimate.method, estimate.beacon, estimate.beacon_centroid_uncertainty_deg) == ("device_attitude", None, None)
-    assert estimate.fov_source.startswith("The phone's pointing record")
+    assert estimate.fov_source == "The field of view your iPhone's camera reported: 69.5 degrees across its width, at a zoom of 1."
     parsed = PoseEstimateContract.model_validate(estimate.to_contract_dict())
     assert parsed.method == "device_attitude"
     assert all("[" not in line for line in estimate.assumptions)
@@ -204,7 +204,8 @@ def test_no_pose_when_the_record_does_not_describe_the_stored_picture(changes: d
     assert attitude is not None
     pose = rh.record_pose(attitude, width=WIDTH, height=HEIGHT, orientation=orientation, moment=MOMENT, lat=LAT, lon=LON)
     assert isinstance(pose, Refusal) and pose.kind == kind
-    assert pose.reason and chr(0x2014) not in pose.reason and chr(0x2013) not in pose.reason
+    assert pose.reason.startswith("Where your iPhone pointed could not place the predicted sky on this photo: ")
+    assert chr(0x2014) not in pose.reason and chr(0x2013) not in pose.reason
     assert str(LAT) not in pose.reason
 
 
@@ -249,13 +250,24 @@ def test_complete_sky_lines_up_an_unsolved_photo_from_the_record_before_any_moon
     assert {f.evidence_class for f in solution.findings} == {"predicted"}
     inside = [f for f in solution.findings if f.subtitle.endswith(ps.INSIDE_THE_FRAME)]
     assert inside and all(ps.RECORD_LINED_UP_LIMITATION in f.limitations for f in inside)
-    lined_up = [w for w in solution.warnings if w.startswith("Lined up from the phone's pointing record")]
-    assert len(lined_up) == 1 and "not checked against stars" in lined_up[0]
+    lined_up = [w for w in solution.warnings if w.startswith("Lined up from where your iPhone pointed, within about ")]
+    assert len(lined_up) == 1
+    # C17's two sentences: the first, which the web shows, says it is predicted; the second gives the record's terms
+    first, second = lined_up[0].split(": predicted, not checked against stars. ")
+    assert first.endswith("at the middle of the frame and more toward the edges")
+    assert second == (
+        "Its compass was good to 12 degrees, its tilt taken to 2 degrees, it turned at most 2.5 degrees around the "
+        "shot, and its camera reported a 82 degree field of view across the diagonal."
+    )
+    assert all(f.limitations[-1] == (
+        "Placed in the frame only from where your iPhone pointed (its compass, tilt and field of view): predicted, not "
+        "checked against stars."
+    ) for f in inside)
     # The bound it states is the sweep's farthest centre plus the frame term, rounded up to a whole degree
     pose = rh.record_pose(attitude, width=WIDTH, height=HEIGHT, orientation=None, moment=MOMENT, lat=LAT, lon=LON)
     assert isinstance(pose, rh.RecordPose)
     within = math.ceil(pose.estimate.max_center_offset_deg + pose.frame_term_arcsec / 3600.0)
-    assert f"within about {within} degrees of the frame's centre" in lined_up[0]
+    assert f"within about {within} degrees at the middle of the frame" in lined_up[0]
     assert str(LAT) not in " ".join(solution.warnings) and MOMENT[:10] not in " ".join(solution.warnings)
     # The contract reads it
     assert solution.to_contract_dict()["pointingHint"]["usedAs"] == ["search_hint", "pose_estimate"]

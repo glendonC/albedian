@@ -696,9 +696,10 @@ HORIZON_POSE_SOLVER = SolverIdentity(
 RECORD_POSE_SOLVER = SolverIdentity(
     name="AlbedianDeviceAttitudePose",
     version="1.0.0",
+    # C17 (.lead/uiux/UIUX-recordwords-READY.md): the solver line where a person reads it
     catalog_release=(
-        "The phone's pointing record (its attitude, the heading accuracy it stated and its camera's reported field of "
-        "view) and ERFA's frame rotation at the photo's moment"
+        "Where your iPhone pointed (its compass, tilt and camera's field of view), turned to the sky at the photo's "
+        "moment by ERFA: predicted"
     ),
 )
 INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"
@@ -712,8 +713,8 @@ HORIZON_LINED_UP_LIMITATION = (
     "and its skyline to be level ground, with the field of view fitted from them; not checked against stars."
 )
 RECORD_LINED_UP_LIMITATION = (
-    "Placed in the frame only through the approximate pose from the phone's pointing record, its compass heading, tilt "
-    "and field of view; not checked against stars."
+    "Placed in the frame only from where your iPhone pointed (its compass, tilt and field of view): predicted, not "
+    "checked against stars."
 )
 # Two frame times are the same frame within a microsecond: the pose's frame carries its own presentation time as the
 # job decodes it, and the detector's findings carry 0.0, the start of the stack they were found in
@@ -1028,12 +1029,13 @@ def _record_lined_up(
     # the sky turns in the time's uncertainty, and the lent place's stated accuracy
     time_deg = (0.0 if time_sec is None else sky_turn_deg(time_sec)) + _lent_place_arcsec(lent) / 3600.0
     within = math.ceil(estimate.max_center_offset_deg + pose.frame_term_arcsec / 3600.0 + time_deg)
+    # C17's two sentences; the web shows the first (C5's rule)
     lined_up = (
-        f"Lined up from the phone's pointing record: its compass heading within {attitude.heading_accuracy_deg:g} "
-        f"degrees, its tilt within {TILT_ERROR_DEG:g} degrees, the phone turning at most {attitude.turned_deg:.1f} "
-        f"degrees around the shot, and the field of view it reported ({estimate.fov_diagonal_deg:.0f} degrees across "
-        f"the diagonal): within about {within} degrees of the frame's centre, more toward the edges; not checked "
-        "against stars."
+        f"Lined up from where your iPhone pointed, within about {within} degrees at the middle of the frame and more "
+        "toward the edges: predicted, not checked against stars. "
+        f"Its compass was good to {attitude.heading_accuracy_deg:g} degrees, its tilt taken to {TILT_ERROR_DEG:g} "
+        f"degrees, it turned at most {attitude.turned_deg:.1f} degrees around the shot, and its camera reported a "
+        f"{estimate.fov_diagonal_deg:.0f} degree field of view across the diagonal."
     )
     (sun,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Sun",))
     detected = (

@@ -68,18 +68,15 @@ MAX_POSE_FOV_DIAGONAL_DEG = 175.0
 # The record's frame (x north, y west, z up) as east, north, up
 TO_ENU = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
 
-_NO_RECORD_POSE = "No pose was lined up from the phone's pointing record: "
-NO_RECORD_FOV = _NO_RECORD_POSE + "it gives no field of view to draw the photo's directions with."
-NO_RECORD_WIDE = _NO_RECORD_POSE + "the field of view it gives is too wide to draw as one flat picture."
-NO_RECORD_FRONT = (
-    _NO_RECORD_POSE + "the photo was taken with the front camera, whose picture's directions on the phone are not yet "
-    "checked."
-)
+# The words a person reads are the design lane's C17 (.lead/uiux/UIUX-recordwords-READY.md, decided 2026-11-19)
+_NO_RECORD_POSE = "Where your iPhone pointed could not place the predicted sky on this photo: "
+NO_RECORD_FOV = _NO_RECORD_POSE + "it recorded no field of view for its camera."
+NO_RECORD_WIDE = _NO_RECORD_POSE + "the field of view it recorded is too wide to draw as one flat picture."
+NO_RECORD_FRONT = _NO_RECORD_POSE + "the photo was taken with the front camera, whose directions are not checked yet."
 NO_RECORD_SIZE = (
-    _NO_RECORD_POSE + "the photo's stored size is not the size the record gives, so the record's directions cannot be "
-    "laid on its pixels."
+    _NO_RECORD_POSE + "the photo's size is not the size it recorded, so its directions cannot be laid on the photo."
 )
-NO_RECORD_MIRRORED = _NO_RECORD_POSE + "the photo is stored mirrored, and the record's directions are the camera's own."
+NO_RECORD_MIRRORED = _NO_RECORD_POSE + "the photo is stored mirrored, and the pointing is the camera's own."
 
 
 @dataclass(frozen=True)
@@ -338,8 +335,8 @@ def record_pose(
         roll_deg=_roll_deg(rows_enu, turns),
         fov_diagonal_deg=fov,
         fov_source=(
-            f"The phone's pointing record: its camera's reported field of view of {attitude.horizontal_fov_deg:g} "
-            f"degrees across the format's width, at a zoom of {attitude.zoom:g}"
+            f"The field of view your iPhone's camera reported: {attitude.horizontal_fov_deg:g} degrees across its "
+            f"width, at a zoom of {attitude.zoom:g}."
         ),
         assumptions=_assumptions(attitude, fovs, term),
         swept_wcs=tuple(swept),
@@ -354,20 +351,19 @@ def record_pose(
 
 def _assumptions(attitude: RecordAttitude, fovs: tuple[float, float, float], term_arcsec: float) -> tuple[str, ...]:
     low, mid, high = fovs
+    # C17's six assumptions (the sweep: the heading and the tilt at once to each corner, the roll either way)
     return (
-        f"The phone's compass heading is within {attitude.heading_accuracy_deg:g} degrees, the accuracy the phone "
-        f"stated, and its tilt within {TILT_ERROR_DEG:g} degrees, which the phone does not state; the sweep turns the "
-        "camera by both at once to each corner, and by the tilt's amount about its axis either way.",
-        f"The phone turned at most {attitude.turned_deg:.2f} degrees over the motion it recorded around the shot, at "
-        "its largest rotation rate; the sweep widens the heading, the tilt and the turn about the axis by that much.",
-        f"The photo's diagonal field of view is {mid:.1f} degrees, from the field of view the phone reported for its "
-        f"camera format ({attitude.horizontal_fov_deg:g} degrees across its width) at a zoom of {attitude.zoom:g}; the "
-        f"sweep takes {low:.1f}, {mid:.1f} and {high:.1f} degrees.",
-        "The photo's stored pixels are the camera sensor's as the phone wrote them: the stored right is the phone's "
-        "minus y axis and the stored down its minus x axis, and the back camera looks along its minus z axis, as "
-        "Apple's illustration of the device axes shows; this is not yet checked on a phone.",
-        "The lens is rectilinear (gnomonic), with no distortion, and centred on the frame.",
-        "The frame's centre is placed with the refraction of a standard atmosphere; elsewhere the sky is drawn through "
-        f"one rotation, which leaves out how refraction differs across the frame and up to {term_arcsec:,.0f} arcsec "
-        "of how aberration and the Sun's light deflection differ.",
+        f"Your iPhone's compass is taken to be within {attitude.heading_accuracy_deg:g} degrees, as it stated, and its "
+        f"tilt within {TILT_ERROR_DEG:g} degrees, which it does not state; the predicted sky was drawn for both errors "
+        "at once, to each corner and turned either way.",
+        f"Your iPhone turned at most {attitude.turned_deg:.2f} degrees around the shot; the predicted sky was drawn for "
+        "that much more turn.",
+        f"The photo's field of view is taken as {mid:.1f} degrees across the diagonal, from the "
+        f"{attitude.horizontal_fov_deg:g} degrees your iPhone reported across its width at a zoom of {attitude.zoom:g}; "
+        f"the predicted sky was drawn for {low:.1f}, {mid:.1f} and {high:.1f} degrees.",
+        "The photo's pixels are taken to be the camera's as your iPhone wrote them, turned as Apple's drawing of the "
+        "iPhone's axes shows; not yet checked on a phone.",
+        "The lens is taken to be a plain one with no distortion, centred on the frame.",
+        f"The middle of the frame allows for the air bending the light; elsewhere differences of up to "
+        f"{term_arcsec:,.0f} arcseconds are left out of the predicted sky.",
     )
