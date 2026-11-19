@@ -18,3 +18,14 @@ describe('deepSkyName', () => {
     for (const name of ['Omega Centauri', 'Pearl Cluster', 'S Nor Cluster', 'Orion Nebula', 'Eta', 'lam Xyz Nebula', 'Pleiades']) expect(deepSkyName(name)).toBe(name);
   });
 });
+
+describe("the card's title for a deep-sky object (AUDIT-C, 13:24)", () => {
+  it('is the same full name the mark reads, and a star keeps its own title', async () => {
+    const { starCardFacts } = await import('../starCardFacts.js');
+    const { sample } = await import('../../components/__tests__/poseSessions.js');
+    const template = sample('plate_calibrated').findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    const nebula = { ...template, id: 'finding-openngc-IC2944', evidenceClass: 'predicted', title: 'lam Cen Nebula', catalogRef: { ...template.catalogRef!, provider: 'OpenNGC', objectType: 'deep_sky', catalogSourceId: 'IC 2944', commonName: 'lam Cen Nebula' } } as unknown as typeof template;
+    expect(starCardFacts(nebula).title).toBe('Lambda Centauri Nebula');
+    expect(starCardFacts(template).title).toBe(template.title);
+  });
+});

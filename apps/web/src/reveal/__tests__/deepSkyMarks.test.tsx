@@ -351,7 +351,7 @@ describe('the marks on the photo and the card of a picked one', () => {
 describe("a picked deep-sky object's card facts", () => {
   it('gives the constellation alone with no row, and no number with no V', () => {
     const lam = deep('IC2944', 'lam Cen Nebula', 300, 200);
-    expect(starCardFacts(lam, null)).toMatchObject({ title: 'lam Cen Nebula', subLine: 'Centaurus', numbers: [], sourceLine: 'OpenNGC v20260501 · IC2944', canGoThere: false });
+    expect(starCardFacts(lam, null)).toMatchObject({ title: 'Lambda Centauri Nebula', subLine: 'Centaurus', numbers: [], sourceLine: 'OpenNGC v20260501 · IC2944', canGoThere: false });
     expect(starCardFacts(lam, TABLE.get('IC2944')!).subLine).toBe('Star cluster and nebula · Centaurus');
   });
 

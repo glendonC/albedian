@@ -2,7 +2,7 @@ import { DESIGNATION_CONSTELLATIONS, type CelestialFinding, type EvidenceClass }
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { findingCanEnterSpace } from '../components/askSuggestions.js';
 import { RUWE_CAUTION_ABOVE, astrophysicsOf, formatSignificant } from '../components/scanScales.js';
-import { deepSkyKindWords, isDeepSky, type DeepSkyRow } from './deepSky.js';
+import { deepSkyKindWords, deepSkyName, isDeepSky, type DeepSkyRow } from './deepSky.js';
 
 /**
  * What the picked star's card says (reveal, approved 2026-11-12, laptop screen 3), each fact from the finding itself:
@@ -99,7 +99,8 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
 
   return {
     evidenceClass: finding.evidenceClass,
-    title: nameless ? nameless.title : finding.title,
+    // A deep-sky object's title is the name its mark reads (C19 item 3)
+    title: nameless ? nameless.title : isDeepSky(finding) ? deepSkyName(finding.title) : finding.title,
     subLine: subParts.length > 0 ? subParts.join(' · ') : null,
     numbers,
     // A nameless star's title and small line already say what the catalog line would
