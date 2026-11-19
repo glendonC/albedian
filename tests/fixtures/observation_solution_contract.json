@@ -1216,6 +1216,24 @@
     {}
    ]
   },
+  "pointingHintSource": {
+   "type": "choice",
+   "values": [
+    "record",
+    "person"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "RECORD",
+    "record ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
   "pointingUse": {
    "type": "choice",
    "values": [
@@ -1964,6 +1982,9 @@
    }
   },
   "PointingHint": {
+   "source": {
+    "rule": "pointingHintSource"
+   },
    "sourceAssetSha256": {
     "rule": "sha256"
    },
@@ -1987,6 +2008,14 @@
    },
    "verifiedCenterOffsetDeg": {
     "rule": "skyOffsetDeg",
+    "optional": true
+   },
+   "rollDeg": {
+    "rule": "degrees180",
+    "optional": true
+   },
+   "fovDiagonalDeg": {
+    "rule": "fieldOfView",
     "optional": true
    },
    "timeFrom": {
@@ -2179,6 +2208,8 @@
    "centerAzDeg": "center_az_deg",
    "uncertaintyDeg": "uncertainty_deg",
    "verifiedCenterOffsetDeg": "verified_center_offset_deg",
+   "rollDeg": "roll_deg",
+   "fovDiagonalDeg": "fov_diagonal_deg",
    "timeFrom": "time_from",
    "placeFrom": "place_from"
   },
@@ -2338,7 +2369,7 @@
    ]
   },
   "PointingHint": {
-   "sample": "approximate_with_device_attitude_pose",
+   "sample": "predicted_only_with_a_persons_alignment",
    "path": [
     "pointingHint"
    ]
@@ -3716,6 +3747,7 @@
     "maxCenterOffsetDeg": 0.4
    },
    "pointingHint": {
+    "source": "record",
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "search_hint",
@@ -3784,6 +3816,7 @@
    "findings": [],
    "warnings": [],
    "pointingHint": {
+    "source": "record",
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "search_hint",
@@ -3886,6 +3919,7 @@
    ],
    "warnings": [],
    "pointingHint": {
+    "source": "record",
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "search_hint",
@@ -4023,6 +4057,7 @@
     "maxCenterOffsetDeg": 0.4
    },
    "pointingHint": {
+    "source": "record",
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "pose_estimate",
@@ -4124,6 +4159,7 @@
    ],
    "warnings": [],
    "pointingHint": {
+    "source": "record",
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "moment"
@@ -4187,12 +4223,186 @@
    "findings": [],
    "warnings": [],
    "pointingHint": {
+    "source": "record",
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "moment"
     ],
     "timeFrom": "file",
     "placeFrom": "record"
+   }
+  },
+  "calibrated_with_a_persons_alignment": {
+   "id": "sol-contract-gate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 6,
+    "heldOutPairCount": 6,
+    "heldOutInliers": 6,
+    "medianResidualPx": 3.0,
+    "p95ResidualPx": 3.0,
+    "medianResidualArcsec": 378.0,
+    "passedIndependentVerification": true,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "whitened",
+     "noiseLimits": [],
+     "starProfile": {
+      "sigmaMajorPx": 2.1,
+      "sigmaMinorPx": 1.6,
+      "angleRad": 0.5,
+      "stars": 37
+     }
+    }
+   },
+   "findings": [],
+   "warnings": [],
+   "pointingHint": {
+    "source": "person",
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "search_hint"
+    ],
+    "centerAltDeg": 58.0,
+    "centerAzDeg": 297.0,
+    "uncertaintyDeg": 10.0,
+    "rollDeg": 7.0,
+    "fovDiagonalDeg": 66.0,
+    "timeFrom": "file",
+    "placeFrom": "file",
+    "verifiedCenterOffsetDeg": 2.25
+   }
+  },
+  "predicted_only_with_a_persons_alignment": {
+   "id": "sol-contract-predicted",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "predicted_only",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-predicted-star-rigel",
+     "observationSolutionId": "sol-contract-predicted",
+     "evidenceClass": "predicted",
+     "title": "Rigel",
+     "subtitle": "Predicted star (hand-built contract sample)",
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050116735294871,
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ],
+     "evidence": {
+      "id": "ev-finding-predicted-star-rigel",
+      "evidenceClass": "predicted",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false,
+      "catalogReferenceId": "star-rigel"
+     }
+    }
+   ],
+   "warnings": [],
+   "pointingHint": {
+    "source": "person",
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "search_hint"
+    ],
+    "centerAltDeg": 58.0,
+    "centerAzDeg": 297.0,
+    "uncertaintyDeg": 10.0,
+    "rollDeg": 7.0,
+    "fovDiagonalDeg": 66.0,
+    "timeFrom": "file",
+    "placeFrom": "file"
    }
   },
   "approximate_with_an_observed_fit_residual": {
@@ -6357,6 +6567,7 @@
       "pointingHint"
      ],
      "value": {
+      "source": "record",
       "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
       "usedAs": [
        "search_hint",
@@ -6883,6 +7094,308 @@
    "messages": [
     "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation."
    ]
+  },
+  {
+   "name": "record_hint_with_rollDeg",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "rollDeg"
+     ],
+     "value": 7.0
+    }
+   ],
+   "reason": "a record's hint that gives the person's rollDeg",
+   "paths": [
+    "pointingHint.rollDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the roll and the field of view exactly when a person aligned it."
+   ]
+  },
+  {
+   "name": "persons_alignment_without_rollDeg",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "rollDeg"
+     ]
+    }
+   ],
+   "reason": "a person's alignment with no rollDeg",
+   "paths": [
+    "pointingHint.rollDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the roll and the field of view exactly when a person aligned it."
+   ]
+  },
+  {
+   "name": "record_hint_with_fovDiagonalDeg",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "fovDiagonalDeg"
+     ],
+     "value": 66.0
+    }
+   ],
+   "reason": "a record's hint that gives the person's fovDiagonalDeg",
+   "paths": [
+    "pointingHint.fovDiagonalDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the roll and the field of view exactly when a person aligned it."
+   ]
+  },
+  {
+   "name": "persons_alignment_without_fovDiagonalDeg",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "fovDiagonalDeg"
+     ]
+    }
+   ],
+   "reason": "a person's alignment with no fovDiagonalDeg",
+   "paths": [
+    "pointingHint.fovDiagonalDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the roll and the field of view exactly when a person aligned it."
+   ]
+  },
+  {
+   "name": "persons_alignment_as_the_pose",
+   "base": "approximate_with_device_attitude_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint"
+     ],
+     "value": {
+      "source": "person",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "usedAs": [
+       "search_hint",
+       "pose_estimate"
+      ],
+      "centerAltDeg": 58.0,
+      "centerAzDeg": 297.0,
+      "uncertaintyDeg": 10.0,
+      "rollDeg": 7.0,
+      "fovDiagonalDeg": 66.0,
+      "timeFrom": "file",
+      "placeFrom": "file"
+     }
+    }
+   ],
+   "reason": "a person's alignment used as a pose from the device attitude",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file."
+   ]
+  },
+  {
+   "name": "persons_alignment_lending_a_time",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "search_hint",
+      "moment"
+     ]
+    },
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "timeFrom"
+     ],
+     "value": "record"
+    }
+   ],
+   "reason": "a person's alignment that lends the photo a time",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file."
+   ]
+  },
+  {
+   "name": "persons_alignment_lending_a_place",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "placeFrom"
+     ],
+     "value": "record"
+    }
+   ],
+   "reason": "a person's alignment whose place came from the record",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file."
+   ]
+  },
+  {
+   "name": "persons_alignment_without_its_offset",
+   "base": "calibrated_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "verifiedCenterOffsetDeg"
+     ]
+    }
+   ],
+   "reason": "a calibrated solution's alignment with no verified offset",
+   "paths": [
+    "pointingHint.verifiedCenterOffsetDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one."
+   ]
+  },
+  {
+   "name": "hint_without_a_source",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "source"
+     ]
+    }
+   ],
+   "reason": "a pointing hint that names no source",
+   "paths": [
+    "pointingHint.source"
+   ],
+   "messages": []
+  },
+  {
+   "name": "hint_of_another_source",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "source"
+     ],
+     "value": "voice"
+    }
+   ],
+   "reason": "a pointing hint from an unknown source",
+   "paths": [
+    "pointingHint.source"
+   ],
+   "messages": []
+  },
+  {
+   "name": "persons_alignment_with_rollDeg_180.5",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "rollDeg"
+     ],
+     "value": 180.5
+    }
+   ],
+   "reason": "a person's alignment with rollDeg 180.5",
+   "paths": [
+    "pointingHint.rollDeg"
+   ],
+   "messages": []
+  },
+  {
+   "name": "persons_alignment_with_rollDeg_-180.5",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "rollDeg"
+     ],
+     "value": -180.5
+    }
+   ],
+   "reason": "a person's alignment with rollDeg -180.5",
+   "paths": [
+    "pointingHint.rollDeg"
+   ],
+   "messages": []
+  },
+  {
+   "name": "persons_alignment_with_fovDiagonalDeg_0.0",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "fovDiagonalDeg"
+     ],
+     "value": 0.0
+    }
+   ],
+   "reason": "a person's alignment with fovDiagonalDeg 0.0",
+   "paths": [
+    "pointingHint.fovDiagonalDeg"
+   ],
+   "messages": []
+  },
+  {
+   "name": "persons_alignment_with_fovDiagonalDeg_175.5",
+   "base": "predicted_only_with_a_persons_alignment",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "fovDiagonalDeg"
+     ],
+     "value": 175.5
+    }
+   ],
+   "reason": "a person's alignment with fovDiagonalDeg 175.5",
+   "paths": [
+    "pointingHint.fovDiagonalDeg"
+   ],
+   "messages": []
   },
   {
    "name": "swept_wcs_on_another_centre_pixel",
@@ -9649,10 +10162,10 @@
   ]
  },
  "keyCases": {
-  "levels": 223,
-  "dropped": 2654,
-  "refusedUnknown": 89,
-  "refusedWhenRenamed": 1071,
-  "leftOutWhenRenamed": 111
+  "levels": 242,
+  "dropped": 2863,
+  "refusedUnknown": 109,
+  "refusedWhenRenamed": 1153,
+  "leftOutWhenRenamed": 125
  }
 }

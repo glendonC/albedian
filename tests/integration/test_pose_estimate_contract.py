@@ -508,8 +508,8 @@ def test_a_pose_from_the_device_attitude_names_no_beacon() -> None:
 def test_a_pointing_hint_rides_with_its_solution_by_the_contracts_rules() -> None:
     written = hinted(pose=device_pose(), pointing=hint()).to_contract_dict()
     assert written["pointingHint"] == {
-        "sourceAssetSha256": RECORD_SHA, "usedAs": ["search_hint", "pose_estimate", "moment"], "centerAltDeg": 33.0,
-        "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
+        "source": "record", "sourceAssetSha256": RECORD_SHA, "usedAs": ["search_hint", "pose_estimate", "moment"],
+        "centerAltDeg": 33.0, "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
     }
     assert "pointingHint" not in solution(pose=pose_estimate()).to_contract_dict()
     # Only narrowing the search, on a solution with no pose: no offset, since nothing was verified
@@ -528,6 +528,24 @@ def test_a_pointing_hint_rides_with_its_solution_by_the_contracts_rules() -> Non
         with pytest.raises(ValueError) as caught:
             hinted(**parts)
         assert str(caught.value) == message, parts
+
+
+def test_a_persons_alignment_rides_as_a_search_only_hint_with_its_roll_and_field() -> None:
+    person = dict(source="person", used_as=("search_hint",), roll_deg=-3.0, fov_diagonal_deg=72.7, time_from="file",
+                  place_from="file")  # fmt: skip
+    written = hinted("predicted_only", pointing=hint(**person)).to_contract_dict()["pointingHint"]
+    assert written == {"source": "person", "sourceAssetSha256": RECORD_SHA, "usedAs": ["search_hint"], "centerAltDeg": 33.0,
+                       "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "rollDeg": -3.0, "fovDiagonalDeg": 72.7,
+                       "timeFrom": "file", "placeFrom": "file"}  # fmt: skip
+    assert hint().source == "record" and "rollDeg" not in hint().to_contract_dict()
+    for changes in (dict(used_as=("search_hint", "pose_estimate")), dict(used_as=("search_hint", "moment"), time_from="record"),
+                    dict(place_from="record"), dict(roll_deg=None), dict(fov_diagonal_deg=None), dict(roll_deg=180.5),
+                    dict(fov_diagonal_deg=0.0), dict(fov_diagonal_deg=175.5), dict(roll_deg=True), dict(source="voice")):
+        with pytest.raises(ValueError):
+            hint(**{**person, **changes})
+    for changes in (dict(roll_deg=-3.0), dict(fov_diagonal_deg=72.7)):
+        with pytest.raises(ValueError):
+            hint(**changes)
 
 
 def test_a_pointing_hint_keeps_its_own_bounds() -> None:

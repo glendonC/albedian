@@ -868,8 +868,15 @@ class PointingHint:
     center_az_deg: float | None = None
     uncertainty_deg: float | None = None
     verified_center_offset_deg: float | None = None
+    # Where the hint came from (align-1b): the phone's pointing record, or a person's alignment of the predicted sky,
+    # which alone gives the roll and the diagonal field of view the person left the drawn sky at
+    source: str = "record"
+    roll_deg: float | None = None
+    fov_diagonal_deg: float | None = None
 
     def __post_init__(self) -> None:
+        if self.source not in contract.POINTING_HINT_SOURCES:
+            raise ContractRefusal(f"A pointing hint's source is record or person (got {self.source!r}).")
         require_source_sha256(self.source_asset_sha256)
         if not isinstance(self.used_as, (list, tuple)) or not 1 <= len(self.used_as) <= len(contract.POINTING_USES):
             raise ContractRefusal(f"A pointing hint names one to {len(contract.POINTING_USES)} uses.")
@@ -878,13 +885,15 @@ class PointingHint:
             used_as, contract.POINTING_USES
         ):
             raise ContractRefusal(contract.HINT_USES)
-        centre_issues = contract.hint_centre_issues(self)
+        centre_issues = contract.hint_centre_issues(self) + contract.hint_person_issues(self)
         if centre_issues:
             raise ContractRefusal(centre_issues[0][1])
         for name, value, lo, hi, open_low in (
             ("center_alt_deg", self.center_alt_deg, -90.0, 90.0, False),
             ("center_az_deg", self.center_az_deg, 0.0, 360.0, False),
             ("uncertainty_deg", self.uncertainty_deg, 0.0, 180.0, True),
+            ("roll_deg", self.roll_deg, -180.0, 180.0, False),
+            ("fov_diagonal_deg", self.fov_diagonal_deg, 0.0, 175.0, True),
         ):
             if value is None:
                 continue
@@ -899,8 +908,9 @@ class PointingHint:
         object.__setattr__(self, "used_as", used_as)
 
     def to_contract_dict(self) -> dict:
-        result = {"sourceAssetSha256": self.source_asset_sha256, "usedAs": list(self.used_as)}
-        for key, value in (("centerAltDeg", self.center_alt_deg), ("centerAzDeg", self.center_az_deg), ("uncertaintyDeg", self.uncertainty_deg)):
+        result = {"source": self.source, "sourceAssetSha256": self.source_asset_sha256, "usedAs": list(self.used_as)}
+        for key, value in (("centerAltDeg", self.center_alt_deg), ("centerAzDeg", self.center_az_deg), ("uncertaintyDeg", self.uncertainty_deg),
+                           ("rollDeg", self.roll_deg), ("fovDiagonalDeg", self.fov_diagonal_deg)):
             if value is not None:
                 result[key] = float(value)
         result.update({"timeFrom": self.time_from, "placeFrom": self.place_from})

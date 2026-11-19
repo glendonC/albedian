@@ -557,12 +557,17 @@ export type PoseEstimate = z.infer<typeof PoseEstimateSchema>;
 /** How a solve used the phone's pointing record, in this order, and where a solution's time and place came from. */
 export const POINTING_USES = ['search_hint', 'pose_estimate', 'moment'] as const;
 export const MOMENT_SOURCES = ['file', 'record'] as const;
+/** Where a pointing hint came from: the phone's pointing record, or a person's alignment of the predicted sky (align-1b). */
+export const POINTING_HINT_SOURCES = ['record', 'person'] as const;
 const HINT_RECORDING = "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256.";
 const HINT_POSE =
   "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude.";
 const HINT_MOMENT_USE = "A pointing hint says moment exactly when the solution's time or its place came from the record.";
 const HINT_OFFSET =
   "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one.";
+const HINT_PERSON_POSE = 'A pointing hint gives the roll and the field of view exactly when a person aligned it.';
+const HINT_PERSON_USE =
+  "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file.";
 const HINT_MOMENT =
   'A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation.';
 
@@ -575,6 +580,8 @@ const HINT_MOMENT =
  */
 export const PointingHintSchema = z
   .object({
+    // The phone's pointing record or a person's alignment of the predicted sky (align-1b)
+    source: z.enum(POINTING_HINT_SOURCES),
     sourceAssetSha256: SourceSha256Schema,
     usedAs: z.array(z.enum(POINTING_USES)).min(1).max(POINTING_USES.length),
     // Present exactly when the hint was used as a search hint or the pose: only a heading gives a centre
@@ -582,6 +589,9 @@ export const PointingHintSchema = z
     centerAzDeg: z.number().min(0).max(360).optional(),
     uncertaintyDeg: z.number().positive().max(180).optional(),
     verifiedCenterOffsetDeg: z.number().min(0).max(180).optional(),
+    // Present exactly when a person aligned the hint: the roll and the diagonal field of view they left the sky at
+    rollDeg: z.number().min(-180).max(180).optional(),
+    fovDiagonalDeg: z.number().positive().max(175).optional(),
     timeFrom: z.enum(MOMENT_SOURCES),
     placeFrom: z.enum(MOMENT_SOURCES),
   })
@@ -596,6 +606,15 @@ export const PointingHintSchema = z
         });
       }
     });
+    const person = hint.source === 'person';
+    (['rollDeg', 'fovDiagonalDeg'] as const).forEach((key) => {
+      if ((hint[key] !== undefined) !== person) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: HINT_PERSON_POSE });
+      }
+    });
+    if (person && (hint.usedAs.join() !== 'search_hint' || hint.timeFrom !== 'file' || hint.placeFrom !== 'file')) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['usedAs'], message: HINT_PERSON_USE });
+    }
     if (!listsEachOnceInOrder(hint.usedAs, POINTING_USES)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

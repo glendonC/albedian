@@ -19,7 +19,7 @@
   "digest": "41b33933a66c222058dd808a5890fdefd0b9174a22225445c248315b01e47a93"
  },
  "albedian.solve_chain": {
-  "revision": 8,
+  "revision": 9,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -36,6 +36,6 @@
    "services/science/deep_sky_projection.py",
    "services/science/deep_sky_selection.py"
   ],
-  "digest": "6541f28205fc588e8a210fbccb401d799c6693152b02d73a9d90e4e1b2e02eec"
+  "digest": "33179bee6fb4efe2ed6733a3119a1c9db3afaecb4ce6caf157ac49d13e406834"
  }
 }

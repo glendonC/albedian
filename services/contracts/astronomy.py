@@ -63,6 +63,8 @@ POSE_BEACONS = ("moon", "sun")
 # How a solve used the phone's pointing record, in this order, and where a solution's time and place came from
 POINTING_USES = ("search_hint", "pose_estimate", "moment")
 MOMENT_SOURCES = ("file", "record")
+# Where a pointing hint came from: the phone's pointing record, or a person's alignment of the predicted sky (align-1b)
+POINTING_HINT_SOURCES = ("record", "person")
 MIN_SWEPT_WCS = 2
 MAX_SWEPT_WCS = 27
 # Rounding room when a swept WCS's field of view is compared with the nominal one's, in degrees [proposed: a
@@ -243,6 +245,12 @@ HINT_CENTRE = (
 )
 # The hint's fields that only a heading gives: the hinted centre and its stated uncertainty
 HINT_CENTRE_FIELDS = (("centerAltDeg", "center_alt_deg"), ("centerAzDeg", "center_az_deg"), ("uncertaintyDeg", "uncertainty_deg"))
+HINT_PERSON_POSE = "A pointing hint gives the roll and the field of view exactly when a person aligned it."
+# The fields only a person's alignment gives: the roll and the field of view the person left the drawn sky at
+HINT_PERSON_FIELDS = (("rollDeg", "roll_deg"), ("fovDiagonalDeg", "fov_diagonal_deg"))
+HINT_PERSON_USE = (
+    "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file."
+)
 HINT_OFFSET = (
     "A pointing hint gives the verified centre's offset from its h"
     "inted centre exactly on a calibrated solution whose hint gives one."
@@ -584,6 +592,7 @@ POSE_METHOD = ChoiceRule("poseMethod", POSE_METHODS)
 POSE_BEACON = ChoiceRule("poseBeacon", POSE_BEACONS)
 POINTING_USE = ChoiceRule("pointingUse", POINTING_USES)
 MOMENT_SOURCE = ChoiceRule("momentSource", MOMENT_SOURCES)
+POINTING_HINT_SOURCE = ChoiceRule("pointingHintSource", POINTING_HINT_SOURCES)
 PROJECTION = ChoiceRule("projection", ("TAN",))
 PARITY = ChoiceRule("parity", (1, -1))
 CATALOG_PROVIDER = ChoiceRule("catalogProvider", tuple(CATALOG_PROVIDERS))
@@ -793,10 +802,12 @@ class PoseEstimate(_Contract):
 
 
 class PointingHint(_Contract):
-    """How a solve used the phone's pointing record (`pointingHint`): the record's photo, what it was used as, the
-    hinted frame centre in altitude and azimuth with its stated uncertainty, the verified centre's offset from it on a
+    """How a solve used a pointing hint (`pointingHint`): where it came from (the phone's pointing record, or a person's
+    alignment of the predicted sky, align-1b), the photo, what it was used as, the hinted frame centre in altitude and
+    azimuth with its stated uncertainty, a person's roll and field of view, the verified centre's offset from it on a
     calibrated solution, and where the solution's time and place came from. Never a measurement of the sky."""
 
+    source: Annotated[str, POINTING_HINT_SOURCE]
     source_asset_sha256: Sha256
     used_as: _listed(Annotated[str, POINTING_USE], 1, len(POINTING_USES))
     # Present exactly when the hint was used as a search hint or the pose: only a heading gives a centre
@@ -804,12 +815,15 @@ class PointingHint(_Contract):
     center_az_deg: Optional[Degrees0To360] = None
     uncertainty_deg: Optional[Annotated[float, HINT_UNCERTAINTY]] = None
     verified_center_offset_deg: Optional[Annotated[float, SKY_OFFSET]] = None
+    # Present exactly when a person aligned the hint (align-1b)
+    roll_deg: Optional[Degrees180] = None
+    fov_diagonal_deg: Optional[FieldOfView] = None
     time_from: Annotated[str, MOMENT_SOURCE]
     place_from: Annotated[str, MOMENT_SOURCE]
 
     @model_validator(mode="after")
     def _rules(self) -> PointingHint:
-        issues = hint_centre_issues(self)
+        issues = hint_centre_issues(self) + hint_person_issues(self)
         if not listed_once_each_in_order(self.used_as, POINTING_USES):
             issues.insert(0, (("usedAs",), HINT_USES))
         if issues:
@@ -821,6 +835,16 @@ def hint_centre_issues(hint: Any) -> list[Issue]:
     """The hinted centre and its uncertainty are given exactly when the hint was a search hint or the pose."""
     centred = hint_is_centred(hint.used_as)
     return [((wire,), HINT_CENTRE) for wire, name in HINT_CENTRE_FIELDS if (getattr(hint, name) is not None) != centred]
+
+
+def hint_person_issues(hint: Any) -> list[Issue]:
+    """A person's alignment gives its roll and field of view, and only a person's; it is only a search hint and lends no
+    time or place (align-1b)."""
+    person = hint.source == "person"
+    issues = [((wire,), HINT_PERSON_POSE) for wire, name in HINT_PERSON_FIELDS if (getattr(hint, name) is not None) != person]
+    if person and (tuple(hint.used_as) != ("search_hint",) or hint.time_from != "file" or hint.place_from != "file"):
+        issues.append((("usedAs",), HINT_PERSON_USE))
+    return issues
 
 
 def hint_is_centred(used_as: Any) -> bool:

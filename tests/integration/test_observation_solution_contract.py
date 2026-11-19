@@ -230,6 +230,8 @@ SAYS = {
         "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution "
         "whose hint gives one."
     ),
+    "hint_person_pose": "A pointing hint gives the roll and the field of view exactly when a person aligned it.",
+    "hint_person_use": "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file.",
     "hint_moment": (
         "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
         "observerLocation."
@@ -496,8 +498,8 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
         assumptions=["The attitude and the heading are as the phone's sensors reported them."],
     )
     hint = {
-        "sourceAssetSha256": SHA, "usedAs": ["search_hint", "pose_estimate", "moment"], "centerAltDeg": 33.0, "centerAzDeg": 224.0,
-        "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
+        "source": "record", "sourceAssetSha256": SHA, "usedAs": ["search_hint", "pose_estimate", "moment"], "centerAltDeg": 33.0,
+        "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
     }
     valid["approximate_with_device_attitude_pose"] = _solution(
         "sol-contract-device-pose", "approximate", **moment, solver=SOLVER, wcs=WCS, quality=UNVERIFIED,
@@ -524,6 +526,15 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
         **copy.deepcopy(valid["calibrated_at_the_gate"]),
         "pointingHint": {**moment_only, "usedAs": ["moment"], "timeFrom": "file"},
     }
+    # A person's alignment of the predicted sky (align-1b, D24): only a search hint, lending no time or place, with the
+    # roll and the field of view the person left the drawn sky at; on a calibrated solve, the verified centre's offset
+    person = {"source": "person", "sourceAssetSha256": SHA, "usedAs": ["search_hint"], "centerAltDeg": 58.0,
+              "centerAzDeg": 297.0, "uncertaintyDeg": 10.0, "rollDeg": 7.0, "fovDiagonalDeg": 66.0,
+              "timeFrom": "file", "placeFrom": "file"}  # fmt: skip
+    valid["calibrated_with_a_persons_alignment"] = {
+        **copy.deepcopy(valid["calibrated_at_the_gate"]), "pointingHint": {**person, "verifiedCenterOffsetDeg": 2.25},
+    }
+    valid["predicted_only_with_a_persons_alignment"] = {**copy.deepcopy(valid["predicted_only"]), "pointingHint": person}
     # In an approximate solution, the status a pose estimate has, an observed finding may hold the pose fit's residual
     # (the lead's ruling of 2026-11-12 on the observed Moon; the horizon solver writes its beacon so)
     with_fit_residual = copy.deepcopy(valid["approximate"])
@@ -756,6 +767,30 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         drop(["observedAtUTC"]), says=(SAYS["hint_moment"],))
     bad("hint_without_a_place", hinted, "a hint on a solution with no place", ["observerLocation"],
         drop(["observerLocation"]), says=(SAYS["hint_moment"],))
+    # A person's alignment (align-1b)
+    aligned, aligned_calibrated = "predicted_only_with_a_persons_alignment", "calibrated_with_a_persons_alignment"
+    for key, value in (("rollDeg", 7.0), ("fovDiagonalDeg", 66.0)):
+        bad(f"record_hint_with_{key}", searched, f"a record's hint that gives the person's {key}", [f"pointingHint.{key}"],
+            put(["pointingHint", key], value), says=(SAYS["hint_person_pose"],))
+        bad(f"persons_alignment_without_{key}", aligned, f"a person's alignment with no {key}", [f"pointingHint.{key}"],
+            drop(["pointingHint", key]), says=(SAYS["hint_person_pose"],))
+    bad("persons_alignment_as_the_pose", device, "a person's alignment used as a pose from the device attitude",
+        ["pointingHint.usedAs"], put(["pointingHint"], {**valid[aligned]["pointingHint"], "usedAs": ["search_hint", "pose_estimate"]}),
+        says=(SAYS["hint_person_use"],))
+    bad("persons_alignment_lending_a_time", aligned, "a person's alignment that lends the photo a time",
+        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["search_hint", "moment"]), put(["pointingHint", "timeFrom"], "record"),
+        says=(SAYS["hint_person_use"],))
+    bad("persons_alignment_lending_a_place", aligned, "a person's alignment whose place came from the record",
+        ["pointingHint.usedAs"], put(["pointingHint", "placeFrom"], "record"), says=(SAYS["hint_person_use"],))
+    bad("persons_alignment_without_its_offset", aligned_calibrated, "a calibrated solution's alignment with no verified offset",
+        ["pointingHint.verifiedCenterOffsetDeg"], drop(["pointingHint", "verifiedCenterOffsetDeg"]), says=(SAYS["hint_offset"],))
+    bad("hint_without_a_source", searched, "a pointing hint that names no source", ["pointingHint.source"],
+        drop(["pointingHint", "source"]))
+    bad("hint_of_another_source", searched, "a pointing hint from an unknown source", ["pointingHint.source"],
+        put(["pointingHint", "source"], "voice"))
+    for key, value in (("rollDeg", 180.5), ("rollDeg", -180.5), ("fovDiagonalDeg", 0.0), ("fovDiagonalDeg", 175.5)):
+        bad(f"persons_alignment_with_{key}_{value}", aligned, f"a person's alignment with {key} {value}", [f"pointingHint.{key}"],
+            put(["pointingHint", key], value))
     bad("swept_wcs_on_another_centre_pixel", "approximate_with_pose", "a swept WCS on another crpixX",
         ["poseEstimate.sweptWcs.1"], put(["poseEstimate", "sweptWcs", 1, "crpixX"], 480.5), says=(SAYS["swept_crpix"],))
     bad("swept_wcs_same_scale_other_field_of_view", "approximate_with_pose",
@@ -1082,7 +1117,8 @@ def build_fixture() -> dict[str, Any]:
         "SolverIdentity": {"sample": "calibrated", "path": ["solver"]},
         "ObserverLocation": {"sample": "calibrated", "path": ["observerLocation"]},
         "PoseEstimate": {"sample": "approximate_with_pose", "path": ["poseEstimate"]},
-        "PointingHint": {"sample": "approximate_with_device_attitude_pose", "path": ["pointingHint"]},
+        # A person's alignment holds every field of a hint (align-1b), so each field's edges are tried on it
+        "PointingHint": {"sample": "predicted_only_with_a_persons_alignment", "path": ["pointingHint"]},
     }
     with_unnamed_keys = patched(
         valid["approximate"],

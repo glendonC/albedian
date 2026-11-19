@@ -252,6 +252,7 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     expect(fixture.rules['pointingUse']!.values).toEqual(PointingHintSchema.innerType().shape.usedAs.element.options);
     expect(fixture.rules['momentSource']!.values).toEqual(PointingHintSchema.innerType().shape.timeFrom.options);
     expect(fixture.rules['momentSource']!.values).toEqual(PointingHintSchema.innerType().shape.placeFrom.options);
+    expect(fixture.rules['pointingHintSource']!.values).toEqual(PointingHintSchema.innerType().shape.source.options);
     expect(fixture.rules['catalogProvider']!.values).toEqual(referenceShape.provider.options);
     expect(fixture.rules['catalogObjectType']!.values).toEqual(referenceShape.objectType.options);
     expect(fixture.rules['catalogDistanceMethod']!.values).toEqual(referenceShape.bailerJonesDistancePc.unwrap().shape.method.options);
