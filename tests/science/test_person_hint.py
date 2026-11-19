@@ -16,6 +16,8 @@ Covers, at a synthetic moment and an open-ocean place (never an owner's):
   horizon's right side lower), so the solver can try the pose itself before searching near it
 - Those three directions as the camera's rows in the solver's own (refracted) sky frame, the camera coming back
   from them by a property over the sky and every roll; a mirrored set gives no camera
+- The upright frame the person aligned turned to the stored frame (the display's quarter turns, pose_estimate's
+  upright_vector), so the solver's camera is the stored pixels'; a mirrored display gives none
 """
 
 from __future__ import annotations
@@ -29,7 +31,14 @@ import pytest
 
 from services.contracts.alignment import PERSON_ALIGNMENT_UNCERTAINTY_DEG, PersonAlignment
 from services.science.catalog import altaz_to_icrs, icrs_to_altaz
-from services.science.person_hint import AXIS_STEP_DEG, PersonHint, camera_rotation, person_axes_icrs, person_hint
+from services.science.person_hint import (
+    AXIS_STEP_DEG,
+    PersonHint,
+    camera_rotation,
+    person_axes_icrs,
+    person_hint,
+    stored_axes_icrs,
+)
 
 MOMENT = "2031-03-20T09:30:00Z"
 PLACE = (20.0, -140.0)
@@ -216,3 +225,37 @@ def test_the_persons_pose_becomes_a_camera_looking_where_the_person_put_the_cent
     assert built is not None
     ra, dec = frame.sky_vec_to_icrs(built[2:3])
     assert (float(ra[0]), float(dec[0])) == pytest.approx(points[0], abs=1e-6)
+
+
+# ---- The upright frame the person aligned, turned to the stored frame the solver's camera is ----
+
+
+def test_with_no_turn_the_stored_frames_axes_are_the_upright_ones() -> None:
+    a = alignment(alt=30.0, az=80.0, roll=12.0)
+    assert stored_axes_icrs(a, MOMENT, *PLACE, quarter_turns_clockwise=0, mirrored=False) == person_axes_icrs(a, MOMENT, *PLACE)
+
+
+@pytest.mark.parametrize("turns", [1, 2, 3])
+def test_a_turned_frames_stored_right_and_down_are_where_the_display_shows_them(turns: int) -> None:
+    from services.science.pose_estimate import upright_vector
+
+    a = alignment(alt=30.0, az=80.0, roll=12.0)
+    centre, right, down = person_axes_icrs(a, MOMENT, *PLACE)
+    stored = stored_axes_icrs(a, MOMENT, *PLACE, quarter_turns_clockwise=turns, mirrored=False)
+    assert stored is not None and stored[0] == centre
+    frame = sky_frame()
+    rot = camera_rotation((centre, right, down), frame)
+    turned = camera_rotation(stored, frame)
+    assert rot is not None and turned is not None
+    # The stored right shows as upright_vector(1, 0) in the upright frame, the stored down as upright_vector(0, 1)
+    for row, (sx, sy) in ((0, (1.0, 0.0)), (1, (0.0, 1.0))):
+        ux, uy = upright_vector(sx, sy, turns)
+        # Within 0.06 degree: the refracted sky is a little squeezed upward (about 0.02 degree over the half-degree
+        # step at 30 degrees up), so a camera built from its right step and one built from its down step differ by
+        # that; far inside the solver's first association of 1.15 degrees
+        assert np.allclose(turned[row], ux * rot[0] + uy * rot[1], atol=1e-3)
+    assert np.allclose(turned[2], rot[2], atol=1e-9)
+
+
+def test_a_mirrored_frame_gives_no_stored_axes() -> None:
+    assert stored_axes_icrs(alignment(), MOMENT, *PLACE, quarter_turns_clockwise=1, mirrored=True) is None

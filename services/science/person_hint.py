@@ -54,14 +54,26 @@ def person_axes_icrs(
     turns the picture clockwise, as a pose estimate's roll does (services/science/pose_estimate.py, `level_centres`:
     the roll undone is dx = ux cos r + uy sin r, dy = -ux sin r + uy cos r), so the frame's right is
     x0 cos r - y0 sin r and its down x0 sin r + y0 cos r: a positive roll puts the horizon's right side lower."""
-    step = math.radians(AXIS_STEP_DEG if step_deg is None else float(step_deg))
+    z, right, down = _upright_axes(alignment)
+    return _axes_icrs(z, right, down, obs_utc_iso, lat_deg, lon_deg, step_deg)
+
+
+def _upright_axes(alignment: PersonAlignment) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The upright frame's axis, right and down in the drawn sky's horizontal (east, north, up), as person_axes_icrs
+    states them."""
     a, big_a = math.radians(float(alignment.center_alt_deg)), math.radians(float(alignment.center_az_deg))
     r = math.radians(float(alignment.roll_deg))
     z = np.array([math.cos(a) * math.sin(big_a), math.cos(a) * math.cos(big_a), math.sin(a)])
     x0 = np.array([math.cos(big_a), -math.sin(big_a), 0.0])
     y0 = np.cross(z, x0)
-    right = x0 * math.cos(r) - y0 * math.sin(r)
-    down = x0 * math.sin(r) + y0 * math.cos(r)
+    return z, x0 * math.cos(r) - y0 * math.sin(r), x0 * math.sin(r) + y0 * math.cos(r)
+
+
+def _axes_icrs(
+    z: np.ndarray, right: np.ndarray, down: np.ndarray, obs_utc_iso: str, lat_deg: float, lon_deg: float,
+    step_deg: float | None,
+) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+    step = math.radians(AXIS_STEP_DEG if step_deg is None else float(step_deg))
     points = []
     for vector in (z, z * math.cos(step) + right * math.sin(step), z * math.cos(step) + down * math.sin(step)):
         east, north, up = (float(v) for v in vector / np.linalg.norm(vector))
@@ -69,6 +81,34 @@ def person_axes_icrs(
         az = math.degrees(math.atan2(east, north)) % 360.0
         points.append(altaz_to_icrs(alt, az, lat_deg, lon_deg, obs_utc_iso, refracted=False))
     return points[0], points[1], points[2]
+
+
+def stored_axes_icrs(
+    alignment: PersonAlignment,
+    obs_utc_iso: str,
+    lat_deg: float,
+    lon_deg: float,
+    *,
+    quarter_turns_clockwise: int,
+    mirrored: bool,
+    step_deg: float | None = None,
+) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]] | None:
+    """`person_axes_icrs` for the stored frame the solver's camera is: the person aligned the upright frame (the stored
+    pixels turned by the display's quarter turns clockwise, SourceAsset.displayOrientation), so the stored right is the
+    upright offset upright_vector(1, 0, turns) and the stored down upright_vector(0, 1, turns)
+    (services/science/pose_estimate.py). None for a mirrored display, which no camera of the solver's takes."""
+    if mirrored:
+        return None
+    turns = int(quarter_turns_clockwise) % 4
+    z, right, down = _upright_axes(alignment)
+
+    def upright(dx: float, dy: float) -> tuple[float, float]:
+        for _ in range(turns):
+            dx, dy = -dy, dx
+        return dx, dy
+
+    (rx, ry), (dx, dy) = upright(1.0, 0.0), upright(0.0, 1.0)
+    return _axes_icrs(z, right * rx + down * ry, right * dx + down * dy, obs_utc_iso, lat_deg, lon_deg, step_deg)
 
 
 def camera_rotation(axes_icrs: Sequence[tuple[float, float]], sky_frame: Any) -> np.ndarray | None:
