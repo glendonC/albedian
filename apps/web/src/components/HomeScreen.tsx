@@ -51,6 +51,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // the home, and Credits in the home's place, at once
   const [goneAtOnce, setGoneAtOnce] = useState(false);
   const drop = useLeaving(fileOver, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
+  const credits = useLeaving(creditsOpen, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
   const entered = useRef(0);
   const chosen = useRef(onFileChosen);
   chosen.current = onFileChosen;
@@ -109,18 +110,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     home.current?.querySelector<HTMLButtonElement>('.home-top .look-second')?.focus();
   }, [creditsOpen]);
 
-  if (creditsOpen) {
-    return (
-      <CreditsPage
-        onBack={() => {
-          returnFocus.current = true;
-          setCreditsOpen(false);
-        }}
-      />
-    );
-  }
+  // Credits in the home's place; Back brings the home back at once beneath it while the page leaves over it (the
+  // motion record: its words out, the page frame out), the same page, read once
+  const creditsPage = credits.mounted ? (
+    <CreditsPage
+      leaving={credits.leaving}
+      onBack={() => {
+        returnFocus.current = true;
+        setCreditsOpen(false);
+      }}
+    />
+  ) : null;
 
   return (
+    <>
+    {!creditsOpen && (
     <div className="home-screen" data-testid="home-screen" data-hud-interactive="true" ref={home}>
       <div className="home-sky" style={homeBackdropStyle()} aria-hidden="true" />
       <div className="home-shade" style={homeShadeStyle()} aria-hidden="true" />
@@ -186,5 +190,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       )}
     </div>
+    )}
+    {creditsPage}
+    </>
   );
 };

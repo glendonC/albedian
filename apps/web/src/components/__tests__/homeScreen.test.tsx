@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
 import { HOME_SCREEN, choosePhotoOnHome } from './homeEntry.js';
+import { MOTION_TOKENS } from '@albedian/design-system';
 
 const stub = vi.hoisted(() => ({ soundOn: false }));
 
@@ -166,17 +167,32 @@ describe('HomeScreen: the approved home, word for word', () => {
     expect(buttonNamed('Sound')!.getAttribute('aria-pressed')).toBe('false');
   });
 
+  // The motion record (MOTION-READY-web.md, "Credits page"): out, the page's words go (words out) and the page with them
+  // (frame out, 300 ms), over the home, which is back at once beneath it
   it('opens Credits in place of the home and comes back to it, focus on Credits again', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
-    renderHome();
-    act(() => (q('button.look-second') as HTMLButtonElement).click());
-    expect(q(HOME_SCREEN)).toBeNull();
-    expect(q('[data-testid="credits-page"]')).not.toBeNull();
-    act(() => buttonNamed('Back')!.click());
-    expect(q('[data-testid="credits-page"]')).toBeNull();
-    expect(q(HOME_SCREEN)).not.toBeNull();
-    expect(document.activeElement).toBe(q('button.look-second'));
-    vi.unstubAllGlobals();
+    vi.useFakeTimers();
+    try {
+      renderHome();
+      act(() => (q('button.look-second') as HTMLButtonElement).click());
+      expect(q(HOME_SCREEN)).toBeNull();
+      const page = q('[data-testid="credits-page"]');
+      expect(page).not.toBeNull();
+      act(() => buttonNamed('Back')!.click());
+      expect(q(HOME_SCREEN)).not.toBeNull();
+      expect(document.activeElement).toBe(q(`${HOME_SCREEN} .home-top .look-second`));
+      // The same page, not read again, leaving over the home and taking no input
+      expect(q('[data-testid="credits-page"]')).toBe(page);
+      expect(page!.classList.contains('is-leaving')).toBe(true);
+      expect(page!.hasAttribute('inert')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.frameOutMs - 1));
+      expect(q('[data-testid="credits-page"]')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="credits-page"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

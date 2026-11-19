@@ -500,6 +500,10 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     ['.credits-page', { animation: 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both' }],
     ['.credits-title', { animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' }],
     ['.credits-row', { animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--credits-i) + 1)) both' }],
+    // Out: the words go in words out, and the page in frame out over the home
+    ['.credits-page.is-leaving', { animation: 'look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both' }],
+    ['.credits-page.is-leaving .credits-title', { animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' }],
+    ['.credits-page.is-leaving .credits-row', { animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' }],
     ['.credits-row:last-child', { 'border-bottom': '1px solid var(--look-hair)' }],
     ['.credits-label', { 'font-size': '13px', color: 'var(--look-ink-3)', 'letter-spacing': '-0.005em' }],
     ['.credits-lines', { margin: '0', 'font-size': '16px', 'line-height': '1.4', 'letter-spacing': '-0.01em' }],

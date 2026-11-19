@@ -73,10 +73,11 @@ async function readRecords(): Promise<{ loaded: LoadedRecord[] } | { failures: s
  * ask that changes be indicated (the verdict on credits-1). Until the records arrive the page shows only its title: no
  * count, no spinner.
  */
-export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+export const CreditsPage: React.FC<{ onBack: () => void; leaving?: boolean }> = ({ onBack, leaving = false }) => {
   const [state, setState] = useState<CreditsState>({ kind: 'reading' });
   const back = useRef(onBack);
-  back.current = onBack;
+  // Leaving (the motion record), the page goes over the home and takes nothing: Esc is the home's again
+  back.current = leaving ? () => {} : onBack;
   const pageRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, []);
 
   return (
-    <section className="credits-page" data-testid="credits-page" aria-labelledby="credits-title" ref={pageRef} tabIndex={-1}>
+    <section className={leaving ? 'credits-page is-leaving' : 'credits-page'} data-testid="credits-page" aria-labelledby="credits-title" ref={pageRef} tabIndex={-1} inert={leaving}>
       <IconButton label="Back" icon="arrow-left" onClick={() => back.current()} />
       <h1 id="credits-title" className="credits-title">
         Credits
