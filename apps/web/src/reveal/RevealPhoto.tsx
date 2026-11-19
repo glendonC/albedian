@@ -13,6 +13,9 @@ import { PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
 export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
+// How long the reveal is arriving: its marks' span, then the status, In this photo and Ask out loud, 20 ms apart (the
+// motion record). While it is, the status waits for the marks; after, a view change brings it in at the words' delay.
+export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
 
 /** What the view there is, word for word from the approved fly record: the spec's sentence, then the layer's sources. */
 const THERE_DISCLOSURE =
@@ -160,9 +163,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const arrival = markArrivalRanks(marks);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
+  const [arriving, setArriving] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setArriving(false), REVEAL_ARRIVAL_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true">
+    <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
       {rect && <PhotoCorners rect={rect} />}
 

@@ -12,7 +12,7 @@ import { SIDE_FADE, SourcePhotoStage } from '../../components/SourcePhotoStage.j
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { cornerPaths } from '../cornerPaths.js';
 import { leaderPath, revealMarks } from '../revealMarks.js';
-import { REAL_SKY_FADE_MS, RevealPhoto } from '../RevealPhoto.js';
+import { REAL_SKY_FADE_MS, REVEAL_ARRIVAL_MS, RevealPhoto } from '../RevealPhoto.js';
 import { markArrivalRanks, revealMarks as marksOf } from '../revealMarks.js';
 import { MOTION_TOKENS } from '@albedian/design-system';
 
@@ -865,7 +865,20 @@ describe('the status line comes in at its moment\'s time', () => {
     expect(q('[data-testid="reveal-status"]')).not.toBe(before);
   });
 
-  it('times the line in motion.css: 120 ms after a change, between the halves there', () => {
+  it('marks the reveal as arriving until its words are in, and then no longer', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated());
+      expect(q('[data-testid="reveal-photo"]')!.getAttribute('data-arriving')).toBe('true');
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      expect(q('[data-testid="reveal-photo"]')!.hasAttribute('data-arriving')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(REVEAL_ARRIVAL_MS).toBe(MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs);
+  });
+
+  it('times the line in motion.css: 120 ms after a change, after the marks on arrival, between the halves there', () => {
     const rules: Record<string, Record<string, string>> = {};
     postcss.parse(motionCss).walkRules((rule) => {
       if (rule.parent?.type !== 'root') return;
@@ -875,6 +888,7 @@ describe('the status line comes in at its moment\'s time', () => {
       });
     });
     expect(rules['.reveal-status']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
+    expect(rules['[data-arriving] .reveal-status']).toEqual({ 'animation-delay': 'calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in))' });
     expect(rules['.reveal-status[data-moment="there"]']).toEqual({ 'animation-delay': 'var(--look-mo-dur-camera-half)' });
   });
 });

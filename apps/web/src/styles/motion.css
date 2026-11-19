@@ -110,10 +110,14 @@
 }
 
 /* The status line: each moment (your photo, Real sky, there, nothing matched) is its own element, so a view change
-   brings the new line in at the words' delay, 120 ms after the old one went; there, it comes in between the flight's
-   two halves, with the readout. */
+   brings the new line in at the words' delay, 120 ms after the old one went. While the reveal arrives it waits for the
+   marks' span instead; there, it comes in between the flight's two halves, with the readout. */
 .reveal-status {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+[data-arriving] .reveal-status {
+  animation-delay: calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in));
 }
 
 .reveal-status[data-moment="there"] {
