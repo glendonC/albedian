@@ -240,6 +240,9 @@ class ClipProbe:
     other_streams: int
     # The video stream's display orientation as ingest reads it ({quarterTurnsClockwise, mirrored}), or None
     display_orientation: Optional[dict] = None
+    # How long the last frame is shown, in the time base: the stream's presentation end (its start plus its duration)
+    # minus the last frame time; None where the stream does not say, or says an end not after its last frame
+    last_frame_duration: Optional[int] = None
 
     @property
     def frame_count(self) -> int:
@@ -273,6 +276,17 @@ def _pixel_format(name: str) -> str:
     if depth and int(depth.group(1)) > 10:
         raise ClipError("unsupported", "a clip of more than 10 bits")
     raise ClipError("unsupported", "a clip whose pixels are not planar Y'CbCr at 8 or 10 bits")
+
+
+def shown_last(stream: Mapping[str, Any], last_time: int) -> Optional[int]:
+    """How long a video stream shows its last frame: its start plus its duration, both in its time base as ffprobe
+    reports them (`start_pts`, `duration_ts`), minus the last frame time; None where either is not a whole number or
+    the end is not after the last frame."""
+    start, duration = stream.get("start_pts"), stream.get("duration_ts")
+    if not (isinstance(start, int) and isinstance(duration, int)) or isinstance(start, bool) or isinstance(duration, bool):
+        return None
+    shown = start + duration - last_time
+    return shown if shown > 0 else None
 
 
 def describe_streams(streams: Sequence[Mapping[str, Any]], video_packets: Sequence[Mapping[str, Any]]) -> ClipProbe:
@@ -329,6 +343,7 @@ def describe_streams(streams: Sequence[Mapping[str, Any]], video_packets: Sequen
             audio.append(AudioStreamFacts(int(s["index"]), str(s.get("codec_name") or ""), audio_base))
     hint = display_matrix_hint(_display_matrix(dict(stream)))
     orientation = None if hint is None else {key: hint[key] for key in ("quarterTurnsClockwise", "mirrored")}
+    last_duration = shown_last(stream, times[-1])
     return ClipProbe(
         video=VideoFormat(width, height, pix_fmt, colour),
         video_index=int(stream["index"]),
@@ -337,6 +352,7 @@ def describe_streams(streams: Sequence[Mapping[str, Any]], video_packets: Sequen
         audio=tuple(audio),
         other_streams=len(streams) - 1 - len(audio),
         display_orientation=orientation,
+        last_frame_duration=last_duration,
     )
 
 
@@ -774,11 +790,13 @@ class ClipEncoder:
     it, and only it."""
 
     def __init__(self, out: Path, video: VideoFormat, *, time_base: Fraction, frame_times: Sequence[int], container: str,
-                 audio_source: Optional[Path] = None, crf: int = DEFAULT_CRF, preset: str = DEFAULT_PRESET) -> None:
+                 audio_source: Optional[Path] = None, crf: int = DEFAULT_CRF, preset: str = DEFAULT_PRESET,
+                 last_duration: Optional[int] = None) -> None:
         self._out, self._video, self._time_base = out, video, time_base
         self._times = tuple(frame_times)
         self._container, self._audio_source = container, audio_source
         self._crf, self._preset = crf, preset
+        self._last_duration = last_duration
         self._call: Optional[guarded_call.GuardedCall] = None
         self._drain: Optional[threading.Thread] = None
         self._written = 0
@@ -792,10 +810,15 @@ class ClipEncoder:
         video = self._video
         expression = pts_expression(self._times)
         den = self._time_base.denominator
-        # The nominal rate only seeds the encoder's rate control; every frame's own time is stamped by setpts. It is
-        # the commonest gap's rate, or one frame a second for a clip of one frame [proposed: any positive rate works].
+        # Every frame's own time is stamped by setpts; the input's rate gives each frame its duration, and the muxer
+        # keeps the last frame's as how long that frame is shown. So the rate is one over the original's last frame
+        # duration where it is known [tested: restore-5b, every last duration of 1 to 60 ticks on regular lists in mov
+        # and mp4]; else the commonest gap's rate, or one frame a second for a clip of one frame [proposed: any positive
+        # rate keeps the frame times].
         gaps = Counter(b - a for a, b in zip(self._times, self._times[1:]))
         rate = 1 / (gaps.most_common(1)[0][0] * self._time_base) if gaps else Fraction(1)
+        if self._last_duration is not None and self._last_duration > 0:
+            rate = 1 / (self._last_duration * self._time_base)
         tags = video.colour
         # The four colour tags ride on the frames through setparams, which the encoder copies into the stream
         params = [f"{key}={value}" for key, value in (("range", tags.range), ("colorspace", tags.matrix),
@@ -1124,6 +1147,10 @@ class StoredClipCheck:
     audio_streams_equal: bool
     orientation_equal: bool
     rejection: Optional[Literal["frame_times_differ", "audio_differs"]]
+    # Whether the variant shows its last frame as long as the original does; True where the original does not say.
+    # Recorded, not part of `passed`: the encoder's decode timeline can move the end by a few ticks on clips whose
+    # gaps vary at random, while every frame time stays the original's [tested: restore-5b report]
+    last_duration_equal: bool = True
 
     @property
     def passed(self) -> bool:
@@ -1139,10 +1166,14 @@ def check_stored_clip(variant: Path, source: Path, probe: ClipProbe, *, audio_ha
     kinds = [s.get("codec_type") for s in streams]
     video_frames = 0
     times_equal = False
+    last_equal = probe.last_frame_duration is None
     if kinds.count("video") == 1:
         time_base, times = packet_times(variant, "v:0", written_here=True)
         video_frames = len(times)
         times_equal = time_base == probe.time_base and times == probe.frame_times
+        if not last_equal and times:
+            video_stream = next(s for s in streams if s.get("codec_type") == "video")
+            last_equal = shown_last(video_stream, times[-1]) == probe.last_frame_duration
     checks: list[AudioCheck] = []
     audio_indexes = [int(s["index"]) for s in streams if s.get("codec_type") == "audio"]
     for k, index in enumerate(audio_indexes):
@@ -1160,7 +1191,7 @@ def check_stored_clip(variant: Path, source: Path, probe: ClipProbe, *, audio_ha
         rejection = "frame_times_differ"
     elif not audio_equal:
         rejection = "audio_differs"
-    return StoredClipCheck(video_frames, times_equal, tuple(checks), audio_equal, orientation_equal, rejection)
+    return StoredClipCheck(video_frames, times_equal, tuple(checks), audio_equal, orientation_equal, rejection, last_equal)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -1233,7 +1264,7 @@ def copy_clip(source: Path, out: Path, *, container: str, audio_hashes: Sequence
     try:
         with ClipDecoder(source, probe) as decoder, ClipEncoder(
             encoded, probe.video, time_base=probe.time_base, frame_times=probe.frame_times, container=container,
-            audio_source=source if probe.audio else None, crf=crf, preset=preset,
+            audio_source=source if probe.audio else None, crf=crf, preset=preset, last_duration=probe.last_frame_duration,
         ) as encoder:
             for frame in decoder:
                 encoder.write(frame.planes)
@@ -1262,7 +1293,7 @@ __all__ = [
     "EncodedClip", "Frame", "PeakMemory", "PlaneLayout", "StoredClipCheck", "VideoFormat", "check_stored_clip",
     "container_for", "copy_clip", "decode_command", "describe_streams", "display_arguments", "display_orientation_supported",
     "encoder_pixel_formats", "ffmpeg_version", "packet_times", "peak_memory", "probe_clip", "pts_expression",
-    "read_display_orientation", "reset_capabilities", "stream_packet_hash", "trial_audio_copy", "with_display_orientation",
+    "read_display_orientation", "reset_capabilities", "shown_last", "stream_packet_hash", "trial_audio_copy", "with_display_orientation",
     "audio_difference", "AUDIO_DIFFERENCES",
 ]
 

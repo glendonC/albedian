@@ -13,6 +13,8 @@ Covers:
 - The decode hands over the decoder's own samples (each frame's MD5 equals ffmpeg's framemd5, no conversion is
   inserted) with each frame's own integer time; a frame time that does not match is refused (REQ-RST-3.7)
 - P-RST-15: any strictly increasing list of frame times, in each time base of a stated set, comes back exactly
+- restore-5b: the last frame is shown as long as the original shows it, on regular frame time lists; the check on
+  the stored clip records whether it is (export-and-provenance task 3)
 - P-RST-16: every audio stream keeps ingest's packet hash and its packet times; a codec the container refuses fails
   with the fixed sentence and leaves no file
 - P-RST-17: the copy's peak memory for 300 frames is within a stated margin of its peak for 30
@@ -24,6 +26,7 @@ Covers:
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import io
 import itertools
@@ -514,6 +517,103 @@ def test_the_frame_time_expression_has_a_step_for_each_uneven_gap_and_a_bound() 
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# restore-5b: the last frame keeps the original's duration (export-and-provenance task 3)
+# ---------------------------------------------------------------------------------------------------------------
+
+
+def stored_last_duration(path: Path) -> int:
+    """The video's presentation end (its start plus its duration, in its time base) minus its last frame time, read
+    here with ffprobe, independently of clip_io: how long the last frame is shown."""
+    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=start_pts,duration_ts",
+                          "-of", "json", str(path)], capture_output=True, text=True, check=True)
+    stream = json.loads(out.stdout)["streams"][0]
+    return int(stream["start_pts"]) + int(stream["duration_ts"]) - video_packet_times(path)[1][-1]
+
+
+def test_the_probe_reads_how_long_the_last_frame_is_shown(tmp_path: Path) -> None:
+    # The uneven test clip's last gap is 22 ticks of 1/600 and its last frame is shown for 20
+    src = make_clip(tmp_path / "src.mov", seconds=1.0)
+    probe = clip_io.probe_clip(src)
+    assert probe.frame_times[-1] - probe.frame_times[-2] == 22
+    assert probe.last_frame_duration == stored_last_duration(src) == 20
+    # A description without the stream's start or duration, or with an end not after the last frame, has none
+    assert clip_io.describe_streams([STREAM], PACKETS).last_frame_duration is None
+    assert clip_io.describe_streams([{**STREAM, "start_pts": 0, "duration_ts": 41}], PACKETS).last_frame_duration == 21
+    assert clip_io.describe_streams([{**STREAM, "start_pts": 0, "duration_ts": 20}], PACKETS).last_frame_duration is None
+    assert clip_io.describe_streams([{**STREAM, "start_pts": "0", "duration_ts": 41}], PACKETS).last_frame_duration is None
+    assert clip_io.describe_streams([{**STREAM, "start_pts": True, "duration_ts": 41}], PACKETS).last_frame_duration is None
+
+
+def test_the_variant_shows_its_last_frame_as_long_as_the_original_does(tmp_path: Path) -> None:
+    src = make_clip(tmp_path / "src.mov", seconds=1.0)
+    out = tmp_path / "variant.mov"
+    copy = clip_io.copy_clip(src, out, container="mov", audio_hashes=[], display_orientation=None)
+    assert copy.kept
+    assert stored_last_duration(out) == stored_last_duration(src) == 20
+    assert copy.check.last_duration_equal
+
+
+# The lists on which the encoder's decode timeline leaves the end where the last duration puts it: on these, every
+# last duration from 1 to 60 ticks and both containers came back exact (360 of 360) [tested: restore-5b report]. On
+# lists whose gaps vary at random by up to 5 ticks the end moved by 1 to 6 ticks in 5 of 16 [tested: restore-5b
+# report]; the check records that, it does not refuse it
+LAST_DURATION_LISTS = {"owner-like": OWNER_LIKE_TIMES, "steady": [20 * k for k in range(90)], "one frame": [0]}
+
+
+@settings(max_examples=12, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture, HealthCheck.too_slow])
+@example(name="owner-like", last=20, container="mov")
+@example(name="owner-like", last=1, container="mp4")
+@example(name="steady", last=60, container="mov")
+@example(name="one frame", last=7, container="mp4")
+@given(name=st.sampled_from(sorted(LAST_DURATION_LISTS)), last=st.integers(1, 60), container=st.sampled_from(["mov", "mp4"]))
+def test_p_rst_15_the_last_frame_is_shown_for_the_duration_it_is_given(tmp_path_factory: pytest.TempPathFactory, name: str,
+                                                                       last: int, container: str) -> None:
+    tmp_path = tmp_path_factory.mktemp("last-duration")
+    times = LAST_DURATION_LISTS[name]
+    video = synthetic_format()
+    out = tmp_path / f"variant.{container}"
+    with clip_io.ClipEncoder(out, video, time_base=Fraction(1, 600), frame_times=times, container=container,
+                             last_duration=last) as encoder:
+        for k in range(len(times)):
+            encoder.write(synthetic_planes(video, k))
+        encoder.finish()
+    assert video_packet_times(out) == ("1/600", times)
+    assert stored_last_duration(out) == last
+
+
+@pytest.mark.parametrize("last", [None, 0, -5])
+def test_without_a_last_duration_the_last_frame_is_shown_for_the_commonest_gap(tmp_path: Path, last) -> None:
+    times = [20 * k for k in range(12)]
+    video = synthetic_format()
+    out = tmp_path / "variant.mov"
+    with clip_io.ClipEncoder(out, video, time_base=Fraction(1, 600), frame_times=times, container="mov", last_duration=last) as encoder:
+        for k in range(len(times)):
+            encoder.write(synthetic_planes(video, k))
+        encoder.finish()
+    assert video_packet_times(out) == ("1/600", times)
+    assert stored_last_duration(out) == 20
+
+
+def test_the_check_says_when_the_last_frame_is_shown_for_another_duration(tmp_path: Path) -> None:
+    src = make_clip(tmp_path / "src.mov", seconds=1.0)
+    probe = clip_io.probe_clip(src)
+    video = probe.video
+    out = tmp_path / "variant.mov"
+    with clip_io.ClipEncoder(out, video, time_base=probe.time_base, frame_times=probe.frame_times, container="mov",
+                             last_duration=probe.last_frame_duration + 3) as encoder:
+        for k in range(probe.frame_count):
+            encoder.write(synthetic_planes(video, k))
+        encoder.finish()
+    check = clip_io.check_stored_clip(out, src, probe, audio_hashes=[], display_orientation=None)
+    assert check.frame_times_equal and not check.last_duration_equal
+    # Recorded, not refused: every frame time is the original's
+    assert check.passed and check.rejection is None
+    # An original that does not say how long its last frame is shown has nothing to equal
+    unknown = dataclasses.replace(probe, last_frame_duration=None)
+    assert clip_io.check_stored_clip(out, src, unknown, audio_hashes=[], display_orientation=None).last_duration_equal
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # P-RST-16: every audio stream copied bit for bit
 # ---------------------------------------------------------------------------------------------------------------
 
@@ -815,6 +915,12 @@ def test_each_of_the_eight_display_orientations_reads_back_through_ingests_reade
         assert ingest_orientation(out) == (None if identity else form)
         assert clip_io.read_display_orientation(out, written_here=True) == (None if identity else form)
         assert video_packet_times(out) == video_packet_times(src)
+        # The check says whether the last frame is shown as long as the original's, on a stream that starts late. A
+        # clip shown as stored has no second pass and keeps it; the stream copy that turns a clip moved the end by 3
+        # ticks on this clip [tested: restore-5b report], recorded and not refused
+        assert copy.check.last_duration_equal == (stored_last_duration(out) == stored_last_duration(src))
+        if identity:
+            assert copy.check.last_duration_equal
         assert sorted(p.name for p in tmp_path.iterdir()) == ["src.mov", "variant.mov"]
     else:
         with pytest.raises(clip_io.ClipError) as refused:
@@ -2500,10 +2606,13 @@ def test_the_owners_clips_copy_through_with_their_frame_times_and_audio(tmp_path
         counted = copy.frames == len(framemd5(clip.path))
         print(f"clip {clip.label}: frames {copy.frames}, every frame time equal {copy.check.frame_times_equal}, "
               f"audio streams {len(copy.check.audio)} with equal hash and times {all(a.hash_equal and a.times_equal for a in copy.check.audio)}, "
-              f"orientation equal {copy.check.orientation_equal}, process peak {copy.process_peak.self_bytes // 2**20} MiB")
+              f"orientation equal {copy.check.orientation_equal}, last frame shown as long {copy.check.last_duration_equal}, "
+              f"process peak {copy.process_peak.self_bytes // 2**20} MiB")
         passed = copy.check.passed
+        kept_last = copy.check.last_duration_equal
         assert counted, "a copied clip has another number of frames than the original"
         assert passed, "a copied clip differs from the original in its frame times, audio or orientation"
+        assert kept_last, "a copied clip shows its last frame for another duration than the original"
         out.unlink()
 
 
