@@ -197,7 +197,10 @@ final class SolveReadersTests: XCTestCase {
             }
             XCTAssertEqual(readout.marks.count, readout.counts[.catalogMatched])
         }
-        XCTAssertEqual(read, 18)
+        // Every sample that names its photo is read: counted from the fixture, so another lane's new samples are read too
+        // rather than breaking a pinned number (18 on 19 Nov 13:10, 20 by batch 27b)
+        XCTAssertEqual(read, valid.members.filter { $0.value["sourceSha256"] != nil }.count)
+        XCTAssertGreaterThanOrEqual(read, 18)
     }
 
     func testTheCalibratedSampleGivesItsThreeMarksWithTheirPixelsAndMagnitudes() throws {
