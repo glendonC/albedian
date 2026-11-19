@@ -1024,6 +1024,47 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.6,
         "changes": "foils",
     },
+    "mro": {
+        "title": "Mars Reconnaissance Orbiter",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-mro-a",
+            "title": "Mars Reconnaissance Orbiter (MRO) (A), NASA 3D Resources",
+            "folder": "Mars Reconnaissance Orbiter (MRO) (A)",
+            "file": "Mars Reconnaissance Orbiter (MRO) (A).glb",
+            "bytes": 2_652_460,
+            "sha256": "b195c566d227dec8e42ca2fafcc2a8cc26a127e04ed577e4b9515199d2002d9e",
+            "picture": "Mars Reconnaissance Orbiter (MRO) (A).png",
+            "picture_bytes": 1_026_954,
+            "picture_sha256": "529bc6463d2b3436ba1d0d692db24afa83dc4dc822fde893647edd621b0f1bb9",
+            "local": "mro",
+        },
+        "drop_objects": [],
+        # The high-gain dish stands on its mast at -X in the import frame and faces Earth, so the craft is flown along
+        # +X, away from it, as Voyager is; the dish rides high at +Z and the wings reach along Y.
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the dish, NASA's "cover" part (rendered alone to be sure it is the dish), 23.8687 units across, to
+        # NSSDC's 3 m.
+        "scale_from": {
+            "material": "cover",
+            "axis": "y",
+            "metres": 3,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+            "quote": "primarily through a 3 m diameter steerable high-gain dish antenna",
+        },
+        # Every part samples NASA's one texture (gold foil, the silver dish, panels): one photo atlas for all of them;
+        # the solar cells keep the texture with no metalness.
+        "material_rules": [
+            {"match": ["solar"], "role": "textured", "metallic": 0.0, "roughness": 0.25},
+            {"match": ["cover", "default", "foil", "lens", "parts", "pole", "rocket", "tower"], "role": "photo_atlas"},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.5, "lod1": 0.15, "lod2": 0.05},
+        "body_radius_m": 2.5,
+        "changes": "mro",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1370,6 +1411,21 @@ HANGAR: list[dict] = [
             {"key": "widthM", "value": 3.1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A", "quote": "The spacecraft is a roughly cubic shape, 2.72 meters high and 3.1 meters wide"},
             {"key": "bennuArrival", "value": "2018-12-03", "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/", "quote": "After arriving at Bennu on Dec. 3, 2018,"},
             {"key": "renamed", "value": "OSIRIS-APEX", "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/", "quote": "After the delivery, OSIRIS-REx was renamed OSIRIS-APEX (OSIRIS-Apophis Explorer)"},
+        ],
+    },
+    {
+        # MRO orbits Mars: no speed between stars.
+        "id": "mro",
+        "name": "Mars Reconnaissance Orbiter",
+        "model": "mro",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2005-08-12", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "Launch on an Atlas V-401 took place at 11:43 UT (7:43 a.m. EDT) on 12 August 2005 from Kennedy Space Center."},
+            {"key": "launchMassKg", "value": 2180, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "The maximum spacecraft mass is 2180 kg, which includes 1149 kg of propellants."},
+            {"key": "dishDiameterM", "value": 3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "primarily through a 3 m diameter steerable high-gain dish antenna"},
+            {"key": "solarArrayAreaM2", "value": 10, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "Each array has an area of 10 square meters and contains 3744 solar cells."},
+            {"key": "marsOrbit", "value": "2006-03-10", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "Mars Reconnaissance Orbiter reached Mars and went into orbit on 10 March 2006."},
+            {"key": "power", "value": "1000 W at Mars", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "The panels produce 1000 Watts at Mars"},
         ],
     },
 ]

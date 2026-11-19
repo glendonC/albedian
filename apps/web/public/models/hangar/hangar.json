@@ -1222,6 +1222,63 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
         "quote": "Primary communication is via a 2 meter high gain directional dish antenna."
       }
+    },
+    "mro": {
+      "title": "Mars Reconnaissance Orbiter",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "mro/mro_lod0.glb",
+          "bytes": 3574116,
+          "triangles": 62030,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "mro/mro_lod1.glb",
+          "bytes": 1420808,
+          "triangles": 18607,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "mro/mro_lod2.glb",
+          "bytes": 504244,
+          "triangles": 6201,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "mro/mro_picker.webp",
+          "bytes": 3568,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -5.871,
+          -5.9,
+          -0.482
+        ],
+        "max": [
+          5.409,
+          1.768,
+          3.636
+        ]
+      },
+      "bodyRadiusM": 2.5,
+      "lodTriangleShare": {
+        "lod0": 0.5,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "part": "cover",
+        "metres": 3,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+        "quote": "primarily through a 3 m diameter steerable high-gain dish antenna"
+      }
     }
   },
   "entries": [
@@ -1990,6 +2047,50 @@
           "value": "OSIRIS-APEX",
           "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/",
           "quote": "After the delivery, OSIRIS-REx was renamed OSIRIS-APEX (OSIRIS-Apophis Explorer)"
+        }
+      ]
+    },
+    {
+      "id": "mro",
+      "name": "Mars Reconnaissance Orbiter",
+      "model": "mro",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2005-08-12",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+          "quote": "Launch on an Atlas V-401 took place at 11:43 UT (7:43 a.m. EDT) on 12 August 2005 from Kennedy Space Center."
+        },
+        {
+          "key": "launchMassKg",
+          "value": 2180,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+          "quote": "The maximum spacecraft mass is 2180 kg, which includes 1149 kg of propellants."
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 3,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+          "quote": "primarily through a 3 m diameter steerable high-gain dish antenna"
+        },
+        {
+          "key": "solarArrayAreaM2",
+          "value": 10,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+          "quote": "Each array has an area of 10 square meters and contains 3744 solar cells."
+        },
+        {
+          "key": "marsOrbit",
+          "value": "2006-03-10",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+          "quote": "Mars Reconnaissance Orbiter reached Mars and went into orbit on 10 March 2006."
+        },
+        {
+          "key": "power",
+          "value": "1000 W at Mars",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
+          "quote": "The panels produce 1000 Watts at Mars"
         }
       ]
     }

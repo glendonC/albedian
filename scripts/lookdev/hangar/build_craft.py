@@ -118,6 +118,14 @@ CHANGES = {
         "own colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, "
         "the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
     ),
+    # lod0 for a model whose parts all sample one texture of foil, dish and cells (recipe "changes": "mro")
+    "lod0_mro": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's one texture of foil, dish and panels "
+        "kept as the base colour, with metalness, roughness and surface relief added from its own colours and "
+        "shading, the solar cells keeping it with one roughness and no metalness, the normals made again, smooth "
+        "within an angle and sharp beyond it, fewer triangles kept at every level, and the texture re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

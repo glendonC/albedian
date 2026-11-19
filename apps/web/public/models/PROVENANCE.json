@@ -420,7 +420,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "fd041c11d0ecc1b6322f384a090e631d578763adf1b50b8c1dc2e8b5e41126f8",
+      "sha256": "917eb4e08d5b12b19ba3c9e0f317d5d7f901d143ad21d82f6ae24a125748c1c7",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -844,6 +844,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.png (1015487 bytes, SHA-256 f78316f866e36c3de93d0475bad86682d8bd05be2e02432b60a3f188b7d629f1)."
+    },
+    {
+      "path": "hangar/mro/mro_lod0.glb",
+      "sha256": "84316a863ab7a42fe1c136871f2f9a22cddbfc25cb41adc3e967cf90f2310b52",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mro --out apps/web/public/models/hangar/mro",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's one texture of foil, dish and panels kept as the base colour, with metalness, roughness and surface relief added from its own colours and shading, the solar cells keeping it with one roughness and no metalness, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the texture re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29.glb (2652460 bytes, SHA-256 b195c566d227dec8e42ca2fafcc2a8cc26a127e04ed577e4b9515199d2002d9e); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/mro/mro_lod1.glb",
+      "sha256": "4245bcb9d89db56202c901877bd52e7297b89f4b0686b6e60db893b0b015c183",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mro --out apps/web/public/models/hangar/mro",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29.glb (2652460 bytes, SHA-256 b195c566d227dec8e42ca2fafcc2a8cc26a127e04ed577e4b9515199d2002d9e); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/mro/mro_lod2.glb",
+      "sha256": "83a7d57efdeed2461dd9044bd9763b906e33a8de65eb4a9e92e245a5fe73bf23",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mro --out apps/web/public/models/hangar/mro",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29.glb (2652460 bytes, SHA-256 b195c566d227dec8e42ca2fafcc2a8cc26a127e04ed577e4b9515199d2002d9e); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/mro/mro_picker.webp",
+      "sha256": "0b3aef1b99c920bd00a797395919b72c223484b0ffc6385daa52de3ed8c45d1a",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mro --out apps/web/public/models/hangar/mro",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29/Mars%20Reconnaissance%20Orbiter%20%28MRO%29%20%28A%29.png (1026954 bytes, SHA-256 529bc6463d2b3436ba1d0d692db24afa83dc4dc822fde893647edd621b0f1bb9)."
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod0.glb",
