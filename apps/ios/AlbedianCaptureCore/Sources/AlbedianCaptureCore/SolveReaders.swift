@@ -202,11 +202,12 @@ public struct SolutionReadout: Equatable, Sendable {
         public let xPx: Double
         public let yPx: Double
         public let apparentMagnitude: Double?
-        /// The catalog star it matched (`evidence.catalogReferenceId`, `star-<name>`), the id the sky context gives the
-        /// same star, so the lock-on can find its early mark (D31 item 3).
-        public let catalogReferenceId: String?
-        public init(id: String, title: String, xPx: Double, yPx: Double, apparentMagnitude: Double?, catalogReferenceId: String? = nil) {
-            self.catalogReferenceId = catalogReferenceId
+        /// The catalog star it matched, by its catalog's own id (`catalogRef.catalogSourceId`: "HIP 71860", "Gaia DR3
+        /// <n>"), the id the sky context gives the same star, so the lock-on finds its early mark (D31 item 3). A real
+        /// solve's reference ids are hip-<n> or gaia-dr3-<n>, never the sky context's star-<name>.
+        public let catalogSourceId: String?
+        public init(id: String, title: String, xPx: Double, yPx: Double, apparentMagnitude: Double?, catalogSourceId: String? = nil) {
+            self.catalogSourceId = catalogSourceId
             self.id = id
             self.title = title
             self.xPx = xPx
@@ -286,8 +287,8 @@ public enum SolutionReader {
             }
             let magnitude = finding["catalogRef"]?["apparentMagnitude"]?.numberValue
             if let magnitude, !magnitude.isFinite { return refuse("\(path).catalogRef.apparentMagnitude", "not finite") }
-            let star = finding["evidence"]?["catalogReferenceId"]?.stringValue
-            marks.append(SolutionReadout.Mark(id: id, title: title, xPx: x, yPx: y, apparentMagnitude: magnitude, catalogReferenceId: star))
+            let star = finding["catalogRef"]?["catalogSourceId"]?.stringValue
+            marks.append(SolutionReadout.Mark(id: id, title: title, xPx: x, yPx: y, apparentMagnitude: magnitude, catalogSourceId: star))
         }
         var pose: SolutionReadout.Pose?
         if let given = object["poseEstimate"]?.objectValue {
