@@ -885,6 +885,56 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.5,
         "changes": "dawn",
     },
+    "messenger": {
+        "title": "MESSENGER",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-messenger",
+            "title": "MErcury Surface, Space ENvironment, GEochemistry, and Ranging (MESSENGER), NASA 3D Resources",
+            "folder": "MErcury Surface, Space ENvironment, GEochemistry, and Ranging (MESSENGER)",
+            "file": "MErcury Surface, Space ENvironment, GEochemistry, and Ranging (MESSENGER).glb",
+            "bytes": 2_673_396,
+            "sha256": "c0268bfed0910e68a54c45925aea8edfc6e479d8131a849de7949252e01b9875",
+            "picture": "MErcury Surface, Space ENvironment, GEochemistry, and Ranging (MESSENGER).png",
+            "picture_bytes": 1_015_487,
+            "picture_sha256": "f78316f866e36c3de93d0475bad86682d8bd05be2e02432b60a3f188b7d629f1",
+            "local": "messenger",
+        },
+        # The source's unit cube at the root has no material and is not part of the craft.
+        "drop_objects": ["_root"],
+        # The sunshade stands at +X in the import frame, the magnetometer boom reaching back along -X, the wings along
+        # Y: flown shade first, as it meets the Sun, with +Z up.
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the sunshade's height: 2.6395 units to NSSDC's 2.5 m; its width, 2.1130 units, is then 2.00 m,
+        # NSSDC's 2 m, an independent check.
+        "scale_from": {
+            "material": "AO_heatshield",
+            "axis": "z",
+            "metres": 2.5,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+            "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)",
+        },
+        "materials": {
+            "Mess_tex_01": {
+                "role": "photo_atlas",
+                # A small dark decal beside the flag, illegible at the source's size.
+                "paint_out": [{"box": (200, 160, 231, 208), "what": "a small decal"}],
+            },
+            "Mess_tex_02": {"role": "photo_atlas"},
+            "Mess_tex_black": {"role": "photo_atlas"},
+            "Mess_tex_darkgrey": {"role": "photo_atlas"},
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            # The sunshade is white ceramic cloth; NASA's baked shading moves to the occlusion slot.
+            "AO_heatshield": {"role": "painted", "base": (0.85, 0.85, 0.83), "roughness": 0.8, "occlusion_from_source": True},
+            "AO_other": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            "AO_other2": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "body_radius_m": 1.5,
+        "changes": "photo",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1180,6 +1230,24 @@ HANGAR: list[dict] = [
             {"key": "vestaArrival", "value": "2011-07-16", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "Dawn reached Vesta on 16 July 2011"},
             {"key": "ceresOrbit", "value": "2015-03-06", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "entered initial orbit around Ceres on 6 March 2015 at 12:29 UT"},
             {"key": "communicationsEnded", "value": "2018-10-31", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "communications ended on 31 October 2018"},
+        ],
+    },
+    {
+        # MESSENGER orbited Mercury and ended on its surface: no speed between stars. The mission page gives 1,107.9 kg
+        # where NSSDC's description gives 1093 kg; NSSDC's is used, with its propellant share.
+        "id": "messenger",
+        "name": "MESSENGER",
+        "model": "messenger",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2004-08-03", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "MESSENGER launched on 3 August 2004 at 6:15:56 UT (2:15:56 a.m. EDT)"},
+            {"key": "massKg", "value": 1093, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "The total mass of the spacecraft is 1093 kg, 607.8 kg of this is propellant and helium."},
+            {"key": "sunshadeHeightM", "value": 2.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"},
+            {"key": "sunshadeWidthM", "value": 2, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"},
+            {"key": "wingSpanM", "value": 6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "two solar panel wings extending radially about 6 meters from tip to tip"},
+            {"key": "mercuryOrbit", "value": "2011-03-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "Mercury orbit insertion took place with a 15 minute burn starting at 00:45 UT on 18 March 2011"},
+            {"key": "impact", "value": "2015-04-30", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "The MESSENGER spacecraft impacted the surface of Mercury as planned on 30 April 2015 at 19:26 UT (3:26 p.m. EDT)."},
+            {"key": "power", "value": "450 W in Mercury orbit", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "provides a nominal 450 W in Mercury orbit"},
         ],
     },
 ]

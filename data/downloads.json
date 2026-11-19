@@ -1390,6 +1390,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Dawn: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/messenger/MErcury Surface, Space ENvironment, GEochemistry, and Ranging (MESSENGER).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.glb",
+      "bytes": 2673396,
+      "sha256": "c0268bfed0910e68a54c45925aea8edfc6e479d8131a849de7949252e01b9875",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, MESSENGER: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/messenger/MErcury Surface, Space ENvironment, GEochemistry, and Ranging (MESSENGER).png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.png",
+      "bytes": 1015487,
+      "sha256": "f78316f866e36c3de93d0475bad86682d8bd05be2e02432b60a3f188b7d629f1",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, MESSENGER: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

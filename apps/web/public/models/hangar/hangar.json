@@ -1050,6 +1050,63 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
         "quote": "Two solar panel wings extend 19.7 m tip-to-tip"
       }
+    },
+    "messenger": {
+      "title": "MESSENGER",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "messenger/messenger_lod0.glb",
+          "bytes": 980604,
+          "triangles": 11560,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "messenger/messenger_lod1.glb",
+          "bytes": 803880,
+          "triangles": 5779,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "messenger/messenger_lod2.glb",
+          "bytes": 272380,
+          "triangles": 2080,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "messenger/messenger_picker.webp",
+          "bytes": 3474,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -3.294,
+          -1.25,
+          -4.737
+        ],
+        "max": [
+          3.295,
+          1.25,
+          0.26
+        ]
+      },
+      "bodyRadiusM": 1.5,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "AO_heatshield",
+        "metres": 2.5,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+        "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"
+      }
     }
   },
   "entries": [
@@ -1674,6 +1731,62 @@
           "value": "2018-10-31",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
           "quote": "communications ended on 31 October 2018"
+        }
+      ]
+    },
+    {
+      "id": "messenger",
+      "name": "MESSENGER",
+      "model": "messenger",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2004-08-03",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "MESSENGER launched on 3 August 2004 at 6:15:56 UT (2:15:56 a.m. EDT)"
+        },
+        {
+          "key": "massKg",
+          "value": 1093,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "The total mass of the spacecraft is 1093 kg, 607.8 kg of this is propellant and helium."
+        },
+        {
+          "key": "sunshadeHeightM",
+          "value": 2.5,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"
+        },
+        {
+          "key": "sunshadeWidthM",
+          "value": 2,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"
+        },
+        {
+          "key": "wingSpanM",
+          "value": 6,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "two solar panel wings extending radially about 6 meters from tip to tip"
+        },
+        {
+          "key": "mercuryOrbit",
+          "value": "2011-03-18",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "Mercury orbit insertion took place with a 15 minute burn starting at 00:45 UT on 18 March 2011"
+        },
+        {
+          "key": "impact",
+          "value": "2015-04-30",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "The MESSENGER spacecraft impacted the surface of Mercury as planned on 30 April 2015 at 19:26 UT (3:26 p.m. EDT)."
+        },
+        {
+          "key": "power",
+          "value": "450 W in Mercury orbit",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+          "quote": "provides a nominal 450 W in Mercury orbit"
         }
       ]
     }

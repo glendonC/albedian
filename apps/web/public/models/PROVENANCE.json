@@ -420,7 +420,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "be76779f0a96c599af7b0fc21d6b20f24d503d73fd97576a50dc3433ad092a5b",
+      "sha256": "3d1c6717b109ba4ba7188b10fce0bbae75b5030878a580f59b0959a2cbbba6fc",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -785,6 +785,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.png (180249 bytes, SHA-256 7e04bf7624c5f95090a4d0a42eeee3630e40d47f2ba3f25b3a70e2b544aef13a)."
+    },
+    {
+      "path": "hangar/messenger/messenger_lod0.glb",
+      "sha256": "28257184e1b0aea4fc8ee61a484711854f2aa90e09c0fea6069762b16252c3a5",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft messenger --out apps/web/public/models/hangar/messenger",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.glb (2673396 bytes, SHA-256 c0268bfed0910e68a54c45925aea8edfc6e479d8131a849de7949252e01b9875); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/messenger/messenger_lod1.glb",
+      "sha256": "de5b3ca596a3f4b5fa73d5d8b8d254944dd49d655fe92c91240ff0d49b5d3e2e",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft messenger --out apps/web/public/models/hangar/messenger",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.glb (2673396 bytes, SHA-256 c0268bfed0910e68a54c45925aea8edfc6e479d8131a849de7949252e01b9875); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/messenger/messenger_lod2.glb",
+      "sha256": "3c5b622bfe21ed0955c80054b05af767a8df5d52e67b385a8a03333b4394018b",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft messenger --out apps/web/public/models/hangar/messenger",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.glb (2673396 bytes, SHA-256 c0268bfed0910e68a54c45925aea8edfc6e479d8131a849de7949252e01b9875); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/messenger/messenger_picker.webp",
+      "sha256": "f28df12d2b573d9d9e13a7c14174c37bc95f4f5006dd277e1218ef4845d60bc2",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft messenger --out apps/web/public/models/hangar/messenger",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.png (1015487 bytes, SHA-256 f78316f866e36c3de93d0475bad86682d8bd05be2e02432b60a3f188b7d629f1)."
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod0.glb",
