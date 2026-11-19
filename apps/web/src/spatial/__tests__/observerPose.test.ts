@@ -18,7 +18,7 @@ import {
   observerHorizonVisible,
   type ObserverAxes,
 } from '../observerPose.js';
-import { COMPASS_POINTS, HORIZON_RADIUS, createObserverHorizon, localDirection } from '../webgl/observerHorizon.js';
+import { COMPASS_POINTS, HORIZON_LOOK, HORIZON_RADIUS, LABEL_MARKS, LABEL_PX, createObserverHorizon, localDirection } from '../webgl/observerHorizon.js';
 import { webglRenderLayersFor } from '../webglRenderLayers.js';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
@@ -242,8 +242,20 @@ describe('observer horizon: the line, the ground and the compass points', () => 
     for (let i = 0; i < pos.count; i++) expect(pos.getY(i)).toBeLessThanOrEqual(1e-9);
     const mat = ground.material as THREE.MeshBasicMaterial;
     expect(mat.transparent).toBe(true);
-    expect(mat.opacity).toBeGreaterThan(0);
-    expect(mat.opacity).toBeLessThan(1);
+    // D33 item 3: #050506 at 90 percent, nothing drawn on it
+    expect(mat.color.getHexString()).toBe('050506');
+    expect(mat.opacity).toBe(0.9);
+  });
+
+  it("draws the line in ink at 32 percent, as D33's horizon", () => {
+    const line = createObserverHorizon().getObjectByName('observer-horizon-line') as THREE.LineLoop;
+    const mat = line.material as THREE.LineBasicMaterial;
+    expect(mat.color.getHexString()).toBe('f4f3ef');
+    expect(mat.opacity).toBe(0.32);
+    expect(HORIZON_LOOK).toEqual({ lineColour: '#f4f3ef', lineOpacity: 0.32, groundColour: '#050506', groundOpacity: 0.9, letterInk: 'rgba(244, 243, 239, 0.66)' });
+    // The tick 10 to 4 px above the point and the letter's baseline 18 px under it, as the design page draws them
+    expect(LABEL_MARKS).toEqual({ tickTopPx: 10, tickFootPx: 4, tickWidthPx: 1.2, letterBaselinePx: 18, letterPx: 13 });
+    expect(LABEL_PX).toBeGreaterThanOrEqual(2 * (LABEL_MARKS.letterBaselinePx + 4));
   });
 
   it('puts N, E, S and W at azimuths 0, 90, 180 and 270 on the horizon', () => {
@@ -258,15 +270,14 @@ describe('observer horizon: the line, the ground and the compass points', () => 
       expect(Math.abs(altDeg), p.label).toBeLessThan(1e-9);
       expect(azDiff(azDeg, p.azDeg), p.label).toBeLessThan(1e-9);
     }
-    // Each letter stands just above its point; without a canvas none is drawn
+    // Each label is centred on its point (the tick above the line, the letter under it); without a canvas none is drawn
     const drawn: string[] = [];
     const horizon = createObserverHorizon((label) => (drawn.push(label), new THREE.Texture()));
     expect(drawn).toEqual(['N', 'E', 'S', 'W']);
     for (const p of COMPASS_POINTS) {
       const sprite = horizon.getObjectByName(`observer-compass-${p.label}`)!;
       const { altDeg, azDeg } = sceneToAltAz(sprite.position);
-      expect(altDeg, p.label).toBeGreaterThan(0);
-      expect(altDeg, p.label).toBeLessThan(3);
+      expect(Math.abs(altDeg), p.label).toBeLessThan(1e-4);
       expect(azDiff(azDeg, p.azDeg), p.label).toBeLessThan(1e-9);
     }
     expect(createObserverHorizon().getObjectByName('observer-compass-N')).toBeUndefined();
