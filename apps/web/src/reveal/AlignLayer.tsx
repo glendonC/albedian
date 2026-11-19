@@ -48,6 +48,11 @@ export function placeMarks(placed: readonly PlacedTarget[], rect: FrameRect, fon
     if (target.u < 0 || target.u > 1 || target.v < 0 || target.v > 1) continue;
     const x = rect.leftPx + target.u * rect.widthPx;
     const y = rect.topPx + target.v * rect.heightPx;
+    // A target with no proper name keeps its ring, unnamed
+    if (!target.name) {
+      marks.push({ id: target.id, xPx: x, yPx: y, name: null, nameOnLeft: false });
+      continue;
+    }
     const width = target.name.length * fontPx * 0.56;
     let mark: AlignMark = { id: target.id, xPx: x, yPx: y, name: null, nameOnLeft: false };
     for (const left of [false, true]) {

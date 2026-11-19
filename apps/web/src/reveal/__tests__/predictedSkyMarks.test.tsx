@@ -60,6 +60,11 @@ describe('placeSkyMarks: names by D20', () => {
     expect(placeSkyMarks([at('under', 'Phecda', 520, 180)], W, H, 13, [status])[0]).toMatchObject({ name: 'Phecda' });
   });
 
+  it('names only a proper name, never a catalogue number (D20): Gaia DR3 and HIP numbers get an unnamed ring', async () => {
+    const { properName } = await import('../predictedSkyMarks.js');
+    expect(['Vega', 'Gaia DR3 1621259036510505344', 'HIP 54539', 'HD 12345', 'HR 7001', 'TYC 1-2-3', '12345', '  ', undefined].map(properName)).toEqual(['Vega', null, null, null, null, null, null, null, null]);
+  });
+
   it('draws nothing off screen', () => {
     expect(placeSkyMarks([at('a', 'Vega', -5, 400), at('b', 'Deneb', 700, H + 2)], W, H, 13)).toEqual([]);
   });

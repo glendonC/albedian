@@ -35,6 +35,13 @@ export interface Box {
 }
 const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 
+/** A star's proper name, not a catalogue number (D20): none for "Gaia DR3 n", "HIP n", "HD n", "HR n", "TYC n" or a bare number. */
+export function properName(name: string | undefined): string | null {
+  const trimmed = name?.trim() ?? '';
+  if (trimmed === '' || /^(Gaia DR\d+|HIP|HD|HR|TYC)\s*\d/i.test(trimmed) || /^[\d\s+-]+$/.test(trimmed)) return null;
+  return trimmed;
+}
+
 /** Names placed by D20's rule over stars already on screen, brightest first. */
 export function placeSkyMarks(
   stars: ReadonlyArray<{ id: string; name: string | null; xPx: number; yPx: number }>,
@@ -88,7 +95,7 @@ export function predictedSkyMarks(
       if (finding.evidenceClass !== 'predicted' || finding.catalogRef?.objectType !== 'star' || magnitude === undefined || magnitude > ALIGN_MAGNITUDE_LIMIT || !sky) return [];
       const onScreen = projectIcrsThroughPose(raDecToUnitVector(sky.raDeg, sky.decDeg), pose, widthPx, heightPx);
       if (!onScreen?.visible) return [];
-      return [{ id: finding.id, name: finding.catalogRef?.commonName?.trim() || null, xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];
+      return [{ id: finding.id, name: properName(finding.catalogRef?.commonName), xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];
     })
     .sort((a, b) => a.magnitude - b.magnitude);
   return placeSkyMarks(stars, widthPx, heightPx, fontPx, clear);

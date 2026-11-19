@@ -1,3 +1,4 @@
+import { properName } from './predictedSkyMarks.js';
 import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
 
 /**
@@ -82,7 +83,8 @@ export function alignTargetOf(finding: CelestialFinding): { name: string; magnit
   const magnitude = finding.catalogRef?.apparentMagnitude ?? null;
   const planet = isPlanet(finding);
   if (!planet && !(isStar(finding) && magnitude !== null && magnitude <= ALIGN_MAGNITUDE_LIMIT)) return null;
-  return { name: finding.title.replace(/ \(Predicted Ephemeris\)$/, ''), magnitude };
+  // A catalogue number is no name (D20): the ring stays, unnamed
+  return { name: properName(finding.title.replace(/ \(Predicted Ephemeris\)$/, '')) ?? '', magnitude };
 }
 
 /** Brightest first, a planet the record gives no magnitude ahead of the stars, as the design's page orders them. */
