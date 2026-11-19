@@ -1,0 +1,94 @@
+import Foundation
+
+/// The capture coach (D29, UIUX-coach-DECIDED-BY-LEAD.md, decided by the lead under the owner's delegation; build note
+/// UIUX-coach-READY.md): up to two plain lines under the aiming screen's source line, each from real data the phone has
+/// or the laptop's sky context gives. Nothing here is invented: no line without its data.
+public enum CoachLine: Equatable, Sendable {
+    /// iOS itself asked for a heading calibration.
+    case compass
+    /// The Moon, from the sky context (`SkyConditions`).
+    case moon(String)
+    /// The phone moves enough to smear the stars in the coming exposure.
+    case steadiness
+
+    public var words: String {
+        switch self {
+        case .compass: "Move the phone in a figure eight to settle the compass."
+        case .moon(let words): words
+        case .steadiness: "The phone is moving: rest it on something steady."
+        }
+    }
+
+    /// Phosphor's icon for the line (moon, hand, compass).
+    public var icon: String {
+        switch self {
+        case .compass: "compass"
+        case .moon: "moon"
+        case .steadiness: "hand"
+        }
+    }
+}
+
+public enum Coach {
+    /// At most this many lines at once.
+    public static let maxLines = 2
+
+    /// The Moon's line, or none without a sky context: up and adding light, up with none, or down.
+    public static func moonWords(_ conditions: SkyConditions?) -> String? {
+        guard let conditions else { return nil }
+        guard conditions.moonAltDeg > 0 else { return "The Moon is down." }
+        guard conditions.lunarVeilDeltaMag > 0 else { return "The Moon is up but adds no light to the sky." }
+        let lit = Int((conditions.moonIlluminationFraction * 100).rounded())
+        return "The Moon is up, \(lit) percent lit: fewer stars show."
+    }
+
+    /// The lines in the record's order (compass, then the Moon, then steadiness), the compass taking steadiness's place
+    /// while it shows, at most two.
+    public static func lines(compassAsked: Bool, conditions: SkyConditions?, moving: Bool) -> [CoachLine] {
+        var out: [CoachLine] = []
+        if compassAsked { out.append(.compass) }
+        if let moon = moonWords(conditions) { out.append(.moon(moon)) }
+        if moving && !compassAsked { out.append(.steadiness) }
+        return Array(out.prefix(maxLines))
+    }
+}
+
+/// How far the stars would smear in the coming exposure, from the phone's own motion (D29 item 3): the rotation rate's
+/// size (radians per second, bias removed, as the pointing record reads it) times the exposure's length (seconds) times
+/// the lens's focal length in pixels.
+public enum CoachSteadiness {
+    /// The smear past which the line shows, in pixels.
+    public static let limitPx = 1.0
+    /// [proposed in the build note] The window: shown while any sample of the last half second smears past the limit,
+    /// so it hides once the smear has stayed below it for half a second.
+    public static let windowSec = 0.5
+
+    public static func smearPx(rotationRateRadPerSec r: PointingRecord.Vector3, exposureSec: Double, focalPx: Double) -> Double? {
+        let rate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
+        guard rate.isFinite, exposureSec.isFinite, exposureSec > 0, focalPx.isFinite, focalPx > 0 else { return nil }
+        return rate * exposureSec * focalPx
+    }
+
+    /// The focal length in pixels of an image `longSidePx` wide across a field of view of `longSideFovDeg`.
+    public static func focalPx(longSidePx: Double, longSideFovDeg: Double) -> Double? {
+        guard longSidePx > 0, longSidePx.isFinite, longSideFovDeg > 0, longSideFovDeg < 180 else { return nil }
+        return longSidePx / 2 / tan(longSideFovDeg * .pi / 360)
+    }
+
+    /// The smears of the last half second, each at its time on one clock.
+    public struct Window: Sendable {
+        private var samples: [(sec: Double, smearPx: Double)] = []
+        public init() {}
+
+        public mutating func add(sec: Double, smearPx: Double) {
+            guard sec.isFinite, smearPx.isFinite else { return }
+            samples.append((sec, smearPx))
+            samples.removeAll { $0.sec <= sec - windowSec }
+        }
+
+        /// Whether the line shows at `sec`: some sample within the last half second smeared past the limit.
+        public func moving(at sec: Double) -> Bool {
+            samples.contains { $0.sec > sec - windowSec && $0.sec <= sec && $0.smearPx > limitPx }
+        }
+    }
+}
