@@ -9,7 +9,7 @@ import XCTest
 /// asks for, and the licence notices and provenance records beside them and bundled with the app.
 final class ApprovedAssetsTests: XCTestCase {
     private let app = repositoryRoot.appendingPathComponent("apps/ios/AlbedianCapture")
-    private let icons = ["arrow-right", "x", "paper-plane-tilt", "arrow-counter-clockwise", "arrow-left", "arrow-square-out", "wifi-slash", "warning-circle"]
+    private let icons = ["arrow-right", "x", "paper-plane-tilt", "arrow-counter-clockwise", "arrow-left", "arrow-square-out", "wifi-slash", "warning-circle", "camera-slash"]
 
     private func sha256(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

@@ -143,13 +143,38 @@ struct AimScreen: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                CameraPreview(session: model.camera.session)
-                    .frame(width: geometry.size.width, height: geometry.size.width * 4 / 3).clipped()
-                    .atTop(Arrive.photoTop)
+                if model.cameraRefused {
+                    // D8, INTERIM (UIUX-iphone-aim-QUESTION, ia-cam): no preview; why, centred at 340. Its "Open Settings" button
+                    // is not built: opening Settings needs a call the build check refuses (asked of the lead)
+                    VStack(spacing: 6) {
+                        HStack(spacing: 8) {
+                            AlbedianIcon.cameraSlash.image(18)
+                            Text("Albedian can't use the camera").font(AlbedianFont.regular(17)).tracking(-0.01 * 17)
+                        }
+                        .foregroundStyle(Color(ControlStyle.ink))
+                        Text("Allow the camera in Settings.").font(AlbedianFont.regular(14)).tracking(-0.005 * 14)
+                            .foregroundStyle(Color(ControlStyle.inkSecondary))
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .atTop(340)
+                } else {
+                    CameraPreview(session: model.camera.session)
+                        .frame(width: geometry.size.width, height: geometry.size.width * 4 / 3).clipped()
+                        .atTop(Arrive.photoTop)
+                    // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why
+                    TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                        if let line = model.aimingLine {
+                            Text(line).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
+                                .foregroundStyle(Color(ControlStyle.inkQuiet))
+                        }
+                    }
+                    .atTop(Arrive.photoTop + Double(geometry.size.width) * 4 / 3 + 16)
+                    // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's
+                    CaptureButton(action: model.shoot).atBottom(Arrive.referenceHeight - 706 - 64)
+                }
                 IconButton(icon: .close, label: "Close", action: model.showHome)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
-                // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's
-                CaptureButton(action: model.shoot).atBottom(Arrive.referenceHeight - 706 - 64)
             }
         }
         .ignoresSafeArea()

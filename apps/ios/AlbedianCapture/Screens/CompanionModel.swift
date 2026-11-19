@@ -1,3 +1,4 @@
+import AVFoundation
 import AlbedianCaptureCore
 import Foundation
 import Observation
@@ -34,6 +35,8 @@ final class CompanionModel {
     /// not on the local network, so nothing was sent and the hint gives way to one line.
     private(set) var addressRefused = false
     private(set) var cameraProblem: CameraSession.Failure?
+    /// D8, INTERIM: the person refused the camera (or it is restricted), so aiming shows why in place of the preview.
+    private(set) var cameraRefused = false
     /// The page the Safari view shows, set only for a page `SafariViewGate` allows.
     var openPage: OutsidePageItem?
 
@@ -86,9 +89,15 @@ final class CompanionModel {
         guard recorder == nil else { return }
         recorder = SensorRecorder(motion: CoreMotionSource(), place: CoreLocationSource())
         recorder?.start(interface: .portrait)
+        let access = AVCaptureDevice.authorizationStatus(for: .video)
+        cameraRefused = access == .denied || access == .restricted
+        guard !cameraRefused else { return }
         cameraProblem = camera.configure()
         if cameraProblem == nil { camera.start() }
     }
+
+    /// D8, INTERIM: the line under the aiming preview, what the photo's record would say of its place and heading now.
+    var aimingLine: String? { recorder?.aimingLine(at: Date()) }
 
     private func stopAiming() {
         recorder?.stop()

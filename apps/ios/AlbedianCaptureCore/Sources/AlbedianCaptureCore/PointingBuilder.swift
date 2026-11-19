@@ -330,7 +330,7 @@ public enum PointingRecordBuilder {
     }
 
     /// The place, when the person allowed it and the device gave a valid fix it did not simulate in software.
-    private static func place(_ reading: LocationReading, photoDeviceClock: Date) -> PointingRecord.Place {
+    static func place(_ reading: LocationReading, photoDeviceClock: Date) -> PointingRecord.Place {
         guard case .allowed(let authorization, let fix) = reading else { return .absent(.notAllowed) }
         guard let fix else { return .absent(.noFix) }
         if fix.isSimulatedBySoftware { return .absent(.simulatedBySoftware) }
@@ -354,7 +354,7 @@ public enum PointingRecordBuilder {
         ))
     }
 
-    private static func heading(_ reading: HeadingReading?, sample: MotionSample, placed: Bool,
+    static func heading(_ reading: HeadingReading?, sample: MotionSample, placed: Bool,
                                 photoDeviceClock: Date) throws(PointingBuildError) -> PointingRecord.Heading {
         guard sample.referenceFrame == .xTrueNorthZVertical else { return .absent(.noMagnetometer) }
         // True north is found from the place

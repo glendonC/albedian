@@ -259,6 +259,29 @@ public final class SensorRecorder: @unchecked Sendable {
         }
     }
 
+    /// D8, INTERIM (UIUX-iphone-aim-QUESTION): the line under the aiming preview, what a photo's record would say now of
+    /// its place and heading, by the builder's own rules (`PointingRecordBuilder.place`, `.heading`) on the newest
+    /// readings; nil while both are there, or while no motion sample says whether a heading could be.
+    public func aimingLine(at deviceClock: Date) -> String? {
+        lock.withLock {
+            let heading = Self.newest(headings, notAfter: deviceClock, maxAgeSec: SensorMapping.maxHeadingAgeSec, time: \.timestamp)
+            let fix = Self.newest(fixes, notAfter: deviceClock, maxAgeSec: SensorMapping.maxFixAgeSec, time: \.timestamp)
+            let place = PointingRecordBuilder.place(SensorMapping.location(authorization: authorization, accuracy: accuracy, fix: fix),
+                                                    photoDeviceClock: deviceClock)
+            var placed = false
+            if case .allowed = place { placed = true }
+            let headingOutlook: PointingRecord.Heading? = ring.newest.map { sample in
+                do throws(PointingBuildError) {
+                    return try PointingRecordBuilder.heading(heading.map(SensorMapping.heading), sample: sample, placed: placed,
+                                                             photoDeviceClock: deviceClock)
+                } catch {
+                    return .absent(.headingInvalid)
+                }
+            }
+            return AimNotice.line(place: place, heading: headingOutlook)
+        }
+    }
+
     /// The report with the latest time in `[moment - maxAgeSec, moment]`; of several with that time, the last to arrive.
     static func newest<Report>(_ reports: [Report], notAfter moment: Date, maxAgeSec: Double? = nil, time: (Report) -> Date) -> Report? {
         var best: Report?

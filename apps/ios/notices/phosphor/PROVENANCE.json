@@ -15,7 +15,7 @@
         "conditions": "The copyright and permission notice travels with every copy: LICENSE sits beside this record and is bundled in AlbedianCapture.app as Phosphor-LICENSE.txt."
       },
       "credit": "Phosphor Icons",
-      "note": "Eight regular-weight icons the approved iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
+      "note": "Nine regular-weight icons the approved and interim iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
     }
   ],
   "files": [
@@ -117,6 +117,17 @@
         "method": "downloaded-as-is"
       },
       "note": "The package's assets/regular/warning-circle.svg, byte for byte (the same bytes as apps/web/public/notices/phosphor/warning-circle.svg); embedded in apps/ios/AlbedianCapture/Assets.xcassets/warning-circle.imageset/warning-circle.svg for the failed job's line (UIUX-iphone-solve-READY)."
+    },
+    {
+      "path": "camera-slash.svg",
+      "sha256": "beda7bcb31172d637d465d2333c96764a21fba4fb60d96bee62930dde7ddd553",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/camera-slash.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/camera-slash.imageset/camera-slash.svg for aiming when the camera is not allowed (D8, interim)."
     }
   ],
   "fileSets": []

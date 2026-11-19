@@ -107,6 +107,33 @@ final class SensorRecorderTests: XCTestCase {
         do { _ = try PointingRecordBuilder.build(capture); return nil } catch { return error }
     }
 
+    /// D8, INTERIM: the aiming line comes from the builder's own place and heading rules on what the sources said last.
+    func testTheAimingLineIsWhatTheRecordWouldSayNow() throws {
+        let motion = StandInMotion(Set(AttitudeFrame.allCases))
+        let place = StandInPlace()
+        let recorder = try XCTUnwrap(SensorRecorder(motion: motion, place: place))
+        _ = recorder.start(interface: .portrait)
+        let deliverMotion = try XCTUnwrap(motion.deliver)
+        let deliverPlace = try XCTUnwrap(place.deliver)
+        deliverPlace(.authorization(.denied, .full))
+        XCTAssertEqual(recorder.aimingLine(at: moment), "No place: location not allowed")
+        deliverPlace(.authorization(.authorizedWhenInUse, .full))
+        XCTAssertEqual(recorder.aimingLine(at: moment), "No place: no fix")
+        deliverPlace(fixEvent(-2.5))
+        XCTAssertNil(recorder.aimingLine(at: moment), "no motion sample yet")
+        deliverMotion(motionEvent(0))
+        XCTAssertEqual(recorder.aimingLine(at: moment), "No heading: no heading event")
+        deliverPlace(.heading(HeadingEvent(trueHeadingDeg: 212.5, headingAccuracyDeg: 40, timestamp: moment.addingTimeInterval(-1), orientation: .portrait)))
+        XCTAssertEqual(recorder.aimingLine(at: moment), "No heading: ±40° is past 25°")
+        deliverPlace(headingEvent(-0.5))
+        XCTAssertNil(recorder.aimingLine(at: moment))
+        // A reading the builder refuses as out of range (a true heading of 400): no heading, the reading invalid
+        deliverPlace(.heading(HeadingEvent(trueHeadingDeg: 400, headingAccuracyDeg: 5, timestamp: moment.addingTimeInterval(-0.25), orientation: .portrait)))
+        XCTAssertEqual(recorder.aimingLine(at: moment), "No heading: heading invalid")
+        deliverMotion(motionEvent(step, frame: .xArbitraryZVertical))
+        XCTAssertEqual(recorder.aimingLine(at: moment.addingTimeInterval(step)), "No heading: no magnetometer")
+    }
+
     func testHandsTheBuilderWhatTheSourcesSaidAndARecordTheContractTakes() throws {
         let motion = StandInMotion(Set(AttitudeFrame.allCases))
         let place = StandInPlace()

@@ -18,7 +18,7 @@ enum AlbedianFont {
     static func light(_ size: Double) -> Font { .custom("Geist-Light", size: size, relativeTo: .largeTitle) }
 }
 
-/// The eight Phosphor icons (regular weight) the approved iPhone screens use, by their file names in the asset catalog.
+/// The nine Phosphor icons (regular weight) the approved iPhone screens use, by their file names in the asset catalog.
 enum AlbedianIcon: String {
     case arrow = "arrow-right"
     case close = "x"
@@ -28,6 +28,7 @@ enum AlbedianIcon: String {
     case openLink = "arrow-square-out"
     case unreachable = "wifi-slash"
     case warning = "warning-circle"
+    case cameraSlash = "camera-slash"
 
     func image(_ size: Double) -> some View {
         Image(rawValue).resizable().renderingMode(.template).aspectRatio(contentMode: .fit).frame(width: size, height: size)

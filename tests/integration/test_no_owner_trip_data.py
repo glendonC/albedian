@@ -69,6 +69,8 @@ LOCKFILES = {"uv.lock", "pnpm-lock.yaml"}
 # flags them again.
 ACCEPTED_COINCIDENCES: frozenset[str] = frozenset(
     {
+        # Phosphor 2.1.1 regular camera-slash.svg (its notices copy): an icon path, not a place
+        "04310f937733fc8b011a12de3c37dd43419068b226417471c297ef6707283cff",
         "21a5e1103a0dd7953052d7c2c8666fb680ecbc9a8b0db869025c16b1f1cc7995",
         "2b346d37c1bd47816642fcd278819b0e7aeec84caa7a4eb4db8ae120c2ff32a9",
         "4254a0b9e510fe618059542a1a1eb29e2123caa5cb3000bc248cdf99cfc3b731",
@@ -79,6 +81,8 @@ ACCEPTED_COINCIDENCES: frozenset[str] = frozenset(
         "573bfe9ccc5af67b83f9ae4cdc7de49f9611d7f86b04b0021cfd40f1238f498b",
         "5dad2218afe0c892ef8171adb3592fe16ce7312d0da2299a7558f996f39d1c2c",
         "61b94b54b7d1e8d8463ec19a84fc2dd0c60749dfc7000f96881412a33e74543c",
+        # Phosphor 2.1.1 regular camera-slash.svg (the iPhone app's asset copy): an icon path, not a place
+        "6cb323f755033351149fd1647750ed81f7cc4989bee4edd89fa50bf4a858e5d9",
         "732ec2b660869434d5b055d45b95f9883c5ad67e6734b660f8fcb9d49bf37bf6",
         "7ce1c662a275f7b6606cd89aff38aa417200ca50c858bf7cfab6add26db7ff8f",
         "90c63ad22d8ca9c37c0694f0c3a066ecb4efe0a7e1a58b64dcb99710d5879904",
