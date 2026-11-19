@@ -271,5 +271,8 @@ The spec was accepted as the plan with seven rulings. Each is written in where i
   minutes (design 3.4).
 - Answered in platform-5b for now [tested, with a stand-in]: a solve beside a media job that keeps one core busy in its
   child ran 13.3 s against 13.3 s alone (a clip, medians of three) and 17.2 s against 16.3 s (a photo, one run 23.5 s),
-  at load 8 to 26; the two groups keep a slot each. [open] Measured again once the restoration's own pool exists
-  (REQ-RST-8.9), which the stand-in does not model.
+  at load 8 to 26; the two groups keep a slot each. Measured again in platform-5d with a real media job, once
+  restore-2b was on main [tested]: a photo's solve (7.2 MP) ran 16.3, 16.7 and 16.2 s alone and 16.6, 17.1 and 16.1 s
+  beside a still restoration of another photo (24.2 MP) that ran the whole time (medians 16.3 against 16.6 s, load
+  6.3 to 8.4); the two groups still keep a slot each. [open] A clip's restoration runs its bounded pool of worker
+  processes (REQ-RST-8.9), which a still's does not, and reaches the job only with restore-7: measure once more then.
