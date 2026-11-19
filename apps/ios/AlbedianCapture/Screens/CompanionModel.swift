@@ -28,8 +28,11 @@ final class CompanionModel {
     private(set) var stoppedSentence: String?
     /// What "Try again" on the failed screen does: the solve again, or the send again.
     private var retry: (sha256: String, address: LaptopAddress, solveOnly: Bool)?
-    /// The text typed after "http://" on the connect screen.
-    var typedAddress = ""
+    /// The text typed after "http://" on the connect screen; typing again brings the hint back.
+    var typedAddress = "" { didSet { if typedAddress != oldValue { addressRefused = false } } }
+    /// INTERIM (UIUX-iphone-connect-QUESTION, D11, for the owner's review): Connect was pressed with an address that is
+    /// not on the local network, so nothing was sent and the hint gives way to one line.
+    private(set) var addressRefused = false
     private(set) var cameraProblem: CameraSession.Failure?
     /// The page the Safari view shows, set only for a page `SafariViewGate` allows.
     var openPage: OutsidePageItem?
@@ -201,7 +204,10 @@ final class CompanionModel {
 
     /// "Connect": the typed address, used for this send and kept once the send goes through.
     func useTypedAddress() {
-        guard let address = PairingKeeper.address(typed: typedAddress) else { return }
+        guard let address = PairingKeeper.address(typed: typedAddress) else {
+            addressRefused = true
+            return
+        }
         screen = .afterShot
         send(to: address)
     }
@@ -300,6 +306,11 @@ final class CompanionModel {
         }
         if let index = args.firstIndex(of: "-AlbedianOpen"), args.indices.contains(index + 1) {
             screen = args[index + 1] == "credits" ? .credits : args[index + 1] == "pairing" ? .pairing : screen
+        }
+        // `-AlbedianTypeAddress <text>` types into the connect screen's field and presses Connect, as a person would
+        if let index = args.firstIndex(of: "-AlbedianTypeAddress"), args.indices.contains(index + 1) {
+            typedAddress = args[index + 1]
+            useTypedAddress()
         }
         guard let index = args.firstIndex(of: "-AlbedianShotFile"), args.indices.contains(index + 1),
               let photo = FileManager.default.contents(atPath: args[index + 1]) else { return }

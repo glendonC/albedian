@@ -242,12 +242,23 @@ struct ConnectScreen: View {
             .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(ControlStyle.line), lineWidth: 1))
             .padding(.horizontal, CGFloat(Arrive.side))
             .atTop(262)
-            Text("Albedian shows this address on the laptop when it starts.")
-                .font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
-                .foregroundStyle(Color(ControlStyle.inkSecondary))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, CGFloat(Arrive.side))
-                .atTop(336)
+            Group {
+                if model.addressRefused {
+                    // INTERIM (D11): the warning-circle icon and one line in ink at 15 pt, words for the owner to judge
+                    HStack(alignment: .top, spacing: 8) {
+                        AlbedianIcon.warning.image(18).padding(.top, 1)
+                        Text("Type the address Albedian shows on the laptop.").font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
+                    }
+                    .foregroundStyle(Color(ControlStyle.ink))
+                } else {
+                    Text("Albedian shows this address on the laptop when it starts.")
+                        .font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
+                        .foregroundStyle(Color(ControlStyle.inkSecondary))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, CGFloat(Arrive.side))
+            .atTop(336)
             MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress).atTop(404)
         }
         .ignoresSafeArea(.container)
