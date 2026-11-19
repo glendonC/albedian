@@ -76,6 +76,11 @@
   animation: look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both;
 }
 
+/* Original pixels pressed: the marks fade on the words-out time, 100 ms (no sinking: they are marks, not words) */
+.reveal-marks.is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
 .reveal-leader path {
   stroke-dasharray: 1;
   animation: look-mo-line-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;

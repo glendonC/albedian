@@ -993,3 +993,55 @@ describe('the status line comes in at its moment\'s time', () => {
     expect(rules['.reveal-status[data-moment="there"]']).toEqual({ 'animation-delay': 'var(--look-mo-dur-camera-half)' });
   });
 });
+
+// The motion record (MOTION-READY-web.md, row "Original pixels (A6)" and "Your photo and Real sky"): pressing Original
+// pixels, the marks go on the words-out timing (100 ms; a fade, no sinking: they are marks, not words); released, they
+// come back as they arrive.
+describe('pressing Original pixels, the marks leave as the motion record says', () => {
+  it('keeps the marks for the words-out time, leaving and inert, then removes them', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated());
+      show(calibrated(), { originalPixels: true });
+      const marks = q('[data-testid="reveal-marks"]')!;
+      expect(marks.classList.contains('is-leaving')).toBe(true);
+      expect(marks.hasAttribute('inert')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="reveal-marks"]')).toBeNull();
+      show(calibrated());
+      expect(q('[data-testid="reveal-marks"]')!.classList.contains('is-leaving')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lets them go in the one 270 ms dissolve under reduced motion', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+    try {
+      show(calibrated());
+      show(calibrated(), { originalPixels: true });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.dissolveMs - 1));
+      expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('fades them out in motion.css on the words-out time, with no sinking', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.reveal-marks.is-leaving']).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+  });
+});

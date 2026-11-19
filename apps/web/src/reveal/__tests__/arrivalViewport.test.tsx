@@ -781,7 +781,8 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(mask()).toContain('56px');
     press('Original pixels');
     expect(mask()).toBe('');
-    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    // The marks leave on the words-out time as the motion record says (motion-19), taking no input meanwhile
+    expect(q('[data-testid="reveal-marks"]')!.classList.contains('is-leaving')).toBe(true);
     expect(q('svg.photo-corners')).toBeNull();
     expect(q(CARD)).not.toBeNull();
     press('Original pixels');

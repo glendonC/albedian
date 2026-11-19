@@ -415,6 +415,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   }, [leaderNow?.d, leaderNow?.predicted]);
   const leaderShape = leaderNow ?? heldLeader;
   const leader = useLeaving(leaderNow !== null, cardLeaveMs);
+  // Original pixels pressed: the marks go on the words-out time (the motion record), then the photo is whole; a frame
+  // the browser turned wrongly drops them at once (a correction, not a press)
+  const marksLayer = useLeaving(!bareFrame, leaveMotion.wordsOutMs);
+  const marksShown = marksLayer.mounted && !frameMismatch;
 
   return (
     <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
@@ -461,8 +465,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
-      {!bareFrame && !earthOnly && !(compareShown && compareZoomed) && (
-      <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
+      {marksShown && !earthOnly && !(compareShown && compareZoomed) && (
+      <div className={marksLayer.leaving ? 'reveal-marks is-leaving' : 'reveal-marks'} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg
