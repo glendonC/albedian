@@ -1574,7 +1574,8 @@
 }
 .restore-compare__label {
   position: absolute;
-  top: 24px;
+  /* C19 item 2: moved down together under the logo where the frame reaches it (RestoreParts.tsx compareLabelTop) */
+  top: var(--compare-label-top, 24px);
   --look-h: 28px;
   --look-fs: 13px;
   padding: 0 12px;

@@ -13,6 +13,21 @@ const ROW_CLASS: Readonly<Record<RestoreRow['state'], string>> = {
 };
 const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`;
 
+/** The logo's foot on the reveal: .reveal-word's top (30 px) and the logo's 21 px type [inference: the type's size]. */
+export const LOGO_FOOT_PX = 30 + 21;
+/** D10's labels sit 24 px inside the frame's top corners. */
+const LABEL_INSET_PX = 24;
+
+/**
+ * C19 item 2 (UIUX-walkasks-READY.md, decided 12:59): where the labels would stand above 12 px under the logo's foot
+ * (a narrow window, where the photo's frame reaches the logo), both move down together to there, still level and
+ * inside the frame; elsewhere none (the labels keep their 24 px).
+ */
+export function compareLabelTop(frameTopPx: number): number | null {
+  const under = LOGO_FOOT_PX + 12;
+  return frameTopPx + LABEL_INSET_PX < under ? under - frameTopPx : null;
+}
+
 /** The restoration job's own steps, in the counts' place, drawn as the working screen draws a solve's (D10). */
 export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => {
   // C19 item 1: a step with no total shows the time passed
@@ -213,12 +228,14 @@ export const RestoreCompare: React.FC<{
     else setSplit(edge);
   };
   const layer = { transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})` };
+  const labelTop = compareLabelTop(rect.topPx);
   const style = {
     left: `${rect.leftPx}px`,
     top: `${rect.topPx}px`,
     width: `${rect.widthPx}px`,
     height: `${rect.heightPx}px`,
     '--split': `${split}%`,
+    ...(labelTop === null ? {} : { '--compare-label-top': `${labelTop}px` }),
     ...(fade ? { maskImage: fade, WebkitMaskImage: fade } : {}),
   } as React.CSSProperties;
   return (

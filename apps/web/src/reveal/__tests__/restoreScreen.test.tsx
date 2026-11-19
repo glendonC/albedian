@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
+import { compareLabelTop, LOGO_FOOT_PX } from '../RestoreParts.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { orientedSize, type ObservationSolution, type UploadJob } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
@@ -377,7 +378,7 @@ describe('a turned photo (the verdict on unit-restore-2)', () => {
 });
 
 describe("the restoration's rules are the approved page's", () => {
-  it('sets the compare, its line, its glide and its labels as CMP_CSS does, and still with reduced motion', () => {
+  it('sets the compare, its line, its glide and its labels as CMP_CSS does, and still with reduced motion', async () => {
     expect(declarationsOf('.restore-compare')).toMatchObject({ position: 'absolute', overflow: 'hidden', cursor: 'grab', 'touch-action': 'none', 'pointer-events': 'auto' });
     expect(declarationsOf('.restore-compare.is-drag')).toEqual({ cursor: 'grabbing' });
     // The cut is on an upright box, so it cuts the turned picture along the frame's own width
@@ -393,7 +394,7 @@ describe("the restoration's rules are the approved page's", () => {
     expect(css.replace(/\s+/g, ' ')).toContain('@media (prefers-reduced-motion: reduce) { .restore-compare__pic, .restore-compare__line { transition: none !important; } }');
     expect(declarationsOf('.restore-compare__label')).toEqual({
       position: 'absolute',
-      top: '24px',
+      top: 'var(--compare-label-top, 24px)',
       '--look-h': '28px',
       '--look-fs': '13px',
       padding: '0 12px',
@@ -402,6 +403,21 @@ describe("the restoration's rules are the approved page's", () => {
       'backdrop-filter': 'blur(14px)',
     });
     expect(declarationsOf('.restore-compare__label.is-left')).toEqual({ left: '24px' });
+    // C19 item 2: where the frame's top reaches the logo, both labels move down together to 12 px under its foot
+    expect(LOGO_FOOT_PX).toBe(51);
+    expect(compareLabelTop(45)).toBeNull();
+    expect(compareLabelTop(39)).toBeNull();
+    expect(compareLabelTop(38)).toBe(25);
+    expect(compareLabelTop(0)).toBe(63);
+    expect(compareLabelTop(-40)).toBe(103);
+    // On the compare itself: the frame at the window's top moves both labels to 63 px; the 1440 by 900 frame keeps 24
+    const { RestoreCompare } = await import('../RestoreParts.js');
+    const at = (topPx: number) => {
+      act(() => root.render(createElement(RestoreCompare, { rect: { leftPx: 0, topPx, widthPx: 800, heightPx: 600 }, src: '/v.png', originalSrc: '/o.png' })));
+      return (container.querySelector('[data-testid="restore-compare"]') as HTMLElement).style.getPropertyValue('--compare-label-top');
+    };
+    expect(at(0)).toBe('63px');
+    expect(at(45)).toBe('');
     expect(declarationsOf('.restore-compare__label.is-right')).toEqual({ right: '24px' });
   });
 
