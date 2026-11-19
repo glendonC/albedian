@@ -86,6 +86,11 @@ def _parameter(name: str, value, origin: str = "default", basis: str = DESIGN_7)
     return {"name": name, "value": value, "origin": origin, "basis": basis}
 
 
+def _settings(**values) -> list[dict]:
+    """The gate's settings as graph parameters (restore-4c's names), each a default design section 7 gives."""
+    return [_parameter(name, value) for name, value in values.items()]
+
+
 def _encode_parameters() -> list[dict]:
     return [_parameter("container", "png", basis="Proposed in design section 8."),
             _parameter("encoder", "png", basis="Proposed in design section 8."),
@@ -119,7 +124,9 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     kept = gate.kept_regions(field, codes, top, luminance, measurement)
     lap("noise_and_kept")
     steps = [{"kind": "decode", "version": STEP_VERSION, "parameters": still.parameters},
-             {"kind": "find_stars", "version": stars.STEP_VERSION, "parameters": stars.parameters()},
+             {"kind": "find_stars", "version": stars.STEP_VERSION, "parameters": stars.parameters() + _settings(
+                 starMinRadiusPx=gate.STAR_MIN_RADIUS_PX, farRingGapPx=gate.FAR_RING_GAP_PX,
+                 farRingWidthPx=gate.FAR_RING_WIDTH_PX)},
              {"kind": "measure_noise", "version": noise.STEP_VERSION, "parameters": noise.parameters()}]
     measured: dict = {"colour": still.source_colour, "stars": field.counts(), "notes": []}
     working = linear
@@ -129,7 +136,10 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
         guide = noise.stabilised(luminance, measurement)
         working = spatial.edge_avoiding(linear, guide, kept.weight).frame
         working = gate.smooth_first_scale(working, kept)
-        steps.append({"kind": "spatial_denoise", "version": spatial.STEP_VERSION, "parameters": spatial.parameters()})
+        steps.append({"kind": "spatial_denoise", "version": spatial.STEP_VERSION, "parameters": spatial.parameters() + _settings(
+            keptGrowPx=gate.KEPT_GROW_PX, firstScaleLevels=gate.FIRST_SCALE_LEVELS, brightSkyNoises=gate.BRIGHT_SKY_NOISES,
+            brightHaloNoises=gate.BRIGHT_HALO_NOISES, brightLevels=gate.BRIGHT_LEVELS,
+            brightBackgroundPercentile=gate.BACKGROUND_PERCENTILE, brightBackgroundPx=gate.BACKGROUND_PX)})
         blocks = noise.darkest_quarter_blocks(luminance, kept.weight, field.clipped)
         before = noise.fine_noise(luminance, blocks)
         after = noise.fine_noise(working @ np.asarray(stars.LUMA_WEIGHTS), blocks)
@@ -162,7 +172,12 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     lap("dissolve")
     steps.append({"kind": "dissolve_unconfirmed", "version": gate.STEP_VERSION, "parameters": [
         _parameter("maxPasses", max_passes), _parameter("variantThresholdSnr", gate.DISSOLVE_THRESHOLD_SNR),
-        _parameter("statistic", gate.STATISTIC)]})
+        _parameter("statistic", gate.STATISTIC)] + _settings(
+        sensitivityPeakCodes=gate.SENSITIVITY_PEAK_CODES, floorMargin=gate.FLOOR_MARGIN,
+        gateThresholdSnr=gate.VARIANT_THRESHOLD_SNR, fillLevels=gate.DISSOLVE_FILL_LEVELS,
+        discMinRadiusPx=gate.DISSOLVE_MIN_RADIUS_PX, discGrowPx=gate.DISSOLVE_GROW_PX, discEdgePx=gate.DISSOLVE_EDGE_PX,
+        nearCorePx=gate.NEAR_CORE_PX, unchangedRadiusPx=gate.UNCHANGED_RADIUS_PX,
+        unchangedToleranceCodes=gate.UNCHANGED_TOLERANCE_CODES16)})
     steps.append({"kind": "lift", "version": tone.STEP_VERSION, "parameters": lift.parameters()})
     steps.append({"kind": "encode", "version": STEP_VERSION, "parameters": _encode_parameters()})
     stored = transfer.encode16(tone.apply_lift(dissolved.working, lift.beta))

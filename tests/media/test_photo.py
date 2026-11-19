@@ -176,3 +176,29 @@ def test_a_trial_on_one_of_the_originals_stars_is_not_refused(honest) -> None:
     x, y = int(round(star.x_px)), int(round(star.y_px))
     refused, snr = trials.refused(x, y, 2 * gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT)
     assert snr > 0 and not refused
+
+
+# restore-4d: the graph says the settings restore-4c named, each by its own step, with the values gate.py ran with
+SETTINGS = {
+    "find_stars": {"starMinRadiusPx": gate.STAR_MIN_RADIUS_PX, "farRingGapPx": gate.FAR_RING_GAP_PX,
+                   "farRingWidthPx": gate.FAR_RING_WIDTH_PX},
+    "spatial_denoise": {"keptGrowPx": gate.KEPT_GROW_PX, "firstScaleLevels": gate.FIRST_SCALE_LEVELS,
+                        "brightSkyNoises": gate.BRIGHT_SKY_NOISES, "brightHaloNoises": gate.BRIGHT_HALO_NOISES,
+                        "brightLevels": gate.BRIGHT_LEVELS, "brightBackgroundPercentile": gate.BACKGROUND_PERCENTILE,
+                        "brightBackgroundPx": gate.BACKGROUND_PX},
+    "dissolve_unconfirmed": {"sensitivityPeakCodes": gate.SENSITIVITY_PEAK_CODES, "floorMargin": gate.FLOOR_MARGIN,
+                             "gateThresholdSnr": gate.VARIANT_THRESHOLD_SNR, "fillLevels": gate.DISSOLVE_FILL_LEVELS,
+                             "discMinRadiusPx": gate.DISSOLVE_MIN_RADIUS_PX, "discGrowPx": gate.DISSOLVE_GROW_PX,
+                             "discEdgePx": gate.DISSOLVE_EDGE_PX, "nearCorePx": gate.NEAR_CORE_PX,
+                             "unchangedRadiusPx": gate.UNCHANGED_RADIUS_PX,
+                             "unchangedToleranceCodes": gate.UNCHANGED_TOLERANCE_CODES16},
+}
+
+
+def test_the_graph_records_the_gates_settings_with_the_values_that_made_the_variant(honest) -> None:
+    by_step = {step["kind"]: {p["name"]: p for p in step["parameters"]} for step in honest.steps}
+    for kind, settings in SETTINGS.items():
+        for name, value in settings.items():
+            parameter = by_step[kind][name]
+            assert parameter["value"] == value, (kind, name)
+            assert parameter["origin"] == "default" and parameter["basis"] == "Proposed in design section 7."
