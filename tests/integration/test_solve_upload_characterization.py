@@ -275,6 +275,15 @@ def case_child_inputs_of_a_photo_decoded_with_no_colour(client, store, tmp_path,
     return {"sha": sha, "worker": _stopping_worker(monkeypatch)}
 
 
+def case_child_inputs_of_a_photo_stored_turned(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
+    # EXIF Orientation 6 (shown after one clockwise quarter turn): the chain tells the phone solver so (display_turns,
+    # the cut for a turned frame), and the stored pixels go to the child as they are
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    sha = _stored(client, _png(_small_field(), exif=exif.tobytes()), "image/png")
+    return {"sha": sha, "worker": _stopping_worker(monkeypatch)}
+
+
 def case_child_inputs_of_a_two_frame_clip(client, store, tmp_path, monkeypatch) -> dict[str, Any]:
     return {"sha": _stored(client, _clip(tmp_path, frames=2), "video/mp4"), "worker": _stopping_worker(monkeypatch),
             "floats": False}

@@ -605,6 +605,7 @@ def _solve_chain_once(
     hint_dec_deg: float | None = None,
     hint_radius_deg: float | None = None,
     triangle_radius_deg: float | None = None,
+    display_turns: int = 0,
 ):
     """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child. A pointing
     record's centre hint (pointing-4) goes to each: the phone solver keeps rotations within `hint_radius_deg` of it,
@@ -616,7 +617,10 @@ def _solve_chain_once(
     def on_candidate(done: int, total: int) -> None:
         on_event("candidate", done, total)
 
-    phone_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg)
+    # The phone solver also takes how the picture is shown, for its upright pass (the cut for a turned frame)
+    phone_hint = dict(
+        hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg, display_turns=display_turns,
+    )
     plate_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=triangle_radius_deg)
     if camera_meta:
         on_event("solver", "phone_photo")
@@ -830,6 +834,16 @@ def record_search_hint(asset: Mapping[str, Any], moment: RecordMoment | None) ->
     except Exception:  # noqa: BLE001 - a moment the ephemeris cannot take gives no hint, never a failed solve
         return None
     return SearchHint(hint.center_alt_deg, hint.center_az_deg, ra, dec, hint.uncertainty_deg, hint.fov_diagonal_deg)
+
+
+def _display_turns(asset: Mapping[str, Any]) -> int:
+    """The clockwise quarter turns that show the stored frame (SourceAsset.displayOrientation), for the phone solver's
+    upright pass; 0 for none, a mirrored frame or a value out of range, so the search keeps its stored-frame prior."""
+    orientation = asset.get("displayOrientation")
+    if not isinstance(orientation, Mapping) or orientation.get("mirrored", False):
+        return 0
+    turns = orientation.get("quarterTurnsClockwise", 0)
+    return turns if isinstance(turns, int) and not isinstance(turns, bool) and 0 <= turns <= 3 else 0
 
 
 def _what_was_lent(moment_hint: PointingHint | None) -> str | None:
@@ -1065,6 +1079,7 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         triangle_radius_deg=None if search is None else triangle_hint_radius_deg(search),
         # The record lent the time or the place: the blind search stays open to the photo (the lead, 13:20)
         moment_lent=_what_was_lent(moment_hint),
+        display_turns=_display_turns(asset),
     )
     if alignment is not None:
         chain_kwargs.update(person_axes=person_pose_axes(asset, alignment), person_fov_deg=float(alignment.fov_diagonal_deg))
@@ -1265,8 +1280,9 @@ SOLVE_PRODUCER_FILES = (
 # person_hint.py joins the files): the pose, the hint and the field sweep, and the person's pointing hint in its
 # solution; a plain solve's results are unchanged; 16, the no-skyline refusal in the design lane's two sentences (C21),
 # which a head-worn photo with no skyline stores in its warnings; 17, the Sun plus horizon pose by day (sky-6d, whose
-# sun_pose.py joins the files), which lines up daytime photos that were predicted only
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 17, SOLVE_PRODUCER_FILES)
+# sun_pose.py joins the files), which lines up daytime photos that were predicted only; 18, the phone solver's upright
+# pass in the picture as it is shown (the cut for a turned frame), which lines a photo stored sideways up in that pass
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 18, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

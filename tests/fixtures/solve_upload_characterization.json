@@ -37,7 +37,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -74,7 +74,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -100,7 +100,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -126,7 +126,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -158,7 +158,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -190,7 +190,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -228,7 +228,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -266,7 +266,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -312,7 +312,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -342,7 +342,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -378,7 +378,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -702,7 +702,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -735,6 +735,7 @@
     "kwargs": {
      "camera_label": "Synthetic Camera 1",
      "camera_meta": true,
+     "display_turns": 0,
      "fov_hint": 79.5243183036101,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -793,7 +794,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -830,7 +831,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -856,7 +857,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -882,7 +883,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -914,7 +915,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -946,7 +947,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -984,7 +985,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1022,7 +1023,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -1068,7 +1069,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -1098,7 +1099,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -1134,7 +1135,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -1458,7 +1459,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -1491,6 +1492,7 @@
     "kwargs": {
      "camera_label": "Synthetic Camera 1",
      "camera_meta": true,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -1549,7 +1551,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -1586,7 +1588,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1612,7 +1614,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1638,7 +1640,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1670,7 +1672,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1702,7 +1704,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1740,7 +1742,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -1778,7 +1780,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -1824,7 +1826,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -1854,7 +1856,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -1890,7 +1892,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -2214,7 +2216,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -2247,6 +2249,7 @@
     "kwargs": {
      "camera_label": "Synthetic Camera 1",
      "camera_meta": true,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -2305,7 +2308,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -2342,7 +2345,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -2368,7 +2371,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -2394,7 +2397,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -2426,7 +2429,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -2458,7 +2461,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -2496,7 +2499,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -2534,7 +2537,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -2580,7 +2583,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -2610,7 +2613,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -2646,7 +2649,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -2970,7 +2973,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -3003,6 +3006,7 @@
     "kwargs": {
      "camera_label": "Synthetic Camera 1",
      "camera_meta": true,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -3061,7 +3065,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -3098,7 +3102,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3124,7 +3128,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3150,7 +3154,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3182,7 +3186,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3214,7 +3218,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3252,7 +3256,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3290,7 +3294,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -3336,7 +3340,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -3366,7 +3370,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -3402,7 +3406,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -3726,7 +3730,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -3759,6 +3763,7 @@
     "kwargs": {
      "camera_label": "iPhone-18-Pro-Main",
      "camera_meta": true,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -3817,7 +3822,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -3854,7 +3859,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3880,7 +3885,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3906,7 +3911,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3938,7 +3943,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -3970,7 +3975,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4008,7 +4013,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4046,7 +4051,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -4092,7 +4097,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -4122,7 +4127,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -4158,7 +4163,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -4482,7 +4487,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -4515,6 +4520,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -4573,7 +4579,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -4610,7 +4616,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4636,7 +4642,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4662,7 +4668,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4694,7 +4700,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4726,7 +4732,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4764,7 +4770,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -4802,7 +4808,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -4848,7 +4854,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -4878,7 +4884,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -4914,7 +4920,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -5238,7 +5244,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -5270,6 +5276,764 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
+     "fov_hint": null,
+     "hint_dec_deg": null,
+     "hint_ra_deg": null,
+     "hint_radius_deg": null,
+     "lat_deg": null,
+     "lon_deg": null,
+     "moment_lent": null,
+     "obs_utc_iso": null,
+     "sha256": "<sha256 sent>",
+     "solution_id": "sol_<sha16 sent>",
+     "source_asset_id": "src_<sha16 sent>",
+     "triangle_radius_deg": null
+    },
+    "timeout_s": 180.0,
+    "progress_kwarg": "on_event"
+   }
+  ],
+  "pose": null,
+  "clockReads": 3
+ },
+ "child_inputs_of_a_photo_stored_turned": {
+  "returned": {
+   "id": "job_<sha16 sent><job random>",
+   "sourceAssetSha256": "<sha256 sent>",
+   "kind": "solve",
+   "state": "succeeded",
+   "createdAtUTC": "<now 0>",
+   "startedAtUTC": "<now 1>",
+   "finishedAtUTC": "<now 2>",
+   "stages": [
+    {
+     "stage": "store",
+     "unit": "bytes",
+     "done": "<bytes sent>",
+     "total": "<bytes sent>"
+    },
+    {
+     "stage": "decode",
+     "unit": "frames",
+     "done": 1,
+     "total": 1
+    },
+    {
+     "stage": "detect",
+     "unit": "frames",
+     "done": 1,
+     "total": 1
+    },
+    {
+     "stage": "solve",
+     "unit": "steps",
+     "done": 0,
+     "total": 1
+    }
+   ],
+   "solutionId": "sol_<sha16 sent>",
+   "producer": {
+    "name": "albedian.solve_chain",
+    "revision": 18
+   }
+  },
+  "transitions": [
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "queued",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     }
+    ],
+    "queueAhead": 0
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    }
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 0,
+      "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    }
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    }
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 0,
+      "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    }
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    }
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 0,
+      "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    }
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "succeeded",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 0,
+      "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 18
+    },
+    "solutionId": "sol_<sha16 sent>",
+    "finishedAtUTC": "<now 2>"
+   }
+  ],
+  "writes": [
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "queued",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      }
+     ]
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 18
+     }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 18
+     }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 18
+     }
+    }
+   },
+   {
+    "file": "solutions/job_<sha16 sent><job random>.json",
+    "readOnly": true,
+    "payload": {
+     "id": "sol_<sha16 sent>",
+     "sourceAssetId": "src_<sha16 sent>",
+     "sourceSha256": "<sha256 sent>",
+     "frameTimeSec": 0.0,
+     "revision": 1,
+     "status": "unresolved",
+     "solver": {
+      "name": "AlbedianTriangleSolver",
+      "version": "1.0.0",
+      "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+     },
+     "quality": {
+      "detectedCandidateCount": 9,
+      "matchedInlierCount": 0,
+      "heldOutPairCount": 0,
+      "heldOutInliers": 0,
+      "passedIndependentVerification": false
+     },
+     "findings": [
+      {
+       "id": "finding-obs-1",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #1",
+       "subtitle": "Measured at (14.0, 12.0) px · SNR 1684.7",
+       "evidence": {
+        "id": "ev-finding-obs-1",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 13.999999999999998,
+        "yPx": 11.999999999999998,
+        "flux": 2132.504007893014,
+        "snr": 1684.6923496901088,
+        "fwhmPx": 2.739913112785276,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-2",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #2",
+       "subtitle": "Measured at (104.0, 54.0) px · SNR 1684.7",
+       "evidence": {
+        "id": "ev-finding-obs-2",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 103.99999999999999,
+        "yPx": 53.99999999999999,
+        "flux": 2132.504007893014,
+        "snr": 1684.6903440293113,
+        "fwhmPx": 2.739913112785276,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-3",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #3",
+       "subtitle": "Measured at (125.0, 81.0) px · SNR 1684.7",
+       "evidence": {
+        "id": "ev-finding-obs-3",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 124.99995440832085,
+        "yPx": 80.99999999999999,
+        "flux": 2132.455396781903,
+        "snr": 1684.679504305625,
+        "fwhmPx": 2.7398751376868704,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-4",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #4",
+       "subtitle": "Measured at (141.0, 77.0) px · SNR 1684.7",
+       "evidence": {
+        "id": "ev-finding-obs-4",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 141.00005560019608,
+        "yPx": 77.0,
+        "flux": 2132.4328696816315,
+        "snr": 1684.6645603862144,
+        "fwhmPx": 2.7398744179518864,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-5",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #5",
+       "subtitle": "Measured at (51.0, 35.0) px · SNR 1684.6",
+       "evidence": {
+        "id": "ev-finding-obs-5",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 50.99988601560541,
+        "yPx": 34.99999999999999,
+        "flux": 2132.3581745596807,
+        "snr": 1684.6353816171259,
+        "fwhmPx": 2.7398337816427003,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-6",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #6",
+       "subtitle": "Measured at (30.0, 104.0) px · SNR 1684.6",
+       "evidence": {
+        "id": "ev-finding-obs-6",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 29.99988601560542,
+        "yPx": 104.0,
+        "flux": 2132.3581745596807,
+        "snr": 1684.6353816171259,
+        "fwhmPx": 2.7398337816427003,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-7",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #7",
+       "subtitle": "Measured at (88.0, 58.0) px · SNR 1684.5",
+       "evidence": {
+        "id": "ev-finding-obs-7",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 88.0,
+        "yPx": 58.0,
+        "flux": 2132.1483168361033,
+        "snr": 1684.4915147902323,
+        "fwhmPx": 2.739804025985146,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-8",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #8",
+       "subtitle": "Measured at (67.0, 31.0) px · SNR 1684.5",
+       "evidence": {
+        "id": "ev-finding-obs-8",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 67.00004790924788,
+        "yPx": 30.999999999999993,
+        "flux": 2132.0972432484446,
+        "snr": 1684.4801273486999,
+        "fwhmPx": 2.7397641162204605,
+        "centroidUncertaintyPx": 0.03
+       }
+      },
+      {
+       "id": "finding-obs-9",
+       "observationSolutionId": "sol_<sha16 sent>",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #9",
+       "subtitle": "Measured at (46.0, 100.0) px · SNR 1684.5",
+       "evidence": {
+        "id": "ev-finding-obs-9",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
+        "sourceAssetSha256": "<sha256 sent>",
+        "wcsSolutionId": "sol_<sha16 sent>",
+        "limitations": [
+         "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky."
+        ],
+        "verifiedByIndependentHoldout": false
+       },
+       "sourceDetection": {
+        "assetId": "src_<sha16 sent>",
+        "frameTimeSec": 0.0,
+        "xPx": 46.000047909247876,
+        "yPx": 100.0,
+        "flux": 2132.0972432484446,
+        "snr": 1684.4801273486999,
+        "fwhmPx": 2.7397641162204605,
+        "centroidUncertaintyPx": 0.03
+       }
+      }
+     ],
+     "warnings": [
+      "The search stopped at its 180 s limit before a verified calibration was found.",
+      "The file has no recorded capture time and no recorded place, so no sky can be predicted for it."
+     ]
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": true,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "succeeded",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "solve",
+       "unit": "steps",
+       "done": 0,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 18
+     },
+     "solutionId": "sol_<sha16 sent>",
+     "finishedAtUTC": "<now 2>"
+    }
+   }
+  ],
+  "files": {
+   "jobs": "0o700",
+   "jobs/job_<sha16 sent><job random>.json": "0o400",
+   "jobs/solve.lock": "0o600",
+   "solutions": "0o700",
+   "solutions/job_<sha16 sent><job random>.json": "0o400"
+  },
+  "worker": [
+   {
+    "fn": "_solve_chain",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "detections": 9,
+    "size": [
+     160,
+     120
+    ],
+    "kwargs": {
+     "camera_label": null,
+     "camera_meta": false,
+     "display_turns": 1,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -5328,7 +6092,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    },
    "inputSpan": {
     "firstFrameIndex": 0,
@@ -5371,7 +6135,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -5397,7 +6161,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -5423,7 +6187,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -5449,7 +6213,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5487,7 +6251,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5525,7 +6289,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5569,7 +6333,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5613,7 +6377,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -5665,7 +6429,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -5695,7 +6459,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -5725,7 +6489,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -5767,7 +6531,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -6097,7 +6861,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -6135,6 +6899,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -6203,7 +6968,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    },
    "inputSpan": {
     "firstFrameIndex": 0,
@@ -6246,7 +7011,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -6272,7 +7037,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -6298,7 +7063,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -6324,7 +7089,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6362,7 +7127,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6400,7 +7165,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6448,7 +7213,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6496,7 +7261,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6544,7 +7309,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6592,7 +7357,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6640,7 +7405,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6688,7 +7453,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6736,7 +7501,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6784,7 +7549,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6832,7 +7597,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6880,7 +7645,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6928,7 +7693,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -6976,7 +7741,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7024,7 +7789,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7072,7 +7837,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7120,7 +7885,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7168,7 +7933,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7216,7 +7981,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7264,7 +8029,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7312,7 +8077,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7360,7 +8125,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7408,7 +8173,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7456,7 +8221,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7504,7 +8269,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7552,7 +8317,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7600,7 +8365,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7648,7 +8413,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7696,7 +8461,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7744,7 +8509,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7792,7 +8557,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7840,7 +8605,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7888,7 +8653,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7936,7 +8701,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -7984,7 +8749,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8032,7 +8797,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8080,7 +8845,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8128,7 +8893,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8176,7 +8941,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8224,7 +8989,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8272,7 +9037,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8320,7 +9085,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8368,7 +9133,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8416,7 +9181,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8464,7 +9229,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8512,7 +9277,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8560,7 +9325,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8608,7 +9373,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8656,7 +9421,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8704,7 +9469,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8752,7 +9517,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8800,7 +9565,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8848,7 +9613,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8896,7 +9661,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8944,7 +9709,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -8992,7 +9757,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9040,7 +9805,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9088,7 +9853,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9136,7 +9901,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9184,7 +9949,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9232,7 +9997,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9280,7 +10045,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9328,7 +10093,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9376,7 +10141,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9424,7 +10189,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9472,7 +10237,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9520,7 +10285,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9568,7 +10333,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9616,7 +10381,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9664,7 +10429,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9712,7 +10477,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9760,7 +10525,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9808,7 +10573,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9856,7 +10621,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9904,7 +10669,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -9952,7 +10717,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10000,7 +10765,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10048,7 +10813,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10096,7 +10861,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10144,7 +10909,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10192,7 +10957,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10240,7 +11005,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10288,7 +11053,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10336,7 +11101,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10384,7 +11149,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10432,7 +11197,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10480,7 +11245,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10528,7 +11293,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10576,7 +11341,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10624,7 +11389,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10672,7 +11437,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10720,7 +11485,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10768,7 +11533,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10816,7 +11581,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10864,7 +11629,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10912,7 +11677,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -10960,7 +11725,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11008,7 +11773,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11056,7 +11821,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11104,7 +11869,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11152,7 +11917,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11200,7 +11965,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11248,7 +12013,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11296,7 +12061,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11344,7 +12109,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11392,7 +12157,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11440,7 +12205,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11488,7 +12253,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11536,7 +12301,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11584,7 +12349,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11632,7 +12397,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11680,7 +12445,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11728,7 +12493,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11776,7 +12541,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11824,7 +12589,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11872,7 +12637,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11920,7 +12685,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -11968,7 +12733,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12016,7 +12781,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12064,7 +12829,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12112,7 +12877,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12160,7 +12925,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12208,7 +12973,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12256,7 +13021,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12304,7 +13069,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12352,7 +13117,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12400,7 +13165,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12448,7 +13213,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12496,7 +13261,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12544,7 +13309,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12592,7 +13357,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12640,7 +13405,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12688,7 +13453,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12736,7 +13501,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12784,7 +13549,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12832,7 +13597,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12880,7 +13645,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12928,7 +13693,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -12976,7 +13741,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13024,7 +13789,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13072,7 +13837,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13120,7 +13885,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13168,7 +13933,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13216,7 +13981,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13264,7 +14029,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13312,7 +14077,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13360,7 +14125,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13408,7 +14173,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13456,7 +14221,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13504,7 +14269,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13552,7 +14317,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13600,7 +14365,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13648,7 +14413,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13696,7 +14461,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13744,7 +14509,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13792,7 +14557,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13840,7 +14605,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13888,7 +14653,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13936,7 +14701,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -13984,7 +14749,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14032,7 +14797,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14080,7 +14845,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14128,7 +14893,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14176,7 +14941,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14224,7 +14989,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14272,7 +15037,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14320,7 +15085,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14368,7 +15133,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14416,7 +15181,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14464,7 +15229,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14512,7 +15277,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14560,7 +15325,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14608,7 +15373,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14656,7 +15421,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14704,7 +15469,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14752,7 +15517,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14800,7 +15565,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14848,7 +15613,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14896,7 +15661,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14944,7 +15709,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -14992,7 +15757,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15040,7 +15805,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15088,7 +15853,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15136,7 +15901,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15184,7 +15949,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15232,7 +15997,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15280,7 +16045,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15328,7 +16093,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15376,7 +16141,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15424,7 +16189,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15472,7 +16237,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15520,7 +16285,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15568,7 +16333,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15616,7 +16381,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15664,7 +16429,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15712,7 +16477,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15760,7 +16525,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15808,7 +16573,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15856,7 +16621,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15904,7 +16669,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -15952,7 +16717,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16000,7 +16765,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16048,7 +16813,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16096,7 +16861,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16144,7 +16909,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16192,7 +16957,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16240,7 +17005,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16288,7 +17053,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16336,7 +17101,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16384,7 +17149,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16432,7 +17197,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16480,7 +17245,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16528,7 +17293,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16576,7 +17341,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16624,7 +17389,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16672,7 +17437,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16720,7 +17485,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16768,7 +17533,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16816,7 +17581,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16864,7 +17629,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16912,7 +17677,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -16960,7 +17725,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17008,7 +17773,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17056,7 +17821,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17104,7 +17869,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17152,7 +17917,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17200,7 +17965,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17248,7 +18013,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17296,7 +18061,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17344,7 +18109,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17392,7 +18157,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17440,7 +18205,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17488,7 +18253,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17536,7 +18301,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17584,7 +18349,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17632,7 +18397,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17680,7 +18445,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17728,7 +18493,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17776,7 +18541,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17824,7 +18589,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17872,7 +18637,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17920,7 +18685,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -17968,7 +18733,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18016,7 +18781,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18064,7 +18829,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18112,7 +18877,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18160,7 +18925,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18208,7 +18973,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18256,7 +19021,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18304,7 +19069,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18352,7 +19117,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18400,7 +19165,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18448,7 +19213,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18496,7 +19261,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18544,7 +19309,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18592,7 +19357,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18640,7 +19405,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18688,7 +19453,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18736,7 +19501,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18784,7 +19549,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18832,7 +19597,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18880,7 +19645,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18928,7 +19693,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -18976,7 +19741,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19024,7 +19789,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19072,7 +19837,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19120,7 +19885,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19168,7 +19933,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19216,7 +19981,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19264,7 +20029,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19312,7 +20077,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19360,7 +20125,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19408,7 +20173,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19456,7 +20221,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19504,7 +20269,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19552,7 +20317,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19600,7 +20365,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19648,7 +20413,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19696,7 +20461,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19744,7 +20509,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19792,7 +20557,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19840,7 +20605,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19888,7 +20653,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19936,7 +20701,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -19984,7 +20749,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20032,7 +20797,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20080,7 +20845,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20128,7 +20893,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20176,7 +20941,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20224,7 +20989,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20272,7 +21037,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20320,7 +21085,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20368,7 +21133,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20416,7 +21181,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20464,7 +21229,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20512,7 +21277,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20560,7 +21325,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20608,7 +21373,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20656,7 +21421,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20704,7 +21469,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20752,7 +21517,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20800,7 +21565,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20848,7 +21613,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20896,7 +21661,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20944,7 +21709,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -20992,7 +21757,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21040,7 +21805,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21088,7 +21853,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21136,7 +21901,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21184,7 +21949,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21232,7 +21997,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21280,7 +22045,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21328,7 +22093,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21376,7 +22141,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21424,7 +22189,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21472,7 +22237,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21520,7 +22285,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21568,7 +22333,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21616,7 +22381,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21664,7 +22429,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21712,7 +22477,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21760,7 +22525,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21808,7 +22573,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21856,7 +22621,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21904,7 +22669,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -21952,7 +22717,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22000,7 +22765,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22048,7 +22813,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22096,7 +22861,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22144,7 +22909,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22192,7 +22957,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22240,7 +23005,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22288,7 +23053,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22336,7 +23101,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22384,7 +23149,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22438,7 +23203,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22492,7 +23257,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -22544,7 +23309,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -22574,7 +23339,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -22604,7 +23369,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22646,7 +23411,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22698,7 +23463,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22750,7 +23515,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22802,7 +23567,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22854,7 +23619,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22906,7 +23671,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -22964,7 +23729,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -23364,7 +24129,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -23408,7 +24173,7 @@
    "error": "The solve stopped on an internal error.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -23445,7 +24210,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -23465,7 +24230,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "error": "The solve stopped on an internal error.",
     "finishedAtUTC": "<now 2>"
@@ -23511,7 +24276,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -23535,7 +24300,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "error": "The solve stopped on an internal error.",
      "finishedAtUTC": "<now 2>"
@@ -23571,7 +24336,7 @@
    "error": "The decoder could not read the file.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -23608,7 +24373,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -23628,7 +24393,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "error": "The decoder could not read the file.",
     "finishedAtUTC": "<now 2>"
@@ -23674,7 +24439,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -23698,7 +24463,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "error": "The decoder could not read the file.",
      "finishedAtUTC": "<now 2>"
@@ -23746,7 +24511,7 @@
    "error": "The solve stopped on an internal error.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -23783,7 +24548,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -23809,7 +24574,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -23835,7 +24600,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -23867,7 +24632,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -23899,7 +24664,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "error": "The solve stopped on an internal error.",
     "finishedAtUTC": "<now 2>"
@@ -23945,7 +24710,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -23975,7 +24740,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -24011,7 +24776,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "error": "The solve stopped on an internal error.",
      "finishedAtUTC": "<now 2>"
@@ -24112,7 +24877,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -24149,7 +24914,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24175,7 +24940,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24201,7 +24966,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24233,7 +24998,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24265,7 +25030,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24307,7 +25072,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24349,7 +25114,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -24395,7 +25160,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -24425,7 +25190,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -24461,7 +25226,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -24507,7 +25272,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -24582,7 +25347,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -24648,7 +25413,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -24685,7 +25450,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24711,7 +25476,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24737,7 +25502,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24769,7 +25534,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24801,7 +25566,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24843,7 +25608,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24885,7 +25650,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24927,7 +25692,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -24969,7 +25734,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25011,7 +25776,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25053,7 +25818,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25095,7 +25860,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25137,7 +25902,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25179,7 +25944,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25221,7 +25986,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25263,7 +26028,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25305,7 +26070,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25347,7 +26112,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25389,7 +26154,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25431,7 +26196,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25473,7 +26238,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25515,7 +26280,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25557,7 +26322,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25599,7 +26364,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25641,7 +26406,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25683,7 +26448,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25725,7 +26490,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25767,7 +26532,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25809,7 +26574,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25851,7 +26616,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25893,7 +26658,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25935,7 +26700,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -25977,7 +26742,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26019,7 +26784,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26061,7 +26826,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26103,7 +26868,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26145,7 +26910,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26187,7 +26952,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26229,7 +26994,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26271,7 +27036,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26313,7 +27078,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26355,7 +27120,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26397,7 +27162,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26439,7 +27204,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26481,7 +27246,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26523,7 +27288,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26565,7 +27330,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26607,7 +27372,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26649,7 +27414,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26691,7 +27456,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26733,7 +27498,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26775,7 +27540,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26817,7 +27582,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26859,7 +27624,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26901,7 +27666,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26943,7 +27708,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -26985,7 +27750,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27027,7 +27792,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27069,7 +27834,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27111,7 +27876,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27153,7 +27918,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27195,7 +27960,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27237,7 +28002,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27279,7 +28044,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27321,7 +28086,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27363,7 +28128,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27405,7 +28170,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27447,7 +28212,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27489,7 +28254,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27531,7 +28296,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27573,7 +28338,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27615,7 +28380,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27657,7 +28422,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27699,7 +28464,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27741,7 +28506,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27783,7 +28548,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27825,7 +28590,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27867,7 +28632,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27909,7 +28674,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27951,7 +28716,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -27993,7 +28758,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28035,7 +28800,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28077,7 +28842,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28119,7 +28884,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28161,7 +28926,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28203,7 +28968,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28245,7 +29010,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28287,7 +29052,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28329,7 +29094,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28371,7 +29136,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28413,7 +29178,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28455,7 +29220,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28497,7 +29262,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28539,7 +29304,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28581,7 +29346,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28623,7 +29388,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28665,7 +29430,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28707,7 +29472,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28749,7 +29514,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28791,7 +29556,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28833,7 +29598,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28875,7 +29640,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28917,7 +29682,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -28959,7 +29724,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29001,7 +29766,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29043,7 +29808,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29085,7 +29850,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29127,7 +29892,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29169,7 +29934,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29211,7 +29976,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29253,7 +30018,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29295,7 +30060,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29337,7 +30102,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29379,7 +30144,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29421,7 +30186,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29463,7 +30228,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29505,7 +30270,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29547,7 +30312,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29589,7 +30354,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29631,7 +30396,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29673,7 +30438,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29715,7 +30480,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29757,7 +30522,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29799,7 +30564,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29841,7 +30606,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29883,7 +30648,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29925,7 +30690,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -29967,7 +30732,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30009,7 +30774,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30051,7 +30816,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30093,7 +30858,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30135,7 +30900,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30177,7 +30942,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30219,7 +30984,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30261,7 +31026,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30303,7 +31068,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30345,7 +31110,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30387,7 +31152,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30429,7 +31194,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30471,7 +31236,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30513,7 +31278,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30555,7 +31320,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30597,7 +31362,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30639,7 +31404,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30681,7 +31446,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30723,7 +31488,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30765,7 +31530,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30807,7 +31572,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30849,7 +31614,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30891,7 +31656,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30933,7 +31698,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -30975,7 +31740,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31017,7 +31782,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31059,7 +31824,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31101,7 +31866,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31143,7 +31908,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31185,7 +31950,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31227,7 +31992,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31269,7 +32034,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31311,7 +32076,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31353,7 +32118,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31395,7 +32160,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31437,7 +32202,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31479,7 +32244,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31521,7 +32286,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31563,7 +32328,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31605,7 +32370,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31647,7 +32412,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31689,7 +32454,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31731,7 +32496,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31773,7 +32538,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31821,7 +32586,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -31869,7 +32634,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -31915,7 +32680,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -31945,7 +32710,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -31981,7 +32746,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -32027,7 +32792,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -32073,7 +32838,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -32125,7 +32890,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -32949,7 +33714,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -33015,7 +33780,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [],
@@ -33059,7 +33824,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -33089,7 +33854,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -33125,7 +33890,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -33171,7 +33936,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -33217,7 +33982,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -33269,7 +34034,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -34093,7 +34858,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -34159,7 +34924,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -34196,7 +34961,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34222,7 +34987,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34248,7 +35013,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34280,7 +35045,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34312,7 +35077,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34354,7 +35119,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34396,7 +35161,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34438,7 +35203,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34480,7 +35245,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34522,7 +35287,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34564,7 +35329,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34606,7 +35371,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34648,7 +35413,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34690,7 +35455,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34732,7 +35497,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34774,7 +35539,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34816,7 +35581,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34858,7 +35623,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34900,7 +35665,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34942,7 +35707,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -34984,7 +35749,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35026,7 +35791,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35068,7 +35833,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35110,7 +35875,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35152,7 +35917,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35194,7 +35959,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35236,7 +36001,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35278,7 +36043,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35320,7 +36085,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35362,7 +36127,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35404,7 +36169,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35446,7 +36211,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35488,7 +36253,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35530,7 +36295,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35572,7 +36337,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35614,7 +36379,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35656,7 +36421,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35698,7 +36463,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35740,7 +36505,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35782,7 +36547,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35824,7 +36589,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35866,7 +36631,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35908,7 +36673,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35950,7 +36715,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -35992,7 +36757,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36034,7 +36799,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36076,7 +36841,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36118,7 +36883,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36160,7 +36925,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36202,7 +36967,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36244,7 +37009,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36286,7 +37051,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36328,7 +37093,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36370,7 +37135,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36412,7 +37177,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36454,7 +37219,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36496,7 +37261,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36538,7 +37303,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36580,7 +37345,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36622,7 +37387,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36664,7 +37429,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36706,7 +37471,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36748,7 +37513,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36790,7 +37555,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36832,7 +37597,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36874,7 +37639,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36916,7 +37681,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -36958,7 +37723,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37000,7 +37765,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37042,7 +37807,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37084,7 +37849,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37126,7 +37891,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37168,7 +37933,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37210,7 +37975,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37252,7 +38017,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37294,7 +38059,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37336,7 +38101,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37378,7 +38143,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37420,7 +38185,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37462,7 +38227,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37504,7 +38269,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37546,7 +38311,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37588,7 +38353,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37630,7 +38395,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37672,7 +38437,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37714,7 +38479,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37756,7 +38521,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37798,7 +38563,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37840,7 +38605,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37882,7 +38647,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37930,7 +38695,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -37978,7 +38743,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -38024,7 +38789,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -38054,7 +38819,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -38090,7 +38855,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -38136,7 +38901,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -38182,7 +38947,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -38234,7 +38999,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -39167,7 +39932,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -39223,7 +39988,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    },
    "inputSpan": {
     "firstFrameIndex": 0,
@@ -39266,7 +40031,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -39292,7 +40057,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -39318,7 +40083,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -39344,7 +40109,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39382,7 +40147,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39420,7 +40185,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39464,7 +40229,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39508,7 +40273,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "inputSpan": {
      "firstFrameIndex": 0,
@@ -39560,7 +40325,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -39590,7 +40355,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -39620,7 +40385,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -39662,7 +40427,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -40047,7 +40812,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "inputSpan": {
       "firstFrameIndex": 0,
@@ -40085,6 +40850,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -40201,7 +40967,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -40238,7 +41004,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -40264,7 +41030,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -40290,7 +41056,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -40322,7 +41088,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -40354,7 +41120,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -40392,7 +41158,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -40430,7 +41196,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -40476,7 +41242,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -40506,7 +41272,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -40542,7 +41308,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -40865,7 +41631,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -40898,6 +41664,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -40981,7 +41748,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -41018,7 +41785,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41044,7 +41811,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41070,7 +41837,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41102,7 +41869,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41134,7 +41901,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41176,7 +41943,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41218,7 +41985,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -41264,7 +42031,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41294,7 +42061,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41330,7 +42097,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41376,7 +42143,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41451,7 +42218,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -41517,7 +42284,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -41554,7 +42321,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41580,7 +42347,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41606,7 +42373,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41638,7 +42405,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41670,7 +42437,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41712,7 +42479,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -41754,7 +42521,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -41800,7 +42567,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41830,7 +42597,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41866,7 +42633,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41912,7 +42679,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -41987,7 +42754,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -42047,7 +42814,7 @@
    "error": "The job's result could not be stored.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -42084,7 +42851,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42110,7 +42877,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42136,7 +42903,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42168,7 +42935,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42200,7 +42967,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42242,7 +43009,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42284,7 +43051,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "error": "The job's result could not be stored.",
     "finishedAtUTC": "<now 2>"
@@ -42330,7 +43097,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42360,7 +43127,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42396,7 +43163,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42442,7 +43209,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42517,7 +43284,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "error": "The job's result could not be stored.",
      "finishedAtUTC": "<now 2>"
@@ -42575,7 +43342,7 @@
    "error": "The solve stopped on an internal error.",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -42612,7 +43379,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42638,7 +43405,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42664,7 +43431,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42696,7 +43463,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42728,7 +43495,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42770,7 +43537,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -42812,7 +43579,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "error": "The solve stopped on an internal error.",
     "finishedAtUTC": "<now 2>"
@@ -42858,7 +43625,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42888,7 +43655,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42924,7 +43691,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -42970,7 +43737,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -43016,7 +43783,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "error": "The solve stopped on an internal error.",
      "finishedAtUTC": "<now 2>"
@@ -43047,6 +43814,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -43109,7 +43877,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -43146,7 +43914,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43172,7 +43940,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43198,7 +43966,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43230,7 +43998,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43262,7 +44030,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43304,7 +44072,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43346,7 +44114,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -43388,7 +44156,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -43434,7 +44202,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -43464,7 +44232,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -43500,7 +44268,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -43546,7 +44314,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -44469,7 +45237,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -44502,6 +45270,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -44564,7 +45333,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -44601,7 +45370,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -44627,7 +45396,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -44653,7 +45422,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -44685,7 +45454,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -44717,7 +45486,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -44759,7 +45528,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -44801,7 +45570,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -44847,7 +45616,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -44877,7 +45646,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -44913,7 +45682,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -44959,7 +45728,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -45287,7 +46056,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -45320,6 +46089,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,
@@ -45382,7 +46152,7 @@
    "solutionId": "sol_<sha16 sent>",
    "producer": {
     "name": "albedian.solve_chain",
-    "revision": 17
+    "revision": 18
    }
   },
   "transitions": [
@@ -45419,7 +46189,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -45445,7 +46215,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -45471,7 +46241,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -45503,7 +46273,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -45535,7 +46305,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -45577,7 +46347,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     }
    },
    {
@@ -45619,7 +46389,7 @@
     "startedAtUTC": "<now 1>",
     "producer": {
      "name": "albedian.solve_chain",
-     "revision": 17
+     "revision": 18
     },
     "solutionId": "sol_<sha16 sent>",
     "finishedAtUTC": "<now 2>"
@@ -45665,7 +46435,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -45695,7 +46465,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -45731,7 +46501,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -45777,7 +46547,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      }
     }
    },
@@ -46109,7 +46879,7 @@
      "startedAtUTC": "<now 1>",
      "producer": {
       "name": "albedian.solve_chain",
-      "revision": 17
+      "revision": 18
      },
      "solutionId": "sol_<sha16 sent>",
      "finishedAtUTC": "<now 2>"
@@ -46142,6 +46912,7 @@
     "kwargs": {
      "camera_label": null,
      "camera_meta": false,
+     "display_turns": 0,
      "fov_hint": null,
      "hint_dec_deg": null,
      "hint_ra_deg": null,

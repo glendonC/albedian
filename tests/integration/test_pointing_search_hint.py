@@ -469,3 +469,13 @@ def test_a_matched_star_s_brightness_caution_is_c24_s() -> None:
         if band is not None:
             assert pps.magnitude_band_words(band) in finding.limitations
         assert not any("Johnson" in line for line in finding.limitations)
+
+
+@pytest.mark.parametrize(("orientation", "turns"), [
+    (None, 0), ({"quarterTurnsClockwise": 1, "mirrored": False}, 1), ({"quarterTurnsClockwise": 3, "mirrored": False}, 3),
+    ({"quarterTurnsClockwise": 1, "mirrored": True}, 0), ({"quarterTurnsClockwise": 7}, 0),
+])
+def test_the_job_tells_the_search_how_the_picture_is_shown(orientation: Any, turns: int) -> None:
+    # A mirrored or malformed orientation tells nothing: the search keeps its stored-frame prior
+    asset = {} if orientation is None else {"displayOrientation": orientation}
+    assert ingest_jobs._display_turns(asset) == turns

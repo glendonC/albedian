@@ -1790,6 +1790,35 @@ def _upright_prior_takes(rotations: np.ndarray) -> np.ndarray:
     )
 
 
+# The shown picture's right and down as the stored frame's, for each number of clockwise quarter turns that shows it
+# (SourceAsset.displayOrientation): coefficients on the stored right and the stored down
+_SHOWN_AXES = {
+    1: ((0.0, -1.0), (1.0, 0.0)),
+    2: ((-1.0, 0.0), (0.0, -1.0)),
+    3: ((0.0, 1.0), (-1.0, 0.0)),
+}
+
+
+def _upright_prior_for(display_turns: int) -> Callable[[np.ndarray], np.ndarray]:
+    """The upright prior in the picture as it is shown: for a stored frame shown after `display_turns` clockwise
+    quarter turns, the shown picture's down toward the ground and its right near level (the cut for a turned frame,
+    the lead's answer of 2026-11-19 17:01), so a photo stored sideways is searched upright at the first pass's cost and
+    the every-roll pass is needed only when that does not calibrate. No turn is the stored-frame prior itself."""
+    turns = display_turns % 4
+    if turns == 0:
+        return _upright_prior_takes
+    (rr, rd), (dr, dd) = _SHOWN_AXES[turns]
+
+    def _upright_prior_shown(rotations: np.ndarray) -> np.ndarray:
+        right_up = rr * rotations[:, 0, 2] + rd * rotations[:, 1, 2]
+        down_up = dr * rotations[:, 0, 2] + dd * rotations[:, 1, 2]
+        return (
+            (rotations[:, 2, 2] > ATTITUDE_AXIS_UP_MIN) & (down_up < -UPRIGHT_DOWN_MIN) & (np.abs(right_up) < UPRIGHT_RIGHT_MAX)
+        )
+
+    return _upright_prior_shown
+
+
 def _hint_takes(rotations: np.ndarray, hint_vec: np.ndarray, radius_deg: float) -> np.ndarray:
     """Which candidate rotations a centre hint keeps (pointing-4): those whose optical axis lies within the hint's
     radius of the hinted centre (`hint_vec`, a unit east, north, up vector). The held-out gate is unchanged, so the
@@ -2128,6 +2157,7 @@ def solve_phone_photo(
     hint_radius_deg: float | None = None,
     seed_axes_icrs: Sequence[tuple[float, float]] | None = None,
     fov_candidates_deg: Sequence[float] | None = None,
+    display_turns: int = 0,
 ) -> ObservationSolution:
     """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification.
 
@@ -2147,7 +2177,10 @@ def solve_phone_photo(
     centre and a step toward its right and its bottom edges as ICRS directions (person_hint.stored_axes_icrs), is
     tried as the search's answer in one solve, refined and verified as any candidate, with no search; and
     `fov_candidates_deg` is the field-of-view sweep the horizon search tries in place of the camera's or the given
-    field. A pose far from the truth is refused by the gate, so it can lose a solve but never make one."""
+    field. A pose far from the truth is refused by the gate, so it can lose a solve but never make one.
+
+    `display_turns` (the asset's displayOrientation, clockwise quarter turns) puts the first pass's upright prior in
+    the picture as it is shown, so a photo stored sideways is lined up in the first pass."""
     if detections is None:
         raw_luma = _to_luma_2d(image)
         luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2170,7 +2203,10 @@ def solve_phone_photo(
         if on_candidate is not None:
             on_candidate(first_total[0] + done, first_total[0] + total)
 
-    first = _solve_phone_photo_with(image, attitude_prior=_upright_prior_takes, on_candidate=first_counts, **common)
+    # The first pass is upright in the picture as it is shown (`display_turns`, the asset's clockwise quarter turns)
+    first = _solve_phone_photo_with(
+        image, attitude_prior=_upright_prior_for(display_turns), on_candidate=first_counts, **common
+    )
     horizon = obs_utc_iso is not None and observer_lat is not None and observer_lon is not None and catalog_stars is None
     # A pose tried as the answer is one solve: no search runs, so a second prior has nothing to keep
     if first.status == "calibrated" or not horizon or seed_axes_icrs is not None:

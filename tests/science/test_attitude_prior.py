@@ -79,3 +79,49 @@ def test_a_frame_wider_than_the_refinement_takes_is_refined_without_failing() ->
     ]
     refined = pps._refine_phone_camera_wcs(wide, pairs)
     assert 25.0 <= refined.fov_diagonal_deg <= 145.0
+
+
+# The cut for a turned frame (the lead's 17:01 answer; attitude-prior.md's [open] item): a photo whose stored pixels
+# are turned (its displayOrientation) is searched upright in the picture as it is shown, so the first, upright pass can
+# line it up and the every-roll pass is not needed
+
+
+def _solve_turned_told(frame_id: str, quarter_turns: int, monkeypatch: pytest.MonkeyPatch) -> tuple:
+    passes: list[str] = []
+    real = pps._solve_phone_photo_with
+
+    def counted(*args, **kwargs):
+        passes.append(kwargs["attitude_prior"].__name__)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(pps, "_solve_phone_photo_with", counted)
+    frame = phone_render.render_frame(SUITE[frame_id], phone_stars.TileCatalog())
+    spec = frame.spec
+    with Image.open(io.BytesIO(frame.jpeg_bytes)) as image:
+        rgb = np.ascontiguousarray(np.rot90(np.asarray(image.convert("RGB"), dtype=np.uint8), k=quarter_turns))
+    solution = pps.solve_phone_photo(
+        rgb, obs_utc_iso=spec.utc, observer_lat=spec.lat_deg, observer_lon=spec.lon_deg, camera_label=None,
+        fov_diagonal_deg=spec.fov_deg, source_asset_id="src_" + "d" * 16, source_sha256="d" * 63 + "1",
+        solution_id="sol_turned", display_turns=quarter_turns,
+    )
+    return solution, passes
+
+
+@pytest.mark.parametrize("quarter_turns", [1, 2, 3], ids=["a quarter turn", "upside down", "three quarters"])
+def test_a_turned_frame_told_its_turns_is_lined_up_in_the_upright_pass_alone(quarter_turns: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    # np.rot90 turns the pixels counterclockwise, so the picture is shown after as many clockwise quarter turns
+    solution, passes = _solve_turned_told("pos-010", quarter_turns, monkeypatch)
+    assert solution.status == "calibrated", solution.warnings
+    assert len(passes) == 1, passes
+
+
+def test_the_upright_prior_in_the_shown_picture_takes_one_roll_of_four() -> None:
+    rolls = (0, 90, 180, 270)
+    rotations = np.stack([_rotation(40, r) for r in rolls])
+    assert pps._upright_prior_for(0) is pps._upright_prior_takes
+    taken = {t: pps._upright_prior_for(t)(rotations).tolist() for t in range(4)}
+    assert taken[0] == [True, False, False, False]
+    for t in (1, 2, 3):
+        assert sum(taken[t]) == 1, (t, taken[t])
+    # Each shown orientation takes a different roll
+    assert len({tuple(v) for v in taken.values()}) == 4
