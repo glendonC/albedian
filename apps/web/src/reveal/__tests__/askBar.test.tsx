@@ -251,6 +251,13 @@ describe('AskBar at phone width (ask, approved 2026-11-12, iPhone; #p-answer)', 
     expect(q('.ask-bar__type')).toBeNull();
   });
 
+  it('shows Back to Moment alone there, at the phone size (#p-there .bar)', () => {
+    show({ phone: true, onBack: () => {} });
+    const buttons = [...container.querySelectorAll('[data-testid="ask-bar"] button')];
+    expect(buttons.map((button) => button.textContent)).toEqual(['Back to Moment']);
+    expect(q('.ask-bar__ask')).toBeNull();
+  });
+
   it('keeps the keyboard button on the laptop', () => {
     show();
     expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar');

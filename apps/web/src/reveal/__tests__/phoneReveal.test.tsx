@@ -15,14 +15,15 @@ import { phoneRealSkyShade } from '../RealSkyLayer.js';
 import { phoneSlotCrop } from '../phoneSlot.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports it drew, and keeps what it was given
-const sky = vi.hoisted(() => ({ phone: undefined as boolean | undefined }));
+const sky = vi.hoisted(() => ({ phone: undefined as boolean | undefined, there: undefined as boolean | undefined }));
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; phone?: boolean }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; phone?: boolean; there?: boolean }) => {
       sky.phone = props.phone;
+      sky.there = props.there;
       useEffect(() => {
         props.onDrawn?.(true);
       }, [props.onDrawn]);
@@ -144,6 +145,43 @@ describe('Real sky at phone width (reveal, approved 2026-11-12, iPhone 2; #p-rea
   });
 });
 
+describe('there at phone width (fly, approved 2026-11-12, iPhone; #p-there)', () => {
+  it('shows the readout under the photo with its Simulated tag and no name, only the picked mark, and no status or corners', () => {
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    act(() => {
+      root.render(
+        createElement(RevealPhoto, {
+          session: { ...session, selectedFindingId: rigel.id },
+          onSelectFinding: () => {},
+          onHome: () => {},
+          phone: true,
+          flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 },
+          viewportWidthPx: VIEW.w,
+          viewportHeightPx: VIEW.h,
+        })
+      );
+    });
+    const readout = q('[data-testid="flight-readout"]')!;
+    expect(readout.className).toBe('flight-readout is-phone');
+    expect(readout.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(all('.flight-readout__stat span').map((s) => s.textContent)).toEqual(['to Rigel', 'from Earth']);
+    expect(sky.phone).toBe(true);
+    expect(sky.there).toBe(true);
+    expect(all('button.reveal-mark').length).toBe(1);
+    expect(q('[data-testid="reveal-status"]')).toBeNull();
+    expect(q('svg.photo-corners')).toBeNull();
+    expect(q('[data-testid="star-card"]')).toBeNull();
+    expect(q('.reveal-phone-counts')).toBeNull();
+  });
+
+  it('shades the window there as the page does: clear to 78 px before the slot\'s foot, darker under it', () => {
+    expect(phoneRealSkyShade(844, { there: true })).toBe(
+      'linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0px, rgba(0, 0, 0, 0.3) 112px, rgba(0, 0, 0, 0) 150px, rgba(0, 0, 0, 0) 560px, rgba(0, 0, 0, 0.6) 640px, rgba(0, 0, 0, 0.85) 844px)'
+    );
+  });
+});
+
 describe('RevealPhoto at phone width', () => {
   it('draws each mark smaller, the approved phone ring with its ticks, and no logo, status, corners or line', () => {
     show(calibrated());
@@ -194,7 +232,7 @@ describe("the phone reveal's rules are the approved page's", () => {
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__st')).toEqual({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px', 'margin-top': '12px', 'padding-top': '0', 'border-top': '0' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__v')).toEqual({ 'font-size': '12px' });
     expect(declarationsOf('.ask-bar.is-phone')).toEqual({ top: '772px', bottom: 'auto' });
-    expect(declarationsOf('.ask-bar.is-phone .look-second')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)' });
+    expect(declarationsOf('.ask-bar.is-phone .look-main, .ask-bar.is-phone .look-second')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)' });
   });
 
   it('sets the phone card as #p-pick does: 12 from the sides, 30 from the foot, its type and buttons at the phone sizes', () => {
@@ -225,6 +263,16 @@ describe("the phone reveal's rules are the approved page's", () => {
 
   it('sets the Real sky note as #p-real does', () => {
     expect(declarationsOf('.reveal-status.is-phone')).toEqual({ left: '24px', right: '24px', top: '660px', width: 'auto', font: '400 14px / 1.5 var(--look-font-sans)' });
+  });
+
+  it('sets the readout there as #p-there does', () => {
+    expect(declarationsOf('.flight-readout.is-phone')).toEqual({ left: '24px', right: '24px', top: '604px', width: 'auto' });
+    expect(declarationsOf('.flight-readout.is-phone h1')).toEqual({ display: 'none' });
+    expect(declarationsOf('.flight-readout.is-phone .look-tag')).toEqual({ 'margin-bottom': '14px' });
+    expect(declarationsOf('.flight-readout.is-phone .flight-readout__stats')).toEqual({ gap: '12px', 'margin-top': '0', 'padding-top': '0', 'border-top': '0' });
+    expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat b')).toEqual({ 'font-weight': '300', 'font-size': '40px' });
+    expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat small')).toEqual({ 'font-size': '15px' });
+    expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat span')).toEqual({ 'margin-top': '6px' });
   });
 
   it('puts the close circle and the views in the top row, 20 px in, 60 px down', () => {

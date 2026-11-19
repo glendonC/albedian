@@ -437,6 +437,22 @@ describe('the viewport shows the approved star card over the photo, above phone 
     }
   });
 
+  it('goes there on a phone too, in the phone reveal: 3D current, Back to Moment alone in the bar, which comes back', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    const base = pickedSession();
+    const there = { ...base, spatialView: { ...base.spatialView, mode: 'catalog_3d' }, machines: { ...base.machines, navigation: 'space' } } as ObservationSession;
+    const sessions: ObservationSession[] = [];
+    open(there, { setSession: (update: (prev: ObservationSession) => ObservationSession) => sessions.push(update(there)) });
+    expect(q('[data-testid="flight-readout"]')!.className).toBe('flight-readout is-phone');
+    const pills = [...q('.reveal-phone-top')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+    expect(pills.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true']);
+    const bar = q('[data-testid="ask-bar"]')!;
+    expect(bar.className).toBe('ask-bar is-phone');
+    expect([...bar.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Back to Moment']);
+    act(() => (bar.querySelector('button') as HTMLButtonElement).click());
+    expect(sessions.at(-1)!.spatialView?.mode).toBe('source_2d');
+  });
+
   // The verdict on unit-realsky-1: the status says what is on screen, never Simulated over the person's own photo
   const skyOpen = () => {
     const base = storedPhoto();

@@ -53,15 +53,22 @@ export function realSkyShade(rect: PhotoRect, viewportWidthPx: number, shade: Re
 /**
  * At phone width (reveal, approved 2026-11-12, iPhone 2; #p-real .sky::after): the bands above and below the photo's
  * slot shaded, none over the photo: 70 percent black at the top, 30 at 6 px above the slot, clear from 32 px inside it to
- * 38 px before its foot, 55 percent 22 px under it and 78 at the window's foot.
+ * 38 px before its foot, 55 percent 22 px under it and 78 at the window's foot. There (fly, approved, iPhone;
+ * #p-there .sky::after) the clear part ends 78 px before the slot's foot, 60 percent 2 px under it and 85 at the foot,
+ * under the taller readout.
  */
 export const PHONE_REAL_SKY_SHADE = { top: 0.7, aboveSlot: 0.3, belowSlot: 0.55, foot: 0.78 } as const;
-export function phoneRealSkyShade(viewportHeightPx: number): string {
+const PHONE_THERE_SHADE = { belowSlot: 0.6, foot: 0.85, clearEndsPx: 78, belowPx: 2 } as const;
+export function phoneRealSkyShade(viewportHeightPx: number, { there = false }: { there?: boolean } = {}): string {
   const s = PHONE_REAL_SKY_SHADE;
   const top = PHONE_SLOT.topPx;
   const bottom = PHONE_SLOT.topPx + PHONE_SLOT.heightPx;
+  const clearEnds = bottom - (there ? PHONE_THERE_SHADE.clearEndsPx : 38);
+  const below = bottom + (there ? PHONE_THERE_SHADE.belowPx : 22);
+  const belowShade = there ? PHONE_THERE_SHADE.belowSlot : s.belowSlot;
+  const foot = there ? PHONE_THERE_SHADE.foot : s.foot;
   const black = (a: number) => `rgba(0, 0, 0, ${a})`;
-  return `linear-gradient(to bottom, ${black(s.top)} 0px, ${black(s.aboveSlot)} ${top - 6}px, ${black(0)} ${top + 32}px, ${black(0)} ${bottom - 38}px, ${black(s.belowSlot)} ${bottom + 22}px, ${black(s.foot)} ${viewportHeightPx}px)`;
+  return `linear-gradient(to bottom, ${black(s.top)} 0px, ${black(s.aboveSlot)} ${top - 6}px, ${black(0)} ${top + 32}px, ${black(0)} ${clearEnds}px, ${black(belowShade)} ${below}px, ${black(foot)} ${viewportHeightPx}px)`;
 }
 
 /**
@@ -183,7 +190,9 @@ export const RealSkyLayer: React.FC<{
   onDrawn?: (drawn: boolean) => void;
   /** At phone width: the bands above and below the photo's slot shaded instead of the side columns. */
   phone?: boolean;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false }) => {
+  /** There, after Go there: on the phone, the shade under the taller readout. */
+  there?: boolean;
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false, there = false }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
@@ -220,7 +229,7 @@ export const RealSkyLayer: React.FC<{
   return (
     <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas ref={canvas} className="real-sky__canvas" width={Math.round(viewportWidthPx * dpr)} height={Math.round(viewportHeightPx * dpr)} />
-      {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? phoneRealSkyShade(viewportHeightPx) : realSkyShade(rect, viewportWidthPx) }} />}
+      {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? phoneRealSkyShade(viewportHeightPx, { there }) : realSkyShade(rect, viewportWidthPx) }} />}
     </div>
   );
 };

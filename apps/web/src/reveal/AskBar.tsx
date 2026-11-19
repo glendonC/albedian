@@ -92,7 +92,8 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
   return (
     <div className={phone ? 'ask-bar is-phone' : 'ask-bar'} data-hud-interactive="true" data-testid="ask-bar">
       {onBack && <MainAction label="Back to Moment" icon="arrow-u-up-left" size="home" onClick={() => onBack()} />}
-      {typing ? (
+      {/* There on the phone, Back to Moment alone (fly, approved, iPhone; #p-there .bar) */}
+      {phone && onBack ? null : typing ? (
         <form className="ask-bar__field" onSubmit={send}>
           <input
             ref={input}

@@ -1234,6 +1234,7 @@
   top: 772px;
   bottom: auto;
 }
+.ask-bar.is-phone .look-main,
 .ask-bar.is-phone .look-second {
   --look-h: var(--look-h-phone);
   --look-fs: var(--look-fs-phone);
@@ -1294,4 +1295,35 @@
   top: 660px;
   width: auto;
   font: 400 14px / 1.5 var(--look-font-sans);
+}
+
+/* There at phone width: the readout under the photo, its Simulated tag above the two distances and no name (fly,
+   approved 2026-11-12, iPhone; #p-there .ro) */
+.flight-readout.is-phone {
+  left: 24px;
+  right: 24px;
+  top: 604px;
+  width: auto;
+}
+.flight-readout.is-phone h1 {
+  display: none;
+}
+.flight-readout.is-phone .look-tag {
+  margin-bottom: 14px;
+}
+.flight-readout.is-phone .flight-readout__stats {
+  gap: 12px;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.flight-readout.is-phone .flight-readout__stat b {
+  font-weight: 300;
+  font-size: 40px;
+}
+.flight-readout.is-phone .flight-readout__stat small {
+  font-size: 15px;
+}
+.flight-readout.is-phone .flight-readout__stat span {
+  margin-top: 6px;
 }

@@ -185,12 +185,12 @@ export const SpatialObservatoryViewport: React.FC<
   // reveal itself, the reducer's sky.show having saved the moment to come back to
   const realSkyShown = isRealSkyShown(session);
   // There, after Go there (fly, approved 2026-11-12): the same panorama in the photo's place, the readout in the card's
-  const flightShown = !phone && isFlightShown(session);
+  const flightShown = isFlightShown(session);
   const skyOver = realSkyShown || flightShown;
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
   // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
   // pieces until their own units
-  const phoneReveal = phone && (isPhoneRevealShown(session) || realSkyShown);
+  const phoneReveal = phone && (isPhoneRevealShown(session) || realSkyShown || flightShown);
   const revealShown = (!phone && (isSourcePhotoShown(session) || skyOver)) || phoneReveal;
   // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
   // only while that card is open
@@ -753,7 +753,7 @@ export const SpatialObservatoryViewport: React.FC<
               bar's place (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
           {/* On the phone the picked star's card covers the foot, Ask out loud's place, as #p-pick draws it */}
           {/* Nor over Real sky on the phone, as #p-real draws it */}
-          {revealShown && phoneReveal && (pickedFinding || realSkyShown) ? null : revealShown ? (
+          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown) ? null : revealShown ? (
             <AskBar
               canListen={canListen}
               listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}
@@ -902,7 +902,7 @@ export const SpatialObservatoryViewport: React.FC<
               { id: 'sky', label: 'Real sky', disabled: !realSkyOpens },
               { id: '3d', label: '3D', disabled: !threeDOpens },
             ]}
-            current={realSkyShown ? 'sky' : 'photo'}
+            current={flightShown ? '3d' : realSkyShown ? 'sky' : 'photo'}
             onSelect={handleView}
           />
         </div>

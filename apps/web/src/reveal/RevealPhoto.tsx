@@ -160,7 +160,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true">
-      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} />}
+      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!phone && !bareFrame && picked && marks.some((mark) => mark.picked) && (
@@ -213,7 +213,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       </button>
       )}
 
-      {phone && !skyOnScreen ? null : there && skyOnScreen ? (
+      {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
+      {phone && (!skyOnScreen || there) ? null : there && skyOnScreen ? (
         <div className="reveal-status" data-testid="reveal-status" role="status">
           <EvidenceTag evidenceClass="simulated" />
           <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
@@ -265,7 +266,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
 
       {!answer && flight && (
-        <section className="flight-readout" data-testid="flight-readout" aria-label={flight.name}>
+        <section className={phone ? 'flight-readout is-phone' : 'flight-readout'} data-testid="flight-readout" aria-label={flight.name}>
           <EvidenceTag evidenceClass="simulated" />
           <h1>{flight.name}</h1>
           <div className="flight-readout__stats">
