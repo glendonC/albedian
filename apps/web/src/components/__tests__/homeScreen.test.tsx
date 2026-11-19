@@ -298,6 +298,28 @@ describe('the viewport opens on the home', () => {
     expect(onFileChosen).toHaveBeenCalledWith(file);
   });
 
+  it('leaves the home at once when a photo is dropped on the window, and takes no drop once past it', () => {
+    const onFileChosen = vi.fn();
+    renderViewport({ onFileChosen });
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], 'dropped.jpg', { type: 'image/jpeg' });
+    const dropOnWindow = () => {
+      const event = new Event('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: { types: ['Files'], files: [file] } });
+      act(() => {
+        window.dispatchEvent(event);
+      });
+      return event;
+    };
+    expect(dropOnWindow().defaultPrevented).toBe(true);
+    expect(q(HOME_SCREEN)).toBeNull();
+    expect(q('.alb-lusion-header')).not.toBeNull();
+    expect(onFileChosen).toHaveBeenCalledTimes(1);
+    expect(onFileChosen).toHaveBeenCalledWith(file);
+    // Past the home the drop overlay has no record, so the app takes no drop there
+    expect(dropOnWindow().defaultPrevented).toBe(false);
+    expect(onFileChosen).toHaveBeenCalledTimes(1);
+  });
+
   it("returns to the home from the app's logo", () => {
     renderViewport();
     choosePhotoOnHome(container);

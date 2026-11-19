@@ -3,6 +3,7 @@ import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/in
 import { CreditsPage } from './CreditsPage.js';
 import { nameParts, refusalSentence, shortFileName, type HomeRefusal } from './homeRefusal.js';
 import { homeBackdropStyle, homeShadeStyle } from './homeBackdrop.js';
+import { carriesFiles, droppedFile } from './homeDrop.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/home.css';
@@ -21,8 +22,9 @@ export interface HomeScreenProps {
 /**
  * The approved home (arrive, 2026-11-12): the Milky Way the app ships, darkened toward the bottom left, the logo at
  * 132 px with Upload under it, and Credits and the sound circle at the top right. Credits opens in its place and its
- * back button returns here. A refused upload shows beside Upload as approved the same day. Nothing on the home moves,
- * counts or spins.
+ * back button returns here. A refused upload shows beside Upload as approved the same day. A photo dragged onto the
+ * window dims the home behind "Drop to upload" (the same approval's second screen), and a drop takes the picker's
+ * path. Nothing on the home moves, counts or spins.
  */
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   soundOn,
@@ -40,6 +42,57 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const fileInput = useRef<HTMLInputElement>(null);
   const home = useRef<HTMLDivElement>(null);
   const returnFocus = useRef(false);
+  // A file held over the window: how many parts of the window it has entered and not yet left (a browser sends a
+  // child's enter before its parent's leave), so the overlay stays while the file crosses the window
+  const [fileOver, setFileOver] = useState(false);
+  const entered = useRef(0);
+  const chosen = useRef(onFileChosen);
+  chosen.current = onFileChosen;
+
+  // Anywhere on the window takes a dropped photo while the home shows (approved 2026-11-12); a drag that holds no
+  // file is left to the browser. Credits stands in the home's place, so it takes none
+  useEffect(() => {
+    if (creditsOpen) return undefined;
+    const close = () => {
+      entered.current = 0;
+      setFileOver(false);
+    };
+    const onEnter = (event: DragEvent) => {
+      if (!carriesFiles(event.dataTransfer)) return;
+      entered.current += 1;
+      setFileOver(true);
+    };
+    const onOver = (event: DragEvent) => {
+      if (!carriesFiles(event.dataTransfer)) return;
+      // Without this a browser refuses the drop
+      event.preventDefault();
+      event.dataTransfer!.dropEffect = 'copy';
+    };
+    const onLeave = (event: DragEvent) => {
+      if (!carriesFiles(event.dataTransfer)) return;
+      entered.current = Math.max(0, entered.current - 1);
+      if (entered.current === 0) setFileOver(false);
+    };
+    const onDrop = (event: DragEvent) => {
+      if (!carriesFiles(event.dataTransfer)) return;
+      // Without this a browser leaves the app to open the file itself
+      event.preventDefault();
+      const file = droppedFile(event.dataTransfer);
+      close();
+      if (file) chosen.current(file);
+    };
+    window.addEventListener('dragenter', onEnter);
+    window.addEventListener('dragover', onOver);
+    window.addEventListener('dragleave', onLeave);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('dragenter', onEnter);
+      window.removeEventListener('dragover', onOver);
+      window.removeEventListener('dragleave', onLeave);
+      window.removeEventListener('drop', onDrop);
+      close();
+    };
+  }, [creditsOpen]);
 
   // Back from Credits puts the keyboard where it was, on Credits
   useEffect(() => {
@@ -113,6 +166,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           if (file) onFileChosen(file);
         }}
       />
+      {fileOver && (
+        <div className="home-drop" data-testid="home-drop">
+          <div className="home-drop__frame" aria-hidden="true" />
+          <div className="home-drop__mid">
+            <span className="home-drop__circle" aria-hidden="true">
+              <LookIcon name="upload-simple" />
+            </span>
+            <span className="home-drop__words">Drop to upload</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

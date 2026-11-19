@@ -153,6 +153,52 @@
   display: none;
 }
 
+/* A photo dragged onto the window (arrive, approved 2026-11-12, screen 2): the home dims and blurs behind a 1 px
+   rounded frame 20 px inside the window, with a 112 px filled circle holding the upload icon and the words under it.
+   Every value is the approved page's. It appears and goes at once, as the page shows it: no transition. */
+.home-drop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.home-drop__frame {
+  position: absolute;
+  inset: 20px;
+  border: 1px solid rgba(244, 243, 239, 0.45);
+  border-radius: 28px;
+}
+
+.home-drop__mid {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+}
+
+.home-drop__circle {
+  --look-ic: 36px;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: var(--look-ink);
+  color: var(--look-night);
+}
+
+.home-drop__words {
+  font: 400 17px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+}
+
 /* Credits, as the approved iPhone page (credit-approved-2026-11-12): the back button, the title, then rows divided by
    hairlines, each a small grey label over its lines as one block, the small open-link icon at the right edge of a
    credit whose source has a page. [proposed]: the laptop's 720 px column 32 px from the top, more than one credit on
