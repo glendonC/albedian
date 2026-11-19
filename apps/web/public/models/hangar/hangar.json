@@ -297,6 +297,62 @@
         "page": "https://www.nasa.gov/wp-content/uploads/2015/03/139889main_presskit12_05.pdf",
         "quote": "A 2.1-meter (83-inch) diameter antenna dish"
       }
+    },
+    "z2": {
+      "title": "Z-2",
+      "kind": "suit",
+      "files": {
+        "lod0": {
+          "path": "z2/z2_lod0.glb",
+          "bytes": 2754236,
+          "triangles": 30244,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "z2/z2_lod1.glb",
+          "bytes": 1034796,
+          "triangles": 12097,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "z2/z2_lod2.glb",
+          "bytes": 400596,
+          "triangles": 4536,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "z2/z2_picker.webp",
+          "bytes": 3216,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.397,
+          -0.968,
+          -0.521
+        ],
+        "max": [
+          0.397,
+          0.968,
+          0.521
+        ]
+      },
+      "bodyRadiusM": 0.8,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.4,
+        "lod2": 0.15
+      },
+      "scaleFrom": {
+        "native": true,
+        "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
+        "quote": "fit crewmembers who are sized in the medium ISS EMU HUT"
+      }
     }
   },
   "entries": [
@@ -529,6 +585,26 @@
           "value": 2.1,
           "page": "https://www.nasa.gov/wp-content/uploads/2015/03/139889main_presskit12_05.pdf",
           "quote": "A 2.1-meter (83-inch) diameter antenna dish"
+        }
+      ]
+    },
+    {
+      "id": "z2",
+      "name": "Z-2",
+      "model": "z2",
+      "travel": null,
+      "facts": [
+        {
+          "key": "what",
+          "value": "NASA prototype spacesuit",
+          "page": "https://photojournal.jpl.nasa.gov/catalog/PIA23978",
+          "quote": "the Z-2, a prototype spacesuit"
+        },
+        {
+          "key": "helmetInches",
+          "value": "13 by 11",
+          "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
+          "quote": "a 13” x 11” elliptical dome"
         }
       ]
     }

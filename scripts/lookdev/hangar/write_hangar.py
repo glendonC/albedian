@@ -211,7 +211,7 @@ def build_record(models: list[str]) -> dict:
             picture_url = src.get("picture_url") or f"{base}{_quoted(src['picture'])}"
             picker_note = f"From NASA's render {picture_url} ({src['picture_bytes']} bytes, SHA-256 {src['picture_sha256']})."
         else:
-            picker_sentence = BUILD_SENTENCES["picker_render"]
+            picker_sentence = BUILD_SENTENCES[{"screenshot": "picker_render", "insignia": "picker_render_insignia"}[src["picker_render_reason"]]]
             picker_note = f"Rendered from this folder's lod0 build of {model_url}."
         files.append(
             {

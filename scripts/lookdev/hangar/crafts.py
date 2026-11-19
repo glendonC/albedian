@@ -179,6 +179,7 @@ CRAFTS: dict[str, dict] = {
             # NASA's preview of this model is a screenshot of its modelling program, so the picker's picture is
             # rendered from the rebuilt model instead.
             "picture": None,
+            "picker_render_reason": "screenshot",
             "local": "emu",
         },
         "drop_objects": [],
@@ -260,6 +261,58 @@ CRAFTS: dict[str, dict] = {
         },
         "body_radius_m": 1.6,
         "changes": "photo",
+    },
+    "z2": {
+        "title": "Z-2",
+        "kind": "suit",
+        "source": {
+            "id": "nasa3d-z2-spacesuit",
+            "title": "Z2 Spacesuit, NASA 3D Resources",
+            "folder": "Z2 Spacesuit",
+            "file": "Z2 Spacesuit.glb",
+            "page": "https://science.nasa.gov/3d-resources/z2-spacesuit/",
+            "bytes": 16_933_148,
+            "sha256": "4199762c27f8e730030a7bf9f1a453c203457e84c33b36247c0237a74f9a0c2a",
+            # NASA's own render of this model shows the NASA insignia on the shoulder, which the rebuild covers.
+            "picture": None,
+            "picker_render_reason": "insignia",
+            "local": "z2",
+        },
+        "drop_objects": [],
+        # The suit stands up +Z and faces -Y in the import frame (its visor there): it moves the way it faces.
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's model is built in metres (glTF's unit): 1.94 m tall.
+        "scale_from": {
+            "native": True,
+            "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
+            "quote": "fit crewmembers who are sized in the medium ISS EMU HUT",
+        },
+        "materials": {
+            "Baked": {
+                "role": "baked_maps",
+                "color": "Color",
+                "bump": "Bump",
+                "specular": "spec",
+                "bump_strength": 6.0,
+                # In the colour map's 4096 pixels: the NASA insignia and an emblem patch, filled from a plain patch
+                # of the suit's own fabric, and in unused space the Advanced Concepts Lab's logo and credit line.
+                "paint_out": [
+                    {"box": (54, 3512, 214, 3678), "what": "an emblem patch", "fill_from": (1560, 3810, 1640, 3890)},
+                    {"box": (208, 3450, 352, 3598), "what": "the NASA insignia", "fill_from": (1560, 3810, 1640, 3890)},
+                    {"box": (3940, 2530, 4010, 3735), "what": "a credit line in unused texture space"},
+                    {"box": (3830, 3720, 4096, 4012), "what": "a logo in unused texture space"},
+                ],
+            },
+        },
+        # The insignia and the emblem are decals of their own, shaped like the marks: their faces come out too.
+        "drop_decals": [
+            {"box": (54, 3512, 214, 3678), "texture_edge": 4096, "what": "an emblem patch"},
+            {"box": (208, 3450, 352, 3598), "texture_edge": 4096, "what": "the NASA insignia"},
+        ],
+        "lod_ratio": {"lod0": 1.0, "lod1": 0.4, "lod2": 0.15},
+        "body_radius_m": 0.8,
+        "changes": "baked",
     },
 }
 
@@ -369,6 +422,17 @@ HANGAR: list[dict] = [
             {"key": "launch", "value": "2006-01-19", "page": "https://science.nasa.gov/mission/new-horizons/", "quote": "Jan. 19, 2006 / 19:00:00 UT"},
             {"key": "massKg", "value": 478, "page": "https://science.nasa.gov/mission/new-horizons/", "quote": "Spacecraft Mass 1,054 pounds (478 kilograms)"},
             {"key": "dishDiameterM", "value": 2.1, "page": "https://www.nasa.gov/wp-content/uploads/2015/03/139889main_presskit12_05.pdf", "quote": "A 2.1-meter (83-inch) diameter antenna dish"},
+        ],
+    },
+    {
+        # A spacesuit is worn near a spacecraft, never flown between stars: no speed (D26 item 5).
+        "id": "z2",
+        "name": "Z-2",
+        "model": "z2",
+        "travel": None,
+        "facts": [
+            {"key": "what", "value": "NASA prototype spacesuit", "page": "https://photojournal.jpl.nasa.gov/catalog/PIA23978", "quote": "the Z-2, a prototype spacesuit"},
+            {"key": "helmetInches", "value": "13 by 11", "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf", "quote": "a 13” x 11” elliptical dome"},
         ],
     },
 ]

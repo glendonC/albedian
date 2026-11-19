@@ -66,6 +66,14 @@ CHANGES = {
         "merged, and the normals made again, smooth within an angle and sharp beyond it."
     ),
     # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit")
+    # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked")
+    "lod0_baked": (
+        "Rebuilt from NASA's model, not copied: turned so the suit faces along +Z with +Y up, at the metre scale "
+        "NASA's model is built in; NASA's colour map kept as the base colour, NASA's bump map turned into a normal map and the "
+        "roughness taken from NASA's specular map; the NASA insignia and an emblem patch, decals of their own, removed "
+        "with their faces and painted over in all three maps, as are a logo and its credit line in unused texture "
+        "space, and the textures re-encoded as WebP."
+    ),
     "lod0_suit": (
         "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts "
         "joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is "
@@ -86,6 +94,10 @@ CHANGES = {
         "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels "
         "square, since NASA's own preview of this model is a screenshot of its modelling program."
     ),
+    "picker_render_insignia": (
+        "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels "
+        "square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
+    ),
 }
 
 # Photo atlas material rules, on the texture's sRGB values: hue in degrees, saturation and value in 0..1.
@@ -98,6 +110,8 @@ ROUGHNESS = {"gold": 0.28, "dark": 0.52, "white": 0.62, "grey": 0.36}
 METALLIC = {"gold": 1.0, "dark": 0.0, "white": 0.0, "grey": 0.7}
 RELIEF_STRENGTH = {"gold": 2.2, "dark": 1.6, "white": 0.4, "grey": 0.5}
 RELIEF_BLUR_PX = 3  # the high-pass radius, in source pixels, that separates wrinkles from the photo's broad shading
+SPEC_ROUGH_AT_BLACK = 0.9  # roughness where a specular map is black
+SPEC_ROUGH_AT_WHITE = 0.3  # roughness where it is white
 PICKER_SAMPLES = 32  # Cycles samples for a rendered picker picture
 PAINT_OUT_BAND_PX = 3  # the band around a painted-out box whose median colour fills it
 
@@ -193,8 +207,8 @@ def atlas_maps(base: bpy.types.Image) -> tuple[np.ndarray, np.ndarray]:
 
 def painted_out(img: bpy.types.Image, boxes: list[dict]) -> bpy.types.Image:
     """A copy of the photo texture with each box (source pixels, x0 y0 x1 y1 from the top left) filled with the median
-    colour of a PAINT_OUT_BAND_PX band around it: NASA's insignia and logotype are not public domain, so a mark NASA
-    photographed on the hardware is covered with the surface it is printed on."""
+    colour of a PAINT_OUT_BAND_PX band around it, or of the box its "fill_from" names: NASA's insignia and logotype
+    are not public domain, so a mark NASA photographed on the hardware is covered with the surface it is printed on."""
     px = image_array(img).copy()
     h, w, _ = px.shape
     for box in boxes:
@@ -209,6 +223,10 @@ def painted_out(img: bpy.types.Image, boxes: list[dict]) -> bpy.types.Image:
                 px[r0:r1, x1 : x1 + b].reshape(-1, 4),
             ]
         )
+        if box.get("fill_from"):
+            # a decal island filled with the median of a patch of the surface it sits on, named by its own box
+            fx0, fy0, fx1, fy1 = box["fill_from"]
+            ring = px[h - fy1 : h - fy0, fx0:fx1].reshape(-1, 4)
         px[r0:r1, x0:x1] = np.median(ring, axis=0)
     out = bpy.data.images.new(f"{img.name}_painted", width=w, height=h, alpha=False)
     out.pixels.foreach_set(px.ravel())
@@ -266,6 +284,45 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
             out = nt.nodes.new("ShaderNodeGroup")
             out.node_tree = material_output_group()
             links.new(sep.outputs[0], out.inputs["Occlusion"])
+    elif spec["role"] == "baked_maps":
+        # NASA's own maps: its colour map stays the base colour (marks painted out), its bump map becomes the normal
+        # map, and its specular map gives the roughness (brighter specular, smoother); no part is metal.
+        imgs = {n.image.name: n.image for n in source_mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image}
+        color = next(i for k, i in imgs.items() if spec["color"] in k)
+        bump = next(i for k, i in imgs.items() if spec["bump"] in k)
+        specular = next(i for k, i in imgs.items() if spec["specular"] in k)
+        if spec.get("paint_out"):
+            # the same marks are in the bump and specular maps as relief and shine: covered there too
+            color = painted_out(color, spec["paint_out"])
+            bump = painted_out(bump, spec["paint_out"])
+            specular = painted_out(specular, spec["paint_out"])
+        base = nt.nodes.new("ShaderNodeTexImage")
+        base.image = color
+        links.new(base.outputs["Color"], bsdf.inputs["Base Color"])
+        lum = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+        height = image_array(bump)[..., :3] @ lum
+        gy, gx = np.gradient(height * spec["bump_strength"])
+        n = np.dstack([-gx, -gy, np.ones_like(gx)])
+        n /= np.linalg.norm(n, axis=-1, keepdims=True)
+        nrm_arr = np.ones((*height.shape, 4), dtype=np.float32)
+        nrm_arr[..., :3] = n * 0.5 + 0.5
+        del n, gx, gy, height
+        s = image_array(specular)[..., :3] @ lum
+        orm_arr = np.ones((*s.shape, 4), dtype=np.float32)
+        orm_arr[..., 1] = np.clip(SPEC_ROUGH_AT_BLACK - (SPEC_ROUGH_AT_BLACK - SPEC_ROUGH_AT_WHITE) * s, 0.0, 1.0)
+        orm_arr[..., 2] = 0.0
+        del s
+        orm = nt.nodes.new("ShaderNodeTexImage")
+        orm.image = new_image(f"{name}_metal_rough", orm_arr, non_color=True)
+        sep = nt.nodes.new("ShaderNodeSeparateColor")
+        links.new(orm.outputs["Color"], sep.inputs["Color"])
+        links.new(sep.outputs[1], bsdf.inputs["Roughness"])
+        links.new(sep.outputs[2], bsdf.inputs["Metallic"])
+        nrm = nt.nodes.new("ShaderNodeTexImage")
+        nrm.image = new_image(f"{name}_normal", nrm_arr, non_color=True)
+        nmap = nt.nodes.new("ShaderNodeNormalMap")
+        links.new(nrm.outputs["Color"], nmap.inputs["Color"])
+        links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     elif spec["role"] == "textured":
         # NASA's own texture as the base colour (a printed label, a flag), with a flat metalness and roughness.
         base = nt.nodes.new("ShaderNodeTexImage")
@@ -448,6 +505,30 @@ def main() -> None:
         bm.to_mesh(me)
         bm.free()
         me.update()
+
+    # Decals carrying a NASA mark: their own faces come out, so the surface under them shows, not their outline.
+    if recipe.get("drop_decals"):
+        import bmesh
+
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        uv = bm.loops.layers.uv.active
+        doomed = []
+        for f in bm.faces:
+            for d in recipe["drop_decals"]:
+                x0, y0, x1, y1 = d["box"]
+                edge = d["texture_edge"]
+                if all(x0 <= l[uv].uv.x * edge <= x1 and y0 <= (1 - l[uv].uv.y) * edge <= y1 for l in f.loops):
+                    doomed.append(f)
+                    break
+        if not doomed:
+            raise SystemExit("no decal face found in the recipe's boxes")
+        bmesh.ops.delete(bm, geom=doomed, context="FACES")
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+        bm.to_mesh(me)
+        bm.free()
+        me.update()
+        print(f"HANGAR {args.craft} decal faces removed {len(doomed)}")
 
     # Scale and origin from the part NASA states a dimension of, or NASA's model as built in metres.
     sf = recipe["scale_from"]
