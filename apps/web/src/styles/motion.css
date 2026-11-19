@@ -82,3 +82,17 @@
 .reveal-card__notes {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 6) both;
 }
+
+/* An answer, a refusal, or listening that failed, in the card's place: the question as heard, the sentence 20 ms
+   later, then its statements 20 ms after that (a refusal has no statements). */
+.reveal-answer__q {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 0) both;
+}
+
+.reveal-answer__s {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 1) both;
+}
+
+.reveal-answer__st {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 2) both;
+}

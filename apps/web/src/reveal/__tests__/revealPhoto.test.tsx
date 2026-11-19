@@ -39,6 +39,7 @@ vi.mock('../RealSkyLayer.js', async (importOriginal) => {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+const motionCss = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
 const VIEW = { w: 1440, h: 900 };
 // A 960 by 540 frame fitted to 1440 by 900: full width, 810 high, 45 from the top; one photo pixel is 1.5 on screen
 const calibrated = (over: Partial<ObservationSolution> = {}) => poseSession({ ...sample('plate_calibrated'), ...over } as ObservationSolution);
@@ -671,21 +672,38 @@ describe("the reveal's rules are the approved pages'", () => {
     expect(declarationsOf('.reveal-status__warns .look-i')).toEqual({ flex: 'none', 'margin-top': '2px' });
   });
 
-  it('sets the answer in the card\'s place as the approved page does, rising 10 px as it fades in, and not at all with reduced motion', () => {
+  it('sets the answer in the card\'s place as the approved page does, with no motion of its own (its lines arrive by motion.css)', () => {
     expect(declarationsOf('.reveal-answer')).toEqual({
       position: 'absolute',
       right: '32px',
       top: '118px',
       width: '320px',
       'pointer-events': 'auto',
-      animation: 'reveal-card-fade 500ms var(--look-ease-standard) both, reveal-answer-rise 900ms var(--look-ease-spring) both',
     });
     expect(declarationsOf('.reveal-answer__q')).toEqual({ margin: '0 0 14px', 'font-size': '14px', color: 'var(--look-ink-3)', 'letter-spacing': '-0.005em' });
     expect(declarationsOf('.reveal-answer__s')).toEqual({ margin: '0', font: '300 34px / 1.12 var(--look-font-sans)', 'letter-spacing': '-0.035em', 'text-wrap': 'balance' });
     expect(declarationsOf('.reveal-answer__st')).toEqual({ display: 'grid', gap: '10px', 'justify-items': 'start', 'margin-top': '22px', 'padding-top': '18px', 'border-top': '1px solid var(--look-hair)' });
     expect(declarationsOf('.reveal-answer__v')).toEqual({ 'font-size': '13px', color: 'var(--look-ink-2)', 'letter-spacing': '-0.005em', 'font-variant-numeric': 'tabular-nums' });
-    expect(css.replace(/\s+/g, ' ')).toContain('@keyframes reveal-answer-rise { from { transform: translateY(10px); } }');
-    expect(css.replace(/\s+/g, ' ')).toContain('@media (prefers-reduced-motion: reduce) { .reveal-answer { animation: none; } }');
+    // the 10 px rise on the button spring is gone (the motion record: a spring is a button's own)
+    expect(css).not.toContain('reveal-answer-rise');
+  });
+
+  it('brings the answer in as the motion record says: the question as heard, the sentence 20 ms later, then its statements', () => {
+    const motionOf = (selector: string): Record<string, string> => {
+      const found: Record<string, string> = {};
+      postcss.parse(motionCss).walkRules((rule) => {
+        if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+        rule.walkDecls((decl) => {
+          found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+        });
+      });
+      return found;
+    };
+    const lineIn = (n: number) => `look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * ${n}) both`;
+    expect(motionOf('.reveal-answer__q')).toEqual({ animation: lineIn(0) });
+    expect(motionOf('.reveal-answer__s')).toEqual({ animation: lineIn(1) });
+    expect(motionOf('.reveal-answer__st')).toEqual({ animation: lineIn(2) });
+    expect(fs.readFileSync(path.resolve(here, '../AnswerPanel.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
   });
 
   it('sets a warning in 12 px at the quietest ink with a 13 px icon', () => {

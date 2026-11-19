@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { ObservationSolution, VoiceAnswer } from '@albedian/contracts';
 import { EvidenceTag } from '../look/index.js';
 import { statementLine } from './answerWords.js';
+import '../styles/motion.css';
 
 /** Whether a key went to a field the person is typing in. */
 const typing = (target: EventTarget | null): boolean => {

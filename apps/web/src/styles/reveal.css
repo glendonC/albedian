@@ -499,21 +499,6 @@
   top: 118px;
   width: 320px;
   pointer-events: auto;
-  animation:
-    reveal-card-fade 500ms var(--look-ease-standard) both,
-    reveal-answer-rise 900ms var(--look-ease-spring) both;
-}
-
-@keyframes reveal-answer-rise {
-  from {
-    transform: translateY(10px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal-answer {
-    animation: none;
-  }
 }
 
 .reveal-answer__q {
