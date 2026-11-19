@@ -129,31 +129,28 @@ describe('the scene under the home stops drawing', () => {
     renderViewport();
     expect(container.querySelector(HOME_SCREEN)).toBeNull();
     expect(stub.drawing).toEqual([true]);
-    // and that way the landing scenes do not run: the showcase is off, so they are reached nowhere
-    expect(new Set(stub.showcase)).toEqual(new Set([false]));
+    // and no landing scene is ever asked for (home-cycle-1: the home's scene cycle was drawn by nothing)
+    expect(stub.log.some((event) => event.startsWith('scene:') || event === 'showcase:true')).toBe(false);
   });
 
-  it('stops drawing before it asks for a landing scene, so the renderer holds it and loads none of its pictures', () => {
-    renderViewport();
-    const firstScene = stub.log.findIndex((event) => event.startsWith('scene:'));
-    expect(firstScene).toBeGreaterThan(-1);
-    expect(stub.log.indexOf('drawing:false')).toBeGreaterThan(-1);
-    expect(stub.log.indexOf('drawing:false')).toBeLessThan(firstScene);
+  it('asks for no landing scene under the home, where nothing draws (home-cycle-1)', () => {
+    vi.useFakeTimers();
+    try {
+      renderViewport();
+      act(() => void vi.advanceTimersByTime(30_000));
+      expect(stub.drawing).toEqual([false]);
+      expect(stub.log.some((event) => event.startsWith('scene:') || event === 'showcase:true')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('ends the showcase before it draws again on leaving the home, so a held landing scene is dropped, not started', () => {
+  it('draws again on leaving the home, starting no landing scene', () => {
     renderViewport();
     const before = stub.log.length;
     choosePhotoOnHome(container);
     const after = stub.log.slice(before);
-    expect(after.indexOf('showcase:false')).toBeGreaterThan(-1);
-    expect(after.indexOf('showcase:false')).toBeLessThan(after.indexOf('drawing:true'));
-    expect(after.some((event) => event.startsWith('scene:'))).toBe(false);
-  });
-
-  it('runs the landing scenes only under the home, where no frame of them is seen', () => {
-    renderViewport();
-    expect(new Set(stub.showcase)).toEqual(new Set([true]));
-    expect(stub.drawing).toEqual([false]);
+    expect(after).toContain('drawing:true');
+    expect(after.some((event) => event.startsWith('scene:') || event === 'showcase:true')).toBe(false);
   });
 });

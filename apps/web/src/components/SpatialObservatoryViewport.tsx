@@ -16,7 +16,6 @@ import {
   SpatialScaleRegime,
 } from '../spatial/SparkPortalRenderer.js';
 import {
-  WEBGPU_PORTED_SHOWCASE_SCENES,
   type CosmosRenderer,
   type CosmosRendererKind,
 } from '../spatial/cosmosRenderer.js';
@@ -110,33 +109,6 @@ export interface SpatialObservatoryViewportProps {
 
 /** The reveal's photo column at 1440 by 900 (675 wide), the frame a wide clip's player and shade follow. */
 const CLIP_COLUMN_PX = 675;
-
-const LANDING_SHOWCASE_SCENES = [
-  {
-    key: 'cislunar' as const,
-    num: '01',
-    title: 'Cislunar Orbit',
-    subtitle: 'Earth & Moon · 384,400 km',
-  },
-  {
-    key: 'black_hole' as const,
-    num: '02',
-    title: 'Sagittarius A*',
-    subtitle: 'Modelled black hole · 26,670 ly',
-  },
-  {
-    key: 'supergiant' as const,
-    num: '03',
-    title: 'Betelgeuse 3D',
-    subtitle: 'Red Supergiant & Local Bubble · 548 ly',
-  },
-  {
-    key: 'saturn_horizon' as const,
-    num: '04',
-    title: 'Ringed Saturn',
-    subtitle: 'Titan Horizon · 1.2B km',
-  },
-] as const;
 
 interface RendererChoice {
   kind: CosmosRendererKind;
@@ -234,15 +206,6 @@ export const SpatialObservatoryViewport: React.FC<
   const [rendererGeneration, setRendererGeneration] = useState(0);
   const [renderLayers, setRenderLayers] = useState<RenderLayerSet | null>(null);
 
-  // The WebGPU host draws only its ported scenes; the carousel cycles through those
-  const showcaseScenes = useMemo(
-    () =>
-      rendererChoice.kind === 'webgpu'
-        ? LANDING_SHOWCASE_SCENES.filter((s) => WEBGPU_PORTED_SHOWCASE_SCENES.includes(s.key))
-        : [...LANDING_SHOWCASE_SCENES],
-    [rendererChoice.kind]
-  );
-
   const [activeRegime, setActiveRegime] =
     useState<SpatialScaleRegime>('cislunar');
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -256,23 +219,6 @@ export const SpatialObservatoryViewport: React.FC<
     return new URLSearchParams(window.location.search).get('view') !== 'observatory';
   });
 
-  const [showcaseSceneIdx, setShowcaseSceneIdx] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    const raw = new URLSearchParams(window.location.search).get('scene');
-    if (raw !== null) {
-      const idx = Number.parseInt(raw, 10);
-      const requested = LANDING_SHOWCASE_SCENES[idx];
-      if (!Number.isNaN(idx) && requested) {
-        // `scene` indexes the full carousel; a scene the active renderer lacks falls back to its first
-        const available = showcaseScenes.findIndex((s) => s.key === requested.key);
-        if (available < 0) {
-          console.info(`[viewport] scene ${requested.key} is not ported to the WebGPU host; showing ${showcaseScenes[0]?.key}`);
-        }
-        return Math.max(0, available);
-      }
-    }
-    return 0;
-  });
   // Markers are hidden when the browser turned the photo differently from its orientation tag
   const [photoFrameMismatch, setPhotoFrameMismatch] = useState(false);
   // A new photo has not been decoded yet, so an earlier photo's mismatch says nothing about it
@@ -289,12 +235,6 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     if (uploadRefusal) setEntryStageActive(true);
   }, [uploadRefusal]);
-
-  // The showcase scene last started on which renderer; null scene after leaving the landing
-  const appliedShowcaseRef = useRef<{ renderer: CosmosRenderer | null; sceneKey: string | null }>({
-    renderer: null,
-    sceneKey: null,
-  });
 
   const dragStateRef = useRef<{
     dragging: boolean;
@@ -435,47 +375,18 @@ export const SpatialObservatoryViewport: React.FC<
     skyAudio.setEvidenceClass(renderLayers?.find((layer) => layer.kind === 'catalog_stars')?.evidenceClass ?? null);
   }, [renderLayers]);
 
-  // Landing Page Non-Interactive 3D Background Scene Carousel
+  // While the home covers the canvas no frame of the scene can be seen, so nothing draws under it; leaving it, the sky
+  // view draws (home-cycle-1: the home's showcase scene cycle under it, drawn by nothing and in no record, is gone)
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
-    // While the home covers the canvas no frame of the scene can be seen, so the scene stops drawing; the order here
-    // is the point: drawing stops before a landing scene is asked for (a renderer not drawing holds it, so none of its
-    // pictures loads), and on leaving the showcase ends, dropping what was held, before drawing starts again
     if (!entryStageActive) {
       renderer.showSkyView?.();
-      renderer.setShowcaseMode(false);
-      appliedShowcaseRef.current.sceneKey = null;
       renderer.setDrawing?.(true);
       return;
     }
-
     renderer.setDrawing?.(false);
-    renderer.setShowcaseMode(true);
-    const sceneDef = showcaseScenes[showcaseSceneIdx] ?? showcaseScenes[0];
-    if (!sceneDef) return;
-    // Start the scene when it changes or a renderer attaches; a renderer's first scene starts
-    // without the warp-in. Re-runs for other reasons leave the running scene alone.
-    const applied = appliedShowcaseRef.current;
-    if (applied.renderer !== renderer || applied.sceneKey !== sceneDef.key) {
-      renderer.transitionToShowcaseScene(sceneDef.key, applied.renderer !== renderer);
-      appliedShowcaseRef.current = { renderer, sceneKey: sceneDef.key };
-    }
-
-    if (typeof window === 'undefined') return;
-    const freeze = new URLSearchParams(window.location.search).get('freeze') === '1';
-    // A single scene has nothing to cycle to; re-entering it would replay the warp-in
-    if (freeze || showcaseScenes.length < 2) return;
-
-    const DURATION_MS = 7200;
-    const timerId = window.setTimeout(() => {
-      setShowcaseSceneIdx((prev) => (prev + 1) % showcaseScenes.length);
-    }, DURATION_MS);
-
-    return () => {
-      window.clearTimeout(timerId);
-    };
-  }, [entryStageActive, showcaseSceneIdx, showcaseScenes, rendererGeneration]);
+  }, [entryStageActive, rendererGeneration]);
 
   // Keyboard navigation (WASD + Arrows)
   useEffect(() => {

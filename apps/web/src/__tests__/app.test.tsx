@@ -207,8 +207,10 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       path.resolve(__dirname, '../components/SpatialObservatoryViewport.tsx'),
       'utf8'
     );
-    expect(viewportSrc).toContain('LANDING_SHOWCASE_SCENES');
-    // The home replaced the landing footer (arrive-home): its tagline and Launch are gone, the showcase code stays
+    // The home's showcase scene cycle under it, drawn by nothing, is gone (home-cycle-1, the lead's yes 17:08)
+    expect(viewportSrc).not.toContain('LANDING_SHOWCASE_SCENES');
+    expect(viewportSrc).not.toContain('transitionToShowcaseScene');
+    // The home replaced the landing footer (arrive-home): its tagline and Launch are gone
     expect(viewportSrc).toContain('<HomeScreen');
     expect(viewportSrc).not.toContain('Discover the universe behind');
     expect(viewportSrc).not.toContain('Launch Albedian');
