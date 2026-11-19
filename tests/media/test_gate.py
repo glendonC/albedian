@@ -748,3 +748,49 @@ def test_a_lamps_halo_is_kept_with_it_and_a_faint_patch_alone_is_not() -> None:
     kept = gate.bright_regions(lit, measurement)
     assert kept[70, 70] == 1.0 and kept[70, 100] == 1.0
     assert kept[190, 190] == 0.0
+
+
+@pytest.mark.parametrize("outer", [False, True])
+def test_a_ring_read_at_some_samples_is_the_ring_read_everywhere_there(outer: bool) -> None:
+    # The restore speed unit reads rings only where a raise can count; at those samples the values are the same
+    rng = np.random.default_rng(37)
+    luma = 40.0 + 2.0 * rng.standard_normal((70, 90)) + 0.3 * np.arange(90)[None, :]
+    left_out = np.zeros((70, 90), bool)
+    left_out[20:30, 30:45] = True
+    offsets = gate.RAISE_OFFSETS_OUTER if outer else gate.RAISE_OFFSETS
+    whole_rise, whole_uneven = gate.ring_rise(luma, left_out, offsets)
+    at = rng.random((70, 90)) < 0.3
+    rise, uneven = gate.ring_rise(luma, left_out, offsets, at=at)
+    assert np.array_equal(np.isnan(rise[at]), np.isnan(whole_rise[at]))
+    assert np.allclose(rise[at], whole_rise[at], equal_nan=True) and np.allclose(uneven[at], whole_uneven[at], equal_nan=True)
+    assert np.all(np.isnan(rise[~at]))
+
+
+def test_the_flux_checks_one_mask_measures_each_star_as_the_star_alone_is_measured(monkeypatch) -> None:
+    # The restore speed unit computes the occupied mask once for every star; a star whose annulus crosses another's
+    # kept edge (weight between 0 and 1) is measured with that edge left out, as flux_change_sigma alone leaves it
+    rng = np.random.default_rng(38)
+    original = 0.01 + 0.0004 * rng.standard_normal((200, 200))
+    placed = [stars.Star(100.0, 100.0, 50.0, 4), stars.Star(111.0, 100.0, 30.0, 3), stars.Star(60.0, 140.0, 40.0, 4)]
+    for star in placed:
+        original += gaussian((200, 200), star.x_px, star.y_px, 0.05)
+    footprint = stars.footprint_map((200, 200), placed)
+    field = stars.StarField(tuple(placed), footprint, np.zeros((200, 200), bool), 3, 3, 0)
+    variant = original + 0.0003 * rng.standard_normal((200, 200))
+    occupied = np.maximum(footprint, footprint)
+    changes = []
+    for star in placed:
+        sigma = gate.empty_aperture_sigma(original, max(star.radius_px, stars.APERTURE_MIN_PX), occupied, field.clipped)
+        changes.append(gate.flux_change_sigma(star, original, variant, occupied, field.clipped, sigma))
+    handed = []
+    real = gate.flux_change_sigma
+
+    def noted(*args, occupied_mask=None, **kwargs):
+        handed.append(occupied_mask)
+        return real(*args, occupied_mask=occupied_mask, **kwargs)
+
+    monkeypatch.setattr(gate, "flux_change_sigma", noted)
+    measured, outside, worst, _ = gate.flux_check(field, original, variant, footprint)
+    assert measured == 3 and worst == pytest.approx(max(changes), rel=1e-12)
+    # Every star is handed the one mask of every occupied sample, a kept edge's included
+    assert handed and all(np.array_equal(mask, occupied > 0) for mask in handed)

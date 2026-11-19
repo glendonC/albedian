@@ -3,8 +3,12 @@ the gate will call: a frame's points, their confirmation on the original, and ap
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from scipy import ndimage
 
 from photo_frames import LUMA, star_field
@@ -496,3 +500,39 @@ def test_tile_margin_peaks_with_subpixel_centroids_past_half_pixel_are_confirmed
         ]
         stars.confirm(edge_pts, np.zeros((480, 480)))
     assert seen_tiles == [(256, 2), (256, 1), (256, 1), (256, 2)]
+
+
+def _merged_by_every_pair(points: list[stars.Point]) -> list[stars.Point]:
+    kept: list[stars.Point] = []
+    for point in sorted(points, key=lambda p: -p.snr):
+        if all(math.hypot(point.x_px - other.x_px, point.y_px - other.y_px) > stars.MERGE_RADIUS_PX for other in kept):
+            kept.append(point)
+    return kept
+
+
+@settings(max_examples=60, deadline=None)
+@given(seed=st.integers(0, 2**16), count=st.integers(0, 400), spread=st.floats(2.0, 60.0))
+def test_merging_by_grid_keeps_the_points_comparing_every_pair_keeps(seed: int, count: int, spread: float) -> None:
+    # Clustered points, many within the merge radius of another, ties in snr among them: the grid keeps the same
+    # points in the same order as comparing each with every kept one (the restore speed unit)
+    rng = np.random.default_rng(seed)
+    centres = rng.uniform(0, spread, (max(1, count // 4), 2))
+    places = centres[rng.integers(0, len(centres), count)] + rng.normal(0, 1.2, (count, 2))
+    snrs = rng.choice([5.0, 6.0, 7.5, 9.0, 12.0], count)
+    points = [stars.Point(float(x), float(y), float(s), 0) for (x, y), s in zip(places, snrs)]
+    assert stars._merged(points) == _merged_by_every_pair(points)
+
+
+@settings(max_examples=60, deadline=None)
+@given(height=st.integers(1, 900), width=st.integers(1, 900), seed=st.integers(0, 2**16))
+def test_the_tiles_holding_a_point_are_found_as_testing_each_tile_finds_them(height: int, width: int, seed: int) -> None:
+    rng = np.random.default_rng(seed)
+    grid = stars.tiles(height, width)
+    xs = np.concatenate([rng.uniform(0, width, 50), rng.integers(0, width, 20).astype(np.float64)])
+    ys = np.concatenate([rng.uniform(0, height, 50), rng.integers(0, height, 20).astype(np.float64)])
+    rows0, rows1, columns0, columns1, columns = stars.tile_ranges(height, width, xs, ys)
+    first = stars.first_tiles(height, width, xs, ys)
+    for i, (x, y) in enumerate(zip(xs, ys)):
+        holding = [k for k, t in enumerate(grid) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1]
+        found = sorted(int(r * columns + c) for r in range(rows0[i], rows1[i] + 1) for c in range(columns0[i], columns1[i] + 1))
+        assert found == holding and int(first[i]) == holding[0], (x, y, height, width)

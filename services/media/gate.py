@@ -198,10 +198,13 @@ class Original:
 def _verified_by_photometry(points: list[stars.Point], image: np.ndarray) -> list[bool]:
     grid = stars.tiles(*image.shape)
     by_tile: dict[int, list[int]] = {}
-    for i, point in enumerate(points):
-        for index, tile in enumerate(grid):
-            if tile.x0 <= point.x_px < tile.x1 and tile.y0 <= point.y_px < tile.y1:
-                by_tile.setdefault(index, []).append(i)
+    if points:
+        rows0, rows1, columns0, columns1, columns = stars.tile_ranges(
+            *image.shape, np.array([p.x_px for p in points]), np.array([p.y_px for p in points]))
+        for i in range(len(points)):
+            for row in range(rows0[i], rows1[i] + 1):
+                for column in range(columns0[i], columns1[i] + 1):
+                    by_tile.setdefault(int(row * columns + column), []).append(i)
     confirmed = [False] * len(points)
     for index in sorted(by_tile):
         tile = grid[index]
@@ -294,13 +297,15 @@ RAISE_OFFSETS = [(dy, dx) for dy in range(-2, 3) for dx in range(-2, 3) if max(a
 RAISE_OFFSETS_OUTER = [(dy, dx) for dy in range(-3, 4) for dx in range(-3, 4) if max(abs(dy), abs(dx)) == 3]
 
 
-def ring_rise(luma: np.ndarray, left_out: np.ndarray,
-              offsets: list[tuple[int, int]] = RAISE_OFFSETS) -> tuple[np.ndarray, np.ndarray]:
+def ring_rise(luma: np.ndarray, left_out: np.ndarray, offsets: list[tuple[int, int]] = RAISE_OFFSETS,
+              at: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Per sample: its luma less the mean of the samples of its ring (`offsets`: RAISE_OFFSETS, 2 px around it, or
-    RAISE_OFFSETS_OUTER, 3 px) that no kept region holds, and the largest distance of those samples from their own least-squares plane (on a plane the ring's
-    mean is the centre's value, so a gradient raises nothing; a step's ring holds a sample as far from its plane as
-    the step raises the centre); NaN where fewer than half of them are free, and within the ring's reach of the
-    frame's edge, where a padded ring would repeat the edge's samples. Computed in strips of 64 rows."""
+    RAISE_OFFSETS_OUTER, 3 px) that no kept region holds, and the largest distance of those samples from their own
+    least-squares plane (on a plane the ring's mean is the centre's value, so a gradient raises nothing; a step's ring
+    holds a sample as far from its plane as the step raises the centre); NaN where fewer than half of them are free,
+    and within the ring's reach of the frame's edge, where a padded ring would repeat the edge's samples. With `at`,
+    only at the samples it holds (NaN elsewhere), each read the same way [tested: the restore speed unit; the whole
+    frame's rings took 27 s of the 24 MP public rp-a-01's restoration]."""
     luma = np.asarray(luma, dtype=np.float64)
     height, width = luma.shape
     rise = np.full((height, width), np.nan)
@@ -308,11 +313,15 @@ def ring_rise(luma: np.ndarray, left_out: np.ndarray,
     reach = max(max(abs(dy), abs(dx)) for dy, dx in offsets)
     least = RAISE_RING_LEAST * len(offsets) // len(RAISE_OFFSETS)
     padded = np.pad(np.where(np.asarray(left_out, dtype=bool), np.nan, luma), reach, mode="edge")
-    dys = np.array([dy for dy, _ in offsets], dtype=np.float64)[:, None, None]
-    dxs = np.array([dx for _, dx in offsets], dtype=np.float64)[:, None, None]
-    for y0 in range(0, height, 64):
-        y1 = min(height, y0 + 64)
-        stack = np.stack([padded[reach + y0 + dy:reach + y1 + dy, reach + dx:reach + dx + width] for dy, dx in offsets])
+    inside = np.zeros((height, width), dtype=bool)
+    inside[reach:height - reach, reach:width - reach] = True
+    ask = inside if at is None else inside & np.asarray(at, dtype=bool)
+    ys, xs = np.nonzero(ask)
+    dys = np.array([dy for dy, _ in offsets], dtype=np.float64)[:, None]
+    dxs = np.array([dx for _, dx in offsets], dtype=np.float64)[:, None]
+    for i0 in range(0, ys.size, 1 << 18):
+        y, x = ys[i0:i0 + (1 << 18)], xs[i0:i0 + (1 << 18)]
+        stack = np.stack([padded[reach + y + dy, reach + x + dx] for dy, dx in offsets])
         valid = np.isfinite(stack)
         count = valid.sum(axis=0)
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -323,10 +332,8 @@ def ring_rise(luma: np.ndarray, left_out: np.ndarray,
             c = (centred * wy).sum(axis=0) / (wy**2).sum(axis=0)
             far = np.where(valid, np.abs(centred - b * dxs - c * dys), 0.0).max(axis=0)
         enough = count >= least
-        rise[y0:y1] = np.where(enough, luma[y0:y1] - mean, np.nan)
-        uneven[y0:y1] = np.where(enough, far, np.nan)
-    rise[:reach, :] = rise[-reach:, :] = np.nan
-    rise[:, :reach] = rise[:, -reach:] = np.nan
+        rise[y, x] = np.where(enough, luma[y, x] - mean, np.nan)
+        uneven[y, x] = np.where(enough, far, np.nan)
     return rise, uneven
 
 
@@ -350,19 +357,18 @@ def raised_places(luma: np.ndarray, original_luma: np.ndarray, left_out: np.ndar
     # unevenness (AUDIT-B's restore-4f verdict: a pair in a row passed at 4 codes in 7 of 10 trials), but off the
     # second; 3 px apart, the other way round; a pattern of every second sample is off the second ring too
     raised = np.zeros(luma.shape, dtype=bool)
+    asked = open_ & over_original
     for offsets in (RAISE_OFFSETS, RAISE_OFFSETS_OUTER):
-        rise, residual = ring_rise(luma, left_out, offsets)
+        rise, residual = ring_rise(luma, left_out, offsets, at=asked)
         with np.errstate(invalid="ignore"):
-            raised |= open_ & over_original & (rise - residual >= RAISE_CODES)
+            raised |= asked & (rise - residual >= RAISE_CODES)
     if not raised.any():
         return []
     labels, count = ndimage.label(raised, structure=np.ones((3, 3), dtype=bool))
-    grid = stars.tiles(*luma.shape)
-    places = []
-    for y, x in ndimage.maximum_position(np.where(raised, luma, -np.inf), labels, range(1, count + 1)):
-        tile = next(i for i, t in enumerate(grid) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1)
-        if only_tiles is None or tile in only_tiles:
-            places.append(stars.Point(float(x), float(y), 0.0, tile))
+    highest = ndimage.maximum_position(np.where(raised, luma, -np.inf), labels, range(1, count + 1))
+    first = stars.first_tiles(*luma.shape, np.array([x for _, x in highest]), np.array([y for y, _ in highest]))
+    places = [stars.Point(float(x), float(y), 0.0, int(tile)) for (y, x), tile in zip(highest, first)
+              if only_tiles is None or int(tile) in only_tiles]
     return places
 
 
@@ -388,11 +394,9 @@ def kept_changed(variant: np.ndarray, expected: np.ndarray, core: np.ndarray) ->
     changed = np.zeros(core.shape, dtype=bool)
     changed[rows[differs], columns[differs]] = True
     labels, count = ndimage.label(changed, structure=np.ones((3, 3), dtype=bool))
-    grid = stars.tiles(*core.shape)
-    places = []
-    for y, x in ndimage.center_of_mass(changed, labels, range(1, count + 1)):
-        tile = next(i for i, t in enumerate(grid) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1)
-        places.append(stars.Point(float(x), float(y), 0.0, tile))
+    centres = ndimage.center_of_mass(changed, labels, range(1, count + 1))
+    first = stars.first_tiles(*core.shape, np.array([x for _, x in centres]), np.array([y for y, _ in centres]))
+    places = [stars.Point(float(x), float(y), 0.0, int(tile)) for (y, x), tile in zip(centres, first)]
     return places
 
 
@@ -446,14 +450,18 @@ def aperture_flux(image: np.ndarray, x: float, y: float, radius: int, occupied: 
 def empty_aperture_sigma(image: np.ndarray, radius: int, occupied: np.ndarray, clipped: np.ndarray) -> float:
     """sigma_F: 1.4826 x MAD of `aperture_flux` at design section 7's empty places of the frame."""
     places = stars.empty_places(np.shape(image), radius, occupied, clipped)
-    sums = np.array([aperture_flux(image, x, y, radius, occupied > 0) for x, y in places])
+    # The mask once for every place: a frame-sized comparison per place cost 5.7 s of photo 1's 35 s gate
+    # [tested: .lanetools/speed/cprofile_photo.py]
+    mask = np.asarray(occupied) > 0
+    sums = np.array([aperture_flux(image, x, y, radius, mask) for x, y in places])
     if sums.size == 0:
         return math.nan
     return stars.MAD_TO_SIGMA * float(np.median(np.abs(sums - np.median(sums))))
 
 
 def flux_change_sigma(star: stars.Star, original_luminance: np.ndarray, variant_luminance: np.ndarray,
-                      occupied: np.ndarray, clipped: np.ndarray, sigma: float | None = None) -> float | None:
+                      occupied: np.ndarray, clipped: np.ndarray, sigma: float | None = None,
+                      occupied_mask: np.ndarray | None = None) -> float | None:
     """|F_v - F_o| over sigma_F for one star, in linear luminance with the lift undone, both against the original's
     own annulus: the star's own light, not the sky the restoration smoothed around it. Smoothing a bright star's
     convex halo wing raises it, which against each image's own annulus dimmed 92 of 1568 stars of photo 1 by up to
@@ -465,8 +473,9 @@ def flux_change_sigma(star: stars.Star, original_luminance: np.ndarray, variant_
         sigma = empty_aperture_sigma(original_luminance, star.radius_px, occupied, clipped)
     if not (math.isfinite(sigma) and sigma > 0.0):
         return None
-    before = aperture_flux(original_luminance, star.x_px, star.y_px, star.radius_px, occupied > 0)
-    after = aperture_flux(variant_luminance, star.x_px, star.y_px, star.radius_px, occupied > 0, original_luminance)
+    mask = np.asarray(occupied) > 0 if occupied_mask is None else occupied_mask
+    before = aperture_flux(original_luminance, star.x_px, star.y_px, star.radius_px, mask)
+    after = aperture_flux(variant_luminance, star.x_px, star.y_px, star.radius_px, mask, original_luminance)
     return abs(after - before) / sigma
 
 
@@ -801,6 +810,9 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
     height, width = original_luminance.shape
     changes, ratios = [], []
     occupied = np.maximum(kept_weight, field.footprint)
+    # The mask once for every star: a frame-sized comparison per star and aperture was 19 s of photo 1's 35 s gate,
+    # growing with stars times samples [tested: .lanetools/speed/cprofile_photo.py]
+    mask = occupied > 0
     # sigma_F depends on the aperture's radius only: measured once per radius (at most FOOTPRINT_MAX_PX of them)
     sigmas: dict[int, float] = {}
     for star in field.stars:
@@ -815,12 +827,13 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
         radius = max(star.radius_px, stars.APERTURE_MIN_PX)
         if radius not in sigmas:
             sigmas[radius] = empty_aperture_sigma(original_luminance, radius, occupied, field.clipped)
-        change = flux_change_sigma(star, original_luminance, variant_luminance, occupied, field.clipped, sigmas[radius])
-        before = aperture_flux(original_luminance, star.x_px, star.y_px, star.radius_px, occupied > 0)
+        change = flux_change_sigma(star, original_luminance, variant_luminance, occupied, field.clipped, sigmas[radius],
+                                   occupied_mask=mask)
+        before = aperture_flux(original_luminance, star.x_px, star.y_px, star.radius_px, mask)
         if change is None or before <= 0:
             continue
         changes.append(change)
-        ratios.append(aperture_flux(variant_luminance, star.x_px, star.y_px, star.radius_px, occupied > 0, original_luminance) / before)
+        ratios.append(aperture_flux(variant_luminance, star.x_px, star.y_px, star.radius_px, mask, original_luminance) / before)
     if not changes:
         return 0, 0, None, None
     positive = [r for r in ratios if r > 0]

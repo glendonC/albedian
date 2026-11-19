@@ -124,6 +124,26 @@ def tiles(height: int, width: int) -> list[Tile]:
     return [Tile(y, min(y + TILE_PX, height), x, min(x + TILE_PX, width)) for y in _starts(height) for x in _starts(width)]
 
 
+def tile_ranges(height: int, width: int, xs: np.ndarray, ys: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray,
+                                                                                    np.ndarray, int]:
+    """For points inside the frame: the first and last row of tiles, and the first and last column, that contain each,
+    and the number of columns, so `tiles`' index of row r and column c is r times that plus c. Tiles overlap, so the
+    tiles holding a point along an axis are a run, from the first whose end lies past it to the last whose start lies
+    at or before it: the same tiles as testing each one [tested: the restore speed unit; testing each tile for every
+    point took 29 s of the 24 MP public rp-a-01's star search]."""
+    y_starts, x_starts = np.array(_starts(height)), np.array(_starts(width))
+    y_ends, x_ends = np.minimum(y_starts + TILE_PX, height), np.minimum(x_starts + TILE_PX, width)
+    ys, xs = np.asarray(ys, dtype=np.float64), np.asarray(xs, dtype=np.float64)
+    return (np.searchsorted(y_ends, ys, side="right"), np.searchsorted(y_starts, ys, side="right") - 1,
+            np.searchsorted(x_ends, xs, side="right"), np.searchsorted(x_starts, xs, side="right") - 1, len(x_starts))
+
+
+def first_tiles(height: int, width: int, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    """`tiles`' index of the first tile, in row order, that contains each point inside the frame."""
+    row, _, column, _, columns = tile_ranges(height, width, xs, ys)
+    return row * columns + column
+
+
 @dataclass(frozen=True)
 class TileNoise:
     """A tile's luma minus the detector's background, the detector's pixel sigma, and sigma_m."""
@@ -156,10 +176,18 @@ def clipped_map(codes: np.ndarray, peak: float) -> np.ndarray:
 
 
 def _merged(points: list[Point]) -> list[Point]:
+    """The points by falling snr, each kept unless one already kept lies within MERGE_RADIUS_PX of it. Kept points are
+    looked up in a grid of cells MERGE_RADIUS_PX wide: any within that radius lies in the point's own cell or one of
+    the 8 around it, so the same points are kept as by comparing with every kept one [tested: the restore speed
+    unit; compared with every kept one, the 24 MP public rp-a-01's points took 581 of its 930 s]."""
     kept: list[Point] = []
+    cells: dict[tuple[int, int], list[Point]] = {}
     for point in sorted(points, key=lambda p: -p.snr):
-        if all(math.hypot(point.x_px - other.x_px, point.y_px - other.y_px) > MERGE_RADIUS_PX for other in kept):
+        cx, cy = math.floor(point.x_px / MERGE_RADIUS_PX), math.floor(point.y_px / MERGE_RADIUS_PX)
+        near = (other for dy in (-1, 0, 1) for dx in (-1, 0, 1) for other in cells.get((cx + dx, cy + dy), ()))
+        if all(math.hypot(point.x_px - other.x_px, point.y_px - other.y_px) > MERGE_RADIUS_PX for other in near):
             kept.append(point)
+            cells.setdefault((cx, cy), []).append(point)
     return kept
 
 
