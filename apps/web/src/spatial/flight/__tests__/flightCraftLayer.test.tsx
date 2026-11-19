@@ -42,7 +42,7 @@ describe('FlightCraftLayer', () => {
   it('says it failed, with no words, where the browser cannot draw it', async () => {
     const load = vi.fn(async () => new THREE.Group());
     const camera = flightCameraOf(there(), 1440, 900)!;
-    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['voyager-1'], load })));
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['voyager-1']!, load })));
     const layer = container.querySelector('[data-testid="flight-craft"]')!;
     expect(layer.getAttribute('data-state')).toBe('failed');
     expect(layer.getAttribute('data-craft')).toBe('voyager-1');
@@ -58,7 +58,7 @@ describe('FlightStarsLayer with a craft', () => {
   it('draws the craft only when one is asked for', async () => {
     await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: null })));
     expect(container.querySelector('[data-testid="flight-craft"]')).toBeNull();
-    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: CRAFTS.astronaut })));
-    expect(container.querySelector('[data-testid="flight-craft"]')!.getAttribute('data-craft')).toBe('astronaut');
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: CRAFTS['astronaut-emu']! })));
+    expect(container.querySelector('[data-testid="flight-craft"]')!.getAttribute('data-craft')).toBe('astronaut-emu');
   });
 });

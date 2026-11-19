@@ -6,7 +6,7 @@ import dracoWrapperUrl from 'three/examples/jsm/libs/draco/gltf/draco_wasm_wrapp
 import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?url';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
-import type { Craft } from './crafts.js';
+import { craftModelUrl, type Craft } from './crafts.js';
 import { craftSceneOf, restExtentM, type CraftFraming } from './craftScene.js';
 
 /**
@@ -69,7 +69,9 @@ export const FlightCraftLayer: React.FC<{
   steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows } | null;
   /** Where the screen frames the craft; the laptop's (D26 item 2) by default. */
   framing?: CraftFraming;
-}> = ({ camera, craft, load = loadModel, steer = null, framing }) => {
+  /** At phone width the hangar's far level is drawn. */
+  phone?: boolean;
+}> = ({ camera, craft, load = loadModel, steer = null, framing, phone = false }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<CraftGpu | null>(null);
   const cameraRef = useRef(camera);
@@ -103,7 +105,7 @@ export const FlightCraftLayer: React.FC<{
     scene.add(holder);
     const sun = new THREE.DirectionalLight(0xffffff, 3);
     scene.add(sun, sun.target);
-    void load(craft.modelUrl).then(
+    void load(craftModelUrl(craft, phone)).then(
       (model) => {
         if (!current) return;
         model.traverse((o) => {
@@ -126,7 +128,7 @@ export const FlightCraftLayer: React.FC<{
       gpu.current = null;
       renderer.dispose();
     };
-  }, [craft, load, dpr]);
+  }, [craft, load, dpr, phone]);
 
   // Every frame of the flight draws the craft again from where the camera stands
   useEffect(() => {

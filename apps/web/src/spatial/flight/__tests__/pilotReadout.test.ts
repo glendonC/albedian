@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CRAFTS } from '../crafts.js';
-import { CRAFT_CHOICES, pilotReadout, threeFigureYears } from '../pilotReadout.js';
+import { CRAFT_CHOICES, pilotReadout, threeFigureYears, CRAFT_GROUPS, craftSpeedSource, craftGroups } from '../pilotReadout.js';
 
 const LY_PER_PC = 3.261563777;
 
@@ -21,7 +21,7 @@ describe('threeFigureYears: years to three figures, million and billion in words
 
 describe('pilotReadout: the craft\'s real trip under the two distances (D26 items 4 and 5)', () => {
   it('gives Voyager 1\'s real trip to the star, its speed and source, and the flight\'s own pace', () => {
-    const r = pilotReadout(CRAFTS['voyager-1'], 'Acrux', 322 / LY_PER_PC, 1.5);
+    const r = pilotReadout(CRAFTS['voyager-1']!, 'Acrux', 322 / LY_PER_PC, 1.5);
     expect(r.name).toBe('Voyager 1');
     expect(r.trip).toEqual({ value: '5.68 million', unit: 'years' });
     expect(r.lines).toEqual([
@@ -33,30 +33,63 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
   });
 
   it('leaves out the pace when the flight did not travel (reduced motion), never dividing by nothing', () => {
-    const r = pilotReadout(CRAFTS['voyager-1'], 'Acrux', 322 / LY_PER_PC, null);
+    const r = pilotReadout(CRAFTS['voyager-1']!, 'Acrux', 322 / LY_PER_PC, null);
     expect(r.lines).toEqual(['to Acrux at its real speed, 17.0 km/s', 'Speed: NASA, 17.0 km/s relative to the Sun (August 2024).']);
-    expect(pilotReadout(CRAFTS['voyager-1'], 'Acrux', 322 / LY_PER_PC, 0).lines).toHaveLength(2);
+    expect(pilotReadout(CRAFTS['voyager-1']!, 'Acrux', 322 / LY_PER_PC, 0).lines).toHaveLength(2);
   });
 
   it('shows no number for a craft that never travels between stars, in the record\'s words', () => {
-    const webb = pilotReadout(CRAFTS.jwst, 'Acrux', 98.7, 1.5);
+    const webb = pilotReadout(CRAFTS.jwst!, 'Acrux', 98.7, 1.5);
     expect(webb.name).toBe('James Webb Space Telescope');
     expect(webb.trip).toBeNull();
     expect(webb.lines).toEqual([]);
     expect(webb.none).toBe('No real travel time: Webb stays near Earth, at the Sun-Earth L2 point.');
-    const suit = pilotReadout(CRAFTS.astronaut, 'Acrux', 98.7, 1.5);
-    expect(suit.name).toBe('Astronaut');
+    const suit = pilotReadout(CRAFTS['astronaut-emu']!, 'Acrux', 98.7, 1.5);
+    expect(suit.name).toBe('Extravehicular Mobility Unit');
     expect(suit.none).toBe('No real travel time: a spacesuit is worn near a spacecraft, never flown between stars.');
+    // D35 item 5: every suit takes the astronaut's sentence; near-Earth craft and the Lunar Module their own
+    expect(pilotReadout(CRAFTS.z2!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: a spacesuit is worn near a spacecraft, never flown between stars.');
+    expect(pilotReadout(CRAFTS.hubble!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: Hubble Space Telescope stays near Earth.');
+    expect(pilotReadout(CRAFTS.iss!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: International Space Station stays near Earth.');
+    expect(pilotReadout(CRAFTS['apollo-lm']!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: the Lunar Module flew between Earth and the Moon.');
+  });
+
+  it('keeps Parker Solar Probe, which orbits the Sun, from any trip, with D35\'s place and sentence (its hangar entry)', () => {
+    const parker = CRAFTS['parker-solar-probe']!;
+    expect(parker.speed).toBeNull();
+    expect(pilotReadout(parker, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: Parker Solar Probe orbits the Sun; 194 km/s is its speed at its closest pass.');
+    expect(craftGroups([parker])[0]!.choices.map((c) => c.detail)).toEqual(['around the Sun']);
+  });
+
+  it('names the speed\'s source with its date, and with none where NASA\'s page gives none', () => {
+    expect(craftSpeedSource(CRAFTS['voyager-2']!)).toBe('Speed: NASA, 15.4 km/s relative to the Sun (November 2017).');
+    expect(craftSpeedSource(CRAFTS['new-horizons']!)).toBe('Speed: NASA, 15.3 km/s relative to the Sun.');
+    expect(craftSpeedSource(CRAFTS.gemini!)).toBeNull();
   });
 });
 
-describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3)', () => {
-  it('starts with your view, then each NASA craft with its speed or near Earth', () => {
+describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3, D35 items 1 and 2)', () => {
+  it('starts with your view, then the craft leaving the Solar System fastest first, the other craft by name, then the suits in the hangar\'s order', () => {
     expect(CRAFT_CHOICES.map((c) => [c.id, c.name, c.detail])).toEqual([
       [null, 'Your view', 'no craft'],
       ['voyager-1', 'Voyager 1', '17.0 km/s'],
+      ['voyager-2', 'Voyager 2', '15.4 km/s'],
+      ['new-horizons', 'New Horizons', '15.3 km/s'],
+      ['pioneer-10', 'Pioneer 10', '12.2 km/s'],
+      ['apollo-lm', 'Apollo Lunar Module', 'to the Moon'],
+      ['gemini', 'Gemini', 'near Earth'],
+      ['hubble', 'Hubble Space Telescope', 'near Earth'],
+      ['iss', 'International Space Station', 'near Earth'],
       ['jwst', 'James Webb Space Telescope', 'near Earth'],
-      ['astronaut', 'Astronaut', 'near Earth'],
+      ['parker-solar-probe', 'Parker Solar Probe', 'around the Sun'],
+      ['shuttle', 'Space Shuttle', 'near Earth'],
+      ['astronaut-emu', 'Extravehicular Mobility Unit', ''],
+      ['z2', 'Z-2', ''],
+      ['mercury-suit', 'Mercury spacesuit', ''],
+      ['mark-iii', 'Mark III spacesuit', ''],
+      ['aces', 'Advanced Crew Escape Suit', ''],
+      ['gemini-suit', 'Gemini spacesuit', ''],
     ]);
+    expect(CRAFT_GROUPS.map((g) => [g.heading, g.choices.length])).toEqual([['Spacecraft', 11], ['Spacesuits', 6]]);
   });
 });

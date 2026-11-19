@@ -141,13 +141,15 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     expect(Number(sheet.style.zIndex)).toBeGreaterThan(30);
     expect(sheet.parentElement).toBe(document.body);
     const rows = all('[role="option"]');
-    expect(rows.map((r) => r.getAttribute('data-craft'))).toEqual(['none', 'voyager-1', 'jwst', 'astronaut']);
-    expect(rows.map((r) => (r as HTMLElement).style.height)).toEqual(['52px', '52px', '52px', '52px']);
+    expect(rows).toHaveLength(18);
+    expect(rows.every((r) => (r as HTMLElement).style.height === '52px')).toBe(true);
     expect(rows[0]!.getAttribute('aria-selected')).toBe('true');
     expect(rows[0]!.textContent).toContain('Your view');
     expect(rows[0]!.textContent).toContain('no craft');
     expect(rows[1]!.textContent).toContain('17.0 km/s');
-    expect(rows[2]!.textContent).toContain('near Earth');
+    // D35 item 3: on the phone the sheet runs from top 150, its list scrolling inside it
+    expect(sheet.style.top).toBe('150px');
+    expect((q('[data-testid="craft-picker-list"]') as HTMLElement).style.overflowY).toBe('auto');
     expect(sheet.textContent).toContain("NASA's own 3D models. Drawn by the app, not measured.");
   });
 

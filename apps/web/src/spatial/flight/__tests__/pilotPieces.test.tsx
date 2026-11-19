@@ -20,20 +20,29 @@ afterEach(() => {
   container.remove();
 });
 
-describe('CraftPicker (D26 item 3)', () => {
+describe('CraftPicker (D26 item 3, D35)', () => {
   it('names the current craft on its pill and opens the rows above it, your view first', async () => {
     const onPick = vi.fn();
-    await act(async () => root.render(createElement(CraftPicker, { craft: CRAFTS['voyager-1'], onPick })));
+    await act(async () => root.render(createElement(CraftPicker, { craft: CRAFTS['voyager-1']!, onPick })));
     const pill = container.querySelector('[data-testid="craft-picker"] > button')!;
     expect(pill.textContent).toBe('Voyager 1');
     expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
     await act(async () => (pill as HTMLButtonElement).click());
     const rows = [...container.querySelectorAll('[role="option"]')];
-    expect(rows.map((r) => r.textContent)).toEqual(['Your viewno craft', 'Voyager 117.0 km/s', 'James Webb Space Telescopenear Earth', 'Astronautnear Earth']);
-    expect(rows.map((r) => r.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false', 'false']);
-    expect(container.querySelector('[data-testid="craft-picker-panel"] p')!.textContent).toBe("NASA's own 3D models. Drawn by the app, not measured.");
-    await act(async () => (rows[3] as HTMLButtonElement).click());
-    expect(onPick).toHaveBeenLastCalledWith(CRAFTS.astronaut);
+    expect(rows.slice(0, 3).map((r) => r.textContent)).toEqual(['Your viewno craft', 'Voyager 117.0 km/s', 'Voyager 215.4 km/s']);
+    expect(rows).toHaveLength(18);
+    expect(rows.filter((r) => r.getAttribute('aria-selected') === 'true').map((r) => r.getAttribute('data-craft'))).toEqual(['voyager-1']);
+    // D35 items 1 and 3: the hangar's two kinds as headings, not pressable; the list scrolls within 470 px
+    expect([...container.querySelectorAll('[data-testid="craft-picker-heading"]')].map((h) => h.textContent)).toEqual(['Spacecraft', 'Spacesuits']);
+    expect([...container.querySelectorAll('[role="group"]')].map((g) => g.getAttribute('aria-label'))).toEqual(['Spacecraft', 'Spacesuits']);
+    const list = container.querySelector('[data-testid="craft-picker-list"]') as HTMLElement;
+    expect([list.style.maxHeight, list.style.overflowY]).toEqual(['470px', 'auto']);
+    // D35 item 4: every picture on the same black tile
+    const img = rows[1]!.querySelector('img') as HTMLImageElement;
+    expect([img.getAttribute('src'), img.style.background, img.style.borderRadius, img.style.objectFit]).toEqual(['/models/hangar/voyager/voyager_picker.webp', 'rgb(0, 0, 0)', '8px', 'contain']);
+    expect([...container.querySelectorAll('[data-testid="craft-picker-panel"] p')].at(-1)!.textContent).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+    await act(async () => (rows.find((r) => r.getAttribute('data-craft') === 'astronaut-emu') as HTMLButtonElement).click());
+    expect(onPick).toHaveBeenLastCalledWith(CRAFTS['astronaut-emu']!);
     expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
     await act(async () => (pill as HTMLButtonElement).click());
     await act(async () => (container.querySelectorAll('[role="option"]')[0] as HTMLButtonElement).click());
@@ -48,7 +57,7 @@ describe('CraftPicker (D26 item 3)', () => {
 
 describe('PilotTrip (D26 items 4 and 5)', () => {
   it('shows the real trip and its lines for Voyager 1', async () => {
-    await act(async () => root.render(createElement(PilotTrip, { craft: CRAFTS['voyager-1'], starName: 'Acrux', starDistancePc: 322 / 3.261563777, flightSeconds: 1.5 })));
+    await act(async () => root.render(createElement(PilotTrip, { craft: CRAFTS['voyager-1']!, starName: 'Acrux', starDistancePc: 322 / 3.261563777, flightSeconds: 1.5 })));
     const trip = container.querySelector('[data-testid="pilot-trip"]')!;
     expect(trip.querySelector('b')!.textContent).toBe('5.68 millionyears');
     expect(trip.textContent).toContain('to Acrux at its real speed, 17.0 km/s');
@@ -57,7 +66,7 @@ describe('PilotTrip (D26 items 4 and 5)', () => {
   });
 
   it('shows the no-travel sentence for Webb and no number', async () => {
-    await act(async () => root.render(createElement(PilotTrip, { craft: CRAFTS.jwst, starName: 'Acrux', starDistancePc: 98.7, flightSeconds: 1.5 })));
+    await act(async () => root.render(createElement(PilotTrip, { craft: CRAFTS.jwst!, starName: 'Acrux', starDistancePc: 98.7, flightSeconds: 1.5 })));
     const trip = container.querySelector('[data-testid="pilot-trip"]')!;
     expect(trip.querySelector('b')).toBeNull();
     expect(trip.textContent).toBe('James Webb Space TelescopeNo real travel time: Webb stays near Earth, at the Sun-Earth L2 point.');

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EvidenceTag, LookIcon } from '../../look/index.js';
-import { CRAFTS, type Craft, type CraftId } from './crafts.js';
-import { CRAFT_CHOICES, CRAFT_PICKER_FOOT, pilotReadout } from './pilotReadout.js';
+import { CRAFTS, type Craft } from './crafts.js';
+import { CRAFT_CHOICES, CRAFT_GROUPS, CRAFT_PICKER_FOOT, YOUR_VIEW_CHOICE, pilotReadout, type CraftChoice } from './pilotReadout.js';
 
 /**
  * D26 (decided 19 Nov, UIUX-pilot-READY.md) on the There screen: the craft picker (item 3) and the real trip under the
@@ -61,65 +61,118 @@ const Caret: React.FC<{ down?: boolean; sizePx?: number }> = ({ down = false, si
 /** A phone sheet, drawn into the page's body so it stacks over the ask bar. */
 const OverAskBar: React.FC<{ children: React.ReactNode }> = ({ children }) => (typeof document === 'undefined' ? <>{children}</> : createPortal(children, document.body));
 
+/** D35 items 1 and 3: the kinds' headings, Geist 12 px at ink 44 percent, 14 px above and 6 below, not pressable. */
+const heading = (phone: boolean): React.CSSProperties => ({ margin: phone ? '14px 10px 6px' : '14px 16px 6px', font: '400 12px/1.3 var(--look-font-sans)', color: INK_44 });
+
+/** D35 item 3: the list's last 28 px fading, to show it scrolls. */
+const LIST_FADE = 'linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%)';
+
 export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft | null) => void; phone?: boolean }> = ({ craft, onPick, phone = false }) => {
   const [open, setOpen] = useState(false);
-  const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null))!;
+  const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null)) ?? YOUR_VIEW_CHOICE;
+  const list = useRef<HTMLDivElement>(null);
+  // D35 item 3: the current row is scrolled into view when the panel opens
+  useEffect(() => {
+    if (!open) return;
+    list.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+  const choose = (choice: CraftChoice) => {
+    onPick(choice.id ? (CRAFTS[choice.id] ?? null) : null);
+    setOpen(false);
+  };
+  const rowOf = (choice: CraftChoice) => {
+    const chosen = choice.id === (craft?.id ?? null);
+    const common = { key: choice.id ?? 'your-view', type: 'button' as const, role: 'option', 'aria-selected': chosen, 'data-craft': choice.id ?? 'none', onClick: () => choose(choice) };
+    // D35 item 4: every picture on the same black tile, 44 by 44, radius 8, drawn whole
+    const tile = choice.pictureUrl ? (
+      <img src={choice.pictureUrl} alt="" width={44} height={44} style={{ width: 44, height: 44, flex: '0 0 44px', objectFit: 'contain', borderRadius: 8, background: '#000', display: 'block' }} />
+    ) : phone ? (
+      <span style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', color: INK_66 }} aria-hidden="true">
+        <svg viewBox="0 0 256 256" width={18} height={18} fill="currentColor" focusable="false">
+          <path d={EYE} />
+        </svg>
+      </span>
+    ) : (
+      <span style={{ width: 44, height: 44, flex: '0 0 44px', borderRadius: 8, background: '#000' }} />
+    );
+    return phone ? (
+      <button
+        {...common}
+        style={{
+          all: 'unset',
+          boxSizing: 'border-box',
+          display: 'grid',
+          gridTemplateColumns: '44px 1fr auto 18px',
+          alignItems: 'center',
+          gap: 10,
+          width: '100%',
+          height: 52,
+          padding: '0 10px 0 6px',
+          borderRadius: 14,
+          fontSize: 15,
+          color: INK,
+          background: chosen ? 'rgba(244, 243, 239, 0.08)' : undefined,
+          cursor: 'pointer',
+        }}
+      >
+        {tile}
+        <span>{choice.name}</span>
+        <span style={{ fontSize: 12, color: INK_44, fontVariantNumeric: 'tabular-nums' }}>{choice.detail}</span>
+        <span style={{ width: 15, height: 15, color: INK }} aria-hidden="true">
+          {chosen && <LookIcon name="check" />}
+        </span>
+      </button>
+    ) : (
+      <button {...common} style={{ all: 'unset', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 14, width: '100%', height: 52, padding: '0 16px', cursor: 'pointer' }}>
+        {tile}
+        <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+          <span style={{ fontSize: 15 }}>{choice.name}</span>
+          {choice.detail && <span style={{ fontSize: 12, color: INK_44 }}>{choice.detail}</span>}
+        </span>
+        {chosen && (
+          <span style={{ width: 18, height: 18, color: INK }} aria-hidden="true">
+            <LookIcon name="check" />
+          </span>
+        )}
+      </button>
+    );
+  };
+  const rows = (
+    <div
+      ref={list}
+      data-testid="craft-picker-list"
+      style={{
+        display: 'grid',
+        gap: phone ? 2 : 0,
+        alignContent: 'start',
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
+        minHeight: 0,
+        // D35 item 3: at most 470 px of list on the laptop; on the phone the sheet runs from top 150 to its foot
+        ...(phone ? { flex: '1 1 auto' } : { maxHeight: 470 }),
+        maskImage: LIST_FADE,
+        WebkitMaskImage: LIST_FADE,
+      }}
+    >
+      {rowOf(YOUR_VIEW_CHOICE)}
+      {CRAFT_GROUPS.map((group) => (
+        <div key={group.heading} role="group" aria-label={group.heading} style={{ display: 'grid', gap: phone ? 2 : 0 }}>
+          <p aria-hidden="true" data-testid="craft-picker-heading" style={heading(phone)}>
+            {group.heading}
+          </p>
+          {group.choices.map(rowOf)}
+        </div>
+      ))}
+    </div>
+  );
   return (
     <div className="craft-picker" data-testid="craft-picker" data-hud-interactive="true" style={{ position: 'relative', pointerEvents: 'auto' }}>
       {open && phone && (
         <OverAskBar>
-        <div role="listbox" aria-label="Craft" data-testid="craft-picker-panel" data-hud-interactive="true" style={PHONE_SHEET}>
-          <div style={{ display: 'grid', gap: 2 }}>
-            {CRAFT_CHOICES.map((choice) => {
-              const chosen = choice.id === (craft?.id ?? null);
-              return (
-                <button
-                  key={choice.id ?? 'your-view'}
-                  type="button"
-                  role="option"
-                  aria-selected={chosen}
-                  data-craft={choice.id ?? 'none'}
-                  onClick={() => {
-                    onPick(choice.id ? CRAFTS[choice.id as CraftId] : null);
-                    setOpen(false);
-                  }}
-                  style={{
-                    all: 'unset',
-                    boxSizing: 'border-box',
-                    display: 'grid',
-                    gridTemplateColumns: '44px 1fr auto 18px',
-                    alignItems: 'center',
-                    gap: 10,
-                    width: '100%',
-                    height: 52,
-                    padding: '0 10px 0 6px',
-                    borderRadius: 14,
-                    fontSize: 15,
-                    color: INK,
-                    background: chosen ? 'rgba(244, 243, 239, 0.08)' : undefined,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {choice.pictureUrl ? (
-                    <img src={choice.pictureUrl} alt="" width={44} height={44} style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 8, background: '#000', display: 'block' }} />
-                  ) : (
-                    <span style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', color: INK_66 }} aria-hidden="true">
-                      <svg viewBox="0 0 256 256" width={18} height={18} fill="currentColor" focusable="false">
-                        <path d={EYE} />
-                      </svg>
-                    </span>
-                  )}
-                  <span>{choice.name}</span>
-                  <span style={{ fontSize: 12, color: INK_44, fontVariantNumeric: 'tabular-nums' }}>{choice.detail}</span>
-                  <span style={{ width: 15, height: 15, color: INK }} aria-hidden="true">
-                    {chosen && <LookIcon name="check" />}
-                  </span>
-                </button>
-              );
-            })}
+          <div role="listbox" aria-label="Craft" data-testid="craft-picker-panel" data-hud-interactive="true" style={{ ...PHONE_SHEET, top: 150, display: 'flex', flexDirection: 'column' }}>
+            {rows}
+            <p style={{ margin: '8px 10px 4px', fontSize: 11, lineHeight: 1.4, color: INK_44 }}>{CRAFT_PICKER_FOOT}</p>
           </div>
-          <p style={{ margin: '8px 10px 4px', fontSize: 11, lineHeight: 1.4, color: INK_44 }}>{CRAFT_PICKER_FOOT}</p>
-        </div>
         </OverAskBar>
       )}
       {open && !phone && (
@@ -141,36 +194,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
             color: INK,
           }}
         >
-          {CRAFT_CHOICES.map((choice) => {
-            const chosen = choice.id === (craft?.id ?? null);
-            return (
-              <button
-                key={choice.id ?? 'your-view'}
-                type="button"
-                role="option"
-                aria-selected={chosen}
-                data-craft={choice.id ?? 'none'}
-                onClick={() => {
-                  onPick(choice.id ? CRAFTS[choice.id as CraftId] : null);
-                  setOpen(false);
-                }}
-                style={{ all: 'unset', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 14, width: '100%', height: 52, padding: '0 16px', cursor: 'pointer' }}
-              >
-                <span style={{ width: 44, height: 44, flex: '0 0 44px', borderRadius: 10, overflow: 'hidden', background: 'rgba(244, 243, 239, 0.06)' }}>
-                  {choice.pictureUrl && <img src={choice.pictureUrl} alt="" width={44} height={44} style={{ width: 44, height: 44, objectFit: 'contain', display: 'block' }} />}
-                </span>
-                <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
-                  <span style={{ fontSize: 15 }}>{choice.name}</span>
-                  <span style={{ fontSize: 12, color: INK_44 }}>{choice.detail}</span>
-                </span>
-                {chosen && (
-                  <span style={{ width: 18, height: 18, color: INK }} aria-hidden="true">
-                    <LookIcon name="check" />
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {rows}
           <p style={{ margin: '6px 16px 4px', paddingTop: 8, borderTop: `1px solid ${HAIR}`, fontSize: 11, color: INK_44 }}>{CRAFT_PICKER_FOOT}</p>
         </div>
       )}
