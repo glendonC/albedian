@@ -26,6 +26,8 @@ export interface SourcePhotoStageProps {
   dimmed?: boolean;
   /** The photo's left and right edges fade into the black over 56 px (reveal, approved 2026-11-12); the pixels between are untouched. */
   fadeSides?: boolean;
+  /** Real sky is drawn over the photo: the photo stays beneath it. */
+  underSky?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   bare = false,
   dimmed = false,
   fadeSides = false,
+  underSky = false,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -61,7 +64,8 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   const asset = session.sourceAsset;
   const clockSec = session.currentSourceTimeSec;
 
-  const shown = asset !== undefined && isSourcePhotoShown(session);
+  // Under Real sky the photo stays drawn beneath it, so the two cross-fade and the photo is there to come back to
+  const shown = asset !== undefined && (isSourcePhotoShown(session) || underSky);
   const seekToClock = (video: HTMLVideoElement) => {
     if (Number.isFinite(clockSec) && clockSec >= 0) video.currentTime = clockSec;
   };

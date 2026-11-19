@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { answerFindings, type ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
@@ -7,6 +7,11 @@ import { PhotoCorners } from './PhotoCorners.js';
 import { leaderPath, revealMarks, type RevealMark } from './revealMarks.js';
 import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
+import { RealSkyLayer } from './RealSkyLayer.js';
+
+/** Real sky's cross-fade with the photo (reveal, approved: 0.9 s). */
+const REAL_SKY_FADE_MS = 900;
+import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -31,6 +36,8 @@ export interface RevealPhotoProps {
   /** The answer to the last question, in the card's place, with the star it is about lit (ask, approved 2026-11-12). */
   answer?: ShownAnswer | null;
   onCloseAnswer?: () => void;
+  /** Real sky is shown: the panorama through the solve over the photo's frame, its status the Simulated tag and sentence. */
+  realSky?: boolean;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
 }
@@ -83,6 +90,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onShowPredictedSky,
   answer = null,
   onCloseAnswer,
+  realSky = false,
   viewportWidthPx,
   viewportHeightPx,
 }) => {
@@ -91,10 +99,28 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const viewH = viewportHeightPx ?? windowSize.heightPx;
   // The photo alone: a frame the browser turned wrongly, or Original pixels pressed
   const bareFrame = frameMismatch || originalPixels;
-  const rect = bareFrame ? null : sessionPhotoRect(session, viewW, viewH);
+  // Real sky keeps the photo's frame: its corners and marks stand where they stand on the photo
+  const framed: ObservationSession = realSky ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
+  const frame = sessionPhotoRect(framed, viewW, viewH);
+  const rect = bareFrame ? null : frame;
+  // The layer stays a moment after leaving Real sky, so it fades out as it faded in
+  const [skyMounted, setSkyMounted] = useState(realSky);
+  useEffect(() => {
+    if (realSky) {
+      setSkyMounted(true);
+      return undefined;
+    }
+    const timer = setTimeout(() => setSkyMounted(false), REAL_SKY_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [realSky]);
+  const residual = realSky && session.observationSolution ? realSkyResidualArcmin(session.observationSolution) : null;
+  // Whether the panorama is on screen: the status says Simulated only then, and the photo's own status otherwise (while
+  // it loads, when it cannot be drawn, with Original pixels pressed: the verdict on unit-realsky-1)
+  const [skyDrawn, setSkyDrawn] = useState(false);
+  const skyOnScreen = realSky && skyDrawn && !originalPixels;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
   const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
-  const marked = lit === undefined ? session : { ...session, selectedFindingId: lit };
+  const marked = lit === undefined ? framed : { ...framed, selectedFindingId: lit };
   const picked = session.observationSolution?.findings.find((finding) => finding.id === marked.selectedFindingId) ?? null;
   const marks = revealMarks(marked, viewW, viewH);
   const status = revealStatus(session);
@@ -102,6 +128,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
   return (
     <div className="reveal-photo" data-testid="reveal-photo" data-hud-interactive="true">
+      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!realSky} onDrawn={setSkyDrawn} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!bareFrame && picked && marks.some((mark) => mark.picked) && (
@@ -152,7 +179,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <Logo sizePx={21} />
       </button>
 
-      {status.kind === 'unmatched' ? (
+      {skyOnScreen ? (
+        <div className="reveal-status" data-testid="reveal-status" role="status">
+          <EvidenceTag evidenceClass="simulated" />
+          {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
+          {residual !== null && (
+            <p className="reveal-status__line">{`ESO's photograph of this part of the sky, placed by your photo's solve to within ${residual}′. Not light your camera recorded.`}</p>
+          )}
+        </div>
+      ) : status.kind === 'unmatched' ? (
         <div className="reveal-status is-unmatched" data-testid="reveal-status" role="status">
           {status.lines.map((line) => (
             <p key={line} className="reveal-status__lead">

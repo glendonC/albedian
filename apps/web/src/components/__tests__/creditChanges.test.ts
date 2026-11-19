@@ -1,5 +1,6 @@
 // @vitest-environment node
 import fs from 'node:fs';
+import { realSkyChanges } from '../../reveal/RealSkyLayer.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
@@ -66,9 +67,17 @@ const COPY =
   "The 3D view's WebGPU renderer draws a copy made from it in its place, graded the same way and scaled by 0.3 " +
   "before the frame's exposure of 3 (0.9 net before the AgX tone map).";
 
+const REAL_SKY =
+  "In Real sky, over a photo the app has matched to stars, it is resampled into that photo's frame through the " +
+  "photo's solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are " +
+  'darkened toward the window\'s edges, up to 74 percent black.';
+
 describe('the Milky Way row states every change the app makes to the panorama, by kind', () => {
-  it('says each change, where it is made: the home, the 3D view, and the copy the WebGPU renderer draws', () => {
-    expect(CHANGES.eso0932a?.()).toEqual([HOME, SKY, COPY]);
+  it('says each change, where it is made: the home, the 3D view, the copy the WebGPU renderer draws, and Real sky', () => {
+    expect(CHANGES.eso0932a?.()).toEqual([HOME, SKY, COPY, REAL_SKY]);
+    expect(realSkyChanges()).toBe(REAL_SKY);
+    // Worded from the layer's own numbers
+    expect(realSkyChanges({ edge: 0.6, near: 0.4, nearPx: 82 })).toContain('up to 60 percent black');
     expect(milkyWay3dChanges()).toBe(SKY);
     expect(milkyWayCopyDrawn()).toBe(COPY);
   });
@@ -367,7 +376,7 @@ describe("a file a script made shows its record's own sentence on how it differs
   it('shows no further line when a record holds no such field, and shows the two eso0932a script sentences from disk today', () => {
     expect(fileOf('eso_milkyway_diffuse_6k.webp')?.producedBy.method).toBe('script');
     expect(recordChangeLines(withoutChanges(), 'eso0932a')).toEqual([]);
-    expect(milkyWay(withoutChanges()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY]]);
+    expect(milkyWay(withoutChanges()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY]]);
     const registration = fileOf('eso0932a_registration.json')!.producedBy;
     const starless = fileOf('eso_milkyway_diffuse_6k.webp')!.producedBy;
     expect(registration.method === 'script' && registration.changes).toBeTruthy();
@@ -377,14 +386,14 @@ describe("a file a script made shows its record's own sentence on how it differs
       starless.method === 'script' ? starless.changes : '',
     ];
     expect(recordChangeLines(today(), 'eso0932a')).toEqual(diskSentences);
-    expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, ...diskSentences]]);
+    expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, ...diskSentences]]);
   });
 
   it("shows the field's sentence character for character once the record holds it, after the app's own lines", () => {
     const sentence = 'Stars removed and filled from their surroundings;  then  smoothed (5\u00d75), with odd spacing kept.';
     const loaded = withField('eso_milkyway_diffuse_6k.webp', sentence);
     expect(recordChangeLines(loaded, 'eso0932a')).toEqual([sentence]);
-    expect(milkyWay(loaded).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, sentence]]);
+    expect(milkyWay(loaded).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, sentence]]);
     // Only a file a script made: a downloaded file's entry gives none, whatever it holds
     expect(recordChangeLines(withField('eso_milkyway_panorama.jpg', sentence), 'eso0932a')).toEqual([]);
     // Only for a source whose terms ask that changes be indicated: the copy's other sources give none

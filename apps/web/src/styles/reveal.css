@@ -866,3 +866,34 @@
   outline: var(--look-focus-width) solid var(--look-ink);
   outline-offset: var(--look-focus-offset);
 }
+
+/* Real sky (reveal, approved 2026-11-12, laptop 2; #l-real in .cache/uiux/reveal/index.html): the panorama fills the
+   window under the reveal's words and marks, cross-fading with the photo in 0.9 s */
+.real-sky {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.9s var(--look-ease-standard);
+}
+
+.real-sky.is-shown {
+  opacity: 1;
+}
+
+.real-sky__canvas,
+.real-sky__shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.real-sky__canvas {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .real-sky {
+    transition: none;
+  }
+}

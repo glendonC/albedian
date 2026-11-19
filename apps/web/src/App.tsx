@@ -26,6 +26,7 @@ import { openStoredUpload, uploadAddressed } from './services/openUpload.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
 import { isSourcePhotoShown } from './components/sourcePhotoRect.js';
+import { isRealSkyShown } from './reveal/RealSkyLayer.js';
 import { askVoiceAnswer, isQuestion } from './services/voiceAnswer.js';
 import type { ShownAnswer } from './reveal/AnswerPanel.js';
 import type { HeardWords } from './reveal/AskBar.js';
@@ -123,7 +124,8 @@ export const App: React.FC = () => {
     const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
     return Boolean(w.SpeechRecognition ?? w.webkitSpeechRecognition) && window.isSecureContext !== false;
   }, []);
-  const revealOn = (s: ObservationSession) => !phone && isSourcePhotoShown(s);
+  // The laptop reveal: over the photo, or over Real sky in the photo's frame (where answers show)
+  const revealOn = (s: ObservationSession) => !phone && (isSourcePhotoShown(s) || isRealSkyShown(s));
   // What Try again needs: the file and its browser URL, and the receipt once the file is stored
   const inFlightRef = useRef<{ file: File; url: string; receipt: IngestReceipt | null } | null>(null);
 

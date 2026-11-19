@@ -437,25 +437,51 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
-  it('keeps a refusal given off the photo view from showing when the photo comes back', async () => {
-    await openAppAt(`/?upload=${sha256}`);
-    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
-    // To the measured sky, where the old bar still asks
-    await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('.reveal-nav [role="group"] button')].find((b) => b.textContent === 'Real sky')!).click());
-    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).toBeNull());
-    await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
-    const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Take me to Zorblax');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+  it('keeps a refusal given where the reveal is not shown from showing when the reveal comes back', async () => {
+    // A phone's window first, where the old bar asks; then a laptop's
+    let phone = true;
+    const listeners: Array<() => void> = [];
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      get matches() {
+        return phone && query.includes('max-width: 720px');
+      },
+      addEventListener: (_: string, listener: () => void) => listeners.push(listener),
+      removeEventListener: () => {},
     });
-    await act(async () => (input.form as HTMLFormElement).requestSubmit());
-    await settle();
-    // Back to the photo with the restore button, not a command
-    await act(async () => (q('[data-testid="back-to-moment-btn"]') as HTMLButtonElement).click());
-    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
-    await settle();
-    expect(q(ANSWER)).toBeNull();
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="voice-command-hud"]')).not.toBeNull());
+      await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
+      const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Take me to Zorblax');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await act(async () => (input.form as HTMLFormElement).requestSubmit());
+      await settle();
+      phone = false;
+      await act(async () => listeners.forEach((listener) => listener()));
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await settle();
+      expect(q(ANSWER)).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
+  it("shows answers over Real sky too, the photo's frame still the reveal's", async () => {
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('.reveal-nav [role="group"] button')].find((b) => b.textContent === 'Real sky')!).click());
+      await waitUntil(() => expect(q('[data-testid="real-sky"]')).not.toBeNull());
+      await typeAndSend('Is that a plane?');
+      await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+      expect(asked).toEqual([{ question: 'Is that a plane?' }]);
+    } finally {
+      delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
   });
 
   it('closes the answer when a star is picked, and shows that star\'s card', async () => {

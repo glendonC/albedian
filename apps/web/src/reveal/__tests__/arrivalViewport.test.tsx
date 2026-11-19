@@ -14,6 +14,22 @@ import { fileURLToPath } from 'node:url';
 // The working screen in the app (unit 1c): while an upload is on its way to a solved sky the window shows the photo,
 // bare, and the approved rows, and none of the pieces that come after the solve.
 
+// The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
+const sky = vi.hoisted(() => ({ drawn: true }));
+vi.mock('../RealSkyLayer.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
+  const { createElement: h, useEffect } = await import('react');
+  return {
+    ...original,
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void }) => {
+      useEffect(() => {
+        props.onDrawn?.(sky.drawn);
+      }, [props.onDrawn]);
+      return h('div', { className: 'real-sky', 'data-testid': 'real-sky', 'data-state': sky.drawn ? 'drawn' : 'loading' });
+    },
+  };
+});
+
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
     setObserverCoordinates() {}
@@ -359,8 +375,108 @@ describe('the viewport shows the approved star card over the photo, above phone 
     renderViewport(session, { selectedFinding, ...extra });
   }
   const press = (label: string) => act(() => ([...container.querySelectorAll(`${CARD} button`)].find((b) => (b.textContent || b.getAttribute('aria-label')) === label) as HTMLButtonElement).click());
+  // A browser that can draw Real sky (WebGL 2); jsdom has none, so each test here stands one in
+  beforeEach(() => {
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    sky.drawn = true;
+  });
   afterEach(() => {
     delete (window as unknown as Record<string, unknown>).matchMedia;
+    delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+  });
+
+  it('draws Real sky over the photo\'s frame in the measured sky view: the layer, the Simulated tag and sentence, the photo beneath, none of the old sky view\'s pieces', () => {
+    const base = storedPhoto();
+    const sky = { ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession;
+    open(sky);
+    expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    expect(q('[data-testid="reveal-status"] .look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    const residual = Math.max(1, Math.ceil((base.observationSolution!.quality!.medianResidualArcsec ?? base.observationSolution!.quality!.medianResidualPx! * base.observationSolution!.wcs!.scaleDegPerPx * 3600) / 60));
+    expect(q('[data-testid="reveal-status"] .reveal-status__line')!.textContent).toBe(`ESO's photograph of this part of the sky, placed by your photo's solve to within ${residual}′. Not light your camera recorded.`);
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+    expect(q('svg.photo-corners')).not.toBeNull();
+    expect(q('[data-testid="source-photo-stage"] img')).not.toBeNull();
+    for (const gone of ['[data-testid="flight-and-restore-hud"]', '.alb-layer-disclosure', '[data-testid="observation-solve-compare-hud"]', '[data-testid="voice-command-hud"]']) {
+      expect(q(gone), gone).toBeNull();
+    }
+    const pills = [...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+    expect(pills.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+  });
+
+  // The verdict on unit-realsky-1: the status says what is on screen, never Simulated over the person's own photo
+  const skyOpen = () => {
+    const base = storedPhoto();
+    return { ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession;
+  };
+  const statusTag = () => q('[data-testid="reveal-status"] .look-tag')?.getAttribute('data-evidence-class') ?? null;
+  const statusText = () => q('[data-testid="reveal-status"]')!.textContent!;
+
+  it('keeps the photo\'s own status while the panorama loads or when it cannot be drawn (scenarios B and C)', () => {
+    sky.drawn = false;
+    open(skyOpen());
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    expect(statusTag()).toBeNull();
+    expect(statusText()).toContain('Calibrated');
+    expect(statusText()).not.toContain('Not light your camera recorded');
+  });
+
+  it('says Simulated only once the panorama is drawn, and goes back to the photo\'s own status with Original pixels (scenario A)', () => {
+    const base = skyOpen();
+    const picked = { ...base, selectedFindingId: base.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!.id } as ObservationSession;
+    open(picked, { selectedFinding: picked.observationSolution!.findings.find((f) => f.id === picked.selectedFindingId) });
+    expect(statusTag()).toBe('simulated');
+    act(() => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Original pixels')!).click());
+    expect(q('[data-testid="real-sky"]')).toBeNull();
+    expect(statusTag()).toBeNull();
+    expect(statusText()).toContain('Calibrated');
+    act(() => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Original pixels')!).click());
+    expect(statusTag()).toBe('simulated');
+  });
+
+  it('comes back to the photo from Your photo, through the saved moment, and does nothing from Real sky while on it', () => {
+    const sessions: ObservationSession[] = [];
+    const base = storedPhoto();
+    let current = base;
+    const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
+      current = update(current);
+      sessions.push(current);
+    };
+    open(base, { setSession });
+    act(() => ([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === 'Real sky')!).click());
+    expect(current.spatialView.mode).toBe('registered_sky');
+    renderViewport(current, { setSession });
+    // Left through the reducer: the old view's restore button would show here; Your photo is the way back
+    expect(current.machines.navigation).toBe('sky_registered');
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    expect(q('[data-testid="flight-and-restore-hud"]')).toBeNull();
+    const pill = (label: string) => [...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === label)!;
+    const before = sessions.length;
+    act(() => pill('Real sky').click());
+    expect(sessions.length).toBe(before);
+    act(() => pill('Your photo').click());
+    expect(current.spatialView.mode).toBe('source_2d');
+    expect(current.lastStatusBanner).toMatch(/^Returned to Moment/);
+  });
+
+  it('never draws Real sky over a solve that did not pass its check, whatever its status word', () => {
+    const base = storedPhoto();
+    const sky = { ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession;
+    // The contract refuses such a solution, so it is given after the session is built: the screen checks for itself
+    const unverified = { ...sky, observationSolution: { ...sky.observationSolution!, quality: { ...sky.observationSolution!.quality!, passedIndependentVerification: false } } } as ObservationSession;
+    open(unverified);
+    expect(q('[data-testid="real-sky"]')).toBeNull();
+    expect(q('[data-testid="reveal-photo"]')).toBeNull();
+  });
+
+  it('opens nothing it cannot draw: without WebGL 2, Real sky is not pressable and the measured sky view keeps its old pieces', () => {
+    delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    const base = storedPhoto();
+    open(base);
+    expect([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].map((b) => b.disabled)).toEqual([false, true, true]);
+    renderViewport({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    expect(q('[data-testid="real-sky"]')).toBeNull();
+    expect(q('[data-testid="reveal-photo"]')).toBeNull();
   });
 
   it('draws the approved card for the picked star, and not the old card', () => {
@@ -471,9 +587,9 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(sessions[0]!.lastStatusBanner).toBe('Showing predicted sky model from recorded timestamp and location (separate from source pixels).');
   });
 
-  it('shows no view pills outside the photo view, the Sound circle staying', () => {
+  it('shows no view pills in the 3D view, whose pieces are its own unit, the Sound circle staying', () => {
     const base = storedPhoto();
-    open({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    open({ ...base, spatialView: { ...base.spatialView, mode: 'catalog_3d' } } as ObservationSession);
     expect(q('.reveal-nav [role="group"]')).toBeNull();
     expect(q('.reveal-nav .sound-control')).not.toBeNull();
   });

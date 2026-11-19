@@ -1,0 +1,209 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { hasVerifiedWcs, type ObservationSession } from '@albedian/contracts';
+import type { PhotoRect } from '../components/sourcePhotoRect.js';
+import { loadPanoramaRegistration, type PanoramaRegistration } from '../spatial/sky/skyRegistration.js';
+import { realSkyGrid } from './realSkyGrid.js';
+
+/** ESO's Milky Way panorama (eso0932a) as the app serves it, byte for byte as ESO's large file (textures/PROVENANCE.json). */
+export const REAL_SKY_PANORAMA_URL = '/textures/eso_milkyway_panorama.jpg';
+
+/** The grid's cell, in CSS pixels: the mapping is smooth at this scale, so each cell is drawn linearly in between. */
+export const REAL_SKY_STEP_PX = 8;
+
+/** Whether this browser can draw the layer (WebGL 2): where it cannot, Real sky cannot open. */
+export function canDrawRealSky(): boolean {
+  return typeof window !== 'undefined' && 'WebGL2RenderingContext' in window;
+}
+
+/** Whether the session shows Real sky: the measured sky view of a verified solve of a photo, where it can be drawn. */
+export function isRealSkyShown(session: ObservationSession): boolean {
+  const solution = session.observationSolution;
+  return (
+    session.sourceAsset !== undefined &&
+    session.spatialView?.mode === 'registered_sky' &&
+    solution !== undefined &&
+    solution.status === 'calibrated' &&
+    hasVerifiedWcs(solution) &&
+    canDrawRealSky()
+  );
+}
+
+/** The side columns' shade (reveal, approved): black at `edge` at the window's edges, `near` at `nearPx` outside the photo. */
+export interface RealSkyShade {
+  edge: number;
+  near: number;
+  nearPx: number;
+}
+
+export const REAL_SKY_SHADE: Readonly<RealSkyShade> = { edge: 0.74, near: 0.5, nearPx: 82 };
+
+/**
+ * The side columns' shade, none over the photo, so the words beside it stay legible; the stops follow the photo's own
+ * frame.
+ */
+export function realSkyShade(rect: PhotoRect, viewportWidthPx: number, shade: Readonly<RealSkyShade> = REAL_SKY_SHADE): string {
+  const left = rect.leftPx;
+  const right = rect.leftPx + rect.widthPx;
+  const px = (n: number) => `${Math.round(n * 10) / 10}px`;
+  const black = (a: number) => `rgba(0, 0, 0, ${a})`;
+  return `linear-gradient(to right, ${black(shade.edge)} 0px, ${black(shade.near)} ${px(left - shade.nearPx)}, ${black(0)} ${px(left)}, ${black(0)} ${px(right)}, ${black(shade.near)} ${px(right + shade.nearPx)}, ${black(shade.edge)} ${px(viewportWidthPx)})`;
+}
+
+/**
+ * The Credits page's line for what Real sky does to ESO's panorama (CC BY 4.0 asks that changes be indicated), worded
+ * from the layer's own numbers [proposed: no record words the Credits lines].
+ */
+export function realSkyChanges(shade: Readonly<RealSkyShade> = REAL_SKY_SHADE): string {
+  return (
+    "In Real sky, over a photo the app has matched to stars, it is resampled into that photo's frame through the photo's " +
+    `solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are darkened toward the window's edges, up to ${Math.round(shade.edge * 100)} percent black.`
+  );
+}
+
+const VERTEX = `#version 300 es
+in vec2 aPos;
+in vec2 aUv;
+uniform vec2 uView;
+out vec2 vUv;
+void main() {
+  vUv = aUv;
+  gl_Position = vec4(aPos.x / uView.x * 2.0 - 1.0, 1.0 - aPos.y / uView.y * 2.0, 0.0, 1.0);
+}`;
+
+// The panorama's own pixels, unchanged: no grade (the approved picture shows them as ESO publishes them)
+const FRAGMENT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uPanorama;
+out vec4 outColor;
+void main() {
+  outColor = vec4(texture(uPanorama, vUv).rgb, 1.0);
+}`;
+
+type LayerState = 'loading' | 'drawn' | 'failed';
+
+function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
+  const shader = gl.createShader(type);
+  if (!shader) return null;
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+}
+
+/** Draws the panorama through the grid into the canvas; false when the browser refuses any step. */
+function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: ObservationSession, registration: PanoramaRegistration, viewW: number, viewH: number): boolean {
+  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX);
+  const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
+  if (!grid || !gl) return false;
+  const vs = compile(gl, gl.VERTEX_SHADER, VERTEX);
+  const fs = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
+  const program = gl.createProgram();
+  if (!vs || !fs || !program) return false;
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return false;
+  gl.useProgram(program);
+
+  // Two triangles per cell
+  const indices = new Uint32Array((grid.cols - 1) * (grid.rows - 1) * 6);
+  let n = 0;
+  for (let j = 0; j < grid.rows - 1; j++) {
+    for (let i = 0; i < grid.cols - 1; i++) {
+      const a = j * grid.cols + i;
+      const b = a + 1;
+      const c = a + grid.cols;
+      const d = c + 1;
+      indices.set([a, c, b, b, c, d], n);
+      n += 6;
+    }
+  }
+  const bind = (name: string, data: Float32Array) => {
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const at = gl.getAttribLocation(program, name);
+    gl.enableVertexAttribArray(at);
+    gl.vertexAttribPointer(at, 2, gl.FLOAT, false, 0, 0);
+  };
+  bind('aPos', grid.positions);
+  bind('aUv', grid.uvs);
+  const elements = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elements);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  // Row 0 of the image is the top, at v = 1
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  // Around the sky the image wraps; over the poles it does not
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(gl.getUniformLocation(program, 'uView'), viewW, viewH);
+  gl.uniform1i(gl.getUniformLocation(program, 'uPanorama'), 0);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
+  return gl.getError() === gl.NO_ERROR;
+}
+
+/**
+ * Real sky (reveal, approved 2026-11-12, laptop 2): the panorama fills the window through the photo's solve and the
+ * app's registration, the side columns shaded. It fades in over the photo in 0.9 s once drawn (none with reduced
+ * motion), and fades out the same way when `leaving`.
+ */
+export const RealSkyLayer: React.FC<{
+  session: ObservationSession;
+  rect: PhotoRect | null;
+  viewportWidthPx: number;
+  viewportHeightPx: number;
+  leaving?: boolean;
+  /** Told whether the panorama is drawn: false while it loads, when it fails, and as the layer leaves. */
+  onDrawn?: (drawn: boolean) => void;
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn }) => {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [state, setState] = useState<LayerState>('loading');
+  const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  // The reveal's status follows what is on screen (the auditor's verdict on unit-realsky-1)
+  const told = useRef(onDrawn);
+  told.current = onDrawn;
+  useEffect(() => {
+    told.current?.(state === 'drawn');
+  }, [state]);
+  useEffect(() => () => told.current?.(false), []);
+
+  useEffect(() => {
+    let current = true;
+    const image = new Image();
+    image.decoding = 'async';
+    const loaded = new Promise<HTMLImageElement>((resolve, reject) => {
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('panorama'));
+    });
+    image.src = REAL_SKY_PANORAMA_URL;
+    void Promise.all([loaded, loadPanoramaRegistration()])
+      .then(([img, registration]) => {
+        if (!current || !canvas.current) return;
+        setState(draw(canvas.current, img, session, registration, viewportWidthPx, viewportHeightPx) ? 'drawn' : 'failed');
+      })
+      .catch(() => {
+        if (current) setState('failed');
+      });
+    return () => {
+      current = false;
+    };
+  }, [session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx]);
+
+  return (
+    <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
+      <canvas ref={canvas} className="real-sky__canvas" width={Math.round(viewportWidthPx * dpr)} height={Math.round(viewportHeightPx * dpr)} />
+      {rect && <div className="real-sky__shade" style={{ backgroundImage: realSkyShade(rect, viewportWidthPx) }} />}
+    </div>
+  );
+};
