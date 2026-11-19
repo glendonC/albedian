@@ -31,6 +31,7 @@ from services.contracts.ingest import IngestReceipt, SolveJob
 from services.contracts.jobs import UploadJob
 from services.ingest import router as ingest_router
 from research.benchmarks.phone_photos import render as phone_render, stars as phone_stars, suite as phone_suite
+from services.ingest import jobs as ingest_jobs
 from services.ingest.jobs import job_id_for_sha256, run_solve_job
 from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
@@ -242,7 +243,7 @@ def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated
     UploadJob.model_validate(job)
     # The runner's own id: the hash's first 16 hex characters, then 16 of its own
     assert job["id"].startswith(job_id_for_sha256(sha)) and len(job["id"]) == len("job_") + 32
-    assert job["kind"] == "solve" and job["producer"] == {"name": "albedian.solve_chain", "revision": 1}
+    assert job["kind"] == "solve" and job["producer"] == ingest_jobs.SOLVE_PRODUCER.as_record()
     assert job["sourceAssetSha256"] == sha
     assert job["state"] == "succeeded"
     assert job["solutionId"] == f"sol_{sha[:16]}"

@@ -756,7 +756,9 @@ SOLVE_PRODUCER_FILES = (
     "services/science/catalog.py",
     "services/science/bounded_worker.py",
 )
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 1, SOLVE_PRODUCER_FILES)
+# Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose
+# field of view source a head-worn pose stores in its solution as fovSource (platform-6r)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 2, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

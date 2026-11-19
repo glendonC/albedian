@@ -271,7 +271,7 @@ def test_the_solve_kind_records_its_producer_its_passes_and_publishes_its_soluti
     ended = _until_state(client, started.json()["id"], ("succeeded", "failed"))
     assert ended["state"] == "succeeded", ended.get("error")
     UploadJob.model_validate(ended)
-    assert ended["producer"] == {"name": "albedian.solve_chain", "revision": 1}
+    assert ended["producer"] == ingest_jobs.SOLVE_PRODUCER.as_record()
     solve = next(s for s in ended["stages"] if s["stage"] == "solve")
     assert solve["pass"]["label"] in ("triangle", "phone_photo_generic") and solve["pass"]["number"] >= 1
     assert "inputSpan" not in ended, "a still has no frame span"

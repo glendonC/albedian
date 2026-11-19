@@ -1,6 +1,6 @@
 {
  "albedian.solve_chain": {
-  "revision": 1,
+  "revision": 2,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -14,6 +14,6 @@
    "services/science/catalog.py",
    "services/science/bounded_worker.py"
   ],
-  "digest": "7ca9036e376edc8c651911850048c9f6727074dd5ea774b7c7d535a58662df12"
+  "digest": "712cc02b9fca7357b86d2c1250f1249eea9932aeefd4ef2c854cb2ef2461bd88"
  }
 }
