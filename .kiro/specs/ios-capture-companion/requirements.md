@@ -65,7 +65,7 @@ Out of scope here: solving on the phone, the 3D flight on iOS, a native reveal (
   1. A pointing record contract (Zod in `packages/contracts`, Pydantic in `services/contracts`) with a shared fixture SHALL land before the app or the server reads it; TS and Python SHALL accept and refuse the same samples.
 
 ## Properties to test (from the requirements)
-- P1 (REQ-IOS-2.1): for any pointing record, the evidence class of every finding equals the one the same frame gets with no hint, or the hinted solve is not `calibrated`.
+- P1 (REQ-IOS-2.1): for any pointing record, a hint never makes a finding `catalog_matched` that the unchanged held-out gate does not verify, and a wrong hint never yields a false solve: a hinted `calibrated` solve's verified centre is the one the same frame verifies with no hint. (Amended 2026-11-19 at the lead's answer of 09:58: the first wording, every finding's class equal to the unhinted solve's, forbade any hint that recovers a photo, and failed when a narrowed search kept a neighbouring rotation that named a few stars fewer.)
 - P2 (REQ-IOS-2.3): no pointing record makes a failed verification `calibrated`.
 - P3 (REQ-IOS-1.1): the image bytes and sha256 after capture and upload equal the bytes the camera wrote.
 - P4 (REQ-IOS-7.1): TS and Python parity over generated pointing records, including missing heading and missing location.

@@ -712,6 +712,7 @@ def solve_and_verify_field(
     catalog_stars: list[CatalogStar] | None = None,
     hint_ra_deg: float | None = None,
     hint_dec_deg: float | None = None,
+    hint_radius_deg: float | None = None,
     source_asset_id: str,
     source_sha256: str,
     frame_time_sec: float = 0.0,
@@ -722,7 +723,8 @@ def solve_and_verify_field(
 
     `source_asset_id` and `source_sha256` name the recording the detections were measured in; there is no
     default, because the solver cannot know them. `obs_utc_iso`, `observer_lat` and `observer_lon` are
-    optional: when present, catalog matches also carry topocentric altitude and azimuth.
+    optional: when present, catalog matches also carry topocentric altitude and azimuth. A centre hint keeps the
+    catalog stars within `hint_radius_deg` of it (68 deg when no radius is given, as before pointing-4).
 
     A frame or a detection no solution can carry is refused before any solving (`require_solvable_detections`,
     `SolveInputRefusal`); for every other input the answer is a solution.
@@ -733,9 +735,10 @@ def solve_and_verify_field(
         raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
     catalog = list(catalog_stars) if catalog_stars is not None else get_catalog_stars()
     if hint_ra_deg is not None and hint_dec_deg is not None:
+        cut_deg = 68.0 if hint_radius_deg is None else float(hint_radius_deg)
         filtered = [
             s for s in catalog
-            if angular_separation_deg(s.ra_deg, s.dec_deg, hint_ra_deg, hint_dec_deg) <= 68.0
+            if angular_separation_deg(s.ra_deg, s.dec_deg, hint_ra_deg, hint_dec_deg) <= cut_deg
         ]
         if len(filtered) >= 8:
             catalog = filtered

@@ -171,6 +171,17 @@ camera direction. Those belong to the server units below, where their convention
   mobile-1].
 - The hint only narrows the search: held-out verification is unchanged (REQ-IOS-2.1, P1, P2). When a verified WCS
   centre lies outside the hint's stated uncertainty, the WCS wins and a warning records it (REQ-IOS-2.2).
+- As built in pointing-4 [tested]: `services/science/record_hint.py` turns a measured heading into the frame
+  centre's altitude and azimuth (the quaternion read device to reference [open], the back camera along minus z
+  [inference]), refusing a record whose attitude and gravity disagree by more than 5 deg; the uncertainty is the
+  heading accuracy, a 2 deg tilt error [proposed] and the turn over the motion window. The job turns the centre to
+  ICRS at the solve's time and place, hands it to every search (the phone solver keeps rotations whose axis lies
+  within the uncertainty; the plate solver cuts its catalog to the uncertainty plus half the record's diagonal),
+  takes the record's field of view when the file states no 35 mm focal length, and states `search_hint` with the
+  centre, the verified offset on a calibrated solution, and the warning when the offset exceeds the uncertainty.
+  A catalog drawn near the hint is not built here: it changed which stars a calibrated solve named, against P1's
+  first wording [tested]; P1 as amended (no match the gate does not verify, no false solve) allows it, and it is the
+  proposed next step [proposed].
 
 ### 6. When stars do not solve: a pose from the record (units pointing-3 and pointing-5)
 The pose estimate of spec `predicted-sky-for-every-upload` is lined up from a beacon. A pose from the record has

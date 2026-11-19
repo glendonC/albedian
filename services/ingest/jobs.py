@@ -55,7 +55,10 @@ from services.science.phone_photo_solver import (
     camera_fov_hint_deg,
     solve_phone_photo,
 )
+from services.science.catalog import altaz_to_icrs
 from services.science.predicted_sky import LentMoment, _place as _recorded_place, complete_sky
+from services.science.record_hint import RecordHint, record_hint
+from services.science.solver import angular_separation_deg
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
 from services.science.wcs_models import ObservationSolution, PointingHint
 
@@ -79,6 +82,11 @@ PREDICTED_SKY_FAILED = "The predicted sky could not be computed."
 # The one sentence for a stored pointing record the solve did not use; it holds none of the record's values
 # [proposed: worded like the solve's other sentences, for UIUX's review]
 RECORD_NOT_USED = "The photo's stored pointing record is not a record of this photo, so the solve did not use it."
+# The warning when the verified calibration's centre lies outside the hint's stated uncertainty: the WCS wins
+# (design component 5, REQ-IOS-2.2) [proposed: for UIUX's review]
+HINT_OUTSIDE = (
+    "The verified calibration is used: the phone's pointing record was further from it than its stated uncertainty."
+)
 def job_id_for_sha256(sha256: str) -> str:
     """The 16-character job id today's solve records carry for a stored upload's SHA-256 (`job.json`)."""
     if not re.fullmatch(r"^[0-9a-f]{64}$", sha256):
@@ -445,8 +453,14 @@ def _solve_chain(
     sha256: str,
     solution_id: str,
     on_event: Callable[..., None],
+    hint_ra_deg: float | None = None,
+    hint_dec_deg: float | None = None,
+    hint_radius_deg: float | None = None,
+    triangle_radius_deg: float | None = None,
 ):
-    """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child.
+    """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child. A pointing
+    record's centre hint (pointing-4) goes to each: the phone solver keeps rotations within `hint_radius_deg` of it,
+    the plate solver the catalog within `triangle_radius_deg` (its own 68 deg when None).
 
     `on_event("solver", name)` comes before each search and `on_event("candidate", done, total)` reports its counts.
     """
@@ -454,6 +468,8 @@ def _solve_chain(
     def on_candidate(done: int, total: int) -> None:
         on_event("candidate", done, total)
 
+    phone_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg)
+    plate_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=triangle_radius_deg)
     if camera_meta:
         on_event("solver", "phone_photo")
         solution = solve_phone_photo(
@@ -467,6 +483,7 @@ def _solve_chain(
             source_sha256=sha256,
             solution_id=solution_id,
             on_candidate=on_candidate,
+            **phone_hint,
         )
         if fov_hint is not None and solution.status != "calibrated":
             # A wrong or cropped 35 mm tag must not block the solve: retry with the generic field search
@@ -481,6 +498,7 @@ def _solve_chain(
                 source_sha256=sha256,
                 solution_id=solution_id,
                 on_candidate=on_candidate,
+                **phone_hint,
             )
         if solution.status != "calibrated":
             on_event("solver", "triangle")
@@ -495,6 +513,7 @@ def _solve_chain(
                 source_sha256=sha256,
                 solution_id=solution_id,
                 on_candidate=on_candidate,
+                **plate_hint,
             )
             if plate_sol.status == "calibrated":
                 solution = plate_sol
@@ -511,6 +530,7 @@ def _solve_chain(
             source_sha256=sha256,
             solution_id=solution_id,
             on_candidate=on_candidate,
+            **plate_hint,
         )
         if solution.status != "calibrated" and len(detections) >= 10:
             on_event("solver", "phone_photo")
@@ -524,6 +544,7 @@ def _solve_chain(
                 source_sha256=sha256,
                 solution_id=solution_id,
                 on_candidate=on_candidate,
+                **phone_hint,
             )
             if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
                 solution = phone_sol
@@ -548,6 +569,20 @@ class RecordMoment:
     place: tuple[float, float] | None
     place_accuracy_m: float | None = None
     accuracy_authorization: str | None = None
+    hint: RecordHint | None = None
+
+
+@dataclass(frozen=True)
+class SearchHint:
+    """The record's heading as the searches take it (pointing-4): the hinted centre in the sky of the solve's time
+    and place, as altitude and azimuth and as ICRS, its stated uncertainty, and the record's diagonal field of view."""
+
+    alt_deg: float
+    az_deg: float
+    ra_deg: float
+    dec_deg: float
+    uncertainty_deg: float
+    fov_diagonal_deg: float | None
 
 
 def _no_constant(_token: str) -> Any:
@@ -580,7 +615,8 @@ def read_record_moment(original: Path, sha256: str) -> tuple[RecordMoment | None
         return RecordMoment(record.captured_at_device_clock_utc, None), False
     place = (float(location.lat_deg), float(location.lon_deg))
     return RecordMoment(
-        record.captured_at_device_clock_utc, place, float(location.horizontal_accuracy_m), str(location.accuracy_authorization)
+        record.captured_at_device_clock_utc, place, float(location.horizontal_accuracy_m), str(location.accuracy_authorization),
+        record_hint(record),
     ), False
 
 
@@ -621,6 +657,66 @@ def lend_record_moment(
         lent["observerLocation"] = {"latDeg": moment.place[0], "lonDeg": moment.place[1]}
     hint = PointingHint(source_asset_sha256=sha256, used_as=("moment",), time_from=time_from, place_from=place_from)
     return lent, hint
+
+
+def record_search_hint(asset: Mapping[str, Any], moment: RecordMoment | None) -> SearchHint | None:
+    """The search hint for the asset the searches read (the record's moment already lent): None without a measured
+    heading, a capture time or a place. The hinted centre is turned to ICRS at the solve's own time and place, its
+    altitude read as refracted, as the camera saw it [inference]."""
+    if moment is None or moment.hint is None:
+        return None
+    captured, place = asset.get("capturedAtUTC"), _recorded_place(asset)
+    if not isinstance(captured, str) or captured == "" or place is None:
+        return None
+    hint = moment.hint
+    try:
+        ra, dec = altaz_to_icrs(hint.center_alt_deg, hint.center_az_deg, place[0], place[1], captured, refracted=True)
+    except Exception:  # noqa: BLE001 - a moment the ephemeris cannot take gives no hint, never a failed solve
+        return None
+    return SearchHint(hint.center_alt_deg, hint.center_az_deg, ra, dec, hint.uncertainty_deg, hint.fov_diagonal_deg)
+
+
+def triangle_hint_radius_deg(search: SearchHint) -> float | None:
+    """The plate solver's catalog cut around the hint: the hint's uncertainty and the frame's half diagonal when the
+    record gives its field of view (design component 5 [proposed]); None keeps the solver's own 68 deg."""
+    if search.fov_diagonal_deg is None:
+        return None
+    return min(180.0, search.uncertainty_deg + search.fov_diagonal_deg / 2.0)
+
+
+def pointing_hint_for(
+    solution: ObservationSolution,
+    moment_hint: PointingHint | None,
+    search: SearchHint | None,
+    sha256: str,
+    width: int,
+    height: int,
+) -> tuple[PointingHint | None, str | None]:
+    """The solution's pointing hint, and the warning when the verified centre lies outside the hint's uncertainty.
+
+    Its uses are the search hint when the searches took one and the moment when the record lent it; its centre only
+    with the search hint; the verified centre's offset from the hinted centre only on a calibrated solution."""
+    if search is None:
+        return moment_hint, None
+    time_from, place_from = ("file", "file") if moment_hint is None else (moment_hint.time_from, moment_hint.place_from)
+    offset: float | None = None
+    warning: str | None = None
+    if solution.status == "calibrated" and solution.wcs is not None:
+        ra, dec = solution.wcs.pixel_to_world(width / 2.0, height / 2.0)
+        offset = min(180.0, angular_separation_deg(ra, dec, search.ra_deg, search.dec_deg))
+        if offset > search.uncertainty_deg:
+            warning = HINT_OUTSIDE
+    hint = PointingHint(
+        source_asset_sha256=sha256,
+        used_as=("search_hint", *(("moment",) if moment_hint is not None else ())),
+        time_from=time_from,
+        place_from=place_from,
+        center_alt_deg=search.alt_deg,
+        center_az_deg=search.az_deg,
+        uncertainty_deg=search.uncertainty_deg,
+        verified_center_offset_deg=offset,
+    )
+    return hint, warning
 
 
 @dataclass(frozen=True)
@@ -676,6 +772,7 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # Where the file holds no recorded time or no place, the stored record's stand in for the searches and the
     # predicted sky, and the hint says so; the receipt keeps the file's own
     asset, moment_hint = lend_record_moment(ctx.asset, ctx.record_moment, sha256)
+    search = record_search_hint(asset, ctx.record_moment)
 
     def on_decode_progress(done: int, total: int | None) -> None:
         ctx.report({"stage": "decode", "unit": "frames", "done": done, "total": total}, persist=done == total)
@@ -717,6 +814,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # The 35 mm tag names the whole sensor; a still's frame may be a part of it (a 16:9 mode, a crop), so its own
     # field of view is the tag's scaled to the stored frame (fov-1); a clip's tag stands as written
     fov_hint = camera_fov_hint_deg(camera_meta, (width, height) if media_kind == "image" else None)
+    if fov_hint is None and search is not None and search.fov_diagonal_deg is not None:
+        # The record's field of view and zoom when the file states no 35 mm focal length (pointing-4)
+        fov_hint = search.fov_diagonal_deg
     obs_utc_iso = asset.get("capturedAtUTC")
     lat_deg = location.get("latDeg")
     lon_deg = location.get("lonDeg")
@@ -746,6 +846,10 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         source_asset_id=asset["id"],
         sha256=sha256,
         solution_id=solution_id,
+        hint_ra_deg=None if search is None else search.ra_deg,
+        hint_dec_deg=None if search is None else search.dec_deg,
+        hint_radius_deg=None if search is None else search.uncertainty_deg,
+        triangle_radius_deg=None if search is None else triangle_hint_radius_deg(search),
     )
     read_for_pose: list[list[tuple[float, np.ndarray]]] = []
 
@@ -806,6 +910,11 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
 
     if ctx.record_unusable:
         solution = replace(solution, warnings=[*solution.warnings, RECORD_NOT_USED])
+    # The hint the solution states, judged against the verified centre before the predicted sky adds its own last
+    # warning; it is attached after, since only a calibrated solution has an offset and the sky keeps it calibrated
+    pointing_hint, hint_warning = pointing_hint_for(solution, moment_hint, search, sha256, width, height)
+    if hint_warning is not None:
+        solution = replace(solution, warnings=[*solution.warnings, hint_warning])
 
     # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
     # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
@@ -816,8 +925,8 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         solution = complete_sky(solution, asset, frames=pose_frames, **({} if lent is None else {"lent": lent}))
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
-    if moment_hint is not None:
-        solution = replace(solution, pointing_hint=moment_hint)
+    if pointing_hint is not None:
+        solution = replace(solution, pointing_hint=pointing_hint)
     return solution
 
 
@@ -902,6 +1011,7 @@ SOLVE_PRODUCER_FILES = (
     "apps/web/public/catalog/stars/designation-links/links.json",
     "apps/web/public/catalog/constellations/bounds.json",
     "apps/web/public/catalog/deepsky/openngc.json",
+    "services/science/record_hint.py",
 )
 # Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose
 # field of view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives
@@ -916,8 +1026,10 @@ SOLVE_PRODUCER_FILES = (
 # pointing hint names its source, the phone's record or a person (align-1b), so a hint stored without one is solved
 # again rather than refused when read; 10, the solvers' refused-gate and too-few-stars warnings in the design lane's
 # words (C16); 11, a pointing record's time and place where the file holds none (pointing-moment v2), which give a sky,
-# named as the record's and with its place's accuracy, to photos that had none
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 11, SOLVE_PRODUCER_FILES)
+# named as the record's and with its place's accuracy, to photos that had none; 12, a pointing record's heading as a
+# search hint (pointing-4, whose record_hint.py joins the files), which narrows the searches of photos with a record and
+# states the hint in their solutions
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 12, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

@@ -48,11 +48,14 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     accuracy, full or reduced, joins every stated uncertainty (its words [proposed] for the design lane).
   - _Requirements: REQ-IOS-2.2, REQ-IOS-6.2_
 
-- [ ] 4. pointing-4: the record as a search hint (REQ-IOS-2.1, 2.2; P1, P2)
+- [x] 4. pointing-4: the record as a search hint (REQ-IOS-2.1, 2.2; P1, P2)
   - Turn a measured heading into `hint_ra_deg` and `hint_dec_deg` with a stated uncertainty; the triangle solver's
     cut radius from that uncertainty and the frame's half diagonal; a centre hint and the record's field of view for
     the phone-photo solver; `_solve_chain` passes both; the WCS wins over the hint, with a warning.
   - Waits for the device checks of mobile-1 (the axes, the quaternion direction) and mobile-2 (the timebase).
+  - As built (2026-11-19): to the documented conventions, each device check [open] until mobile-1's recorded values
+    are compared (`services/science/record_hint.py`, `tests/science/test_record_hint.py`,
+    `tests/integration/test_pointing_search_hint.py`).
   - _Requirements: REQ-IOS-2.1, 2.2, 2.3_
 
 - [ ] 5. pointing-5: a pose from the record when stars do not solve (design component 6)

@@ -1780,6 +1780,13 @@ def _upright_prior_takes(rotations: np.ndarray) -> np.ndarray:
     )
 
 
+def _hint_takes(rotations: np.ndarray, hint_vec: np.ndarray, radius_deg: float) -> np.ndarray:
+    """Which candidate rotations a centre hint keeps (pointing-4): those whose optical axis lies within the hint's
+    radius of the hinted centre (`hint_vec`, a unit east, north, up vector). The held-out gate is unchanged, so the
+    hint can lose a solve but never make one."""
+    return rotations[:, 2, :] @ hint_vec >= math.cos(math.radians(radius_deg))
+
+
 def _search_horizon_attitude(
     pool: Sequence[SourceDetection],
     width: int,
@@ -1791,6 +1798,7 @@ def _search_horizon_attitude(
     fov_models: Sequence[tuple[float, str]],
     on_candidate: Callable[[int, int], None] | None,
     takes: Callable[[np.ndarray], np.ndarray] = _attitude_prior_takes,
+    hint: tuple[np.ndarray, float] | None = None,
 ) -> PhoneCameraWCS | None:
     search_pool = pool[:38] if len(fov_models) > 2 else pool
     m_len = len(search_pool)
@@ -1858,6 +1866,8 @@ def _search_horizon_attitude(
                 F_sub = F_sorted[lo:hi]
                 R_cand = np.einsum("ij,ckj->cik", E, F_sub)
                 valid_att = takes(R_cand)
+                if hint is not None:
+                    valid_att &= _hint_takes(R_cand, *hint)
                 if np.any(valid_att):
                     R_sub = R_cand[valid_att]
                     proj = np.einsum("kn,cmn->ckm", u_cat, R_sub)
@@ -2103,6 +2113,9 @@ def solve_phone_photo(
     frame_time_sec: float = 0.0,
     solution_id: str = "sol-primary",
     on_candidate: Callable[[int, int], None] | None = None,
+    hint_ra_deg: float | None = None,
+    hint_dec_deg: float | None = None,
+    hint_radius_deg: float | None = None,
 ) -> ObservationSolution:
     """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification.
 
@@ -2112,7 +2125,11 @@ def solve_phone_photo(
     which finds a frame stored sideways or upside down and one aimed near the zenith. Every roll from the start cost
     the CI positives about three times their CPU seconds [tested: the speed guard]. The second solve's candidates
     count on from the first's, so a job's count never falls within its pass; its total grows by what the second
-    solve evaluates."""
+    solve evaluates.
+
+    A centre hint (`hint_ra_deg`, `hint_dec_deg`, `hint_radius_deg`: a pointing record's, pointing-4) narrows the
+    horizon search of a photo with a time and a place in both solves: it keeps only rotations whose axis lies within
+    the radius. It never changes the catalog or the gate."""
     if detections is None:
         raw_luma = _to_luma_2d(image)
         luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2121,7 +2138,7 @@ def solve_phone_photo(
         detections=detections, obs_utc_iso=obs_utc_iso, observer_lat=observer_lat, observer_lon=observer_lon,
         camera_label=camera_label, fov_diagonal_deg=fov_diagonal_deg, catalog_stars=catalog_stars,
         source_asset_id=source_asset_id, source_sha256=source_sha256, frame_time_sec=frame_time_sec,
-        solution_id=solution_id,
+        solution_id=solution_id, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg,
     )
     first_total = [0]
 
@@ -2157,11 +2174,19 @@ def _solve_phone_photo_with(
     frame_time_sec: float = 0.0,
     solution_id: str = "sol-primary",
     on_candidate: Callable[[int, int], None] | None = None,
+    hint_ra_deg: float | None = None,
+    hint_dec_deg: float | None = None,
+    hint_radius_deg: float | None = None,
 ) -> ObservationSolution:
     """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes."""
     require_source_sha256(source_sha256)
     if (observer_lat is None) != (observer_lon is None):
         raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
+    hinted = (hint_ra_deg, hint_dec_deg, hint_radius_deg)
+    if any(value is None for value in hinted) and any(value is not None for value in hinted):
+        raise ValueError("A centre hint gives its right ascension, declination and radius together.")
+    if hint_radius_deg is not None and not 0.0 < hint_radius_deg <= 180.0:
+        raise ValueError("A centre hint's radius lies in (0, 180] degrees.")
 
     raw_luma = _to_luma_2d(image)
     luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2227,6 +2252,13 @@ def _solve_phone_photo_with(
         row_idx_b, ra_b, dec_b, _ = tile_index.query_bright(v_limit=6.3, max_stars=3500, epoch_jyear=epoch_jyear)
         enu_b = sky_frame.icrs_to_sky_vec(ra_b, dec_b)
         above = enu_b[:, 2] > math.sin(math.radians(0.5))
+        hint: tuple[np.ndarray, float] | None = None
+        if hint_ra_deg is not None and hint_dec_deg is not None and hint_radius_deg is not None:
+            # The hint only removes rotations; the catalog stays the one the unhinted search uses, so a hinted solve
+            # that keeps the unhinted best rotation is that solve, finding for finding. A catalog drawn near the hint
+            # changed which stars a calibrated solve named [tested]; P1 as amended allows it [proposed next]
+            hint_vec = sky_frame.icrs_to_sky_vec(np.array([hint_ra_deg]), np.array([hint_dec_deg]))[0]
+            hint = (hint_vec, float(hint_radius_deg))
         vis_idx = np.flatnonzero(above)[:110]
         if vis_idx.size >= 6:
             initial_wcs = _search_horizon_attitude(
@@ -2240,6 +2272,7 @@ def _solve_phone_photo_with(
                 fov_models,
                 on_candidate,
                 attitude_prior,
+                hint,
             )
 
     if initial_wcs is None and (sky_frame is None or catalog_stars is not None):
