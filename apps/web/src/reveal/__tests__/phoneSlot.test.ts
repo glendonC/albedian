@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { sourcePhotoDisplayRect } from '../../components/sourcePhotoRect.js';
-import { PHONE_SLOT, phoneEndsMask, phoneSlotCrop } from '../phoneSlot.js';
+import { PHONE_SLOT, phoneEndsMask, phoneSlotCrop, phoneSlotRect } from '../phoneSlot.js';
 
 // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1): the photo spans the width at 390 by 520 from y 118,
 // covering that slot, its top and bottom edges fading over 40 pt. The slot is written as the crop the photo stage and
@@ -54,5 +54,13 @@ describe('phoneEndsMask: the slot\'s top and bottom fading, nothing outside it',
     expect(phoneEndsMask(sourcePhotoDisplayRect(3024, 4032, 390, 844, phoneSlotCrop(3024, 4032, 390, 844)))).toBe(
       'linear-gradient(to bottom, transparent 0px, #000 40px, #000 480px, transparent 520px)'
     );
+  });
+});
+
+describe('phoneSlotRect: the part of the photo the slot shows', () => {
+  it('is the slot for a photo covering it, wide or tall, and the photo itself where it is smaller', () => {
+    expect(phoneSlotRect({ leftPx: -249, topPx: 118, widthPx: 888, heightPx: 520 }, 390)).toEqual({ leftPx: 0, topPx: 118, widthPx: 390, heightPx: 520 });
+    expect(phoneSlotRect({ leftPx: 0, topPx: 40, widthPx: 390, heightPx: 693 }, 390)).toEqual({ leftPx: 0, topPx: 118, widthPx: 390, heightPx: 520 });
+    expect(phoneSlotRect({ leftPx: 20, topPx: 130, widthPx: 300, heightPx: 400 }, 390)).toEqual({ leftPx: 20, topPx: 130, widthPx: 300, heightPx: 400 });
   });
 });

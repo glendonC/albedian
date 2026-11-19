@@ -5,11 +5,31 @@ import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { revealMarks } from '../revealMarks.js';
 import { RevealPhoto } from '../RevealPhoto.js';
+import { cornerPaths } from '../cornerPaths.js';
+import { phoneRealSkyShade } from '../RealSkyLayer.js';
+import { phoneSlotCrop } from '../phoneSlot.js';
+
+// The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports it drew, and keeps what it was given
+const sky = vi.hoisted(() => ({ phone: undefined as boolean | undefined }));
+vi.mock('../RealSkyLayer.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
+  const { createElement: h, useEffect } = await import('react');
+  return {
+    ...original,
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; phone?: boolean }) => {
+      sky.phone = props.phone;
+      useEffect(() => {
+        props.onDrawn?.(true);
+      }, [props.onDrawn]);
+      return h('div', { className: 'real-sky', 'data-testid': 'real-sky' });
+    },
+  };
+});
 
 // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1; reference .cache/uiux/reveal-b01/out/rbp-photo.jpg,
 // rules #rbp-photo in .cache/uiux/reveal-b01/screen/rbp-photo.html): smaller marks named only brighter than magnitude
@@ -90,6 +110,40 @@ describe('RevealPhoto at phone width: an answer (ask, approved 2026-11-12, iPhon
   });
 });
 
+describe('Real sky at phone width (reveal, approved 2026-11-12, iPhone 2; #p-real)', () => {
+  it('draws the layer for the phone, the corners on the slot, the Simulated note under it and no counts', () => {
+    // Slotted as the viewport slots it
+    const base = calibrated();
+    const asset = base.sourceAsset!;
+    const slotted = { ...base, cropTransform: { ...base.cropTransform, ...phoneSlotCrop(asset.width, asset.height, VIEW.w, VIEW.h) } } as ObservationSession;
+    act(() => {
+      root.render(createElement(RevealPhoto, { session: slotted, onSelectFinding: () => {}, onHome: () => {}, phone: true, realSky: true, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h }));
+    });
+    expect(sky.phone).toBe(true);
+    expect(all('svg.photo-corners path').map((p) => p.getAttribute('d'))).toEqual(cornerPaths({ leftPx: 0, topPx: 118, widthPx: 390, heightPx: 520 }));
+    const status = q('[data-testid="reveal-status"]')!;
+    expect(status.className).toBe('reveal-status is-phone');
+    expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(status.querySelector('.reveal-status__line')!.textContent).toMatch(/^ESO's photograph of this part of the sky, placed by your photo's solve to within \d+′\. Not light your camera recorded\.$/);
+    expect(q('.reveal-phone-counts')).toBeNull();
+  });
+
+  it('shades the window above and below the slot as the page does, none over the photo', () => {
+    expect(phoneRealSkyShade(844)).toBe(
+      'linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0px, rgba(0, 0, 0, 0.3) 112px, rgba(0, 0, 0, 0) 150px, rgba(0, 0, 0, 0) 600px, rgba(0, 0, 0, 0.55) 660px, rgba(0, 0, 0, 0.78) 844px)'
+    );
+    expect(phoneRealSkyShade(900)).toBe(
+      'linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0px, rgba(0, 0, 0, 0.3) 112px, rgba(0, 0, 0, 0) 150px, rgba(0, 0, 0, 0) 600px, rgba(0, 0, 0, 0.55) 660px, rgba(0, 0, 0, 0.78) 900px)'
+    );
+  });
+
+  it('draws no corners and no status over the photo itself at phone width', () => {
+    show(calibrated());
+    expect(q('svg.photo-corners')).toBeNull();
+    expect(q('[data-testid="reveal-status"]')).toBeNull();
+  });
+});
+
 describe('RevealPhoto at phone width', () => {
   it('draws each mark smaller, the approved phone ring with its ticks, and no logo, status, corners or line', () => {
     show(calibrated());
@@ -167,6 +221,10 @@ describe("the phone reveal's rules are the approved page's", () => {
       '--look-h': 'var(--look-h-phone)',
       '--look-fs': 'var(--look-fs-phone)',
     });
+  });
+
+  it('sets the Real sky note as #p-real does', () => {
+    expect(declarationsOf('.reveal-status.is-phone')).toEqual({ left: '24px', right: '24px', top: '660px', width: 'auto', font: '400 14px / 1.5 var(--look-font-sans)' });
   });
 
   it('puts the close circle and the views in the top row, 20 px in, 60 px down', () => {

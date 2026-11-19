@@ -1286,3 +1286,12 @@
   --look-h: var(--look-h-phone);
   --look-fs: var(--look-fs-phone);
 }
+
+/* Real sky's note at phone width, under the photo (reveal, approved 2026-11-12, iPhone 2; #p-real .note) */
+.reveal-status.is-phone {
+  left: 24px;
+  right: 24px;
+  top: 660px;
+  width: auto;
+  font: 400 14px / 1.5 var(--look-font-sans);
+}

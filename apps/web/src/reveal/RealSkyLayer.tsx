@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { hasVerifiedWcs, type ObservationSession } from '@albedian/contracts';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
+import { PHONE_SLOT } from './phoneSlot.js';
 import { loadPanoramaRegistration, type PanoramaRegistration } from '../spatial/sky/skyRegistration.js';
 import { realSkyGrid } from './realSkyGrid.js';
 
@@ -50,13 +51,27 @@ export function realSkyShade(rect: PhotoRect, viewportWidthPx: number, shade: Re
 }
 
 /**
+ * At phone width (reveal, approved 2026-11-12, iPhone 2; #p-real .sky::after): the bands above and below the photo's
+ * slot shaded, none over the photo: 70 percent black at the top, 30 at 6 px above the slot, clear from 32 px inside it to
+ * 38 px before its foot, 55 percent 22 px under it and 78 at the window's foot.
+ */
+export const PHONE_REAL_SKY_SHADE = { top: 0.7, aboveSlot: 0.3, belowSlot: 0.55, foot: 0.78 } as const;
+export function phoneRealSkyShade(viewportHeightPx: number): string {
+  const s = PHONE_REAL_SKY_SHADE;
+  const top = PHONE_SLOT.topPx;
+  const bottom = PHONE_SLOT.topPx + PHONE_SLOT.heightPx;
+  const black = (a: number) => `rgba(0, 0, 0, ${a})`;
+  return `linear-gradient(to bottom, ${black(s.top)} 0px, ${black(s.aboveSlot)} ${top - 6}px, ${black(0)} ${top + 32}px, ${black(0)} ${bottom - 38}px, ${black(s.belowSlot)} ${bottom + 22}px, ${black(s.foot)} ${viewportHeightPx}px)`;
+}
+
+/**
  * The Credits page's line for what Real sky does to ESO's panorama (CC BY 4.0 asks that changes be indicated), worded
  * from the layer's own numbers [proposed: no record words the Credits lines].
  */
 export function realSkyChanges(shade: Readonly<RealSkyShade> = REAL_SKY_SHADE): string {
   return (
     "In Real sky, over a photo the app has matched to stars, it is resampled into that photo's frame through the photo's " +
-    `solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are darkened toward the window's edges, up to ${Math.round(shade.edge * 100)} percent black.`
+    `solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are darkened toward the window's edges, up to ${Math.round(shade.edge * 100)} percent black; on a phone the bands above and below the photo are darkened the same way, up to ${Math.round(PHONE_REAL_SKY_SHADE.foot * 100)} percent black.`
   );
 }
 
@@ -166,7 +181,9 @@ export const RealSkyLayer: React.FC<{
   leaving?: boolean;
   /** Told whether the panorama is drawn: false while it loads, when it fails, and as the layer leaves. */
   onDrawn?: (drawn: boolean) => void;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn }) => {
+  /** At phone width: the bands above and below the photo's slot shaded instead of the side columns. */
+  phone?: boolean;
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
@@ -203,7 +220,7 @@ export const RealSkyLayer: React.FC<{
   return (
     <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas ref={canvas} className="real-sky__canvas" width={Math.round(viewportWidthPx * dpr)} height={Math.round(viewportHeightPx * dpr)} />
-      {rect && <div className="real-sky__shade" style={{ backgroundImage: realSkyShade(rect, viewportWidthPx) }} />}
+      {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? phoneRealSkyShade(viewportHeightPx) : realSkyShade(rect, viewportWidthPx) }} />}
     </div>
   );
 };

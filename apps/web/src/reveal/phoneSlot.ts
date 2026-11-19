@@ -43,3 +43,12 @@ export function phoneEndsMask(rect: PhotoRect): string {
   const bottom = top + PHONE_SLOT.heightPx;
   return `linear-gradient(to bottom, transparent ${r(top)}px, #000 ${r(top + ENDS_FADE_PX)}px, #000 ${r(bottom - ENDS_FADE_PX)}px, transparent ${r(bottom)}px)`;
 }
+
+/** The part of the photo the slot shows: where the phone's corners go over Real sky (#p-real: 18 px inside the slot). */
+export function phoneSlotRect(photo: PhotoRect, viewportWidthPx: number): PhotoRect {
+  const left = Math.max(photo.leftPx, 0);
+  const top = Math.max(photo.topPx, PHONE_SLOT.topPx);
+  const right = Math.min(photo.leftPx + photo.widthPx, viewportWidthPx);
+  const bottom = Math.min(photo.topPx + photo.heightPx, PHONE_SLOT.topPx + PHONE_SLOT.heightPx);
+  return { leftPx: left, topPx: top, widthPx: Math.max(0, right - left), heightPx: Math.max(0, bottom - top) };
+}

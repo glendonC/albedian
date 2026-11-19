@@ -70,7 +70,8 @@ const COPY =
 const REAL_SKY =
   "In Real sky, over a photo the app has matched to stars, it is resampled into that photo's frame through the " +
   "photo's solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are " +
-  'darkened toward the window\'s edges, up to 74 percent black.';
+  "darkened toward the window's edges, up to 74 percent black; on a phone the bands above and below the photo are " +
+  'darkened the same way, up to 78 percent black.';
 
 describe('the Milky Way row states every change the app makes to the panorama, by kind', () => {
   it('says each change, where it is made: the home, the 3D view, the copy the WebGPU renderer draws, and Real sky', () => {

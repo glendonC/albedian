@@ -8,6 +8,7 @@ import { leaderPath, revealMarks, type RevealMark } from './revealMarks.js';
 import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
+import { phoneSlotRect } from './phoneSlot.js';
 
 /** Real sky's cross-fade with the photo (reveal, approved: 0.9 s). */
 const REAL_SKY_FADE_MS = 900;
@@ -131,8 +132,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const framed: ObservationSession = skyShown ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
   const frame = sessionPhotoRect(framed, viewW, viewH);
   // There, the frame's corners leave with the photo (fly, approved)
-  // At phone width no corners are drawn (reveal, approved, iPhone 1)
-  const rect = bareFrame || there || !corners || phone ? null : frame;
+  // At phone width the corners mark the slot over Real sky only (reveal, approved, iPhone 1 and 2)
+  const rect = bareFrame || there || !corners || (phone && !skyShown) || !frame ? null : phone ? phoneSlotRect(frame, viewW) : frame;
   // The layer stays a moment after leaving the sky, so it fades out as it faded in
   const [skyMounted, setSkyMounted] = useState(skyShown);
   useEffect(() => {
@@ -159,7 +160,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true">
-      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} />}
+      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!phone && !bareFrame && picked && marks.some((mark) => mark.picked) && (
@@ -212,13 +213,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       </button>
       )}
 
-      {phone ? null : there && skyOnScreen ? (
+      {phone && !skyOnScreen ? null : there && skyOnScreen ? (
         <div className="reveal-status" data-testid="reveal-status" role="status">
           <EvidenceTag evidenceClass="simulated" />
           <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
         </div>
       ) : skyOnScreen ? (
-        <div className="reveal-status" data-testid="reveal-status" role="status">
+        <div className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
           {residual !== null && (
@@ -300,7 +301,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {phone && !answer && !picked && counts.length > 0 && (
+      {phone && !answer && !picked && !skyShown && counts.length > 0 && (
         // Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs;
         // an answer takes their place (ask, approved, iPhone; #p-answer)
         <div className="reveal-phone-counts" data-testid="reveal-legend">

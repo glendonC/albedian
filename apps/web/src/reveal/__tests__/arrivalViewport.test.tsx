@@ -422,6 +422,21 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(pills.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
   });
 
+  it('draws Real sky on a phone too, in the phone reveal: the views with Real sky current, no header strip, no ask button and none of the old sky view\'s pieces', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    const base = storedPhoto();
+    open({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    expect(q('[data-testid="reveal-photo"]')!.className).toBe('reveal-photo is-phone');
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    const pills = [...q('.reveal-phone-top')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+    expect(pills.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(q('.alb-lusion-header')).toBeNull();
+    expect(q('[data-testid="ask-bar"]')).toBeNull();
+    for (const gone of ['[data-testid="flight-and-restore-hud"]', '.alb-layer-disclosure', '[data-testid="observation-solve-compare-hud"]', '[data-testid="voice-command-hud"]', '[data-testid="celestial-target-card"]']) {
+      expect(q(gone), gone).toBeNull();
+    }
+  });
+
   // The verdict on unit-realsky-1: the status says what is on screen, never Simulated over the person's own photo
   const skyOpen = () => {
     const base = storedPhoto();
