@@ -493,13 +493,19 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
   const LAYOUT: ReadonlyArray<[selector: string, declarations: Record<string, string>]> = [
     ['.credits-title', { font: '300 40px / 1.05 var(--look-font-sans)', 'letter-spacing': '-0.045em' }],
     ['.credits-row', { position: 'relative', display: 'grid', gap: '6px', padding: '16px 36px 16px 0', 'border-top': '1px solid var(--look-hair)' }],
+    // The motion record (MOTION-READY-web.md, "Credits page"): the page's frame in, the title's words 120 ms later,
+    // each row 20 ms after the line above it
+    ['.credits-page', { animation: 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both' }],
+    ['.credits-title', { animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' }],
+    ['.credits-row', { animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--credits-i) + 1)) both' }],
     ['.credits-row:last-child', { 'border-bottom': '1px solid var(--look-hair)' }],
     ['.credits-label', { 'font-size': '13px', color: 'var(--look-ink-3)', 'letter-spacing': '-0.005em' }],
     ['.credits-lines', { margin: '0', 'font-size': '16px', 'line-height': '1.4', 'letter-spacing': '-0.01em' }],
     ['.credits-link', { position: 'absolute', right: '-36px', top: '50%', 'margin-top': '-8px', color: 'var(--look-ink-2)', '--look-ic': '16px' }],
   ];
   it.each(LAYOUT)('draws %s as the approved page does', (selector, expected) => {
-    const css = fs.readFileSync(path.resolve(here, '../../styles/home.css'), 'utf8');
+    // read without comments, so a rule with its note above it is found as well
+    const css = fs.readFileSync(path.resolve(here, '../../styles/home.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const body = new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
     const found: Record<string, string> = {};
@@ -508,6 +514,14 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
       if (colon > 0) found[raw.slice(0, colon).trim()] = raw.slice(colon + 1).trim().replace(/\s+/g, ' ');
     }
     for (const [prop, value] of Object.entries(expected)) expect(found[prop], `${selector} ${prop}`).toBe(value);
+  });
+
+  it('numbers each row for its place in the stagger, from 0 at the top', async () => {
+    vi.stubGlobal('fetch', serve());
+    await renderPage();
+    const rows = [...container.querySelectorAll<HTMLElement>('.credits-row')];
+    expect(rows.length).toBeGreaterThan(1);
+    rows.forEach((row, i) => expect(row.style.getPropertyValue('--credits-i')).toBe(String(i)));
   });
 
   it('documents accurately where row labels, notice links and shader/backdrop change lines come from', () => {

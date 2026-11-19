@@ -129,8 +129,8 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       )}
       {laid && 'rows' in laid && (
         <ul className="credits-rows">
-          {laid.rows.map((row) => (
-            <li key={row.key} className="credits-row">
+          {laid.rows.map((row, i) => (
+            <li key={row.key} className="credits-row" style={{ '--credits-i': i } as React.CSSProperties}>
               <span className="credits-label">{row.name}</span>
               {row.blocks.map((block) => (
                 <div key={block.key} className="credits-block">

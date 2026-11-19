@@ -206,7 +206,8 @@
 /* Credits, as the approved iPhone page (credit-approved-2026-11-12): the back button, the title, then rows divided by
    hairlines, each a small grey label over its lines as one block, the small open-link icon at the right edge of a
    credit whose source has a page. [proposed]: the laptop's 720 px column 32 px from the top, more than one credit on
-   a row (each its own block, 6 px apart), and the licence names drawn as links. */
+   a row (each its own block, 6 px apart), and the licence names drawn as links. The page arrives as a frame, its title
+   120 ms later, each row 20 ms after the line above (the MOTION record). */
 .credits-page {
   position: fixed;
   inset: 0;
@@ -217,12 +218,14 @@
   color: var(--look-ink);
   font-family: var(--look-font-sans);
   outline: none;
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
 }
 
 .credits-title {
   margin: 36px 0 32px;
   font: 300 40px / 1.05 var(--look-font-sans);
   letter-spacing: -0.045em;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
 }
 
 .credits-rows {
@@ -237,6 +240,7 @@
   gap: 6px;
   padding: 16px 36px 16px 0;
   border-top: 1px solid var(--look-hair);
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--credits-i) + 1)) both;
 }
 
 .credits-row:last-child {
