@@ -1,0 +1,52 @@
+import Foundation
+
+/// The Credits screen's rows (credit, UIUX-credit-APPROVED), with every line a credited source's terms require, as the
+/// web's Credits page carries them (credits-2, AUDIT-C's ask of 19 Nov): a change where the terms ask that changes be
+/// indicated, each licence by name, an acknowledgement a record holds, and a citation where the terms ask to cite. The
+/// words of each are the records' own (`apps/web/public/catalog/stars/gaia-dr3/PROVENANCE.json`,
+/// `apps/ios/notices/eso/PROVENANCE.json`); the tests hold them to the records.
+public enum CreditsWords {
+    public struct Row: Equatable, Sendable {
+        public let label: String
+        public let lines: [String]
+        public let page: OutsidePage?
+    }
+
+    /// The Gaia DR3 record's acknowledgement, word for word. Shown, never opened.
+    public static let gaiaAcknowledgement = "This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement."
+
+    /// The IAU catalog of star names: its terms ask to mention the source and cite it; the aim overlay draws its names.
+    public static let starNamesCredit = "IAU Working Group on Star Names (WGSN)"
+    public static let starNamesCitation = "IAU Working Group on Star Names, IAU Catalog of Star Names"
+    /// The licence as the IAU record names it (the IAU gives no version).
+    public static let starNamesLicence = "Creative Commons Attribution, as the IAU states it, with no version given"
+
+    /// What the app changes in the Milky Way panorama, whose terms ask that modifications be indicated: the crop it
+    /// ships (`HomeBackdrop`) and the shade the home draws over it.
+    public static func milkyWayChange(_ backdrop: HomeBackdrop.Type = HomeBackdrop.self) -> String {
+        let width = Int((Double(backdrop.cropColumns) / Double(backdrop.panoramaColumns) * 100).rounded())
+        let darkest = Int(((backdrop.shade.map(\.opacity).max() ?? 0) * 100).rounded())
+        return "On the home a part of it is shown, at most \(width) percent of its width and all of its height, "
+            + "darkened toward the bottom, up to \(darkest) percent black."
+    }
+
+    public static let rows: [Row] = [
+        Row(label: "Milky Way photograph",
+            lines: ["ESO/S. Brunier", "The Milky Way panorama, eso0932a", "CC BY 4.0", milkyWayChange()], page: .milkyWayPhotograph),
+        Row(label: "Star catalogs",
+            lines: ["ESA Hipparcos, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3", "CC BY-NC 3.0 IGO", gaiaAcknowledgement,
+                    starNamesCredit, starNamesCitation, starNamesLicence],
+            page: .starCatalogs),
+        Row(label: "Type", lines: ["Geist, SIL Open Font License"], page: nil),
+        Row(label: "Icons", lines: ["Phosphor Icons, MIT License"], page: nil),
+    ]
+}
+
+/// The home's Milky Way: the part of the ESO panorama the app ships (its record's recipe: the full height and 1386 of
+/// the 6000 columns, from column 2312) and the shade drawn over it, from the bottom up (arrive p-home's
+/// `linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)`).
+public enum HomeBackdrop {
+    public static let cropColumns = 1386
+    public static let panoramaColumns = 6000
+    public static let shade: [(opacity: Double, location: Double)] = [(0.9, 0), (0.35, 0.34), (0, 0.55)]
+}

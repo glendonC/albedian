@@ -100,8 +100,8 @@ struct HomeScreen: View {
                 Image("milky-way-home").resizable().scaledToFill()
                     .frame(width: geometry.size.width, height: geometry.size.height).clipped()
                 // linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)
-                LinearGradient(stops: [.init(color: .black.opacity(0.9), location: 0), .init(color: .black.opacity(0.35), location: 0.34),
-                                       .init(color: .black.opacity(0), location: 0.55)], startPoint: .bottom, endPoint: .top)
+                LinearGradient(stops: HomeBackdrop.shade.map { .init(color: .black.opacity($0.opacity), location: CGFloat($0.location)) },
+                               startPoint: .bottom, endPoint: .top)
                 OutlinePill(title: "Credits", height: 36, fontSize: 15, action: model.showCredits)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding(.top, CGFloat(Arrive.topControls)).padding(.trailing, CGFloat(Arrive.edge))
@@ -126,42 +126,51 @@ struct HomeScreen: View {
 /// the source's page in the system's Safari view (mobile-4b).
 struct CreditsScreen: View {
     let model: CompanionModel
-    private let rows: [(label: String, lines: [String], page: OutsidePage?)] = [
-        ("Milky Way photograph", ["ESO/S. Brunier", "The Milky Way panorama, eso0932a", "CC BY 4.0"], .milkyWayPhotograph),
-        ("Star catalogs", ["ESA Hipparcos, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3"], .starCatalogs),
-        ("Type", ["Geist, SIL Open Font License"], nil),
-        ("Icons", ["Phosphor Icons, MIT License"], nil),
-    ]
+    // Every line a credited source's terms require (`CreditsWords`, as the web's Credits carries them)
+    private let rows = CreditsWords.rows
 
     var body: some View {
         ZStack {
             IconButton(icon: .back, label: "Back", action: model.showHome)
                 .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
             Lines(lines: ["Credits"], font: AlbedianFont.light(Arrive.titleSize), size: Arrive.titleSize, lineHeight: 1.05, tracking: Arrive.titleTracking).title().atTop(Arrive.titleTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
-            VStack(spacing: 0) {
-                ForEach(rows, id: \.label) { row in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(row.label).font(AlbedianFont.regular(13)).tracking(-0.005 * 13).foregroundStyle(Color(ControlStyle.inkQuiet))
-                        Lines(lines: row.lines, font: AlbedianFont.regular(16), size: 16, lineHeight: 1.4).foregroundStyle(Color(ControlStyle.ink))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 16).padding(.trailing, 36)
-                    .overlay(alignment: .trailing) {
-                        if let page = row.page {
-                            Button { model.openCredit(page) } label: {
-                                AlbedianIcon.openLink.image(16).foregroundStyle(Color(ControlStyle.inkSecondary))
-                                    .frame(width: CGFloat(ControlStyle.minTouchTarget), height: CGFloat(ControlStyle.minTouchTarget), alignment: .trailing)
+            // The rows scroll under the title when the required lines run past the screen
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(rows, id: \.label) { row in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(row.label).font(AlbedianFont.regular(13)).tracking(-0.005 * 13).foregroundStyle(Color(ControlStyle.inkQuiet))
+                            // As `Lines` draws them (16 pt, 1.4 a line: Geist's own 20.8 pt line and 1.6 between), a long line wrapping
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(Array(row.lines.enumerated()), id: \.offset) { pair in
+                                    Text(pair.element).font(AlbedianFont.regular(16)).tracking(-0.01 * 16).lineSpacing(1.6)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(minHeight: 16 * 1.4, alignment: .leading)
+                                }
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(row.label)
+                            .foregroundStyle(Color(ControlStyle.ink))
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 16).padding(.trailing, 36)
+                        .overlay(alignment: .trailing) {
+                            if let page = row.page {
+                                Button { model.openCredit(page) } label: {
+                                    AlbedianIcon.openLink.image(16).foregroundStyle(Color(ControlStyle.inkSecondary))
+                                        .frame(width: CGFloat(ControlStyle.minTouchTarget), height: CGFloat(ControlStyle.minTouchTarget), alignment: .trailing)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(row.label)
+                            }
+                        }
+                        .overlay(alignment: .top) { Rectangle().fill(Color(ControlStyle.hairline)).frame(height: 1) }
                     }
-                    .overlay(alignment: .top) { Rectangle().fill(Color(ControlStyle.hairline)).frame(height: 1) }
                 }
+                .overlay(alignment: .bottom) { Rectangle().fill(Color(ControlStyle.hairline)).frame(height: 1) }
+                .padding(.horizontal, CGFloat(Arrive.side))
+                .padding(.bottom, 40)
             }
-            .overlay(alignment: .bottom) { Rectangle().fill(Color(ControlStyle.hairline)).frame(height: 1) }
-            .padding(.horizontal, CGFloat(Arrive.side))
-            .atTop(200)
+            .scrollBounceBehavior(.basedOnSize)
+            .padding(.top, 200)
         }
         .ignoresSafeArea()
     }

@@ -81,6 +81,8 @@ final class PrivacyScanTests: XCTestCase {
 
     /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why.
     static let exceptions: [Exception] = [
+        (file: "CreditsWords.swift", line: 16, code: "public static let gaiaAcknowledgement = \"This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement.\"",
+         reason: "words shown on the Credits screen, the Gaia DR3 record's acknowledgement word for word (its terms); never made an address, opened or sent"),
         (file: "CaptureStore.swift", line: 104, code: "public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }",
          reason: "the store reads back each file it has just written, to count it kept only when the bytes are equal (P3); the address is a file's in the app's own folder"),
         (file: "OutsidePages.swift", line: 18, code: "case .milkyWayPhotograph: URL(string: \"https://www.eso.org/public/images/eso0932a/\")!",
