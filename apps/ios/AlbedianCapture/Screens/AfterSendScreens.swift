@@ -40,7 +40,8 @@ struct WaitingScreen: View {
                         }
                         .padding(.horizontal, CGFloat(Arrive.side))
                     }
-                    .atTop(668)
+                    // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
+                    .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 }
             }
         }
@@ -68,7 +69,8 @@ struct StoppedScreen: View {
                     }
                     .foregroundStyle(Color(ControlStyle.ink))
                     .padding(.horizontal, CGFloat(Arrive.side))
-                    .atTop(654)
+                    // 16 pt under the photo: 654 on the record's 390 pt screen
+                    .atTop(Arrive.photoTop + width * 4 / 3 + 16)
                 }
                 MainButton(title: "Try again", icon: .send, action: model.tryAgainAfterStop).atBottom(Arrive.unreachableButtonsBottomGap)
             }
@@ -111,7 +113,8 @@ struct KeptScreen: View {
                         .frame(height: 2)
                     }
                     .padding(.horizontal, CGFloat(Arrive.side))
-                    .atTop(668)
+                    // 30 pt under the photo: 668 on the record's 390 pt screen
+                    .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 } else {
                     Text(KeptWords.line(model.keptNotSent.count)).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
                         .foregroundStyle(Color(ControlStyle.inkQuiet))
