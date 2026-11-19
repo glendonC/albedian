@@ -31,7 +31,7 @@ import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { phoneSlotRect } from './phoneSlot.js';
-import { PhoneNoMatch } from './PhoneNoMatch.js';
+import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
 export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
@@ -385,7 +385,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // The alignment the last Solve from here was sent from, for this upload only
   const kept = alignedFrom && session.sourceAsset && alignedFrom.sha256 === session.sourceAsset.sha256 ? alignedFrom : null;
   const aligning = alignAllowed ? aligningState : null;
-  const keptRefused = kept && kept.refusal === undefined && !phone && alignAllowed && !aligning ? kept : null;
+  const keptRefused = kept && kept.refusal === undefined && alignAllowed && !aligning ? kept : null;
   // C15 (UIUX-alignwords-READY.md, ruled 17:46): refused outright for an upload with no capture time or place, the
   // route's sentence in the refusal line's place, the marks gone, only Restore (it needs neither). No Try again
   const keptRefusal = kept?.refusal !== undefined && !phone && status.kind === 'unmatched' && !aligning && !compareShown ? kept.refusal : null;
@@ -499,6 +499,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </div>
           )}
         </div>
+      ) : phone && !skyOnScreen && status.kind === 'unmatched' && keptRefused ? (
+        <PhoneAlignRefused
+          onAgain={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })}
+          onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
+          onRestore={restoreOffered ? () => onRestore?.() : undefined}
+        />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />
       ) : phone && (!skyLineShown || there) ? null : there && (skyOnScreen || earthOnly) ? (

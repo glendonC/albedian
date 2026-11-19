@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { LookIcon, MainAction, SecondAction } from '../look/index.js';
+import { EvidenceTag, LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { RevealStatus } from './revealStatus.js';
 
 /**
@@ -8,18 +8,7 @@ import type { RevealStatus } from './revealStatus.js';
  * one list, reached by scrolling the whole screen; the photo moves up with it (the lead's answer 23:50, INTERIM).
  */
 export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: () => void; onAlign?: () => void }> = ({ status, onShowPredictedSky, onAlign }) => {
-  const screen = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.phoneScroll = '';
-    return () => {
-      delete root.dataset.phoneScroll;
-      root.style.removeProperty('--phone-scroll');
-    };
-  }, []);
-  const onScroll = () => {
-    document.documentElement.style.setProperty('--phone-scroll', `${screen.current?.scrollTop ?? 0}px`);
-  };
+  const { screen, onScroll } = usePhoneScroll();
   return (
     <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
       <div className="reveal-status is-unmatched is-phone" data-testid="reveal-status" role="status">
@@ -50,6 +39,51 @@ export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: 
               </li>
             ))}
           </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/** The whole screen scrolls, and the photo (and the rings drawn on it) move up with it. */
+function usePhoneScroll() {
+  const screen = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.phoneScroll = '';
+    return () => {
+      delete root.dataset.phoneScroll;
+      root.style.removeProperty('--phone-scroll');
+    };
+  }, []);
+  const onScroll = () => {
+    document.documentElement.style.setProperty('--phone-scroll', `${screen.current?.scrollTop ?? 0}px`);
+  };
+  return { screen, onScroll };
+}
+
+/**
+ * D24's refused state at phone width (UIUX-align-READY.md, drawn 18:01 as alp-refused): on the approved phone no-match
+ * frame, the Predicted tag at 606 (the 17:56 tag places, with no entrance), "No stars matched near your alignment." at
+ * 646, "Your alignment is kept, drawn as predicted." at 704, "Line it up again" centred at 772 where Solve from here
+ * was, then Show predicted sky and Restore under it, reached by scrolling. The kept rings are drawn over the photo.
+ */
+export const PhoneAlignRefused: React.FC<{ onAgain: () => void; onShowPredictedSky?: () => void; onRestore?: () => void }> = ({ onAgain, onShowPredictedSky, onRestore }) => {
+  const { screen, onScroll } = usePhoneScroll();
+  return (
+    <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
+      <div className="reveal-status is-unmatched is-phone is-refused has-predicted" data-testid="reveal-status" role="status">
+        <EvidenceTag evidenceClass="predicted" />
+        <p className="reveal-status__lead">No stars matched near your alignment.</p>
+        <p className="align-refused__kept">Your alignment is kept, drawn as predicted.</p>
+        <div className="reveal-phone-go">
+          <MainAction label="Line it up again" size="phone" onClick={() => onAgain()} />
+        </div>
+        {(onShowPredictedSky || onRestore) && (
+          <div className="reveal-phone-more">
+            {onShowPredictedSky && <SecondAction label="Show predicted sky" size="phone" onClick={() => onShowPredictedSky()} />}
+            {onRestore && <SecondAction label="Restore" size="phone" onClick={() => onRestore()} />}
+          </div>
         )}
       </div>
     </div>
