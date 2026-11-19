@@ -80,7 +80,7 @@ const RULE_6_FAULTS = new Set([
   'outside the basic plane',
   'a control character',
 ]);
-// An over long text: past every text limit the pairs state, the longest being the pointing statement's 266 units
+// An over long text: past every text limit the pairs state, the longest being a sky-context sentence's 1024 units
 const OVER_LONG_UTF16 = 4097;
 const TAKEN_BY_SOME_FIELD = new Set(['1.0', 'minus zero', '2^53 + 1', 'outside the basic plane']);
 const PAIRS = Object.keys(index.pairs).sort();

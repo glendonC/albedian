@@ -54,6 +54,8 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'PointingRecordSchema',
   'PointingRecordReceiptSchema',
   'PointingRecordRefusalSchema',
+  'SkyContextRequestSchema',
+  'SkyContextReplySchema',
 ];
 // Numbers and limits the contracts export for both languages to share, not schemas
 const REQUIRED_CONTRACT_CONSTANTS = [

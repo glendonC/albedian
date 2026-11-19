@@ -33,12 +33,12 @@ if str(ROOT) not in sys.path:
 
 from pydantic import BaseModel, ValidationError  # noqa: E402
 
-from services.contracts import ingest, media, pointing, pointing_reply, voice, wire  # noqa: E402
+from services.contracts import ingest, media, pointing, pointing_reply, sky_context, voice, wire  # noqa: E402
 
 FAULTS_DIR = ROOT / "tests" / "fixtures" / "wire_faults"
 MARK = "@@wire fault@@"
 UNKNOWN_KEY = "unknownKey"
-# [proposed] A text longer than every limit the pairs state (the longest is the pointing statement's 266 UTF-16
+# [proposed] A text longer than every limit the pairs state (the longest is a sky-context sentence's 1024 UTF-16
 # units; the voice request's 2000 is not in these pairs), so a bounded field refuses it and an unbounded one shows
 OVER_LONG_UTF16 = 4097
 # [proposed] Each fault file is read by a person reviewing a contract change: about a quarter of a megabyte at most
@@ -167,13 +167,25 @@ def _answer(schema: str, record: Any) -> Any:
     return adapter.dump_python(adapter.validate_python(record), by_alias=True)
 
 
+SKY_CONTEXT_SCHEMAS = {"request": "SkyContextRequest", "reply": "SkyContextReply"}
+
+
+def _sky_context_samples(data: dict[str, Any]) -> list[tuple[str, str, Any]]:
+    return [(f"/valid/{i}/body", SKY_CONTEXT_SCHEMAS[sample["kind"]], sample["body"]) for i, sample in enumerate(data["valid"])]
+
+
+def _sky_context(schema: str, record: Any) -> Any:
+    return sky_context.MODELS[schema].model_validate(record).to_wire_dict()
+
+
 PAIRS = {
     "media": Pair("tests/fixtures/media_contract.json", _by_schema, _media),
     "pointing": Pair("tests/fixtures/pointing_contract.json", _pointing_samples, _pointing),
     "pointing_reply": Pair("tests/fixtures/pointing_reply_contract.json", _pointing_reply_samples, _pointing_reply),
+    "sky_context": Pair("tests/fixtures/sky_context_contract.json", _sky_context_samples, _sky_context),
     "voice_answer": Pair("tests/fixtures/voice_answer_contract.json", _by_schema, _answer),
 }
-PYTHON_NAMES = _python_names(media, ingest, pointing, pointing_reply, voice)
+PYTHON_NAMES = _python_names(media, ingest, pointing, pointing_reply, sky_context, voice)
 
 
 # =============================================================================================

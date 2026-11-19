@@ -25,7 +25,7 @@ from typing import Any
 from pydantic import BaseModel
 import pytest
 
-from services.contracts import ingest, media, pointing, pointing_reply, voice, wire
+from services.contracts import ingest, media, pointing, pointing_reply, sky_context, voice, wire
 
 ROOT = Path(__file__).resolve().parents[2]
 FAULTS_DIR = ROOT / "tests" / "fixtures" / "wire_faults"
@@ -166,7 +166,7 @@ def test_every_kind_of_field_the_chosen_samples_hold_gets_all_of_its_faults_and_
 
 
 def _models() -> list[Any]:
-    return [model for module in (media, ingest, pointing, pointing_reply, voice) for model in vars(module).values()
+    return [model for module in (media, ingest, pointing, pointing_reply, sky_context, voice) for model in vars(module).values()
             if isinstance(model, type) and issubclass(model, BaseModel) and model.__module__ == module.__name__]  # fmt: skip
 
 
@@ -227,6 +227,8 @@ def test_each_fault_builds_json_text_with_the_fault_at_its_pointer(pair: str) ->
 def test_an_over_long_text_is_past_every_text_limit_the_three_pairs_state() -> None:
     stated = [pointing.POINTING_LABEL_MAX_UTF16, pointing.POINTING_SYSTEM_VERSION_MAX_UTF16, len(pointing.POINTING_HINT_STATEMENT),
               *(len(sentence) for sentence in pointing_reply.POINTING_REFUSAL_SENTENCES),
+              sky_context.SKY_CONTEXT_NAME_MAX_UTF16, sky_context.SKY_CONTEXT_TEXT_MAX_UTF16,
+              *(len(sentence) for sentence in sky_context.SKY_CONTEXT_RULES.values()),
               voice.ANSWER_SENTENCE_MAX_UTF16, voice.ANSWER_TEXT_MAX_UTF16]  # fmt: skip
     assert max(stated) < generator.OVER_LONG_UTF16
 
