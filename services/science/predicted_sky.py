@@ -24,6 +24,18 @@ from typing import Any
 import numpy as np
 
 from services.science.camera_profiles import head_worn_profile
+from services.science.deep_sky_catalog import (
+    LIMITATIONS as DEEP_SKY_LIMITATIONS,
+    OPENNGC_LICENCE_NOTE,
+    POSITION_PRECISION_ARCSEC,
+    SKY_VERIFICATION_METHOD,
+    _candidate_rows,
+    catalog_reference,
+    finding_id,
+    table_and_columns,
+)
+from services.science.deep_sky_projection import predict_deep_sky_findings
+from services.science.deep_sky_selection import row_sort_key, sky_reason
 from services.science.designations import designation_of_row, designation_parts, star_title
 from services.science.catalog import (
     KM_S_TO_PC_YR,
@@ -431,7 +443,9 @@ def predicted_sky_findings(
     """The Sun, the Moon, the five planets and the catalog tile stars to PREDICTED_STAR_DEPTH_V or named (stars
     carried to the date by their proper motion) above the horizon at `moment` from (`lat_deg`, `lon_deg`), as
     predicted findings of the solution `solution_id`: bodies first in `PREDICTED_BODIES` order, then stars brightest
-    first. The stars are placed in one pass (`propagate_directions_batch`, `icrs_to_altaz_batch`).
+    first, then the OpenNGC deep-sky objects `sky_reason` keeps (Messier, Caldwell, or as bright as the star depth;
+    never a row typed as a star) brightest first, each at its J2000 catalog centre. The stars are placed in one pass
+    (`propagate_directions_batch`, `icrs_to_altaz_batch`), and the deep-sky objects in another.
 
     Above the horizon means a geometric (airless) altitude above 0. `exclude_ids` names catalog stars to leave
     out, by catalog id. `time_uncertainty_sec`, for a capture time whose time zone was worked out from the GPS position
@@ -507,7 +521,63 @@ def predicted_sky_findings(
                 source_sha256=source_sha256,
             )
         )
+    findings += _deep_sky_above_horizon(
+        moment, lat_deg, lon_deg, solution_id=solution_id, source_sha256=source_sha256, time_arcsec=time_arcsec,
+        time_said=time_said,
+    )
     return findings
+
+
+@lru_cache(maxsize=1)
+def _sky_deep_sky_rows() -> tuple[list[Any], ...]:
+    """The OpenNGC rows the predicted sky lists when they are up (`sky_reason`), brightest first, read once."""
+    _, at = table_and_columns()
+    rows = [row for row in _candidate_rows() if sky_reason(row) is not None]
+    rows.sort(key=lambda row: row_sort_key(row, at["name"]))
+    return tuple(rows)
+
+
+def _deep_sky_above_horizon(
+    moment: str, lat_deg: float, lon_deg: float, *, solution_id: str, source_sha256: str, time_arcsec: float,
+    time_said: str,
+) -> list[CelestialFindingRecord]:
+    """The OpenNGC objects `sky_reason` keeps that are above the horizon (geometric altitude above 0) at `moment`, as
+    predicted findings placed from their J2000 catalog centres, brightest first (FIELD field-6)."""
+    table, at = table_and_columns()
+    rows = _sky_deep_sky_rows()
+    if not rows:
+        return []
+    ra = np.array([row[at["raDeg"]] for row in rows], dtype=np.float64)
+    dec = np.array([row[at["decDeg"]] for row in rows], dtype=np.float64)
+    alt, az = icrs_to_altaz_batch(ra, dec, lat_deg, lon_deg, moment)
+    found = []
+    for k in np.flatnonzero(alt > 0.0).tolist():
+        row = rows[k]
+        reference = catalog_reference(row)
+        found.append(
+            CelestialFindingRecord(
+                id=finding_id(row[at["name"]]),
+                observation_solution_id=solution_id,
+                evidence_class="predicted",
+                title=reference["commonName"],
+                subtitle=f"{table['types'][row[at['type']]]} · {row[at['constellation']]} · {OPENNGC_LICENCE_NOTE}",
+                ra_deg=reference["raDeg"],
+                dec_deg=reference["decDeg"],
+                alt_deg=float(alt[k]),
+                az_deg=float(az[k]),
+                uncertainty_arcsec=POSITION_PRECISION_ARCSEC + time_arcsec,
+                deep_sky_reference=reference,
+                verification_method=SKY_VERIFICATION_METHOD,
+                verified_by_holdout=False,
+                limitations=(
+                    f"Placed from its OpenNGC catalog centre ({table['release']}, J2000) for {time_said} and place; "
+                    "not measured in the recording.",
+                    *DEEP_SKY_LIMITATIONS[1:],
+                ),
+                source_sha256=source_sha256,
+            )
+        )
+    return found
 
 
 def _place(asset: Mapping[str, Any]) -> tuple[float, float] | None:
@@ -811,8 +881,9 @@ def complete_sky(
 
     - No recorded `capturedAtUTC`, no `observerLocation`, or a frame moment outside 1800 to 2050: the solver's
       solution with one more warning saying which. No other time or place stands in.
-    - Calibrated: status, WCS, quality and every finding stay; the predicted objects not already catalog_matched
-      (same catalog id) are added.
+    - Calibrated: status, WCS, quality and every finding stay; the deep-sky objects inside the frame that its keep
+      rules hold for are added through the verified WCS (`predict_deep_sky_findings`), then the predicted objects not
+      already catalog_matched (same catalog id) or already present (same finding id).
     - Unresolved or ambiguous, given `frames`, with a head-worn camera profile, the predicted Moon more than 5 degrees
       up, the Sun down, and one frame whose bright spot passes the Moon test and fits exactly one level pose at each
       swept value: approximate, lined up from that frame (`_lined_up`).
@@ -865,6 +936,11 @@ def complete_sky(
         for f in solution.findings
         if f.evidence_class == "catalog_matched" and f.catalog_star is not None
     )
+    if solution.status == "calibrated" and solution.wcs is not None:
+        # The objects inside the frame that its keep rules hold for, through the verified WCS (nothing when it is not)
+        inside = predict_deep_sky_findings(solution, solution.wcs.width, solution.wcs.height).findings
+        known = {f.id for f in solution.findings}
+        solution = replace(solution, findings=[*solution.findings, *(f for f in inside if f.id not in known)])
     present = {f.id for f in solution.findings}
     time_sec = _worked_out_time_sec(asset)
     predicted = [

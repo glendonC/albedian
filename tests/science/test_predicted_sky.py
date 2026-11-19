@@ -31,6 +31,9 @@ from hypothesis import example, given, settings, strategies as st
 import pytest
 
 from services.science.catalog import icrs_to_altaz
+from services.science.deep_sky_catalog import _candidate_rows, finding_id
+from services.science.deep_sky_projection import predict_deep_sky_findings
+from services.science.deep_sky_selection import sky_reason
 from services.science.ephemeris import compute_solar_system_ephemerides
 from services.science.predicted_sky import (
     NO_PLACE,
@@ -244,7 +247,17 @@ def test_pbt_every_predicted_object_is_up_and_every_one_up_is_there_once(when: d
             (finding,) = present
             assert finding.uncertainty_arcsec == body.uncertainty_arcsec
             assert any(body.method in text for text in finding.limitations)
-    assert len(findings) == len(stars) + sum(1 for b in bodies if b.alt_deg > 0.0)
+    # The OpenNGC objects the predicted sky lists (FIELD field-6, tests/science/test_predicted_deep_sky.py): exactly the
+    # rows sky_reason keeps that are up, each once at its catalog centre
+    deep = {f.deep_sky_reference["catalogSourceId"]: f for f in findings if f.deep_sky_reference is not None}
+    assert all(f.id == finding_id(name) for name, f in deep.items())
+    up = {
+        row[0]
+        for row in _candidate_rows()
+        if sky_reason(row) is not None and icrs_to_altaz(row[2], row[3], lat, lon, moment)[0] > 0.0
+    }
+    assert set(deep) == up
+    assert len(findings) == len(stars) + sum(1 for b in bodies if b.alt_deg > 0.0) + len(deep)
 
 
 def test_the_stars_named_are_left_out() -> None:
@@ -356,7 +369,15 @@ def _check_completed(solution: ObservationSolution, asset: dict) -> ObservationS
         )
         if f.catalog_star is None or f.catalog_star.id not in matched
     }
+    if solution.status == "calibrated":
+        # The deep-sky objects inside the frame, through its verified WCS (FIELD field-6), each worded as the frame's
+        # own pass words it, and listed once even when the predicted sky would list it too
+        inside = predict_deep_sky_findings(solution, solution.wcs.width, solution.wcs.height).findings
+        by_id = {f.id: f for f in added}
+        assert all(by_id[f.id].verification_method == f.verification_method for f in inside)
+        expected |= {f.id for f in inside}
     assert {f.id for f in added} == expected
+    assert len(added) == len(expected)
     out.to_contract_dict()
     return out
 
@@ -375,9 +396,12 @@ def test_a_calibrated_outcome_gains_only_the_objects_it_did_not_match() -> None:
     every = predicted_sky_findings(MOMENT["obs_utc_iso"], 30.0, -40.0, solution_id=solution.id, source_sha256=SHA)
     # The synthetic Orion field is up at that moment, so some of its matched stars would otherwise be predicted too
     assert matched & {f.catalog_star.id for f in every if f.catalog_star is not None}
+    # The deep-sky objects inside the frame join, once each, beside those the predicted sky lists (FIELD field-6)
+    inside = {f.id for f in predict_deep_sky_findings(solution, solution.wcs.width, solution.wcs.height).findings}
+    assert inside, "the synthetic Orion field holds OpenNGC objects its keep rules hold for"
     assert len(out.findings) == len(solution.findings) + len(every) - len(
         matched & {f.catalog_star.id for f in every if f.catalog_star is not None}
-    )
+    ) + len(inside - {f.id for f in every})
     assert out.quality.passed_independent_verification is True
 
 

@@ -79,6 +79,13 @@ A blank OpenNGC cell is null or an empty list, never filled.
   agrees with the pins;
 - where the CSVs are cached, the list cells tidied are exactly the 17 counted above, and the rebake is byte-identical (`uv run python scripts/bake_deepsky_openngc.py --verify`).
 
+## Where the solve uses it
+
+Since FIELD field-6 (2026-11-19) every predicted sky lists the rows `sky_reason` keeps that are above the horizon
+(Messier, Caldwell, or V, else B, at most 4.5; no row typed as a star), and a calibrated solution also gets the rows
+inside its verified frame that the frame's keep rules hold for (`predict_deep_sky_findings`), all as `predicted`
+findings (`docs/science/PREDICTED_SKY.md`, "Deep-sky objects"). Before it no production code made one. [tested]
+
 ## Limits
 
 - OpenNGC is a compilation; a position or size is as good as the source it took it from, and the table does not say

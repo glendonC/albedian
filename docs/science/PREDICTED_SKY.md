@@ -160,6 +160,29 @@ each twilight band holds its darker edge (exactly -6 is civil twilight, exactly 
   show. Hills, buildings, clouds, haze, light pollution and the brightness of the sky are not taken into account:
   the list says what was above the horizon, not what could be seen. [open]
 
+## Deep-sky objects
+
+Added by FIELD field-6 (2026-11-19). Before it no upload had a deep-sky finding: `predict_deep_sky_findings`
+(services/science/deep_sky_projection.py) was called by no production code. [tested]
+
+- Every predicted sky, whatever the solution's status, lists after its stars the OpenNGC v20260501 rows
+  (`docs/science/DEEP_SKY_CATALOG.md`) that are above the horizon and that `sky_reason`
+  (services/science/deep_sky_selection.py) keeps: a Messier object (OpenNGC's messier column, 109 rows), a Caldwell
+  object (a "C nnn" identifier, 105 rows), or one whose magnitude (V, else B) is at most the star list's own depth of
+  4.5; never a row OpenNGC types as a single star, a double star or a nova, which the star list already gives. The
+  Magellanic Clouds, the Carina Nebula, Omega Centauri, 47 Tucanae and the Jewel Box are among them. [tested]
+- Each is `predicted`, titled by its first common name (else its NGC or IC designation), placed from its J2000
+  catalog centre for the moment and place by the same apparent place as the stars, with OpenNGC's printed precision
+  (0.15 arcsec) plus the time term as its uncertainty, and limitations that say it was not measured in the recording,
+  that an extended object is marked at its centre with no outline, and that a large object's centre is a convention.
+  [tested]
+- A calibrated solution with a verified WCS also gets the objects inside its frame that the frame's keep rules hold
+  for (a common name, a Messier number, a magnitude no fainter than the faintest matched star, or a major axis of at
+  least 3 px), worded as placed through that WCS; an object both passes find is listed once, from the frame. [tested]
+- Measured 2026-11-19: a dark synthetic photo at the open-ocean point (-45, -130) a fortnight ahead listed 89; the
+  public Southern Cross photo rp-b-01 listed 200 (110 inside its frame, 90 more above the horizon). [tested]
+- How one is drawn on screen has no design record yet; the server only produces them. [open]
+
 ## The ephemeris and its limits
 
 `services/science/ephemeris.py`, valid only from 1800-01-01 to 2050-12-31 UTC; outside it the layer is left out

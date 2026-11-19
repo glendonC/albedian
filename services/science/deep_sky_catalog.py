@@ -20,6 +20,10 @@ VERIFICATION_METHOD = (
     "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured "
     "in the image"
 )
+# For an object the predicted sky lists above the horizon, placed from its catalog centre for a time and place
+SKY_VERIFICATION_METHOD = (
+    "OpenNGC catalog position placed for the recorded time and place by the predicted sky; not measured in the image"
+)
 LIMITATIONS = (
     "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured "
     "in the image.",
@@ -113,6 +117,7 @@ __all__ = [
     "OPENNGC_PATH",
     "OPENNGC_PROVIDER",
     "POSITION_PRECISION_ARCSEC",
+    "SKY_VERIFICATION_METHOD",
     "VERIFICATION_METHOD",
     "catalog_reference",
     "display_name",
