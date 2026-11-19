@@ -13,6 +13,8 @@ Covers, with the benchmark suite's first synthetic phone photo and its known cam
 - Through the route: an aligned solve's solution states the person's pointing hint (source person, a search hint
   only, the roll and field of view, the verified offset when calibrated); a wrong alignment matches nothing
 - The solve kind keys an aligned solve by its alignment
+- A photo stored turned (EXIF Orientation 6) is matched by its first search, the pose of the frame as shown turned
+  to the stored pixels
 """
 
 from __future__ import annotations
@@ -337,3 +339,41 @@ def test_the_job_gives_the_chain_the_persons_field_and_pose(
     assert kwargs["fov_hint"] == pytest.approx(alignment.fov_diagonal_deg)
     assert kwargs["person_axes"] is not None and len(kwargs["person_axes"]) == 3
     assert kwargs["hint_radius_deg"] == PERSON_ALIGNMENT_UNCERTAINTY_DEG
+
+
+def test_a_photo_stored_turned_is_solved_from_the_alignment_of_the_frame_as_shown(client: TestClient) -> None:
+    # The person aligns the picture as it is shown; the solver's camera is the stored pixels'. The synthetic frame is
+    # stored a quarter turn anticlockwise with EXIF Orientation 6 (shown turned a quarter clockwise, so as rendered),
+    # and the alignment of the frame as shown must solve the stored pixels (person_pose_axes, stored_axes_icrs)
+    frame = _frame()
+    spec = frame.spec
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    sub = exif.get_ifd(0x8769)
+    sub[0x9003], sub[0x9011] = spec.utc[:19].replace("-", ":").replace("T", " "), "+00:00"
+    gps = exif.get_ifd(ExifTags.IFD.GPSInfo)
+    for name, value in position((spec.lat_deg, spec.lon_deg)).items():
+        gps[getattr(ExifTags.GPS, name)] = value
+    buf = io.BytesIO()
+    Image.fromarray(np.ascontiguousarray(np.rot90(frame.rgb, 1)), mode="RGB").save(buf, format="PNG", exif=exif.tobytes(), compress_level=1)
+    body = buf.getvalue()
+    stored = client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
+    assert stored.status_code == 201, stored.text
+    asset = stored.json()["sourceAsset"]
+    assert asset["displayOrientation"]["quarterTurnsClockwise"] == 1 and not asset["displayOrientation"]["mirrored"]
+    sha = hashlib.sha256(body).hexdigest()
+    alignment = _alignment(az_off=0.3, roll_off=0.5)
+    job = client.post(f"/api/ingest/{sha}/solve", content=json.dumps(alignment.to_wire_dict()),
+                      headers={"content-type": "application/json"}).json()
+    deadline = time.monotonic() + 300.0
+    while job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.05)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    assert job["state"] == "succeeded", job
+    solution = client.get(f"/api/ingest/{sha}/solution").json()
+    assert solution["status"] == "calibrated", solution.get("warnings")
+    assert solution["pointingHint"]["source"] == "person" and solution["pointingHint"]["verifiedCenterOffsetDeg"] < 3.0
+    # Matched by the first search, the person's pose turned to the stored frame; the hint's search, which needs no turn,
+    # comes only after it
+    (solve_stage,) = [stage for stage in job["stages"] if stage["stage"] == "solve"]
+    assert solve_stage["pass"]["number"] == 1
