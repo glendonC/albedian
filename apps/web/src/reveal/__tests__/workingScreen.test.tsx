@@ -137,11 +137,11 @@ describe('WorkingScreen: the approved working screen, word for word', () => {
     expect((q('.work-step__bar')!.firstElementChild as HTMLElement).style.width).toBe('33.333%');
   });
 
-  it('draws no bar and no count while a total is not known', () => {
+  it('draws no bar while a total is not known, and the time passed in the count\'s place (C19 item 1)', () => {
     show({ arrival: arrival({ job: { state: 'running', stages: [stage('store', 'bytes', BYTES, BYTES), stage('decode', 'frames', 9, null)] } }) });
     expect(q('.work-step__bar')).toBeNull();
     expect(rows()[1]!.className).toBe('work-step is-now');
-    expect(rows()[1]!.querySelector('.work-step__value')!.textContent).toBe('');
+    expect(rows()[1]!.querySelector('.work-step__value')!.textContent).toBe('0 s');
   });
 
   it('draws the four corners at the photo, and none while there is no photo on screen', () => {

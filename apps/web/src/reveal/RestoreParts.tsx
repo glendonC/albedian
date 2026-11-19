@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useElapsedRows } from './elapsedRows.js';
 import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
@@ -13,9 +14,12 @@ const ROW_CLASS: Readonly<Record<RestoreRow['state'], string>> = {
 const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`;
 
 /** The restoration job's own steps, in the counts' place, drawn as the working screen draws a solve's (D10). */
-export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => (
+export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => {
+  // C19 item 1: a step with no total shows the time passed
+  const rows = useElapsedRows(restorationRows(job));
+  return (
   <ol className="work-steps restore-steps" data-testid="restore-steps">
-    {restorationRows(job).map((row) => (
+    {rows.map((row) => (
       <li key={row.stage} className={ROW_CLASS[row.state]} aria-current={row.state === 'now' ? 'step' : undefined}>
         <span className="work-step__mark" aria-hidden="true">
           {row.state === 'done' ? <LookIcon name="check" /> : row.state === 'failed' ? <LookIcon name="x" /> : <i className="work-step__dot" />}
@@ -30,7 +34,8 @@ export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => (
       </li>
     ))}
   </ol>
-);
+  );
+};
 
 /**
  * Above the steps, where Try again sits on a failed job: "Cancel" while the job works, held pressed and greyed from

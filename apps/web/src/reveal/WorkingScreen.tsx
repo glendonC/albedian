@@ -3,6 +3,7 @@ import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/in
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
+import { useElapsedRows } from './elapsedRows.js';
 import { StillAlignMarks } from './AlignLayer.js';
 import { EARLY_SOURCE_WORDS, type EarlyPose } from './earlyPose.js';
 import '../styles/look-tokens.css';
@@ -51,6 +52,8 @@ const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`
  * job's record does.
  */
 export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false, early = null }) => {
+  // C19 item 1: the row being worked shows the time passed when its step reports no total
+  const rows = useElapsedRows(stageRows(arrival));
   const fileInput = useRef<HTMLInputElement>(null);
   const failure = arrival.failure;
   const job = arrival.job;
@@ -75,7 +78,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
     // D2 at phone width: the close circle, then only the step the job is on (its word large, its count, its bar), or
     // "Queued" and the jobs ahead; Cancel compact where Ask out loud sits. A stopped job's sentence and Try again are
     // laid out like the phone's answer [proposed: no record draws a stopped job at phone width]
-    const now = stageRows(arrival).find((row) => row.state === 'now') ?? null;
+    const now = rows.find((row) => row.state === 'now') ?? null;
     const ahead = job?.queueAhead ?? 0;
     return (
       <div className="work-screen is-phone" data-testid="working-screen" data-hud-interactive="true">
@@ -120,7 +123,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
   const shownEarly = failure === null ? early : null;
   const steps = (
         <ol className="work-steps">
-          {stageRows(arrival).map((row, i) => (
+          {rows.map((row, i) => (
             <li
               key={row.stage}
               className={ROW_CLASS[row.state]}
