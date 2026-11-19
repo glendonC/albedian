@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { INTERRUPTED_SENTENCE, type IngestReceipt, type ObservationSolution, type UploadJob } from '@albedian/contracts';
-import { cancelJob, JOB_POLL_MS, solveStoredUpload, type UploadEvent } from '../services/apiClient';
+import { cancelJob, JOB_POLL_MS, readPredictedSky, solveStoredUpload, type UploadEvent } from '../services/apiClient';
 
 // Following a solve job (upload jobs design 3.9, against PLATFORM's runner routes): the solve starts with
 // `wait=false`, the job record is read once a second until it ends, and only a succeeded job's solution is read; a
@@ -210,6 +210,16 @@ describe('the sky a running solve predicted from an early pose (D25, platform-10
     const ended = { ...succeededJob, predictedSkyAtUTC: succeededJob.startedAtUTC };
     const { calls } = await followPosed([running, ended], { body: early, status: 200 });
     expect(calls.some((c) => c.endsWith('/predicted-sky'))).toBe(false);
+  });
+
+  it('puts the job id into the path encoded, whatever it holds', async () => {
+    const calls: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      calls.push(String(input));
+      return new Response('{}', { status: 404 });
+    });
+    expect(await readPredictedSky('job/../x y?z')).toBeNull();
+    expect(calls).toEqual(['/api/ingest/jobs/job%2F..%2Fx%20y%3Fz/predicted-sky']);
   });
 
   it('never reads it for a record that does not name it', async () => {

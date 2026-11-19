@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DEVICE_ATTITUDE, orientStoredPoint, type ObservationSolution, type SourceAsset } from '@albedian/contracts';
+import { DEVICE_ATTITUDE, orientStoredPoint, type CelestialFinding, type ObservationSolution, type SourceAsset } from '@albedian/contracts';
 import { POSE, FRAME, poseReceipt, sample } from '../../components/__tests__/poseSessions.js';
 import { projectThroughPose } from '../../components/poseProjection.js';
-import { ALIGN_MAGNITUDE_LIMIT } from '../alignPose.js';
+import { ALIGN_MAGNITUDE_LIMIT, alignTargetOf } from '../alignPose.js';
 import { arrivalAfter, arrivalOf } from '../arrival.js';
 import { earlyPoseOf } from '../earlyPose.js';
 
@@ -80,6 +80,15 @@ describe('the early pose from the served predicted sky', () => {
     const sun: ObservationSolution = { ...POSE, poseEstimate: { ...POSE.poseEstimate!, method: 'sun_horizon', beacon: 'sun' } };
     expect(earlyPoseOf(sun, asset())).toBeNull();
     expect(earlyPoseOf(POSE, asset({ sha256: 'f'.repeat(64) }))).toBeNull();
+  });
+
+  it('draws no finding that is not predicted, even one under a predicted id', () => {
+    const star = POSE.findings.find((f) => earlyPoseOf(POSE, asset())!.marks.some((m) => m.id === f.id))!;
+    expect(alignTargetOf(star)).not.toBeNull();
+    const relabelled = { ...star, evidenceClass: 'catalog_matched' } as unknown as CelestialFinding;
+    expect(alignTargetOf(relabelled)).toBeNull();
+    const sky = { ...POSE, findings: POSE.findings.map((f) => (f.id === star.id ? relabelled : f)) };
+    expect(earlyPoseOf(sky, asset())!.marks.some((m) => m.id === star.id)).toBe(false);
   });
 
   it('never draws a mark from a detection: an early mark is predicted only', () => {
