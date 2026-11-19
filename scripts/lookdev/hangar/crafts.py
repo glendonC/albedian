@@ -352,6 +352,49 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 7.0,
         "changes": "photo",
     },
+    "apollo_lm": {
+        "title": "Apollo Lunar Module",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-apollo-lunar-module",
+            "title": "Apollo Lunar Module, NASA 3D Resources",
+            "folder": "Apollo Lunar Module",
+            "file": "Apollo Lunar Module.glb",
+            "bytes": 716_840,
+            "sha256": "379101dfcee399267addf771709107c35e826b0b9e5233272f123e4c8a585c4e",
+            "picture": "Apollo Lunar Module.png",
+            "picture_bytes": 1_124_858,
+            "picture_sha256": "ceaaee11e4f5475462257287e73f3dcd547e3eab87810e48ffe51a7c66dcaf1f",
+            "local": "apollo-lm",
+        },
+        "drop_objects": [],
+        # Standing up +Z; its front (the ascent stage's windows and hatch, the flag panels) faces -Y.
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Its four legs lie on the import frame's axes, so the model's whole width is footpad end to footpad end.
+        "scale_from": {
+            "material": None,
+            "axis": "x",
+            "metres": 9.4,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C",
+            "quote": "The distance between the ends of the footpads on opposite landing legs was 9.4 m.",
+        },
+        # NASA's flat colours, except the parts NASA's model colours as gold foil, which become foil, and the two
+        # photo panels (the flag and the words on the descent stage) handled as photo textures.
+        "materials": {
+            "blinn1SG.002": {"role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.32},
+            "blinn9SG.001": {"role": "pbr", "base": (0.95, 0.62, 0.25), "metallic": 1.0, "roughness": 0.38},
+            "blinn12SG.001": {"role": "photo_atlas"},
+            "blinn8SG.001": {"role": "photo_atlas"},
+            "blinn5SG.002": {"role": "photo_atlas"},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.6, "lod1": 0.2, "lod2": 0.07},
+        "body_radius_m": 4.0,
+        "changes": "flat",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -484,6 +527,20 @@ HANGAR: list[dict] = [
             {"key": "lengthM", "value": 13.3, "page": "https://science.nasa.gov/missions/hubble/a-nasa-refresher-on-hubble-facts-for-the-25th-anniversary/", "quote": "43.5 feet (13.3 m)"},
             {"key": "primaryMirrorDiameterM", "value": 2.4, "page": "https://science.nasa.gov/mission/hubble/overview/hubble-by-the-numbers/", "quote": "Primary mirror diameter 7.8 feet (2.4 m)"},
             {"key": "altitudeKm", "value": 483, "page": "https://science.nasa.gov/mission/hubble/overview/hubble-by-the-numbers/", "quote": "approximately 300 miles (483 km)"},
+        ],
+    },
+    {
+        # The Lunar Module flew between Moon orbit and the Moon's surface, never between stars: no speed.
+        "id": "apollo-lm",
+        "name": "Apollo Lunar Module",
+        "model": "apollo_lm",
+        "travel": None,
+        "facts": [
+            {"key": "firstLanding", "value": "1969-07-20", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "on 20 July 1969"},
+            {"key": "footpadSpanM", "value": 9.4, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "The distance between the ends of the footpads on opposite landing legs was 9.4 m."},
+            {"key": "descentStageWidthM", "value": 4.2, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "an octagonal prism 4.2 meters across and 1.7 m thick"},
+            {"key": "ascentStageHeightM", "value": 2.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "approximately 2.8 m high"},
+            {"key": "massKg", "value": 15103, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants."},
         ],
     },
 ]

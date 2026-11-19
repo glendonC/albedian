@@ -65,6 +65,14 @@ CHANGES = {
         "materials of that kind, the others keeping NASA's own colour, faces that lie flat within a small angle "
         "merged, and the normals made again, smooth within an angle and sharp beyond it."
     ),
+    # lod0 for a model of flat colours with a few photo panels (recipe "changes": "flat")
+    "lod0_flat": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours "
+        "as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, "
+        "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
+        "sharp beyond it, and the textures re-encoded as WebP."
+    ),
     # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit")
     # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked")
     "lod0_baked": (
@@ -543,9 +551,13 @@ def main() -> None:
     else:
         if sf["metres"] is None:
             raise SystemExit("the recipe has no sourced dimension to scale from")
-        mat_index = [i for i, m in enumerate(me.materials) if m and m.name == sf["material"]]
-        vidx = sorted({v for p in me.polygons if p.material_index in mat_index for v in p.vertices})
-        co = np.array([me.vertices[i].co for i in vidx])
+        if sf["material"] is None:
+            # the whole model's extent along the axis (for a span NASA states end to end, such as landing legs)
+            co = np.array([v.co for v in me.vertices])
+        else:
+            mat_index = [i for i, m in enumerate(me.materials) if m and m.name == sf["material"]]
+            vidx = sorted({v for p in me.polygons if p.material_index in mat_index for v in p.vertices})
+            co = np.array([me.vertices[i].co for i in vidx])
         axis = "xyz".index(sf["axis"])
         extent = co[:, axis].max() - co[:, axis].min()
         centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())

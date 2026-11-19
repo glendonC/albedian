@@ -1190,6 +1190,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Hubble Space Telescope: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/apollo-lm/Apollo Lunar Module.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.glb",
+      "bytes": 716840,
+      "sha256": "379101dfcee399267addf771709107c35e826b0b9e5233272f123e4c8a585c4e",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Apollo Lunar Module: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/apollo-lm/Apollo Lunar Module.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.png",
+      "bytes": 1124858,
+      "sha256": "ceaaee11e4f5475462257287e73f3dcd547e3eab87810e48ffe51a7c66dcaf1f",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Apollo Lunar Module: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }
