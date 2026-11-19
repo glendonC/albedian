@@ -14,7 +14,7 @@
         "conditions": "The copyright and permission notice travels with every copy: it is LICENSE beside this record, served with the app at /notices/phosphor/LICENSE."
       },
       "credit": "Phosphor Icons",
-      "note": "Seventeen icons are drawn inline from their single path in apps/web/src/look/Icon.tsx. Each icon's file is kept here, byte for byte from the package's assets/regular folder and listed below with its sha256; a test ties every inline path to its file, character for character."
+      "note": "Eighteen icons are drawn inline from their single path in apps/web/src/look/Icon.tsx. Each icon's file is kept here, byte for byte from the package's assets/regular folder and listed below with its sha256; a test ties every inline path to its file, character for character."
     }
   ],
   "files": [
@@ -182,6 +182,17 @@
         "method": "downloaded-as-is"
       },
       "note": "The package's assets/regular/speaker-slash.svg, byte for byte; apps/web/src/look/Icon.tsx draws its one path inline."
+    },
+    {
+      "path": "download-simple.svg",
+      "sha256": "c48678aa09b44ba4974954690ee6cc846379c448a7214f8c802604c2a1562014",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/download-simple.svg, byte for byte (taken from the same core-2.1.1 package file the other icons came from); apps/web/src/look/Icon.tsx draws its one path inline."
     },
     {
       "path": "upload-simple.svg",

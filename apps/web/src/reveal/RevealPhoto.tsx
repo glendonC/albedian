@@ -3,6 +3,7 @@ import { alignReadout, alignStartWords, alignTargets, startPose, type AlignPose,
 import { AlignLayer } from './AlignLayer.js';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
+import { saveFromServer, variantExportUrl } from '../services/apiClient.js';
 import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
@@ -322,6 +323,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [aligning !== null]);
   const asset = session.sourceAsset;
+  // Download (D10, D22), 18 px under the fixed sentence on a ready restoration: the export route's one zip, handed to the
+  // browser's own download
+  const ready = compareShown && restoration?.phase === 'done' ? restoration.job.variantId : undefined;
+  const downloadAction =
+    ready !== undefined && asset ? (
+      <MainAction label="Download" icon="download-simple" onClick={() => saveFromServer(variantExportUrl(asset.sha256, ready))} />
+    ) : null;
   const uprightWidth = asset ? orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx : 0;
 
   return (
@@ -447,10 +455,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <div key="unmatched" className="reveal-status is-unmatched" data-testid="reveal-status" data-moment="unmatched" role="status">
           {compareShown ? (
             // Restored here too: the fixed sentence leads; the warnings stay under it
-            <p className="reveal-status__note">
-              <LookIcon name="info" />
-              <span>{DISCLOSURES.restoration}</span>
-            </p>
+            <>
+              <p className="reveal-status__note">
+                <LookIcon name="info" />
+                <span>{DISCLOSURES.restoration}</span>
+              </p>
+              {downloadAction}
+            </>
           ) : aligning ? (
             // Aligning (D24): what to do, how, Cancel, then the live readout and where the start came from. "Solve from
             // here" waits on SOLVER's alignment contract (the lead, 07:51)
@@ -502,10 +513,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       <div key="photo" className="reveal-status" data-testid="reveal-status" data-moment="photo" role="status">
         {compareShown ? (
           // Once restored, the status place holds the fixed sentence (REQ-RST-9.3), verbatim
-          <p className="reveal-status__note">
-            <LookIcon name="info" />
-            <span>{DISCLOSURES.restoration}</span>
-          </p>
+          <>
+            <p className="reveal-status__note">
+              <LookIcon name="info" />
+              <span>{DISCLOSURES.restoration}</span>
+            </p>
+            {downloadAction}
+          </>
         ) : (
           <>
             {status.tag && <EvidenceTag evidenceClass={status.tag} />}

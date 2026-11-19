@@ -621,6 +621,25 @@ export function variantFileUrl(sha256: string, variantId: string): string {
   return `/api/media/${sha256}/variants/${encodeURIComponent(variantId)}/file`;
 }
 
+/** One stored zip of a ready variant, byte for byte, and its manifest (D22; EXPORT's restore-8), sent as an attachment. */
+export function variantExportUrl(sha256: string, variantId: string): string {
+  return `/api/media/${sha256}/variants/${encodeURIComponent(variantId)}/export`;
+}
+
+/**
+ * Hand a file to the browser's own download (D22: no toast, no progress; the browser's downloads list shows it): a link
+ * with the download attribute, pressed once and taken away, so the page never leaves for the file.
+ */
+export function saveFromServer(url: string): void {
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', '');
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 /**
  * Upload a photo or clip to `POST /api/ingest`, then solve it (`solveStoredUpload`).
  *

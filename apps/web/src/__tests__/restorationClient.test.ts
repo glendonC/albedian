@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UploadJob } from '@albedian/contracts';
-import { followJob, readVariantOrientation, startRestoration, variantFileUrl } from '../services/apiClient';
+import { followJob, readVariantOrientation, startRestoration, variantExportUrl, variantFileUrl } from '../services/apiClient';
 
 // The restoration's routes (restore-2b, restoration design sections 9 and 11): a restoration job started, joined or
 // returned at POST /api/media/{sha256}/restore, followed at GET /api/ingest/jobs/{id} once a second like a solve,
@@ -106,5 +106,12 @@ describe('readVariantOrientation', () => {
 describe('variantFileUrl', () => {
   it('names the stored variant\'s bytes under its upload', () => {
     expect(variantFileUrl(sha256, 'var_7e6f5a4b3c2d1e0f')).toBe(`/api/media/${sha256}/variants/var_7e6f5a4b3c2d1e0f/file`);
+  });
+});
+
+describe('variantExportUrl (D22; the lead, 07:25: EXPORT\'s restore-8)', () => {
+  it('names the one stored zip of the variant and its manifest', () => {
+    expect(variantExportUrl(sha256, 'var_7e6f5a4b3c2d1e0f')).toBe(`/api/media/${sha256}/variants/var_7e6f5a4b3c2d1e0f/export`);
+    expect(variantExportUrl(sha256, 'var/x y')).toBe(`/api/media/${sha256}/variants/var%2Fx%20y/export`);
   });
 });

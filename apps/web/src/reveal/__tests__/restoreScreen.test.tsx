@@ -415,3 +415,50 @@ describe("the restoration's rules are the approved page's", () => {
     expect(declarationsOf('.reveal-status__note')).toEqual({ '--look-ic': '13px', display: 'flex', gap: '7px', margin: '0 0 18px', 'font-size': '12px', 'line-height': '1.45', color: 'var(--look-ink-3)' });
   });
 });
+
+describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/export)', () => {
+  const DOWNLOAD_PATH =
+    'M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z';
+  const done: Restoration = { phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } };
+  const download = () => [...container.querySelectorAll('.reveal-status button')].find((b) => b.textContent === 'Download') as HTMLButtonElement | undefined;
+
+  it("sits under the fixed sentence as the screen's main button, the download icon in its circle", () => {
+    show(done);
+    const note = q('.reveal-status__note')!;
+    const button = download()!;
+    expect(note.nextElementSibling).toBe(button);
+    expect(button.className).toBe('look-main look-size-compact');
+    expect(button.querySelector('.look-main__circle path')!.getAttribute('d')).toBe(DOWNLOAD_PATH);
+  });
+
+  it("saves the export route's zip through the browser's own download, and changes nothing on screen", () => {
+    const sha = calibrated().sourceAsset!.sha256;
+    const saved: Array<{ href: string; download: string; inPage: boolean }> = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push({ href: this.getAttribute('href')!, download: this.getAttribute('download')!, inPage: document.body.contains(this) });
+    });
+    show(done);
+    const before = container.innerHTML;
+    act(() => download()!.click());
+    expect(saved).toEqual([{ href: `/api/media/${sha}/variants/${succeeded.variantId}/export`, download: '', inPage: true }]);
+    expect(document.querySelectorAll('a[download]')).toHaveLength(0);
+    expect(container.innerHTML).toBe(before);
+    vi.restoreAllMocks();
+  });
+
+  it('is offered only on a ready restoration: not while asking, working, stopped, or with Original pixels pressed', () => {
+    show({ phase: 'idle' });
+    expect(download()).toBeUndefined();
+    show({ phase: 'working', job: still(1) });
+    expect(download()).toBeUndefined();
+    show({ phase: 'stopped', job: { ...still(1, 'failed'), finishedAtUTC: '2026-11-18T10:00:00Z', error: 'internal' } as UploadJob, sentence: 'The restoration stopped on an internal error.', subline: null, canTryAgain: true } as Restoration);
+    expect(download()).toBeUndefined();
+    show(done, { originalPixels: true });
+    expect(download()).toBeUndefined();
+  });
+
+  it('is offered on the no-match reveal too, under its sentence', () => {
+    show(done, { session: poseSession({ ...sample('horizon_predicted_only') } as ObservationSolution) });
+    expect(q('.reveal-status.is-unmatched .reveal-status__note')!.nextElementSibling).toBe(download()!);
+  });
+});

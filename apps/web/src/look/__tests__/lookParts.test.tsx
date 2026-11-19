@@ -283,6 +283,7 @@ describe('LookIcon: only the Phosphor icons the approved screens use', () => {
       'arrow-u-up-left',
       'arrow-up',
       'check',
+      'download-simple',
       'info',
       'keyboard',
       'microphone',
