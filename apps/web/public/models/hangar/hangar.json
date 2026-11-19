@@ -1279,6 +1279,63 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
         "quote": "primarily through a 3 m diameter steerable high-gain dish antenna"
       }
+    },
+    "stardust": {
+      "title": "Stardust",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "stardust/stardust_lod0.glb",
+          "bytes": 1810452,
+          "triangles": 14456,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "stardust/stardust_lod1.glb",
+          "bytes": 1482148,
+          "triangles": 7228,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "stardust/stardust_lod2.glb",
+          "bytes": 489332,
+          "triangles": 2602,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "stardust/stardust_picker.webp",
+          "bytes": 4110,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -2.695,
+          -0.935,
+          -1.495
+        ],
+        "max": [
+          2.4,
+          0.536,
+          1.496
+        ]
+      },
+      "bodyRadiusM": 1.4,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "shiny_panels",
+        "metres": 4.8,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+        "quote": "Two long (4.8 m tip-to-tip) rectangular solar arrays"
+      }
     }
   },
   "entries": [
@@ -2091,6 +2148,56 @@
           "value": "1000 W at Mars",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A",
           "quote": "The panels produce 1000 Watts at Mars"
+        }
+      ]
+    },
+    {
+      "id": "stardust",
+      "name": "Stardust",
+      "model": "stardust",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1999-02-07",
+          "page": "https://science.nasa.gov/mission/stardust/",
+          "quote": "Feb. 7, 1999 / 21:04:15 UT"
+        },
+        {
+          "key": "massKg",
+          "value": 385,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+          "quote": "The total mass of the spacecraft including the return capsule and 85 kg of propellant is 385 kg."
+        },
+        {
+          "key": "spanM",
+          "value": 4.8,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+          "quote": "Two long (4.8 m tip-to-tip) rectangular solar arrays"
+        },
+        {
+          "key": "busLengthM",
+          "value": 1.6,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+          "quote": "a box-shaped main bus 1.6 m long, 0.66 m wide and 0.66 m deep"
+        },
+        {
+          "key": "capsuleDiameterM",
+          "value": 0.8,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+          "quote": "The short cone-shaped 0.8 m diameter, 0.5 m high, 46 kg sample reentry capsule"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 0.6,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+          "quote": "0.6 m diameter high gain dish"
+        },
+        {
+          "key": "cometComa",
+          "value": "2003-12-31",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+          "quote": "The spacecraft entered the coma of comet P/Wild 2 on 31 December 2003."
         }
       ]
     }

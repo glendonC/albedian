@@ -1065,6 +1065,50 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 2.5,
         "changes": "mro",
     },
+    "stardust": {
+        "title": "Stardust",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-stardust",
+            "title": "Stardust, NASA 3D Resources",
+            "folder": "Stardust",
+            "file": "Stardust.glb",
+            "bytes": 3_800_544,
+            "sha256": "1293ce064d66ae0ae288a4278ec2801b22a1a8e4858fe881382c6b1451ab9741",
+            "picture": "Stardust.png",
+            "picture_bytes": 748_987,
+            "picture_sha256": "71f48b85a613db2c2c6c270769b11cf14ecc2b00debd41f03038b02cfe97f468",
+            "local": "stardust",
+        },
+        "drop_objects": [],
+        # The two solar wings reach along Y in the import frame, their cells facing +Z. NASA's file marks no front, so the
+        # craft is flown along +X with its wings level and +Z up (a choice of view, not a sourced attitude).
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the wings: NASA's "shiny_panels" part, 4.7175 units tip to tip, to NSSDC's 4.8 m. A check: the
+        # silver disc on the sample capsule, 0.8102 units across, is then 0.82 m against NSSDC's 0.8 m capsule.
+        "scale_from": {
+            "material": "shiny_panels",
+            "axis": "y",
+            "metres": 4.8,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
+            "quote": "Two long (4.8 m tip-to-tip) rectangular solar arrays",
+        },
+        "materials": {
+            "Stardust_tex_01": {"role": "photo_atlas"},
+            "Stardust_tex_02": {"role": "photo_atlas"},
+            "Stardust_tex_03": {"role": "photo_atlas"},
+            "gold_foil": {"role": "photo_atlas"},
+            "gold_foil2": {"role": "photo_atlas"},
+            "foil_silver.002": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            # The wings' cells under cover glass: NASA's texture kept, no metalness.
+            "shiny_panels": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "body_radius_m": 1.4,
+        "changes": "photo_foil",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1426,6 +1470,23 @@ HANGAR: list[dict] = [
             {"key": "solarArrayAreaM2", "value": 10, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "Each array has an area of 10 square meters and contains 3744 solar cells."},
             {"key": "marsOrbit", "value": "2006-03-10", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "Mars Reconnaissance Orbiter reached Mars and went into orbit on 10 March 2006."},
             {"key": "power", "value": "1000 W at Mars", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A", "quote": "The panels produce 1000 Watts at Mars"},
+        ],
+    },
+    {
+        # Stardust flew through a comet's dust and returned it; NASA states no speed relative to the Sun for it: no
+        # speed. NSSDC's text gives 385 kg with capsule and propellant where its Facts in Brief box says 300 kg.
+        "id": "stardust",
+        "name": "Stardust",
+        "model": "stardust",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1999-02-07", "page": "https://science.nasa.gov/mission/stardust/", "quote": "Feb. 7, 1999 / 21:04:15 UT"},
+            {"key": "massKg", "value": 385, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "The total mass of the spacecraft including the return capsule and 85 kg of propellant is 385 kg."},
+            {"key": "spanM", "value": 4.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "Two long (4.8 m tip-to-tip) rectangular solar arrays"},
+            {"key": "busLengthM", "value": 1.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "a box-shaped main bus 1.6 m long, 0.66 m wide and 0.66 m deep"},
+            {"key": "capsuleDiameterM", "value": 0.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "The short cone-shaped 0.8 m diameter, 0.5 m high, 46 kg sample reentry capsule"},
+            {"key": "dishDiameterM", "value": 0.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "0.6 m diameter high gain dish"},
+            {"key": "cometComa", "value": "2003-12-31", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "The spacecraft entered the coma of comet P/Wild 2 on 31 December 2003."},
         ],
     },
 ]

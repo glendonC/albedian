@@ -1470,6 +1470,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Mars Reconnaissance Orbiter: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/stardust/Stardust.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.glb",
+      "bytes": 3800544,
+      "sha256": "1293ce064d66ae0ae288a4278ec2801b22a1a8e4858fe881382c6b1451ab9741",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Stardust: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/stardust/Stardust.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.png",
+      "bytes": 748987,
+      "sha256": "71f48b85a613db2c2c6c270769b11cf14ecc2b00debd41f03038b02cfe97f468",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Stardust: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

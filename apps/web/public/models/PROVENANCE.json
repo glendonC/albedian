@@ -420,7 +420,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "917eb4e08d5b12b19ba3c9e0f317d5d7f901d143ad21d82f6ae24a125748c1c7",
+      "sha256": "b64041780faea16340033db25029780f3c1859b8aeb37eca278aea69f5d99fe9",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1257,6 +1257,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Spitzer%20Space%20Telescope/Spitzer%20Space%20Telescope.png (394932 bytes, SHA-256 b2891a22d44f6bab013c81a5cc2c51481788a26ec0d0337a11da40f0b256fa9a)."
+    },
+    {
+      "path": "hangar/stardust/stardust_lod0.glb",
+      "sha256": "191ec6ae092c30833be1aee64ba29f6bc3d37923d391b00410e8b4331bfa9bba",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft stardust --out apps/web/public/models/hangar/stardust",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and gold foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, the silver foil made metal foil, the solar wings keeping their texture with one roughness and no metalness, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.glb (3800544 bytes, SHA-256 1293ce064d66ae0ae288a4278ec2801b22a1a8e4858fe881382c6b1451ab9741); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/stardust/stardust_lod1.glb",
+      "sha256": "21166c8d3991f3324aca5be8647821bc81d3a62af43e827425e927cf662fd375",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft stardust --out apps/web/public/models/hangar/stardust",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.glb (3800544 bytes, SHA-256 1293ce064d66ae0ae288a4278ec2801b22a1a8e4858fe881382c6b1451ab9741); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/stardust/stardust_lod2.glb",
+      "sha256": "1d951dcd2a8ce94dbc1876ca2482d089d02608a6ff62015ca077cb41c4bd5588",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft stardust --out apps/web/public/models/hangar/stardust",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.glb (3800544 bytes, SHA-256 1293ce064d66ae0ae288a4278ec2801b22a1a8e4858fe881382c6b1451ab9741); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/stardust/stardust_picker.webp",
+      "sha256": "c8c6767edafec9504df57d4fb1b3002d533d6957cf74f91446df6ab726b02872",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft stardust --out apps/web/public/models/hangar/stardust",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.png (748987 bytes, SHA-256 71f48b85a613db2c2c6c270769b11cf14ecc2b00debd41f03038b02cfe97f468)."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",

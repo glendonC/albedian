@@ -126,6 +126,14 @@ CHANGES = {
         "shading, the solar cells keeping it with one roughness and no metalness, the normals made again, smooth "
         "within an angle and sharp beyond it, fewer triangles kept at every level, and the texture re-encoded as WebP."
     ),
+    # lod0 for a model of photo textures and gold foil with solar wings (recipe "changes": "photo_foil")
+    "lod0_photo_foil": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and gold foil kept as "
+        "the base colour, with metalness, roughness and surface relief added from their own colours and shading, the "
+        "silver foil made metal foil, the solar wings keeping their texture with one roughness and no metalness, the "
+        "normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
