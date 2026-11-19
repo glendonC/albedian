@@ -1253,13 +1253,30 @@
 .reveal-card.is-phone {
   left: 12px;
   right: 12px;
-  top: auto;
+  top: 469px;
   bottom: 30px;
   width: auto;
-  padding: 22px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 22px 20px 0;
   border-radius: 28px;
   background: #111112;
   border: 1px solid var(--look-hair);
+}
+/* D18 (UIUX-phonecard-QUESTION.md, INTERIM): the card keeps the approved height; under the tag and close its words
+   scroll inside it, the cautions at the foot as decided, its lower 28 px fading to show there is more */
+.reveal-card.is-phone .reveal-card__scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%);
+}
+.reveal-card.is-phone .reveal-card__in {
+  padding-bottom: 28px;
 }
 .reveal-card.is-phone .reveal-card__name {
   margin: 16px 0 0;

@@ -81,39 +81,44 @@ export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onT
         <EvidenceTag evidenceClass={facts.evidenceClass} />
         <IconButton label="Close" icon="x" onClick={onClose} />
       </div>
-      <h1 className="reveal-card__name">{facts.title}</h1>
-      {facts.subLine !== null && <p className="reveal-card__sub">{facts.subLine}</p>}
-      {facts.numbers.length > 0 && (
-        <div className="reveal-card__numbers">
-          {facts.numbers.map((number) => (
-            <div key={number.label} className="reveal-card__number" data-evidence-class={number.evidenceClass}>
-              <b>
-                {number.value}
-                <small>{number.unit}</small>
-              </b>
-              <span className="reveal-card__label">
-                <EvidenceGlyph evidenceClass={number.evidenceClass} />
-                {number.label}
-              </span>
+      {/* Under the tag and close, the card's words; at phone width they scroll inside the card (D18, INTERIM) */}
+      <div className="reveal-card__scroll">
+        <div className="reveal-card__in">
+          <h1 className="reveal-card__name">{facts.title}</h1>
+          {facts.subLine !== null && <p className="reveal-card__sub">{facts.subLine}</p>}
+          {facts.numbers.length > 0 && (
+            <div className="reveal-card__numbers">
+              {facts.numbers.map((number) => (
+                <div key={number.label} className="reveal-card__number" data-evidence-class={number.evidenceClass}>
+                  <b>
+                    {number.value}
+                    <small>{number.unit}</small>
+                  </b>
+                  <span className="reveal-card__label">
+                    <EvidenceGlyph evidenceClass={number.evidenceClass} />
+                    {number.label}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          {facts.sourceLine !== null && <p className="reveal-card__source">{facts.sourceLine}</p>}
+          <div className="reveal-card__acts">
+            {canGoThere && <MainAction label="Go there" onClick={onGoThere} />}
+            <SecondAction label="Original pixels" aria-pressed={originalPixels} onClick={onToggleOriginalPixels} />
+          </div>
+          {facts.notes.length > 0 && (
+            <ul className="reveal-card__notes">
+              {facts.notes.map((note) => (
+                <li key={note}>
+                  <LookIcon name="info" />
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      )}
-      {facts.sourceLine !== null && <p className="reveal-card__source">{facts.sourceLine}</p>}
-      <div className="reveal-card__acts">
-        {canGoThere && <MainAction label="Go there" onClick={onGoThere} />}
-        <SecondAction label="Original pixels" aria-pressed={originalPixels} onClick={onToggleOriginalPixels} />
       </div>
-      {facts.notes.length > 0 && (
-        <ul className="reveal-card__notes">
-          {facts.notes.map((note) => (
-            <li key={note}>
-              <LookIcon name="info" />
-              <span>{note}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 };

@@ -261,6 +261,12 @@ describe('RevealPhoto at phone width', () => {
     show({ ...session, selectedFindingId: session.observationSolution!.findings.find((f) => f.title === 'Rigel')!.id });
     expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-phone');
     expect(q('.reveal-card__name')!.textContent).toBe('Rigel');
+    // D18 (UIUX-phonecard-QUESTION.md, INTERIM): the tag and close stay at the top; all else scrolls inside the card
+    expect(q('.reveal-card > .reveal-card__top')).not.toBeNull();
+    const inner = q('.reveal-card > .reveal-card__scroll > .reveal-card__in')!;
+    expect(inner.querySelector('.reveal-card__name')).not.toBeNull();
+    expect(inner.querySelector('.reveal-card__acts')).not.toBeNull();
+    expect(inner.querySelector('.reveal-card__notes')).not.toBeNull();
     expect(q('.reveal-mark.is-picked')).not.toBeNull();
     expect(q('.reveal-phone-counts')).toBeNull();
   });
@@ -289,17 +295,31 @@ describe("the phone reveal's rules are the approved page's", () => {
   });
 
   it('sets the phone card as #p-pick does: 12 from the sides, 30 from the foot, its type and buttons at the phone sizes', () => {
+    // D18 (INTERIM): the approved height, its top at 469, the cautions scrolling inside its lower part, which fades
     expect(declarationsOf('.reveal-card.is-phone')).toEqual({
       left: '12px',
       right: '12px',
-      top: 'auto',
+      top: '469px',
       bottom: '30px',
       width: 'auto',
-      padding: '22px 20px 20px',
+      display: 'flex',
+      'flex-direction': 'column',
+      overflow: 'hidden',
+      padding: '22px 20px 0',
       'border-radius': '28px',
       background: '#111112',
       border: '1px solid var(--look-hair)',
     });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__scroll')).toEqual({
+      position: 'relative',
+      flex: '1',
+      'min-height': '0',
+      'overflow-y': 'auto',
+      'overscroll-behavior': 'contain',
+      '-webkit-mask-image': 'linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%)',
+      'mask-image': 'linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%)',
+    });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__in')).toEqual({ 'padding-bottom': '28px' });
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__name')).toEqual({ margin: '16px 0 0', 'font-size': '46px' });
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__sub')).toEqual({ margin: '8px 0 0' });
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__numbers')).toEqual({ gap: '12px', 'margin-top': '20px', 'padding-top': '16px' });
