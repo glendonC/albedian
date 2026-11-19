@@ -74,8 +74,14 @@ describe('useRestoration', () => {
     container.remove();
     vi.restoreAllMocks();
   });
-  const settle = () => act(async () => await new Promise((r) => setTimeout(r, 20)));
   const phase = (): Restoration['phase'] => latest.restoration.phase;
+  /** Waits until the hook's state passes `check`, failing after two seconds with the phase it stood in. */
+  const until = async (check: () => boolean) => {
+    for (let waited = 0; !check(); waited += 10) {
+      if (waited >= 2000) throw new Error(`the restoration stood at ${phase()}`);
+      await act(async () => await new Promise((r) => setTimeout(r, 10)));
+    }
+  };
 
   it('is idle, then starts, works with each record, and compares once the job succeeds, turned as its variant record says', async () => {
     const answers = [json(running, 202), json(running), json(succeeded), json({ variant: { displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } } })];
@@ -83,7 +89,7 @@ describe('useRestoration', () => {
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     expect(phase()).toBe('idle');
     act(() => latest.start());
-    await settle();
+    await until(() => phase() === 'done');
     expect(phase()).toBe('done');
     expect(latest.restoration.phase === 'done' && latest.restoration.variantUrl).toBe(`/api/media/${sha256}/variants/${succeeded.variantId}/file`);
     expect(latest.restoration.phase === 'done' && latest.restoration.orientation).toEqual({ quarterTurnsClockwise: 1, mirrored: false });
@@ -93,7 +99,7 @@ describe('useRestoration', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ detail: 'Restoring a clip is not built yet.' }, 501));
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     act(() => latest.start());
-    await settle();
+    await until(() => phase() === 'stopped');
     expect(latest.restoration).toEqual({ phase: 'stopped', job: null, sentence: 'Restoring a clip is not built yet.', subline: null, canTryAgain: true });
   });
 
@@ -112,12 +118,12 @@ describe('useRestoration', () => {
     });
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     act(() => latest.start());
-    await settle();
+    await until(() => latest.restoration.phase === 'working' && latest.restoration.job !== null);
     expect(phase()).toBe('working');
     await act(async () => {
       await latest.cancel();
     });
-    await settle();
+    await until(() => phase() === 'stopped');
     expect(calls).toContain(`POST /api/ingest/jobs/${running.id}/cancel`);
     expect(latest.restoration).toMatchObject({ phase: 'stopped', sentence: 'Canceled' });
   });
@@ -139,7 +145,7 @@ describe('useRestoration', () => {
     });
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     act(() => latest.start());
-    await settle();
+    await until(() => phase() === 'stopped');
     expect(calls).toContain(`/api/media/${sha256}/variants`);
     expect(latest.restoration).toMatchObject({
       phase: 'stopped',
@@ -153,11 +159,13 @@ describe('useRestoration', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => (String(input).endsWith('/restore') ? json(running, 202) : json(running)));
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     act(() => latest.start());
-    await settle();
+    await until(() => latest.restoration.phase === 'working' && latest.restoration.job !== null);
     expect(phase()).toBe('working');
     act(() => root.render(createElement(Probe, { sha: 'f'.repeat(64) })));
     expect(phase()).toBe('idle');
-    await settle();
+    // Nothing comes back: an absence has no state to wait on, so the old job's next reads are given time; a slower
+    // machine only shortens what this sees, so it cannot fail for load
+    await act(async () => await new Promise((r) => setTimeout(r, 20)));
     expect(phase()).toBe('idle');
   });
 });

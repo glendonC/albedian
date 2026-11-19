@@ -76,6 +76,18 @@ function declarationsOf(selector: string): Record<string, string> {
   return found;
 }
 
+
+/**
+ * Waits until the compare's line stands at `value`: it moves there after two animation frames, whose time grows with
+ * the machine's load, so no fixed sleep is long enough. Fails after two seconds with where the line stood.
+ */
+async function untilSplit(compare: () => HTMLElement, value: string) {
+  for (let waited = 0; compare().style.getPropertyValue('--split') !== value; waited += 10) {
+    if (waited >= 2000) throw new Error(`the line stood at ${compare().style.getPropertyValue('--split')}, not ${value}`);
+    await act(async () => await new Promise((r) => setTimeout(r, 10)));
+  }
+}
+
 describe("restorationRows: the job's own steps in order", () => {
   it('names the six steps, marks what finished, what works and what has not started, with no numbers for a still', () => {
     expect(restorationRows(still(2)).map((r) => [r.word, r.state, r.value])).toEqual([
@@ -169,7 +181,7 @@ describe('the restoration on the reveal (laptop)', () => {
   it('starts the line at the right edge and sends it to the middle; Original sends it right, Restored left; a press moves it there', async () => {
     show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } });
     const compare = q('[data-testid="restore-compare"]') as HTMLElement;
-    await act(async () => await new Promise((r) => setTimeout(r, 40)));
+    await untilSplit(() => compare, '50%');
     expect(compare.style.getPropertyValue('--split')).toBe('50%');
     act(() => ([...compare.querySelectorAll('button')].find((b) => b.textContent === 'Original') as HTMLButtonElement).click());
     expect(compare.style.getPropertyValue('--split')).toBe('100%');
@@ -312,7 +324,7 @@ describe('D15: marks over the compare and zooming both pictures together (UIUX-r
     done();
     place();
     // The line arrives at the middle first
-    await act(async () => await new Promise((r) => setTimeout(r, 40)));
+    await untilSplit(compare, '50%');
     wheel(-300);
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
