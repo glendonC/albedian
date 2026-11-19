@@ -366,10 +366,10 @@ _CENTRAL = struct.Struct("<IHHHHHHIIIHHHHHII")
 _END = struct.Struct("<IHHHHIIH")
 _ZIP64_END = struct.Struct("<IQHHIIQQQQ")
 _ZIP64_LOCATOR = struct.Struct("<IIQI")
-_ZIP_VERSION = 20  # 2.0, the version Python's zipfile writes for a stored entry
-_ZIP64_VERSION = 45  # 4.5, the version a zip64 entry or end record needs
-_MADE_BY_UNIX = 3 << 8
-# Readable by whoever unpacks it, whatever the store's own 0400
+_ZIP_VERSION = 20  # 2.0, a stored entry's version [tested: equal to CPython zipfile's bytes, test_export]
+_ZIP64_VERSION = 45  # 4.5, for zip64 entries and end records [tested: equal to CPython zipfile's bytes, test_export]
+_MADE_BY_UNIX = 3 << 8  # made by Unix, system 3 [tested: equal to CPython zipfile's bytes, test_export]
+# Readable by whoever unpacks it, whatever the store's own 0400 [proposed; tested: test_export reads 0o100644]
 _EXTERNAL_ATTR = 0o100644 << 16
 # Past 2 GiB less one byte an entry, an offset or the directory is zip64, as Python's zipfile writes it, since some
 # readers take the 32 bit fields as signed [verified: CPython's zipfile ZIP64_LIMIT, 3.12 and 3.14, read for this unit]
