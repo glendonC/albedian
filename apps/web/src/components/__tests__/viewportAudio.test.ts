@@ -28,6 +28,9 @@ import { HOME_SCREEN, choosePhotoOnHome } from './homeEntry.js';
  * While audio is on, the viewport says what the sound is, credits the works the engine ships with
  * a link to their notices, and feeds the renderer's camera pose to the sky audio every frame; the
  * voices carry the evidence class of the star layer the renderer declares.
+ *
+ * Above phone width the control is the approved Sound circle (sound, the owner's yes of 2026-11-18 20:39;
+ * .lead/uiux/UIUX-sound-READY.md); a phone keeps the old audio strip until its own unit.
  */
 
 const stub = vi.hoisted(() => ({
@@ -105,6 +108,7 @@ vi.mock('../CoalescingBar.js', () => ({
 
 const { SpatialObservatoryViewport } = await import('../SpatialObservatoryViewport.js');
 const { skyAudio } = await import('../../audio/SkyAudioFeed.js');
+const { observatoryAudio } = await import('../../audio/ObservatoryAudioEngine.js');
 
 declare global {
   // React's flag for tests that drive updates through act()
@@ -144,11 +148,21 @@ function renderViewport(selectedFinding: CelestialFinding | null = null, { atHom
   if (!atHome && container.querySelector(HOME_SCREEN)) choosePhotoOnHome(container);
 }
 
+/** A phone's window for the tests that follow in the same test; each test starts above phone width. */
+function asPhone(): void {
+  (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: noop, removeEventListener: noop });
+}
+
+/** The Sound circle above phone width; the old strip's Audio word on a phone. */
 function audioButton(): HTMLButtonElement {
-  const button = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Audio');
+  const circle = container.querySelector<HTMLButtonElement>('.reveal-nav .sound-control button[aria-label="Sound"]');
+  const button = circle ?? Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Audio');
   expect(button).toBeDefined();
   return button!;
 }
+
+const soundNote = () => container.querySelector('.reveal-nav .sound-control__pop p');
+const volume = () => container.querySelector<HTMLElement>('.reveal-nav .sound-control__volume');
 
 function clickAudio(): void {
   act(() => audioButton().click());
@@ -167,6 +181,9 @@ beforeEach(() => {
   vi.mocked(skyAudio.follow).mockClear();
   vi.mocked(skyAudio.setEvidenceClass).mockClear();
   stub.barValue = null;
+  delete (window as unknown as Record<string, unknown>).matchMedia;
+  vi.mocked(observatoryAudio.setMasterVolume).mockClear();
+  vi.mocked(observatoryAudio.toggle).mockClear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -176,10 +193,101 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   vi.useRealTimers();
+  delete (window as unknown as Record<string, unknown>).matchMedia;
+});
+
+describe('the Sound circle above phone width, after the home', () => {
+  it('says what the sound is as its description while on and nothing while off, with no word, menu, credits or notices beside it', () => {
+    renderViewport();
+    expect(container.querySelectorAll('.reveal-nav')).toHaveLength(1);
+    expect(container.querySelector('.reveal-nav')!.getAttribute('data-hud-interactive')).toBe('true');
+    expect(audioButton().getAttribute('aria-pressed')).toBe('false');
+    expect(soundNote()).toBeNull();
+    expect(volume()).toBeNull();
+
+    clickAudio();
+    expect(audioButton().getAttribute('aria-pressed')).toBe('true');
+    expect(soundNote()!.textContent).toBe(AUDIO_DISCLOSURE);
+    expect(soundNote()!.getAttribute('role')).toBe('note');
+    expect(audioButton().getAttribute('aria-describedby')).toBe(soundNote()!.id);
+    // What main's header held is gone: the word, the striped bar's cluster, the Music menu, the credits, the link
+    expect(Array.from(container.querySelectorAll('button')).some((b) => b.textContent === 'Audio')).toBe(false);
+    expect(container.querySelector('.alb-lusion-header-right')).toBeNull();
+    expect(stub.barValue).toBeNull();
+    expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
+    expect(container.querySelector('.alb-audio-notes')).toBeNull();
+    expect(container.querySelector(`a[href="${AUDIO_NOTICES_URL}"]`)).toBeNull();
+    expect(container.querySelector('.reveal-nav')!.textContent).toBe(AUDIO_DISCLOSURE);
+
+    clickAudio();
+    expect(soundNote()).toBeNull();
+    expect(audioButton().hasAttribute('aria-describedby')).toBe(false);
+    expect(observatoryAudio.toggle).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts the volume at the stored level and gives the engine each new one, sound staying on', () => {
+    renderViewport();
+    clickAudio();
+    expect(volume()!.getAttribute('aria-valuenow')).toBe('42');
+    expect(observatoryAudio.setMasterVolume).toHaveBeenLastCalledWith(0.42);
+    act(() => {
+      volume()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+    });
+    expect(volume()!.getAttribute('aria-valuenow')).toBe('52');
+    expect(observatoryAudio.setMasterVolume).toHaveBeenLastCalledWith(0.52);
+    expect(observatoryAudio.toggle).toHaveBeenCalledTimes(1);
+    // Off and on again: the level is kept
+    clickAudio();
+    clickAudio();
+    expect(volume()!.getAttribute('aria-valuenow')).toBe('52');
+  });
+
+  it('follows the Music setting and whether music can play, in the app\'s own sentences', () => {
+    renderViewport();
+    clickAudio();
+    try {
+      act(() => appMusicSetting.set('off'));
+      expect(soundNote()!.textContent).toBe(audioDisclosure('off'));
+      act(() => appMusicSetting.set('soundtrack'));
+      act(() => appMusicAvailability.set('not_served'));
+      expect(soundNote()!.textContent).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
+      act(() => appMusicAvailability.set('not_reachable'));
+      expect(soundNote()!.textContent).toBe(audioDisclosure('soundtrack', 'not_reachable'));
+    } finally {
+      act(() => appMusicSetting.set('soundtrack'));
+      act(() => appMusicAvailability.set('available'));
+    }
+  });
+
+  it('marks the circle for the phone lifecycle, and only the circle', async () => {
+    const { AUDIO_CONTROL_SELECTOR } = await import('../../audio/engine/audioLifecycle.js');
+    renderViewport();
+    clickAudio();
+    const marked = container.querySelectorAll(AUDIO_CONTROL_SELECTOR);
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toBe(audioButton());
+    expect(volume()!.closest(AUDIO_CONTROL_SELECTOR)).toBeNull();
+  });
+
+  it('is not on the home, which has its own Sound circle', () => {
+    renderViewport(null, { atHome: true });
+    expect(container.querySelector(HOME_SCREEN)).not.toBeNull();
+    expect(container.querySelector('.reveal-nav')).toBeNull();
+    expect(container.querySelector('.sound-control')).toBeNull();
+  });
+
+  it('is not on a phone, which keeps its old strip until its own unit', () => {
+    asPhone();
+    renderViewport();
+    expect(container.querySelector('.reveal-nav')).toBeNull();
+    expect(container.querySelector('.sound-control')).toBeNull();
+    expect(container.querySelector('.alb-lusion-header-right')).not.toBeNull();
+  });
 });
 
 describe('the viewport while audio is on', () => {
-  it('says what the sound is, credits the works the engine ships and links their notices', () => {
+  it('on a phone, says what the sound is, credits the works the engine ships and links their notices', () => {
+    asPhone();
     renderViewport();
     expect(document.getElementById('alb-audio-disclosure')).toBeNull();
     expect(audioButton().hasAttribute('aria-describedby')).toBe(false);
@@ -248,7 +356,8 @@ describe('the viewport while audio is on', () => {
 });
 
 describe('the music beside the Audio control', () => {
-  it('shows the stored volume on the Audio bar whether audio is on or off', () => {
+  it('on a phone, shows the stored volume on the Audio bar whether audio is on or off', () => {
+    asPhone();
     renderViewport();
     expect(stub.barValue).toBe(0.42);
     clickAudio();
@@ -266,8 +375,9 @@ describe('the music beside the Audio control', () => {
     expect(appSoundtrackMoment.get()).toBe('look_around');
   });
 
-  it('marks the Audio button for the phone lifecycle, which ignores a tap on it (and only on it)', async () => {
+  it('on a phone, marks the Audio button for the phone lifecycle, which ignores a tap on it (and only on it)', async () => {
     const { AUDIO_CONTROL_SELECTOR } = await import('../../audio/engine/audioLifecycle.js');
+    asPhone();
     renderViewport();
     const marked = container.querySelectorAll(AUDIO_CONTROL_SELECTOR);
     expect(marked).toHaveLength(1);
@@ -277,7 +387,8 @@ describe('the music beside the Audio control', () => {
     expect(container.querySelector('select[aria-label="Music"]')!.closest(AUDIO_CONTROL_SELECTOR)).toBeNull();
   });
 
-  it('shows the Music setting beside Audio while audio is on', () => {
+  it('on a phone, shows the Music setting beside Audio while audio is on', () => {
+    asPhone();
     renderViewport();
     expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
     clickAudio();
@@ -286,7 +397,8 @@ describe('the music beside the Audio control', () => {
     expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
   });
 
-  it('says what the sound is for the Music setting: the soundtrack, a pinned piece, or no music', () => {
+  it('on a phone, says what the sound is for the Music setting: the soundtrack, a pinned piece, or no music', () => {
+    asPhone();
     renderViewport();
     clickAudio();
     const note = () => document.getElementById('alb-audio-disclosure')!.textContent;
@@ -302,7 +414,8 @@ describe('the music beside the Audio control', () => {
     }
   });
 
-  it('says no music plays and shows no Music control where none can play', () => {
+  it('on a phone, says no music plays and shows no Music control where none can play', () => {
+    asPhone();
     renderViewport();
     clickAudio();
     try {
@@ -330,7 +443,8 @@ describe('the music beside the Audio control', () => {
     expect(appMusicSelection.get()).toBeNull();
   });
 
-  it('credits each piece once it has been heard, and keeps it', () => {
+  it('on a phone, credits each piece once it has been heard, and keeps it', () => {
+    asPhone();
     renderViewport();
     clickAudio();
     act(() => appHeardMusic.add('recording'));
@@ -352,6 +466,7 @@ describe('each test starts with nothing heard (web-audio-order-1)', () => {
 
   it('starts the next test with nothing heard, so the credits are the engine works alone', () => {
     expect(appHeardMusic.get()).toEqual([]);
+    asPhone();
     renderViewport();
     clickAudio();
     expect(Array.from(container.querySelectorAll('.alb-audio-credits li'), (li) => li.textContent)).toEqual([...AUDIO_CREDIT_LINES]);

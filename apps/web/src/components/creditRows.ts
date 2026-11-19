@@ -205,11 +205,14 @@ const pushOnce = <T>(list: T[], item: T, same: (a: T, b: T) => boolean = (a, b) 
   if (!list.some((x) => same(x, item))) list.push(item);
 };
 
-/** The Sound row: the audio engine's works, each in its own line, and the notices their licences travel in. */
-function soundBlock(audio: readonly AudioCredit[]): CreditBlock {
+/**
+ * The Sound row: the audio engine's works, each in its own line, then the lines of each soundtrack piece heard this
+ * visit (the sound control shows none), each line once, and the notices their licences travel in.
+ */
+function soundBlock(audio: readonly AudioCredit[], heard: readonly string[]): CreditBlock {
   return {
     key: 'audio',
-    credits: audio.map((credit) => credit.line),
+    credits: [...new Set([...audio.map((credit) => credit.line), ...heard])],
     licences: [{ name: 'Notices', href: AUDIO_NOTICES_URL }],
     notices: [],
     acknowledgements: [],
@@ -224,7 +227,11 @@ function soundBlock(audio: readonly AudioCredit[]): CreditBlock {
  * sources linked, each notice the app serves beside its files, each acknowledgement word for word, each citation its
  * terms ask for, each owed change, and the source's own page. A source named by several records is credited once.
  */
-export function creditRows(loaded: readonly LoadedRecord[], audio: readonly AudioCredit[] = AUDIO_CREDITS): CreditRow[] {
+export function creditRows(
+  loaded: readonly LoadedRecord[],
+  audio: readonly AudioCredit[] = AUDIO_CREDITS,
+  heard: readonly string[] = []
+): CreditRow[] {
   const blocksByRow = new Map<CreditRowName, CreditBlock[]>();
   const seen = new Set<string>();
   const notices = servedNotices(loaded);
@@ -270,7 +277,7 @@ export function creditRows(loaded: readonly LoadedRecord[], audio: readonly Audi
       }));
     }
   }
-  if (audio.length > 0) blocksByRow.set('Sound', [soundBlock(audio)]);
+  if (audio.length + heard.length > 0) blocksByRow.set('Sound', [soundBlock(audio, heard)]);
   return CREDIT_ROWS.flatMap(({ name, approved }) => {
     const blocks = blocksByRow.get(name);
     if (!blocks) return [];

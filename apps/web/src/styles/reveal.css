@@ -549,3 +549,113 @@
   flex: none;
   margin-top: 2px;
 }
+
+/* The row at the top right of every laptop screen after the home (sound, approved 2026-11-18 20:39; values from
+   #so-on in .cache/uiux/sound/screen/so-on.html): the view pills, then the Sound circle 8 px after them */
+.reveal-nav {
+  position: fixed;
+  right: 32px;
+  top: 26px;
+  z-index: 35;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-family: var(--look-font-sans);
+  color: var(--look-ink);
+}
+
+.sound-control {
+  position: relative;
+}
+
+/* The speaker is drawn at 16 px */
+.sound-control .look-icon {
+  --look-ic: 16px;
+}
+
+/* While sound is on, pointing at the circle or focusing it shows the sentence and the volume 8 px under it */
+.sound-control__pop {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+}
+
+.sound-control.is-on:hover .sound-control__pop,
+.sound-control.is-on:focus-within .sound-control__pop {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-control__pop {
+    transition: none;
+  }
+}
+
+.sound-control__pop p {
+  width: 252px;
+  margin: 6px 0 0;
+  text-align: right;
+  font: 400 12px / 1.5 var(--look-font-sans);
+  letter-spacing: -0.005em;
+  color: var(--look-ink-2);
+  text-wrap: pretty;
+}
+
+.sound-control__volume {
+  flex: none;
+  width: 36px;
+  height: 96px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--look-line);
+  border-radius: 18px;
+  background: rgba(10, 10, 12, 0.55);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+}
+
+.sound-control__volume:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+.sound-control__volume span {
+  position: relative;
+  display: block;
+  width: 2px;
+  height: 64px;
+  border-radius: 2px;
+  background: var(--look-hair);
+}
+
+.sound-control__volume i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--look-ink);
+}
+
+.sound-control__volume i::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--look-ink);
+}

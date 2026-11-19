@@ -172,6 +172,8 @@ describe('the viewport shows the working screen while an upload is on its way', 
     expect(q('[data-testid="source-photo-layer-label"]')).toBeNull();
     for (const gone of [
       '.alb-lusion-header',
+      '.reveal-nav',
+      '.sound-control',
       '[data-testid="voice-command-hud"]',
       '[data-testid="observation-solve-compare-hud"]',
       '[data-testid="celestial-marker-overlay"]',
@@ -236,6 +238,8 @@ describe('the viewport shows the working screen while an upload is on its way', 
     renderViewport(storedPhoto(), { arrival: null });
     expect(q(WORKING)).toBeNull();
     expect(q('.alb-lusion-header')).not.toBeNull();
+    // The Sound circle comes with the screens after the solve
+    expect(q('.reveal-nav .sound-control button[aria-label="Sound"]')).not.toBeNull();
     expect(q('[data-testid="voice-command-hud"]')).not.toBeNull();
     // The reveal takes the working screen's place over the same photo, at full strength again
     expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
@@ -306,6 +310,8 @@ describe('the viewport shows the approved reveal over the photo, above phone wid
     expect(q(REVEAL)).toBeNull();
     expect(q(PANEL)).not.toBeNull();
     expect(q('.alb-lusion-brand-btn')).not.toBeNull();
+    // Every laptop screen after the home has the Sound circle, these views too
+    expect(q('.reveal-nav .sound-control')).not.toBeNull();
   });
 
   it('draws neither corners nor marks once the browser shows the photo turned differently from its tag', () => {

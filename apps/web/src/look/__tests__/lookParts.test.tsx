@@ -287,6 +287,7 @@ describe('LookIcon: only the Phosphor icons the approved screens use', () => {
       'keyboard',
       'microphone',
       'speaker-high',
+      'speaker-slash',
       'upload-simple',
       'warning-circle',
       'x',

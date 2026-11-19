@@ -1,12 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AssetProvenanceRecordSchema } from '@albedian/contracts';
+import { useAudioCreditLines } from '../audio/useAudioCreditLines.js';
 import { IconButton, LookIcon } from '../look/index.js';
 import { PROVENANCE_RECORD_URLS, UnmappedSourceError, creditRows, type CreditRow, type LoadedRecord } from './creditRows.js';
 
 /** How long the page waits for each record before it says that one did not arrive. */
 export const CREDITS_WAIT_MS = 10_000;
 
-type CreditsState = { kind: 'reading' } | { kind: 'read'; rows: CreditRow[] } | { kind: 'failed'; failures: string[] };
+type CreditsState = { kind: 'reading' } | { kind: 'read'; loaded: LoadedRecord[] } | { kind: 'failed'; failures: string[] };
+
+/** The rows of the records read, or why they could not be laid out. */
+type Laid = { rows: CreditRow[] } | { failures: string[] };
 
 /** A record that could not be read, said in the page's own words with the record named. */
 class RecordFailure extends Error {}
@@ -63,7 +67,7 @@ async function readRecords(): Promise<{ loaded: LoadedRecord[] } | { failures: s
  * hairlines, each a small grey label over its lines as one block, with the small open-link icon at the right edge of a
  * credit whose source has a page. Each row groups sources under the page's row labels, drawing credits, licences,
  * acknowledgements, citations and script-change sentences from the served provenance records (and Sound from the audio
- * engine's credits), notice links for served notice files, and the app's own shader and backdrop change lines where a
+ * engine's credits, with the lines of each soundtrack piece heard this visit as soon as it is heard), notice links for served notice files, and the app's own shader and backdrop change lines where a
  * licence asks. Until the records arrive the page shows only its title: no count, no spinner.
  */
 export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -76,18 +80,26 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     let current = true;
     void readRecords().then((read) => {
       if (!current) return;
-      if ('failures' in read) return setState({ kind: 'failed', failures: read.failures });
-      try {
-        setState({ kind: 'read', rows: creditRows(read.loaded) });
-      } catch (error) {
-        // A served source with no row is named; anything else is said plainly, never in the error's own words
-        setState({ kind: 'failed', failures: [error instanceof UnmappedSourceError ? error.message : 'the records could not be laid out'] });
-      }
+      setState('failures' in read ? { kind: 'failed', failures: read.failures } : { kind: 'read', loaded: read.loaded });
     });
     return () => {
       current = false;
     };
   }, []);
+
+  // The engine's lines, then those of the pieces heard so far (the row keeps each line once); a piece that starts
+  // while the page is open joins the row
+  const soundLines = useAudioCreditLines();
+  const laid = useMemo<Laid | null>(() => {
+    if (state.kind === 'reading') return null;
+    if (state.kind === 'failed') return { failures: state.failures };
+    try {
+      return { rows: creditRows(state.loaded, undefined, soundLines) };
+    } catch (error) {
+      // A served source with no row is named; anything else is said plainly, never in the error's own words
+      return { failures: [error instanceof UnmappedSourceError ? error.message : 'the records could not be laid out'] };
+    }
+  }, [state, soundLines]);
 
   // Esc goes back, as the back button does; the page takes focus so a keyboard starts on it
   useEffect(() => {
@@ -107,17 +119,17 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       <h1 id="credits-title" className="credits-title">
         Credits
       </h1>
-      {state.kind === 'failed' && (
+      {laid && 'failures' in laid && (
         <div className="credits-failed" role="alert">
           <p>The credits could not be read.</p>
-          {state.failures.map((failure) => (
+          {laid.failures.map((failure) => (
             <p key={failure}>{`${failure}.`}</p>
           ))}
         </div>
       )}
-      {state.kind === 'read' && (
+      {laid && 'rows' in laid && (
         <ul className="credits-rows">
-          {state.rows.map((row) => (
+          {laid.rows.map((row) => (
             <li key={row.key} className="credits-row">
               <span className="credits-label">{row.name}</span>
               {row.blocks.map((block) => (

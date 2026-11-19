@@ -6,7 +6,8 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssetProvenanceRecordSchema } from '@albedian/contracts';
-import { AUDIO_CREDITS, AUDIO_NOTICES_URL } from '../../audio/audioCredits.js';
+import { AUDIO_CREDITS, AUDIO_NOTICES_URL, appHeardMusic, audioCreditLines } from '../../audio/audioCredits.js';
+import { RECORDING } from '../../audio/music/directions.js';
 import {
   CHANGES,
   CREDIT_ROWS,
@@ -268,6 +269,21 @@ describe('creditRows: rows by what a person sees, every source credited from the
     expect(sound?.blocks.flatMap((b) => b.credits)).toEqual(AUDIO_CREDITS.map((c) => c.line));
     expect(sound?.blocks.flatMap((b) => b.licences)).toEqual([{ name: 'Notices', href: AUDIO_NOTICES_URL }]);
   });
+
+  it("adds each heard piece's own lines to Sound after the engine's works, each once, under the same notices", () => {
+    const engine = AUDIO_CREDITS.map((c) => c.line);
+    const soundOf = (heard: readonly string[]) => creditRows(loaded, AUDIO_CREDITS, heard).find((r) => r.name === 'Sound')!;
+    expect(soundOf([]).blocks.flatMap((b) => b.credits)).toEqual(engine);
+    const withPieces = soundOf(['A piece, its player (CC BY 4.0)', 'Its samples (CC0 1.0)', engine[0]!, 'Its samples (CC0 1.0)']);
+    expect(withPieces.blocks).toHaveLength(1);
+    expect(withPieces.blocks[0]!.credits).toEqual([...engine, 'A piece, its player (CC BY 4.0)', 'Its samples (CC0 1.0)']);
+    expect(withPieces.blocks[0]!.licences).toEqual([{ name: 'Notices', href: AUDIO_NOTICES_URL }]);
+    // The other rows are the same rows
+    expect(creditRows(loaded, AUDIO_CREDITS, ['A piece']).filter((r) => r.name !== 'Sound')).toEqual(rows.filter((r) => r.name !== 'Sound'));
+    // With no engine work and nothing heard there is no Sound row; a heard piece alone still has one
+    expect(creditRows(loaded, []).some((r) => r.name === 'Sound')).toBe(false);
+    expect(creditRows(loaded, [], ['A piece']).find((r) => r.name === 'Sound')!.blocks[0]!.credits).toEqual(['A piece']);
+  });
 });
 
 describe('CreditsPage: the approved layout, and every failure named', () => {
@@ -365,6 +381,26 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
       'BSD 3-Clause License',
       'Notice',
     ]);
+  });
+
+  it("credits each soundtrack piece heard this visit on the Sound row, as soon as it is heard (the sound control shows no credits)", async () => {
+    vi.stubGlobal('fetch', serve());
+    await renderPage();
+    const soundLines = () => {
+      const row = [...container.querySelectorAll('.credits-row')].find((r) => r.querySelector('.credits-label')?.textContent === 'Sound')!;
+      return row.querySelector('.credits-lines')!.innerHTML.split('<br>').map((l) => l.replace(/<[^>]+>/g, ''));
+    };
+    const engine = AUDIO_CREDITS.map((c) => c.line);
+    expect(appHeardMusic.get()).toEqual([]);
+    expect(soundLines()).toEqual([...engine, 'Notices']);
+    act(() => appHeardMusic.add('recording'));
+    expect(soundLines()).toEqual([...audioCreditLines(['recording']), 'Notices']);
+    expect(soundLines()).toContain(RECORDING.credit);
+    // Opened again later in the visit: the piece is still credited
+    act(() => root.unmount());
+    root = createRoot(container);
+    await renderPage();
+    expect(soundLines()).toContain(RECORDING.credit);
   });
 
   it('shows no count, spinner or row before the records arrive', async () => {

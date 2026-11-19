@@ -41,6 +41,7 @@ import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
+import { SoundControl } from '../reveal/SoundControl.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
@@ -646,6 +647,9 @@ export const SpatialObservatoryViewport: React.FC<
             )}
           </div>
 
+          {/* The phone keeps its old audio strip until its own unit; above phone width the approved Sound circle
+              is in the row at the top right (below) */}
+          {phone && (
           <div className="alb-lusion-header-right">
             <div
               className="alb-zzzz-inline-control"
@@ -690,7 +694,16 @@ export const SpatialObservatoryViewport: React.FC<
               </div>
             )}
           </div>
+          )}
         </header>
+      )}
+
+      {/* The row at the top right of every laptop screen after the home: the Sound circle (the view pills join it
+          in their own unit); none on the home, which has its own, nor while a photo is being worked on */}
+      {!phone && !entryStageActive && !arrival && (
+        <div className="reveal-nav" data-hud-interactive="true">
+          <SoundControl on={soundEnabled} onToggle={handleToggleSound} level={volumeLevel} onLevel={setVolumeLevel} disclosure={audioDisclosure} />
+        </div>
       )}
     </div>
   );
