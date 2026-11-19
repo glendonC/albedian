@@ -109,18 +109,48 @@ describe('AskBar: Ask out loud and the keyboard button', () => {
     // Nothing heard yet: its own label
     expect(ask.textContent).toBe('Ask out loud');
     show({ listening: true, words: { text: 'How far away is Vega', settled: false } });
-    expect(q('.ask-bar__ask')!.innerHTML).toContain('How far away is <i>Vega</i>');
+    expect(q('.ask-bar__ask')!.textContent).toBe('How far away is Vega');
+    expect([...container.querySelectorAll('.ask-bar__word')].map((w) => w.textContent)).toEqual(['How', 'far', 'away', 'is', 'Vega']);
+    expect([...container.querySelectorAll('.ask-bar__word.is-unsettled')].map((w) => w.textContent)).toEqual(['Vega']);
     // One element for the words, so the pill's gap falls only before the circle
     expect(q('.ask-bar__ask')!.firstElementChild!.className).toBe('ask-bar__words');
     expect([...q('.ask-bar__ask')!.children].map((c) => c.className)).toEqual(['ask-bar__words', 'look-second__circle']);
     show({ listening: true, words: { text: 'How far away is Vega', settled: true } });
-    expect(q('.ask-bar__ask i')).toBeNull();
+    expect(q('.ask-bar__word.is-unsettled')).toBeNull();
     expect(q('.ask-bar__ask')!.textContent).toBe('How far away is Vega');
     // Words left from a capture that ended are not shown
     show({ listening: false, words: { text: 'How far away is Vega', settled: true } });
     expect(q('.ask-bar__ask')!.textContent).toBe('Ask out loud');
     show({ listening: true, words: { text: 'Vega', settled: false } });
-    expect(q('.ask-bar__ask')!.innerHTML).toContain('<i>Vega</i>');
+    expect([...container.querySelectorAll('.ask-bar__word.is-unsettled')].map((w) => w.textContent)).toEqual(['Vega']);
+  });
+
+  // The motion record (MOTION-READY-web.md, row "Listening: words as heard (ask)"): each word appears as heard; the
+  // unsettled word goes from 42 percent to full on the colour time, so a word keeps its own element as it settles
+  it('keeps each word its own element, so the newest goes to full in place when it settles or the next word comes', () => {
+    show({ listening: true, words: { text: 'How far', settled: false } });
+    const far = container.querySelectorAll('.ask-bar__word')[1]!;
+    expect(far.classList.contains('is-unsettled')).toBe(true);
+    show({ listening: true, words: { text: 'How far away', settled: false } });
+    expect(container.querySelectorAll('.ask-bar__word')[1]).toBe(far);
+    expect(far.classList.contains('is-unsettled')).toBe(false);
+    const away = container.querySelectorAll('.ask-bar__word')[2]!;
+    expect(away.classList.contains('is-unsettled')).toBe(true);
+    show({ listening: true, words: { text: 'How far away', settled: true } });
+    expect(container.querySelectorAll('.ask-bar__word')[2]).toBe(away);
+    expect(away.classList.contains('is-unsettled')).toBe(false);
+  });
+
+  it('settles the word on the colour time in motion.css', () => {
+    let found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar__word' && rule.parent?.type === 'root') {
+        rule.walkDecls((decl) => {
+          found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+        });
+      }
+    });
+    expect(found).toEqual({ transition: 'opacity var(--look-mo-dur-colour) var(--look-mo-ease-std)' });
   });
 });
 
@@ -254,7 +284,7 @@ describe("the ask bar's rules are the approved pages'", () => {
     });
     expect(declarationsOf('.ask-bar__ask.is-listening')).toEqual({ background: 'var(--look-ink)', color: 'var(--look-night)', 'border-color': 'var(--look-ink)' });
     expect(declarationsOf('.ask-bar__ask.is-listening .look-second__circle')).toEqual({ background: 'var(--look-night)', color: 'var(--look-ink)' });
-    expect(declarationsOf('.ask-bar__ask i')).toEqual({ 'font-style': 'normal', opacity: '0.42' });
+    expect(declarationsOf('.ask-bar__word.is-unsettled')).toEqual({ opacity: '0.42' });
   });
 
   it('draws the field 440 by 48 in a 1 px ink outline with the words at 17 px, and a 40 px filled circle that sends', () => {

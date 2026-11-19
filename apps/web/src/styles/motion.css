@@ -209,6 +209,11 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
 
+/* Listening: each word appears as heard; the newest goes from 42 percent to full on the colour time as it settles */
+.ask-bar__word {
+  transition: opacity var(--look-mo-dur-colour) var(--look-mo-ease-std);
+}
+
 /* Fly on your own is offered only once the flight has arrived, so it words in as it mounts, with Back to Moment */
 .ask-bar__fly {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;

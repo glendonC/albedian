@@ -430,7 +430,8 @@ describe('asking about the photo on the laptop reveal', () => {
       await act(async () => (q('.ask-bar__ask') as HTMLButtonElement).click());
       await act(async () => rec!.onaudiostart?.());
       await act(async () => rec!.onresult?.({ results: [Object.assign([{ transcript: 'How far away is Rig' }], { isFinal: false })] }));
-      expect(q('.ask-bar__ask')!.innerHTML).toContain('How far away is <i>Rig</i>');
+      expect(q('.ask-bar__ask')!.textContent).toBe('How far away is Rig');
+      expect(q('.ask-bar__word.is-unsettled')!.textContent).toBe('Rig');
       await act(async () => rec!.onend?.());
       expect(q('.ask-bar__ask')!.textContent).toBe('Ask out loud');
       expect(q('.ask-bar__ask')!.innerHTML).not.toContain('Rig');

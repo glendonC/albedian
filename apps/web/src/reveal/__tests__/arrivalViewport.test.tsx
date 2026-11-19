@@ -910,7 +910,8 @@ describe('the viewport shows the approved star card over the photo, above phone 
     open(listening, { onRunUtterance, onPushToTalk, heardWords: { text: 'How far away is Vega', settled: false }, canListen: true });
     const ask = q('.ask-bar__ask') as HTMLButtonElement;
     expect(ask.classList.contains('is-listening')).toBe(true);
-    expect(ask.innerHTML).toContain('How far away is <i>Vega</i>');
+    expect(ask.textContent).toBe('How far away is Vega');
+    expect(ask.querySelector('.ask-bar__word.is-unsettled')!.textContent).toBe('Vega');
     act(() => ask.click());
     expect(onPushToTalk).toHaveBeenCalledTimes(1);
     renderViewport({ ...base, machines: { ...base.machines, voice: 'permission' } } as ObservationSession, { onRunUtterance, onPushToTalk, heardWords: null, canListen: true });

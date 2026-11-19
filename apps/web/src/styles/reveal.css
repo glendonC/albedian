@@ -831,8 +831,7 @@
 }
 
 /* The newest word, until the recogniser settles it */
-.ask-bar__ask i {
-  font-style: normal;
+.ask-bar__word.is-unsettled {
   opacity: 0.42;
 }
 

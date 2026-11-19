@@ -42,18 +42,19 @@ function ownedByControl(target: EventTarget | null): boolean {
 
 /**
  * The words as heard, the last one at its own weight until the recogniser settles it, in one element (the approved
- * page's .lbl), so the pill's gap falls only between the words and the circle.
+ * page's .lbl), so the pill's gap falls only between the words and the circle. Each word is its own element, kept in
+ * place as the next word comes, so the newest goes to full on the colour time as it settles (the motion record).
  */
 function heardLabel(words: HeardWords): React.ReactNode {
-  const at = words.text.lastIndexOf(' ');
+  const all = words.text.split(' ');
   return (
     <span className="ask-bar__words">
-      {words.settled ? words.text : at < 0 ? <i>{words.text}</i> : (
-        <>
-          {words.text.slice(0, at + 1)}
-          <i>{words.text.slice(at + 1)}</i>
-        </>
-      )}
+      {all.map((word, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && ' '}
+          <span className={!words.settled && i === all.length - 1 ? 'ask-bar__word is-unsettled' : 'ask-bar__word'}>{word}</span>
+        </React.Fragment>
+      ))}
     </span>
   );
 }
