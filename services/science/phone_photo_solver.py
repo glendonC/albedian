@@ -1485,6 +1485,11 @@ def _rodrigues(omega: np.ndarray) -> np.ndarray:
     return np.eye(3, dtype=np.float64) + math.sin(theta) * kx + (1.0 - math.cos(theta)) * (kx @ kx)
 
 
+# The diagonal fields of view the refinement fits between, in degrees (its bounds' own literals)
+REFINE_FOV_MIN_DEG = 25.0
+REFINE_FOV_MAX_DEG = 145.0
+
+
 def _refine_phone_camera_wcs(
     initial_wcs: PhoneCameraWCS,
     train_pairs: Sequence[tuple[SourceDetection, float, float]],
@@ -1501,7 +1506,9 @@ def _refine_phone_camera_wcs(
     cat_dec = np.array([dec for _, _, dec in train_pairs], dtype=np.float64)
 
     base_rot = initial_wcs._rot_array()
-    fov0 = initial_wcs.fov_diagonal_deg
+    # The start held inside the range the refinement fits, so its bounds never cross (a frame of a very short lens's
+    # 35 mm tag starts past 154 deg, where max(25, 0.94 fov) passed min(145, 1.06 fov) and the solve failed)
+    fov0 = min(max(initial_wcs.fov_diagonal_deg, REFINE_FOV_MIN_DEG), REFINE_FOV_MAX_DEG)
     w, h = initial_wcs.width, initial_wcs.height
     lens_model = initial_wcs.lens_model
     sky_frame = initial_wcs.sky_frame
@@ -1668,6 +1675,35 @@ def _candidate_fovs_and_models(
     ]
 
 
+# The attitude prior's one condition: the optical axis looks above the horizon by this much (the sine of about 4.6 deg)
+ATTITUDE_AXIS_UP_MIN = 0.08
+
+
+def _attitude_prior_takes(rotations: np.ndarray) -> np.ndarray:
+    """Which candidate rotations (rows: image right, image down, optical axis, in east, north, up) the horizon search
+    keeps: those whose optical axis looks above the horizon, at any roll. Until the high-pointing prior it also required
+    an upright frame within about 29 deg of level roll, which refused a frame stored sideways or upside down (a phone
+    photo decoded without its EXIF rotation) and every frame within about 5 deg of the zenith."""
+    return rotations[:, 2, 2] > ATTITUDE_AXIS_UP_MIN
+
+
+# The upright prior the horizon search had before the high-pointing one: the image's down toward the ground by this
+# much, and its right within this of level (a roll within about 29 deg)
+UPRIGHT_DOWN_MIN = 0.08
+UPRIGHT_RIGHT_MAX = 0.48
+
+
+def _upright_prior_takes(rotations: np.ndarray) -> np.ndarray:
+    """The rotations the upright prior keeps: the axis above the horizon, the frame upright, the roll near level.
+    `solve_phone_photo` solves with it first, at its old cost, and at every roll (`_attitude_prior_takes`) only when
+    that solve does not calibrate."""
+    return (
+        (rotations[:, 2, 2] > ATTITUDE_AXIS_UP_MIN)
+        & (rotations[:, 1, 2] < -UPRIGHT_DOWN_MIN)
+        & (np.abs(rotations[:, 0, 2]) < UPRIGHT_RIGHT_MAX)
+    )
+
+
 def _search_horizon_attitude(
     pool: Sequence[SourceDetection],
     width: int,
@@ -1678,6 +1714,7 @@ def _search_horizon_attitude(
     cat_dec: np.ndarray,
     fov_models: Sequence[tuple[float, str]],
     on_candidate: Callable[[int, int], None] | None,
+    takes: Callable[[np.ndarray], np.ndarray] = _attitude_prior_takes,
 ) -> PhoneCameraWCS | None:
     search_pool = pool[:38] if len(fov_models) > 2 else pool
     m_len = len(search_pool)
@@ -1744,7 +1781,7 @@ def _search_horizon_attitude(
                 E = E_valid[local_idx]
                 F_sub = F_sorted[lo:hi]
                 R_cand = np.einsum("ij,ckj->cik", E, F_sub)
-                valid_att = (R_cand[:, 2, 2] > 0.08) & (R_cand[:, 1, 2] < -0.08) & (np.abs(R_cand[:, 0, 2]) < 0.48)
+                valid_att = takes(R_cand)
                 if np.any(valid_att):
                     R_sub = R_cand[valid_att]
                     proj = np.einsum("kn,cmn->ckm", u_cat, R_sub)
@@ -1991,7 +2028,61 @@ def solve_phone_photo(
     solution_id: str = "sol-primary",
     on_candidate: Callable[[int, int], None] | None = None,
 ) -> ObservationSolution:
-    """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification."""
+    """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification.
+
+    A photo with a time and a place is searched from the horizon. That search keeps the upright prior first
+    (`_upright_prior_takes`, the frame upright within about 29 deg of level roll), at its old cost; when that solve
+    does not calibrate, the photo is solved again on the same detections at every roll (`_attitude_prior_takes`),
+    which finds a frame stored sideways or upside down and one aimed near the zenith. Every roll from the start cost
+    the CI positives about three times their CPU seconds [tested: the speed guard]. The second solve's candidates
+    count on from the first's, so a job's count never falls within its pass; its total grows by what the second
+    solve evaluates."""
+    if detections is None:
+        raw_luma = _to_luma_2d(image)
+        luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
+        detections = detect_point_sources(luma, asset_id=source_asset_id, frame_time_sec=frame_time_sec)
+    common = dict(
+        detections=detections, obs_utc_iso=obs_utc_iso, observer_lat=observer_lat, observer_lon=observer_lon,
+        camera_label=camera_label, fov_diagonal_deg=fov_diagonal_deg, catalog_stars=catalog_stars,
+        source_asset_id=source_asset_id, source_sha256=source_sha256, frame_time_sec=frame_time_sec,
+        solution_id=solution_id,
+    )
+    first_total = [0]
+
+    def first_counts(done: int, total: int) -> None:
+        first_total[0] = total
+        if on_candidate is not None:
+            on_candidate(done, total)
+
+    def second_counts(done: int, total: int) -> None:
+        if on_candidate is not None:
+            on_candidate(first_total[0] + done, first_total[0] + total)
+
+    first = _solve_phone_photo_with(image, attitude_prior=_upright_prior_takes, on_candidate=first_counts, **common)
+    horizon = obs_utc_iso is not None and observer_lat is not None and observer_lon is not None and catalog_stars is None
+    if first.status == "calibrated" or not horizon:
+        return first
+    return _solve_phone_photo_with(image, attitude_prior=_attitude_prior_takes, on_candidate=second_counts, **common)
+
+
+def _solve_phone_photo_with(
+    image: np.ndarray,
+    *,
+    attitude_prior: Callable[[np.ndarray], np.ndarray],
+    detections: list[SourceDetection] | None = None,
+    obs_utc_iso: str | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    camera_label: str | None = None,
+    fov_diagonal_deg: float | None = None,
+    catalog_stars: Sequence[CatalogStar] | None = None,
+    source_asset_id: str,
+    source_sha256: str,
+    frame_time_sec: float = 0.0,
+    solution_id: str = "sol-primary",
+    on_candidate: Callable[[int, int], None] | None = None,
+) -> ObservationSolution:
+    """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes."""
     require_source_sha256(source_sha256)
     if (observer_lat is None) != (observer_lon is None):
         raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
@@ -2072,6 +2163,7 @@ def solve_phone_photo(
                 dec_b[vis_idx],
                 fov_models,
                 on_candidate,
+                attitude_prior,
             )
 
     if initial_wcs is None and (sky_frame is None or catalog_stars is not None):
