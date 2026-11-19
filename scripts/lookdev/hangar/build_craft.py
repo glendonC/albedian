@@ -161,6 +161,15 @@ CHANGES = {
         "with NASA's baked shading moved to the occlusion slot, NASA's flat colours kept for the rest, the normals "
         "made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for photo texture and gold foil with a solar deck and black blanket (recipe "changes": "photo_deck")
+    "lod0_photo_deck": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and gold foil kept as the "
+        "base colour, with metalness, roughness and surface relief added from their own colours and shading, the "
+        "silver foil made metal foil and the black blanket black, the solar deck keeping its texture with one "
+        "roughness and no metalness, the normals made again, smooth within an angle and sharp beyond it, and the "
+        "textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

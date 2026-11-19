@@ -1352,6 +1352,49 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 3.0,
         "changes": "cassini",
     },
+    "ibex": {
+        "title": "IBEX",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-ibex",
+            "title": "Interstellar Boundary Explorer (IBEX), NASA 3D Resources",
+            "folder": "Interstellar Boundary Explorer (IBEX)",
+            "file": "Interstellar Boundary Explorer (IBEX).glb",
+            "bytes": 1_306_616,
+            "sha256": "6ce15c60467673f599c7085ed5152a07d0335628109741848ce64835e3786406",
+            "picture": "Interstellar Boundary Explorer (IBEX).png",
+            "picture_bytes": 627_844,
+            "picture_sha256": "04d8c93ff8d444d4085a2471f97f0c3a1bf44da6ad2f94543989b5aad51ca570",
+            "local": "ibex",
+        },
+        "drop_objects": [],
+        # The octagonal solar deck lies across +Z in the import frame, on top. NASA's file marks no front (IBEX spins
+        # with its deck to the Sun), so it is flown along +X with the deck up (a choice of view, not a sourced attitude).
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the solar deck, NASA's "shiny_panel" part, 0.9531 units across its flats, to NSSDC's 95 cm base
+        # (NASA's model is in metres).
+        "scale_from": {
+            "material": "shiny_panel",
+            "axis": "x",
+            "metres": 0.95,
+            "quoted_cm": 95,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+            "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across.",
+        },
+        "materials": {
+            "tex_01": {"role": "photo_atlas"},
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "black_krinkle": {"role": "pbr", "base": (0.03, 0.03, 0.03), "metallic": 0.0, "roughness": 0.6},
+            # The deck's cells under cover glass: NASA's texture kept, no metalness.
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "body_radius_m": 0.8,
+        "changes": "photo_deck",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1811,6 +1854,21 @@ HANGAR: list[dict] = [
             {"key": "power", "value": "885 W from RTGs (633 W at end of mission)", "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "Power: 885 watts (633 watts at end of mission) from radioisotope thermoelectric generators"},
             {"key": "saturnArrival", "value": "2004-07-01", "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "Saturn arrival date: June 30, 2004 PDT (July 1, 2004, UTC)"},
             {"key": "missionEnd", "value": "2017-09-15", "page": "https://science.nasa.gov/mission/cassini/about-the-mission/", "quote": "The mission ended on Sept. 15, 2017."},
+        ],
+    },
+    {
+        # IBEX orbits Earth, mapping the edge of the heliosphere from there: no speed between stars.
+        "id": "ibex",
+        "name": "IBEX",
+        "model": "ibex",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2008-10-19", "page": "https://science.nasa.gov/mission/ibex/", "quote": "Oct. 19, 2008 | 17:48 UT"},
+            {"key": "dryMassKg", "value": 80, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The dry mass is 80 kg of which the instrument payload comprises 26 kg."},
+            {"key": "launchMassKg", "value": 462, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "the entire flight system launch mass, including the ATK Star 27 solid rocket motor, is 462 kg"},
+            {"key": "baseAcrossCm", "value": 95, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."},
+            {"key": "baseHeightCm", "value": 58, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."},
+            {"key": "power", "value": "solar array, 116 W", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "Power is produced by a solar array with a 116 W capability, nominal power use is 66 W (16 W for the payload)."},
         ],
     },
 ]

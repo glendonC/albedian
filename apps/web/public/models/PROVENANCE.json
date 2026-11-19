@@ -538,7 +538,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "beeb7b25bd1768052293f879f6fc7c713c9c3aab875b50f83f114cacec2d97e9",
+      "sha256": "72b4ea8ecf91c9624b35506de4fb2c8aad4788e0e4c93a8679abe703bbabb0b2",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -608,6 +608,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.png (673364 bytes, SHA-256 2c400cfa23cf6602202db163dea3c26e5b601aecb0ea50fb7d3407a1cb21c4ea)."
+    },
+    {
+      "path": "hangar/ibex/ibex_lod0.glb",
+      "sha256": "42ee5e185bcd9afe726b873eea9380d400d0d8e85381302dda185d00e6dbf212",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ibex --out apps/web/public/models/hangar/ibex",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and gold foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, the silver foil made metal foil and the black blanket black, the solar deck keeping its texture with one roughness and no metalness, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.glb (1306616 bytes, SHA-256 6ce15c60467673f599c7085ed5152a07d0335628109741848ce64835e3786406); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ibex/ibex_lod1.glb",
+      "sha256": "fcc4c5cc92cce1d6ff1ca62592075bb774349c4ccaf9dc6f40d4cbad8c332b2a",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ibex --out apps/web/public/models/hangar/ibex",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.glb (1306616 bytes, SHA-256 6ce15c60467673f599c7085ed5152a07d0335628109741848ce64835e3786406); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ibex/ibex_lod2.glb",
+      "sha256": "a37fc3f3bee7d3b118dd5acd0a8b48b19be8b8942fca45b9023f636440aafeec",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ibex --out apps/web/public/models/hangar/ibex",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.glb (1306616 bytes, SHA-256 6ce15c60467673f599c7085ed5152a07d0335628109741848ce64835e3786406); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ibex/ibex_picker.webp",
+      "sha256": "eb602ebb9f4e7cbaf2ddd110547d7d7c4b6a9021eeaf9b888bc5395ca6d1e1f1",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ibex --out apps/web/public/models/hangar/ibex",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.png (627844 bytes, SHA-256 04d8c93ff8d444d4085a2471f97f0c3a1bf44da6ad2f94543989b5aad51ca570)."
     },
     {
       "path": "hangar/iss/iss_lod0.glb",

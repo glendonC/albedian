@@ -1590,6 +1590,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Cassini: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/ibex/Interstellar Boundary Explorer (IBEX).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.glb",
+      "bytes": 1306616,
+      "sha256": "6ce15c60467673f599c7085ed5152a07d0335628109741848ce64835e3786406",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, IBEX: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/ibex/Interstellar Boundary Explorer (IBEX).png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.png",
+      "bytes": 627844,
+      "sha256": "04d8c93ff8d444d4085a2471f97f0c3a1bf44da6ad2f94543989b5aad51ca570",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, IBEX: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

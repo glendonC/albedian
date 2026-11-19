@@ -1628,6 +1628,64 @@
         "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
         "quote": "the fixed 4-meter-diameter (13-foot) high-gain antenna"
       }
+    },
+    "ibex": {
+      "title": "IBEX",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "ibex/ibex_lod0.glb",
+          "bytes": 892964,
+          "triangles": 8976,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "ibex/ibex_lod1.glb",
+          "bytes": 725412,
+          "triangles": 4487,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "ibex/ibex_lod2.glb",
+          "bytes": 219044,
+          "triangles": 1600,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "ibex/ibex_picker.webp",
+          "bytes": 2582,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.56,
+          -0.557,
+          -0.589
+        ],
+        "max": [
+          0.56,
+          0.421,
+          0.589
+        ]
+      },
+      "bodyRadiusM": 0.8,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "shiny_panel",
+        "metres": 0.95,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+        "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across.",
+        "quotedCm": 95
+      }
     }
   },
   "entries": [
@@ -2722,6 +2780,50 @@
           "value": "2017-09-15",
           "page": "https://science.nasa.gov/mission/cassini/about-the-mission/",
           "quote": "The mission ended on Sept. 15, 2017."
+        }
+      ]
+    },
+    {
+      "id": "ibex",
+      "name": "IBEX",
+      "model": "ibex",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2008-10-19",
+          "page": "https://science.nasa.gov/mission/ibex/",
+          "quote": "Oct. 19, 2008 | 17:48 UT"
+        },
+        {
+          "key": "dryMassKg",
+          "value": 80,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+          "quote": "The dry mass is 80 kg of which the instrument payload comprises 26 kg."
+        },
+        {
+          "key": "launchMassKg",
+          "value": 462,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+          "quote": "the entire flight system launch mass, including the ATK Star 27 solid rocket motor, is 462 kg"
+        },
+        {
+          "key": "baseAcrossCm",
+          "value": 95,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+          "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."
+        },
+        {
+          "key": "baseHeightCm",
+          "value": 58,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+          "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."
+        },
+        {
+          "key": "power",
+          "value": "solar array, 116 W",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
+          "quote": "Power is produced by a solar array with a 116 W capability, nominal power use is 66 W (16 W for the payload)."
         }
       ]
     }
