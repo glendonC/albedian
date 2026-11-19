@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LOOK_ICON_PATHS } from '../../look/index.js';
+import { MOTION_TOKENS } from '@albedian/design-system';
 import { AskBar } from '../AskBar.js';
 
 // Asking on the laptop reveal (ask, approved 2026-11-12: "Ask out loud" alone, filling while it listens, the words as
@@ -126,7 +127,10 @@ describe('AskBar: Ask out loud and the keyboard button', () => {
 describe('AskBar: Back to Moment, there (fly, approved 2026-11-12)', () => {
   it('puts "Back to Moment" first as the screen\'s one main button, with its return arrow, and goes back once per press', () => {
     const onBack = vi.fn();
+    vi.useFakeTimers();
     show({ onBack });
+    act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 2));
+    vi.useRealTimers();
     const back = q('.ask-bar > button.look-main') as HTMLButtonElement;
     expect(back.textContent).toBe('Back to Moment');
     expect(back.querySelector('.look-main__circle path')!.getAttribute('d')).toBe(LOOK_ICON_PATHS['arrow-u-up-left']);
@@ -141,7 +145,10 @@ describe('AskBar: Back to Moment, there (fly, approved 2026-11-12)', () => {
 describe('AskBar: Fly on your own, there after arrival (D26 item 6, pilot-1f)', () => {
   it('puts the outlined "Fly on your own" right after Back to Moment, once per press, and not on the phone', () => {
     const onFlyOnYourOwn = vi.fn();
+    vi.useFakeTimers();
     show({ onBack: noop, onFlyOnYourOwn });
+    act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 2));
+    vi.useRealTimers();
     const fly = q('.ask-bar__fly') as HTMLButtonElement;
     expect(fly.textContent).toBe('Fly on your own');
     expect([...q('.ask-bar')!.children].map((c) => c.className.split(' ')[0])).toEqual(['look-main', 'look-second', 'look-second', 'look-icon']);
@@ -335,6 +342,102 @@ describe('Ask out loud arrives after the reveal\'s marks', () => {
     });
     expect(found).toEqual({
       animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both',
+    });
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Go there (A = 0)" steps 1 and 5): at Go there Ask out loud (with the keyboard
+// button) leaves in words out with the reveal's other words; on the laptop it comes back with Back to Moment once the
+// camera is still, after both halves; on the phone Back to Moment is alone there, so it does not come back. Under
+// reduced motion there is no camera travel and the same end state: it stays.
+describe('at Go there, Ask out loud leaves and comes back as the motion record says', () => {
+  const asks = () => [...container.querySelectorAll('.ask-bar__ask, .ask-bar__type')] as HTMLElement[];
+  it('leaves in words out, inert, then is gone until the camera rests, then comes back on the words-in time', () => {
+    vi.useFakeTimers();
+    try {
+      show();
+      expect(asks().map((el) => el.classList.contains('is-leaving'))).toEqual([false, false]);
+      show({ onBack: () => {} });
+      expect(asks().map((el) => el.classList.contains('is-leaving'))).toEqual([true, true]);
+      expect(asks().every((el) => el.hasAttribute('inert'))).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      expect(asks()).toHaveLength(2);
+      act(() => vi.advanceTimersByTime(1));
+      expect(asks()).toHaveLength(0);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 2 - MOTION_TOKENS.wordsOutMs - 1));
+      expect(asks()).toHaveLength(0);
+      act(() => vi.advanceTimersByTime(1));
+      expect(asks().map((el) => el.classList.contains('is-back'))).toEqual([true, true]);
+      expect(asks().some((el) => el.hasAttribute('inert'))).toBe(false);
+      show();
+      expect(asks().map((el) => el.className.includes('is-back') || el.className.includes('is-leaving'))).toEqual([false, false]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('takes the typing field with it and brings it back', () => {
+    vi.useFakeTimers();
+    try {
+      show();
+      act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
+      show({ onBack: () => {} });
+      expect(q('.ask-bar__field')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
+      expect(q('.ask-bar__field')).toBeNull();
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 2));
+      expect(q('.ask-bar__field')!.classList.contains('is-back')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves on the phone and does not come back there, Back to Moment alone', () => {
+    vi.useFakeTimers();
+    try {
+      show({ phone: true });
+      show({ phone: true, onBack: () => {} });
+      expect(q('.ask-bar__ask')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
+      expect(q('.ask-bar__ask')).toBeNull();
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 4));
+      expect(q('.ask-bar__ask')).toBeNull();
+      expect([...container.querySelectorAll('[data-testid="ask-bar"] button')].map((b) => b.textContent)).toEqual(['Back to Moment']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stays on the laptop under reduced motion, where the camera does not travel', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+    try {
+      show();
+      show({ onBack: () => {} });
+      expect(asks()).toHaveLength(2);
+      expect(asks().some((el) => el.classList.contains('is-leaving'))).toBe(false);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.dissolveMs));
+      expect(asks()).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('times both in motion.css: words out at once, words in with no delay of its own', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.ask-bar__ask.is-leaving, .ask-bar__type.is-leaving, .ask-bar__field.is-leaving']).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both',
+    });
+    expect(rules['.ask-bar__ask.is-back, .ask-bar__type.is-back, .ask-bar__field.is-back']).toEqual({
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both',
     });
   });
 });

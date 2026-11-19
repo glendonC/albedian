@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { resolveMotionTokens } from '@albedian/design-system';
+import { useLeaving, reducedMotion } from '../hooks/useLeaving.js';
 import { IconButton, LookIcon, MainAction, SecondAction } from '../look/index.js';
 import '../styles/motion.css';
 
@@ -68,6 +70,24 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
   const input = useRef<HTMLInputElement>(null);
   const listen = useRef(onListen);
   listen.current = onListen;
+  // There, after Go there (the motion record, "Go there" steps 1 and 5): the ask controls leave in words out with the
+  // reveal's other words; on the laptop they come back with Back to Moment once the camera is still, after both halves;
+  // on the phone Back to Moment is alone there. Reduced motion: the camera does not travel, so on the laptop they stay.
+  const there = onBack !== undefined;
+  const motion = resolveMotionTokens(reducedMotion());
+  const restMs = motion.cameraHalfMs * 2;
+  const [rested, setRested] = useState(false);
+  useEffect(() => {
+    if (!there || restMs === 0) {
+      setRested(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setRested(true), restMs);
+    return () => clearTimeout(timer);
+  }, [there, restMs]);
+  const asks = useLeaving(!there || (!phone && (restMs === 0 || rested)), motion.wordsOutMs);
+  const asksMotion = asks.leaving ? 'is-leaving' : there && rested ? 'is-back' : '';
+  const withAsks = (part: string) => (asksMotion ? `${part} ${asksMotion}` : part);
 
   useEffect(() => {
     if (typing) input.current?.focus();
@@ -105,8 +125,8 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
       {onBack && !phone && onFlyOnYourOwn && <SecondAction part="ask-bar__fly" label="Fly on your own" size="home" onClick={() => onFlyOnYourOwn()} />}
       {onBack && phone && onAutopilot && <SecondAction part="ask-bar__autopilot" label="Autopilot" size="phone" onClick={() => onAutopilot()} />}
       {/* There on the phone, Back to Moment alone (fly, approved, iPhone; #p-there .bar) */}
-      {phone && onBack ? null : typing ? (
-        <form className="ask-bar__field" onSubmit={send}>
+      {!asks.mounted ? null : typing ? (
+        <form className={withAsks('ask-bar__field')} onSubmit={send} inert={asks.leaving}>
           <input
             ref={input}
             type="text"
@@ -126,17 +146,19 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
       ) : canListen ? (
         <>
           <SecondAction
-            part={listening ? 'ask-bar__ask is-listening' : 'ask-bar__ask'}
+            part={withAsks(listening ? 'ask-bar__ask is-listening' : 'ask-bar__ask')}
+            inert={asks.leaving}
             label={listening && words && words.text ? heardLabel(words) : 'Ask out loud'}
             icon="microphone"
             size="home"
             onClick={() => onListen()}
           />
-          {!phone && <IconButton part="ask-bar__type" label="Type a question" icon="keyboard" size="home" onClick={() => setTyping(true)} />}
+          {!phone && <IconButton part={withAsks('ask-bar__type')} inert={asks.leaving} label="Type a question" icon="keyboard" size="home" onClick={() => setTyping(true)} />}
         </>
       ) : (
         <SecondAction
-          part="ask-bar__ask"
+          part={withAsks('ask-bar__ask')}
+          inert={asks.leaving}
           label="Type to ask"
           icon="keyboard"
           size="home"

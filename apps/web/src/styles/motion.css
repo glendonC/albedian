@@ -194,6 +194,21 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both;
 }
 
+/* At Go there, Ask out loud and the keyboard button (or the typing field) leave in words out at once, with the reveal's
+   other words; on the laptop they come back as Back to Moment arrives, once the camera is still (the bar holds them
+   away until then), so their words in has no delay of its own */
+.ask-bar__ask.is-leaving,
+.ask-bar__type.is-leaving,
+.ask-bar__field.is-leaving {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
+.ask-bar__ask.is-back,
+.ask-bar__type.is-back,
+.ask-bar__field.is-back {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
 /* The status line: each moment (your photo, Real sky, there, nothing matched) is its own element, so a view change
    brings the new line in at the words' delay, 120 ms after the old one went. While the reveal arrives it waits for the
    marks' span instead; there, it comes in between the flight's two halves, with the readout. */
