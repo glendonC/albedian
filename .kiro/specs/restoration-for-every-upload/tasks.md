@@ -128,7 +128,7 @@ pictures under `.cache/restore-review/<unit>/`.
     orientations read back.
   - _Requirements: REQ-RST-3.7, 7.5, 7.6, 7.7, 7.9, 7.10_
 
-- [ ] 6. restore-6: registration and the temporal step (REQ-RST-7.1 to 7.4, 7.8, REQ-RST-6.10, 6.11; P-RST-14, 22)
+- [x] 6. restore-6: registration and the temporal step (REQ-RST-7.1 to 7.4, 7.8, REQ-RST-6.10, 6.11; P-RST-14, 22)
   - New: `services/media/temporal.py`; tests under `tests/media/`. Needs the noise table of restore-3.
   - It also builds, as pure functions, what the gate needs for a clip [decided 2026-11-11: a real star too faint
     for one frame is in the original pixels of many frames, so showing it paints nothing]: the frames together
@@ -139,6 +139,10 @@ pictures under `.cache/restore-review/<unit>/`.
     on real data" with the measured reason.
   - Done when: a point drawn only into the neighbours never appears in a frame; a neighbour that disagrees gets
     a weight under one tenth; a frame whose neighbours fail registration equals its single-frame result.
+  - Done 2026-11-18 [tested: `tests/media/test_temporal.py`]: the merge adds a test of each neighbour's difference at
+    the scale of a point, since the pairwise weight alone let a point drawn into every neighbour show. Unsolved on
+    real data: on all three of the owner's clips more than half of the luma's fine detail is exactly zero, so the
+    noise is not measured and no merge runs, and a whole-frame shift misses the closure bound (restore-6 report).
   - _Requirements: REQ-RST-7.1 to 7.4, 7.8, 6.10, 6.11_
 
 - [ ] 7. restore-7: clips restored end to end (REQ-RST-7, REQ-RST-6.10, 6.11, REQ-RST-8.3, 8.9, REQ-RST-12.2;
