@@ -274,7 +274,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const deepSky = useDeepSkyTable(deepSkyWanted);
   const marks = revealMarks(marked, viewW, viewH, { phone, deepSky }).filter((mark) => !there || mark.picked);
   // The order the marks arrive in: brightest first (the motion record)
-  const arrival = markArrivalRanks(marks);
+  // A deep-sky mark is not a matched mark: it takes no place in their arrival and appears without movement (D23)
+  const arrivingMarks = marks.filter((mark) => mark.deepSky === null || mark.picked);
+  const arrival = markArrivalRanks(arrivingMarks);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
   const [arriving, setArriving] = useState(true);
@@ -352,7 +354,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {!bareFrame && !earthOnly && !(compareShown && compareZoomed) && (
-      <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>
+      <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg

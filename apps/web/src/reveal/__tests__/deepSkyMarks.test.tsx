@@ -387,3 +387,47 @@ describe('the deep-sky name rules', () => {
     expect(order.indexOf('.reveal-photo .reveal-mark.is-deepsky.is-left .reveal-mark__name')).toBeGreaterThan(order.indexOf('.reveal-photo.is-phone .reveal-mark.is-left .reveal-mark__name'));
   });
 });
+
+describe("the deep-sky marks and MOTION's arrival (D23: no movement where MOTION states none)", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  beforeEach(() => {
+    forgetDeepSkyTable();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(FILE))));
+  });
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("gives deep-sky marks no place in the matched marks' arrival, and counts only the others", async () => {
+    const session = sessionOf([matched('Alpha', 200, 200, 1), deep('NGC3532', 'Wishing Well Cluster', 400, 300), matched('Beta', 700, 400, 2)]);
+    await act(async () => {
+      root.render(createElement(RevealPhoto, { session, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h }));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const layer = container.querySelector('[data-testid="reveal-marks"]') as HTMLElement;
+    expect(layer.style.getPropertyValue('--mark-n')).toBe('2');
+    const rank = (id: string) => (container.querySelector(`[data-testid="reveal-mark-${id}"]`) as HTMLElement).style.getPropertyValue('--mark-i');
+    expect(rank('finding-alpha')).toBe('0');
+    expect(rank('finding-beta')).toBe('1');
+    expect(rank('finding-openngc-NGC3532')).toBe('');
+  });
+
+  it('draws them with no animation', () => {
+    const found: Record<string, string> = {};
+    postcss.parse(css).walkRules((rule) => {
+      if (rule.selector !== '.reveal-marks .reveal-mark.is-deepsky') return;
+      rule.walkDecls((decl) => {
+        found[decl.prop] = decl.value;
+      });
+    });
+    expect(found).toEqual({ animation: 'none' });
+  });
+});
