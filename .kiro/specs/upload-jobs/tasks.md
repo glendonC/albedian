@@ -42,6 +42,8 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - The solution read checked by contracts-1's parser, in its own unit after it, platform-4b [decided 2026-11-13]:
     a stored solution the contract refuses is never served (409 with one plain sentence); a start solves it again.
   - _Requirements: REQ-JOB-3.1 to 3.5, REQ-JOB-5.1 to 5.8, REQ-JOB-9_
+  - [x] platform-4c (2026-11-18): `newest_solution_id`, which design 3.1 names for the restoration's manifest and
+    platform-4 left out.
 
 - [x] 5. platform-5: the runner and its routes (REQ-JOB-1, 2, 3.6, 4, 7; P-JOB-1, 2, 4, 5, 7, 8)
   - `services/ingest/runner.py` (3.2); the solve kind registered (3.4); `wait=false` and the cancel route (3.6);

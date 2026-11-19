@@ -359,6 +359,27 @@ class JobStore:
         checked as `solution_of` reads it; when no solve has succeeded, today's `solution.json` as it is stored. So
         while a newer solve runs, the last good solution is the one served (REQ-JOB-6.5). None when there is none;
         Unreadable when the one to serve fails the contract."""
+        newest = self._newest_succeeded_solve(sha256)
+        if newest is None:
+            return self._solution_file(sha256, self.upload_folder(sha256) / "solution.json")
+        return self.solution_of(newest)
+
+    def newest_solution_id(self, sha256: str) -> Optional[str]:
+        """The solution id the restoration's export manifest names (restoration design section 12): that of the
+        upload's newest succeeded solve (a job of the runner's, or today's `job.json`), when its solution reads whole
+        and the contract takes it. None when no solve succeeded, or its solution is missing or refused: a manifest
+        never names a solution that cannot be served. Today's `solution.json` with no succeeded job names none. While
+        a newer solve runs, the last good one is named (REQ-JOB-6.5)."""
+        newest = self._newest_succeeded_solve(sha256)
+        if newest is None:
+            return None
+        try:
+            solution = self.solution_of(newest)
+        except (Unreadable, ValueError):
+            return None
+        return newest["solutionId"] if solution is not None else None
+
+    def _newest_succeeded_solve(self, sha256: str) -> Optional[dict[str, Any]]:
         succeeded = [r for r in self.jobs_of(sha256) if r["kind"] == "solve" and r["state"] == "succeeded"]
         try:
             legacy = self.legacy_solve_job(sha256)
@@ -367,9 +388,8 @@ class JobStore:
         if legacy is not None and legacy["state"] == "succeeded":
             succeeded.append(legacy)
         if not succeeded:
-            return self._solution_file(sha256, self.upload_folder(sha256) / "solution.json")
-        newest = max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
-        return self.solution_of(newest)
+            return None
+        return max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
 
     def solution_of(self, record: dict[str, Any]) -> Optional[dict[str, Any]]:
         """The solution a succeeded solve record names: `solutions/<job_id>.json` for a job of the runner's, today's

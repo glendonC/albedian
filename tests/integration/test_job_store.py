@@ -1916,3 +1916,58 @@ def test_a_solution_file_that_is_not_the_one_its_job_names_is_unreadable(tree: A
     (folder / f"{made['id']}.json").write_text(
         json.dumps({**_solution_for(SHAS[0]), "id": made["solutionId"]}), encoding="utf-8")
     assert jobs.read_solution(SHAS[0])["id"] == made["solutionId"]
+
+
+# ---- platform-4c: the solution id the restoration's export manifest names (design 3.1) ----
+
+
+def _succeeded_solve(jobs: JobStore, sha: str, n: int, created: str, *, with_solution: bool = True) -> dict[str, Any]:
+    made = {**record(sha, "solve", "succeeded", n), "createdAtUTC": created, "startedAtUTC": created,
+            "finishedAtUTC": created, "solutionId": f"sol_{sha[:16]}"}
+    jobs.write_record(made)
+    if with_solution:
+        folder = jobs.upload_folder(sha) / "solutions"
+        folder.mkdir(mode=0o700, exist_ok=True)
+        (folder / f"{made['id']}.json").write_text(
+            json.dumps({**_solution_for(sha), "id": f"sol_{sha[:16]}"}), encoding="utf-8")
+    return made
+
+
+def test_the_newest_solution_id_is_that_of_the_newest_succeeded_solve_whose_solution_reads(tree: Any) -> None:
+    _, _, jobs = tree
+    sha = SHAS[0]
+    assert jobs.newest_solution_id(sha) is None, "no solve"
+    jobs.write_record({**record(sha, "solve", "failed", 1), "createdAtUTC": "2020-01-01T05:00:00Z",
+                       "startedAtUTC": "2020-01-01T05:00:00Z", "finishedAtUTC": "2020-01-01T05:00:01Z"})
+    assert jobs.newest_solution_id(sha) is None, "a failed solve names no solution"
+    older = _succeeded_solve(jobs, sha, 2, "2020-01-01T05:00:02Z")
+    assert jobs.newest_solution_id(sha) == f"sol_{sha[:16]}"
+    newer = _succeeded_solve(jobs, sha, 3, "2020-01-01T05:00:03Z", with_solution=False)
+    assert jobs.newest_solution_id(sha) is None, "the newest succeeded solve's solution is missing: none is named"
+    (jobs.upload_folder(sha) / "solutions" / f"{newer['id']}.json").write_text("{}", encoding="utf-8")
+    assert jobs.newest_solution_id(sha) is None, "nor when the contract refuses it"
+    assert older["id"] != newer["id"]
+
+
+def test_a_solve_that_runs_does_not_hide_the_last_good_solution_id(tree: Any) -> None:
+    _, _, jobs = tree
+    sha = SHAS[0]
+    _succeeded_solve(jobs, sha, 1, "2020-01-01T05:00:00Z")
+    jobs.write_record({**record(sha, "solve", "running", 2), "createdAtUTC": "2020-01-01T05:00:05Z",
+                       "startedAtUTC": "2020-01-01T05:00:05Z"})
+    assert jobs.newest_solution_id(sha) == f"sol_{sha[:16]}"
+
+
+def test_todays_succeeded_job_names_its_solution_and_a_solution_with_no_job_names_none(tree: Any) -> None:
+    _, _, jobs = tree
+    sha = SHAS[0]
+    folder = jobs.upload_folder(sha)
+    (folder / "solution.json").write_text(json.dumps({**_solution_for(sha), "id": f"sol_{sha[:16]}"}), encoding="utf-8")
+    assert jobs.newest_solution_id(sha) is None, "today's solution.json alone is not a succeeded solve"
+    succeeded = {**_legacy_job(sha), "createdAtUTC": "2020-01-01T05:00:00Z", "state": "succeeded",
+                 "startedAtUTC": "2020-01-01T05:00:01Z", "finishedAtUTC": "2020-01-01T05:00:02Z",
+                 "solutionId": f"sol_{sha[:16]}"}
+    (folder / "job.json").write_text(json.dumps(succeeded), encoding="utf-8")
+    assert jobs.newest_solution_id(sha) == f"sol_{sha[:16]}"
+    assert jobs.newest_solution_id(SHAS[1]) is None, "an upload never stored names none, and nothing is made"
+    assert not jobs.upload_folder(SHAS[1]).exists()

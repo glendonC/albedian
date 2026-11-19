@@ -188,6 +188,11 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   takes the same constant), and a start whose job succeeded runs the solve again when its solution is refused
   [decided 2026-11-13, lead's answer to platform-4b].
 
+- As built in platform-4c [tested]: `JobStore.newest_solution_id(sha256)` gives the solution id of the newest
+  succeeded solve (a job of the runner's or today's `job.json`) when its solution reads whole and the contract
+  takes it, else None; today's `solution.json` with no succeeded job names none, and a solve that runs does not
+  hide the last good one. The restoration's export manifest reads it (restoration design section 12).
+
 ### 3.2 The runner (`services/ingest/runner.py`, new)
 - `JobKind` (a frozen dataclass), all the runner knows of a kind:
   - `name` and `group` (`solve`; `media` for `display_copy` and `restoration`);
