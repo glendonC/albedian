@@ -316,19 +316,36 @@ describe('the viewport shows the approved reveal over the photo, above phone wid
     expect(container.querySelectorAll('.look-logo')).toHaveLength(1);
   });
 
-  it('keeps the old sheets on a phone, whose approved reveal is its own unit', () => {
+  it('draws the phone reveal over a matched photo on a phone: the photo covering its slot, the phone marks and counts, the close circle and the views (iPhone 1)', () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
       matches: query.includes('max-width: 720px'),
       addEventListener: () => {},
       removeEventListener: () => {},
     });
     open(storedPhoto());
+    expect(q(REVEAL)!.className).toBe('reveal-photo is-phone');
+    expect(q(PANEL)).toBeNull();
+    expect(q(OLD_MARKS)).toBeNull();
+    expect(q(LABEL)).toBeNull();
+    // Its ends fade inside the slot (no side fade), and nothing of it shows beyond the slot
+    expect(mask()).toContain('linear-gradient(to bottom');
+    expect(mask()).not.toContain('to right');
+    const top = q('.reveal-phone-top')!;
+    expect(top.querySelector('button[aria-label="Close"]')).not.toBeNull();
+    expect([...top.querySelectorAll('[role="group"] button')].map((b) => b.textContent)).toEqual(['Your photo', 'Real sky', '3D']);
+    // No sound control on the iPhone's web view, and no header strip; Ask out loud compact, not the old bar
+    expect(q('.reveal-nav')).toBeNull();
+    expect(q('.alb-lusion-header')).toBeNull();
+    expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar is-phone');
+    expect(q('[data-testid="voice-command-hud"]')).toBeNull();
+  });
+
+  it('keeps the old sheets on a phone over a photo no star was matched in, until the phone no-match unit', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    const base = storedPhoto();
+    open({ ...base, observationSolution: { ...base.observationSolution!, quality: { ...base.observationSolution!.quality!, passedIndependentVerification: false } } } as ObservationSession);
     expect(q(REVEAL)).toBeNull();
-    expect(q(PANEL)).not.toBeNull();
-    expect(q(OLD_MARKS)).not.toBeNull();
-    expect(q(LABEL)).not.toBeNull();
-    expect(mask()).toBe('');
-    expect(q('.alb-lusion-brand-btn')).not.toBeNull();
+    expect(q('.reveal-phone-top')).toBeNull();
   });
 
   it('is not shown in the sky and 3D views, which keep their own pieces until their units', () => {
@@ -796,11 +813,21 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(q('.reveal-nav .sound-control')).not.toBeNull();
   });
 
-  it('shows no view pills on a phone', () => {
+  it('puts the views in the phone\'s top row, not the laptop\'s, and closes to the home', () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
     open(storedPhoto());
     expect(q('.reveal-nav')).toBeNull();
-    expect(q('[role="group"][aria-label="View"]')).toBeNull();
+    expect(q('.reveal-phone-top [role="group"][aria-label="View"]')).not.toBeNull();
+    act(() => (q('.reveal-phone-top button[aria-label="Close"]') as HTMLButtonElement).click());
+    expect(q('[data-testid="home-screen"]')).not.toBeNull();
+  });
+
+  it('shows the old card for a picked star on a phone, until the phone card unit', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    const picked = pickedSession();
+    open(picked, { selectedFinding: picked.observationSolution!.findings.find((f) => f.id === picked.selectedFindingId) });
+    expect(q('[data-testid="star-card"]')).toBeNull();
+    expect(q('[data-testid="celestial-target-card"]')).not.toBeNull();
   });
 
   it('gives the ask bar the listening state, the words heard and the browser\'s ability, and sends typed words as text', () => {
@@ -830,11 +857,11 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(onRunUtterance).toHaveBeenCalledWith('Is that a plane?', 'text');
   });
 
-  it('keeps the old bar on a phone, and no ask bar', () => {
+  it("asks from the phone's own ask bar over the phone's reveal, not the old bar", () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
     open(storedPhoto());
-    expect(q('[data-testid="ask-bar"]')).toBeNull();
-    expect(q('[data-testid="voice-command-hud"]')).not.toBeNull();
+    expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar is-phone');
+    expect(q('[data-testid="voice-command-hud"]')).toBeNull();
   });
 
   it('runs Go there as the words "Take me to" the star, once per press, and clears the picked star on Close', () => {

@@ -30,6 +30,8 @@ export interface SourcePhotoStageProps {
   underSky?: boolean;
   /** Told the clip's element as it mounts and unmounts, for the clip's player (INTERIM: UIUX-clip-QUESTION.md). */
   onVideo?: (video: HTMLVideoElement | null) => void;
+  /** At phone width, the mask that fades the photo's slot top and bottom and hides it beyond (reveal, approved, iPhone 1). */
+  endsMask?: string;
 }
 
 /**
@@ -55,6 +57,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   fadeSides = false,
   underSky = false,
   onVideo,
+  endsMask,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -115,6 +118,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     imageOrientation: 'from-image',
     ...(dimmed ? { opacity: 0.55 } : {}),
     ...(fadeSides ? { maskImage: SIDE_FADE, WebkitMaskImage: SIDE_FADE } : {}),
+    ...(endsMask ? { maskImage: endsMask, WebkitMaskImage: endsMask } : {}),
   };
   const failed = failedUri === asset.uri;
   const kind = asset.mediaKind === 'video' ? 'clip' : 'photo';

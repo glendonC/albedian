@@ -25,11 +25,13 @@ export interface ShownAnswer {
   answer: VoiceAnswer | null;
 }
 
-export const AnswerPanel: React.FC<{ shown: ShownAnswer; solution: ObservationSolution | undefined; onClose: () => void }> = ({
-  shown,
-  solution,
-  onClose,
-}) => {
+export const AnswerPanel: React.FC<{
+  shown: ShownAnswer;
+  solution: ObservationSolution | undefined;
+  onClose: () => void;
+  /** At phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer). */
+  phone?: boolean;
+}> = ({ shown, solution, onClose, phone = false }) => {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
@@ -44,7 +46,7 @@ export const AnswerPanel: React.FC<{ shown: ShownAnswer; solution: ObservationSo
 
   const { heard, sentence, answer } = shown;
   return (
-    <section className="reveal-answer" data-testid="reveal-answer" aria-live="polite">
+    <section className={phone ? 'reveal-answer is-phone' : 'reveal-answer'} data-testid="reveal-answer" aria-live="polite">
       {heard !== '' && <p className="reveal-answer__q">{heard}</p>}
       <p className="reveal-answer__s">{sentence}</p>
       {answer?.status === 'answered' && (

@@ -47,6 +47,8 @@ export interface RevealPhotoProps {
   flight?: FlightReadout | null;
   /** Whether the frame's corners are drawn: a clip filling the width has none (INTERIM: UIUX-clip-QUESTION.md). */
   corners?: boolean;
+  /** At phone width (reveal, approved, iPhone 1): smaller marks, the counts under the photo, no logo, status or corners. */
+  phone?: boolean;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
 }
@@ -61,13 +63,19 @@ const MARK_CLASS: Readonly<Record<RevealMark['kind'], string>> = {
  * picked look is a star's (the reveal record); a predicted object keeps its dashed ring when picked, so the mark never
  * stops saying it is predicted (the auditor's verdict on unit-1d; its picked look is the design lane's to give).
  */
-const MarkGlyph: React.FC<{ mark: RevealMark }> = ({ mark }) => (
+const MarkGlyph: React.FC<{ mark: RevealMark; phone?: boolean }> = ({ mark, phone = false }) => (
   <svg className="reveal-mark__glyph" viewBox="-24 -24 48 48" aria-hidden="true" focusable="false">
     {mark.picked && mark.kind === 'catalog' ? (
       <>
         <circle className="reveal-mark__halo" r="22" />
         <circle r="10" />
         <path d="M0 -18V-13M0 13V18M-18 0H-13M13 0H18" />
+      </>
+    ) : mark.kind === 'catalog' && phone ? (
+      // At phone width the ring is 4.5 with its ticks from 7.5 to 9 (reveal, approved, iPhone 1; #rbp-photo)
+      <>
+        <circle r="4.5" />
+        <path d="M0 -9V-7.5M0 7.5V9M-9 0H-7.5M7.5 0H9" />
       </>
     ) : mark.kind === 'catalog' ? (
       <>
@@ -108,6 +116,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   realSky = false,
   flight = null,
   corners = true,
+  phone = false,
   viewportWidthPx,
   viewportHeightPx,
 }) => {
@@ -122,7 +131,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const framed: ObservationSession = skyShown ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
   const frame = sessionPhotoRect(framed, viewW, viewH);
   // There, the frame's corners leave with the photo (fly, approved)
-  const rect = bareFrame || there || !corners ? null : frame;
+  // At phone width no corners are drawn (reveal, approved, iPhone 1)
+  const rect = bareFrame || there || !corners || phone ? null : frame;
   // The layer stays a moment after leaving the sky, so it fades out as it faded in
   const [skyMounted, setSkyMounted] = useState(skyShown);
   useEffect(() => {
@@ -143,16 +153,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const marked = lit === undefined ? framed : { ...framed, selectedFindingId: lit };
   const picked = session.observationSolution?.findings.find((finding) => finding.id === marked.selectedFindingId) ?? null;
   // There, only the picked star's mark stays (fly, approved)
-  const marks = revealMarks(marked, viewW, viewH).filter((mark) => !there || mark.picked);
+  const marks = revealMarks(marked, viewW, viewH, { phone }).filter((mark) => !there || mark.picked);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
 
   return (
-    <div className="reveal-photo" data-testid="reveal-photo" data-hud-interactive="true">
+    <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true">
       {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} />}
       {rect && <PhotoCorners rect={rect} />}
 
-      {!bareFrame && picked && marks.some((mark) => mark.picked) && (
+      {!phone && !bareFrame && picked && marks.some((mark) => mark.picked) && (
         <svg className={marks.find((mark) => mark.picked)!.kind === 'predicted' ? 'reveal-leader is-predicted' : 'reveal-leader'} data-testid="reveal-leader" aria-hidden="true" focusable="false">
           <path d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
         </svg>
@@ -189,18 +199,20 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px` }}
             onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
           >
-            <MarkGlyph mark={mark} />
+            <MarkGlyph mark={mark} phone={phone} />
             {mark.name !== null && <span className="reveal-mark__name">{mark.name}</span>}
           </button>
         ))}
       </div>
       )}
 
+      {!phone && (
       <button type="button" className="reveal-word" data-testid="reveal-home" onClick={onHome}>
         <Logo sizePx={21} />
       </button>
+      )}
 
-      {there && skyOnScreen ? (
+      {phone ? null : there && skyOnScreen ? (
         <div className="reveal-status" data-testid="reveal-status" role="status">
           <EvidenceTag evidenceClass="simulated" />
           <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
@@ -249,7 +261,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       </div>
       )}
 
-      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} />}
+      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
 
       {!answer && flight && (
         <section className="flight-readout" data-testid="flight-readout" aria-label={flight.name}>
@@ -276,7 +288,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </section>
       )}
 
-      {!answer && !there && picked && (
+      {!phone && !answer && !there && picked && (
         <StarCard
           key={picked.id}
           finding={picked}
@@ -287,7 +299,32 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {!there && counts.length > 0 && (
+      {phone && !answer && counts.length > 0 && (
+        // Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs;
+        // an answer takes their place (ask, approved, iPhone; #p-answer)
+        <div className="reveal-phone-counts" data-testid="reveal-legend">
+          {counts
+            .filter((row) => row.evidenceClass === 'catalog_matched')
+            .map((row) => (
+              <p key={row.evidenceClass} className="reveal-phone-counts__big">
+                <b>{row.text}</b>
+                <EvidenceTag evidenceClass={row.evidenceClass} />
+              </p>
+            ))}
+          <p className="reveal-phone-counts__more">
+            {counts
+              .filter((row) => row.evidenceClass !== 'catalog_matched')
+              .map((row) => (
+                <span key={row.evidenceClass} className="reveal-phone-counts__item">
+                  <b>{row.text}</b>
+                  <EvidenceTag evidenceClass={row.evidenceClass} />
+                </span>
+              ))}
+          </p>
+        </div>
+      )}
+
+      {!phone && !there && counts.length > 0 && (
         <div className="reveal-legend" data-testid="reveal-legend">
           {/* A clip names its kind, as "your clip" does (INTERIM: UIUX-clip-QUESTION.md, a new word for the owner) */}
           <p className="reveal-legend__title">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</p>

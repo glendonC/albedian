@@ -438,7 +438,8 @@ describe('asking about the photo on the laptop reveal', () => {
   });
 
   it('keeps a refusal given where the reveal is not shown from showing when the reveal comes back', async () => {
-    // A phone's window first, where the old bar asks; then a laptop's
+    // A phone's window over a photo with no match, where the old bar asks until the phone's no-match unit; then a
+    // laptop's, where the no-match reveal shows
     let phone = true;
     const listeners: Array<() => void> = [];
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
@@ -448,8 +449,9 @@ describe('asking about the photo on the laptop reveal', () => {
       addEventListener: (_: string, listener: () => void) => listeners.push(listener),
       removeEventListener: () => {},
     });
+    const unmatched = { ...samples['plate_too_few_sources']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
     try {
-      await openAppAt(`/?upload=${sha256}`);
+      await openAppAt(`/?upload=${sha256}`, { solution: () => json(unmatched) });
       await waitUntil(() => expect(q('[data-testid="voice-command-hud"]')).not.toBeNull());
       await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
       const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
@@ -461,9 +463,30 @@ describe('asking about the photo on the laptop reveal', () => {
       await settle();
       phone = false;
       await act(async () => listeners.forEach((listener) => listener()));
-      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await waitUntil(() => expect(q('[data-testid="ask-bar"]')).not.toBeNull());
       await settle();
+      expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
       expect(q(ANSWER)).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
+  it("shows answers over the phone's reveal too, under the photo in the counts' place, from the compact Ask out loud", async () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query.includes('max-width: 720px'),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('.reveal-phone-counts')).not.toBeNull());
+      expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar is-phone');
+      await typeAndSend('How far away is Rigel?');
+      await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+      expect(asked).toEqual([{ question: 'How far away is Rigel?' }]);
+      expect(q(ANSWER)!.className).toBe('reveal-answer is-phone');
+      expect(q('.reveal-phone-counts')).toBeNull();
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }

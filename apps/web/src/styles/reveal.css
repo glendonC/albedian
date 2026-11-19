@@ -1135,3 +1135,100 @@
   inset: 0;
   pointer-events: none;
 }
+
+/* The reveal at phone width (reveal, approved 2026-11-12, iPhone 1; #rbp-photo in .cache/uiux/reveal-b01/screen/) */
+.reveal-phone-top {
+  position: fixed;
+  left: 20px;
+  right: 20px;
+  top: 60px;
+  height: 44px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reveal-phone-top .look-views__item {
+  padding: 0 14px;
+}
+
+.reveal-photo.is-phone .reveal-mark__name {
+  left: calc(50% + 16px);
+  font-size: 11px;
+}
+
+.reveal-photo.is-phone .reveal-mark.is-left .reveal-mark__name {
+  left: auto;
+  right: calc(50% + 16px);
+}
+
+.reveal-phone-counts__big {
+  position: absolute;
+  left: 24px;
+  top: 660px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.reveal-phone-counts__big b {
+  font: 300 40px / 1 var(--look-font-sans);
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reveal-phone-counts__more {
+  position: absolute;
+  left: 24px;
+  top: 714px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font: 400 15px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reveal-phone-counts__item b {
+  font-weight: 400;
+  margin-right: 8px;
+}
+
+/* The answer at phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer) */
+.reveal-answer.is-phone {
+  left: 24px;
+  right: 24px;
+  top: 650px;
+  width: auto;
+}
+.reveal-answer.is-phone .reveal-answer__q {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.reveal-answer.is-phone .reveal-answer__s {
+  font: 300 22px / 1.15 var(--look-font-sans);
+  letter-spacing: -0.03em;
+}
+.reveal-answer.is-phone .reveal-answer__st {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 0;
+  border-top: 0;
+}
+.reveal-answer.is-phone .reveal-answer__v {
+  font-size: 12px;
+}
+
+/* Ask out loud at phone width: alone, at the phone's size, centred at 772 (#p-answer .go) */
+.ask-bar.is-phone {
+  top: 772px;
+  bottom: auto;
+}
+.ask-bar.is-phone .look-second {
+  --look-h: var(--look-h-phone);
+  --look-fs: var(--look-fs-phone);
+}

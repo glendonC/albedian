@@ -242,3 +242,18 @@ describe("the ask bar's rules are the approved pages'", () => {
     expect(declarationsOf('.ask-bar__send')).toMatchObject({ width: '40px', height: '40px', 'border-radius': '50%', background: 'var(--look-ink)', color: 'var(--look-night)', display: 'grid', 'place-items': 'center' });
   });
 });
+
+describe('AskBar at phone width (ask, approved 2026-11-12, iPhone; #p-answer)', () => {
+  it('shows Ask out loud alone, with no keyboard button', () => {
+    show({ phone: true });
+    expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar is-phone');
+    expect(q('.ask-bar__ask')!.textContent).toContain('Ask out loud');
+    expect(q('.ask-bar__type')).toBeNull();
+  });
+
+  it('keeps the keyboard button on the laptop', () => {
+    show();
+    expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar');
+    expect(q('.ask-bar__type')).not.toBeNull();
+  });
+});

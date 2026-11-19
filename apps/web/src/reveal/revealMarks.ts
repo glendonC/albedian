@@ -53,11 +53,21 @@ interface Box {
 }
 const overlap = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 
+/** The type size and gap of a name, and the faintest star named, on the laptop and at phone width. */
+interface NameSpec {
+  size: number;
+  gap: number;
+  limit: number;
+}
+const LAPTOP_NAMES: NameSpec = { size: 13, gap: NAME_GAP_PX, limit: NAME_MAGNITUDE_LIMIT };
+/** At phone width (reveal, approved, iPhone 1; #rbp-photo): names at 11 px, 16 px from the mark, only brighter than magnitude 2 (the design lane's phone pages, limitMag 2.0). */
+const PHONE_NAMES: NameSpec = { size: 11, gap: 16, limit: 2 };
+
 /** The box a name takes beside its mark, on the right or the left: from 0.8 of its size above the centre to 0.5 below. */
-function nameBox(xPx: number, yPx: number, name: string, picked: boolean, left: boolean): Box {
-  const size = picked ? 15 : 13;
+function nameBox(xPx: number, yPx: number, name: string, picked: boolean, left: boolean, spec: NameSpec = LAPTOP_NAMES): Box {
+  const size = picked ? 15 : spec.size;
   const width = name.length * size * NAME_EM_PER_CHAR;
-  const start = left ? xPx - (picked ? PICKED_NAME_GAP_PX : NAME_GAP_PX) : xPx + (picked ? PICKED_NAME_GAP_PX : NAME_GAP_PX);
+  const start = left ? xPx - (picked ? PICKED_NAME_GAP_PX : spec.gap) : xPx + (picked ? PICKED_NAME_GAP_PX : spec.gap);
   return {
     x0: (left ? start - width : start) - NAME_MARGIN_PX,
     x1: (left ? start : start + width) + NAME_MARGIN_PX,
@@ -110,7 +120,13 @@ function throughSolve(
   return { xPx: shown.xPx, yPx: shown.yPx, xPct: (shown.xPx / viewportWidthPx) * 100, yPct: (shown.yPx / viewportHeightPx) * 100, visible: true };
 }
 
-export function revealMarks(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number): RevealMark[] {
+export function revealMarks(
+  session: ObservationSession,
+  viewportWidthPx: number,
+  viewportHeightPx: number,
+  { phone = false }: { phone?: boolean } = {}
+): RevealMark[] {
+  const spec = phone ? PHONE_NAMES : LAPTOP_NAMES;
   const solution = session.observationSolution;
   const rect = sessionPhotoRect(session, viewportWidthPx, viewportHeightPx);
   if (!solution || !rect) return [];
@@ -151,17 +167,17 @@ export function revealMarks(session: ObservationSession, viewportWidthPx: number
     const wanted =
       (picked && (kind !== 'catalog' || namedStar(finding))) ||
       (kind === 'catalog'
-        ? namedStar(finding) && magnitude !== undefined && magnitude < NAME_MAGNITUDE_LIMIT
+        ? namedStar(finding) && magnitude !== undefined && magnitude < spec.limit
         : predictedNamed.has(finding.id));
     let name: string | null = wanted ? finding.title : null;
     let nameOnLeft = false;
     if (name !== null) {
       const runsInto = (box: Box) => rooms.some((room) => room.id !== finding.id && overlap(box, room.box));
       // To the right, unless that crosses the photo's right edge
-      nameOnLeft = nameBox(position.xPx, position.yPx, name, picked, false).x1 - NAME_MARGIN_PX > right;
+      nameOnLeft = nameBox(position.xPx, position.yPx, name, picked, false, spec).x1 - NAME_MARGIN_PX > right;
       // The picked star keeps its name where its place gives it; any other name gives way to a mark
-      if (!picked && runsInto(nameBox(position.xPx, position.yPx, name, false, nameOnLeft))) {
-        const other = nameBox(position.xPx, position.yPx, name, false, !nameOnLeft);
+      if (!picked && runsInto(nameBox(position.xPx, position.yPx, name, false, nameOnLeft, spec))) {
+        const other = nameBox(position.xPx, position.yPx, name, false, !nameOnLeft, spec);
         if (runsInto(other) || other.x1 > right || other.x0 < left) name = null;
         else nameOnLeft = !nameOnLeft;
       }

@@ -17,6 +17,8 @@ export interface AskBarProps {
   onSend: (text: string) => void;
   /** There, after Go there: "Back to Moment", the screen's one main button, before Ask out loud (fly, approved 2026-11-12). */
   onBack?: () => void;
+  /** At phone width (ask, approved 2026-11-12, iPhone; #p-answer): Ask out loud alone at the phone's size, under the counts. */
+  phone?: boolean;
 }
 
 /** Whether a key belongs to a field, a button or editable text rather than to the bar's keys. */
@@ -50,7 +52,7 @@ function heardLabel(words: HeardWords): React.ReactNode {
  * as they are heard. The keyboard button or "/" turns the ask button into the field in place; Enter or the arrow
  * sends, Esc closes. Nothing on screen names Space or "/".
  */
-export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack }) => {
+export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack, phone = false }) => {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -88,7 +90,7 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
   };
 
   return (
-    <div className="ask-bar" data-hud-interactive="true" data-testid="ask-bar">
+    <div className={phone ? 'ask-bar is-phone' : 'ask-bar'} data-hud-interactive="true" data-testid="ask-bar">
       {onBack && <MainAction label="Back to Moment" icon="arrow-u-up-left" size="home" onClick={() => onBack()} />}
       {typing ? (
         <form className="ask-bar__field" onSubmit={send}>
@@ -117,7 +119,7 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
             size="home"
             onClick={() => onListen()}
           />
-          <IconButton part="ask-bar__type" label="Type a question" icon="keyboard" size="home" onClick={() => setTyping(true)} />
+          {!phone && <IconButton part="ask-bar__type" label="Type a question" icon="keyboard" size="home" onClick={() => setTyping(true)} />}
         </>
       ) : (
         <SecondAction

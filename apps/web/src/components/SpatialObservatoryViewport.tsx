@@ -8,7 +8,7 @@ import {
 } from '../services/apiClient.js';
 import { hasVerifiedWcs, type RenderLayerSet } from '@albedian/contracts';
 import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
-import { ViewPills } from '../look/index.js';
+import { IconButton, ViewPills } from '../look/index.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
 import {
   SparkPortalRenderer,
@@ -52,6 +52,8 @@ import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import { ClipPlayer } from '../reveal/ClipPlayer.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
+import { isPhoneRevealShown, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
+import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
@@ -185,7 +187,11 @@ export const SpatialObservatoryViewport: React.FC<
   // There, after Go there (fly, approved 2026-11-12): the same panorama in the photo's place, the readout in the card's
   const flightShown = !phone && isFlightShown(session);
   const skyOver = realSkyShown || flightShown;
-  const revealShown = !phone && (isSourcePhotoShown(session) || skyOver);
+  // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
+  // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
+  // pieces until their own units
+  const phoneReveal = phone && isPhoneRevealShown(session);
+  const revealShown = (!phone && (isSourcePhotoShown(session) || skyOver)) || phoneReveal;
   // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
   // only while that card is open
   const [originalPixels, setOriginalPixels] = useState(false);
@@ -546,7 +552,7 @@ export const SpatialObservatoryViewport: React.FC<
   // A clip's player over the reveal (INTERIM: UIUX-clip-QUESTION.md): the clip's own element, and where it stops sets the
   // session's clock through the reducer, so what the reveal draws follows the frame on screen
   const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
-  const clipShown = revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
+  const clipShown = !phone && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
   const seekClip = (sec: number) =>
     setSession((cur) =>
       dispatchAlbedianAction(cur, { type: 'media.seek', requestId: `ui-clip-seek-${cur.viewRevision}`, expectedViewRevision: cur.viewRevision, sourceTimeSec: sec, preserveAudioSync: true })
@@ -575,6 +581,20 @@ export const SpatialObservatoryViewport: React.FC<
   const clipShaded = clipShown && session.sourceAsset !== undefined && (() => {
     const shown = orientedSize(session.sourceAsset!.width, session.sourceAsset!.height, session.sourceAsset!.displayOrientation);
     return shown.widthPx / Math.max(1, shown.heightPx) > CLIP_COLUMN_PX / Math.max(1, windowSize.heightPx);
+  })();
+
+  // At phone width the photo covers its slot: written as the crop the stage and every mark read, its ends faded
+  const slotted: ObservationSession = (() => {
+    const asset = session.sourceAsset;
+    if (!phoneReveal || !asset) return session;
+    const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
+    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx) } } as ObservationSession;
+  })();
+  const slotMask = (() => {
+    const asset = session.sourceAsset;
+    if (!phoneReveal || !asset) return undefined;
+    const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
+    return phoneEndsMask(sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, slotted.cropTransform));
   })();
 
   // Back to Moment (fly, approved 2026-11-12): the saved CameraCheckpoint, restored exactly by the reducer
@@ -663,10 +683,19 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && !arrival && (
         <>
-          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown && !originalPixels} underSky={skyOver} onVideo={setClipVideo} />
+          <SourcePhotoStage
+            session={slotted}
+            onFrameMismatch={setPhotoFrameMismatch}
+            bare={revealShown}
+            fadeSides={revealShown && !phoneReveal && !originalPixels}
+            endsMask={slotMask}
+            underSky={skyOver}
+            onVideo={setClipVideo}
+          />
           {revealShown && (
             <RevealPhoto
-              session={clipShown && clipPlaying ? { ...session, isPlaying: true } : session}
+              session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
+              phone={phoneReveal}
               onSelectFinding={onSelectFinding}
               onHome={() => setEntryStageActive(true)}
               frameMismatch={photoFrameMismatch}
@@ -692,7 +721,7 @@ export const SpatialObservatoryViewport: React.FC<
               onSelectFinding={onSelectFinding}
             />
           )}
-          {!revealShown && (
+          {(!revealShown || phoneReveal) && (
           <CelestialTargetCard
             session={session}
             selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
@@ -720,8 +749,8 @@ export const SpatialObservatoryViewport: React.FC<
             setSession={setSession}
           />
           )}
-          {/* Over the laptop reveal, the approved Ask out loud button and the keyboard button take the old bar's place
-              (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
+          {/* Over the reveal, the approved Ask out loud button (with the keyboard button on the laptop) takes the old
+              bar's place (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
           {revealShown ? (
             <AskBar
               canListen={canListen}
@@ -730,6 +759,7 @@ export const SpatialObservatoryViewport: React.FC<
               onListen={onPushToTalk}
               onSend={(text) => onRunUtterance(text, 'text')}
               onBack={flightShown ? backToMoment : undefined}
+              phone={phoneReveal}
             />
           ) : (
           <VoiceCommandHud
@@ -749,7 +779,8 @@ export const SpatialObservatoryViewport: React.FC<
       {/* =======================================================================
           TOP BAR: Brand Wordmark + 03-B Mark on Left, Audio Control on Right (past the home only)
           ======================================================================= */}
-      {!entryStageActive && !arrival && (
+      {/* No header strip over the phone's reveal: the iPhone's web view has no sound control (sound, approved) */}
+      {!entryStageActive && !arrival && !phoneReveal && (
         <header
           className="alb-lusion-header alb-visor-topright"
           data-hud-interactive="true"
@@ -855,6 +886,24 @@ export const SpatialObservatoryViewport: React.FC<
       )}
       {clipShown && session.sourceAsset && (
         <ClipPlayer video={clipVideo} durationSec={session.sourceAsset.durationMs / 1000} onSeek={seekClip} />
+      )}
+
+      {/* The phone reveal's top row (reveal, approved, iPhone 1): a 44 pt close circle, home as the laptop's logo, and the views */}
+      {phoneReveal && !entryStageActive && !arrival && (
+        <div className="reveal-phone-top" data-hud-interactive="true">
+          <IconButton label="Close" icon="x" size="phone" onClick={() => setEntryStageActive(true)} />
+          <ViewPills
+            label="View"
+            size="phone"
+            views={[
+              { id: 'photo', label: 'Your photo' },
+              { id: 'sky', label: 'Real sky', disabled: !realSkyOpens },
+              { id: '3d', label: '3D', disabled: !threeDOpens },
+            ]}
+            current="photo"
+            onSelect={handleView}
+          />
+        </div>
       )}
 
       {/* Keyboard help on "?" (INTERIM: UIUX-keys-QUESTION.md), on the laptop after the home; the 3D view's keys are
