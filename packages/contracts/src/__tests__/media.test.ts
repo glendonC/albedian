@@ -194,6 +194,22 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     expect(new Set(names).size).toBe(names.length);
   });
 
+  it("records restore-6's three constants by their own steps (restore-6c)", () => {
+    const rows: [string, 'register' | 'temporal_merge', number][] = [
+      ['crossPowerExponent', 'register', 0.5],
+      ['disagreementZ', 'temporal_merge', 3],
+      ['disagreementReachPx', 'temporal_merge', 3],
+    ];
+    for (const [name, step, value] of rows) {
+      const parameter = { name, value, origin: 'default', basis: 'Proposed in design section 10.' };
+      expect(accepts(GraphStepSchema, { kind: step, version: '1.0.0', parameters: [parameter] }), name).toBe(true);
+      const other = step === 'register' ? 'temporal_merge' : 'register';
+      expect(accepts(GraphStepSchema, { kind: other, version: '1.0.0', parameters: [parameter] }), name).toBe(false);
+    }
+    const exponent = STEP_PARAMETERS.find((row) => row.name === 'crossPowerExponent')!;
+    expect([exponent.type, 'min' in exponent ? exponent.min : null, 'max' in exponent ? exponent.max : null]).toEqual(['number', 0, 1]);
+  });
+
   it('parses every record the Python side wrote, unchanged but for minus zero, which is zero', () => {
     expect(Object.keys(VALID).sort()).toEqual(Object.keys(SCHEMAS).sort());
     for (const [name, records] of Object.entries(VALID) as [SchemaName, Rec[]][]) {

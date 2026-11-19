@@ -129,6 +129,25 @@ def test_the_fixture_carries_the_constants_and_lists_both_sides_share() -> None:
     assert len(names) == len(set(names)) and all(set(row["steps"]) <= set(media.GRAPH_STEP_KINDS) for row in media.STEP_PARAMETERS)
 
 
+# restore-6c: the three constants restore-6 added to registration and to the merge have rows, so a variant's record
+# says the values that made it: the cross power's exponent of `register`, and the point-scale agreement test's
+# threshold and reach of `temporal_merge` (services/media/temporal.py)
+TEMPORAL_ROWS = {"crossPowerExponent": ("register", 0.5), "disagreementZ": ("temporal_merge", 3.0),
+                 "disagreementReachPx": ("temporal_merge", 3.0)}
+
+
+def test_restore_6s_three_constants_are_recorded_by_their_own_steps() -> None:
+    for name, (step, value) in TEMPORAL_ROWS.items():
+        parameter = {"name": name, "value": value, "origin": "default", "basis": "Proposed in design section 10."}
+        media.GraphStep.model_validate({"kind": step, "version": "1.0.0", "parameters": [parameter]})
+        other = "temporal_merge" if step == "register" else "register"
+        with pytest.raises(ValidationError):
+            media.GraphStep.model_validate({"kind": other, "version": "1.0.0", "parameters": [parameter]})
+    # The exponent divides the cross power by its magnitude to a power from none (0) to the whole of it (1)
+    row = next(r for r in media.STEP_PARAMETERS if r["name"] == "crossPowerExponent")
+    assert (row["type"], row["min"], row["max"]) == ("number", 0, 1)
+
+
 def test_the_removed_shapes_are_gone() -> None:
     # REQ-RST-10.3: nothing branches, caches or scores, so the contract describes none of it; the job is the runner's
     for name in ("ProcessingNode", "FidelityPolicy", "AttemptEvaluationMetrics", "validate_processing_graph_dag",

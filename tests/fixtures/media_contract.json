@@ -718,6 +718,16 @@
         "unit": "px"
       },
       {
+        "name": "crossPowerExponent",
+        "steps": [
+          "register"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1,
+        "unit": "power of the cross power's magnitude"
+      },
+      {
         "name": "windowPx",
         "steps": [
           "temporal_merge"
@@ -736,6 +746,26 @@
         "min": 0,
         "max": 100,
         "unit": "noise variances"
+      },
+      {
+        "name": "disagreementZ",
+        "steps": [
+          "temporal_merge"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 100,
+        "unit": "noises of the difference's matched response"
+      },
+      {
+        "name": "disagreementReachPx",
+        "steps": [
+          "temporal_merge"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 64,
+        "unit": "px"
       },
       {
         "name": "levels",
