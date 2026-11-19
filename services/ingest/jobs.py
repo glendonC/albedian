@@ -1242,6 +1242,7 @@ SOLVE_PRODUCER_FILES = (
     "apps/web/public/catalog/deepsky/openngc.json",
     "services/science/record_hint.py",
     "services/science/person_hint.py",
+    "services/science/sun_pose.py",
 )
 # Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose field of
 # view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives in a matched or
@@ -1260,11 +1261,12 @@ SOLVE_PRODUCER_FILES = (
 # joins the files), which narrows the searches of photos with a record and states the hint in their solutions; 13, a
 # pointing record's attitude as an approximate pose when the stars do not solve (pointing-5), which lines up photos with
 # a record that were predicted only; 14, a predicted or matched star's place and brightness cautions in the design
-# lane's C24 words, so stored solutions take the new words; 15, a solve from a person's alignment (align-2w,
-# whose person_hint.py joins the files): the pose, the hint and the field sweep, and the person's pointing hint in
-# its solution; a plain solve's results are unchanged; 16, the no-skyline refusal in the design lane's two sentences
-# (C21), which a head-worn photo with no skyline stores in its warnings
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 16, SOLVE_PRODUCER_FILES)
+# lane's C24 words, so stored solutions take the new words; 15, a solve from a person's alignment (align-2w, whose
+# person_hint.py joins the files): the pose, the hint and the field sweep, and the person's pointing hint in its
+# solution; a plain solve's results are unchanged; 16, the no-skyline refusal in the design lane's two sentences (C21),
+# which a head-worn photo with no skyline stores in its warnings; 17, the Sun plus horizon pose by day (sky-6d, whose
+# sun_pose.py joins the files), which lines up daytime photos that were predicted only
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 17, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

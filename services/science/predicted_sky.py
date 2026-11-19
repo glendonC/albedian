@@ -65,6 +65,7 @@ from services.science.phone_photo_solver import _get_tile_index, _TileStarIndex,
 from services.science.pose_estimate import (
     DAYTIME,
     MIRRORED,
+    NO_FRAMES,
     MOON_NOT_UP,
     NO_PROFILE,
     ROLL_LIMIT_DEG,
@@ -78,6 +79,13 @@ from services.science.pose_estimate import (
     moon_is_up,
     pose_from_frames,
     sun_is_up,
+)
+from services.science.sun_pose import (
+    MIN_SUN_ALT_DEG as SUN_BEACON_MIN_ALT_DEG,
+    SUN_POSE_SOLVER_NAME,
+    SunPose,
+    sun_horizon_pose,
+    topocentric_sun,
 )
 from services.science.record_hint import NO_RECORD_SIZE, RecordAttitude, RecordPose, TILT_ERROR_DEG, record_pose
 from services.science.wcs_models import (
@@ -700,6 +708,16 @@ RECORD_POSE_SOLVER = SolverIdentity(
         "moment by ERFA: predicted"
     ),
 )
+SUN_POSE_SOLVER = SolverIdentity(
+    name=SUN_POSE_SOLVER_NAME,
+    version="1.0.0",
+    catalog_release=(
+        "The ERFA Sun ephemeris, topocentric, and a skyline taken to be level, with the field of view fitted from the "
+        "two and the camera's clock checked against the Sun's height"
+    ),
+)
+# C23 (.lead/uiux/UIUX-sunwords-READY.md, decided 2026-11-19 17:08)
+SUN_LINED_UP_LIMITATION = "Placed in the frame only from the Sun and the skyline: predicted, not checked against stars."
 INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"
 OUTSIDE_THE_FRAME = " · Outside the frame"
 LINED_UP_LIMITATION = (
@@ -1073,6 +1091,94 @@ def _record_lined_up(
     )
 
 
+def _focal_35mm(asset: Mapping[str, Any]) -> float | None:
+    """The file's 35 mm equivalent focal length, as the receipt's cameraMetadata states it, or None."""
+    meta = asset.get("cameraMetadata")
+    value = meta.get("focalLength35mmMm") if isinstance(meta, Mapping) else None
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0:
+        return float(value)
+    return None
+
+
+def _sun_pose(
+    asset: Mapping[str, Any], frames: FramesForPose, captured: str, lat: float, lon: float
+) -> tuple[SunPose, float, str] | Refusal:
+    """The Sun plus horizon pose on the frames, each at its own moment: the first that lines up, with its time into
+    the recording and its moment; else the first frame's refusal (sky-6d)."""
+    first: Refusal | None = None
+    focal = _focal_35mm(asset)
+    for frame_time_sec, frame_at, luma in _timed(frames, captured):
+        pose = sun_horizon_pose(
+            luma, moment=frame_at, lat=lat, lon=lon, orientation=asset.get("displayOrientation"), focal_35mm_mm=focal,
+        )
+        if isinstance(pose, SunPose):
+            return pose, frame_time_sec, frame_at
+        first = first or pose
+    return first or Refusal("no_frames", NO_FRAMES)
+
+
+def _sun_lined_up(
+    solution: ObservationSolution, asset: Mapping[str, Any], pose: SunPose, frame_time_sec: float, moment: str,
+    lat: float, lon: float, lent: LentMoment | None,
+) -> ObservationSolution:
+    """The approximate solution of a Sun pose (sky-6d): the nominal WCS and its pose estimate, the detector's
+    pixel-only findings as measured, and the predicted sky for the frame's moment, each saying whether the nominal
+    WCS puts it inside the frame. The glare is named in the pose's assumptions only, not as an observed finding (the
+    lead's answer of 17:37: a clipped core gives no honest flux, SNR or width)."""
+    kept = [f for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None]
+    time_sec = _worked_out_time_sec(asset)
+    predicted = _placed(
+        predicted_sky_findings(
+            moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256,
+            time_uncertainty_sec=time_sec, lent=lent,
+        ),
+        pose.wcs,
+        SUN_LINED_UP_LIMITATION,
+    )
+    estimate = pose.estimate
+    time_deg = (0.0 if time_sec is None else sky_turn_deg(time_sec)) + _lent_place_arcsec(lent) / 3600.0
+    within = math.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg + time_deg)
+    focal = _focal_35mm(asset)
+    # C23's two sentences; the web shows the first (C5's rule)
+    lined_up = (
+        "Lined up by taking a bright spot to be the Sun, with the skyline taken to be level, within about "
+        f"{within} degrees at the middle of the frame and more toward the edges: predicted, not checked against "
+        f"stars. The camera's clock agreed with the Sun's height, through the file's {focal:g} mm lens."
+    )
+    (sun,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Sun",))
+    detected = solution.quality.detected_candidate_count if solution.quality is not None else len(kept)
+    return replace(
+        solution,
+        frame_time_sec=frame_time_sec,
+        status="approximate",
+        wcs=pose.wcs,
+        # Nothing was matched to a catalog: the glare was only taken to be the Sun, and no star was held out
+        quality=SolutionQuality(
+            detected_candidate_count=detected,
+            matched_inlier_count=0,
+            held_out_pair_count=0,
+            held_out_inliers=0,
+            median_residual_px=None,
+            p95_residual_px=None,
+            median_residual_arcsec=None,
+            passed_independent_verification=False,
+        ),
+        solver=SUN_POSE_SOLVER,
+        observed_at_utc=moment,
+        observer_lat=lat,
+        observer_lon=lon,
+        findings=[*kept, *predicted],
+        warnings=[
+            *solution.warnings,
+            lined_up,
+            *(() if time_sec is None else (time_zone_from_gps(time_sec),)),
+            *(() if lent is None else (lent_moment_sentence(lent),)),
+            sky_phase(sun.alt_deg).sentence,
+        ],
+        pose_estimate=estimate,
+    )
+
+
 def _stored_size(asset: Mapping[str, Any]) -> tuple[int, int] | None:
     width, height = asset.get("width"), asset.get("height")
     if not all(isinstance(v, int) and not isinstance(v, bool) and v > 0 for v in (width, height)):
@@ -1147,7 +1253,19 @@ def complete_sky(
         if isinstance(sensor, RecordPose):
             return _record_lined_up(solution, asset, sensor, attitude, moment, lat, lon, lent, hint)
         no_pose.append(sensor.reason or NO_RECORD_SIZE)
-    if solution.status != "calibrated" and frames is not None:
+    if (
+        solution.status != "calibrated" and frames is not None and _focal_35mm(asset) is not None
+        and topocentric_sun(moment, lat, lon).alt_deg > SUN_BEACON_MIN_ALT_DEG
+    ):
+        # By day the Sun is the beacon, never the Moon (REQ-SKY-4.3, sky-6d): the Sun plus horizon pose alone, when
+        # the file gives the 35 mm focal length its clock check needs; without one the Moon poses refuse by day as
+        # before, and no frame is read
+        sun_pose = _sun_pose(asset, _read_once(frames), captured, lat, lon)
+        if not isinstance(sun_pose, Refusal):
+            pose, frame_time_sec, frame_at = sun_pose
+            return _sun_lined_up(solution, asset, pose, frame_time_sec, frame_at, lat, lon, lent)
+        no_pose.append(sun_pose.reason)
+    elif solution.status != "calibrated" and frames is not None:
         read = _read_once(frames)
         pose = _head_worn_pose(asset, read, captured, moment, lat, lon)
         if isinstance(pose, PoseResult):

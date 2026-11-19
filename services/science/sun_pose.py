@@ -63,6 +63,8 @@ DAY_SKYLINE_MIN_SNR = 5.0
 DAY_SKYLINE_MIN_RATIO = 2.5
 DAY_SKYLINE_APART_ROWS = 60
 
+# The solver identity's name the Sun pose's solutions carry (predicted_sky.SUN_POSE_SOLVER)
+SUN_POSE_SOLVER_NAME = "AlbedianSunHorizonPose"
 # sky-6c. The Sun is the beacon only when it is more than this far up (REQ-SKY-4.3)
 MIN_SUN_ALT_DEG = 5.0
 # [proposed] How far the Sun's measured height above the skyline may lie from its altitude at the photo's time before
@@ -74,21 +76,30 @@ SUN_CORE_OFFSET_DEG = 0.5
 # The 35 mm frame's diagonal, for a field of view from a 35 mm equivalent focal length
 FRAME_35MM_DIAGONAL_MM = math.hypot(36.0, 24.0)
 
-_NO_SUN_POSE = "The sky is not lined up over the picture: "
-SUN_LOW = _NO_SUN_POSE + f"the Sun was not more than {MIN_SUN_ALT_DEG:g} degrees above the horizon at the photo's time."
-SUN_MIRRORED = _NO_SUN_POSE + "the photo is stored mirrored, and the Sun pose needs it as the camera saw it."
-NO_FOCAL = (
-    _NO_SUN_POSE + "the file gives no 35 mm focal length, so the camera's clock cannot be checked against the Sun."
+# The words a person reads are the design lane's C23 (.lead/uiux/UIUX-sunwords-READY.md, decided 2026-11-19 17:08):
+# the Moon poses' family prefix, the reason first (shown) and its numbers in a second sentence (kept in the record)
+FAMILY_PREFIX = "The sky is not lined up over the picture: "
+SUN_LOW = (
+    FAMILY_PREFIX + "the Sun was too low at the photo's time to line it up with. "
+    f"It was not more than {MIN_SUN_ALT_DEG:g} degrees above the horizon."
+)
+SUN_MIRRORED = FAMILY_PREFIX + "the photo is stored mirrored, so the Sun cannot be lined up as the camera saw it."
+NO_FOCAL = FAMILY_PREFIX + "the photo's file gives no 35 mm focal length, so its time cannot be checked against the Sun."
+NO_SUN = (
+    FAMILY_PREFIX + "no Sun was found in the frame. No bright region larger than a speck stands at the frame's "
+    "brightest level."
+)
+SUN_BLOOM = FAMILY_PREFIX + "the brightest glare is too wide to be the Sun's."
+SUN_EDGE = FAMILY_PREFIX + "the Sun's glare touches the edge of the frame, so its centre cannot be measured."
+NO_DAY_SKYLINE = (
+    FAMILY_PREFIX + "no skyline was found below the Sun to line it up with. No single line stands out where the sky "
+    "meets the ground or the water."
 )
 
-_NO_SUN = "The Sun was not found in the frame: "
-NO_SUN = _NO_SUN + "no bright region larger than a speck stands at the frame's brightest level."
-SUN_BLOOM = _NO_SUN + "its brightest region is wider than the Sun's glare could be at the camera's widest field of view."
-SUN_EDGE = _NO_SUN + "its brightest region touches the edge of the frame, so its centre cannot be measured."
-NO_DAY_SKYLINE = (
-    "The sky is not lined up over the picture: no single skyline stands out below the Sun, where the sky meets the "
-    "ground or the water."
-)
+
+def sun_bloom_reason(focal_35mm_mm: float) -> str:
+    """SUN_BLOOM with its limit through the file's own lens (C23)."""
+    return f"{SUN_BLOOM} It is wider than {MAX_DIAMETER_FACTOR:g} times the Sun's disk through the file's own {focal_35mm_mm:g} mm lens."
 
 
 @dataclass(frozen=True)
@@ -155,9 +166,9 @@ def clock_check(measured_height_deg: float, predicted_alt_deg: float, *, toleran
         return None
     return Refusal(
         "clock",
-        f"The sky is not lined up over the picture: the Sun stands about {measured_height_deg:.1f} degrees above the "
-        f"skyline in the picture, but {predicted_alt_deg:.1f} degrees at the photo's recorded time, so the camera's "
-        "clock or its time zone looks wrong.",
+        FAMILY_PREFIX + "the camera's clock or its time zone looks wrong. The Sun stands about "
+        f"{measured_height_deg:.1f} degrees above the skyline in the picture, but was {predicted_alt_deg:.1f} degrees "
+        "up at the recorded time.",
     )
 
 
@@ -261,7 +272,7 @@ def sun_horizon_pose(
     focal_px = math.hypot(up_w, up_h) / 2.0 / (FRAME_35MM_DIAGONAL_MM / 2.0 / float(focal_35mm_mm))
     core = find_sun_core(upright, max_diameter_px=MAX_DIAMETER_FACTOR * 2.0 * focal_px * math.radians(sun.radius_deg))
     if isinstance(core, Refusal):
-        return core
+        return Refusal("sun_bloom", sun_bloom_reason(float(focal_35mm_mm))) if core.kind == "sun_bloom" else core
     skyline = find_day_skyline(upright, core)
     if isinstance(skyline, Refusal):
         return skyline
@@ -300,17 +311,16 @@ def sun_horizon_pose(
         center_az_deg=0.0 if centre_az >= 360.0 else centre_az,
         roll_deg=0.0,
         fov_diagonal_deg=nominal_fov,
-        fov_source="Fitted from the Sun and the skyline, and checked against the file's 35 mm focal length",
+        fov_source="Fitted from the Sun and the skyline, and checked against the file's 35 mm focal length.",
+        # C23's four; the sweep: the skyline at bottom, middle and top altitudes, each on its row and its half width
+        # either way
         assumptions=(
-            "The brightest region of the photo is taken to be the Sun's glare, its centre the Sun's within "
-            f"{SUN_CORE_OFFSET_DEG:g} degrees.",
-            f"The skyline at row {skyline.row:.0f} of the upright picture is taken to be level, {bottom:g} to {top:g} "
-            f"degrees above the true horizon; the sweep takes {bottom:g}, {middle:g} and {top:g} degrees and the row "
-            f"{skyline.half_width_px:.0f} px either way.",
-            f"The camera's clock agreed with the Sun: its height above the skyline, {measured:.1f} degrees through the "
-            f"file's {focal_35mm_mm:g} mm lens, was within {CLOCK_TOLERANCE_DEG:g} degrees of its altitude at the "
-            "photo's time.",
-            "The lens is rectilinear (gnomonic), with no distortion, and centred on the frame.",
+            f"The glare's centre is taken to be within {SUN_CORE_OFFSET_DEG:g} degrees of the Sun's.",
+            f"The skyline is taken to be level and {bottom:g} to {top:g} degrees above the true horizon; the fit "
+            f"tried it at {bottom:g}, {middle:g} and {top:g} degrees.",
+            "The camera's clock is taken to be right: the Sun's height on the picture agreed with its height at the "
+            f"recorded time, through the file's {focal_35mm_mm:g} mm lens.",
+            "The lens is taken to be a plain one with no distortion, centred on the frame.",
         ),
         swept_wcs=tuple(swept),
         max_center_offset_deg=max(

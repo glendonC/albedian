@@ -219,3 +219,45 @@ def test_no_sun_pose_without_what_it_needs(moment: str, orientation: Any, focal:
     pose = sp.sun_horizon_pose(frame, moment=moment, lat=LAT, lon=LON, orientation=orientation, focal_35mm_mm=focal)
     assert isinstance(pose, Refusal) and pose.kind == kind, pose
     assert chr(0x2014) not in pose.reason
+
+
+# sky-6d: the design lane's C23 words (.lead/uiux/UIUX-sunwords-READY.md, decided 17:08)
+
+FAMILY = "The sky is not lined up over the picture: "
+
+
+def test_the_sun_pose_s_refusals_are_c23_s() -> None:
+    assert sp.NO_SUN == FAMILY + "no Sun was found in the frame. No bright region larger than a speck stands at the frame's brightest level."
+    assert sp.SUN_EDGE == FAMILY + "the Sun's glare touches the edge of the frame, so its centre cannot be measured."
+    assert sp.NO_DAY_SKYLINE == FAMILY + "no skyline was found below the Sun to line it up with. No single line stands out where the sky meets the ground or the water."
+    assert sp.SUN_LOW == FAMILY + "the Sun was too low at the photo's time to line it up with. It was not more than 5 degrees above the horizon."
+    assert sp.SUN_MIRRORED == FAMILY + "the photo is stored mirrored, so the Sun cannot be lined up as the camera saw it."
+    assert sp.NO_FOCAL == FAMILY + "the photo's file gives no 35 mm focal length, so its time cannot be checked against the Sun."
+    assert sp.sun_bloom_reason(24.0) == FAMILY + "the brightest glare is too wide to be the Sun's. It is wider than 8 times the Sun's disk through the file's own 24 mm lens."
+    assert sp.clock_check(13.84, 9.9, tolerance_deg=1.5).reason == (
+        FAMILY + "the camera's clock or its time zone looks wrong. The Sun stands about 13.8 degrees above the skyline "
+        "in the picture, but was 9.9 degrees up at the recorded time."
+    )
+
+
+def test_a_too_wide_glare_names_the_file_s_lens() -> None:
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg, bloom=400.0)
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, Refusal) and pose.kind == "sun_bloom" and pose.reason == sp.sun_bloom_reason(FOCAL35)
+
+
+def test_the_sun_pose_s_estimate_words_are_c23_s() -> None:
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    pose = sp.sun_horizon_pose(
+        _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg), moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None,
+        focal_35mm_mm=FOCAL35,
+    )
+    assert isinstance(pose, sp.SunPose)
+    assert pose.estimate.fov_source == "Fitted from the Sun and the skyline, and checked against the file's 35 mm focal length."
+    assert pose.estimate.assumptions == (
+        "The glare's centre is taken to be within 0.5 degrees of the Sun's.",
+        "The skyline is taken to be level and 0 to 3 degrees above the true horizon; the fit tried it at 0, 1.5 and 3 degrees.",
+        "The camera's clock is taken to be right: the Sun's height on the picture agreed with its height at the recorded time, through the file's 24 mm lens.",
+        "The lens is taken to be a plain one with no distortion, centred on the frame.",
+    )
