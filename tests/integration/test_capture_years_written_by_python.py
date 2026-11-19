@@ -201,10 +201,8 @@ def test_the_guard_takes_python_s_own_years_and_says_nothing_of_comments_or_docs
 
 # ---- The real protection: a year below 1000 through every function that writes a capture time ----
 # Run in the lead's Linux container under Python 3.12 (the test ids are in the report); on a Mac it passes either way.
-# predicted_sky's frame_moment, a helper outside the three modules (the SKY lane's), still writes its year with
-# strftime: where the platform does not pad a year below 1000 it is expected to fail, by a check made here, not assumed
-
-PLATFORM_PADS = datetime(999, 1, 1).strftime("%Y") == "0999"
+# predicted_sky's frame_moment, a helper outside the three modules (the SKY lane's), pads its year as well now, and its
+# own test below holds it on every platform
 
 
 def test_each_capture_time_writer_puts_a_year_below_1000_in_four_digits() -> None:
@@ -230,12 +228,6 @@ def test_each_capture_time_writer_puts_a_year_below_1000_in_four_digits() -> Non
     assert (hint["localDateTime"], hint["utc"]) == ("0999-12-31T23:59:59", "0999-12-31T22:59:59Z")
 
 
-# Who takes this mark out (the lead's answers to SKY and CATALOG): catalog-1's fourth version and sky-4 each fix the
-# helper; whichever brings the fix onto a main that already holds this file removes the mark, and if this file lands
-# after the fix, the TIME lane drops it. Strict, so a fixed helper fails here until the mark goes
-@pytest.mark.xfail(not PLATFORM_PADS, reason="predicted_sky.frame_moment writes its year with strftime, which this "
-                   "platform does not pad below year 1000 (catalog-1 v4 or sky-4 fixes it)", raises=AssertionError,
-                   strict=True)
 def test_the_frame_moment_helper_puts_a_year_below_1000_in_four_digits() -> None:
     from services.science.predicted_sky import frame_moment
 
