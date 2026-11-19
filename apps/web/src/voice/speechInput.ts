@@ -30,26 +30,38 @@ export const SPEECH_LISTENING = 'Listening (Push-to-Talk active)… Speak a comm
 export const SPEECH_PREVIOUS_PHOTO =
   'Those words were spoken over the previous photo, so they were not applied to this one.';
 
-const STOPPED = 'Speech recognition stopped. Type the command below.';
-
 /**
- * The browser's error codes (Web Speech API, SpeechRecognitionErrorEvent.error) mapped to a plain sentence.
- * A code not listed here gets the general sentence.
+ * How each capture ends, in the words the lead decided (C11, UIUX-words-DECIDED-BY-LEAD.md): the first sentence shown
+ * in the answer's type, the rest under it. The browser's error codes (Web Speech API,
+ * SpeechRecognitionErrorEvent.error) map to these; a code not listed here gets the general ending.
  */
-const BANNERS: Readonly<Record<string, string>> = {
-  network: 'Speech recognition needs the internet in this browser, and it could not reach it. Type the command below.',
-  'not-allowed': 'The microphone is not allowed for this page. Allow it in the browser, or type the command below.',
-  'service-not-allowed':
-    'The microphone is not allowed for this page. Allow it in the browser, or type the command below.',
-  'no-speech': 'No speech was heard. Press push-to-talk and speak, or type the command below.',
-  'audio-capture': 'No microphone was found. Connect one, or type the command below.',
-  'language-not-supported': 'This browser cannot recognise speech in English. Type the command below.',
-  aborted: 'Listening stopped.',
+type Ending = readonly [sentence: string, rest: string];
+const ENDINGS: Readonly<Record<string, Ending>> = {
+  network: ['Speech recognition needs the internet in this browser, and it could not reach it.', 'Type your question.'],
+  'not-allowed': ['The microphone is not allowed for this page.', 'Allow it in the browser, or type your question.'],
+  'service-not-allowed': ['The microphone is not allowed for this page.', 'Allow it in the browser, or type your question.'],
+  'no-speech': ['No speech was heard.', 'Press Ask out loud and speak, or type your question.'],
+  'audio-capture': ['No microphone was found.', 'Connect one, or type your question.'],
+  'language-not-supported': ['This browser cannot recognise speech in English.', 'Type your question.'],
 };
+const OTHER: Ending = ['Speech recognition stopped.', 'Type your question.'];
+/** The person stopped it: the status line says so, and nothing is shown where answers show. */
+const ABORTED = 'Listening stopped.';
+const joined = ([sentence, rest]: Ending) => `${sentence} ${rest}`;
+const STOPPED = joined(OTHER);
 
 export function speechErrorBanner(code?: string): string {
-  if (code === undefined || !Object.hasOwn(BANNERS, code)) return STOPPED;
-  return BANNERS[code] ?? STOPPED;
+  if (code === 'aborted') return ABORTED;
+  if (code === undefined || !Object.hasOwn(ENDINGS, code)) return STOPPED;
+  return joined(ENDINGS[code]!);
+}
+
+/** An ending's two parts, for where answers show; none for a capture the person stopped, or a sentence not ours. */
+export function speechStopParts(banner: string): { sentence: string; sub: string } | null {
+  for (const ending of [...Object.values(ENDINGS), OTHER]) {
+    if (joined(ending) === banner) return { sentence: ending[0], sub: ending[1] };
+  }
+  return null;
 }
 
 export interface SpeechRecognitionLike {

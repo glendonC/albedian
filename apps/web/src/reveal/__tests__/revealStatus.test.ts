@@ -162,3 +162,17 @@ describe('the estimate line and the legend', () => {
     expect(evidenceCounts(undefined)).toEqual([]);
   });
 });
+
+// C5, decided by the lead (UIUX-words-DECIDED-BY-LEAD.md): the note for a file with no time zone shows its first
+// sentence only; the whole note stays in the solution's record
+import { onScreenWarning } from '../revealStatus.js';
+describe('the missing time zone note on screen (C5)', () => {
+  const NOTE =
+    "The file names no time zone for its capture time: it was taken from the time zone at the photo's GPS position, which agrees with its GPS time stamp. The capture time is taken to be within 8 s, a second plus how far the camera's clock and the GPS time stamp differ.";
+  it('keeps the first sentence of that note, and every other warning whole', () => {
+    expect(onScreenWarning(NOTE)).toBe("The file names no time zone for its capture time: it was taken from the time zone at the photo's GPS position, which agrees with its GPS time stamp.");
+    const other = 'The Sun was about 41 degrees below the horizon: night. By the USNO definitions it is dark.';
+    expect(onScreenWarning(other)).toBe(other);
+    expect(onScreenWarning('The file names no time zone for its capture time.')).toBe('The file names no time zone for its capture time.');
+  });
+});

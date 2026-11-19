@@ -502,7 +502,9 @@ async function fetchAnswer(input: string, init?: RequestInit): Promise<Response>
   try {
     return await fetch(input, init);
   } catch (err) {
-    throw new Error(`no answer from the Albedian server (${failureReason(err)})`);
+    // The sentence ends there: the browser's own words for a failed request say nothing a person can act on (C10,
+    // decided by the lead); they are kept as the error's cause
+    throw new Error('no answer from the Albedian server', { cause: err });
   }
 }
 

@@ -509,6 +509,14 @@
   text-wrap: balance;
 }
 
+/* The rest of a listening ending, or "Ask again.", under the sentence at 14 px in the second ink (C11) */
+.reveal-answer__sub {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
 .reveal-answer__st {
   display: grid;
   gap: 10px;

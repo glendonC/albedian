@@ -377,7 +377,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       expect(fallback.machines.calibration).toBe('not_requested');
       expect(fallback.sourceAsset).toBeUndefined();
       expect(fallback.lastStatusBanner).toBe(
-        'The upload of "offline.png" did not finish: no answer from the Albedian server (Network unreachable).'
+        'The upload of "offline.png" did not finish: no answer from the Albedian server.'
       );
     } finally {
       fetchSpy.mockRestore();
@@ -554,7 +554,7 @@ describe('upload refusals and the state before the receipt (experience-9d)', () 
       const result = await ingestAndSolveUploadedFile(file, 'blob:offline', (s) => updates.push(s));
       ObservationSessionSchema.parse(result);
       expect(result.lastStatusBanner).toBe(
-        'The upload of "offline.jpg" did not finish: no answer from the Albedian server (Load failed).'
+        'The upload of "offline.jpg" did not finish: no answer from the Albedian server.'
       );
       expect(result.machines.media).toBe('empty');
       expect(result.sourceAsset).toBeUndefined();

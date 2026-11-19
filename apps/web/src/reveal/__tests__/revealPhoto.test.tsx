@@ -388,15 +388,14 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
     return { ...session, observationSolution: { ...solution, findings } } as ObservationSession;
   }
 
-  it('shows the words as heard, the sentence, and under a hairline each statement as its tag, with a value line only for the approved kind', () => {
+  it('shows the words as heard, the sentence, and under a hairline each statement as its tag, with each its value line "value unit · source" (C7)', () => {
     const session = withParallax(calibrated());
     show(session, { answer: shown(answered(session)) });
     expect(q(ANSWER)!.tagName).toBe('SECTION');
     expect(q('.reveal-answer__q')!.textContent).toBe('How far away is Rigel?');
     expect(q('.reveal-answer__s')!.textContent).toBe('Rigel is about 260 parsecs away, about 860 light years.');
     const parts = [...q('.reveal-answer__st')!.children].map((el) => (el.classList.contains('look-tag') ? `tag:${el.getAttribute('data-evidence-class')}` : el.textContent));
-    expect(parts).toEqual(['tag:catalog_matched', '265 parsecs · Hipparcos 2007 parallax', 'tag:observed']);
-    expect(q(ANSWER)!.textContent).not.toContain('87');
+    expect(parts).toEqual(['tag:catalog_matched', '265 parsecs · Hipparcos 2007 parallax', 'tag:observed', "87.2 times · this photo's pixels"]);
   });
 
   it('lights up the star the answer is about as a picked star, with the line to the answer, and shows no card', () => {
@@ -449,9 +448,12 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
   });
 
   it('shows a capture that heard nothing as its sentence alone, with no heard line (the lead\'s answer 21:33)', () => {
-    show(calibrated(), { answer: { heard: '', sentence: 'No speech was heard. Press push-to-talk and speak, or type the command below.', answer: null } });
+    show(calibrated(), { answer: { heard: '', sentence: 'No speech was heard.', sub: 'Press Ask out loud and speak, or type your question.', answer: null } });
     expect(q('.reveal-answer__q')).toBeNull();
-    expect(q('.reveal-answer__s')!.textContent).toBe('No speech was heard. Press push-to-talk and speak, or type the command below.');
+    expect(q('.reveal-answer__s')!.textContent).toBe('No speech was heard.');
+    // The rest under it at 14 px in the second ink (C11)
+    expect(q('.reveal-answer__sub')!.textContent).toBe('Press Ask out loud and speak, or type your question.');
+    expect(declarationsOf('.reveal-answer__sub')).toEqual({ margin: '8px 0 0', 'font-size': '14px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
   });
 
   it('shows the card again once the answer is gone', () => {

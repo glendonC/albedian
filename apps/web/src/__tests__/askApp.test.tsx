@@ -250,15 +250,16 @@ describe('asking about the photo on the laptop reveal', () => {
     expect(q('[data-testid="ask-bar"]')).not.toBeNull();
   });
 
-  it('runs the words as the app did before when the answer route does not answer', async () => {
+  it('says the answer route gave no answer, and to ask again, when it does not answer (C11, decided by the lead)', async () => {
     const calls = await openAppAt(`/?upload=${sha256}`, { answer: () => json({ detail: 'down' }, 503) });
     await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
     await typeAndSend('Is that a plane?');
-    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
-    // The app's own refusal shows where answers show, with no statements (waiting for UIUX's words: QUESTION unit-1g-b)
     await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
     expect(q('.reveal-answer__q')!.textContent).toBe('Is that a plane?');
+    expect(q('.reveal-answer__s')!.textContent).toBe('No answer from the Albedian server.');
+    expect(q('.reveal-answer__sub')!.textContent).toBe('Ask again.');
     expect(q('.reveal-answer__st')).toBeNull();
+    expect(calls).not.toContain('POST /api/voice/command');
   });
 
   it('closes the answer when a command runs, and on Esc', async () => {
@@ -361,7 +362,8 @@ describe('asking about the photo on the laptop reveal', () => {
       await act(async () => (q('.ask-bar__ask') as HTMLButtonElement).click());
       await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
       expect(q('.reveal-answer__q')).toBeNull();
-      expect(q('.reveal-answer__s')!.textContent).toBe('No speech was heard. Press push-to-talk and speak, or type the command below.');
+      expect(q('.reveal-answer__s')!.textContent).toBe('No speech was heard.');
+      expect(q('.reveal-answer__sub')!.textContent).toBe('Press Ask out loud and speak, or type your question.');
       expect(q('.ask-bar__ask')!.className).not.toContain('is-listening');
     } finally {
       delete (window as unknown as Record<string, unknown>).SpeechRecognition;

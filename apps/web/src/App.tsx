@@ -45,6 +45,7 @@ import {
   SPEECH_ASKING,
   SPEECH_LISTENING,
   SPEECH_PREVIOUS_PHOTO,
+  speechStopParts,
   startSpeechCapture,
   type SpeechRecognitionLike,
 } from './voice/speechInput.js';
@@ -226,7 +227,8 @@ export const App: React.FC = () => {
         // An answer about the previous photo is dropped
         if (photoKeyOf(sessionRef.current) !== photoKey) return;
         if (reply) setAnswer({ photoKey, heard: reply.heard, sentence: reply.answer.sentence, answer: reply.answer });
-        else runCommand(utterance, modality, pointer);
+        // The route gave no answer: say so, and to ask again (C11, decided by the lead)
+        else setAnswer({ photoKey, heard: utterance, sentence: 'No answer from the Albedian server.', sub: 'Ask again.', answer: null });
       });
       return;
     }
@@ -348,9 +350,11 @@ export const App: React.FC = () => {
         setHeardWords(null);
         // A capture that heard nothing says why where answers show, over the laptop reveal, in today's sentence until
         // the design lane rewords it (the lead's answer of 2026-11-18 21:33, option A)
+        // In the decided words (C11): the first sentence large, the rest under it; nothing for a capture the person stopped
         const now = sessionRef.current;
-        if (banner !== null && revealOn(now) && photoKeyOf(now) === spokenOver) {
-          setAnswer({ photoKey: spokenOver, heard: '', sentence: banner, answer: null });
+        const parts = banner === null ? null : speechStopParts(banner);
+        if (parts !== null && revealOn(now) && photoKeyOf(now) === spokenOver) {
+          setAnswer({ photoKey: spokenOver, heard: '', sentence: parts.sentence, sub: parts.sub, answer: null });
         }
         setSession((prev) => ({
           ...prev,

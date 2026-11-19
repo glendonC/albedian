@@ -22,6 +22,8 @@ export interface ShownAnswer {
   heard: string;
   /** The answer's sentence, or the refusal's. */
   sentence: string;
+  /** Under the sentence, smaller: the rest of a listening ending, or "Ask again." (C11) */
+  sub?: string;
   /** The answer route's answer, for its statements and the star it is about; none for a command's refusal. */
   answer: VoiceAnswer | null;
 }
@@ -45,11 +47,12 @@ export const AnswerPanel: React.FC<{
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const { heard, sentence, answer } = shown;
+  const { heard, sentence, sub, answer } = shown;
   return (
     <section className={phone ? 'reveal-answer is-phone' : 'reveal-answer'} data-testid="reveal-answer" aria-live="polite">
       {heard !== '' && <p className="reveal-answer__q">{heard}</p>}
       <p className="reveal-answer__s">{sentence}</p>
+      {sub !== undefined && <p className="reveal-answer__sub">{sub}</p>}
       {answer?.status === 'answered' && (
         <div className="reveal-answer__st">
           {answer.statements.flatMap((statement, index) => {

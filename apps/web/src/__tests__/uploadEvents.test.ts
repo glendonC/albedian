@@ -138,7 +138,7 @@ describe('uploadAndSolveMedia tells its listener what happened, as it happens', 
     expect(kinds(events)).toEqual(['stored', 'failed']);
     expect(events[1]).toEqual({ kind: 'failed', sentence: 'The sky solve for your photo stopped before it finished.', job: null });
     // The stored session still says what it said before
-    expect(session.lastStatusBanner).toBe('Stored "night.png", but the sky solve did not finish: no answer from the Albedian server (Failed to fetch).');
+    expect(session.lastStatusBanner).toBe('Stored "night.png", but the sky solve did not finish: no answer from the Albedian server.');
   });
 
   it('says the same, with the job it has, when the solve answered but the solution cannot be read', async () => {
@@ -212,7 +212,7 @@ describe('ingestAndSolveUploadedFile passes the events on, and words an upload t
     const refused = vi.fn();
     await ingestAndSolveUploadedFile(file(), 'blob:x', () => {}, refused, (event) => events.push(event));
     expect(events).toEqual([
-      { kind: 'failed', sentence: 'The upload of "night.png" did not finish: no answer from the Albedian server (Network unreachable).', job: null },
+      { kind: 'failed', sentence: 'The upload of "night.png" did not finish: no answer from the Albedian server.', job: null },
     ]);
     expect(refused).not.toHaveBeenCalled();
   });

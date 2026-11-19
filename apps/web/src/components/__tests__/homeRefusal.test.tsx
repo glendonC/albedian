@@ -502,7 +502,7 @@ describe('the app: a refusal brings the home back with the message, until the ne
 
   it.each([
     ['a 5xx answer', refuse(500, 'boom'), 'The upload of "notes.jpg" did not finish: boom.'],
-    ['no answer', async () => Promise.reject(new TypeError('Load failed')), 'The upload of "notes.jpg" did not finish: no answer from the Albedian server (Load failed).'],
+    ['no answer', async () => Promise.reject(new TypeError('Load failed')), 'The upload of "notes.jpg" did not finish: no answer from the Albedian server.'],
   ])('stays off the home after %s, which proves no refusal, and says so as main does', async (_label, answer, banner) => {
     await renderApp([answer as Answer]);
     chooseOnHome(readableFile('notes.jpg', 'image/jpeg'));

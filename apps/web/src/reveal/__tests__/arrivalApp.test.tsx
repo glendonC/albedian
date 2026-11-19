@@ -345,7 +345,7 @@ describe('the app follows an upload on the working screen', () => {
     });
     chooseOnHome(readableFile('night.jpg'));
     await waitUntil(() =>
-      expect(q('.work-why p')?.textContent).toBe('The upload of "night.jpg" did not finish: no answer from the Albedian server (Load failed).')
+      expect(q('.work-why p')?.textContent).toBe('The upload of "night.jpg" did not finish: no answer from the Albedian server.')
     );
     expect(rowClasses()).toEqual(['is-failed', 'is-next', 'is-next', 'is-next', 'is-next']);
     expect(q('[data-testid="source-photo-stage"]')).toBeNull();

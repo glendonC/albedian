@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   SPEECH_UNAVAILABLE,
   speechErrorBanner,
+  speechStopParts,
   startSpeechCapture,
   type SpeechRecognitionLike,
 } from '../voice/speechInput';
@@ -90,7 +91,7 @@ describe('@albedian/web push-to-talk speech capture', () => {
     rec.onend?.();
     expect(calls.stopped).toEqual([speechErrorBanner('network')]);
     expect(calls.stopped[0]).toMatch(/internet/i);
-    expect(calls.stopped[0]).toMatch(/type the command/i);
+    expect(calls.stopped[0]).toMatch(/type your question/i);
   });
 
   it.each([
@@ -279,12 +280,32 @@ describe('on-device recognition where the browser offers it', () => {
     }
     const { calls } = capture(FailingRefusing);
     await settle();
-    expect(calls.stopped).toEqual(['Speech recognition stopped. Type the command below.']);
+    expect(calls.stopped).toEqual(['Speech recognition stopped. Type your question.']);
   });
 
   it('starts at once, as before, in a browser that cannot say', () => {
     FakeRecognition.last = undefined;
     capture(FakeRecognition);
     expect(last().started).toBe(true);
+  });
+});
+
+// C11, decided by the lead (UIUX-words-DECIDED-BY-LEAD.md): each ending in two parts, the first shown in the answer's
+// type and the rest under it; nothing for a capture the person stopped
+describe('the listening endings, in the decided words', () => {
+  it('words each ending as its first sentence and the rest', () => {
+    expect(speechStopParts(speechErrorBanner('no-speech'))).toEqual({ sentence: 'No speech was heard.', sub: 'Press Ask out loud and speak, or type your question.' });
+    expect(speechStopParts(speechErrorBanner('not-allowed'))).toEqual({ sentence: 'The microphone is not allowed for this page.', sub: 'Allow it in the browser, or type your question.' });
+    expect(speechStopParts(speechErrorBanner('service-not-allowed'))).toEqual({ sentence: 'The microphone is not allowed for this page.', sub: 'Allow it in the browser, or type your question.' });
+    expect(speechStopParts(speechErrorBanner('audio-capture'))).toEqual({ sentence: 'No microphone was found.', sub: 'Connect one, or type your question.' });
+    expect(speechStopParts(speechErrorBanner('network'))).toEqual({ sentence: 'Speech recognition needs the internet in this browser, and it could not reach it.', sub: 'Type your question.' });
+    expect(speechStopParts(speechErrorBanner('language-not-supported'))).toEqual({ sentence: 'This browser cannot recognise speech in English.', sub: 'Type your question.' });
+    expect(speechStopParts(speechErrorBanner('bad-grammar'))).toEqual({ sentence: 'Speech recognition stopped.', sub: 'Type your question.' });
+    expect(speechErrorBanner('no-speech')).toBe('No speech was heard. Press Ask out loud and speak, or type your question.');
+  });
+
+  it('shows nothing for a capture the person stopped, or for a sentence it does not know', () => {
+    expect(speechStopParts(speechErrorBanner('aborted'))).toBeNull();
+    expect(speechStopParts('Something else entirely.')).toBeNull();
   });
 });

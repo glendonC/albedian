@@ -37,10 +37,23 @@ const grouped = (n: number) => n.toLocaleString('en-US');
  * `starSearchRan` says whether a star search ran for this solution (it did for every upload: services/ingest/jobs.py
  * runs the detector and the plate solver before it writes one); only then may a line speak of points of light.
  */
+/** The note SCIENCE writes for a photo whose file names no time zone (services/science/predicted_sky.py). */
+const NO_TIME_ZONE = 'The file names no time zone for its capture time';
+
+/**
+ * A warning as it shows on screen: the missing time zone note by its first sentence only, every other warning whole
+ * (C5, UIUX-words-DECIDED-BY-LEAD.md); the whole note stays in the solution's record.
+ */
+export function onScreenWarning(warning: string): string {
+  if (!warning.startsWith(NO_TIME_ZONE)) return warning;
+  const end = warning.indexOf('. ');
+  return end < 0 ? warning : warning.slice(0, end + 1);
+}
+
 export function revealStatus(session: ObservationSession, starSearchRan = true): RevealStatus {
   const solution = session.observationSolution;
   const asset = session.sourceAsset;
-  const warnings = [...(solution?.warnings ?? [])];
+  const warnings = (solution?.warnings ?? []).map(onScreenWarning);
   const quality = solution?.quality;
   // Calibrated is said only of a solve that passed its independent check: the status word alone is not enough
   if (solution?.status === 'calibrated' && quality && hasVerifiedWcs(solution)) {

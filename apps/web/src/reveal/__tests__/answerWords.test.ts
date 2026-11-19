@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { VoiceQuestionReplySchema, type AnswerStatement, type ObservationSession, type ObservationSolution } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { askVoiceAnswer, isQuestion } from '../../services/voiceAnswer.js';
-import { statementLine } from '../answerWords.js';
+import { statementLine, valueWords } from '../answerWords.js';
 
 // Asking a question (ask, approved 2026-11-12): the words go to the answer route, whose reply is the contract's; each
 // statement shows its evidence tag, and a value line only for the kind the approved picture words ("7.68 parsecs ·
@@ -35,16 +35,16 @@ function distanceStatement(index: number, amount = 7.6787): AnswerStatement {
   } as AnswerStatement;
 }
 
-describe('statementLine: a value line only for the approved kind', () => {
+describe('statementLine: the small line under an answer, in the approved form "value unit · source"', () => {
   it('writes a catalog distance from a parallax as the approved picture does: three figures, parsecs, the release and parallax', () => {
     const { session, index } = photo();
     expect(statementLine(distanceStatement(index), session.observationSolution)).toBe('7.68 parsecs · Hipparcos 2007 parallax');
     expect(statementLine(distanceStatement(index, 98.71883010683966), session.observationSolution)).toBe('98.7 parsecs · Hipparcos 2007 parallax');
   });
 
-  it('writes no line for a distance from another method, a path to no star, or another solution', () => {
+  it('writes a distance from another method by its catalog alone, and no line for a path to no star or another solution', () => {
     const bj = photo('photogeometric_bailer_jones_edr3');
-    expect(statementLine(distanceStatement(bj.index), bj.session.observationSolution)).toBeNull();
+    expect(statementLine(distanceStatement(bj.index), bj.session.observationSolution)).toBe('7.68 parsecs · Hipparcos 2007');
     const { session, index } = photo();
     expect(statementLine(distanceStatement(index + 100000), session.observationSolution)).toBeNull();
     expect(statementLine(distanceStatement(index), undefined)).toBeNull();
@@ -53,20 +53,47 @@ describe('statementLine: a value line only for the approved kind', () => {
     expect(statementLine(other, session.observationSolution)).toBeNull();
   });
 
-  it('writes no line for any other kind of statement', () => {
+  it('writes every other statement as C7 decides: its value in its unit written out once, then its source in two or three words', () => {
     const { session, index } = photo();
-    const magnitude = {
-      subject: { kind: 'finding', findingId: 'finding-hip-91262', evidenceClass: 'catalog_matched' },
-      quantity: 'apparent_magnitude',
-      value: { kind: 'number', amount: 0.03, unit: 'mag' },
-      evidenceClass: 'catalog_matched',
-      source: { kind: 'solution_field', path: ['findings', index, 'catalogRef', 'apparentMagnitude'] },
-    } as AnswerStatement;
-    expect(statementLine(magnitude, session.observationSolution)).toBeNull();
-    const inferred = { ...distanceStatement(index), source: { kind: 'solution_field', path: ['findings', index, 'inferredDistancePc', 'median'] } } as AnswerStatement;
-    expect(statementLine(inferred, session.observationSolution)).toBeNull();
-    const otherField = { ...distanceStatement(index), source: { kind: 'solution_field', path: ['findings', index, 'catalogRef', 'parallaxMas', 'median'] } } as AnswerStatement;
-    expect(statementLine(otherField, session.observationSolution)).toBeNull();
+    const sol = session.observationSolution;
+    const at = (over: Partial<AnswerStatement>) => statementLine({ ...distanceStatement(index), ...over } as AnswerStatement, sol);
+    expect(at({ quantity: 'apparent_magnitude', value: { kind: 'number', amount: 0.03, unit: 'mag' }, source: { kind: 'solution_field', path: ['findings', index, 'catalogRef', 'apparentMagnitude'] } } as Partial<AnswerStatement>)).toBe('magnitude 0.03 · Hipparcos 2007');
+    expect(
+      at({
+        subject: { kind: 'solution' },
+        quantity: 'matched_star_count',
+        value: { kind: 'number', amount: 1982, unit: 'count' },
+        evidenceClass: 'observed',
+        source: { kind: 'solution_field', path: ['quality', 'matchedInlierCount'] },
+      } as Partial<AnswerStatement>)
+    ).toBe("1,982 · this photo's solve");
+    expect(
+      at({ quantity: 'detection_snr', value: { kind: 'number', amount: 214.4, unit: 'ratio' }, evidenceClass: 'observed', source: { kind: 'solution_field', path: ['findings', index, 'sourceDetection', 'snr'] } } as Partial<AnswerStatement>)
+    ).toBe("214 times · this photo's pixels");
+    expect(at({ quantity: 'altitude', value: { kind: 'number', amount: 45.25, unit: 'deg' }, source: { kind: 'solution_field', path: ['findings', index, 'skyPosition', 'altDeg'] } } as Partial<AnswerStatement>)).toBe(
+      "45.3 degrees · this photo's solve"
+    );
+    expect(at({ subject: { kind: 'ephemeris_body', body: 'mars' }, quantity: 'distance', value: { kind: 'number', amount: 1.52, unit: 'au' }, evidenceClass: 'predicted', source: { kind: 'ephemeris', body: 'mars' } } as unknown as Partial<AnswerStatement>)).toBe(
+      '1.52 astronomical units · ERFA ephemeris'
+    );
+    // A path that is no source of that quantity, or a source no words are decided for, writes no line
+    expect(at({ source: { kind: 'solution_field', path: ['findings', index, 'catalogRef', 'parallaxMas', 'median'] } } as Partial<AnswerStatement>)).toBeNull();
+    expect(at({ value: { kind: 'text', text: 'Vega' } } as unknown as Partial<AnswerStatement>)).toBeNull();
+  });
+});
+
+describe('valueWords: each unit written out once (C7)', () => {
+  it('writes each stored unit as decided', () => {
+    expect(valueWords(7.6787, 'pc')).toBe('7.68 parsecs');
+    expect(valueWords(1.524, 'au')).toBe('1.52 astronomical units');
+    expect(valueWords(0.03, 'mag')).toBe('magnitude 0.03');
+    expect(valueWords(5778, 'K')).toBe('5,780 kelvin');
+    expect(valueWords(45.25, 'deg')).toBe('45.3 degrees');
+    expect(valueWords(3.2, 'arcsec')).toBe('3.2 arcseconds');
+    expect(valueWords(1.2, 'px')).toBe('1.2 pixels');
+    expect(valueWords(0.25, 'fraction')).toBe('0.25 of 1');
+    expect(valueWords(31371, 'count')).toBe('31,371');
+    expect(valueWords(214.4, 'ratio')).toBe('214 times');
   });
 });
 
