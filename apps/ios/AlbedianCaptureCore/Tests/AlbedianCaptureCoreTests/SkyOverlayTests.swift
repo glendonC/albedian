@@ -56,7 +56,7 @@ final class SkyOverlayTests: XCTestCase {
 
     func testReadsEveryValidReplyOfTheFixtureIntoPredictedMarks() throws {
         let replies = try validReplies()
-        XCTAssertEqual(replies.count, 4)
+        XCTAssertEqual(replies.count, 5)
         for (name, reply) in replies {
             let marks = try XCTUnwrap(SkyContextReader.marks(reply), name)
             let stars = reply["stars"]?.arrayValue ?? []

@@ -1,7 +1,8 @@
 """The sky for a time and place: the Python mirror of packages/contracts/src/sky-context.ts.
 
 `POST /api/science/sky-context` takes a request (the moment, the place, and two optional filters) and answers the
-bright stars, the solar system bodies, the constellation figures' edges and the predicted sky brightness for it. Both
+bright stars, the solar system bodies, the constellation figures' edges, the predicted sky brightness and the Sun's
+altitude with its USNO band for it. Both
 sides are judged by tests/fixtures/sky_context_contract.json, which tests/integration/test_sky_context_contract.py
 writes and the Vitest file and the iPhone app's reader read.
 
@@ -13,8 +14,10 @@ refraction applied), as services/science/catalog.py `icrs_to_altaz` computes the
 The request travels in the body, never in the URL. `magLimit` keeps only the stars whose `mag` is at most it (a body
 has no magnitude in this reply and is kept); `aboveHorizonOnly` keeps only the stars and bodies whose altitude is 0 or
 more, and then only the edges whose two stars are kept. The reply states both as `filters`, so a reader knows what was
-left out. Strict by the wire rules (services/contracts/wire.py): unknown keys and Python field names are refused at
-every level.
+left out. The Sun (`sun`, skycontext-3) is its own block, never one of `ephemerides`, and no filter leaves it out: below
+the horizon is when it says how dark the sky is. A reply made before it was added holds none, so a reader takes its
+absence as no Sun to tell of. Strict by the wire rules (services/contracts/wire.py): unknown keys and Python field
+names are refused at every level.
 """
 
 from __future__ import annotations
@@ -61,6 +64,14 @@ SKY_CONTEXT_MOON_PHASES = (
 SKY_CONTEXT_ID_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
 # A body's name: one capital and lower-case ASCII letters (Moon, Jupiter), so its lower case is the same everywhere
 SKY_CONTEXT_BODY_NAME_PATTERN = r"^[A-Z][a-z]{1,31}$"
+# The Sun's USNO bands of its centre's altitude, brightest first, as services/science/predicted_sky.py `sky_phase` names
+# them, and where each begins: day above sunrise and sunset's -50 arcminutes, each twilight down to and including its
+# floor, night below the last
+SKY_CONTEXT_SUN_BANDS = ("day", "civil_twilight", "nautical_twilight", "astronomical_twilight", "night")
+SKY_CONTEXT_SUN_BAND_EDGES = {
+    "dayAboveDeg": -50.0 / 60.0, "civilTwilightFromDeg": -6.0, "nauticalTwilightFromDeg": -12.0,
+    "astronomicalTwilightFromDeg": -18.0,
+}  # fmt: skip
 
 
 class _Strict(WireModel):
@@ -92,6 +103,7 @@ SKY_CONTEXT_RULES = {
     "positionIsSkyPosition": "A body's raDeg, decDeg, altDeg and azDeg are its skyPosition's.",
     "distanceIsInferred": "A body's distancePc is its inferredDistancePc median.",
     "idsOfName": "A body's id and its evidence's id are made from its name.",
+    "sunBandOfAltitude": "The Sun's band is the USNO band of its altDeg: day above -50 arcminutes, civil twilight down to -6 degrees, nautical down to -12, astronomical down to -18, night below.",
 }  # fmt: skip
 
 def _text(maximum: int) -> Any:
@@ -149,6 +161,20 @@ Separation = _number(ge=0.0, le=180.0)
 
 def _rule(key: str) -> ValueError:
     return ValueError(SKY_CONTEXT_RULES[key])
+
+
+def sun_band_of(alt_deg: float) -> str:
+    """The USNO band of the Sun's centre altitude, by SKY_CONTEXT_SUN_BAND_EDGES."""
+    edges = SKY_CONTEXT_SUN_BAND_EDGES
+    if alt_deg > edges["dayAboveDeg"]:
+        return "day"
+    if alt_deg >= edges["civilTwilightFromDeg"]:
+        return "civil_twilight"
+    if alt_deg >= edges["nauticalTwilightFromDeg"]:
+        return "nautical_twilight"
+    if alt_deg >= edges["astronomicalTwilightFromDeg"]:
+        return "astronomical_twilight"
+    return "night"
 
 
 def _in_span(moment: str) -> bool:
@@ -391,6 +417,22 @@ class PredictedSkyBrightness(_Strict):
     limitations: Notes
 
 
+class SkyContextSun(_Strict):
+    """The Sun's centre altitude from the place, in the reply's convention (apparent and airless), and its USNO band."""
+
+    alt_deg: Latitude
+    band: Literal[SKY_CONTEXT_SUN_BANDS]  # type: ignore[valid-type]
+    evidence_class: Literal["predicted"]
+    method: Text
+    limitations: Notes
+
+    @model_validator(mode="after")
+    def _band_of_altitude(self) -> SkyContextSun:
+        if self.band != sun_band_of(self.alt_deg):
+            raise _rule("sunBandOfAltitude")
+        return self
+
+
 class SkyContextReply(_Strict):
     format: Literal["albedian.sky-context"]
     format_version: Annotated[Literal[1], BeforeValidator(wire_int)]
@@ -402,6 +444,8 @@ class SkyContextReply(_Strict):
     ephemerides: Annotated[list[SkyContextBody], Field(max_length=SKY_CONTEXT_BODIES_MAX)]
     constellation_edges: Annotated[list[ConstellationEdge], Field(max_length=SKY_CONTEXT_EDGES_MAX)]
     predicted_sky_brightness: PredictedSkyBrightness
+    # Absent from a reply made before the Sun was added (skycontext-3); never null
+    sun: Optional[SkyContextSun] = None
 
     @model_validator(mode="after")
     def _rules(self) -> SkyContextReply:

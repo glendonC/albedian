@@ -23,9 +23,12 @@ import {
   SKY_CONTEXT_RADIAL_VELOCITY_MAX,
   SKY_CONTEXT_RULES,
   SKY_CONTEXT_STARS_MAX,
+  SKY_CONTEXT_SUN_BAND_EDGES,
+  SKY_CONTEXT_SUN_BANDS,
   SKY_CONTEXT_TEXT_MAX_UTF16,
   SkyContextReplySchema,
   SkyContextRequestSchema,
+  sunBandOf,
 } from '../sky-context.js';
 
 /**
@@ -55,6 +58,8 @@ interface Fixture {
   limits: Record<string, number>;
   convention: Record<string, string>;
   providers: Record<string, string>;
+  sunBands: string[];
+  sunBandEdges: Record<string, number>;
   rules: Record<string, string>;
   bases: Record<string, Json>;
   valid: Sample[];
@@ -115,6 +120,8 @@ describe('the sky-context contract', () => {
     expect(SKY_CONTEXT_CONVENTION).toEqual(fixture.convention);
     expect(SKY_CONTEXT_PROVIDERS).toEqual(fixture.providers);
     expect(SKY_CONTEXT_RULES).toEqual(fixture.rules);
+    expect(SKY_CONTEXT_SUN_BANDS).toEqual(fixture.sunBands);
+    expect(SKY_CONTEXT_SUN_BAND_EDGES).toEqual(fixture.sunBandEdges);
   });
 
   it.each(fixture.valid.map((sample) => [sample.name, sample] as const))('accepts %s unchanged', (_, sample) => {
@@ -144,6 +151,39 @@ describe('the sky-context contract', () => {
     for (const [path, value] of [[['predictedSkyBrightness', 'airmass'], null], [['observerLocation', 'latDeg'], null], [['filters', 'magLimit'], null]] as const) {
       expect(accepts('reply', applied(BASE_REPLY, [{ path: [...path], value }])), path.join('.')).toBe(false);
     }
+  });
+
+  it('judges generated Suns by the band rule as written here (PBT)', () => {
+    const edges = fixture.sunBandEdges;
+    const expected = (alt: number): string => {
+      if (alt > edges.dayAboveDeg!) return 'day';
+      if (alt >= edges.civilTwilightFromDeg!) return 'civil_twilight';
+      if (alt >= edges.nauticalTwilightFromDeg!) return 'nautical_twilight';
+      return alt >= edges.astronomicalTwilightFromDeg! ? 'astronomical_twilight' : 'night';
+    };
+    const near = Object.values(edges).flatMap((edge) => [edge, edge - 1e-6, edge + 1e-6]);
+    const alt = fc.oneof(fc.constantFrom(...near, -90, 90, 0, -47.7), fc.double({ min: -90, max: 90, noNaN: true }));
+    const band = fc.constantFrom(...fixture.sunBands, 'dusk');
+    fc.assert(
+      fc.property(alt, band, (a, b) => {
+        // -0 is a wire number like any other; JSON has no negative zero to tell apart
+        const reply = applied(BASE_REPLY, [{ path: ['sun', 'altDeg'], value: a === 0 ? 0 : a }, { path: ['sun', 'band'], value: b }]);
+        expect(accepts('reply', reply)).toBe(b === expected(a));
+        expect(sunBandOf(a)).toBe(expected(a));
+      }),
+      { seed: SEED, numRuns: 200 }
+    );
+  });
+
+  it('keeps the Sun whatever the filters say, and takes a reply made before the Sun was added', () => {
+    const above = fixture.bases['reply-above']!;
+    expect(above.filters.aboveHorizonOnly).toBe(true);
+    expect(above.sun).toEqual(BASE_REPLY.sun);
+    expect(BASE_REPLY.sun.altDeg).toBeLessThan(0);
+    expect(accepts('reply', above)).toBe(true);
+    const { sun: _sun, ...older } = BASE_REPLY;
+    expect(accepts('reply', older)).toBe(true);
+    expect(accepts('reply', { ...BASE_REPLY, sun: null })).toBe(false);
   });
 
   it('holds each list to its stated number', () => {

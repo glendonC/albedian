@@ -6,8 +6,9 @@ Regenerate the fixture with ALBEDIAN_UPDATE_SKY_CONTEXT_FIXTURE=1 uv run pytest 
 
 The base reply is real: rows of the route's own reply (services/science/router.py) for a synthetic moment,
 2031-03-20T12:00:00Z, at an open North Pacific point, 20 N 140 W, which no capture was made at. Six stars, two bodies,
-the four edges joining those stars and the sky brightness, with the keys this contract drops removed and the ones it
-adds written in. test_the_base_rows_are_the_catalogs_own checks each star against its catalog row.
+the four edges joining those stars, the sky brightness and the Sun (skycontext-3, from the same ephemeris), with the
+keys this contract drops removed and the ones it adds written in. test_the_base_rows_are_the_catalogs_own checks each
+star against its catalog row and the Sun against the ephemeris.
 """
 
 from __future__ import annotations
@@ -36,6 +37,11 @@ LIMITS = {"magMin": -30.0, "magMax": 30.0, "nameMaxUtf16": 64, "textMaxUtf16": 1
           "bpRpMax": 10.0}  # fmt: skip
 CONVENTION = {"frame": "topocentric_sea_level", "azimuth": "true_north_through_east", "altitude": "apparent_airless"}
 PROVIDERS = {"Hipparcos": "Hipparcos 2007", "Gaia DR3": "Gaia DR3"}
+# The Sun's USNO bands, brightest first, and where each begins: day above sunrise and sunset's -50 arcminutes, then each
+# twilight down to and including its floor; night below the last
+SUN_BANDS = ("day", "civil_twilight", "nautical_twilight", "astronomical_twilight", "night")
+SUN_BAND_EDGES = {"dayAboveDeg": -50.0 / 60.0, "civilTwilightFromDeg": -6.0, "nauticalTwilightFromDeg": -12.0,
+                  "astronomicalTwilightFromDeg": -18.0}  # fmt: skip
 RULES = {
     "insideEphemerisSpan": "The moment lies from 1800 to 2050, the only years the sky can be worked out for.",
     "aboveHorizonIsAltitude": "aboveHorizon is true exactly when altDeg is 0 or more.",
@@ -54,6 +60,7 @@ RULES = {
     "positionIsSkyPosition": "A body's raDeg, decDeg, altDeg and azDeg are its skyPosition's.",
     "distanceIsInferred": "A body's distancePc is its inferredDistancePc median.",
     "idsOfName": "A body's id and its evidence's id are made from its name.",
+    "sunBandOfAltitude": "The Sun's band is the USNO band of its altDeg: day above -50 arcminutes, civil twilight down to -6 degrees, nautical down to -12, astronomical down to -18, night below.",
 }  # fmt: skip
 MODELS = {"request": sc.SkyContextRequest, "reply": sc.SkyContextReply}
 # The base reply, one row per line (see the module docstring for where it comes from)
@@ -83,7 +90,8 @@ BASE_REPLY: dict[str, Any] = json.loads(r"""
   {"constellation": "Lyra", "fromStarId": "star-sulafat", "toStarId": "star-vega"},
   {"constellation": "Ursa Major", "fromStarId": "star-phecda", "toStarId": "star-megrez"}
  ],
- "predictedSkyBrightness": {"skyBrightnessMagArcsec2": 21.6, "darkSkyMagArcsec2": 21.6, "lunarVeilDeltaMag": 0.0, "skyBrightnessNanoLamberts": 78.07, "lunarScatteredNanoLamberts": 0.0, "airmass": 1.0, "illuminationFraction": 0.0888, "lunarPhaseName": "Waning Crescent", "sepFromMoonDeg": 110.72, "target": "zenith", "targetAltDeg": 90.0, "moonAltDeg": -20.72, "evidenceClass": "predicted", "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model", "limitations": ["Predicted for the time and place; not measured in any image.", "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, site values the model needs and nothing measured here; light pollution is not modelled."]}
+ "predictedSkyBrightness": {"skyBrightnessMagArcsec2": 21.6, "darkSkyMagArcsec2": 21.6, "lunarVeilDeltaMag": 0.0, "skyBrightnessNanoLamberts": 78.07, "lunarScatteredNanoLamberts": 0.0, "airmass": 1.0, "illuminationFraction": 0.0888, "lunarPhaseName": "Waning Crescent", "sepFromMoonDeg": 110.72, "target": "zenith", "targetAltDeg": 90.0, "moonAltDeg": -20.72, "evidenceClass": "predicted", "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model", "limitations": ["Predicted for the time and place; not measured in any image.", "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, site values the model needs and nothing measured here; light pollution is not modelled."]},
+ "sun": {"altDeg": -47.73332301004936, "band": "night", "evidenceClass": "predicted", "method": "ERFA eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time", "limitations": ["Predicted from the given time and place with ERFA's analytic theories; not measured in any image.", "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).", "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -47.09 degrees, and the real air differs most near the horizon.", "Its uncertainty, 14.9 arcsec, adds the method's documented worst error (0.0 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.3 for the time scale.", "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."]}
 }
 """)
 
@@ -165,6 +173,8 @@ ABOVE_ONLY = _kept(BASE_REPLY, _above, {"aboveHorizonOnly": True})
 MAG_TWO = _kept(BASE_REPLY, lambda item: "mag" not in item or item["mag"] <= 2.0, {"magLimit": 2.0, "aboveHorizonOnly": False})
 MAG_TWO["ephemerides"] = copy.deepcopy(BASE_REPLY["ephemerides"])
 EMPTY = {**copy.deepcopy(BASE_REPLY), "stars": [], "ephemerides": [], "constellationEdges": []}
+# A reply made before the Sun was added (skycontext-3), as an older laptop still answers
+NO_SUN = {key: copy.deepcopy(value) for key, value in BASE_REPLY.items() if key != "sun"}
 BASES: dict[str, tuple[str, Any]] = {"request": ("request", BASE_REQUEST), "reply": ("reply", BASE_REPLY)}
 
 
@@ -183,6 +193,7 @@ def valid_samples() -> list[dict[str, Any]]:
         ("a reply with aboveHorizonOnly: the stars and the body below the horizon left out, and their edges", ABOVE_ONLY),
         ("a reply with a magLimit of 2: the fainter stars left out, and their edges, the bodies kept", MAG_TWO),
         ("a reply with no star, no body and no edge", EMPTY),
+        ("a reply without the Sun, as one made before the Sun was added", NO_SUN),
     ]
     return [{"name": name, "kind": "request", "body": body} for name, body in requests] + [
         {"name": name, "kind": "reply", "body": body} for name, body in replies
@@ -225,6 +236,15 @@ FAULTS: list[tuple[str, str, list[dict[str, Any]], str | None]] = [
     ("a body's evidence said to be catalog matched", "reply", [_set(_body(MARS, "evidence", "evidenceClass"), "catalog_matched")], None),
     ("a body said verified by a held-out check", "reply", [_set(_body(MARS, "evidence", "verifiedByIndependentHoldout"), True)], None),
     ("the brightness said to be observed", "reply", [_set(["predictedSkyBrightness", "evidenceClass"], "observed")], None),
+    ("the Sun said to be observed", "reply", [_set(["sun", "evidenceClass"], "observed")], None),
+    ("the Sun with no evidence class", "reply", [_set(["sun", "evidenceClass"], _DROP)], None),
+    ("the Sun with a band no definition names", "reply", [_set(["sun", "band"], "dusk")], None),
+    ("the Sun with no band", "reply", [_set(["sun", "band"], _DROP)], None),
+    ("the Sun with no method", "reply", [_set(["sun", "method"], _DROP)], None),
+    ("the Sun with no limitations", "reply", [_set(["sun", "limitations"], [])], None),
+    ("the Sun with an azimuth this contract does not carry", "reply", [_set(["sun", "azDeg"], 90.0)], None),
+    ("the Sun under its Python name", "reply", [_set(["sun", "altDeg"], _DROP), _set(["sun", "alt_deg"], BASE_REPLY["sun"]["altDeg"])], None),
+    ("a null Sun", "reply", [_set(["sun"], None)], None),
     ("a star with no releaseVersion", "reply", [_set(_star(VEGA, "releaseVersion"), _DROP)], None),
     ("a star from another catalog", "reply", [_set(_star(VEGA, "provider"), "Tycho-2")], None),
     ("a star with a body's distance method", "reply", [_set(_star(VEGA, "distancePc", "method"), "ephemeris_au")], None),
@@ -277,6 +297,9 @@ FAULTS: list[tuple[str, str, list[dict[str, Any]], str | None]] = [
     ("a body's distance not its inferred median", "reply", [_set(_body(MARS, "distancePc"), BASE_REPLY["ephemerides"][MARS]["distancePc"] * 1.01)], "distanceIsInferred"),
     ("a body's id of another name", "reply", [_set(_body(MARS, "id"), "finding-predicted-venus")], "idsOfName"),
     ("a body's evidence id of another name", "reply", [_set(_body(MARS, "evidence", "id"), "ev-ephem-venus")], "idsOfName"),
+    ("the Sun deep below the horizon said to be day", "reply", [_set(["sun", "band"], "day")], "sunBandOfAltitude"),
+    ("the Sun high in the sky said to be night", "reply", [_set(["sun", "altDeg"], 30.0)], "sunBandOfAltitude"),
+    ("the Sun in civil twilight said to be nautical", "reply", [_set(["sun", "altDeg"], -3.0), _set(["sun", "band"], "nautical_twilight")], "sunBandOfAltitude"),
 ]  # fmt: skip
 
 
@@ -343,6 +366,22 @@ EDGES: list[tuple[str, str, list[dict[str, Any]], list[dict[str, Any]]]] = [
     ("the separation from the Moon at 180", "reply", [_set(["predictedSkyBrightness", "sepFromMoonDeg"], 180.0)], [_set(["predictedSkyBrightness", "sepFromMoonDeg"], 180.000001)]),
     ("the lunar veil at 0", "reply", [_set(["predictedSkyBrightness", "lunarVeilDeltaMag"], 0.0)], [_set(["predictedSkyBrightness", "lunarVeilDeltaMag"], -0.000001)]),
     ("the phase name at a sector's edge, null", "reply-edge", [], [_set(["predictedSkyBrightness", "lunarPhaseName"], "Between Moons")]),
+    ("the Sun just above -50 arcminutes, day", "reply", [_set(["sun", "altDeg"], -0.833333), _set(["sun", "band"], "day")],
+     [_set(["sun", "altDeg"], -50.0 / 60.0), _set(["sun", "band"], "day")]),
+    ("the Sun at -50 arcminutes, civil twilight", "reply", [_set(["sun", "altDeg"], -50.0 / 60.0), _set(["sun", "band"], "civil_twilight")],
+     [_set(["sun", "altDeg"], -0.833333), _set(["sun", "band"], "civil_twilight")]),
+    ("the Sun at -6 degrees, civil twilight", "reply", [_set(["sun", "altDeg"], -6.0), _set(["sun", "band"], "civil_twilight")],
+     [_set(["sun", "altDeg"], -6.000001), _set(["sun", "band"], "civil_twilight")]),
+    ("the Sun at -12 degrees, nautical twilight", "reply", [_set(["sun", "altDeg"], -12.0), _set(["sun", "band"], "nautical_twilight")],
+     [_set(["sun", "altDeg"], -12.000001), _set(["sun", "band"], "nautical_twilight")]),
+    ("the Sun at -18 degrees, astronomical twilight", "reply", [_set(["sun", "altDeg"], -18.0), _set(["sun", "band"], "astronomical_twilight")],
+     [_set(["sun", "altDeg"], -18.000001), _set(["sun", "band"], "astronomical_twilight")]),
+    ("the Sun just below -18 degrees, night", "reply", [_set(["sun", "altDeg"], -18.000001), _set(["sun", "band"], "night")],
+     [_set(["sun", "altDeg"], -18.0), _set(["sun", "band"], "night")]),
+    ("the Sun's altitude at 90", "reply", [_set(["sun", "altDeg"], 90.0), _set(["sun", "band"], "day")],
+     [_set(["sun", "altDeg"], 90.000001), _set(["sun", "band"], "day")]),
+    ("the Sun's altitude at -90", "reply", [_set(["sun", "altDeg"], -90.0)], [_set(["sun", "altDeg"], -90.000001)]),
+    ("the Sun's method of 1024 units", "reply", [_set(["sun", "method"], "a" * 1024)], [_set(["sun", "method"], "a" * 1025)]),
 ]  # fmt: skip
 
 
@@ -358,7 +397,8 @@ def edge_samples() -> list[dict[str, Any]]:
 def build() -> dict[str, Any]:
     return {
         "format": FORMAT, "formatVersion": FORMAT_VERSION, "ephemerisSpan": {"from": SPAN[0], "until": SPAN[1]},
-        "limits": LIMITS, "convention": CONVENTION, "providers": PROVIDERS, "rules": RULES,
+        "limits": LIMITS, "convention": CONVENTION, "providers": PROVIDERS, "sunBands": list(SUN_BANDS),
+        "sunBandEdges": SUN_BAND_EDGES, "rules": RULES,
         "bases": {"request": BASE_REQUEST, "reply": BASE_REPLY, "reply-above": ABOVE_ONLY, "reply-edge": BASE_EDGE},
         "valid": valid_samples(), "invalid": invalid_samples(), "edges": edge_samples(),
     }  # fmt: skip
@@ -393,6 +433,8 @@ def test_the_decisions_are_the_modules() -> None:
     assert held == LIMITS
     assert sc.SKY_CONTEXT_CONVENTION == CONVENTION and sc.SKY_CONTEXT_PROVIDERS == PROVIDERS
     assert sc.SKY_CONTEXT_RULES == RULES
+    assert sc.SKY_CONTEXT_SUN_BANDS == SUN_BANDS
+    assert sc.SKY_CONTEXT_SUN_BAND_EDGES == SUN_BAND_EDGES
 
 
 def test_the_ephemeris_span_is_the_sky_codes_own() -> None:
@@ -420,6 +462,72 @@ def test_the_base_rows_are_the_catalogs_own() -> None:
     assert {body["name"] for body in BASE_REPLY["ephemerides"]} <= set(DEFAULT_BODIES)
     assert BASE_REPLY["observedAtUTC"] == BASE_REQUEST["observedAtUTC"]
     assert BASE_REPLY["observerLocation"] == {"latDeg": BASE_REQUEST["latDeg"], "lonDeg": BASE_REQUEST["lonDeg"]}
+
+
+def test_the_base_sun_is_the_ephemeris_own() -> None:
+    """The base reply's Sun is the ephemeris's for the base moment and place, within a nanodegree (the platforms' last
+    bits may differ), with its band from the science code's own sky_phase and its method and limitations unchanged."""
+    from services.science.ephemeris import compute_solar_system_ephemerides
+    from services.science.predicted_sky import sky_phase
+
+    (sun,) = compute_solar_system_ephemerides(BASE_REQUEST["observedAtUTC"], BASE_REQUEST["latDeg"], BASE_REQUEST["lonDeg"], bodies=("Sun",))
+    held = BASE_REPLY["sun"]
+    assert abs(held["altDeg"] - float(sun.alt_deg)) < 1e-9
+    assert held["band"] == sky_phase(float(sun.alt_deg)).band == "night"
+    evidence = sun.to_contract_dict(source_sha256=None)["evidence"]
+    assert (held["evidenceClass"], held["method"], held["limitations"]) == ("predicted", evidence["verificationMethod"], evidence["limitations"])
+
+
+def test_the_sun_bands_are_the_science_codes_own() -> None:
+    """The contract's band edges are the science code's constants, and its band function names each altitude as
+    services/science/predicted_sky.py sky_phase does, at every edge and its neighbours."""
+    from services.science import pose_estimate, predicted_sky
+
+    assert SUN_BAND_EDGES == {"dayAboveDeg": pose_estimate.SUNRISE_SUNSET_ALT_DEG, "civilTwilightFromDeg": predicted_sky.CIVIL_TWILIGHT_ALT_DEG,
+                              "nauticalTwilightFromDeg": predicted_sky.NAUTICAL_TWILIGHT_ALT_DEG,
+                              "astronomicalTwilightFromDeg": predicted_sky.ASTRONOMICAL_TWILIGHT_ALT_DEG}  # fmt: skip
+    for edge in SUN_BAND_EDGES.values():
+        for alt in (edge, edge - 1e-6, edge + 1e-6, edge - 1e-12, edge + 1e-12):
+            assert sc.sun_band_of(alt) == predicted_sky.sky_phase(alt).band, alt
+    for alt in (-90.0, -45.0, 0.0, 45.0, 90.0):
+        assert sc.sun_band_of(alt) == predicted_sky.sky_phase(alt).band, alt
+
+
+@settings(max_examples=200, deadline=None)
+@given(alt=st.floats(min_value=-90.0, max_value=90.0, allow_nan=False))
+def test_property_the_contracts_sun_band_is_sky_phases(alt: float) -> None:
+    from services.science.predicted_sky import sky_phase
+
+    assert sc.sun_band_of(alt) == sky_phase(alt).band
+
+
+def _expected_band(alt: float) -> str:
+    """The band as the rule is written here, not by the module."""
+    if alt > SUN_BAND_EDGES["dayAboveDeg"]:
+        return "day"
+    if alt >= SUN_BAND_EDGES["civilTwilightFromDeg"]:
+        return "civil_twilight"
+    if alt >= SUN_BAND_EDGES["nauticalTwilightFromDeg"]:
+        return "nautical_twilight"
+    return "astronomical_twilight" if alt >= SUN_BAND_EDGES["astronomicalTwilightFromDeg"] else "night"
+
+
+_SUN_ALTITUDES = [*SUN_BAND_EDGES.values(), *(edge + d for edge in SUN_BAND_EDGES.values() for d in (-1e-6, 1e-6)), -90.0, 90.0, 0.0, -47.7]
+
+
+@settings(max_examples=200, deadline=None)
+@given(alt=st.one_of(st.sampled_from(_SUN_ALTITUDES), st.floats(min_value=-90.0, max_value=90.0, allow_nan=False)),
+       band=st.sampled_from([*SUN_BANDS, "dusk"]))  # fmt: skip
+def test_property_generated_suns_match_the_band_rule(alt: float, band: str) -> None:
+    reply = _apply(BASE_REPLY, [_set(["sun", "altDeg"], alt), _set(["sun", "band"], band)])
+    assert accepts("reply", reply) is (band == _expected_band(alt))
+
+
+def test_the_sun_stays_whatever_the_filters_say() -> None:
+    """The Sun is its own block, not a body of ephemerides: aboveHorizonOnly never asks it above the horizon, which is
+    when the capture coach needs it."""
+    assert ABOVE_ONLY["sun"] == BASE_REPLY["sun"] and BASE_REPLY["sun"]["altDeg"] < 0.0
+    assert accepts("reply", ABOVE_ONLY)
 
 
 @pytest.mark.parametrize("sample", valid_samples(), ids=lambda sample: sample["name"])
@@ -490,6 +598,7 @@ def test_every_python_field_name_is_refused_where_its_wire_key_goes() -> None:
     cases += [{**BASE_REPLY, "stars": [variant, *BASE_REPLY["stars"][1:]]} for variant in renamed(star, sc.SkyContextStar)]
     body = BASE_REPLY["ephemerides"][MARS]
     cases += [{**BASE_REPLY, "ephemerides": [variant, *BASE_REPLY["ephemerides"][1:]]} for variant in renamed(body, sc.SkyContextBody)]
+    cases += [{**BASE_REPLY, "sun": variant} for variant in renamed(BASE_REPLY["sun"], sc.SkyContextSun)]
     assert len(cases) > 20
     for case in cases:
         assert not accepts("request" if "stars" not in case else "reply", case)

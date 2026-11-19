@@ -16,6 +16,10 @@ import { wireNumber, wireUtcInstant } from './wire.js';
  * or more, and then only the edges whose two stars are kept. The reply states both as `filters`, so a reader knows
  * what was left out.
  *
+ * The Sun (`sun`, skycontext-3) is its own block, never one of `ephemerides`, and no filter leaves it out: below the
+ * horizon is when it says how dark the sky is. A reply made before it was added holds none, so a reader takes its
+ * absence as no Sun to tell of.
+ *
  * Strict on both sides by the wire rules: unknown keys and Python field names are refused at every level.
  */
 export const SKY_CONTEXT_FORMAT = 'albedian.sky-context';
@@ -69,6 +73,19 @@ export const SKY_CONTEXT_MOON_PHASES = [
 export const SKY_CONTEXT_ID_PATTERN = '^[a-z0-9]+(?:-[a-z0-9]+)*$';
 /** A body's name: one capital and lower-case ASCII letters (Moon, Jupiter), so its lower case is the same everywhere. */
 export const SKY_CONTEXT_BODY_NAME_PATTERN = '^[A-Z][a-z]{1,31}$';
+/**
+ * The Sun's USNO bands of its centre's altitude, brightest first, as services/science/predicted_sky.py `sky_phase`
+ * names them, and where each begins: day above sunrise and sunset's -50 arcminutes, each twilight down to and including
+ * its floor, night below the last.
+ */
+export const SKY_CONTEXT_SUN_BANDS = ['day', 'civil_twilight', 'nautical_twilight', 'astronomical_twilight', 'night'] as const;
+export type SkyContextSunBand = (typeof SKY_CONTEXT_SUN_BANDS)[number];
+export const SKY_CONTEXT_SUN_BAND_EDGES = {
+  dayAboveDeg: -50 / 60,
+  civilTwilightFromDeg: -6,
+  nauticalTwilightFromDeg: -12,
+  astronomicalTwilightFromDeg: -18,
+} as const;
 
 /** The contract's own rules, worded the same on both sides. */
 export const SKY_CONTEXT_RULES = {
@@ -90,6 +107,8 @@ export const SKY_CONTEXT_RULES = {
   positionIsSkyPosition: "A body's raDeg, decDeg, altDeg and azDeg are its skyPosition's.",
   distanceIsInferred: "A body's distancePc is its inferredDistancePc median.",
   idsOfName: "A body's id and its evidence's id are made from its name.",
+  sunBandOfAltitude:
+    "The Sun's band is the USNO band of its altDeg: day above -50 arcminutes, civil twilight down to -6 degrees, nautical down to -12, astronomical down to -18, night below.",
 } as const;
 type Rule = keyof typeof SKY_CONTEXT_RULES;
 
@@ -124,6 +143,16 @@ const properMotion = () => wireNumber().min(-SKY_CONTEXT_PROPER_MOTION_MAX).max(
 
 function broken(ctx: z.RefinementCtx, rule: Rule): void {
   ctx.addIssue({ code: z.ZodIssueCode.custom, message: SKY_CONTEXT_RULES[rule] });
+}
+
+/** The USNO band of the Sun's centre altitude, by SKY_CONTEXT_SUN_BAND_EDGES. */
+export function sunBandOf(altDeg: number): SkyContextSunBand {
+  const edges = SKY_CONTEXT_SUN_BAND_EDGES;
+  if (altDeg > edges.dayAboveDeg) return 'day';
+  if (altDeg >= edges.civilTwilightFromDeg) return 'civil_twilight';
+  if (altDeg >= edges.nauticalTwilightFromDeg) return 'nautical_twilight';
+  if (altDeg >= edges.astronomicalTwilightFromDeg) return 'astronomical_twilight';
+  return 'night';
 }
 
 /** Whether a wire UTC instant lies in the ephemeris's span: the form is fixed width, so text order is time order. */
@@ -324,6 +353,21 @@ export const PredictedSkyBrightnessSchema = z
   })
   .strict();
 
+/** The Sun's centre altitude from the place, in the reply's convention (apparent and airless), and its USNO band. */
+export const SkyContextSunSchema = z
+  .object({
+    altDeg: latitude(),
+    band: z.enum(SKY_CONTEXT_SUN_BANDS),
+    evidenceClass: z.literal('predicted'),
+    method: text(),
+    limitations: notes(),
+  })
+  .strict()
+  .superRefine((s, ctx) => {
+    if (s.band !== sunBandOf(s.altDeg)) broken(ctx, 'sunBandOfAltitude');
+  });
+export type SkyContextSun = z.infer<typeof SkyContextSunSchema>;
+
 export const SkyContextReplySchema = z
   .object({
     format: z.literal(SKY_CONTEXT_FORMAT),
@@ -336,6 +380,8 @@ export const SkyContextReplySchema = z
     ephemerides: z.array(SkyContextBodySchema).max(SKY_CONTEXT_BODIES_MAX),
     constellationEdges: z.array(ConstellationEdgeSchema).max(SKY_CONTEXT_EDGES_MAX),
     predictedSkyBrightness: PredictedSkyBrightnessSchema,
+    // Absent from a reply made before the Sun was added (skycontext-3); never null
+    sun: SkyContextSunSchema.optional(),
   })
   .strict()
   .superRefine((r, ctx) => {
