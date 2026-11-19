@@ -450,7 +450,10 @@ shows it: raised samples 2 px apart lie on each other's first ring and lend it t
 3 px apart, the other way round [tested: AUDIT-B's restore-4f verdict, a pair 2 px apart in a row passed at 4 codes in 7
 of 10 trials with one ring; leaving candidates out of each other's rings instead set aside, since it took the edge
 column out of an edge's rings]. Such a point is confirmed as any point is, and the passes dissolve those the original
-does not confirm. Set
+does not confirm. Open limit [tested by AUDIT-B, 2026-11-19, the restore-4f v2 re-read]: a pattern that puts a
+raised partner on both rings of every raised sample (a row at 0, 2, 3 and 5 px) passed the whole gate in 3 of 10
+open-sky places of rp-b-05's crop at 4 codes, 2 at 8, 1 at 16 and none at 32; P-RST-11 states it, and restore-4g hardens
+the gate against it (proposed there: an unevenness its few most outlying samples cannot set, or flags in rounds). Set
 aside [tested]: the ring's largest sample (a gradient hid a raised sample); its median (it flagged faint stars); a
 star's shape test (a 2 x 2 cluster cannot be told from a star centred on a pixel corner); no condition on the original
 (15, 690, 6210, 24 and 283 honest samples on the five photos whole, rp-b-03's lit foreground texture).

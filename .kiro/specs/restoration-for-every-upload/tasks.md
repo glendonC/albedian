@@ -128,6 +128,9 @@ pictures under `.cache/restore-review/<unit>/`.
     sample or a cluster of up to 3 x 3 standing the stated sensitivity over both its surroundings and the original's
     own samples is refused in every trial on every real photo; kept edges are stored as the gate computes them, so
     every kept sample is checked exactly (design section 7). Before any person sees a restoration.
+  - restore-4g-docs [decided 2026-11-19 by the lead]: P-RST-11's text states what the gate refuses and its open
+    limit, raised samples with partners on both rings, with AUDIT-B's numbers from the restore-4f v2 re-read.
+  - [ ] restore-4g: the gate hardened against that pattern, its trials added to P-RST-11 (during the trip).
 
 - [x] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with

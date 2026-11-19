@@ -477,7 +477,16 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
   over the larger of its own luma and the original's own luma there, makes the gate reject in every trial (the
   trial model: a sample counts as made up only when it stands above both what the stored file holds around it and
   what the original recorded there) [decided 2026-11-19 by the lead: restore-4f]; so does a pair or a line of three
-  such samples 2 px apart along a row, a column or a diagonal [AUDIT-B's restore-4f verdict].
+  such samples 2 px apart along a row, a column or a diagonal [AUDIT-B's restore-4f verdict]. What the gate
+  refuses, so stated: every kept sample that is not what the gate computes, at any size from 1 code of 65535; and,
+  outside kept and clipped regions, a single sample, a pair or line 2 or 3 px apart, or a cluster of up to 3 x 3,
+  standing the stated sensitivity over both its surroundings and the original's own samples. Open limit [tested by
+  AUDIT-B, 2026-11-19, the restore-4f v2 re-read on rp-b-05's 768 px crop, 10 open-sky places, the whole gate asked]:
+  a pattern that puts a raised partner on both rings of every raised sample passes. A row at 0, 2, 3 and 5 px passed
+  in 3, 2, 1 and 0 of 10 places at 4, 8, 16 and 32 codes; a row at 0, 2, 3, 5, 6, 8, 9 and 11 px in 1, 1, 0 and 0;
+  rows 0 and 3 by columns 0, 2, 3 and 5 in 1, 1, 0 and 0. The restoration's steps are deterministic filters that
+  generate no such pattern by construction; the gap is a hand-built adversarial pattern of faint samples, and
+  restore-4g hardens the gate against it [decided 2026-11-19 by the lead].
 - **P-RST-12** (REQ-RST-6.2, 6.6): for any synthetic star field with noise, every confirmed star's flux after the
   photo path, lift undone, is within the tolerance; with footprints switched off (a mutant) it is not.
 - **P-RST-13** (REQ-RST-6.3): after the dissolve passes the working image holds no unconfirmed point, or the pass
