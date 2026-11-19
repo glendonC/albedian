@@ -1107,6 +1107,64 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
         "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"
       }
+    },
+    "spitzer": {
+      "title": "Spitzer Space Telescope",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "spitzer/spitzer_lod0.glb",
+          "bytes": 2336444,
+          "triangles": 62256,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "spitzer/spitzer_lod1.glb",
+          "bytes": 1128068,
+          "triangles": 31126,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "spitzer/spitzer_lod2.glb",
+          "bytes": 455976,
+          "triangles": 10671,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "spitzer/spitzer_picker.webp",
+          "bytes": 1962,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.786,
+          -1.002,
+          -3.006
+        ],
+        "max": [
+          0.786,
+          1.047,
+          1.359
+        ]
+      },
+      "bodyRadiusM": 2.2,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "Mirror.001",
+        "metres": 0.85,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A",
+        "quote": "The telescope has an 85 cm diameter aperture.",
+        "quotedCm": 85
+      }
     }
   },
   "entries": [
@@ -1787,6 +1845,44 @@
           "value": "450 W in Mercury orbit",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
           "quote": "provides a nominal 450 W in Mercury orbit"
+        }
+      ]
+    },
+    {
+      "id": "spitzer",
+      "name": "Spitzer Space Telescope",
+      "model": "spitzer",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2003-08-25",
+          "page": "https://science.nasa.gov/mission/spitzer/",
+          "quote": "Aug. 25, 2003 / 05:35:39 UT"
+        },
+        {
+          "key": "massKg",
+          "value": 950,
+          "page": "https://science.nasa.gov/mission/spitzer/",
+          "quote": "2,094 pounds (950 kilograms)"
+        },
+        {
+          "key": "apertureCm",
+          "value": 85,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A",
+          "quote": "The telescope has an 85 cm diameter aperture."
+        },
+        {
+          "key": "orbit",
+          "value": "Earth-trailing, around the Sun",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A",
+          "quote": "Spitzer has an Earth-trailing Heliocentric orbit."
+        },
+        {
+          "key": "decommissioned",
+          "value": "2020-01-30",
+          "page": "https://science.nasa.gov/mission/spitzer/",
+          "quote": "was decommissioned on Jan. 30, 2020"
         }
       ]
     }

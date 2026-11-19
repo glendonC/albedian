@@ -102,6 +102,14 @@ CHANGES = {
         "keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, "
         "and the textures re-encoded as WebP."
     ),
+    # lod0 for a model of flat colours whose materials NASA names as metals, foils, a mirror and cells ("metals")
+    "lod0_metals": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as "
+        "gold, brass, copper, silver foil, chrome, brushed metal, the mirror or solar cells given physically based "
+        "materials of that kind, the others keeping NASA's own colour, and the normals made again, smooth within an "
+        "angle and sharp beyond it."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

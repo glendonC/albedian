@@ -935,6 +935,51 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.5,
         "changes": "photo",
     },
+    "spitzer": {
+        "title": "Spitzer Space Telescope",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-spitzer-space-telescope",
+            "title": "Spitzer Space Telescope, NASA 3D Resources",
+            "folder": "Spitzer Space Telescope",
+            "file": "Spitzer Space Telescope.glb",
+            "bytes": 251_388,
+            "sha256": "fa0b7c89fd2c8632d981d3a0ad471dc70620dda4e663788409b251e0f6e6f558",
+            "picture": "Spitzer Space Telescope.png",
+            "picture_bytes": 394_932,
+            "picture_sha256": "b2891a22d44f6bab013c81a5cc2c51481788a26ec0d0337a11da40f0b256fa9a",
+            "local": "spitzer",
+        },
+        "drop_objects": [],
+        # The telescope's tube points along +Z in the import frame and its solar panel stands on the +Y side: flown
+        # tube first, panel on top.
+        "forward": (0.0, 0.0, 1.0),
+        "up": (0.0, 1.0, 0.0),
+        # Scale from the telescope's mirror, NASA's "Mirror" part, 0.8740 units across, to NSSDC's 85 cm aperture.
+        "scale_from": {
+            "material": "Mirror.001",
+            "axis": "x",
+            "metres": 0.85,
+            "quoted_cm": 85,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A",
+            "quote": "The telescope has an 85 cm diameter aperture.",
+        },
+        # NASA's model names each part's material by what it is: the metals, foils, mirror and cells get physically
+        # based materials of that kind; the rest keep NASA's own colour.
+        "material_rules": [
+            {"match": ["edges"], "role": "nasa_flat"},
+            {"match": ["solar cells"], "role": "pbr", "base": (0.02, 0.025, 0.06), "metallic": 0.0, "roughness": 0.15},
+            {"match": ["mirror"], "role": "pbr", "base": (0.56, 0.57, 0.58), "metallic": 1.0, "roughness": 0.08},
+            {"match": ["gold", "brass"], "role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.3},
+            {"match": ["copper"], "role": "pbr", "base": (0.95, 0.64, 0.54), "metallic": 1.0, "roughness": 0.35},
+            {"match": ["foil silver", "silver core"], "role": "pbr", "base": (0.90, 0.90, 0.91), "metallic": 1.0, "roughness": 0.34},
+            {"match": ["chrome", "brushed metal", "bolts"], "role": "pbr", "base": (0.91, 0.92, 0.92), "metallic": 1.0, "roughness": 0.3},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        "smooth_deg": 35.0,
+        "body_radius_m": 2.2,
+        "changes": "metals",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1248,6 +1293,21 @@ HANGAR: list[dict] = [
             {"key": "mercuryOrbit", "value": "2011-03-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "Mercury orbit insertion took place with a 15 minute burn starting at 00:45 UT on 18 March 2011"},
             {"key": "impact", "value": "2015-04-30", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "The MESSENGER spacecraft impacted the surface of Mercury as planned on 30 April 2015 at 19:26 UT (3:26 p.m. EDT)."},
             {"key": "power", "value": "450 W in Mercury orbit", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "provides a nominal 450 W in Mercury orbit"},
+        ],
+    },
+    {
+        # Spitzer trailed Earth around the Sun and NASA states no speed for it: no speed. NSSDC gives its mass as 865 kg
+        # where the mission page gives 950 kg; the mission page's figure is used, in its own words.
+        "id": "spitzer",
+        "name": "Spitzer Space Telescope",
+        "model": "spitzer",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2003-08-25", "page": "https://science.nasa.gov/mission/spitzer/", "quote": "Aug. 25, 2003 / 05:35:39 UT"},
+            {"key": "massKg", "value": 950, "page": "https://science.nasa.gov/mission/spitzer/", "quote": "2,094 pounds (950 kilograms)"},
+            {"key": "apertureCm", "value": 85, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A", "quote": "The telescope has an 85 cm diameter aperture."},
+            {"key": "orbit", "value": "Earth-trailing, around the Sun", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A", "quote": "Spitzer has an Earth-trailing Heliocentric orbit."},
+            {"key": "decommissioned", "value": "2020-01-30", "page": "https://science.nasa.gov/mission/spitzer/", "quote": "was decommissioned on Jan. 30, 2020"},
         ],
     },
 ]

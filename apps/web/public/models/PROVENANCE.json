@@ -420,7 +420,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "3d1c6717b109ba4ba7188b10fce0bbae75b5030878a580f59b0959a2cbbba6fc",
+      "sha256": "e07f3a1b2247fea77b802b69f1e4694199b8f5dd19e1d70923a36039e8411767",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1080,6 +1080,65 @@
         "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
       },
       "note": "Rendered from this folder's lod0 build of https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb."
+    },
+    {
+      "path": "hangar/spitzer/spitzer_lod0.glb",
+      "sha256": "235fcee475c8f6f544f9ae6efea3d3fdb5ace64dbe76a31ebfb3408e3569c9e1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft spitzer --out apps/web/public/models/hangar/spitzer",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as gold, brass, copper, silver foil, chrome, brushed metal, the mirror or solar cells given physically based materials of that kind, the others keeping NASA's own colour, and the normals made again, smooth within an angle and sharp beyond it."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Spitzer%20Space%20Telescope/Spitzer%20Space%20Telescope.glb (251388 bytes, SHA-256 fa0b7c89fd2c8632d981d3a0ad471dc70620dda4e663788409b251e0f6e6f558); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/spitzer/spitzer_lod1.glb",
+      "sha256": "faef029a31ae36effc9c07ab9176a7ea7a884ad550f9564c688be731ae294a51",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft spitzer --out apps/web/public/models/hangar/spitzer",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Spitzer%20Space%20Telescope/Spitzer%20Space%20Telescope.glb (251388 bytes, SHA-256 fa0b7c89fd2c8632d981d3a0ad471dc70620dda4e663788409b251e0f6e6f558); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/spitzer/spitzer_lod2.glb",
+      "sha256": "c2fd51aed0d7eff106db33aeac75cff993f23529e724ab0a4f378439a4696804",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft spitzer --out apps/web/public/models/hangar/spitzer",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Spitzer%20Space%20Telescope/Spitzer%20Space%20Telescope.glb (251388 bytes, SHA-256 fa0b7c89fd2c8632d981d3a0ad471dc70620dda4e663788409b251e0f6e6f558); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/spitzer/spitzer_picker.webp",
+      "sha256": "6b41ba5896e69a6a583c1cde2058cc71e2073eb71ec1953f05c2aa5c432c1a70",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft spitzer --out apps/web/public/models/hangar/spitzer",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Spitzer%20Space%20Telescope/Spitzer%20Space%20Telescope.png (394932 bytes, SHA-256 b2891a22d44f6bab013c81a5cc2c51481788a26ec0d0337a11da40f0b256fa9a)."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",
