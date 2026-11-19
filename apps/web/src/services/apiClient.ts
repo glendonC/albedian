@@ -534,7 +534,55 @@ export const CANCELED_WORD = 'Canceled';
 export async function cancelJob(jobId: string): Promise<FollowedJob> {
   const res = await fetchAnswer(`/api/ingest/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
   if (!res.ok) throw new Error(await serverReason(res));
-  return parseFollowedJob(await res.json());
+  // The one cancel route serves every kind of job (upload jobs design 3.6)
+  const body: unknown = await res.json();
+  return body !== null && typeof body === 'object' && 'kind' in body ? UploadJobSchema.parse(body) : SolveJobSchema.parse(body);
+}
+
+/**
+ * Starts, joins or returns the restoration of a stored still (`POST /api/media/{sha256}/restore`, restore-2b): 202
+ * with a new job, 200 with the active one it joined or the current succeeded one. Throws with the server's reason when
+ * it refuses (a clip, until restore-7, is answered "Restoring a clip is not built yet.").
+ */
+export async function startRestoration(sha256: string): Promise<UploadJob> {
+  const res = await fetchAnswer(`/api/media/${sha256}/restore`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ kind: 'restoration' }),
+  });
+  if (!res.ok) throw new Error(await serverReason(res));
+  const job = UploadJobSchema.parse(await res.json());
+  if (job.kind !== 'restoration') throw new Error(`a ${job.kind} job is not a restoration`);
+  return job;
+}
+
+/**
+ * Follows a job of any kind at `GET /api/ingest/jobs/{id}` while it is queued or running, once per `pollMs`
+ * (JOB_POLL_MS), telling each record, and resolves with the record it ended in. A job that already ended is read no
+ * further. Throws with the server's reason when a read is refused, and "stopped following" once `signal` aborts.
+ */
+export async function followJob(
+  job: UploadJob,
+  onRecord: (job: UploadJob) => void,
+  options: { pollMs?: number; signal?: AbortSignal } = {}
+): Promise<UploadJob> {
+  const pollMs = options.pollMs ?? JOB_POLL_MS;
+  let current = job;
+  while (current.state === 'queued' || current.state === 'running') {
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    if (options.signal?.aborted) throw new Error('stopped following');
+    const res = await fetchAnswer(`/api/ingest/jobs/${encodeURIComponent(current.id)}`);
+    if (!res.ok) throw new Error(await serverReason(res));
+    current = UploadJobSchema.parse(await res.json());
+    onRecord(current);
+    if (options.signal?.aborted) throw new Error('stopped following');
+  }
+  return current;
+}
+
+/** Where a stored variant's bytes are served (`GET /api/media/{sha256}/variants/{variantId}/file`). */
+export function variantFileUrl(sha256: string, variantId: string): string {
+  return `/api/media/${sha256}/variants/${encodeURIComponent(variantId)}/file`;
 }
 
 /**
