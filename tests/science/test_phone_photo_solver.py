@@ -904,8 +904,10 @@ def test_the_phone_solver_checks_names_in_the_held_out_region_at_the_capture_epo
     assert sol.status == "calibrated" and len(seen) == 1
     held, epoch = seen[0]
     # The region is drawn around every star the solution was fitted on or checked against: the held-out inliers and
-    # the fit stars, of which the phone solver takes 3 to 8 (`solve_phone_photo`'s training count)
-    assert 3 <= len(held) - sol.quality.held_out_inliers <= 8
+    # the fit stars, of which the phone solver takes at least 3 and half its tight pairs at most, so never more than
+    # the pairs it holds out (`_training_count`, FIELD refine-1)
+    fit = len(held) - sol.quality.held_out_inliers
+    assert 3 <= fit <= sol.quality.held_out_pair_count
     jd = pps._parse_iso_to_jd_utc(ci00_frame.truth.metadata["utc"])
     assert epoch == pytest.approx(2000.0 + (jd - pps.JD_J2000) / pps.DAYS_PER_JYEAR, abs=1e-9)
     # A named fit star says its position made the solution; a named held-out star does not

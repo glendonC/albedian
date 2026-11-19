@@ -1675,6 +1675,15 @@ def _refine_phone_camera_wcs(
     )
 
 
+def _training_count(pairs: int) -> int:
+    """How many of a candidate's tight pairs train the refinement: half of them, never fewer than 3, and never so
+    many that fewer than 6 are left for the held-out check (FIELD refine-1). A cap of 8 left the six numbers the
+    refinement fits short of stars on wide phone frames: with astrometry.net's field of view, rp-b-02, rp-b-22 and
+    rp-b-12 failed the held-out gate at 3.45 to 4.52 px and passed it at 1.01 to 2.82 px trained this way, the gate
+    unchanged [tested, .lead/kiro/reports/FIELD/refine-1-diagnosis.md]."""
+    return max(3, min(pairs // 2, pairs - 6))
+
+
 def _associate_detections(
     wcs: PhoneCameraWCS,
     detections: Sequence[SourceDetection],
@@ -2305,7 +2314,7 @@ def _solve_phone_photo_with(
         key=lambda item: math.hypot(eval_pool[item[0]].x_px - cx0, eval_pool[item[0]].y_px - cy0),
         reverse=True,
     )
-    train_count = max(3, min(8, len(sorted_for_train) // 2, len(sorted_for_train) - 6))
+    train_count = _training_count(len(sorted_for_train))
     interleaved = [*sorted_for_train[::2], *sorted_for_train[1::2]]
     train_items = interleaved[:train_count]
     train_det_ids = {id(eval_pool[d_i]) for d_i, _, _ in train_items}
