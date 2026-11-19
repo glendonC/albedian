@@ -2,6 +2,17 @@ import { useCallback, useEffect, useRef } from 'react';
 import { ObservationSession } from '@albedian/contracts';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { arrivalDistanceText, computeStarAnchorNdc, flightEndOrigin } from '@albedian/observation';
+import { MOTION_TOKENS } from '@albedian/design-system';
+
+/**
+ * Each half of the flight (Phase A, then Phase B) lasts the motion record's camera half, 750 ms: NASA's Eyes flies to
+ * a body in 1.5 s as two such halves [verified: eyes.nasa.gov/apps/solar-system/app.js, goToCelestialObject; the
+ * MOTION record, .lead/uiux/motion/MOTION-APPROVED.md].
+ */
+export const FLIGHT_HALF_MS = MOTION_TOKENS.cameraHalfMs;
+
+/** Both halves ease as NASA's Eyes' camera does: 1 - (1 - t)^4, an ease-out quart, clamped to the half. */
+export const flightEase = (t: number): number => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
 
 /**
  * Smooth 60fps `requestAnimationFrame` camera flight hook for Phase A (off-axis anchor lock)
@@ -71,15 +82,15 @@ export function useCameraFlightAnimation(
       }
 
       const startTime = performance.now();
-      const phaseADurationMs = 620;
-      const phaseBDurationMs = 1550;
+      const phaseADurationMs = FLIGHT_HALF_MS;
+      const phaseBDurationMs = FLIGHT_HALF_MS;
       const totalDurationMs = phaseADurationMs + phaseBDurationMs;
 
       const step = (now: number) => {
         const elapsed = now - startTime;
         if (elapsed < phaseADurationMs) {
           const pA = Math.min(1, elapsed / phaseADurationMs);
-          const easeA = pA < 0.5 ? 2 * pA * pA : 1 - Math.pow(-2 * pA + 2, 2) / 2;
+          const easeA = flightEase(pA);
           setSession((prev) => ({
             ...prev,
             selectedFindingId: target.id,
@@ -99,7 +110,7 @@ export function useCameraFlightAnimation(
           flightRafRef.current = window.requestAnimationFrame(step);
         } else if (elapsed < totalDurationMs) {
           const pB = Math.min(1, (elapsed - phaseADurationMs) / phaseBDurationMs);
-          const easeB = 1 - Math.pow(1 - pB, 3);
+          const easeB = flightEase(pB);
           const curOrigin: [number, number, number] = [
             Number((startOrigin[0] + (endOrigin[0] - startOrigin[0]) * easeB).toFixed(3)),
             Number((startOrigin[1] + (endOrigin[1] - startOrigin[1]) * easeB).toFixed(3)),

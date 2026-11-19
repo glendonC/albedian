@@ -8,7 +8,8 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlightAndRestoreHud } from '../../components/FlightAndRestoreHud.js';
 import { FLIGHT_STANDOFF_PC, distancePc } from '@albedian/observation';
-import { useCameraFlightAnimation } from '../useCameraFlightAnimation.js';
+import { MOTION_TOKENS } from '@albedian/design-system';
+import { FLIGHT_HALF_MS, flightEase, useCameraFlightAnimation } from '../useCameraFlightAnimation.js';
 
 /**
  * Go There ends one light year short of the star, on the line from where the camera started
@@ -27,7 +28,8 @@ function flyThrough(
   session: ObservationSession,
   findingId: string,
   frames: FrameRequestCallback[],
-  appliedTo: ObservationSession = session
+  appliedTo: ObservationSession = session,
+  offsets: number[] = [300, 1200, 60_000]
 ): ObservationSession[] {
   const updates: Update[] = [];
   const setSession = (u: Update) => updates.push(u);
@@ -41,7 +43,7 @@ function flyThrough(
   fly!(findingId);
   // Run the queued animation frames: one in each phase, then past the flight's end
   const start = performance.now();
-  const times = [start + 300, start + 1200, start + 60_000];
+  const times = offsets.map((ms) => start + ms);
   while (frames.length > 0) frames.shift()!(times.shift() ?? start + 60_000);
   const states: ObservationSession[] = [];
   updates.reduce<ObservationSession>((s, u) => {
@@ -152,5 +154,34 @@ describe('Go There flies to one light year short of the star', () => {
     expect(after.spatialView.observerOriginParsec).toEqual(near);
     expect(after.lastStatusBanner).not.toMatch(/one light year/);
     expect(after.lastStatusBanner).toContain(`0.500 ly from ${target.title}`);
+  });
+});
+
+describe('the flight keeps the motion record: two halves of 750 ms on NASA\'s Eyes\' ease-out quart', () => {
+  it('takes each half from the motion tokens', () => {
+    expect(FLIGHT_HALF_MS).toBe(MOTION_TOKENS.cameraHalfMs);
+    expect(FLIGHT_HALF_MS).toBe(750);
+  });
+
+  it('eases each half as 1 - (1 - t)^4, from rest to rest', () => {
+    expect(flightEase(0)).toBe(0);
+    expect(flightEase(1)).toBe(1);
+    expect(flightEase(0.5)).toBeCloseTo(0.9375, 10);
+    expect(flightEase(0.25)).toBeCloseTo(1 - 0.75 ** 4, 10);
+    expect(flightEase(-1)).toBe(0);
+    expect(flightEase(2)).toBe(1);
+    for (let t = 0; t < 1; t += 0.05) expect(flightEase(t + 0.05)).toBeGreaterThanOrEqual(flightEase(t));
+  });
+
+  it('is in the first half until 750 ms and in the second until 1500 ms, then arrives', () => {
+    const phases = flyThrough(base, target.id, queueFrames(), base, [700, 800, 1499, 1500]).map((s) => s.spatialView.transitionPhase);
+    // the first frame runs at once, then the four frames at 700, 800, 1499 and 1500 ms
+    expect(phases).toEqual(['phase_a_photo_to_sky', 'phase_a_photo_to_sky', 'phase_b_sky_to_space', 'phase_b_sky_to_space', 'at_space']);
+  });
+
+  it('reports each half\'s progress on that curve', () => {
+    const states = flyThrough(base, target.id, queueFrames(), base, [375, 1125, 60_000]);
+    expect(states[1]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
+    expect(states[2]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
   });
 });
