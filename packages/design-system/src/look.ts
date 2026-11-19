@@ -173,6 +173,83 @@ export function resolveLookMotion(reducedMotion: boolean): LookMotion {
   return { ...LOOK_MOTION, springMs: 0, colourMs: 0, pressMs: 0 };
 }
 
+export interface MotionTokens {
+  easeStandard: string;
+  easeFrameIn: string;
+  easeFrameOut: string;
+  easeCamera: string;
+  colourMs: number;
+  frameInMs: number;
+  wordsInMs: number;
+  wordsInDelayMs: number;
+  wordsOutMs: number;
+  frameOutMs: number;
+  staggerMs: number;
+  risePx: number;
+  viewMs: number;
+  cameraHalfMs: number;
+  markMs: number;
+  marksSpanMs: number;
+  dissolveMs: number;
+}
+
+/**
+ * How everything moves, as the MOTION record has it (decided by the lead under the owner's delegation, 2026-11-19;
+ * .lead/uiux/motion/MOTION-APPROVED.md, sources in .lead/uiux/motion/measurements/). A frame arrives first and its
+ * words follow after wordsInDelayMs, each line staggerMs after the one above; leaving is faster than arriving (words
+ * out, then the frame). The camera's flight is two halves of cameraHalfMs on easeCamera (NASA's Eyes' ease-out quart);
+ * matched marks come in markMs each, all within marksSpanMs, brightest first. [verified: read from boltz.com, lusion.co,
+ * NASA's Eyes' live code; measured frame by frame from Destiny 2, Elite Dangerous, Mass Effect, Death Stranding, Apple]
+ */
+export const MOTION_TOKENS: Readonly<MotionTokens> = {
+  easeStandard: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  easeFrameIn: 'cubic-bezier(0.16, 1, 0.3, 1)',
+  easeFrameOut: 'cubic-bezier(0.4, 0, 1, 1)',
+  easeCamera: 'cubic-bezier(0.27, 1.07, 0.56, 0.99)',
+  colourMs: 200,
+  frameInMs: 400,
+  wordsInMs: 300,
+  wordsInDelayMs: 120,
+  wordsOutMs: 100,
+  frameOutMs: 300,
+  staggerMs: 20,
+  risePx: 6,
+  viewMs: 400,
+  cameraHalfMs: 750,
+  markMs: 67,
+  marksSpanMs: 330,
+  dissolveMs: 270,
+};
+
+const DISSOLVE_EASE = 'ease-in-out';
+
+/**
+ * Under `prefers-reduced-motion: reduce` nothing travels: every arrival, departure and view change becomes the same
+ * dissolve (Apple's own Reduce Motion cross-fade, measured at 0.27 s), with no rise, no stagger and no camera travel
+ * (REQ-DSA-2.1). A colour change stays as it is.
+ */
+export function resolveMotionTokens(reducedMotion: boolean): MotionTokens {
+  if (!reducedMotion) return { ...MOTION_TOKENS };
+  const d = MOTION_TOKENS.dissolveMs;
+  return {
+    ...MOTION_TOKENS,
+    easeStandard: DISSOLVE_EASE,
+    easeFrameIn: DISSOLVE_EASE,
+    easeFrameOut: DISSOLVE_EASE,
+    frameInMs: d,
+    wordsInMs: d,
+    wordsInDelayMs: 0,
+    wordsOutMs: d,
+    frameOutMs: d,
+    staggerMs: 0,
+    risePx: 0,
+    viewMs: d,
+    cameraHalfMs: 0,
+    markMs: d,
+    marksSpanMs: 0,
+  };
+}
+
 const rgba = (fill: HudRgba) => `rgba(${fill.join(', ')})`;
 const ms = (value: number) => `${value}ms`;
 const tint = (hex: string, alpha: number) => {
@@ -186,6 +263,49 @@ function motionDurations(motion: LookMotion) {
     '--look-dur-spring': ms(motion.springMs),
     '--look-dur-colour': ms(motion.colourMs),
     '--look-dur-press': ms(motion.pressMs),
+  } as const;
+}
+
+/** The --look-mo-* custom properties that change under reduced motion. */
+function motionTokenOverrides(m: MotionTokens) {
+  return {
+    '--look-mo-ease-std': m.easeStandard,
+    '--look-mo-ease-frame-in': m.easeFrameIn,
+    '--look-mo-ease-frame-out': m.easeFrameOut,
+    '--look-mo-dur-frame-in': ms(m.frameInMs),
+    '--look-mo-dur-words-in': ms(m.wordsInMs),
+    '--look-mo-delay-words-in': ms(m.wordsInDelayMs),
+    '--look-mo-dur-words-out': ms(m.wordsOutMs),
+    '--look-mo-dur-frame-out': ms(m.frameOutMs),
+    '--look-mo-stagger': ms(m.staggerMs),
+    '--look-mo-rise': `${m.risePx}px`,
+    '--look-mo-dur-view': ms(m.viewMs),
+    '--look-mo-dur-camera-half': ms(m.cameraHalfMs),
+    '--look-mo-dur-mark': ms(m.markMs),
+    '--look-mo-span-marks': ms(m.marksSpanMs),
+  } as const;
+}
+
+function motionTokenProperties(m: MotionTokens) {
+  return {
+    '--look-mo-ease-std': m.easeStandard,
+    '--look-mo-ease-frame-in': m.easeFrameIn,
+    '--look-mo-ease-frame-out': m.easeFrameOut,
+    '--look-mo-ease-camera': m.easeCamera,
+    '--look-mo-ease-dissolve': DISSOLVE_EASE,
+    '--look-mo-dur-colour': ms(m.colourMs),
+    '--look-mo-dur-frame-in': ms(m.frameInMs),
+    '--look-mo-dur-words-in': ms(m.wordsInMs),
+    '--look-mo-delay-words-in': ms(m.wordsInDelayMs),
+    '--look-mo-dur-words-out': ms(m.wordsOutMs),
+    '--look-mo-dur-frame-out': ms(m.frameOutMs),
+    '--look-mo-stagger': ms(m.staggerMs),
+    '--look-mo-rise': `${m.risePx}px`,
+    '--look-mo-dur-view': ms(m.viewMs),
+    '--look-mo-dur-camera-half': ms(m.cameraHalfMs),
+    '--look-mo-dur-mark': ms(m.markMs),
+    '--look-mo-span-marks': ms(m.marksSpanMs),
+    '--look-mo-dur-dissolve': ms(m.dissolveMs),
   } as const;
 }
 
@@ -243,7 +363,14 @@ export const LOOK_CSS_CUSTOM_PROPERTIES = {
   '--look-ease-standard': LOOK_MOTION.standard,
   '--look-arrow-start': `${LOOK_MOTION.arrowStartDeg}deg`,
   ...motionProperties(LOOK_MOTION),
+  ...motionTokenProperties(MOTION_TOKENS),
 } as const;
 
-/** The custom properties look-tokens.css overrides under `prefers-reduced-motion: reduce`: the durations only. */
-export const LOOK_REDUCED_MOTION_CSS_OVERRIDES = motionDurations(resolveLookMotion(true));
+/**
+ * The custom properties look-tokens.css overrides under `prefers-reduced-motion: reduce`: the controls' durations, and
+ * the motion tokens' durations, travel and curves (never the press scale).
+ */
+export const LOOK_REDUCED_MOTION_CSS_OVERRIDES = {
+  ...motionDurations(resolveLookMotion(true)),
+  ...motionTokenOverrides(resolveMotionTokens(true)),
+} as const;

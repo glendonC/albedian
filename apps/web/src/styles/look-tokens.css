@@ -60,6 +60,27 @@
   --look-dur-colour: 200ms;
   --look-dur-press: 150ms;
   --look-press-scale: 0.97;
+
+  /* How everything moves (the MOTION record, decided by the lead 2026-11-19; .lead/uiux/motion/MOTION-READY-web.md):
+     a frame first, its words 120 ms later rising 6 px, lines 20 ms apart; out faster than in. */
+  --look-mo-ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  --look-mo-ease-frame-in: cubic-bezier(0.16, 1, 0.3, 1);
+  --look-mo-ease-frame-out: cubic-bezier(0.4, 0, 1, 1);
+  --look-mo-ease-camera: cubic-bezier(0.27, 1.07, 0.56, 0.99);
+  --look-mo-ease-dissolve: ease-in-out;
+  --look-mo-dur-colour: 200ms;
+  --look-mo-dur-frame-in: 400ms;
+  --look-mo-dur-words-in: 300ms;
+  --look-mo-delay-words-in: 120ms;
+  --look-mo-dur-words-out: 100ms;
+  --look-mo-dur-frame-out: 300ms;
+  --look-mo-stagger: 20ms;
+  --look-mo-rise: 6px;
+  --look-mo-dur-view: 400ms;
+  --look-mo-dur-camera-half: 750ms;
+  --look-mo-dur-mark: 67ms;
+  --look-mo-span-marks: 330ms;
+  --look-mo-dur-dissolve: 270ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -67,5 +88,21 @@
     --look-dur-spring: 0ms;
     --look-dur-colour: 0ms;
     --look-dur-press: 0ms;
+
+    /* Nothing travels: every change is the same 270 ms dissolve (Apple's Reduce Motion), no rise, no stagger. */
+    --look-mo-ease-std: ease-in-out;
+    --look-mo-ease-frame-in: ease-in-out;
+    --look-mo-ease-frame-out: ease-in-out;
+    --look-mo-dur-frame-in: 270ms;
+    --look-mo-dur-words-in: 270ms;
+    --look-mo-delay-words-in: 0ms;
+    --look-mo-dur-words-out: 270ms;
+    --look-mo-dur-frame-out: 270ms;
+    --look-mo-stagger: 0ms;
+    --look-mo-rise: 0px;
+    --look-mo-dur-view: 270ms;
+    --look-mo-dur-camera-half: 0ms;
+    --look-mo-dur-mark: 270ms;
+    --look-mo-span-marks: 0ms;
   }
 }

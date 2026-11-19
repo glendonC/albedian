@@ -18,7 +18,9 @@ import {
   LOOK_SIZES,
   lookEvidenceDescription,
   meetsTargetSize,
+  MOTION_TOKENS,
   resolveLookMotion,
+  resolveMotionTokens,
 } from '../look.js';
 
 const CLASSES: EvidenceClass[] = ['observed', 'catalog_matched', 'predicted', 'simulated'];
@@ -129,6 +131,61 @@ describe('look tokens: motion', () => {
   });
 });
 
+describe('motion tokens: the MOTION record (decided by the lead, 2026-11-19; .lead/uiux/motion/MOTION-APPROVED.md)', () => {
+  it('keeps every value of the record when motion is allowed', () => {
+    expect(resolveMotionTokens(false)).toEqual(MOTION_TOKENS);
+    expect(MOTION_TOKENS).toEqual({
+      easeStandard: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      easeFrameIn: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      easeFrameOut: 'cubic-bezier(0.4, 0, 1, 1)',
+      easeCamera: 'cubic-bezier(0.27, 1.07, 0.56, 0.99)',
+      colourMs: 200,
+      frameInMs: 400,
+      wordsInMs: 300,
+      wordsInDelayMs: 120,
+      wordsOutMs: 100,
+      frameOutMs: 300,
+      staggerMs: 20,
+      risePx: 6,
+      viewMs: 400,
+      cameraHalfMs: 750,
+      markMs: 67,
+      marksSpanMs: 330,
+      dissolveMs: 270,
+    });
+  });
+
+  it('leaves faster than it arrives: words out before words in, frame out before frame in', () => {
+    expect(MOTION_TOKENS.wordsOutMs).toBeLessThan(MOTION_TOKENS.wordsInMs);
+    expect(MOTION_TOKENS.frameOutMs).toBeLessThan(MOTION_TOKENS.frameInMs);
+    expect(MOTION_TOKENS.markMs).toBeLessThan(MOTION_TOKENS.marksSpanMs);
+  });
+
+  it('under reduced motion nothing travels and every change is the same 270 ms ease-in-out dissolve', () => {
+    const reduced = resolveMotionTokens(true);
+    expect(reduced.risePx).toBe(0);
+    expect(reduced.staggerMs).toBe(0);
+    expect(reduced.wordsInDelayMs).toBe(0);
+    expect(reduced.marksSpanMs).toBe(0);
+    expect(reduced.cameraHalfMs).toBe(0);
+    for (const ms of [reduced.frameInMs, reduced.wordsInMs, reduced.wordsOutMs, reduced.frameOutMs, reduced.viewMs, reduced.markMs]) {
+      expect(ms).toBe(MOTION_TOKENS.dissolveMs);
+    }
+    for (const ease of [reduced.easeStandard, reduced.easeFrameIn, reduced.easeFrameOut]) expect(ease).toBe('ease-in-out');
+    expect(reduced.colourMs).toBe(MOTION_TOKENS.colourMs);
+  });
+
+  it('writes them as --look-mo-* custom properties, and overrides them under reduced motion', () => {
+    expect(LOOK_CSS_CUSTOM_PROPERTIES['--look-mo-dur-frame-in']).toBe('400ms');
+    expect(LOOK_CSS_CUSTOM_PROPERTIES['--look-mo-delay-words-in']).toBe('120ms');
+    expect(LOOK_CSS_CUSTOM_PROPERTIES['--look-mo-rise']).toBe('6px');
+    expect(LOOK_CSS_CUSTOM_PROPERTIES['--look-mo-ease-camera']).toBe('cubic-bezier(0.27, 1.07, 0.56, 0.99)');
+    expect(LOOK_REDUCED_MOTION_CSS_OVERRIDES['--look-mo-rise']).toBe('0px');
+    expect(LOOK_REDUCED_MOTION_CSS_OVERRIDES['--look-mo-dur-words-in']).toBe('270ms');
+    expect(LOOK_REDUCED_MOTION_CSS_OVERRIDES['--look-mo-ease-frame-in']).toBe('ease-in-out');
+  });
+});
+
 describe('look tokens: CSS custom properties', () => {
   it('names every property --look-* and gives it a value', () => {
     for (const [name, value] of Object.entries(LOOK_CSS_CUSTOM_PROPERTIES)) {
@@ -144,11 +201,25 @@ describe('look tokens: CSS custom properties', () => {
     expect(LOOK_CSS_CUSTOM_PROPERTIES['--look-ev-simulated-tint']).toBe('rgba(167, 139, 250, 0.15)');
   });
 
-  it('overrides only the durations under reduced motion, never the press scale', () => {
+  it('overrides only the durations, the travel and the curves under reduced motion, never the press scale', () => {
     expect(LOOK_REDUCED_MOTION_CSS_OVERRIDES).toEqual({
       '--look-dur-spring': '0ms',
       '--look-dur-colour': '0ms',
       '--look-dur-press': '0ms',
+      '--look-mo-ease-std': 'ease-in-out',
+      '--look-mo-ease-frame-in': 'ease-in-out',
+      '--look-mo-ease-frame-out': 'ease-in-out',
+      '--look-mo-dur-frame-in': '270ms',
+      '--look-mo-dur-words-in': '270ms',
+      '--look-mo-delay-words-in': '0ms',
+      '--look-mo-dur-words-out': '270ms',
+      '--look-mo-dur-frame-out': '270ms',
+      '--look-mo-stagger': '0ms',
+      '--look-mo-rise': '0px',
+      '--look-mo-dur-view': '270ms',
+      '--look-mo-dur-camera-half': '0ms',
+      '--look-mo-dur-mark': '270ms',
+      '--look-mo-span-marks': '0ms',
     });
     for (const name of Object.keys(LOOK_REDUCED_MOTION_CSS_OVERRIDES)) {
       expect(name in LOOK_CSS_CUSTOM_PROPERTIES).toBe(true);
