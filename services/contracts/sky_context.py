@@ -20,7 +20,7 @@ every level.
 from __future__ import annotations
 
 import re
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, ClassVar, Literal, Optional
 
 from pydantic import AfterValidator, BeforeValidator, ConfigDict, Field, model_validator
 
@@ -68,7 +68,8 @@ class _Strict(WireModel):
     model_config = ConfigDict(**WIRE_CONFIG, hide_input_in_errors=True)
 
     def to_wire_dict(self) -> dict[str, Any]:
-        return self.model_dump(by_alias=True, exclude_none=True)
+        # What was sent, as it was sent: a key left out stays out, and the one null a reply may hold stays null
+        return self.model_dump(by_alias=True, exclude_unset=True)
 
 
 # The contract's own rules, worded the same on both sides
@@ -343,6 +344,10 @@ class ConstellationEdge(_Strict):
 
 
 class PredictedSkyBrightness(_Strict):
+    # The one key a null is held in: the phase name, null within the geocentric synodic angle's stated bound of a
+    # sector's edge, where either neighbouring name could be true (services/science/ephemeris.py `phase_name`)
+    nullable: ClassVar[frozenset[str]] = frozenset({"lunarPhaseName"})
+
     sky_brightness_mag_arcsec2: WireNumber
     dark_sky_mag_arcsec2: WireNumber
     lunar_veil_delta_mag: NonNegative
@@ -350,7 +355,7 @@ class PredictedSkyBrightness(_Strict):
     lunar_scattered_nano_lamberts: NonNegative
     airmass: Annotated[WireNumber, Field(ge=1.0)]
     illumination_fraction: Annotated[WireNumber, Field(ge=0.0, le=1.0)]
-    lunar_phase_name: Literal[SKY_CONTEXT_MOON_PHASES]  # type: ignore[valid-type]
+    lunar_phase_name: Optional[Literal[SKY_CONTEXT_MOON_PHASES]]  # type: ignore[valid-type]
     sep_from_moon_deg: Annotated[WireNumber, Field(ge=0.0, le=180.0)]
     target: Literal["zenith"]
     target_alt_deg: Latitude

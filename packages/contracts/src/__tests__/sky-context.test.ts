@@ -136,6 +136,16 @@ describe('the sky-context contract', () => {
     expect(accepts(sample.kind, resolved(sample))).toBe(sample.verdict === 'accepted');
   });
 
+  it('takes the reply the route made where the Moon\'s phase sits on a sector\'s edge, its phase name null, unchanged', () => {
+    const edge = fixture.bases['reply-edge']!;
+    expect(edge.predictedSkyBrightness.lunarPhaseName).toBeNull();
+    const read = SkyContextReplySchema.safeParse(edge);
+    expect(read.success && read.data).toEqual(edge);
+    for (const [path, value] of [[['predictedSkyBrightness', 'airmass'], null], [['observerLocation', 'latDeg'], null], [['filters', 'magLimit'], null]] as const) {
+      expect(accepts('reply', applied(BASE_REPLY, [{ path: [...path], value }])), path.join('.')).toBe(false);
+    }
+  });
+
   it('holds each list to its stated number', () => {
     const empty = { ...BASE_REPLY, stars: [], ephemerides: [], constellationEdges: [] };
     const star = BASE_REPLY.stars.find((s: Json) => s.id === 'star-vega');

@@ -87,6 +87,31 @@ BASE_REPLY: dict[str, Any] = json.loads(r"""
 }
 """)
 
+
+# A reply the route made at a moment the Moon's geocentric phase sits within its bound of a sector's edge, so its name is
+# null (skycontext-1b, the read of skycontext-2 v2): at 0 N 0 E (open ocean), with magLimit -30 and aboveHorizonOnly
+EDGE_MOMENT = "1932-11-23T03:21:22.768Z"
+BASE_EDGE: dict[str, Any] = json.loads(r"""
+{
+ "format": "albedian.sky-context",
+ "formatVersion": 1,
+ "observedAtUTC": "1932-11-23T03:21:22.768Z",
+ "observerLocation": {"latDeg": 0.0, "lonDeg": 0.0},
+ "filters": {"aboveHorizonOnly": true, "magLimit": -30.0},
+ "convention": {"frame": "topocentric_sea_level", "azimuth": "true_north_through_east", "altitude": "apparent_airless"},
+ "stars": [
+ ],
+ "ephemerides": [
+  {"id": "finding-predicted-jupiter", "evidenceClass": "predicted", "title": "Jupiter (Predicted Ephemeris)", "subtitle": "Predicted Planet \u00b7 5.655 AU \u00b7 Alt +30.8\u00b0", "skyPosition": {"raDeg": 172.1970714236331, "decDeg": 4.551810187353775, "uncertaintyArcsec": 79.25434559123974, "altDeg": 30.775821476405497, "azDeg": 84.26851705021758}, "inferredDistancePc": {"lower": 2.740126743704818e-05, "median": 2.741386678324187e-05, "upper": 2.7426466129435565e-05, "method": "ephemeris_au"}, "cartesianParsecICRS": [-2.707437577525056e-05, 3.710137988926465e-06, 2.175579116691124e-06], "evidence": {"id": "ev-ephem-jupiter", "evidenceClass": "predicted", "verificationMethod": "ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time", "distanceUncertaintyNote": "Topocentric distance 5.654516 AU, between 5.651917 and 5.657115 AU from the method's error bounds", "limitations": ["Predicted from the given time and place with ERFA's analytic theories; not measured in any image.", "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).", "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +30.80 degrees, and the real air differs most near the horizon.", "Its uncertainty, 79.3 arcsec, adds the method's documented worst error (78.2 arcsec here), 0.01 for light deflection applied as for a star, 0.0 for the Earth's rotation, with the moment taken as UT1, 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.", "A moment before 1960, when there was no UTC, is taken as UT1, and TT - UT1 comes from Espenak and Meeus (2006), within 0.3 s."], "verifiedByIndependentHoldout": false}, "name": "Jupiter", "raDeg": 172.1970714236331, "decDeg": 4.551810187353775, "altDeg": 30.775821476405497, "azDeg": 84.26851705021758, "aboveHorizon": true, "distanceAu": 5.654515920529096, "distancePc": 2.741386678324187e-05, "lightTravel": {"distancePc": 2.741386678324187e-05, "lightYears": 8.94120748877252e-05, "lightMinutes": 47.027174907947945, "lightSeconds": 2821.6304944768767, "description": "47.0 light-minutes", "formatted": "47.0 light-minutes"}},
+  {"id": "finding-predicted-mars", "evidenceClass": "predicted", "title": "Mars (Predicted Ephemeris)", "subtitle": "Predicted Planet \u00b7 1.364 AU \u00b7 Alt +44.0\u00b0", "skyPosition": {"raDeg": 157.88462404722438, "decDeg": 11.483435324593255, "uncertaintyArcsec": 37.64697111462634, "altDeg": 44.0240889709815, "azDeg": 73.43598241069904}, "inferredDistancePc": {"lower": 6.610195393266662e-06, "median": 6.611485216772477e-06, "upper": 6.6127750402782915e-06, "method": "ephemeris_au"}, "cartesianParsecICRS": [-6.002452953864493e-06, 2.439220022318871e-06, 1.3162450345445366e-06], "evidence": {"id": "ev-ephem-mars", "evidenceClass": "predicted", "verificationMethod": "ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time", "distanceUncertaintyNote": "Topocentric distance 1.363717 AU, between 1.363451 and 1.363983 AU from the method's error bounds", "limitations": ["Predicted from the given time and place with ERFA's analytic theories; not measured in any image.", "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).", "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +44.04 degrees, and the real air differs most near the horizon.", "Its uncertainty, 37.6 arcsec, adds the method's documented worst error (36.6 arcsec here), 0.00 for light deflection applied as for a star, 0.0 for the Earth's rotation, with the moment taken as UT1, 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.", "A moment before 1960, when there was no UTC, is taken as UT1, and TT - UT1 comes from Espenak and Meeus (2006), within 0.3 s."], "verifiedByIndependentHoldout": false}, "name": "Mars", "raDeg": 157.88462404722438, "decDeg": 11.483435324593255, "altDeg": 44.0240889709815, "azDeg": 73.43598241069904, "aboveHorizon": true, "distanceAu": 1.3637167172431168, "distancePc": 6.611485216772477e-06, "lightTravel": {"distancePc": 6.611485216772477e-06, "lightYears": 2.1563780695196105e-05, "lightMinutes": 11.341686094445343, "lightSeconds": 680.5011656667206, "description": "11.3 light-minutes", "formatted": "11.3 light-minutes"}},
+  {"id": "finding-predicted-moon", "evidenceClass": "predicted", "title": "Moon (Predicted Ephemeris)", "subtitle": "Predicted Moon \u00b7 0.002 AU \u00b7 Alt +28.0\u00b0", "skyPosition": {"raDeg": 175.10690844650009, "decDeg": 1.6104873656922154, "uncertaintyArcsec": 24.647758916203372, "altDeg": 27.971179912627477, "azDeg": 87.75427314824722}, "inferredDistancePc": {"lower": 1.1992335281762433e-08, "median": 1.1993654278933237e-08, "upper": 1.199497327610404e-08, "method": "ephemeris_au"}, "cartesianParsecICRS": [-1.1945224085718357e-08, 1.022616081205795e-09, 3.370769274318575e-10], "evidence": {"id": "ev-ephem-moon", "evidenceClass": "predicted", "verificationMethod": "Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time", "distanceUncertaintyNote": "Topocentric distance 0.002474 AU, between 0.002474 and 0.002474 AU from the method's error bounds", "limitations": ["Predicted from the given time and place with ERFA's analytic theories; not measured in any image.", "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).", "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +28.00 degrees, and the real air differs most near the horizon.", "Its uncertainty, 24.6 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.01 for light deflection applied as for a star, 0.0 for the Earth's rotation, with the moment taken as UT1, 5.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.2 for the time scale.", "A moment before 1960, when there was no UTC, is taken as UT1, and TT - UT1 comes from Espenak and Meeus (2006), within 0.3 s."], "verifiedByIndependentHoldout": false}, "name": "Moon", "raDeg": 175.10690844650009, "decDeg": 1.6104873656922154, "altDeg": 27.971179912627477, "azDeg": 87.75427314824722, "aboveHorizon": true, "distanceAu": 0.0024738687760388223, "distancePc": 1.1993654278933237e-08, "lightTravel": {"distancePc": 1.1993654278933237e-08, "lightYears": 3.9118068350029703e-08, "lightMinutes": 0.020574539229381624, "lightSeconds": 1.2344723537628974, "description": "1.23 light-seconds", "formatted": "1.23 light-seconds"}}
+ ],
+ "constellationEdges": [
+ ],
+ "predictedSkyBrightness": {"skyBrightnessMagArcsec2": 21.127, "darkSkyMagArcsec2": 21.6, "lunarVeilDeltaMag": 0.473, "skyBrightnessNanoLamberts": 120.64, "lunarScatteredNanoLamberts": 42.57, "airmass": 1.0, "illuminationFraction": 0.3098, "lunarPhaseName": null, "sepFromMoonDeg": 62.03, "target": "zenith", "targetAltDeg": 90.0, "moonAltDeg": 27.97, "evidenceClass": "predicted", "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model", "limitations": ["Predicted for the time and place; not measured in any image.", "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, site values the model needs and nothing measured here; light pollution is not modelled."]}
+}
+""")
+
 BASE_REQUEST = {"observedAtUTC": "2031-03-20T12:00:00Z", "latDeg": 20.0, "lonDeg": -140.0}
 # Where each base row sits, by id, so a sample names the row it changes
 STAR = {star["id"]: i for i, star in enumerate(BASE_REPLY["stars"])}
@@ -213,6 +238,7 @@ FAULTS: list[tuple[str, str, list[dict[str, Any]], str | None]] = [
     ("a star's name with a lone surrogate", "reply", [_set(_star(VEGA, "commonName"), "Vega\ud800")], None),
     ("an empty limitation list", "reply", [_set(["predictedSkyBrightness", "limitations"], [])], None),
     ("a phase with another name", "reply", [_set(["predictedSkyBrightness", "lunarPhaseName"], "Blue Moon")], None),
+    ("a phase name left out", "reply", [_set(["predictedSkyBrightness", "lunarPhaseName"], _DROP)], None),
     ("the brightness at another target", "reply", [_set(["predictedSkyBrightness", "target"], "horizon")], None),
     ("a radius not said to be derived", "reply", [_set(_star(MEGREZ, "astrophysics", "radiusSolar", "derived"), False)], None),
     ("an interval of another kind", "reply", [_set(_star(MEGREZ, "astrophysics", "teffK", "interval"), "one sigma")], None),
@@ -255,7 +281,7 @@ FAULTS: list[tuple[str, str, list[dict[str, Any]], str | None]] = [
 
 
 def _faults_base(base: str) -> Any:
-    return ABOVE_ONLY if base == "reply-above" else BASES[base][1]
+    return {"reply-above": ABOVE_ONLY, "reply-edge": BASE_EDGE}.get(base) or BASES[base][1]
 
 
 # The aboveHorizonOnly fault that appends the Moon starts from the reply with aboveHorizonOnly
@@ -316,14 +342,16 @@ EDGES: list[tuple[str, str, list[dict[str, Any]], list[dict[str, Any]]]] = [
     ("the illuminated fraction at 0", "reply", [_set(["predictedSkyBrightness", "illuminationFraction"], 0.0)], [_set(["predictedSkyBrightness", "illuminationFraction"], -0.000001)]),
     ("the separation from the Moon at 180", "reply", [_set(["predictedSkyBrightness", "sepFromMoonDeg"], 180.0)], [_set(["predictedSkyBrightness", "sepFromMoonDeg"], 180.000001)]),
     ("the lunar veil at 0", "reply", [_set(["predictedSkyBrightness", "lunarVeilDeltaMag"], 0.0)], [_set(["predictedSkyBrightness", "lunarVeilDeltaMag"], -0.000001)]),
+    ("the phase name at a sector's edge, null", "reply-edge", [], [_set(["predictedSkyBrightness", "lunarPhaseName"], "Between Moons")]),
 ]  # fmt: skip
 
 
 def edge_samples() -> list[dict[str, Any]]:
     out = []
     for name, base, inside, outside in EDGES:
-        out.append({"name": f"{name}: inside", "kind": base, "base": base, "verdict": "accepted", "changes": inside})
-        out.append({"name": f"{name}: outside", "kind": base, "base": base, "verdict": "refused", "changes": outside})
+        kind = "request" if base == "request" else "reply"
+        out.append({"name": f"{name}: inside", "kind": kind, "base": base, "verdict": "accepted", "changes": inside})
+        out.append({"name": f"{name}: outside", "kind": kind, "base": base, "verdict": "refused", "changes": outside})
     return out
 
 
@@ -331,7 +359,7 @@ def build() -> dict[str, Any]:
     return {
         "format": FORMAT, "formatVersion": FORMAT_VERSION, "ephemerisSpan": {"from": SPAN[0], "until": SPAN[1]},
         "limits": LIMITS, "convention": CONVENTION, "providers": PROVIDERS, "rules": RULES,
-        "bases": {"request": BASE_REQUEST, "reply": BASE_REPLY, "reply-above": ABOVE_ONLY},
+        "bases": {"request": BASE_REQUEST, "reply": BASE_REPLY, "reply-above": ABOVE_ONLY, "reply-edge": BASE_EDGE},
         "valid": valid_samples(), "invalid": invalid_samples(), "edges": edge_samples(),
     }  # fmt: skip
 
@@ -555,3 +583,23 @@ def test_property_filtered_replies_match_the_reply_level_rules(
             items[flip]["aboveHorizon"] = not items[flip]["aboveHorizon"]
     reply["filters"] = {"aboveHorizonOnly": above_only, **({} if mag_limit is None else {"magLimit": mag_limit})}
     assert accepts("reply", reply) is _expected_filtered_reply_valid(reply)
+
+
+def test_the_phase_name_is_null_by_design_at_a_sectors_edge_and_the_contract_takes_it() -> None:
+    """skycontext-1b: the science code gives no phase name within its bound of a sector's edge; the reply carries the
+    null as it is, unchanged through the contract, and only a null, never another word, stands for it."""
+    from services.science.ephemeris import moon_phase
+
+    assert moon_phase(EDGE_MOMENT).phase_name is None
+    assert BASE_EDGE["observedAtUTC"] == EDGE_MOMENT and BASE_EDGE["predictedSkyBrightness"]["lunarPhaseName"] is None
+    assert BASE_EDGE["observerLocation"] == {"latDeg": 0.0, "lonDeg": 0.0}
+    model = sc.SkyContextReply.model_validate(BASE_EDGE)
+    assert model.to_wire_dict() == BASE_EDGE
+    assert sc.SkyContextReply.model_validate_json(json.dumps(BASE_EDGE)).to_wire_dict() == BASE_EDGE
+    assert all(item["evidenceClass"] == "predicted" for item in BASE_EDGE["ephemerides"])
+
+
+def test_a_null_anywhere_else_in_a_reply_is_still_refused() -> None:
+    for path in (["predictedSkyBrightness", "airmass"], ["predictedSkyBrightness", "target"], ["observerLocation", "latDeg"],
+                 ["stars", 0, "bpRp"], ["filters", "magLimit"]):
+        assert not accepts("reply", _apply(BASE_REPLY, [_set(path, None)])), path

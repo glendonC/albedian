@@ -311,7 +311,9 @@ export const PredictedSkyBrightnessSchema = z
     lunarScatteredNanoLamberts: nonNegative(),
     airmass: wireNumber().min(1),
     illuminationFraction: wireNumber().min(0).max(1),
-    lunarPhaseName: z.enum(SKY_CONTEXT_MOON_PHASES),
+    // Null within the geocentric synodic angle's stated bound of a sector's edge, where either neighbouring name could be
+    // true (services/science/ephemeris.py `phase_name`): about ten minutes of each lunar month, everywhere at once
+    lunarPhaseName: z.enum(SKY_CONTEXT_MOON_PHASES).nullable(),
     sepFromMoonDeg: wireNumber().min(0).max(180),
     target: z.literal('zenith'),
     targetAltDeg: latitude(),
