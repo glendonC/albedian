@@ -638,7 +638,7 @@ def main() -> None:
             mat = slot.material.copy()
             for node in mat.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image is not None:
-                    node.image = resized(node.image, TEXTURE_EDGE[level], level)
+                    node.image = resized(node.image, {**TEXTURE_EDGE, **recipe.get("texture_edge", {})}[level], level)
             slot.material = mat
         if ratio < 1.0:
             dec = obj.modifiers.new("lod", "DECIMATE")

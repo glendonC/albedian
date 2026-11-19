@@ -641,6 +641,57 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 0.8,
         "changes": "suit_flat"
     },
+    "shuttle": {
+        "title": "Space Shuttle",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-space-shuttle-d",
+            "title": "Space Shuttle (D), NASA 3D Resources",
+            "folder": "Space Shuttle (D)",
+            "file": "Space Shuttle (D).glb",
+            "page": "https://science.nasa.gov/3d-resources/space-shuttle-d/",
+            "bytes": 2_471_932,
+            "sha256": "d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549",
+            # NASA's own render of this model shows the NASA insignia on the wing, which the rebuild covers.
+            "picture": None,
+            "picker_render_reason": "insignia",
+            "local": "shuttle",
+        },
+        "drop_objects": [],
+        # The nose is +X in the import frame, the tail fin points -Y and the wings span Z.
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, -1.0, 0.0),
+        # The model's whole length, nose to tail, to NASA's 122 feet.
+        "scale_from": {
+            "material": None,
+            "axis": "x",
+            "metres": 37.1856,
+            "quoted_ft": 122,
+            "page": "https://www.nasa.gov/reference/the-space-shuttle/",
+            "quote": "Length 122 feet",
+        },
+        "materials": {
+            "wingtop": {"role": "photo_atlas", "paint_out": [{"box": (36, 130, 96, 206), "what": "the NASA insignia on the wing"}]},
+            "side prt": {"role": "photo_atlas", "paint_out": [{"box": (88, 38, 114, 62), "what": "the NASA insignia on the side"}]},
+            "side stb": {"role": "photo_atlas", "paint_out": [{"box": (86, 38, 110, 62), "what": "the NASA insignia on the side"}]},
+            "nose top": {"role": "photo_atlas"},
+            "belly": {"role": "photo_atlas"},
+            "fusolage aft eng": {"role": "photo_atlas"},
+            "shut-bay": {"role": "photo_atlas"},
+            "tail": {"role": "photo_atlas"},
+            "OMS pod stb": {"role": "photo_atlas"},
+            "OMS pod prt": {"role": "photo_atlas"},
+            "wing flap top": {"role": "photo_atlas"},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 30.0,
+        "lod_ratio": {"lod0": 1.0, "lod1": 0.5, "lod2": 0.18},
+        # Eleven 640 px photo textures: at 512 and 256 px the chase and far levels stay within their budgets.
+        "texture_edge": {"lod1": 512, "lod2": 256},
+        "body_radius_m": 14.0,
+        "changes": "flat",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -861,5 +912,17 @@ HANGAR: list[dict] = [
                 "quote": "followed by NASA astronaut Ed White on June 3, 1965, during the Gemini 4 mission"
             }
         ]
+    },
+    {
+        # The orbiter flew in Earth orbit, never between stars: no speed.
+        "id": "shuttle",
+        "name": "Space Shuttle",
+        "model": "shuttle",
+        "travel": None,
+        "facts": [
+            {"key": "firstLaunch", "value": "1981-04-12", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1981-034A", "quote": "Launch Date: 1981-04-12"},
+            {"key": "lengthFt", "value": 122, "page": "https://www.nasa.gov/reference/the-space-shuttle/", "quote": "Length 122 feet"},
+            {"key": "wingspanFt", "value": 78, "page": "https://www.nasa.gov/reference/the-space-shuttle/", "quote": "Wingspan 78 feet"},
+        ],
     },
 ]

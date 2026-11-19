@@ -749,6 +749,64 @@
         "page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/",
         "quote": "The Gemini spacesuit had a combination of a pressure bladder and a link-net restraint layer that made the whole suit flexible when pressurized."
       }
+    },
+    "shuttle": {
+      "title": "Space Shuttle",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "shuttle/shuttle_lod0.glb",
+          "bytes": 1925624,
+          "triangles": 19292,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "shuttle/shuttle_lod1.glb",
+          "bytes": 1202452,
+          "triangles": 9619,
+          "textureEdgeMax": 512,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "shuttle/shuttle_lod2.glb",
+          "bytes": 583384,
+          "triangles": 6704,
+          "textureEdgeMax": 256,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "shuttle/shuttle_picker.webp",
+          "bytes": 1928,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -11.843,
+          -7.019,
+          -18.593
+        ],
+        "max": [
+          11.843,
+          7.019,
+          18.593
+        ]
+      },
+      "bodyRadiusM": 14.0,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 37.1856,
+        "page": "https://www.nasa.gov/reference/the-space-shuttle/",
+        "quote": "Length 122 feet",
+        "quotedFt": 122
+      }
     }
   },
   "entries": [
@@ -1159,6 +1217,32 @@
           "value": "1965-06-03",
           "page": "https://www.nasa.gov/suits-and-rovers/",
           "quote": "followed by NASA astronaut Ed White on June 3, 1965, during the Gemini 4 mission"
+        }
+      ]
+    },
+    {
+      "id": "shuttle",
+      "name": "Space Shuttle",
+      "model": "shuttle",
+      "travel": null,
+      "facts": [
+        {
+          "key": "firstLaunch",
+          "value": "1981-04-12",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1981-034A",
+          "quote": "Launch Date: 1981-04-12"
+        },
+        {
+          "key": "lengthFt",
+          "value": 122,
+          "page": "https://www.nasa.gov/reference/the-space-shuttle/",
+          "quote": "Length 122 feet"
+        },
+        {
+          "key": "wingspanFt",
+          "value": 78,
+          "page": "https://www.nasa.gov/reference/the-space-shuttle/",
+          "quote": "Wingspan 78 feet"
         }
       ]
     }

@@ -123,7 +123,7 @@ def build_facts(models: list[str]) -> dict:
                 "path": f"{m}/{m}_{level}.glb",
                 "bytes": p.stat().st_size,
                 "triangles": st["triangles"],
-                "textureEdgeMax": TEXTURE_EDGE[level],
+                "textureEdgeMax": {**TEXTURE_EDGE, **recipe.get("texture_edge", {})}[level],
                 "budgetBytes": {**BUDGET_BYTES, **recipe.get("budget_bytes", {})}[level],
             }
             if level == "lod0":
@@ -138,6 +138,8 @@ def build_facts(models: list[str]) -> dict:
         )
         if sf.get("quoted_cm") is not None:
             scale_from["quotedCm"] = sf["quoted_cm"]
+        if sf.get("quoted_ft") is not None:
+            scale_from["quotedFt"] = sf["quoted_ft"]
         out_models[m] = {
             "title": recipe["title"],
             "kind": recipe["kind"],

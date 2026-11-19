@@ -403,7 +403,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "0cfe21423deeed39cfb359abdaeb9b2a8e06804caf24328fca0a0e8d4eb6b66e",
+      "sha256": "acf3d39c3bc5d075b8043e3c232f7ae31c86e62f8b9796251484ecb869f36f4b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -768,6 +768,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.png (996987 bytes, SHA-256 46a4bd3dc507930f9f3df5fda41b63d65d8b52023968414b5f559c9424a3b5ea)."
+    },
+    {
+      "path": "hangar/shuttle/shuttle_lod0.glb",
+      "sha256": "3342fc333df5de1d263e7c05fbb6a32517fb85867a536765f2b2e04cfe7345a1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/shuttle/shuttle_lod1.glb",
+      "sha256": "346bd2d3bc1d36063f63313f5a710fa60d7487d9251098816aebb6fcff7a94c2",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/shuttle/shuttle_lod2.glb",
+      "sha256": "2fae5e3e26df6b95dccae9cbce85efad489b48e907282044e2b539a29b5561ab",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/shuttle/shuttle_picker.webp",
+      "sha256": "766f507f05dd7b413e7cfdb8bd17b0389be6ec499f0bfb26384df0bcb989b40b",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
+        "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
+      },
+      "note": "Rendered from this folder's lod0 build of https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",

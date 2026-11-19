@@ -1300,6 +1300,16 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Gemini spacesuit: NASA's own render of the model (https://science.nasa.gov/3d-resources/gemini-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/shuttle/Space Shuttle (D).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb",
+      "bytes": 2471932,
+      "sha256": "d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Space Shuttle: NASA's own model (https://science.nasa.gov/3d-resources/space-shuttle-d/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

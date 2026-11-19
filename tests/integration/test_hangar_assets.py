@@ -97,7 +97,10 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert 1.5 < height < 2.3, (name, height)
         else:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
-            if "quotedCm" in sf:
+            if "quotedFt" in sf:
+                # NASA gives it in feet: the quote holds that number and the metres are it times 0.3048
+                assert str(sf["quotedFt"]) in sf["quote"] and abs(sf["quotedFt"] * 0.3048 - sf["metres"]) < 1e-9
+            elif "quotedCm" in sf:
                 # NASA gives it in centimetres: the quote holds that number and the metres are it over 100
                 assert str(sf["quotedCm"]) in sf["quote"] and abs(sf["quotedCm"] / 100 - sf["metres"]) < 1e-9
             else:
