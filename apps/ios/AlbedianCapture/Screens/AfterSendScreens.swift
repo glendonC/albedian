@@ -5,6 +5,8 @@ import SwiftUI
 /// and at 668 the step the laptop is on, its name at the left (Geist 300, 28 pt, -0.035 em), its own count at the right
 /// on the same baseline (Geist 15, 66 percent ink, tabular), and 12 pt under both a 2 pt line, ink at 14 percent, filled
 /// in ink by done over total. Before the first job read the row is absent; no Send while it runs; nothing moves.
+/// While the job is queued (D32, UIUX-iphone-queued-READY) the row says "Queued" in the name's place and "{n} ahead"
+/// in the count's, its line empty; no Cancel on the phone.
 struct WaitingScreen: View {
     let model: CompanionModel
 
@@ -18,34 +20,49 @@ struct WaitingScreen: View {
                 if let row = model.waitRow {
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         let passed = model.solveStartedAt.map { Double((ContinuousClock.now - $0).components.seconds) } ?? 0
-                        VStack(spacing: 12) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(WaitRow.word(row.stage)).font(AlbedianFont.light(28)).tracking(-0.035 * 28)
-                                    .foregroundStyle(Color(ControlStyle.ink))
-                                Spacer(minLength: 12)
-                                if let words = row.count.words(secondsPassed: passed) {
-                                    Text(words).font(AlbedianFont.regular(15).monospacedDigit()).tracking(-0.01 * 15)
-                                        .foregroundStyle(Color(ControlStyle.inkSecondary))
-                                }
-                            }
-                            GeometryReader { line in
-                                ZStack(alignment: .leading) {
-                                    Rectangle().fill(Color(ControlStyle.hairline))
-                                    if let fraction = row.count.fraction {
-                                        Rectangle().fill(Color(ControlStyle.ink)).frame(width: line.size.width * CGFloat(fraction))
-                                    }
-                                }
-                            }
-                            .frame(height: 2)
-                        }
-                        .padding(.horizontal, CGFloat(Arrive.side))
+                        StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
+                } else if let queued = model.queuedRow {
+                    StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
+                        .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 }
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// The wait's one row: the name at the left (Geist 300, 28 pt, -0.035 em), the count at the right on the same baseline
+/// (Geist 15, 66 percent ink, tabular), and 12 pt under both the 2 pt line, filled in ink by `fraction` when there is one.
+private struct StepRow: View {
+    let name: String
+    let count: String?
+    let fraction: Double?
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(name).font(AlbedianFont.light(28)).tracking(-0.035 * 28)
+                    .foregroundStyle(Color(ControlStyle.ink))
+                Spacer(minLength: 12)
+                if let count {
+                    Text(count).font(AlbedianFont.regular(15).monospacedDigit()).tracking(-0.01 * 15)
+                        .foregroundStyle(Color(ControlStyle.inkSecondary))
+                }
+            }
+            GeometryReader { line in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(Color(ControlStyle.hairline))
+                    if let fraction {
+                        Rectangle().fill(Color(ControlStyle.ink)).frame(width: line.size.width * CGFloat(fraction))
+                    }
+                }
+            }
+            .frame(height: 2)
+        }
+        .padding(.horizontal, CGFloat(Arrive.side))
     }
 }
 

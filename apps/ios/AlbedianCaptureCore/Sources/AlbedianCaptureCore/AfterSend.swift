@@ -81,6 +81,26 @@ public struct WaitRow: Equatable, Sendable {
     }
 }
 
+/// The wait's row while the job waits its turn (D32, UIUX-iphone-queued-READY): "Queued" in the step name's place and
+/// "{n} ahead" in the count's, n the job's queueAhead as the web writes it (`WorkingScreen.tsx`), the name alone when
+/// none is ahead or the count is not said; the line under them stays empty.
+public struct QueuedRow: Equatable, Sendable {
+    public static let word = "Queued"
+    public let ahead: Int?
+
+    public init(ahead: Int?) { self.ahead = ahead }
+
+    public var aheadWords: String? {
+        guard let ahead, ahead > 0 else { return nil }
+        return "\(ahead) ahead"
+    }
+
+    /// The row for a queued job, or none once it runs or ends.
+    public static func current(_ job: SolveJob) -> QueuedRow? {
+        job.state == .queued ? QueuedRow(ahead: job.queueAhead) : nil
+    }
+}
+
 /// The sentence of a result that is not calibrated (UIUX-iphone-solve-READY, 2): the web's own line for the outcome
 /// (`skyLayerWords.ts`, `skyLayerSentence` with a star search run, as every solve of a sent photo is), its count with a
 /// thousands comma. For "predicted only" the approved picture shows the first sentence alone, without the web's second

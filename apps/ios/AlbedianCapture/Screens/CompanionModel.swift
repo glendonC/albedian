@@ -110,6 +110,12 @@ final class CompanionModel {
         return nil
     }
 
+    /// The wait's row while the job waits its turn (D32, UIUX-iphone-queued-READY).
+    var queuedRow: QueuedRow? {
+        if case .running(let job)? = solver.state { return QueuedRow.current(job) }
+        return nil
+    }
+
     /// When the phone asked for the solve, for a step that reports no total.
     var solveStartedAt: ContinuousClock.Instant? { solver.startedAt }
 

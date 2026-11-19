@@ -22,6 +22,32 @@ final class AfterSendTests: XCTestCase {
         XCTAssertEqual(SolveJob.Stage.allCases.map(WaitRow.word), ["Saved", "Opened", "Measured", "Matching", "Checking"])
     }
 
+    /// D32 (UIUX-iphone-queued-READY): while the job waits its turn, "Queued" in the step name's place and "{n} ahead"
+    /// in the count's, n the job's queueAhead; the name alone when none is ahead or none is said; no row once it runs.
+    func testAQueuedJobShowsQueuedAndHowManyAreAhead() {
+        var queued = job(.queued, [])
+        queued.queueAhead = 3
+        XCTAssertEqual(QueuedRow.current(queued), QueuedRow(ahead: 3))
+        XCTAssertEqual(QueuedRow.current(queued)?.aheadWords, "3 ahead")
+        XCTAssertEqual(QueuedRow.word, "Queued")
+        queued.queueAhead = 1
+        XCTAssertEqual(QueuedRow.current(queued)?.aheadWords, "1 ahead")
+        queued.queueAhead = 1_204
+        XCTAssertEqual(QueuedRow.current(queued)?.aheadWords, "1204 ahead", "as the web writes it, no grouping")
+        queued.queueAhead = 0
+        XCTAssertNotNil(QueuedRow.current(queued))
+        XCTAssertNil(QueuedRow.current(queued)?.aheadWords)
+        queued.queueAhead = nil
+        XCTAssertNotNil(QueuedRow.current(queued))
+        XCTAssertNil(QueuedRow.current(queued)?.aheadWords)
+        XCTAssertNil(WaitRow.current(queued), "no step while queued")
+        for state in SolveJob.State.allCases where state != .queued {
+            var other = job(state, [])
+            other.queueAhead = 2
+            XCTAssertNil(QueuedRow.current(other), state.rawValue)
+        }
+    }
+
     func testTheRowIsTheStepBeingWorkedWithItsOwnCount() {
         let store = stage(.store, .bytes, 2_382_523, 2_382_523)
         // The last stage that reported, while its count is not full
