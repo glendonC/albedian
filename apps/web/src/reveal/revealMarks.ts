@@ -1,6 +1,7 @@
 import { hasVerifiedWcs, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { chooseLabelledFindingIds, projectFindingToViewport } from '../components/CelestialMarkerOverlay.js';
-import { sessionPhotoRect } from '../components/sourcePhotoRect.js';
+import { sessionPhotoRect, sourcePixelToViewport } from '../components/sourcePhotoRect.js';
+import { worldToPixelWCS } from '@albedian/camera-rig';
 
 /**
  * Which marks the reveal draws over the photo (reveal, approved 2026-11-12), and where.
@@ -92,6 +93,23 @@ export function leaderPath(mark: RevealMark, viewportWidthPx: number): string {
   return start < turn ? `${from}H${turn}${end}` : `${from}${end}`;
 }
 
+/** Where the solve puts a finding's sky position over the photo, or none when it falls outside the frame. */
+function throughSolve(
+  finding: CelestialFinding,
+  session: ObservationSession,
+  viewportWidthPx: number,
+  viewportHeightPx: number
+): ReturnType<typeof projectFindingToViewport> | null {
+  const wcs = session.observationSolution?.wcs;
+  const asset = session.sourceAsset;
+  const sky = finding.skyPosition;
+  if (!wcs || !asset || !sky) return null;
+  const at = worldToPixelWCS(sky.raDeg, sky.decDeg, wcs);
+  if (!at.visible || at.uPx < 0 || at.vPx < 0 || at.uPx > asset.width || at.vPx > asset.height) return null;
+  const shown = sourcePixelToViewport(at.uPx, at.vPx, asset.width, asset.height, viewportWidthPx, viewportHeightPx, session.cropTransform, asset.displayOrientation);
+  return { xPx: shown.xPx, yPx: shown.yPx, xPct: (shown.xPx / viewportWidthPx) * 100, yPct: (shown.yPx / viewportHeightPx) * 100, visible: true };
+}
+
 export function revealMarks(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number): RevealMark[] {
   const solution = session.observationSolution;
   const rect = sessionPhotoRect(session, viewportWidthPx, viewportHeightPx);
@@ -102,8 +120,13 @@ export function revealMarks(session: ObservationSession, viewportWidthPx: number
   const placed = solution.findings.flatMap((finding) => {
     const catalog = finding.evidenceClass === 'catalog_matched' && verified;
     if (!catalog && finding.evidenceClass !== 'predicted') return [];
-    const position = projectFindingToViewport(finding, session, viewportWidthPx, viewportHeightPx);
-    // A predicted object has a place over the photo only through a pose estimate: without one it is not visible
+    let position = projectFindingToViewport(finding, session, viewportWidthPx, viewportHeightPx);
+    // A predicted object picked on a photo matched to stars is placed through the photo's verified solve, drawn as
+    // predicted (INTERIM: .lead/uiux/UIUX-predicted-pick-QUESTION.md); otherwise it has a place over the photo only
+    // through a pose estimate, and without one it is not visible
+    if (!position.visible && finding.evidenceClass === 'predicted' && verified && finding.id === pickedId) {
+      position = throughSolve(finding, session, viewportWidthPx, viewportHeightPx) ?? position;
+    }
     if (!position.visible) return [];
     return [{ finding, kind: (catalog ? 'catalog' : 'predicted') as RevealMarkKind, position }];
   });

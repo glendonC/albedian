@@ -78,6 +78,9 @@ export function starCardFacts(finding: CelestialFinding): StarCardFacts {
   }
 
   const notes = [...(finding.evidence?.limitations ?? [])];
+  // A prediction ends with the solve's own sentence for it (INTERIM: UIUX-predicted-pick-QUESTION.md), said once
+  const predictedSaid = finding.evidenceClass === 'predicted' && finding.evidence?.verificationMethod ? `${finding.evidence.verificationMethod.replace(/\.$/, '')}.` : null;
+  if (predictedSaid && !notes.includes(predictedSaid)) notes.push(predictedSaid);
   const ruwe = astrophysicsOf(ref)?.ruwe ?? null;
   if (ruwe !== null && ruwe > RUWE_CAUTION_ABOVE) {
     notes.push(`Gaia's position fit for this star is loose (RUWE ${ruwe.toFixed(2)}). Read the distance with care.`);

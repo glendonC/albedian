@@ -269,9 +269,13 @@ describe('RevealPhoto: a sky that is not matched to stars', () => {
     const mark = q(`[data-testid="reveal-mark-${object.id}"]`) as HTMLButtonElement;
     expect(mark.className).toBe('reveal-mark is-predicted is-picked');
     expect(mark.getAttribute('aria-pressed')).toBe('true');
-    expect([...mark.querySelectorAll('circle')].map((c) => [c.getAttribute('r'), c.getAttribute('stroke-dasharray')])).toEqual([['7', '2.8 2.6']]);
+    // Its own picked look (INTERIM: UIUX-predicted-pick-QUESTION.md): the dashed ring enlarged to 10 with an outer ring at
+    // 22, never the star's solid ring with ticks
+    expect([...mark.querySelectorAll('circle')].map((c) => [c.getAttribute('r'), c.getAttribute('stroke-dasharray')])).toEqual([
+      ['22', null],
+      ['10', '2.8 2.6'],
+    ]);
     expect(mark.querySelector('path')).toBeNull();
-    expect(mark.querySelector('.reveal-mark__halo')).toBeNull();
     // Picked, it keeps its name: a predicted object is named by its title, catalog row or not
     expect(mark.querySelector('.reveal-mark__name')!.textContent).toBe(object.title);
     const rowless = {
@@ -536,6 +540,70 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
   });
 });
 
+describe('a predicted object picked on a matched photo (INTERIM: UIUX-predicted-pick-QUESTION.md)', () => {
+  /** The calibrated fixture with a predicted twin of Rigel: no measurement, its place only from the catalog. */
+  function withPredicted() {
+    const base = sample('plate_calibrated');
+    const rigel = base.findings.find((f) => f.title === 'Rigel')!;
+    const predicted = {
+      ...rigel,
+      id: 'finding-predicted-hip-24436',
+      title: 'Rigel B',
+      evidenceClass: 'predicted',
+      sourceDetection: undefined,
+      skyPosition: { ...rigel.skyPosition, raDeg: rigel.catalogRef!.raDeg, decDeg: rigel.catalogRef!.decDeg },
+      evidence: { ...rigel.evidence, evidenceClass: 'predicted', verificationMethod: 'Predicted for the given time and place; not measured in the image' },
+    };
+    const session = calibrated();
+    const s = { ...session, observationSolution: { ...session.observationSolution!, findings: [...session.observationSolution!.findings, predicted] } } as ObservationSession;
+    return { session: s, rigel, predicted };
+  }
+
+  it('is not marked until picked; picked, it is placed through the solve, named, and drawn as predicted', () => {
+    const { session, rigel, predicted } = withPredicted();
+    expect(revealMarks(session, VIEW.w, VIEW.h).some((m) => m.finding.id === predicted.id)).toBe(false);
+    const marks = revealMarks({ ...session, selectedFindingId: predicted.id }, VIEW.w, VIEW.h);
+    const mark = marks.find((m) => m.finding.id === predicted.id)!;
+    expect(mark.kind).toBe('predicted');
+    expect(mark.picked).toBe(true);
+    expect(mark.name).toBe('Rigel B');
+    expect(mark.uncertaintyPx).toBeNull();
+    // Through the solve it lands on the matched star it shares a catalog position with, within a few pixels
+    const star = marks.find((m) => m.finding.id === rigel.id)!;
+    expect(Math.hypot(mark.xPx - star.xPx, mark.yPx - star.yPx)).toBeLessThan(6);
+  });
+
+  it('is not placed where the solve puts it outside the photo', () => {
+    const { session, predicted } = withPredicted();
+    // Thirty degrees from the frame's centre: on the sky, but past the photo's edge
+    const wcs = session.observationSolution!.wcs!;
+    const far = { ...predicted, skyPosition: { ...predicted.skyPosition, raDeg: (wcs.crvalRaDeg + 30) % 360, decDeg: wcs.crvalDecDeg } };
+    const outside = { ...session, selectedFindingId: far.id, observationSolution: { ...session.observationSolution!, findings: session.observationSolution!.findings.map((f) => (f.id === far.id ? far : f)) } } as ObservationSession;
+    expect(revealMarks(outside, VIEW.w, VIEW.h).some((m) => m.finding.id === far.id)).toBe(false);
+  });
+
+  it('is not placed over a photo whose solve did not pass its check', () => {
+    const { session, predicted } = withPredicted();
+    const unverified = { ...session, selectedFindingId: predicted.id, observationSolution: { ...session.observationSolution!, quality: { ...session.observationSolution!.quality!, passedIndependentVerification: false } } } as ObservationSession;
+    expect(revealMarks(unverified, VIEW.w, VIEW.h).some((m) => m.finding.id === predicted.id)).toBe(false);
+  });
+
+  it('draws its line to the card in amber', () => {
+    const { session, predicted } = withPredicted();
+    show({ ...session, selectedFindingId: predicted.id });
+    expect(q('[data-testid="reveal-leader"]')!.getAttribute('class')).toBe('reveal-leader is-predicted');
+    show({ ...session, selectedFindingId: session.observationSolution!.findings.find((f) => f.title === 'Rigel')!.id });
+    expect(q('[data-testid="reveal-leader"]')!.getAttribute('class')).toBe('reveal-leader');
+  });
+
+  it('sets its picked look as the record draws it: amber, the ring at 1.4, the outer ring at 40 percent, the name at 15 px', () => {
+    expect(declarationsOf('.reveal-mark.is-predicted.is-picked .reveal-mark__glyph')).toEqual({ 'stroke-width': '1.4' });
+    expect(declarationsOf('.reveal-mark.is-predicted.is-picked .reveal-mark__halo')).toEqual({ stroke: 'rgba(245, 184, 61, 0.4)', 'stroke-width': '1' });
+    expect(declarationsOf('.reveal-mark.is-predicted.is-picked .reveal-mark__name')).toEqual({ left: 'calc(50% + 25px)', 'font-size': '15px', 'font-weight': '500', color: 'var(--look-ev-predicted)' });
+    expect(declarationsOf('.reveal-leader.is-predicted path')).toEqual({ stroke: 'rgba(245, 184, 61, 0.5)' });
+  });
+});
+
 describe("the photo's side edges fade, and nothing else of it changes", () => {
   it('fades 56 px at each side on the reveal and not otherwise', () => {
     expect(SIDE_FADE).toBe('linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%)');
@@ -653,7 +721,8 @@ describe("the reveal's rules are the approved pages'", () => {
     expect(declarationsOf('.reveal-mark.is-catalog.is-picked .reveal-mark__name')).toEqual({ left: 'calc(50% + 25px)', 'font-size': '15px', 'font-weight': '500', color: 'var(--look-ink)' });
     let pickedRules = 0;
     postcss.parse(css).walkRules((rule) => {
-      if (rule.selector.includes('is-picked') && !rule.selector.split(',').every((part) => part.includes('.is-catalog.is-picked'))) pickedRules += 1;
+      // Each picked rule names its kind: a star's look, or a predicted object's own (INTERIM), never one for both
+      if (rule.selector.includes('is-picked') && !rule.selector.split(',').every((part) => part.includes('.is-catalog.is-picked') || part.includes('.is-predicted.is-picked'))) pickedRules += 1;
     });
     expect(pickedRules).toBe(0);
     expect(declarationsOf('.reveal-mark.is-predicted')).toEqual({ color: 'var(--look-ev-predicted)' });

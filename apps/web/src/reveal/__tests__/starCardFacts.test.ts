@@ -111,6 +111,20 @@ describe('starCardFacts: a star with no name (INTERIM: UIUX-unnamed-QUESTION.md)
   });
 });
 
+describe('starCardFacts: a predicted object (INTERIM: UIUX-predicted-pick-QUESTION.md)', () => {
+  it("ends with the solve's own sentence for a prediction, once, and gives it to no other kind", () => {
+    const sentence = 'Predicted for the given time and place; not measured in the image';
+    const predicted = { ...acrux, evidenceClass: 'predicted', sourceDetection: undefined, evidence: { ...acrux.evidence, evidenceClass: 'predicted', verificationMethod: sentence, limitations: [] } } as unknown as CelestialFinding;
+    expect(starCardFacts(predicted).notes).toEqual([`${sentence}.`]);
+    expect(starCardFacts(predicted).numbers.map((n) => n.label)).toEqual(['away from Earth']);
+    expect(starCardFacts(predicted).canGoThere).toBe(false);
+    // Already among its limitations: not said twice
+    const twice = { ...predicted, evidence: { ...predicted.evidence, limitations: [`${sentence}.`] } } as CelestialFinding;
+    expect(starCardFacts(twice).notes).toEqual([`${sentence}.`]);
+    expect(starCardFacts(acrux).notes.some((n) => n.startsWith('Predicted'))).toBe(false);
+  });
+});
+
 describe('starCardFacts: what a finding does not have is left out', () => {
   it('leaves the designation out of the line under the name when it is the name, and keeps the constellation', () => {
     expect(starCardFacts({ ...withRef({ commonName: 'HIP 60718' }), title: 'Alpha1 Crux' }).subLine).toBe('Crux');

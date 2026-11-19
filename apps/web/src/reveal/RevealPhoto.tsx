@@ -72,6 +72,12 @@ const MarkGlyph: React.FC<{ mark: RevealMark }> = ({ mark }) => (
         <circle r="6" />
         <path d="M0 -12V-9M0 9V12M-12 0H-9M9 0H12" />
       </>
+    ) : mark.picked ? (
+      // A picked predicted object (INTERIM: UIUX-predicted-pick-QUESTION.md): its dashed ring enlarged, with an outer ring
+      <>
+        <circle className="reveal-mark__halo" r="22" />
+        <circle r="10" strokeDasharray="2.8 2.6" />
+      </>
     ) : (
       <circle r="7" strokeDasharray="2.8 2.6" />
     )}
@@ -144,7 +150,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {rect && <PhotoCorners rect={rect} />}
 
       {!bareFrame && picked && marks.some((mark) => mark.picked) && (
-        <svg className="reveal-leader" data-testid="reveal-leader" aria-hidden="true" focusable="false">
+        <svg className={marks.find((mark) => mark.picked)!.kind === 'predicted' ? 'reveal-leader is-predicted' : 'reveal-leader'} data-testid="reveal-leader" aria-hidden="true" focusable="false">
           <path d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
         </svg>
       )}
