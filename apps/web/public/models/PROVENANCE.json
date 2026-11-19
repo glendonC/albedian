@@ -151,6 +151,39 @@
         "method": "downloaded-as-is"
       },
       "note": "NASA's model of an astronaut in a spacesuit, Draco compressed with WebP textures as NASA publishes it; it stands along +y and faces +z. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
+    },
+    {
+      "path": "nasa/voyager-probe-b.png",
+      "sha256": "66d9fc3028a3f92413519bd413aa1a8705790d0f7786c11f62b1b166bd1ee964",
+      "sources": [
+        "nasa-3d-resources-voyager-probe-b"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20(B)/Voyager%20Probe%20(B).png (git blob f1428536445e57e3acf2eb14b31fde000c6806ac, 417,970 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
+    },
+    {
+      "path": "nasa/james-webb-space-telescope-a.png",
+      "sha256": "a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10",
+      "sources": [
+        "nasa-3d-resources-james-webb-space-telescope-a"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20(A)/James%20Webb%20Space%20Telescope%20(A).png (git blob c7a442139024b023cf1db470beaef03bfb96f496, 518,892 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
+    },
+    {
+      "path": "nasa/astronaut.png",
+      "sha256": "5d44c49cb9803ec18b408d43dbd93adc3828e1b5e5f477bd85654f6f357933d9",
+      "sources": [
+        "nasa-3d-resources-astronaut"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.png (git blob c843147a7c426be10ddaea9fcb815b5fd663de2c, 1,109,191 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
     }
   ],
   "fileSets": []

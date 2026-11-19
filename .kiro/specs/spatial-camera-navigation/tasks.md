@@ -18,3 +18,5 @@
   - Traced to: `packages/camera-rig/src/__tests__/cone.test.ts`; `apps/web/src/spatial/flight/__tests__/coneView.test.ts`
 - [x] 9. Ring every star the photo matched while it is on screen in the flight, kept out of the disclosure, the readout and the bar, and count the drawn stars kept on the sky sphere for want of a measured distance, worded for the disclosure (D27 items 1, 2 and 5; flight-1b).
   - Traced to: `apps/web/src/spatial/flight/__tests__/flightRings.test.ts`
+- [x] 10. Build D26's craft picker (your view, then NASA's craft with their speeds or near Earth, NASA's own pictures) and the real trip under the flight's distances in the record's words, the flight's own travel time measured (pilot-1b; mounted on the There screen by its FILES answer).
+  - Traced to: `apps/web/src/spatial/flight/__tests__/pilotReadout.test.ts`, `pilotPieces.test.tsx`
