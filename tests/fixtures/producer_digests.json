@@ -16,10 +16,10 @@
    "services/media/tone.py",
    "services/science/detector.py"
   ],
-  "digest": "8f28d1ce43456ac7b416c1b374edb71540da176ff8383be4adcd9b02b010892c"
+  "digest": "7e50c52e808ddae22f734c5cc5f63db8690a3c3ef1642557d0324319512b735e"
  },
  "albedian.solve_chain": {
-  "revision": 4,
+  "revision": 5,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -36,6 +36,6 @@
    "services/science/deep_sky_projection.py",
    "services/science/deep_sky_selection.py"
   ],
-  "digest": "c5829ee0f2637a59a51d5118688a13a0facf74d471d0416f20d3eadca1a68afc"
+  "digest": "f7e3c16866f429d8a3201da4f1c5c49bbed3e7a6dec89353434a5683950057fe"
  }
 }

@@ -772,8 +772,10 @@ SOLVE_PRODUCER_FILES = (
 # in a matched or predicted star's Bayer designation (field-5: Crucis, Coronae Australis) and the deep-sky objects
 # every predicted sky and a calibrated frame now hold (field-6, whose three deep-sky modules join the files) (field-6r);
 # 4, a clip's stack detected with its frames' rounding noise as the floor, which changes its detections, the searches
-# they feed and the job's noise words (field-8)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 4, SOLVE_PRODUCER_FILES)
+# they feed and the job's noise words (field-8); 5, the blind search over the whole sky's brightest stars
+# (solve-search-2) and the horizon search at any roll (the high-pointing prior), which calibrate photos that were
+# unresolved
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 5, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
