@@ -67,7 +67,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - _Requirements: REQ-JOB-1.1 to 1.4, 1.6, REQ-JOB-2.1 to 2.6, REQ-JOB-3.6, 3.7, REQ-JOB-4.1 to 4.5,
     REQ-JOB-7.1 to 7.4_
 
-- [ ] 6. platform-6: revisions, the digest guard and stale solves run again (unit 10i; REQ-JOB-6; P-JOB-11)
+- [x] 6. platform-6: revisions, the digest guard and stale solves run again (unit 10i; REQ-JOB-6; P-JOB-11)
   - The solve producer's revision and file list, `tests/fixtures/producer_digests.json`,
     `tests/integration/test_producer_revisions.py`, `count_stale`, the rerun rule at start, the last good solution
     served while a newer solve runs (3.5).

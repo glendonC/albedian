@@ -1,0 +1,19 @@
+{
+ "albedian.solve_chain": {
+  "revision": 1,
+  "files": [
+   "services/ingest/jobs.py",
+   "services/science/detector.py",
+   "services/science/solver.py",
+   "services/science/phone_photo_solver.py",
+   "services/science/horizon_solver.py",
+   "services/science/predicted_sky.py",
+   "services/science/pose_estimate.py",
+   "services/science/camera_profiles.py",
+   "services/science/ephemeris.py",
+   "services/science/catalog.py",
+   "services/science/bounded_worker.py"
+  ],
+  "digest": "7ca9036e376edc8c651911850048c9f6727074dd5ea774b7c7d535a58662df12"
+ }
+}

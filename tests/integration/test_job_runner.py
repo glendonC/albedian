@@ -584,6 +584,8 @@ def test_p_job_4_5_a_cancel_or_the_bound_stops_the_child_and_every_process_it_st
     limit = 4.0 if how == "deadline" else BOUND_S
     world["kinds"]["solve"] = solve_kind(Script(), body, time_limit_s=limit)
     runner = world["runner"]()
+    # The child up first, so the bound stops the work, not a fresh child's start-up (it imports this module again)
+    job_runner._SLOT_WORKERS["solve"].call(os.getpid, timeout_s=BOUND_S)
     started = time.monotonic()
     record, _ = runner.start(world["shas"][0], "solve")
     assert in_child.wait(BOUND_S)
@@ -1035,3 +1037,93 @@ def test_a_call_waiting_for_the_shared_child_stops_waiting_when_its_job_is_stopp
     finally:
         worker._lock.release()
         worker.close()
+
+
+# ---- platform-6: results know which code made them (REQ-JOB-6.3 to 6.5) ----
+
+
+def _succeeded_of(store: JobStore, sha: str, producer: Optional[dict[str, Any]], created: str) -> dict[str, Any]:
+    """A succeeded solve of `sha` made by `producer`, with its solution published where the store reads it."""
+    job_id = new_job_id(sha)
+    record = {"id": job_id, "sourceAssetSha256": sha, "kind": "solve", "state": "succeeded", "createdAtUTC": created,
+              "startedAtUTC": created, "finishedAtUTC": created, "solutionId": f"sol_{sha[:16]}",
+              "stages": [{"stage": "store", "unit": "bytes", "done": 9, "total": 9}]}
+    if producer is not None:
+        record["producer"] = producer
+    written = store.write_record(record)
+    folder = store.upload_folder(sha) / "solutions"
+    folder.mkdir(mode=0o700, exist_ok=True)
+    (folder / f"{job_id}.json").write_text(json.dumps(_solution_payload(sha)), encoding="utf-8")
+    return written
+
+
+@pytest.mark.parametrize(("producer", "runs_again"), [
+    ({"name": "albedian.test_solve", "revision": 1}, True),
+    ({"name": "albedian.test_solve", "revision": 2}, False),
+    ({"name": "albedian.test_solve", "revision": 3}, False),
+    ({"name": "albedian.other_chain", "revision": 2}, True),
+])
+def test_a_succeeded_solve_of_an_older_revision_or_another_producer_runs_again_and_a_current_one_is_answered(
+        world: dict[str, Any], producer: dict[str, Any], runs_again: bool) -> None:
+    script = Script()
+    script.release.set()
+    kind = solve_kind(script)
+    world["kinds"]["solve"] = JobKind(**{**kind.__dict__, "producer": Producer("albedian.test_solve", 2)})
+    store, sha = world["store"], world["shas"][0]
+    stored = _succeeded_of(store, sha, producer, "2030-01-01T05:00:00Z")
+    record, created = world["runner"]().start(sha, "solve")
+    assert created is runs_again
+    assert (record["id"] == stored["id"]) is not runs_again
+
+
+def test_a_solve_todays_code_ran_names_no_producer_and_runs_again(world: dict[str, Any]) -> None:
+    script = Script()
+    script.release.set()
+    world["kinds"]["solve"] = solve_kind(script)
+    store, sha = world["store"], world["shas"][0]
+    folder = store.upload_folder(sha)
+    legacy = {"id": f"job_{sha[:16]}", "sourceAssetSha256": sha, "state": "succeeded",
+              "createdAtUTC": "2020-01-01T05:00:00Z", "startedAtUTC": "2020-01-01T05:00:01Z",
+              "finishedAtUTC": "2020-01-01T05:00:02Z", "solutionId": f"sol_{sha[:16]}",
+              "stages": [{"stage": "store", "unit": "bytes", "done": 9, "total": 9}]}
+    (folder / "job.json").write_text(json.dumps(legacy), encoding="utf-8")
+    (folder / "solution.json").write_text(json.dumps(_solution_payload(sha)), encoding="utf-8")
+    record, created = world["runner"]().start(sha, "solve")
+    assert created and record["id"] != legacy["id"]
+    assert world["runner"]().wait(record["id"], BOUND_S)["state"] == "succeeded"
+
+
+def test_the_store_counts_the_uploads_whose_newest_solve_is_current_stale_or_from_todays_code(
+        world: dict[str, Any]) -> None:
+    store, (current, stale, legacy) = world["store"], world["shas"]
+    producer = Producer("albedian.test_solve", 2)
+    _succeeded_of(store, current, {"name": "albedian.test_solve", "revision": 1}, "2030-01-01T05:00:00Z")
+    _succeeded_of(store, current, {"name": "albedian.test_solve", "revision": 2}, "2030-01-01T05:00:01Z")
+    # The current upload's older solve was stale; the stale upload has only a stale one, so counting any but the
+    # newest succeeded solve of each upload moves the counts
+    _succeeded_of(store, stale, {"name": "albedian.test_solve", "revision": 1}, "2030-01-01T05:00:01Z")
+    folder = store.upload_folder(legacy)
+    (folder / "job.json").write_text(json.dumps({
+        "id": f"job_{legacy[:16]}", "sourceAssetSha256": legacy, "state": "succeeded",
+        "createdAtUTC": "2020-01-01T05:00:00Z", "startedAtUTC": "2020-01-01T05:00:01Z",
+        "finishedAtUTC": "2020-01-01T05:00:02Z", "solutionId": f"sol_{legacy[:16]}",
+        "stages": [{"stage": "store", "unit": "bytes", "done": 9, "total": 9}]}), encoding="utf-8")
+    assert job_runner.count_stale(world["uploads"], "solve", producer) == {"current": 1, "stale": 1, "no_producer": 1}
+    assert job_runner.count_stale(world["uploads"], "solve", Producer("albedian.test_solve", 1)) == {
+        "current": 2, "stale": 0, "no_producer": 1}
+
+
+def test_while_a_newer_solve_runs_the_last_good_solution_is_still_served(world: dict[str, Any]) -> None:
+    script = Script()
+    kind = solve_kind(script)
+    world["kinds"]["solve"] = JobKind(**{**kind.__dict__, "producer": Producer("albedian.test_solve", 2)})
+    store, sha = world["store"], world["shas"][0]
+    older = _succeeded_of(store, sha, {"name": "albedian.test_solve", "revision": 1}, "2020-01-01T05:00:00Z")
+    runner = world["runner"]()
+    newer, created = runner.start(sha, "solve")
+    assert created and script.entered.wait(BOUND_S)
+    assert store.read_solution(sha) == _solution_payload(sha), "the older solve's solution, while the newer runs"
+    assert store.newest_solve(sha)["id"] == newer["id"] != older["id"], "the receipt names the solve that runs"
+    script.release.set()
+    assert runner.wait(newer["id"], BOUND_S)["state"] == "succeeded"
+    assert store.newest_solve(sha)["id"] == newer["id"]

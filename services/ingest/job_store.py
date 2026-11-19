@@ -663,6 +663,10 @@ class JobStore:
         )
         return result, sorted(handed_back, key=lambda r: (instant(r["createdAtUTC"]), r["id"]))
 
+    def upload_hashes(self) -> list[str]:
+        """The hashes of the uploads stored, found as the sweep finds their folders, never through a link."""
+        return sorted(folder.name for folder in self._upload_folders())
+
     def _upload_folders(self) -> Iterator[Path]:
         if not stat.S_ISDIR(_lstat_mode(self.root)):
             return

@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+import hashlib
 import logging
 import os
 from pathlib import Path
@@ -80,13 +81,33 @@ class JobStopped(Exception):
 
 @dataclass(frozen=True)
 class Producer:
-    """The name and revision of the code a kind runs (design 3.5)."""
+    """The name and revision of the code a kind runs, and the source files its results come from, from the
+    repository's root (design 3.5). A unit that changes results raises the revision; the guard
+    (`tests/integration/test_producer_revisions.py`) pins both with a digest of the files."""
 
     name: str
     revision: int
+    files: tuple[str, ...] = ()
 
     def as_record(self) -> dict[str, Any]:
         return {"name": self.name, "revision": self.revision}
+
+    def made(self, record: Mapping[str, Any]) -> bool:
+        """Whether a job record's producer is this one at this revision or later: a result to answer as current.
+        One that names no producer (today's records), another producer or an older revision is stale (REQ-JOB-6.3)."""
+        made_by = record.get("producer")
+        return (isinstance(made_by, Mapping) and made_by.get("name") == self.name
+                and isinstance(made_by.get("revision"), int) and made_by["revision"] >= self.revision)
+
+
+def producer_digest(producer: Producer, root: Path) -> str:
+    """The SHA-256 of a producer's files, each framed by its path, a NUL and its length in 8 bytes, in its order: the
+    source text alone, so the same on every machine."""
+    digest = hashlib.sha256()
+    for path in producer.files:
+        data = (root / path).read_bytes()
+        digest.update(path.encode("utf-8") + b"\0" + len(data).to_bytes(8, "big") + data)
+    return digest.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -357,6 +378,10 @@ class Runner:
         return max(attempts, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
 
     def _current(self, kind: JobKind, record: Mapping[str, Any]) -> bool:
+        """Whether a succeeded job's results are to be answered: made by the kind's producer at its revision or
+        later, and whole."""
+        if not kind.producer.made(record):
+            return False
         try:
             return bool(kind.results_valid(self.store, record))
         except (Unreadable, OSError, ValueError):
@@ -767,6 +792,29 @@ class SlotWorker:
 
 
 _SLOT_WORKERS: dict[str, SlotWorker] = {group: SlotWorker() for group in GROUPS}
+
+
+def count_stale(uploads: IngestStore, kind: str, producer: Producer) -> dict[str, int]:
+    """The uploads whose newest succeeded job of `kind` the producer made at its revision or later (`current`), at an
+    older revision or by another producer (`stale`), or that names no producer, today's records (`no_producer`).
+    Counts only (unit 10i's report); an upload with no succeeded job of the kind is not counted."""
+    store = JobStore(uploads)
+    counts = {"current": 0, "stale": 0, "no_producer": 0}
+    for sha256 in store.upload_hashes():
+        succeeded = [r for r in store.jobs_of(sha256) if r["kind"] == kind and r["state"] == "succeeded"]
+        if kind == "solve":
+            try:
+                legacy = store.legacy_solve_job(sha256)
+            except Unreadable:
+                legacy = None
+            if legacy is not None and legacy["state"] == "succeeded":
+                succeeded.append(legacy)
+        if not succeeded:
+            continue
+        newest = max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
+        key = "no_producer" if "producer" not in newest else "current" if producer.made(newest) else "stale"
+        counts[key] += 1
+    return counts
 
 
 def _tell(listener: Callable[[dict[str, Any]], None], record: dict[str, Any]) -> None:

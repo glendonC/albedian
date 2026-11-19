@@ -875,9 +875,8 @@ def test_the_solution_route_answers_an_old_shape_solution_in_the_new_shape_and_l
         (folder / "job.json").write_text(json.dumps(job), encoding="utf-8")
         (folder / "solution.json").write_text(json.dumps(before), encoding="utf-8")
         on_disk = (folder / "solution.json").read_bytes()
-        # The reader's path: solving again answers the stored job, and the solution the web then reads is the new shape
-        again = client.post(f"/api/ingest/{sha}/solve")
-        assert again.status_code == 200 and again.json() == job
+        # The reader's path: the solution the web reads is the new shape. (A start would run today's stored job
+        # again, since it names no producer: upload jobs REQ-JOB-6.3)
         read = client.get(f"/api/ingest/{sha}/solution")
         assert read.status_code == 200 and read.json() == upgrade_stored_solution(before) != before
         for finding in read.json()["findings"]:

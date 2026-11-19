@@ -327,6 +327,18 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   which names no producer (REQ-JOB-6.3). `count_stale(store) -> {current, stale, no_producer}` serves 10i's report.
 - The solution's own `solver` field is unchanged: the producer is about the chain, the solver field about the search
   that won.
+- As built in platform-6 [tested]: `Producer(name, revision, files)` in `services/ingest/runner.py`; the solve's is
+  `albedian.solve_chain` revision 1 over 11 files (`SOLVE_PRODUCER_FILES` in `jobs.py`: the design's list and
+  `horizon_solver.py`, which `solver.py` imports for the skyline pose [proposed]; the catalog's tile modules,
+  `wcs_models.py` and the designations are not listed [open: widen the list if a change there should rerun solves]).
+  `producer_digest` frames each file by its path, a NUL and its length. The guard and P-JOB-11 are
+  `tests/integration/test_producer_revisions.py`, the pin `tests/fixtures/producer_digests.json`. A start answers a
+  succeeded job as current only when its producer has the kind's name and a revision no older than the kind's, and
+  its results are whole; any other (today's `job.json` among them) runs again. `count_stale(uploads, kind, producer)`
+  counts the uploads by their newest succeeded job: `current`, `stale`, `no_producer`. While a newer solve runs, the
+  solution route serves the newest succeeded solve's solution, and the client tells a newer solve runs from the
+  start's answer (202 with the job) and the receipt's `solveJobId`, which names the newest attempt [proposed: no new
+  field or header; the solution route's answer itself does not say it].
 
 ### 3.6 The routes (`services/ingest/router.py`)
 

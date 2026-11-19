@@ -737,8 +737,26 @@ def run_solve_job(
 
 # ---- The solve kind of the upload job runner (upload jobs design 3.4, platform-5) ----
 
-# What the job record names as the code that made its solution (design 3.5); platform-6 guards its revision
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 1)
+# The code a solve's results come from (design 3.5, platform-6): the job module with its decoders, the searches and
+# what they read, the predicted sky and the pose, and the child that runs the searches. A unit that changes results
+# raises the revision, and every stored solve of an older revision runs again at its next start; one that does not
+# change results updates only the pinned digest (tests/fixtures/producer_digests.json). [proposed] The list is the
+# design's, with horizon_solver.py, which solver.py imports for the skyline pose; the catalog's tile modules,
+# wcs_models.py and the designations are not listed
+SOLVE_PRODUCER_FILES = (
+    "services/ingest/jobs.py",
+    "services/science/detector.py",
+    "services/science/solver.py",
+    "services/science/phone_photo_solver.py",
+    "services/science/horizon_solver.py",
+    "services/science/predicted_sky.py",
+    "services/science/pose_estimate.py",
+    "services/science/camera_profiles.py",
+    "services/science/ephemeris.py",
+    "services/science/catalog.py",
+    "services/science/bounded_worker.py",
+)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 1, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
