@@ -33,9 +33,15 @@ public final class PairingKeeper: Sendable {
     /// taken as it is and the scheme is never doubled.
     public static func address(typed: String) -> LaptopAddress? {
         var text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.prefix(fixedScheme.count).lowercased() == fixedScheme { text = String(text.dropFirst(fixedScheme.count)) }
+        if typedHasScheme(text) { text = String(text.dropFirst(fixedScheme.count)) }
         guard !text.isEmpty else { return nil }
         return LaptopAddress(fixedScheme + text)
+    }
+
+    /// Whether the typed text begins with "http://" itself, in any case: then the field shows no fixed one in front, so
+    /// the address reads once.
+    public static func typedHasScheme(_ typed: String) -> Bool {
+        typed.trimmingCharacters(in: .whitespacesAndNewlines).prefix(fixedScheme.count).lowercased() == fixedScheme
     }
 
     /// The kept address, read again as a pairing address each time, so a kept text that no longer is one is not used.

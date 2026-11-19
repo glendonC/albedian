@@ -32,6 +32,17 @@ final class CompanionFlowTests: XCTestCase {
         XCTAssertEqual(PairingKeeper.fixedScheme, "http://")
     }
 
+    /// The field shows the address once (LEAD ANSWER 12:57): its fixed grey http:// stands in front only while the typed
+    /// text does not begin with one of its own.
+    func testTheFixedSchemeIsShownOnlyWhenTheTypedTextHasNone() {
+        for typed in ["http://172.20.10.2:5173", "Http://172.20.10.2:5173", " HTTP://10.0.0.2", "http://"] {
+            XCTAssertTrue(PairingKeeper.typedHasScheme(typed), typed)
+        }
+        for typed in ["", "172.20.10.2:5173", "http:/", "https://10.0.0.2", "htt", "10.0.0.2/http://"] {
+            XCTAssertFalse(PairingKeeper.typedHasScheme(typed), typed)
+        }
+    }
+
     func testNothingIsKeptUntilAGoodSendAndThenTheSameAddressComesBack() throws {
         let values = MemoryValues()
         let keeper = PairingKeeper(values: values)

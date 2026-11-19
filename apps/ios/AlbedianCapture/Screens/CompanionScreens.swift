@@ -340,7 +340,10 @@ struct ConnectScreen: View {
             Text("Address").font(AlbedianFont.regular(13)).foregroundStyle(Color(ControlStyle.inkQuiet))
                 .atTop(238, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
             HStack(spacing: 0) {
-                Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet))
+                // The address reads once: no fixed scheme in front of a typed one (LEAD ANSWER 12:57)
+                if !PairingKeeper.typedHasScheme(model.typedAddress) {
+                    Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet))
+                }
                 TextField("", text: $model.typedAddress)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
