@@ -664,9 +664,10 @@ export const SpatialObservatoryViewport: React.FC<
   const back = useRef(backToMoment);
   back.current = backToMoment;
 
-  // There, Esc returns too, with nothing on screen saying so; an open answer takes Esc first
+  // There, and on D33's predicted sky (which takes There's frame and replaced the old panel that held this key), Esc
+  // returns too, with nothing on screen saying so; an open answer takes Esc first
   useEffect(() => {
-    if (!flightShown || answer) return undefined;
+    if (!(flightShown || predictedSkyShown) || answer) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase();
       if (event.key !== 'Escape' || event.defaultPrevented || tag === 'input' || tag === 'textarea') return;
@@ -675,7 +676,7 @@ export const SpatialObservatoryViewport: React.FC<
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [flightShown, answer]);
+  }, [flightShown, predictedSkyShown, answer]);
 
   const handleToggleSound = useCallback(() => {
     const next = observatoryAudio.toggle();

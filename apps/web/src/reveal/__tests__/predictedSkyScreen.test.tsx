@@ -167,6 +167,20 @@ describe('the predicted sky in the app (laptop)', () => {
     expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);
   });
 
+  it('returns to the moment on Esc, as the There screen whose frame it takes does', () => {
+    const sessions: ObservationSession[] = [];
+    let current = predictedSky();
+    const setSession = (next: ObservationSession | ((prev: ObservationSession) => ObservationSession)) => {
+      current = typeof next === 'function' ? next(current) : next;
+      sessions.push(current);
+    };
+    renderViewport(current, { setSession });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    });
+    expect(sessions.at(-1)?.spatialView?.mode).toBe('source_2d');
+  });
+
   it("draws none of the old panel's lines: no checkpoint line, no hash, no solver line, no Restore or Compare in the sky, no layer count", async () => {
     renderViewport(predictedSky());
     // The renderer arrives a moment later, with its layers
