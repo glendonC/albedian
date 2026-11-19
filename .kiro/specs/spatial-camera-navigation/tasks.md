@@ -16,3 +16,5 @@
   - Traced to: `packages/camera-rig/src/__tests__/chase.test.ts`; `apps/web/src/spatial/flight/__tests__/craftScene.test.ts`, `flightCraftLayer.test.tsx`
 - [x] 8. Show the photo's view cone in the third person after Go there (cone-1 mechanics): its apex at Earth, its edges along the photo's corner rays through the verified solve, the photo laid on its image plane at the base, the catalog stars around it at their distances through an orbit camera that follows a drag and the wheel; on by page address `?view=cone` until the design lane's record names its control and look.
   - Traced to: `packages/camera-rig/src/__tests__/cone.test.ts`; `apps/web/src/spatial/flight/__tests__/coneView.test.ts`
+- [x] 9. Ring every star the photo matched while it is on screen in the flight, kept out of the disclosure, the readout and the bar, and count the drawn stars kept on the sky sphere for want of a measured distance, worded for the disclosure (D27 items 1, 2 and 5; flight-1b).
+  - Traced to: `apps/web/src/spatial/flight/__tests__/flightRings.test.ts`

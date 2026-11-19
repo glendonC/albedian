@@ -13,6 +13,7 @@ import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
 import { coneLengthPc, coneStarView, dragOrbit, initialOrbit, isConeViewOn, zoomOrbit, type OrbitState } from './coneView.js';
 import { starViewOfFlight, type StarView } from './starView.js';
+import { RING_RADIUS_PX, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
 
 /**
  * The flight's catalog stars (REQ-SCN-2), drawn over the There screen's panorama after Go there: Gaia DR3 and
@@ -44,6 +45,7 @@ interface TileGpu {
   buffers: WebGLBuffer[];
   referenceKey: string;
   skySphere: number;
+  noDistanceOnScreen: number;
 }
 
 interface Gpu {
@@ -115,7 +117,7 @@ function uploadTile(gpu: Gpu, tile: CatalogStarCoreTile, reference: Vec3, existi
   bind('aMag', arrays.magnitude, 1);
   bind('aTint', tileTints(tile), 3);
   gl.bindVertexArray(null);
-  return { tile, vao, buffers, referenceKey: keyOfReference(reference), skySphere: arrays.skySphereCount };
+  return { tile, vao, buffers, referenceKey: keyOfReference(reference), skySphere: arrays.skySphereCount, noDistanceOnScreen: existing?.noDistanceOnScreen ?? 0 };
 }
 
 function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number): void {
@@ -163,6 +165,8 @@ export const FlightStarsLayer: React.FC<{
   craft?: Craft | null;
   /** cone-1: the third-person view of the photo's cone; by default as the page address asks (`?view=cone`), INTERIM. */
   cone?: boolean;
+  /** D27 item 2: told how many drawn stars stay on the sky sphere for want of a measured distance, for the disclosure. */
+  onNoDistanceCount?: (count: number) => void;
 }> = ({
   session,
   viewportWidthPx,
@@ -170,12 +174,15 @@ export const FlightStarsLayer: React.FC<{
   openTiles = openCatalogTiles,
   craft = typeof window === 'undefined' ? null : craftFromSearch(window.location.search),
   cone = isConeViewOn(session),
+  onNoDistanceCount,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
   const source = useRef<FlightTileSource | null>(null);
   const [state, setState] = useState<LayerState>('loading');
-  const [counts, setCounts] = useState({ stars: 0, skySphere: 0 });
+  const [counts, setCounts] = useState({ stars: 0, skySphere: 0, noDistanceOnScreen: 0 });
+  const told = useRef(onNoDistanceCount);
+  told.current = onNoDistanceCount;
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
   const camera = useMemo(
     () => flightCameraOf(session, viewportWidthPx, viewportHeightPx),
@@ -212,14 +219,19 @@ export const FlightStarsLayer: React.FC<{
       const key = `${tile.layer}/${tile.pix}`;
       const entry = uploadTile(g, tile, v.referencePc, g.tiles.get(key));
       if (!entry) return;
+      // The flight's orientation is fixed, so the sky-sphere stars on screen are counted once per tile
+      const flight = cameraRef.current;
+      entry.noDistanceOnScreen = flight ? noDistanceStarsOnScreen(tile, starViewOfFlight(flight)) : 0;
       g.tiles.set(key, entry);
       let stars = 0;
       let skySphere = 0;
+      let noDistanceOnScreen = 0;
       for (const t of g.tiles.values()) {
         stars += t.tile.count;
         skySphere += t.skySphere;
+        noDistanceOnScreen += t.noDistanceOnScreen;
       }
-      setCounts({ stars, skySphere });
+      setCounts({ stars, skySphere, noDistanceOnScreen });
       drawFrame(g, v, canvas.current, dpr);
       setState('drawn');
     };
@@ -265,6 +277,20 @@ export const FlightStarsLayer: React.FC<{
     if (g && view && canvas.current && g.tiles.size > 0) drawFrame(g, view, canvas.current, dpr);
   }, [view, dpr]);
 
+  useEffect(() => {
+    told.current?.(counts.noDistanceOnScreen);
+  }, [counts.noDistanceOnScreen]);
+
+  // D27 item 1: rings on the matched stars, kept out of the disclosure, the readout and the bar
+  const keepOut: ScreenBox[] = [];
+  if (typeof document !== 'undefined') {
+    for (const id of ['reveal-status', 'flight-readout', 'ask-bar']) {
+      const r = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+      if (r && r.width > 0) keepOut.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    }
+  }
+  const rings = !cone && camera ? flightRings(session, viewportWidthPx, viewportHeightPx, keepOut) : [];
+
   const at = view?.observerPc ?? [0, 0, 0];
   const fromEarthPc = Math.hypot(at[0], at[1], at[2]);
   return (
@@ -276,6 +302,7 @@ export const FlightStarsLayer: React.FC<{
       data-view={cone ? 'cone' : 'flight'}
       data-stars={counts.stars}
       data-sky-sphere={counts.skySphere}
+      data-no-distance-on-screen={counts.noDistanceOnScreen}
       data-from-earth-pc={fromEarthPc.toFixed(4)}
       aria-hidden="true"
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: cone ? 'normal' : 'screen', background: cone ? '#000' : undefined }}
@@ -287,6 +314,13 @@ export const FlightStarsLayer: React.FC<{
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
       />
     </div>
+    {rings.length > 0 && (
+      <svg className="flight-rings" data-testid="flight-rings" aria-hidden="true" width={viewportWidthPx} height={viewportHeightPx} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
+        {rings.map((r) => (
+          <circle key={r.findingId} data-finding-id={r.findingId} cx={r.xPx} cy={r.yPx} r={RING_RADIUS_PX} fill="none" stroke={RING_STROKE} strokeWidth={1} />
+        ))}
+      </svg>
+    )}
     {cone && view && <ConeLayer session={session} view={view} lengthPc={coneLength} onDrag={onDrag} onWheel={onWheel} />}
     {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} />}
     </>

@@ -108,6 +108,49 @@ export interface FlightProjection {
   readonly distancePc: number | null;
 }
 
+/** A tangent-plane camera's own numbers: its centre pixel, its scale, and its radial lens model with its fold. */
+export interface TangentIntrinsics {
+  readonly crpixX: number;
+  readonly crpixY: number;
+  readonly scaleRadPerPx: number;
+  readonly k1: number;
+  readonly k2: number;
+  /** Where the lens model folds back, in the tangent plane; infinite where it never does. */
+  readonly foldRad: number;
+}
+
+/** The solve's own numbers as a tangent-plane camera. */
+export function wcsIntrinsics(wcs: WCSCalibrationModel): TangentIntrinsics {
+  return {
+    crpixX: wcs.crpixX,
+    crpixY: wcs.crpixY,
+    scaleRadPerPx: wcs.scaleDegPerPx * DEG_TO_RAD,
+    k1: wcs.radialDistortionK1,
+    k2: wcs.radialDistortionK2,
+    foldRad: distortionFoldRadiusRad(wcs),
+  };
+}
+
+/**
+ * Where a camera with these rows and numbers sees a vector from it, in its image's pixels; not visible behind it or
+ * past its lens model's fold. The same arithmetic as `worldToPixelWCS` for a unit vector.
+ */
+export function projectThroughRows(v: Vec3, rows: WcsCameraRows, k: TangentIntrinsics): { uPx: number; vPx: number; visible: boolean } {
+  const length = Math.hypot(v[0], v[1], v[2]);
+  const z = rows.z[0] * v[0] + rows.z[1] * v[1] + rows.z[2] * v[2];
+  // In front, as worldToPixelWCS asks of a unit vector (cos c > 1e-6)
+  if (!(length > 0) || !(z > 1e-6 * length)) return { uPx: Number.NaN, vPx: Number.NaN, visible: false };
+  const xRot = (rows.x[0] * v[0] + rows.x[1] * v[1] + rows.x[2] * v[2]) / z;
+  const yRot = (rows.y[0] * v[0] + rows.y[1] * v[1] + rows.y[2] * v[2]) / z;
+  const r2 = xRot * xRot + yRot * yRot;
+  const radial = 1 + k.k1 * r2 + k.k2 * r2 * r2;
+  return {
+    uPx: k.crpixX + (xRot * radial) / k.scaleRadPerPx,
+    vPx: k.crpixY - (yRot * radial) / k.scaleRadPerPx,
+    visible: Math.sqrt(r2) < k.foldRad,
+  };
+}
+
 /**
  * Where the photo's camera, standing at `observerPc` with the solve's own orientation, sees a placed star, in the
  * stored photo's pixels: a star at a distance is seen along its offset from the camera, a sky-sphere star along its
@@ -118,23 +161,8 @@ export function projectPlacementThroughWcs(placement: StarPlacement, observerPc:
     placement.kind === 'at_distance'
       ? [placement.positionPc[0] - observerPc[0], placement.positionPc[1] - observerPc[1], placement.positionPc[2] - observerPc[2]]
       : placement.direction;
-  const length = Math.hypot(v[0], v[1], v[2]);
-  const distancePc = placement.kind === 'at_distance' ? length : null;
-  const rows = wcsCameraRows(wcs);
-  const z = rows.z[0] * v[0] + rows.z[1] * v[1] + rows.z[2] * v[2];
-  // In front, as worldToPixelWCS asks of a unit vector (cos c > 1e-6)
-  if (!(length > 0) || !(z > 1e-6 * length)) return { uPx: Number.NaN, vPx: Number.NaN, visible: false, distancePc };
-  const xRot = (rows.x[0] * v[0] + rows.x[1] * v[1] + rows.x[2] * v[2]) / z;
-  const yRot = (rows.y[0] * v[0] + rows.y[1] * v[1] + rows.y[2] * v[2]) / z;
-  const r2 = xRot * xRot + yRot * yRot;
-  const radial = 1 + wcs.radialDistortionK1 * r2 + wcs.radialDistortionK2 * r2 * r2;
-  const scaleRadPerPx = wcs.scaleDegPerPx * DEG_TO_RAD;
-  return {
-    uPx: wcs.crpixX + (xRot * radial) / scaleRadPerPx,
-    vPx: wcs.crpixY - (yRot * radial) / scaleRadPerPx,
-    visible: Math.sqrt(r2) < distortionFoldRadiusRad(wcs),
-    distancePc,
-  };
+  const distancePc = placement.kind === 'at_distance' ? Math.hypot(v[0], v[1], v[2]) : null;
+  return { ...projectThroughRows(v, wcsCameraRows(wcs), wcsIntrinsics(wcs)), distancePc };
 }
 
 /**
