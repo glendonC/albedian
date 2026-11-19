@@ -18,7 +18,7 @@ from hypothesis import HealthCheck, example, given, settings
 from hypothesis import strategies as st
 
 from services.contracts import media as contracts
-from services.media import clip_frames, clip_io, colour, frame_pool, noise, spatial, stars, tone
+from services.media import clip_frames, clip_io, colour, frame_pool, gate, noise, spatial, stars, tone
 from test_photo_path import SOURCE_MARKERS, numeric_constants
 from test_temporal import pan, render, star_list
 
@@ -288,21 +288,157 @@ def test_a_frame_whose_neighbours_do_not_register_is_its_single_frame_result() -
     assert all(np.array_equal(a, b) for a, b in zip(together.planes, alone.planes))
 
 
-def test_with_a_noise_table_a_lone_frame_is_filtered_around_its_own_stars_and_lifted() -> None:
+def test_with_a_noise_table_a_lone_frame_takes_the_photo_paths_steps_and_the_clips_lift() -> None:
     clip = clip_frames.clip_colour(video("yuv444p10le", clip_io.ColourTags(range="pc", matrix="bt709", transfer="bt709",
                                                                             primaries="bt709"), width=256, height=256))
     frames = scene_clip(clip, 6, 37, sigma=0.002, sky=0.03, moving=False)
     measured = clip_frames.measure_clip(clip, frames)
     assert measured.measurement.reason is None
     result = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 1, (frames[0],)))[0]
-    # The same steps by hand: the stars on its own luma, the spatial filter guided by its noise-stabilised luminance,
-    # the clip's lift, back to codes
+    # The same steps by hand, in the photo path's order (photo.py): criterion 1's stars and the kept regions on its own
+    # pixels, the spatial filter guided by its noise-stabilised luminance around them, the first scale smoothed
+    # outside the kept cores, the dissolve passes in the stored codes, the clip's lift, back to codes
     light = clip.to_linear(frames[0])
-    field = stars.find_stars(clip.luma_codes(frames[0]), peak=clip.peak_code())
+    luma = clip.luma_codes(frames[0])
+    field = gate.original_stars(luma, clip.peak_code())
+    kept = gate.kept_regions(field, luma, clip.peak_code(), light @ np.array(clip_frames.LUMA), measured.measurement)
     guide = noise.stabilised(light @ np.array(clip_frames.LUMA), measured.measurement)
-    expected = clip.to_planes(tone.apply_lift(spatial.edge_avoiding(light, guide, field.footprint).frame, measured.lift.beta))
+    working = gate.smooth_first_scale(spatial.edge_avoiding(light, guide, kept.weight).frame, kept)
+    beta = measured.lift.beta
+    dissolved = gate.dissolve(working, linear=light, to_stored=lambda x: clip.stored(clip.to_planes(tone.apply_lift(x, beta))),
+                              to_original_codes=lambda x: np.asarray(clip.to_planes(x)[0], dtype=np.float64),
+                              original=gate.Original.of(field), kept=kept, luma_of=clip_frames.stored_luma)
+    planes = clip.to_planes(tone.apply_lift(dissolved.working, beta))
+    # Every kept region's Y' stored as the gate computes it, on the clip's own code step (restore-4f, as a still's)
+    step = clip.stored_step()
+    must = gate.kept_samples(clip.stored(planes), clip.stored(clip.to_planes(tone.apply_lift(light, beta))), kept.weight,
+                             step)
+    expected = (np.round(must[..., 0] / step).astype(planes[0].dtype), *planes[1:])
     assert all(np.array_equal(a, b) for a, b in zip(result.planes, expected))
+    assert not np.array_equal(expected[0], planes[0]), "the frame has kept edges the step changes"
     assert (result.stars_found, result.stars_confirmed) == (field.found, field.confirmed)
+    assert result.dissolved == dissolved.per_pass and result.together == 0 and result.fixed == 0
+
+
+def stored_points(clip: clip_frames.ClipColour, planes) -> list[stars.Point]:
+    """The points the gate finds in a frame as stored, with nothing left out."""
+    luma = clip_frames.stored_luma(clip.stored(planes))
+    return gate.variant_points(luma, np.zeros(luma.shape, dtype=bool))[0]
+
+
+def near_place(points, x: float, y: float) -> bool:
+    return any(math.hypot(p.x_px - x, p.y_px - y) <= stars.MATCH_RADIUS_PX for p in points)
+
+
+def drawn_clip(clip: clip_frames.ClipColour, seed: int, extra, *, count: int = 7, sigma: float = 0.003, sky: float = 0.03,
+               size: int = 256):
+    """`scene_clip`'s panning star field, with `extra(k, offset, middle)` (H x W linear light) added to frame k, and the
+    offsets; frame pixel (y, x) shows scene point (y + dy, x + dx), and `middle` is the middle frame's offset."""
+    rng = np.random.default_rng(seed)
+    offsets = pan(rng, frames=count)
+    placed = star_list(rng, 400, 2.0 * size + 260 + 20 * count)
+    linear = []
+    for k, offset in enumerate(offsets):
+        plane = render(offset, placed, size, sky=sky, cloud=0.0) + extra(k, offset, offsets[3])
+        linear.append(np.clip(np.repeat(plane[..., None], 3, axis=-1) + rng.normal(0.0, sigma, (size, size, 3)), 0.0, 1.0))
+    return frames_of(clip, linear), offsets
+
+
+def spot(x: float, y: float, peak: float, size: int = 256) -> np.ndarray:
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float64)
+    return peak * np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2 * 1.3**2))
+
+
+def at_place(place: tuple[float, float], offset, middle, peak: float) -> np.ndarray:
+    """A star at the scene point the middle frame shows at `place` (x, y), drawn where a frame at `offset` sees it."""
+    return spot(place[0] + middle[1] - offset[1], place[1] + middle[0] - offset[0], peak)
+
+
+HD10 = clip_io.ColourTags(range="pc", matrix="bt709", transfer="bt709", primaries="bt709")
+
+
+def merged_clip(seed: int, extra):
+    clip = clip_frames.clip_colour(video("yuv444p10le", HD10, width=256, height=256))
+    frames, offsets = drawn_clip(clip, seed, extra)
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is None
+    results = run_all(measured, frames, 1, run_frames=7)
+    assert results[3].neighbours == 6, "the control: every neighbour of the middle frame registered"
+    return clip, frames, offsets, measured, results
+
+
+def test_a_frames_own_kept_cores_keep_its_original_luma_whatever_its_neighbours_give() -> None:
+    clip, frames, _, measured, results = merged_clip(50, lambda k, o, c: 0.0)
+    luma = clip.luma_codes(frames[3])
+    light = clip.to_linear(frames[3])
+    found = gate.clip_stars(luma, clip.peak_code(), None)
+    core = gate.kept_regions(found.field, luma, clip.peak_code(), light @ np.array(clip_frames.LUMA), measured.measurement).core
+    assert core.any()
+    lifted = clip.to_planes(tone.apply_lift(light, measured.lift.beta))[0]
+    assert np.array_equal(results[3].planes[0][core], lifted[core])
+    assert not np.array_equal(results[3].planes[0][~core], lifted[~core])
+
+
+def test_p_rst_14_a_light_only_the_neighbours_carry_is_no_point_of_the_output_frame() -> None:
+    place = (130.4, 120.7)  # in the middle frame; each frame sees that place of the scene where it lies
+    for name, extra in (("every neighbour", lambda k, o, c: at_place(place, o, c, 0.03) * (k != 3)),
+                        ("one neighbour", lambda k, o, c: at_place(place, o, c, 0.2) * (k == 5))):
+        clip, frames, offsets, _, results = merged_clip(51, extra)
+        assert not near_place(stored_points(clip, results[3].planes), *place), name
+
+
+def test_p_rst_23_a_faint_star_the_frames_together_confirm_shows_in_the_output_frame() -> None:
+    place = (130.4, 120.7)
+    clip, frames, offsets, _, results = merged_clip(52, lambda k, o, c: at_place(place, o, c, 0.006))
+    assert not near_place(stored_points(clip, frames[3]), *place), "the control: the frame alone does not show it"
+    assert near_place(stored_points(clip, results[3].planes), *place)
+    assert results[3].together >= 1
+
+
+def test_p_rst_24_a_patch_fixed_to_the_sensor_is_no_point_of_the_output_frame_and_a_star_stays() -> None:
+    fixed = (128.3, 140.6)
+    clip, frames, offsets, _, results = merged_clip(53, lambda k, o, c: spot(*fixed, 0.05))
+    assert near_place(stored_points(clip, frames[3]), *fixed), "the control: the frame alone shows the patch"
+    assert not near_place(stored_points(clip, results[3].planes), *fixed)
+    assert results[3].fixed >= 1
+    found = gate.clip_stars(clip.luma_codes(frames[3]), clip.peak_code(), None)
+    bright = max(found.field.stars, key=lambda s: s.snr)
+    assert near_place(stored_points(clip, results[3].planes), bright.x_px, bright.y_px)
+
+
+def test_without_a_noise_table_the_dissolve_passes_are_left_out_and_nothing_differs(monkeypatch: pytest.MonkeyPatch) -> None:
+    clip = clip_frames.clip_colour(video(width=128, height=128))
+    frames = scene_clip(clip, 4, 54, sigma=0.0, size=128, moving=False)
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is not None
+    skipped = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 4, tuple(frames)))
+    monkeypatch.setattr(clip_frames, "_unchanged", lambda prepared: False)
+    passed = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 4, tuple(frames)))
+    assert all(all(np.array_equal(a, b) for a, b in zip(x.planes, y.planes)) for x, y in zip(skipped, passed))
+    assert all(r.dissolved == [] for r in passed)
+
+
+def gate_all(measured: clip_frames.ClipSettings, originals, stored, workers: int = 1) -> list[clip_frames.FrameGate]:
+    with frame_pool.FramePool(functools.partial(clip_frames.gate_run, measured), workers=workers) as pool:
+        return list(pool.map(frame_pool.runs(iter(list(zip(originals, stored))), run_frames=7, window=clip_frames.RUN_WINDOW)))
+
+
+def test_the_gate_passes_an_honest_frame_and_refuses_one_painted_after_the_merge() -> None:
+    place = (130.4, 120.7)
+    clip, frames, offsets, measured, results = merged_clip(52, lambda k, o, c: at_place(place, o, c, 0.006))
+    stored = [r.planes for r in results]
+    honest = gate_all(measured, frames, stored)
+    assert [g.index for g in honest] == list(range(7))
+    assert all(g.outcome.record["passed"] for g in honest), [g.outcome.record for g in honest if not g.outcome.record["passed"]]
+    assert honest[3].together >= 1
+    # A star of 12 codes of 255 painted into the stored frame where the frames together show nothing
+    painted = list(stored)
+    planes = [np.array(p) for p in stored[3]]
+    planes[0] = np.clip(np.round(planes[0] + spot(60.2, 200.6, 12.0 * 1023 / 255)), 0, 1023).astype(planes[0].dtype)
+    painted[3] = tuple(planes)
+    refused = gate_all(measured, frames, painted)
+    assert not refused[3].outcome.record["passed"]
+    assert any(math.hypot(p.x_px - 60.2, p.y_px - 200.6) <= stars.MATCH_RADIUS_PX for p in refused[3].outcome.unconfirmed)
 
 
 def test_the_step_repeats_exactly_and_draws_no_random_number(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -331,3 +467,70 @@ def test_the_run_window_carries_each_neighbours_previous_frame() -> None:
     # A neighbour's codec copies are found against the frame before it, so a run carries one frame more than the merge
     assert clip_frames.RUN_WINDOW == clip_frames.temporal.WINDOW_FRAMES + 1
     assert math.isfinite(clip_frames.SAMPLE_FRAMES) and clip_frames.SAMPLE_FRAMES == 8
+
+
+def test_a_point_the_original_does_not_confirm_is_dissolved_before_the_lift(monkeypatch: pytest.MonkeyPatch) -> None:
+    clip = clip_frames.clip_colour(video("yuv444p10le", HD10, width=256, height=256))
+    frames = scene_clip(clip, 1, 55, sigma=0.002, sky=0.03, moving=False)
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is None
+    smooth = gate.smooth_first_scale
+
+    def with_a_bump(working, kept):
+        # A star that no original frame holds, after every step that could have taken it out
+        return smooth(working, kept) + spot(140.5, 60.5, 0.02)[..., None]
+
+    monkeypatch.setattr(gate, "smooth_first_scale", with_a_bump)
+    result = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 1, (frames[0],)))[0]
+    assert result.dissolved and result.dissolved[0] >= 1
+    assert not near_place(stored_points(clip, result.planes), 140.5, 60.5)
+
+
+def test_the_gate_passes_an_honest_frame_at_black_whatever_its_eight_bit_store_does_to_bright_stars() -> None:
+    # The owner's clips (restore-7): at black the lift is held by the quantisation bound at a gain of 16, and a bright
+    # star's core, lifted, stored at 8 bits with its chroma at half resolution and the lift undone, is far from the
+    # original's light, while the original's empty apertures are nearly exact. The flux is compared with the original
+    # lifted and stored as the job stores it, the lift undone, so only what the restoration did is measured
+    clip = clip_frames.clip_colour(video(width=128, height=128))
+    black = colour.legal_codes(8, "limited")[0] + 1
+    frames = []
+    rng = np.random.default_rng(56)
+    for k in range(6):
+        # Almost all of it at black, as the owner's: one code more on a few samples, so the empty apertures' noise is
+        # small and positive
+        y = np.full((128, 128), black, np.float64) + (rng.random((128, 128)) < 0.004)
+        for x0, y0 in ((40.3, 50.6), (90.7, 80.2), (64.1, 30.4)):
+            y += 180.0 * np.exp(-((np.arange(128)[None, :] - x0) ** 2 + (np.arange(128)[:, None] - y0) ** 2) / (2 * 1.3**2))
+        # Its chroma a code either way everywhere, as a codec leaves it: the luma alone decides it is at black
+        cb = (128 + rng.integers(-1, 2, (64, 64))).astype(np.uint8)
+        cr = (126 + rng.integers(-1, 2, (64, 64))).astype(np.uint8)
+        frames.append((np.clip(np.round(y), 0, 255).astype(np.uint8), cb, cr))
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is not None and measured.lift.decided_by == "quantisation_bound"
+    results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 6, tuple(frames)))
+    gated = clip_frames.gate_run(measured, frame_pool.Run(0, 0, 6, tuple(zip(frames, [r.planes for r in results]))))
+    assert all(g.outcome.record["starsMeasured"] >= 1 for g in gated)
+    assert all(g.outcome.record["passed"] for g in gated), [g.outcome.record for g in gated][0]
+
+
+def test_an_8_bit_frames_kept_edges_are_codes_its_file_holds_and_the_gate_passes_them() -> None:
+    # restore-4f's rule for a still, on a clip: a kept edge is the original blended with the stored sky around it,
+    # rounded here to the clip's own code step, so its 8 bit file holds exactly what the gate computes
+    clip = clip_frames.clip_colour(video(width=128, height=128))
+    frames = scene_clip(clip, 1, 41, sigma=0.002, sky=0.03, moving=False, size=128)
+    measured = clip_frames.measure_clip(clip, frames)
+    result = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 1, (frames[0],)))[0]
+    light = clip.to_linear(frames[0])
+    luma = clip.luma_codes(frames[0])
+    field = gate.original_stars(luma, clip.peak_code())
+    kept = gate.kept_regions(field, luma, clip.peak_code(), light @ np.array(clip_frames.LUMA), measured.measurement)
+    assert np.any((kept.weight > 0) & (kept.weight < 1)), "the frame has kept edges"
+    lifted = clip.to_planes(tone.apply_lift(light, measured.lift.beta))
+    must = gate.kept_samples(clip.stored(result.planes), clip.stored(lifted), kept.weight, clip.stored_step())
+    assert clip.stored_step() == 257.0 and np.all(must % 257.0 == 0.0)
+    assert np.array_equal(np.asarray(result.planes[0], dtype=np.float64), must[..., 0] / 257.0)
+    stored = clip_frames.gate_run(measured, frame_pool.Run(0, 0, 1, ((frames[0], result.planes),)))[0].outcome
+    assert stored.record["passed"], stored.record
+    # The frame stored as recorded keeps its edges the original's, which is not what a kept edge must be
+    as_recorded = clip_frames.gate_run(measured, frame_pool.Run(0, 0, 1, ((frames[0], lifted),)))[0].outcome
+    assert as_recorded.rejection == "unconfirmed_points", as_recorded.record

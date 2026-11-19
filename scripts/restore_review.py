@@ -5,6 +5,8 @@
 Usage:
     uv run python scripts/restore_review.py [--photos rp-b-01 ...] [--corpus] [--crop] [--trials 40]
         [--near-stars 8] [--out .cache/restore-review/restore-4] [--no-pictures]
+    uv run python scripts/restore_review.py --clips <clip> ... [--workers 2] [--trials 20] [--near-stars 2]
+        [--out .cache/restore-review/restore-7]
 
 Photos come from the real-photo corpus (`research/benchmarks/real_photos/corpus.json`, files in `.cache/real-photos/`);
 the default is the design's five (rp-b-01 to rp-b-05), `--corpus` takes every photo. `--crop` takes the design's
@@ -18,6 +20,12 @@ the default is the design's five (rp-b-01 to rp-b-05), `--corpus` takes every ph
 - with pictures: `<id>[-crop]-before.png` and `-after.png` (8 bit views), `-after-16bit.png` (the stored file the
   gate ran on, written only when it is `ready`) and a side by side view no wider than 2400 px.
 - `review.jsonl`: one line per photo, appended.
+
+With `--clips` (restore-7), each clip goes through the job's own child function in a scratch store under the output
+folder (the clip linked there, never changed, the store removed after), and `clip-<n>.json` holds its status, the
+attempt's measurements and gate, the seconds by stage and per frame with the pool's size, the stored bytes per frame,
+and painted trials on its middle frame as stored; with pictures, its middle frame before and after, side by side,
+and excerpts of the original, of the variant as stored and of the variant at crf 16 for the encoder's comparison.
 
 Nothing here is served: the pictures are for a person to judge (REQ-RST-12.3). No record holds a file name, a
 capture time or a place: only the corpus id.
@@ -41,7 +49,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from services.media import decode, gate, photo, tone  # noqa: E402
+from services.media import clip_frames, clip_io, decode, frame_pool, gate, photo, tone  # noqa: E402
+from services.media import jobs as media_jobs  # noqa: E402
 
 CORPUS = ROOT / "research/benchmarks/real_photos/corpus.json"
 DESIGN_PHOTOS = ("rp-b-01", "rp-b-02", "rp-b-03", "rp-b-04", "rp-b-05")
@@ -235,9 +244,250 @@ def review(photo_id: str, args: argparse.Namespace) -> dict:
     return record
 
 
+
+
+# =============================================================================================
+# Clips (restore-7)
+# =============================================================================================
+
+CLIP_TYPES = {".mov": "video/quicktime", ".mp4": "video/mp4", ".m4v": "video/mp4"}
+# The job id the review's scratch store names its partial files with
+REVIEW_JOB_ID = "job_" + "0" * 32
+# An excerpt for a person to watch is this many seconds from the middle of the clip
+EXCERPT_SEC = 3.0
+
+
+def _ffprobe_json(args: list[str], path: Path) -> dict:
+    proc = subprocess.run(["ffprobe", "-v", "error", "-of", "json", *args, str(path)], capture_output=True, check=False)
+    return json.loads(proc.stdout or b"{}")
+
+
+def audio_facts(path: Path, probe: clip_io.ClipProbe) -> list[dict]:
+    """Each audio stream as an ingest record states it: its index, codec, rate, channels, start, duration and packet
+    hash."""
+    streams = _ffprobe_json(["-show_streams", "-select_streams", "a"], path).get("streams") or []
+    facts = []
+    for k, stream in enumerate(probe.audio):
+        found = streams[k] if k < len(streams) else {}
+        facts.append({"index": stream.index, "codec": stream.codec, "sampleRateHz": int(found.get("sample_rate", 1)),
+                      "channels": int(found.get("channels", 1)), "startPtsMs": 1000.0 * float(found.get("start_time", 0.0)),
+                      "durationMs": 1000.0 * float(found.get("duration", 0.0)),
+                      "sha256": clip_io.stream_packet_hash(path, f"0:{stream.index}", written_here=False)})
+    return facts
+
+
+def _frames_around(path: Path, middle: int, reach: int) -> list[tuple[np.ndarray, ...]]:
+    probe = clip_io.probe_clip(path)
+    kept = []
+    with clip_io.ClipDecoder(path, probe) as decoder:
+        for frame in decoder:
+            if frame.index > middle + reach:
+                break
+            if frame.index >= middle - reach:
+                kept.append(tuple(np.array(p) for p in frame.planes))
+    return kept
+
+
+def _clip_lattice(side: clip_frames.OriginalSide, count: int) -> list[tuple[int, int]]:
+    """`count` places of a fixed lattice, as `photo.painted_places` lays them, clear of the frame's kept and clipped
+    regions."""
+    from scipy import ndimage
+
+    occupied = (side.kept.weight > 0) | side.found.field.clipped
+    clearance = ndimage.distance_transform_edt(~occupied) if occupied.any() else np.full(occupied.shape, np.inf)
+    height, width = occupied.shape
+    spacing = max(photo.PAINT_MIN_SPACING_PX, int((height * width / (4 * max(count, 1))) ** 0.5))
+    lattice = [(x, y) for y in range(photo.PAINT_MARGIN_PX, height - photo.PAINT_MARGIN_PX, spacing)
+               for x in range(photo.PAINT_MARGIN_PX, width - photo.PAINT_MARGIN_PX, spacing)
+               if clearance[y, x] >= photo.PAINT_CLEARANCE_PX]
+    if len(lattice) <= count:
+        return lattice
+    return [lattice[i] for i in np.linspace(0, len(lattice) - 1, count).round().astype(int)]
+
+
+def clip_trials(settings: clip_frames.ClipSettings, side: clip_frames.OriginalSide, stored: tuple, count: int,
+                stars_count: int) -> dict:
+    """Painted trials on one stored frame of the clip: a star at the stated sensitivity (`stated_peak`) at each lattice
+    place, and beside up to `stars_count` of the frame's own stars at photo.NEAR_STAR_PX along eight directions; each
+    refused when the gate, which passes the frame as stored, refuses it painted."""
+    clip = settings.colour
+    scale = (2**clip.bits - 1) / 255.0
+    luma = clip_frames.stored_luma(clip.stored(stored))
+    yy, xx = np.mgrid[0:luma.shape[0], 0:luma.shape[1]].astype(np.float64)
+
+    def refused(x: float, y: float, peak16: float) -> bool:
+        patch = (peak16 / gate.CODES_PER_8_BIT) * scale * np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2 * gate.STAR_SIGMA_PX**2))
+        top = 2**clip.bits - 1
+        painted_y = np.clip(np.round(stored[0].astype(np.float64) + patch), 0, top).astype(stored[0].dtype)
+        return not clip_frames.gate_frame(settings, side, (painted_y, *stored[1:])).record["passed"]
+
+    def least(x: float, y: float, peak16: float) -> float | None:
+        """The least peak of LADDER, in codes of 255, above `peak16` that the place refuses, or None."""
+        for codes in LADDER:
+            if codes * gate.CODES_PER_8_BIT > peak16 and refused(x, y, codes * gate.CODES_PER_8_BIT):
+                return float(codes)
+        return None
+
+    lattice = []
+    for x, y in _clip_lattice(side, count):
+        peak16, pixel = stated_peak(luma, x, y)
+        refused_here = refused(x, y, peak16)
+        lattice.append({"x": x, "y": y, "peak": round(peak16 / gate.CODES_PER_8_BIT, 3), "refused": refused_here,
+                        "refusedAtHalf": refused(x, y, 0.5 * peak16), "pixelNoiseCodes": round(pixel, 4),
+                        "leastRefusedCodes": peak16 / gate.CODES_PER_8_BIT if refused_here else least(x, y, peak16)})
+    own = [s for s in side.found.field.stars if photo.PAINT_MARGIN_PX <= s.x_px < luma.shape[1] - photo.PAINT_MARGIN_PX
+           and photo.PAINT_MARGIN_PX <= s.y_px < luma.shape[0] - photo.PAINT_MARGIN_PX]
+    if len(own) > stars_count:
+        own = [own[i] for i in np.linspace(0, len(own) - 1, stars_count).round().astype(int)]
+    beside = []
+    for star in own:
+        for distance in photo.NEAR_STAR_PX:
+            for k in range(photo.NEAR_STAR_DIRECTIONS):
+                angle = 2 * np.pi * k / photo.NEAR_STAR_DIRECTIONS
+                x, y = int(round(star.x_px + distance * np.cos(angle))), int(round(star.y_px + distance * np.sin(angle)))
+                if side.found.field.clipped[y, x]:
+                    continue
+                peak16, _ = stated_peak(luma, x, y)
+                refused_here = refused(x, y, peak16)
+                beside.append({"distance": distance, "refused": refused_here,
+                               "leastRefusedCodes": peak16 / gate.CODES_PER_8_BIT if refused_here else least(x, y, peak16)})
+    every = [t["leastRefusedCodes"] for t in lattice + beside]
+    return {"trials": len(lattice), "refused": sum(t["refused"] for t in lattice),
+            "refusedAtHalf": sum(t["refusedAtHalf"] for t in lattice), "places": lattice,
+            "everyTrialCodes": None if any(v is None for v in every) else max(every, default=None),
+            "nearStars": {"stars": len(own), "trials": len(beside), "refused": sum(t["refused"] for t in beside),
+                          "byDistance": {str(d): [sum(t["refused"] for t in beside if t["distance"] == d),
+                                                  sum(t["distance"] == d for t in beside)] for d in photo.NEAR_STAR_PX}}}
+
+
+def _frame_picture(path: Path, index: int, out: Path) -> None:
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-nostdin", "-noautorotate", "-i", str(path), "-vf", f"select=eq(n\\,{index})",
+                    "-fps_mode", "passthrough", "-frames:v", "1", "-update", "1", str(out)], check=True)
+
+
+def write_clip_pictures(out: Path, label: str, original: Path, stored: Path, middle: int, start_sec: float) -> None:
+    """The middle frame before and after, side by side, and excerpts of EXCERPT_SEC: the original, the variant as
+    stored, and the variant re-encoded at the design's crf 16 for the encoder's comparison."""
+    before, after = out / f"{label}-before.png", out / f"{label}-after.png"
+    _frame_picture(original, middle, before)
+    _frame_picture(stored, middle, after)
+    with Image.open(before) as left, Image.open(after) as right:
+        width, height = left.size
+        scale = min(1.0, SIDE_BY_SIDE_MAX_PX / (2 * width + 8))
+        size = (max(1, int(width * scale)), max(1, int(height * scale)))
+        pair = Image.new("RGB", (2 * size[0] + 8, size[1]), (255, 255, 255))
+        pair.paste(left.convert("RGB").resize(size, Image.LANCZOS), (0, 0))
+        pair.paste(right.convert("RGB").resize(size, Image.LANCZOS), (size[0] + 8, 0))
+        pair.save(out / f"{label}-side-by-side.png")
+    suffix = stored.suffix
+    for name, source, codec in ((f"{label}-before{suffix}", original, ["-c", "copy"]),
+                                (f"{label}-after{suffix}", stored, ["-c", "copy"]),
+                                (f"{label}-after-crf16{suffix}", stored, ["-c:v", "libx264", "-crf", "16", "-preset", "medium",
+                                                                          "-pix_fmt", "yuv420p", "-c:a", "copy"])):
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-nostdin", "-ss", f"{start_sec:.3f}", "-i", str(source), "-t",
+                        f"{EXCERPT_SEC:.3f}", "-map", "0:v:0", "-map", "0:a?", *codec, "-map_metadata", "-1", str(out / name)],
+                       check=True)
+
+
+def review_clip(number: int, path: Path, args: argparse.Namespace) -> dict:
+    """One clip through the job's own child function, in a scratch store of its own under the output folder (the
+    original is linked there, never changed), then painted trials on its middle frame as stored, and pictures. The
+    record names the clip by its number only."""
+    import hashlib
+    import shutil
+
+    label = f"clip-{number}"
+    scratch = args.out / f".store-{label}"
+    if scratch.exists():
+        shutil.rmtree(scratch)
+    data_hash = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            data_hash.update(block)
+    sha = data_hash.hexdigest()
+    folder = scratch / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / f"original{path.suffix.lower()}"
+    try:
+        os.link(path, original)
+    except OSError:
+        shutil.copyfile(path, original)
+    (scratch / ".partial").mkdir()
+    probe = clip_io.probe_clip(original)
+    extension = path.suffix.lower().lstrip(".")
+    facts = {"mimeType": CLIP_TYPES[path.suffix.lower()],
+             "durationMs": 1000.0 * float(_ffprobe_json(["-show_format"], original).get("format", {}).get("duration", 0.0)),
+             "audioStreams": audio_facts(original, probe)}
+    partials = [str(scratch / ".partial" / f"{REVIEW_JOB_ID}-clip_encoded.{extension}.part"),
+                str(scratch / ".partial" / f"{REVIEW_JOB_ID}-variant.{extension}.part")]
+    stages: dict[str, list[float]] = {}
+
+    def progress(stage: str, unit: str, done: int, total) -> None:
+        now = time.perf_counter()
+        stages.setdefault(stage, [now, now])[1] = now
+
+    started = time.perf_counter()
+    out = media_jobs.clip_restoration_in_child(str(scratch), str(folder), str(original), sha, REVIEW_JOB_ID,
+                                               {"kind": "restoration"}, probe.display_orientation, facts, partials, progress,
+                                               workers=args.workers)
+    took = time.perf_counter() - started
+    attempt = json.loads((folder / "attempts" / f"{out['attemptId']}.json").read_text())
+    measured = attempt.get("measured") or {}
+    record = {"clip": number, "status": attempt["status"], "rejection": attempt.get("rejection"),
+              "failureReason": attempt.get("failureReason"), "frames": probe.frame_count,
+              "megapixels": round(probe.video.width * probe.video.height / 1e6, 3), "pixelFormat": probe.video.pix_fmt,
+              "measured": {k: v for k, v in measured.items() if k not in ("colour", "noise")}, "gate": attempt.get("gate"),
+              "secondsByStage": {k: round(v[1] - v[0], 1) for k, v in stages.items()}, "secondsTotal": round(took, 1),
+              "secondsPerFrame": round(took / max(1, probe.frame_count), 3), "workers": args.workers, "load": load_average()}
+    if attempt["status"] == "ready":
+        stored = folder / "variants" / out["variantId"] / f"variant.{extension}"
+        record["storedBytesPerFrame"] = round(stored.stat().st_size / probe.frame_count)
+        middle = probe.frame_count // 2
+        reach = clip_frames.RUN_WINDOW
+        originals, kept = _frames_around(original, middle, reach), _frames_around(stored, middle, reach)
+        first = max(0, middle - reach)
+        clip = clip_frames.clip_colour(probe.video)
+        wanted = clip_frames.sample_indices(probe.frame_count)
+        sampled = []
+        with clip_io.ClipDecoder(original, probe) as decoder:
+            for frame in decoder:
+                if frame.index in wanted:
+                    sampled.append(tuple(np.array(p) for p in frame.planes))
+                    if len(sampled) == len(wanted):
+                        break
+        settings = clip_frames.measure_clip(clip, sampled)
+        run = frame_pool.Run(middle, middle - first, 1, tuple(originals))
+        frames, at = clip_frames._run_frames(settings, run, originals)
+        side = clip_frames.original_side(settings, frames, at)
+        trials_started = time.perf_counter()
+        record["painted"] = clip_trials(settings, side, kept[middle - first], args.trials, args.near_stars)
+        record["secondsForTrials"] = round(time.perf_counter() - trials_started, 1)
+        if args.pictures:
+            write_clip_pictures(args.out, label, original, stored, middle,
+                                max(0.0, float(probe.frame_times[middle] * probe.time_base) - EXCERPT_SEC / 2))
+    shutil.rmtree(scratch)
+    return record
+
+
+def review_clips(paths: list[Path], args: argparse.Namespace) -> None:
+    for number, path in enumerate(paths, 1):
+        record = review_clip(number, path, args)
+        (args.out / f"clip-{number}.json").write_text(json.dumps(record, indent=1) + "\n")
+        painted_trials = record.get("painted") or {}
+        print(f"clip-{number}: {record['status']} ({record['rejection'] or record['failureReason'] or 'ready'}), "
+              f"{record['frames']} frames, {record['secondsPerFrame']} s per frame with {record['workers']} workers; "
+              f"painted {painted_trials.get('refused')} of {painted_trials.get('trials')}, beside stars "
+              f"{(painted_trials.get('nearStars') or {}).get('refused')} of {(painted_trials.get('nearStars') or {}).get('trials')}",
+              flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--photos", nargs="*", default=None)
+    parser.add_argument("--clips", nargs="*", type=Path, default=None,
+                        help="clips to restore through the job (restore-7), each named clip-<n> in the given order")
+    parser.add_argument("--workers", type=int, default=frame_pool.default_workers(),
+                        help="the clip pool's workers (agents' runs: 2; the product: half the cores)")
     parser.add_argument("--corpus", action="store_true")
     parser.add_argument("--crop", action="store_true")
     parser.add_argument("--trials", type=int, default=40)
@@ -266,8 +516,11 @@ def main() -> int:
         tone.TARGET_MEDIAN_CODE = args.target
     if args.quantisation_bound is not None:
         tone.QUANTISATION_BOUND_STEPS = args.quantisation_bound
-    ids = [p["id"] for p in json.loads(CORPUS.read_text())["photos"]] if args.corpus else (args.photos or list(DESIGN_PHOTOS))
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.clips:
+        review_clips(args.clips, args)
+        return 0
+    ids = [p["id"] for p in json.loads(CORPUS.read_text())["photos"]] if args.corpus else (args.photos or list(DESIGN_PHOTOS))
     for photo_id in ids:
         record = review(photo_id, args)
         name = f"{photo_id}{'-crop' if args.crop else ''}{'' if args.target is None else f'-target{args.target}'}{'' if args.quantisation_bound is None else f'-q{args.quantisation_bound:g}'}"

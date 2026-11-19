@@ -437,3 +437,34 @@ def test_a_stored_file_is_readable_by_its_owner_alone_while_it_is_written(tmp_pa
     variants._write_new(tmp_path / "record.json", b"{}\n")
     assert modes == [0o600 & ~umask]
     assert stat.S_IMODE((tmp_path / "record.json").stat().st_mode) == 0o400
+
+
+def test_a_clip_is_published_from_its_finished_file_named_by_its_type(tmp_path: Path) -> None:
+    # restore-7: a clip's variant is moved in from the encoder's partial file under the store root, never held whole
+    root = tmp_path / "store"
+    source_folder = root / "ab" / ("ab" + "0" * 62)
+    source_folder.mkdir(parents=True)
+    partial = root / ".partial"
+    partial.mkdir()
+    data = b"\x00\x00\x00\x18ftypqt  " + bytes(range(256)) * 8
+    for mime, name in (("video/quicktime", "variant.mov"), ("video/mp4", "variant.mp4")):
+        finished = partial / f"job_{'d' * 32}-variant.part"
+        finished.write_bytes(data)
+        vid = "var_" + ("1" if mime == "video/mp4" else "2") * 16
+        records = {"variant": {"id": vid, "mimeType": mime}, "graph": {"id": "graph_x"}, "attempt": {"id": "att_x"}}
+        stored = variants.publish_variant(root, source_folder, None, records, file_path=finished)
+        assert sorted(p.name for p in stored.folder.iterdir()) == sorted(["attempt.json", "graph.json", name, "variant.json"])
+        assert (stored.folder / name).read_bytes() == data and not finished.exists()
+        assert stat.S_IMODE((stored.folder / name).stat().st_mode) == variants.FILE_MODE
+        assert variants.variant_file_name(mime) == name
+    assert variants.variant_file_name("image/png") == "variant.png"
+    with pytest.raises(ValueError):
+        variants.publish_variant(root, source_folder, b"x", {"variant": {"id": "var_" + "3" * 16, "mimeType": "video/mp4"},
+                                                            "graph": {}, "attempt": {}}, file_path=partial / "none")
+    # A variant of the same id is refused, and the moved file goes with the assembled folder
+    again = partial / f"job_{'e' * 32}-variant.part"
+    again.write_bytes(data)
+    with pytest.raises(FileExistsError):
+        variants.publish_variant(root, source_folder, None, {"variant": {"id": "var_" + "1" * 16, "mimeType": "video/mp4"},
+                                                            "graph": {}, "attempt": {}}, file_path=again)
+    assert not again.exists() and [p.name for p in partial.iterdir()] == []

@@ -794,3 +794,230 @@ def test_the_flux_checks_one_mask_measures_each_star_as_the_star_alone_is_measur
     assert measured == 3 and worst == pytest.approx(max(changes), rel=1e-12)
     # Every star is handed the one mask of every occupied sample, a kept edge's included
     assert handed and all(np.array_equal(mask, occupied > 0) for mask in handed)
+# ---------------------------------------------------------------------------------------------------------------
+# A clip frame's points confirmed on its original frames together, with the two guards (restore-7; design
+# section 7; REQ-RST-6.10, 6.11; P-RST-14, 23 and 24 on arrays: the job's own run on stored clips is in test_jobs.py)
+# ---------------------------------------------------------------------------------------------------------------
+
+CLIP_PX, CLIP_SKY, CLIP_SIGMA, CENTRE = 192, 30.0, 2.0, 3
+# A star of the scene too faint for one frame and plain on seven together [tested: .lanetools/restore7_faint_probe.py,
+# at 2 noise codes a peak of 3 to 5 codes was confirmed on no single frame of 10 and on the mean of seven in 9 or 10]
+FAINT_PEAK = 4.0
+
+
+def clip_window(offsets: list[tuple[float, float]], draw, seed: int, sigma: float = CLIP_SIGMA):
+    """Seven luma frames of one scene, frame k seen at `offsets[k]` (dy, dx), with noise: `draw(k, offset)` is frame
+    k's light without noise, in codes. The window registers each neighbour by its true shift."""
+    from services.media import temporal
+
+    rng = np.random.default_rng(seed)
+    shape = (CLIP_PX, CLIP_PX)
+    frames = [CLIP_SKY + draw(k, o) + rng.normal(0.0, sigma, shape) for k, o in enumerate(offsets)]
+    neighbours = []
+    for k, o in enumerate(offsets):
+        if k != CENTRE:
+            shift = temporal.Shift(o[0] - offsets[CENTRE][0], o[1] - offsets[CENTRE][1])
+            neighbours.append(temporal.Neighbour(k - CENTRE, shift, temporal.overlap(shape, shift)))
+    shifts = [(0.0, 0.0)] + [(n.shift.dy, n.shift.dx) for n in neighbours]
+    travel = max(math.dist(p, q) for p in shifts for q in shifts)
+    return frames, temporal.Window(tuple(neighbours), (), travel)
+
+
+def at_scene(x: float, y: float, peak: float):
+    """A star at scene place (x, y), drawn where each frame sees it."""
+    return lambda k, o: gaussian((CLIP_PX, CLIP_PX), x - o[1], y - o[0], peak)
+
+
+def at_sensor(x: float, y: float, peak: float):
+    """A patch on one sensor place in every frame, whatever the scene does."""
+    return lambda k, o: gaussian((CLIP_PX, CLIP_PX), x, y, peak)
+
+
+def panning(step: tuple[float, float] = (1.5, 2.0)) -> list[tuple[float, float]]:
+    return [(step[0] * k, step[1] * k) for k in range(7)]
+
+
+def near(placed, x: float, y: float) -> bool:
+    return any(math.hypot(s.x_px - x, s.y_px - y) <= stars.MATCH_RADIUS_PX for s in placed)
+
+
+def point(x: float, y: float) -> stars.Point:
+    tile = next(i for i, t in enumerate(stars.tiles(CLIP_PX, CLIP_PX)) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1)
+    return stars.Point(x, y, 6.0, tile)
+
+
+def nothing_unchanged() -> tuple[np.ndarray, np.ndarray]:
+    """A variant and an expected frame that differ everywhere: no point is confirmed by being the original's own."""
+    expected = np.zeros((CLIP_PX, CLIP_PX, 3))
+    return expected + 1000.0, expected
+
+
+def test_p_rst_23_a_star_too_faint_for_its_frame_is_confirmed_on_the_frames_together() -> None:
+    offsets = panning()
+    x, y = 96.3, 95.7
+    place = (x - offsets[CENTRE][1], y - offsets[CENTRE][0])
+    alone = together = 0
+    for seed in range(10):
+        frames, window = clip_window(offsets, at_scene(x, y, FAINT_PEAK), seed)
+        frames_together = gate.Together.of(frames, frames, CENTRE, window)
+        found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+        alone += near(found.field.stars, *place)
+        if near(found.together.stars, *place):
+            together += 1
+            original = gate.Original.of_clip(found, frames_together)
+            variant, expected = nothing_unchanged()
+            assert gate.confirmed([point(*place), point(40.0, 150.0)], original, variant, expected) == [True, False]
+    assert alone == 0
+    # A case the first guard refuses is set aside and counted (requirements, P-RST-23): it is meant to refuse
+    assert together >= 9
+
+
+def test_p_rst_14_a_light_only_the_neighbours_carry_is_not_confirmed_on_the_frames_together() -> None:
+    offsets = panning()
+    x, y = 96.3, 95.7
+    place = (x - offsets[CENTRE][1], y - offsets[CENTRE][0])
+    star = at_scene(x, y, 12.0)
+    for draw in (lambda k, o: star(k, o) * (k != CENTRE),  # in every neighbour, not in frame k
+                 lambda k, o: star(k, o) * 7.0 * (k == 5)):  # a flash in one neighbour alone
+        frames, window = clip_window(offsets, draw, 4)
+        frames_together = gate.Together.of(frames, frames, CENTRE, window)
+        mean = gate.original_stars(frames_together.luma, 255.0)
+        assert near(mean.stars, *place), "the control: the frames together show it"
+        found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+        assert not near(found.field.stars, *place) and not near(found.together.stars, *place)
+        variant, expected = nothing_unchanged()
+        assert gate.confirmed([point(*place)], gate.Original.of_clip(found, frames_together), variant, expected) == [False]
+
+
+def test_p_rst_24_a_patch_on_one_sensor_place_while_the_scene_moves_is_no_star() -> None:
+    offsets = panning()
+    fixed, moving = (100.2, 90.6), (60.4, 130.3)
+    draw = lambda k, o: at_sensor(*fixed, 25.0)(k, o) + at_scene(*moving, 25.0)(k, o)
+    frames, window = clip_window(offsets, draw, 5)
+    assert window.travel_px > gate.SENSOR_TRAVEL_PX
+    frames_together = gate.Together.of(frames, frames, CENTRE, window)
+    assert near(gate.original_stars(frames[CENTRE], 255.0).stars, *fixed), "the control: one frame confirms the patch"
+    found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+    star_place = (moving[0] - offsets[CENTRE][1], moving[1] - offsets[CENTRE][0])
+    assert near(found.field.stars, *star_place) and not near(found.field.stars, *fixed)
+    assert found.fixed >= 1
+    # Whichever rule would confirm it: its own samples, the original's, do not
+    expected = np.zeros((CLIP_PX, CLIP_PX, 3))
+    original = gate.Original.of_clip(found, frames_together)
+    assert gate.confirmed([point(*fixed), point(*star_place)], original, expected.copy(), expected) == [False, True]
+
+
+def test_where_the_scene_moves_less_than_the_guards_distance_the_frames_own_pixels_decide() -> None:
+    fixed = (100.2, 90.6)
+    offsets = panning((0.3, 0.4))
+    frames, window = clip_window(offsets, at_sensor(*fixed, 25.0), 6)
+    assert window.travel_px <= gate.SENSOR_TRAVEL_PX
+    frames_together = gate.Together.of(frames, frames, CENTRE, window)
+    found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+    assert near(found.field.stars, *fixed) and found.fixed == 0
+    expected = np.zeros((CLIP_PX, CLIP_PX, 3))
+    assert gate.confirmed([point(*fixed)], gate.Original.of_clip(found, frames_together), expected.copy(), expected) == [True]
+
+
+def test_a_frame_with_no_registered_neighbour_has_nothing_together() -> None:
+    from services.media import temporal
+
+    frames = [np.full((CLIP_PX, CLIP_PX), CLIP_SKY)] * 7
+    assert gate.Together.of(frames, frames, CENTRE, temporal.Window((), (), 0.0)) is None
+    found = gate.clip_stars(frames[CENTRE], 255.0, None)
+    assert found.together.stars == () and found.fixed == 0
+
+
+def test_a_star_the_frames_together_confirm_has_its_flux_checked_against_them() -> None:
+    offsets = panning()
+    x, y = 96.3, 95.7
+    place = (x - offsets[CENTRE][1], y - offsets[CENTRE][0])
+    frames, window = clip_window(offsets, at_scene(x, y, FAINT_PEAK), 1)
+    frames_together = gate.Together.of(frames, frames, CENTRE, window)
+    found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+    assert near(found.together.stars, *place)
+    kept = gate.kept_regions(found.field, frames[CENTRE], 255.0, frames[CENTRE], None)
+    codes = np.repeat(frames_together.luma[..., None], 3, axis=-1) * gate.CODES_PER_8_BIT
+    common = dict(original=gate.Original.of_clip(found, frames_together), kept=kept, expected=codes,
+                  original_luminance=frames[CENTRE], luma_of=lambda stored: stored[..., 0] / gate.CODES_PER_8_BIT,
+                  together=found.together, together_luminance=frames_together.luminance)
+    # The merged frame shows the faint star as the frames together do
+    honest = gate.run_gate(codes, variant_luminance=frames_together.luminance, **common)
+    assert honest.record["starsMeasured"] >= len(found.together.stars) and honest.record["starsOutsideFluxTolerance"] == 0
+    dimmed = frames_together.luminance - at_scene(x, y, FAINT_PEAK)(CENTRE, offsets[CENTRE])
+    refused = gate.run_gate(codes, variant_luminance=dimmed, **common)
+    assert refused.record["starsOutsideFluxTolerance"] >= 1 and not refused.record["passed"]
+
+
+def test_a_clips_gate_record_adds_its_frames_up_and_the_contract_takes_it() -> None:
+    offsets = panning()
+    frames, window = clip_window(offsets, at_scene(96.3, 95.7, 25.0), 2)
+    found = gate.clip_stars(frames[CENTRE], 255.0, None)
+    kept = gate.kept_regions(found.field, frames[CENTRE], 255.0, frames[CENTRE], None)
+    codes = np.repeat(frames[CENTRE][..., None], 3, axis=-1) * gate.CODES_PER_8_BIT
+    # Stored as the job stores it: every kept region as `kept_samples` computes it (restore-4f)
+    stored = gate.kept_samples(codes, codes, kept.weight)
+    common = dict(original=gate.Original.of_clip(found, None), kept=kept, expected=codes, original_luminance=frames[CENTRE],
+                  luma_of=lambda stored: stored[..., 0] / gate.CODES_PER_8_BIT)
+    honest = gate.run_gate(stored, variant_luminance=frames[CENTRE], **common)
+    painted = stored + np.repeat(gaussian((CLIP_PX, CLIP_PX), 40.3, 150.2, 30.0)[..., None], 3, axis=-1) * gate.CODES_PER_8_BIT
+    refused = gate.run_gate(painted, variant_luminance=frames[CENTRE], **common)
+    assert honest.record["passed"] and not refused.record["passed"]
+    record = gate.clip_record([honest, refused, honest])
+    contracts.IntegrityGateResult.model_validate(record)
+    assert record["framesChecked"] == 3 and record["framesWithUnconfirmed"] == 1
+    assert record["variantPointCount"] == 2 * honest.record["variantPointCount"] + refused.record["variantPointCount"]
+    assert record["unconfirmedPointCount"] == refused.record["unconfirmedPointCount"] and not record["passed"]
+    assert record["starsMeasured"] == 2 * honest.record["starsMeasured"] + refused.record["starsMeasured"]
+
+
+def test_a_clip_whose_one_fault_is_a_frames_star_flux_is_refused_by_its_record() -> None:
+    # AUDIT-B's restore-7 gap: the other refused frames in these tests also have unconfirmed points, so here a frame is
+    # refused for a star's flux alone, with no unconfirmed point anywhere, and the clip must still fail
+    offsets = panning()
+    x, y = 96.3, 95.7
+    frames, window = clip_window(offsets, at_scene(x, y, FAINT_PEAK), 1)
+    frames_together = gate.Together.of(frames, frames, CENTRE, window)
+    found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+    kept = gate.kept_regions(found.field, frames[CENTRE], 255.0, frames[CENTRE], None)
+    codes = np.repeat(frames_together.luma[..., None], 3, axis=-1) * gate.CODES_PER_8_BIT
+    stored = gate.kept_samples(codes, codes, kept.weight)
+    common = dict(original=gate.Original.of_clip(found, frames_together), kept=kept, expected=codes,
+                  original_luminance=frames[CENTRE], luma_of=lambda stored: stored[..., 0] / gate.CODES_PER_8_BIT,
+                  together=found.together, together_luminance=frames_together.luminance)
+    honest = gate.run_gate(stored, variant_luminance=frames_together.luminance, **common)
+    # The same stored codes, the faint star's light taken out of what the flux check reads: no point changed
+    dimmed = frames_together.luminance - at_scene(x, y, FAINT_PEAK)(CENTRE, offsets[CENTRE])
+    flux_only = gate.run_gate(stored, variant_luminance=dimmed, **common)
+    assert honest.record["passed"] and honest.record["starsMeasured"] > 0
+    assert flux_only.record["unconfirmedPointCount"] == 0 and flux_only.record["starsOutsideFluxTolerance"] >= 1
+    assert flux_only.rejection == "star_flux_changed"
+    record = gate.clip_record([honest, flux_only, honest])
+    contracts.IntegrityGateResult.model_validate(record)
+    assert record["unconfirmedPointCount"] == 0 and record["framesWithUnconfirmed"] == 0
+    assert record["starsOutsideFluxTolerance"] == flux_only.record["starsOutsideFluxTolerance"]
+    assert not record["passed"]
+
+
+def test_guard_one_reads_a_frame_that_gives_only_part_of_an_annulus_against_the_frames_together_sky() -> None:
+    from services.media import temporal
+
+    offsets = panning()
+    # Neighbour +1 sees frame k's own view: no shift, so its samples are its own
+    offsets[CENTRE + 1] = offsets[CENTRE]
+    x, y = 96.3, 95.7
+    place = (x - offsets[CENTRE][1], y - offsets[CENTRE][0])
+    confirmed = 0
+    for seed in range(10):
+        frames, window = clip_window(offsets, at_scene(x, y, FAINT_PEAK), seed)
+        # A strip of its annulus, beside the aperture, that the neighbour may not give (a block that did not hold),
+        # where its samples are another scene's: J_k leaves them out, and only a reading against J_k's sky does too
+        strip = np.zeros((CLIP_PX, CLIP_PX), dtype=bool)
+        strip[int(place[1]) - 8:int(place[1]) + 9, int(place[0]) + 6:int(place[0]) + 10] = True
+        frames[CENTRE + 1] = frames[CENTRE + 1] + 60.0 * strip
+        neighbours = tuple(temporal.Neighbour(n.offset, n.shift, n.usable & ~strip) if n.offset == 1 else n
+                           for n in window.neighbours)
+        window = temporal.Window(neighbours, window.closure_errors, window.travel_px)
+        found = gate.clip_stars(frames[CENTRE], 255.0, gate.Together.of(frames, frames, CENTRE, window))
+        confirmed += near(found.together.stars, *place)
+    assert confirmed >= 9

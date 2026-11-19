@@ -14,9 +14,13 @@
    "services/media/noise.py",
    "services/media/spatial.py",
    "services/media/tone.py",
-   "services/science/detector.py"
+   "services/science/detector.py",
+   "services/media/clip_io.py",
+   "services/media/clip_frames.py",
+   "services/media/frame_pool.py",
+   "services/media/temporal.py"
   ],
-  "digest": "68d36568f6ba99b7c5c9e70ece672e75850f8a57ad442f3c4bf0576007e6c238"
+  "digest": "9393cd8d273daa781b95cdf19fe34c7a6066c59c1aaaf4b761f9d7afa2cdaab5"
  },
  "albedian.solve_chain": {
   "revision": 10,

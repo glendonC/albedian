@@ -27,6 +27,9 @@ WINDOW_FRAMES = temporal.WINDOW_FRAMES
 # The default pool is the machine's cores divided by this, and at least one worker [proposed: design section 10, "half
 # the machine's cores and at least one"]
 CORE_SHARE = 2
+# The name of the environment variable that holds the pool under its default [decided 2026-11-11 in design section
+# 10: the limit of two processes is for agents' test runs; the product sets nothing]
+WORKERS_LIMIT_ENV = "ALBEDIAN_MEDIA_WORKERS"
 
 
 @dataclass(frozen=True)
@@ -82,8 +85,13 @@ def runs(frames: Iterable[Any], *, run_frames: int = RUN_FRAMES, window: int = W
 
 
 def default_workers() -> int:
-    """Half the machine's cores, and at least one."""
-    return max(1, (os.cpu_count() or 1) // CORE_SHARE)
+    """Half the machine's cores, and at least one; fewer where WORKERS_LIMIT_ENV holds a smaller whole number above 0
+    (agents' test runs, which stay within two processes), never more."""
+    workers = max(1, (os.cpu_count() or 1) // CORE_SHARE)
+    limit = os.environ.get(WORKERS_LIMIT_ENV, "")
+    if limit.isdigit() and int(limit) >= 1:
+        return min(workers, int(limit))
+    return workers
 
 
 def _measured(work: Callable[[Run], Sequence[Any]], run: Run) -> tuple[list[Any], int]:
@@ -108,6 +116,13 @@ class FramePool:
         self.worker_peak_bytes = 0
 
     def __enter__(self) -> "FramePool":
+        # The job's media child is a daemonic process (services/science/bounded_worker.py), which multiprocessing
+        # forbids to start children. It clears its own flag here; its parent's view of it is unchanged, so the parent
+        # still ends it at its own exit, and a stop of the child's group still ends these workers with it
+        # [tested: .lanetools/restore7_daemon_pool.py, tests/media/test_frame_pool.py]
+        current = multiprocessing.current_process()
+        if current.daemon:
+            current.daemon = False
         self._executor = ProcessPoolExecutor(max_workers=self._workers, mp_context=multiprocessing.get_context("spawn"))
         return self
 

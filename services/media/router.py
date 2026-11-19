@@ -125,14 +125,12 @@ from services.contracts import media as media_contract  # noqa: E402
 from services.ingest.router import get_ingest_store  # noqa: E402
 from services.ingest.runner import NoUpload, runner_for  # noqa: E402
 from services.ingest.store import IngestStore  # noqa: E402
+from services.media import variants  # noqa: E402
 
 SHA256_PATTERN = media_contract.MEDIA_PATTERNS["sha256"]
 VARIANT_PATTERN = media_contract.MEDIA_ID_PATTERNS["variant"]
 NO_UPLOAD = "no file with that hash is stored"
 NO_VARIANT = "no variant with that id is stored for that file"
-# A clip's restoration is restore-7's; until it lands no job is made for one [decided 2026-11-11: restore-2b answers
-# plainly that it is not built]
-CLIP_NOT_BUILT = "Restoring a clip is not built yet."
 
 
 def _variant_folder(store: IngestStore, sha256: str, variant_id: str) -> Path:
@@ -161,8 +159,6 @@ def start_restoration_job(
     record = store.read_record(sha256)
     if record is None:
         raise HTTPException(status_code=404, detail=NO_UPLOAD)
-    if body["kind"] == "restoration" and record["sourceAsset"].get("mediaKind") != "image":
-        raise HTTPException(status_code=501, detail=CLIP_NOT_BUILT)
     try:
         job, created = runner_for(store).start(sha256, body["kind"], body)
     except NoUpload:
@@ -207,7 +203,7 @@ def get_variant_file(
     folder = _variant_folder(store, sha256, variant_id)
     variant = _read(folder / "variant.json")
     return FileResponse(
-        folder / "variant.png",
+        folder / variants.variant_file_name(variant["mimeType"]),
         media_type=variant["mimeType"],
         headers={
             "Cache-Control": "private, max-age=31536000, immutable",

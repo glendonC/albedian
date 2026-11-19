@@ -4,7 +4,7 @@ until it exists, nothing in the product calls them.
 
 The store, under an upload's folder `<root>/<aa>/<sha256>/`, beside its untouched original:
 
-    variants/<variantId>/variant.png   0400    the copy, the file its checks ran on
+    variants/<variantId>/variant.png   0400    the copy, the file its checks ran on (a clip's: variant.mov or .mp4)
                          variant.json  0400    MediaVariant
                          graph.json    0400    ProcessingGraph
                          attempt.json  0400    ProcessingAttempt, ready
@@ -121,16 +121,43 @@ def _record_bytes(record: dict[str, Any]) -> bytes:
     return json.dumps(record, indent=2, ensure_ascii=False, allow_nan=False).encode("utf-8") + b"\n"
 
 
+# A variant's file is named by its type: a still's 16 bit PNG, a clip in its original's own container (restore-7)
+VARIANT_FILES = {"image/png": "variant.png", "video/quicktime": "variant.mov", "video/mp4": "variant.mp4"}
+
+
+def variant_file_name(mime_type: str) -> str:
+    """The name of a variant's file in its folder, from the variant record's `mimeType`."""
+    return VARIANT_FILES[mime_type]
+
+
+def _move_new(source: Path, path: Path) -> str:
+    """Move a finished file onto a name that must not exist yet, on the same file system, fsync it, make it 0400; its
+    SHA-256. The file is read once, so a clip of a few hundred MB is never held whole."""
+    digest = hashlib.sha256()
+    with source.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+        os.fsync(handle.fileno())
+    if os.path.lexists(path):
+        raise FileExistsError(path.name)
+    os.rename(source, path)
+    os.chmod(path, FILE_MODE)
+    return digest.hexdigest()
+
+
 @dataclass(frozen=True)
 class StoredVariant:
     folder: Path
     variant: dict[str, Any]
 
 
-def publish_variant(store_root: Path, source_folder: Path, file_bytes: bytes, records: dict[str, dict[str, Any]]) -> StoredVariant:
+def publish_variant(store_root: Path, source_folder: Path, file_bytes: Optional[bytes], records: dict[str, dict[str, Any]],
+                    *, file_path: Optional[Path] = None) -> StoredVariant:
     """Assemble `variants/<variantId>/` under `<store_root>/.partial/` and rename it into place whole. `records` holds
-    "variant", "graph" and "attempt"; the variant record's id names the folder. A variant of that id already in
-    place is refused with FileExistsError, and the assembled folder is removed."""
+    "variant", "graph" and "attempt"; the variant record's id names the folder, and its type names the file
+    (`variant_file_name`). The file is `file_bytes`, or the finished file at `file_path` under the store root, moved in
+    (a clip). A variant of that id already in place is refused with FileExistsError, and the assembled folder is
+    removed, with the moved file in it."""
     variant = records["variant"]
     name = variant["id"]
     variants = source_folder / "variants"
@@ -143,7 +170,13 @@ def publish_variant(store_root: Path, source_folder: Path, file_bytes: bytes, re
     try:
         assembled = staging / name
         assembled.mkdir(mode=FOLDER_MODE)
-        _write_new(assembled / "variant.png", file_bytes)
+        stored_file = assembled / variant_file_name(variant["mimeType"])
+        if (file_path is None) == (file_bytes is None):
+            raise ValueError("a variant is published from its bytes or from a file, one of the two")
+        if file_path is None:
+            _write_new(stored_file, file_bytes)
+        else:
+            _move_new(file_path, stored_file)
         for key in ("variant", "graph", "attempt"):
             _write_new(assembled / f"{key}.json", _record_bytes(records[key]))
         _fsync_folder(assembled)

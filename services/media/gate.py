@@ -28,12 +28,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from functools import cached_property, lru_cache
+from typing import Sequence
 
 import numpy as np
 from scipy import ndimage
 
-from services.media import noise, stars
+from services.media import noise, stars, temporal
 from services.science.detector import (
     _build_gaussian_psf_kernel,
     detect_point_sources,
@@ -185,14 +187,22 @@ def variant_points(luma: np.ndarray, clipped: np.ndarray, *, only_tiles: set[int
 
 @dataclass(frozen=True)
 class Original:
-    """What confirms a point on the original: its stars' places (criterion 1)."""
+    """What confirms a point on the original: its stars' places (criterion 1). For a clip frame made with registered
+    neighbours, also the stars its original frames together confirm, and those frames, by which a point fixed to the
+    sensor is told (`Together`)."""
 
     star_places: np.ndarray
+    together: "Together | None" = None
 
     @classmethod
     def of(cls, field_of_stars: stars.StarField) -> "Original":
         places = [(s.x_px, s.y_px) for s in field_of_stars.stars]
         return cls(np.array(places, dtype=np.float64).reshape(-1, 2))
+
+    @classmethod
+    def of_clip(cls, found: "ClipStars", together: "Together | None") -> "Original":
+        places = [(s.x_px, s.y_px) for s in (*found.field.stars, *found.together.stars)]
+        return cls(np.array(places, dtype=np.float64).reshape(-1, 2), together)
 
 
 def _verified_by_photometry(points: list[stars.Point], image: np.ndarray) -> list[bool]:
@@ -251,12 +261,14 @@ KEPT_EDGE_FILL_LEVELS = 3
 TOP_CODE16 = 65535.0
 
 
-def kept_samples(stored: np.ndarray, expected: np.ndarray, weight: np.ndarray) -> np.ndarray:
+def kept_samples(stored: np.ndarray, expected: np.ndarray, weight: np.ndarray, code_step: float = 1.0) -> np.ndarray:
     """What the stored file's samples must be, in 16 bit codes: in a kept core (weight 1) the original lifted and
     stored (`expected`); in a kept edge (weight between 0 and 1) the weight times that and the rest times the B3
     average, over KEPT_EDGE_FILL_LEVELS levels, of the stored samples around it outside every kept region, rounded,
     or the original's where no such sample lies within the average's reach; elsewhere the stored samples themselves. The edge's average reads no kept sample, so the gate computes the same
-    from the stored file read back as the job did before storing it."""
+    from the stored file read back as the job did before storing it. The blend is rounded to the stored file's own
+    code step (`code_step` 16 bit codes: 1 for a still's 16 bit PNG; for a clip's Y' on the 16 bit scale, 65535 over
+    its largest code, so an 8 bit clip's edge is a code its file can hold, restore-7)."""
     stored = np.asarray(stored, dtype=np.float64)
     expected = np.asarray(expected, dtype=np.float64)
     weight = np.asarray(weight, dtype=np.float64)
@@ -269,8 +281,8 @@ def kept_samples(stored: np.ndarray, expected: np.ndarray, weight: np.ndarray) -
         filled = smooth_without(np.concatenate([stored, free[..., None]], axis=-1), (weight > 0).astype(np.float64),
                                 KEPT_EDGE_FILL_LEVELS)
         reached = filled[..., -1] > 0.5
-        blend = np.clip(np.round(weight[..., None] * expected + (1.0 - weight[..., None]) * filled[..., :-1]), 0,
-                        TOP_CODE16)
+        mixed = weight[..., None] * expected + (1.0 - weight[..., None]) * filled[..., :-1]
+        blend = np.clip(np.round(mixed / code_step) * code_step, 0, TOP_CODE16)
         out = np.where((edge & reached)[..., None], blend, out)
         out = np.where((edge & ~reached)[..., None], expected, out)
     return out
@@ -406,8 +418,13 @@ def confirmed(points: list[stars.Point], original: Original, variant: np.ndarray
     codes), or one of the original's stars, each verified by forced photometry on the original's pixels (criterion
     1), lies within the match radius of it. Forced photometry asked at any place verified the original's edges and
     texture there: a painted star of 64 codes laid on a beach edge of photo 1 was confirmed, and edges of the
-    original's foreground are no star [tested: .lanetools/restore-4/flux_dbg.py]."""
-    return [same or star for same, star in zip(unchanged(points, variant, expected, ignore), on_a_star(points, original))]
+    original's foreground are no star [tested: .lanetools/restore-4/flux_dbg.py]. On a clip frame made with neighbours
+    a point fixed to the sensor while the scene moved is confirmed by neither rule (`fixed_to_sensor`)."""
+    ok = [same or star for same, star in zip(unchanged(points, variant, expected, ignore), on_a_star(points, original))]
+    if original.together is None or not points:
+        return ok
+    fixed = fixed_to_sensor([(p.x_px, p.y_px) for p in points], original.together)
+    return [good and not refused for good, refused in zip(ok, fixed)]
 
 
 def on_a_star(points: list[stars.Point], original: Original) -> list[bool]:
@@ -733,9 +750,10 @@ class Dissolved:
 
 
 def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_codes, original: Original, kept: Kept,
-             max_passes: int = MAX_PASSES) -> Dissolved:
+             max_passes: int = MAX_PASSES, luma_of=None) -> Dissolved:
     """At most `max_passes` passes: the working image's points, in the stored codes (`to_stored`: linear light to
-    the 16 bit codes as they will be stored), that the original does not confirm are replaced inside their discs by the fill,
+    the 16 bit codes as they will be stored; `luma_of` reads their luma on the scale of 255, `stored_luma` unless
+    given), that the original does not confirm are replaced inside their discs by the fill,
     never inside a kept core. A disc that reaches a kept core takes the original itself there, so the kept region
     grows over the point instead of leaving a seam beside it. Each pass's count is kept. A pass after the first looks
     only in the tiles the last pass changed: the detector works tile by tile, so another tile's points are the ones
@@ -744,13 +762,14 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
     core = kept.core
     left_out = kept.left_out.astype(np.float64)
     expected = to_stored(linear)
-    expected_luma = stored_luma(expected)
+    read_luma = stored_luma if luma_of is None else luma_of
+    expected_luma = read_luma(expected)
     near_core = ndimage.distance_transform_edt(~core) <= NEAR_CORE_PX if core.any() else np.zeros(core.shape, dtype=bool)
     grid = stars.tiles(*core.shape)
     dirty: set[int] | None = None
     for index in range(max_passes):
         stored = to_stored(working)
-        luma = stored_luma(stored)
+        luma = read_luma(stored)
         # The detector picks its filter partly from the threshold it is given, so the points at the dissolve's
         # threshold are not all the gate's: a pass takes both [tested: a point of SNR 18.9 under the gate's
         # threshold was found by no pass at 4 on photo 1, .lanetools/restore-4/trace.py]
@@ -800,6 +819,10 @@ class GateOutcome:
     record: dict
     unconfirmed: list[stars.Point]
     rejection: str | None
+    # Each measured star's change in sigma_F and its ratio F_v / F_o, as the record counts them: a clip's record adds
+    # its frames' up (`clip_record`)
+    changes: tuple[float, ...] = ()
+    ratios: tuple[float, ...] = ()
 
 
 def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_luminance: np.ndarray,
@@ -807,6 +830,20 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
     """(stars measured, outside the tolerance, worst change in sigma_F, median ratio F_v / F_o) over the confirmed
     stars whose aperture and annulus lie inside the frame and touch no clipped region, with a sigma_F that is a
     positive number and a positive flux on the original."""
+    return _flux_summary(*flux_changes(field, original_luminance, variant_luminance, kept_weight))
+
+
+def _flux_summary(changes: list[float], ratios: list[float]) -> tuple[int, int, float | None, float | None]:
+    if not changes:
+        return 0, 0, None, None
+    positive = [r for r in ratios if r > 0]
+    median = float(np.median(positive)) if positive else None
+    return len(changes), sum(c > FLUX_TOLERANCE_SIGMA for c in changes), float(max(changes)), median
+
+
+def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant_luminance: np.ndarray,
+                 kept_weight: np.ndarray) -> tuple[list[float], list[float]]:
+    """Each measured star's |F_v - F_o| over sigma_F and its F_v / F_o (`flux_check`'s stars)."""
     height, width = original_luminance.shape
     changes, ratios = [], []
     occupied = np.maximum(kept_weight, field.footprint)
@@ -834,30 +871,38 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
             continue
         changes.append(change)
         ratios.append(aperture_flux(variant_luminance, star.x_px, star.y_px, star.radius_px, mask, original_luminance) / before)
-    if not changes:
-        return 0, 0, None, None
-    positive = [r for r in ratios if r > 0]
-    median = float(np.median(positive)) if positive else None
-    return len(changes), sum(c > FLUX_TOLERANCE_SIGMA for c in changes), float(max(changes)), median
+    return changes, ratios
 
 
 def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np.ndarray,
-             original_luminance: np.ndarray, variant_luminance: np.ndarray) -> GateOutcome:
+             original_luminance: np.ndarray, variant_luminance: np.ndarray, luma_of=None,
+             together: stars.StarField | None = None, together_luminance: np.ndarray | None = None,
+             code_step: float = 1.0) -> GateOutcome:
     """The gate on the stored file's codes: every point confirmed, a raised sample or small cluster among the points
     (`raised_places`), every kept region's samples what they must be (`kept_samples`), and every measured star's flux
     within the tolerance. A place where a kept region's samples changed counts among the variant's points and its
     unconfirmed points (the contract's two counts; `kept_changed`). `expected` is the original
-    lifted and stored as the job stores it; the luminances are linear light, the variant's with its lift undone."""
-    luma = stored_luma(stored)
+    lifted and stored as the job stores it; the luminances are linear light, the variant's with its lift undone.
+    `luma_of` reads the stored codes' luma on the scale of 255 (`stored_luma` unless given), and `code_step` is the
+    stored file's own code step in 16 bit codes (`kept_samples`: 1 for a still, 257 for an 8 bit clip's Y'). A clip
+    frame's stars that only its original frames together confirm (`together`) have their flux compared with the frames
+    together's own (`together_luminance`), against the noise of empty apertures there (design section 7)."""
+    read_luma = stored_luma if luma_of is None else luma_of
+    luma = read_luma(stored)
     points, left_out = variant_points(luma, kept.field.clipped, kept=kept)
-    points = stars._merged(points + raised_places(luma, stored_luma(expected), kept.left_out, kept.field.clipped))
+    points = stars._merged(points + raised_places(luma, read_luma(expected), kept.left_out, kept.field.clipped))
     ok = confirmed(points, original, stored, expected, kept.left_out)
-    changed = kept_changed(stored, kept_samples(stored, expected, kept.weight), kept.left_out)
+    changed = kept_changed(stored, kept_samples(stored, expected, kept.weight, code_step), kept.left_out)
     unconfirmed_points = [p for p, good in zip(points, ok) if not good] + changed
     points = points + changed
-    measured, outside, worst, median = flux_check(kept.field, original_luminance, variant_luminance, kept.weight)
+    changes, ratios = flux_changes(kept.field, original_luminance, variant_luminance, kept.weight)
+    if together is not None and together.stars:
+        more_changes, more_ratios = flux_changes(together, together_luminance, variant_luminance, kept.weight)
+        changes, ratios = changes + more_changes, ratios + more_ratios
+    measured, outside, worst, median = _flux_summary(changes, ratios)
     if measured and median is None:
         measured, outside, worst = 0, 0, None
+        changes, ratios = [], []
     record = {
         "statistic": STATISTIC, "variantThresholdSnr": VARIANT_THRESHOLD_SNR,
         "confirmThresholdSnr": stars.CONFIRM_THRESHOLD_SNR, "tilePx": stars.TILE_PX, "matchRadiusPx": stars.MATCH_RADIUS_PX,
@@ -870,4 +915,202 @@ def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np
         record["worstFluxChangeSigma"] = worst
         record["medianFluxRatio"] = median
     rejection = "unconfirmed_points" if unconfirmed_points else ("star_flux_changed" if outside else None)
-    return GateOutcome(record, unconfirmed_points, rejection)
+    return GateOutcome(record, unconfirmed_points, rejection, tuple(changes), tuple(ratios))
+
+
+# =============================================================================================
+# A clip frame: its points confirmed on its original frames together, with the two guards (design section 7;
+# REQ-RST-6.10, 6.11)
+# =============================================================================================
+
+# Guard 1: a star only the frames together confirm keeps, on each original frame that went into them, an aperture
+# flux within this many empty-aperture sigma of that frame of its flux on the frames together [proposed in design
+# section 7: the flux rule of the gate, turned on each frame]
+TOGETHER_FLUX_SIGMA = FLUX_TOLERANCE_SIGMA
+# Guard 2 applies where the scene moved more than this across the window, the largest distance between the shifts of
+# two of its frames [proposed in design section 7: twice the match radius]
+SENSOR_TRAVEL_PX = 2 * stars.MATCH_RADIUS_PX
+# A point whose matched response on the unshifted mean exceeds its response on the frames together by more than this
+# many sigma_m of its tile on the frames together is fixed to the sensor [proposed in design section 7]
+SENSOR_RESPONSE_SIGMAS = 3.0
+# A point's response is the largest within this many pixels of its place [proposed in design section 7]
+RESPONSE_REACH_PX = 1
+
+
+@dataclass(frozen=True)
+class Together:
+    """A clip frame's original frames together (design section 7), rebuilt from original pixels alone: J_k, the plain
+    mean of frame k and of each registered neighbour moved onto it, and U_k, the same frames unmoved, both of the luma
+    codes the detector reads; J_k of linear luminance, for the flux; the window's travel; and each original luma on
+    frame k's grid with where it gives samples, frame k first."""
+
+    luma: np.ndarray
+    unshifted: np.ndarray
+    luminance: np.ndarray
+    travel_px: float
+    frames: tuple[np.ndarray, ...]
+    usable: tuple[np.ndarray, ...]
+    # Each original luma unmoved, frame k first: its empty apertures give that frame's sigma_F
+    originals: tuple[np.ndarray, ...] = ()
+    _cache: dict = dataclass_field(default_factory=dict, compare=False, repr=False)
+
+    @classmethod
+    def of(cls, lumas: Sequence[np.ndarray], luminances: Sequence[np.ndarray], centre: int,
+           window: temporal.Window) -> "Together | None":
+        """None for a frame no neighbour registered to: its own pixels decide, as a still's."""
+        if not window.neighbours:
+            return None
+        own = np.asarray(lumas[centre], dtype=np.float64)
+        frames = [own] + [temporal.move(lumas[centre + n.offset], n.shift) for n in window.neighbours]
+        usable = [np.ones(own.shape, dtype=bool)] + [np.asarray(n.usable, dtype=bool) for n in window.neighbours]
+        originals = [own] + [np.asarray(lumas[centre + n.offset], dtype=np.float64) for n in window.neighbours]
+        return cls(temporal.frames_together(lumas, centre, window), temporal.unshifted_mean(lumas, centre, window),
+                   temporal.frames_together(luminances, centre, window), float(window.travel_px), tuple(frames),
+                   tuple(usable), tuple(originals))
+
+    @property
+    def guards_the_sensor(self) -> bool:
+        return self.travel_px > SENSOR_TRAVEL_PX
+
+    def frame_sigma(self, index: int, radius: int, occupied: np.ndarray, clipped: np.ndarray) -> float:
+        """sigma_F of frame `index` at `radius`, from the empty apertures of that original frame unmoved: the same camera
+        and the whole frame. Moved, its noise is lower (linear interpolation averages it), so this tolerance is the
+        larger [tested, restore-7: on a moved neighbour with its blocks that did not hold left out, the lattice's few
+        places gave nan, 0 and a quarter of frame k's, and the guard refused a faint star of the scene]."""
+        key = ("sigma", index, radius)
+        if key not in self._cache:
+            self._cache[key] = empty_aperture_sigma(self.originals[index], radius, occupied, clipped)
+        return self._cache[key]
+
+    def responses(self, tile_index: int, tile: stars.Tile) -> tuple[np.ndarray, np.ndarray, float]:
+        """The detector's matched response (design section 3, step 2) on J_k's and U_k's tile, and sigma_m of J_k's."""
+        key = ("response", tile_index)
+        if key not in self._cache:
+            kernel = _build_gaussian_psf_kernel()
+            on_mean = stars.tile_noise(self.luma[tile.y0:tile.y1, tile.x0:tile.x1])
+            unmoved = stars.tile_noise(self.unshifted[tile.y0:tile.y1, tile.x0:tile.x1])
+            self._cache[key] = (ndimage.convolve(on_mean.residual, kernel, mode="nearest"),
+                                ndimage.convolve(unmoved.residual, kernel, mode="nearest"), on_mean.matched)
+        return self._cache[key]
+
+
+def fixed_to_sensor(places: Sequence[tuple[float, float]], together: Together) -> list[bool]:
+    """Guard 2: where the scene moved more than SENSOR_TRAVEL_PX across the window, whether each place (x, y) answers
+    the matched filter more on U_k than on J_k by over SENSOR_RESPONSE_SIGMAS sigma_m of its tile on J_k, each the
+    largest within RESPONSE_REACH_PX of the place. A star moves with the scene and adds up on J_k; a hot pixel or a
+    codec block stays on its sensor place and adds up on U_k. False everywhere where the scene moved less."""
+    if not together.guards_the_sensor:
+        return [False] * len(places)
+    height, width = together.luma.shape
+    grid = stars.tiles(height, width)
+    fixed = []
+    for x, y in places:
+        column, row = min(width - 1, max(0, int(round(x)))), min(height - 1, max(0, int(round(y))))
+        index = next(i for i, t in enumerate(grid) if t.x0 <= column < t.x1 and t.y0 <= row < t.y1)
+        tile = grid[index]
+        on_mean, unmoved, sigma_m = together.responses(index, tile)
+        rows = slice(max(0, row - tile.y0 - RESPONSE_REACH_PX), row - tile.y0 + RESPONSE_REACH_PX + 1)
+        columns = slice(max(0, column - tile.x0 - RESPONSE_REACH_PX), column - tile.x0 + RESPONSE_REACH_PX + 1)
+        fixed.append(bool(float(unmoved[rows, columns].max()) - float(on_mean[rows, columns].max())
+                          > SENSOR_RESPONSE_SIGMAS * sigma_m))
+    return fixed
+
+
+def agrees_with_each_frame(star: stars.Star, together: Together, occupied: np.ndarray, clipped: np.ndarray) -> bool:
+    """Guard 1: whether a star the frames together confirm has, on each original frame that gives samples at its
+    place, frame k first, an aperture flux within TOGETHER_FLUX_SIGMA of that frame's sigma_F of its flux on J_k. A
+    light the neighbours carry and frame k does not fails on frame k; a flash one neighbour carries fails on that
+    neighbour. A frame is measured where it gives every sample of the star's aperture, against its own annulus where it
+    gives every sample of that, else against the frames together's (both fluxes then against the same sky); frame k
+    always gives both. A neighbour that gives only part of the aperture, where a block beside the star did not hold, is
+    not measured [proposed, restore-7: a test clip's faint star on a block's edge, which every neighbour gave 68 percent
+    of its reach, and a light fixed to the sensor, whose copy each neighbour moved onto frame k at another place with
+    part of its annulus outside the frame]. A star too near the border to measure is not confirmed: it is dissolved,
+    never painted."""
+    radius = max(star.radius_px, stars.APERTURE_MIN_PX)
+    reach = radius + stars.ANNULUS_OUTER_PX + 1
+    height, width = together.luma.shape
+    if not (reach <= star.x_px < width - reach and reach <= star.y_px < height - reach):
+        return False
+    rows = slice(int(star.y_px) - reach, int(star.y_px) + reach + 1)
+    columns = slice(int(star.x_px) - reach, int(star.x_px) + reach + 1)
+    yy, xx = np.mgrid[rows, columns]
+    aperture = np.hypot(xx - star.x_px, yy - star.y_px) <= radius
+    on_mean = aperture_flux(together.luma, star.x_px, star.y_px, radius, occupied > 0)
+    for index, (frame, usable) in enumerate(zip(together.frames, together.usable)):
+        here = usable[rows, columns]
+        if not here[aperture].all():
+            continue
+        sigma = together.frame_sigma(index, radius, occupied, clipped)
+        if not (math.isfinite(sigma) and sigma > 0.0):
+            return False
+        if here.all():
+            flux, mean = aperture_flux(frame, star.x_px, star.y_px, radius, occupied > 0), on_mean
+        else:
+            # Against the frames together's annulus, both of them: the sky cancels and the aperture's own light is
+            # compared
+            flux = aperture_flux(frame, star.x_px, star.y_px, radius, occupied > 0, together.luma)
+            mean = on_mean
+        if abs(flux - mean) > TOGETHER_FLUX_SIGMA * sigma:
+            return False
+    return True
+
+
+@dataclass(frozen=True)
+class ClipStars:
+    """A clip frame's confirmed stars: its own (criterion 1 on frame k alone), those fixed to the sensor taken out, which
+    get no footprint; the stars only its original frames together confirm, past both guards, which get none either
+    (the merge brings them out, and frame k alone shows only its noise there); and how many guard 2 refused."""
+
+    field: stars.StarField
+    together: stars.StarField
+    fixed: int
+
+
+def _star_field(field_of_stars: stars.StarField, kept: Sequence[stars.Star], found: int, left_out: int) -> stars.StarField:
+    kept = tuple(kept)
+    return stars.StarField(kept, stars.footprint_map(field_of_stars.clipped.shape, kept), field_of_stars.clipped, found,
+                           len(kept), left_out)
+
+
+def clip_stars(luma: np.ndarray, peak: float, together: Together | None) -> ClipStars:
+    """Frame k's stars (`original_stars` on its own luma codes), and with registered neighbours the stars of J_k that
+    none of frame k's lies within the match radius of and that agree with each frame (guard 1); where the scene moved,
+    every one of either that guard 2 finds fixed to the sensor taken out."""
+    own = original_stars(luma, peak)
+    if together is None:
+        return ClipStars(own, _star_field(own, (), 0, 0), 0)
+    mean = original_stars(together.luma, peak)
+    occupied = np.maximum(own.footprint, mean.footprint)
+    own_places = Original.of(own)
+    candidates = [s for s, on_own in zip(mean.stars, on_a_star([stars.Point(s.x_px, s.y_px, s.snr, 0) for s in mean.stars],
+                                                                own_places)) if not on_own]
+    agreed = [s for s in candidates if agrees_with_each_frame(s, together, occupied, own.clipped)]
+    fixed_own = fixed_to_sensor([(s.x_px, s.y_px) for s in own.stars], together)
+    fixed_agreed = fixed_to_sensor([(s.x_px, s.y_px) for s in agreed], together)
+    kept_own = [s for s, f in zip(own.stars, fixed_own) if not f]
+    kept_agreed = [s for s, f in zip(agreed, fixed_agreed) if not f]
+    own_field = own if len(kept_own) == len(own.stars) else _star_field(own, kept_own, own.found, own.clipped_left_out)
+    return ClipStars(own_field, _star_field(own, kept_agreed, len(candidates), 0), sum(fixed_own) + sum(fixed_agreed))
+
+
+def clip_record(outcomes: Sequence[GateOutcome]) -> dict:
+    """The gate's record of a clip: each count added over its frames, the worst flux change and the median ratio over
+    every star measured in any frame."""
+    first = outcomes[0].record
+    changes = [c for o in outcomes for c in o.changes]
+    ratios = [r for o in outcomes for r in o.ratios]
+    measured, outside, worst, median = _flux_summary(changes, ratios)
+    unconfirmed = sum(o.record["unconfirmedPointCount"] for o in outcomes)
+    record = {key: first[key] for key in ("statistic", "variantThresholdSnr", "confirmThresholdSnr", "tilePx", "matchRadiusPx")}
+    record.update({
+        "framesChecked": len(outcomes), "variantPointCount": sum(o.record["variantPointCount"] for o in outcomes),
+        "unconfirmedPointCount": unconfirmed, "framesWithUnconfirmed": sum(o.record["framesWithUnconfirmed"] for o in outcomes),
+        "clippedPointsLeftOut": sum(o.record["clippedPointsLeftOut"] for o in outcomes), "starsMeasured": measured,
+        "starsOutsideFluxTolerance": outside, "fluxToleranceSigma": FLUX_TOLERANCE_SIGMA,
+        "passed": unconfirmed == 0 and outside == 0,
+    })
+    if measured:
+        record["worstFluxChangeSigma"] = worst
+        record["medianFluxRatio"] = median
+    return record

@@ -164,7 +164,7 @@ pictures under `.cache/restore-review/<unit>/`.
     noise is not measured and no merge runs, and a whole-frame shift misses the closure bound (restore-6 report).
   - _Requirements: REQ-RST-7.1 to 7.4, 7.8, 6.10, 6.11_
 
-- [ ] 7. restore-7: clips restored end to end (REQ-RST-7, REQ-RST-6.10, 6.11, REQ-RST-8.3, 8.9, REQ-RST-12.2;
+- [x] 7. restore-7: clips restored end to end (REQ-RST-7, REQ-RST-6.10, 6.11, REQ-RST-8.3, 8.9, REQ-RST-12.2;
   P-RST-23, 24)
   - Changed: `services/media/jobs.py` (kind `restoration` for clips: sampled frames for the noise table and the
     lift, then per frame the merge, the stars, the filter, the dissolve passes and the lift, streamed; the checks
@@ -195,6 +195,16 @@ pictures under `.cache/restore-review/<unit>/`.
     at].
   - Done when: a clip ends `ready` or `rejected` with stored counts inside its bound; a clip recorded at black
     ends with its plain note and a lift held by the quantisation bound.
+  - As built [decided 2026-11-19 by the lead]:
+    - The gated clip is stored without loss (x264 crf 0), so the variant is the file the gate ran on, and the
+      gate's exact rules hold on it. On the owner's lifted clips, crf 16 moved samples by up to 40 codes of 255.
+    - `variants.py` names a variant's file by its type and takes a clip's finished file by path. `router.py` starts
+      a clip's restoration and serves the file by its type.
+    - A rejected restoration's job ends `rejected` while its attempt is kept (platform-8 on main, which restore-7
+      had found too: a rejected clip ended `failed`); a succeeded one's results are its file, by its type, and records.
+    - Rebased on restore-4f v2: each clip frame's kept regions are stored as `gate.kept_samples` computes them, the
+      edge's blend rounded to the clip's own Y' code step (257 sixteen bit codes at 8 bits), so the 8 bit file holds
+      what the gate computes; without it 4f's exact edge check refused every honest clip (tested both ways).
   - _Requirements: REQ-RST-6.10, 6.11, 7.1 to 7.10, 8.1 to 8.5, 8.9, 12.2 to 12.4_
 
 - [x] 8. restore-8: export and the manifest (REQ-RST-9; P-RST-21)

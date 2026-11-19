@@ -10,8 +10,11 @@ Covers, through the API on a store of its own:
 - The original's bytes and mode are untouched and nothing changes outside variants/, attempts/ and jobs/ (P-RST-1).
 - No record or answer holds the store's path or the upload's own text (P-RST-19).
 - A HEIC upload gets a PNG the browser draws, its samples the decoded original's (or, where ffprobe cannot report
-  tile grids, the decoder's sentence). A clip gets no display copy (its contract sentence) and no restoration
-  yet (501, no job); a malformed hash or id is 422, an unknown one 404.
+  tile grids, the decoder's sentence). A clip gets no display copy (its contract sentence); a malformed hash or id is
+  422, an unknown one 404.
+- A clip's restoration (restore-7): it keeps its frame times, its audio packets and its last frame's duration, and is
+  served in its own container; a clip at black ends with its note and the quantisation bound's lift; P-RST-14, 23
+  and 24 on the stored clip; the same stored file whatever the pool's size; partial files never left behind.
 - In this process: a rejected restoration keeps its attempt and no variant; an original that changes before or
   after the work fails the job; the child's outcome is the job's ending; a job whose variant is gone runs again,
   and a variant folder that lacks a file is never overwritten.
@@ -22,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import math
 import os
 import struct
 import subprocess
@@ -41,10 +45,14 @@ from services.contracts.jobs import UploadJob
 from services.ingest import router as ingest_router
 from services.ingest.store import IngestStore
 from services.media import jobs as media_jobs
-from services.media import decode, png16
+from services.media import clip_frames, clip_io, decode, frame_pool, gate, png16, stars, tone
 
 # The kinds start ffmpeg and a child process: each test has its own bound (child_bounds.py)
 from child_bounds import bounded  # noqa: E402,F401
+
+# A clip's job holds its pool to two workers here: agents' test runs stay within two processes (design section 10). Set
+# at import, before any test starts the media child, which takes it at its start
+os.environ.setdefault(frame_pool.WORKERS_LIMIT_ENV, "2")
 
 SECRET = "secret_title_marker_7d41"
 POLL_S = 0.1
@@ -157,7 +165,7 @@ def test_a_restoration_ends_ready_with_the_16_bit_file_and_records_the_contract_
     assert started.status_code == 202, started.text
     job = finished(client, started.json())
     UploadJob.model_validate(job)
-    assert job["state"] == "succeeded", job
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
     record = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()
     contracts.MediaVariant.model_validate(record["variant"])
     contracts.ProcessingGraph.model_validate(record["graph"])
@@ -204,7 +212,7 @@ def test_a_heic_upload_gets_a_png_the_browser_draws_listed_and_served_by_its_has
         assert (job["state"], job["error"]) == ("failed", decode.TILED_HEIC), job
         assert client.get(f"/api/media/{sha}/variants").json()["variants"] == []
         return
-    assert job["state"] == "succeeded", job
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
     listed = client.get(f"/api/media/{sha}/variants").json()
     assert [v["id"] for v in listed["variants"]] == [job["variantId"]]
     variant = listed["variants"][0]
@@ -220,16 +228,13 @@ def test_a_heic_upload_gets_a_png_the_browser_draws_listed_and_served_by_its_has
     assert np.array_equal(drawn[..., :3].astype(np.int64), np.asarray(still.samples)[..., :3].astype(np.int64))
 
 
-def test_a_clip_gets_no_display_copy_and_no_restoration_yet(client, tmp_path) -> None:
+def test_a_clip_gets_no_display_copy(client, tmp_path) -> None:
     clip = tmp_path / "clip.mp4"
     proc = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i",
                            "testsrc2=s=64x48:r=30:d=0.4", "-c:v", "libx264", "-pix_fmt", "yuv420p", str(clip)],
                           capture_output=True, stdin=subprocess.DEVNULL)
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")[-600:]
     sha = upload(client, clip.read_bytes(), "video/mp4")
-    refused = client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"})
-    assert (refused.status_code, refused.json()["detail"]) == (501, "Restoring a clip is not built yet.")
-    assert not (folder_of(client, sha) / "jobs").exists() or not any((folder_of(client, sha) / "jobs").iterdir())
     job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "display_copy"}).json())
     UploadJob.model_validate(job)
     assert (job["state"], job["error"]) == ("failed", "A display copy is not made for a clip."), job
@@ -512,3 +517,318 @@ def test_variants_and_attempts_are_listed_oldest_first(client) -> None:
     listed = client.get(f"/api/media/{sha}/variants").json()
     assert [v["id"] for v in listed["variants"]] == ["var_" + "b" * 16, "var_" + "a" * 16]
     assert [a["id"] for a in listed["attempts"]] == ["att_" + "b" * 16, "att_" + "a" * 16]
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# A clip's restoration (restore-7; design sections 7, 10 and 11; REQ-RST-7, 6.10, 6.11, 8; P-RST-14, 18, 23, 24)
+# ---------------------------------------------------------------------------------------------------------------
+
+BT709_TV = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+
+
+def lossless_clip(path: Path, planes: list, *, width: int, height: int) -> None:
+    """An upload written without loss from the stream's own codes: 8 bit 4:2:0, a time base of 1/600, 30 frames a
+    second."""
+    from fractions import Fraction
+
+    video = clip_io.VideoFormat(width, height, "yuv420p", BT709_TV)
+    with clip_io.ClipEncoder(path, video, time_base=Fraction(1, 600), frame_times=[20 * k for k in range(len(planes))],
+                             container="mov", crf=0) as encoder:
+        for frame in planes:
+            encoder.write(frame)
+        encoder.finish()
+
+
+def decoded(path: Path) -> list[tuple[np.ndarray, ...]]:
+    probe = clip_io.probe_clip(path)
+    with clip_io.ClipDecoder(path, probe) as decoder:
+        return [tuple(np.array(p) for p in frame.planes) for frame in decoder]
+
+
+def partial_files(client) -> list[str]:
+    folder = client.store_root / ".partial"
+    return sorted(p.name for p in folder.iterdir()) if folder.exists() else []
+
+
+def black_clip(path: Path, count: int = 12) -> None:
+    """A clip recorded almost at black: one code over black, a few samples one code more."""
+    black = 16 + 1
+    frames = []
+    for k in range(count):
+        y = np.full((128, 128), black, np.uint8)
+        y[60 + (k % 3):62 + (k % 3), 60:62] = black + 1
+        frames.append((y, np.full((64, 64), 128, np.uint8), np.full((64, 64), 128, np.uint8)))
+    lossless_clip(path, frames, width=128, height=128)
+
+
+def test_a_clip_restored_by_the_job_keeps_its_original_frame_times_audio_and_last_frame(client, tmp_path) -> None:
+    source = tmp_path / "clip.mov"
+    # A dark sky with noise of its own in every frame, which the job measures a noise table on. (A test card such as
+    # testsrc2 ends rejected since restore-4f: its noise table is measured from its detail, the spatial filter smears
+    # its sharp edges and a raised sample stays, restore-7-on-4f report)
+    sky = "color=c=0x181818:s=96x64:r=30:d=0.5,noise=alls=14:allf=t"
+    proc = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", sky,
+                           "-f", "lavfi", "-i", "sine=frequency=440:duration=0.5", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                           "-c:a", "aac", "-shortest", str(source)], capture_output=True, stdin=subprocess.DEVNULL)
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")[-600:]
+    sha = upload(client, source.read_bytes(), "video/quicktime")
+    folder = folder_of(client, sha)
+    original = next(folder.glob("original.*"))
+    mode, digest = original.stat().st_mode, hashlib.sha256(original.read_bytes()).hexdigest()
+    before = snapshot(folder)
+    started = client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"})
+    assert started.status_code == 202, started.text
+    job = finished(client, started.json())
+    UploadJob.model_validate(job)
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
+    record = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()
+    contracts.MediaVariant.model_validate(record["variant"])
+    contracts.ProcessingGraph.model_validate(record["graph"])
+    contracts.ProcessingAttempt.model_validate(record["attempt"])
+    variant, attempt = record["variant"], record["attempt"]
+    probe = clip_io.probe_clip(original)
+    count = probe.frame_count
+    assert (variant["mimeType"], variant["frameCount"], variant["width"], variant["height"]) == ("video/quicktime", count, 96, 64)
+    assert variant["frameTimesSha256"] == media_jobs.frame_times_sha256(probe.time_base, probe.frame_times)
+    stored = folder / "variants" / variant["id"] / "variant.mov"
+    # REQ-RST-7.5, 7.6: every frame time the original's, every audio packet's bytes and time the original's
+    assert clip_io.packet_times(stored, "v:0", written_here=True) == (probe.time_base, probe.frame_times)
+    hashes = [clip_io.stream_packet_hash(original, f"0:{a.index}", written_here=False) for a in probe.audio]
+    assert len(hashes) == 1 and [a["sha256"] for a in variant["audioStreams"]] == hashes
+    check = clip_io.check_stored_clip(stored, original, probe, audio_hashes=hashes, display_orientation=None)
+    assert check.passed and check.last_duration_equal
+    served = client.get(variant["uri"])
+    assert served.status_code == 200 and served.headers["content-type"] == "video/quicktime"
+    assert hashlib.sha256(served.content).hexdigest() == variant["sha256"]
+    assert attempt["measured"]["clip"]["frameCount"] == attempt["gate"]["framesChecked"] == count
+    assert [step["kind"] for step in record["graph"]["steps"]][-2:] == ["encode", "copy_audio"]
+    # P-RST-18: every stage counts up to its total; at the end every frame, and the file's bytes written
+    for seen in finished.seen:
+        for stage in seen["stages"]:
+            assert stage["total"] is None or 0 <= stage["done"] <= stage["total"]
+    stages = {stage["stage"]: stage for stage in job["stages"]}
+    for name in ("decode", "restore", "encode", "verify"):
+        assert (stages[name]["done"], stages[name]["total"]) == (count, count), name
+    assert stages["write"]["done"] == stages["write"]["total"] == variant["byteSize"]
+    # P-RST-1: the original is untouched, and nothing changed outside variants/, attempts/ and jobs/
+    assert original.stat().st_mode == mode and hashlib.sha256(original.read_bytes()).hexdigest() == digest
+    assert snapshot(folder) == before
+    assert not any(name.startswith(job["id"]) for name in partial_files(client))
+
+
+def test_a_clip_recorded_at_black_ends_with_its_plain_note_and_a_lift_held_by_the_quantisation_bound(client, tmp_path) -> None:
+    source = tmp_path / "black.mov"
+    black_clip(source)
+    sha = upload(client, source.read_bytes(), "video/quicktime")
+    job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"}).json())
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
+    attempt = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()["attempt"]
+    measured = attempt["measured"]
+    assert measured["noiseNotMeasured"] == "fine_detail_mostly_zero" and "noise" not in measured
+    assert measured["lift"]["decidedBy"] == "quantisation_bound"
+    assert media_jobs.NOTE_BLACK in measured["notes"] and tone.NOTE_NOISE_NOT_MEASURED not in measured["notes"]
+    assert measured["clip"]["framesWithNeighbours"] == 0 and measured["clip"]["pointsConfirmedOnFramesTogether"] == 0
+    assert attempt["gate"]["passed"] and attempt["gate"]["framesChecked"] == 12
+
+
+def guarded_scene(path: Path) -> dict:
+    """P-RST-14, 23 and 24 in one panning clip of 7 frames, places given in the middle frame: a star of the scene too
+    faint for one frame (`faint`), a light of the scene only the neighbours carry (`neighbours`), a patch on one sensor
+    place in every frame (`sensor`), and a place where nothing is (`empty`)."""
+    from test_clip_frames import at_place, pan, render, spot, star_list
+
+    places = {"faint": (130.4, 120.7), "neighbours": (70.3, 190.6), "sensor": (190.2, 60.4), "empty": (60.6, 70.2)}
+    rng = np.random.default_rng(61)
+    offsets = pan(rng, frames=7)
+    placed = star_list(rng, 400, 2.0 * 256 + 260 + 140)
+    clip = clip_frames.clip_colour(clip_io.VideoFormat(256, 256, "yuv420p", BT709_TV))
+    frames = []
+    for k, o in enumerate(offsets):
+        light = render(o, placed, 256, sky=0.03, cloud=0.0) + at_place(places["faint"], o, offsets[3], 0.006)
+        light = light + at_place(places["neighbours"], o, offsets[3], 0.03) * (k != 3) + spot(*places["sensor"], 0.05)
+        frames.append(clip.to_planes(np.clip(np.repeat(light[..., None], 3, axis=-1) + rng.normal(0.0, 0.003, (256, 256, 3)), 0, 1)))
+    lossless_clip(path, frames, width=256, height=256)
+    return places
+
+
+def near_any(points, place: tuple[float, float]) -> bool:
+    return any(math.hypot(p.x_px - place[0], p.y_px - place[1]) <= stars.MATCH_RADIUS_PX for p in points)
+
+
+def test_p_rst_14_23_24_the_stored_clip_shows_what_the_frames_together_confirm_and_the_gate_refuses_the_rest(client, tmp_path) -> None:
+    source = tmp_path / "scene.mov"
+    places = guarded_scene(source)
+    sha = upload(client, source.read_bytes(), "video/quicktime")
+    job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"}).json())
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
+    record = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()
+    counts = record["attempt"]["measured"]["clip"]
+    assert counts["framesWithNeighbours"] >= 1 and counts["pointsConfirmedOnFramesTogether"] >= 1
+    assert counts["pointsFixedToSensor"] >= 1
+    folder = folder_of(client, sha)
+    original = next(folder.glob("original.*"))
+    originals, stored = decoded(original), decoded(folder / "variants" / job["variantId"] / "variant.mov")
+    clip = clip_frames.clip_colour(clip_io.probe_clip(original).video)
+
+    def points(planes):
+        luma = clip_frames.stored_luma(clip.stored(planes))
+        return gate.variant_points(luma, np.zeros(luma.shape, dtype=bool))[0]
+
+    middle = points(stored[3])
+    assert near_any(middle, places["faint"]), "P-RST-23: the frames together's star is in the output frame"
+    assert not near_any(middle, places["neighbours"]), "P-RST-14: what only the neighbours carry is not"
+    assert not near_any(middle, places["sensor"]), "P-RST-24: what stays on a sensor place is not"
+    settings = clip_frames.measure_clip(clip, [originals[i] for i in clip_frames.sample_indices(len(originals))])
+    for name in ("neighbours", "empty", "sensor"):
+        painted = [tuple(np.array(p) for p in frame) for frame in stored]
+        from test_clip_frames import spot
+
+        painted[3] = (np.clip(np.round(painted[3][0] + spot(*places[name], 12.0)), 0, 255).astype(np.uint8), *painted[3][1:])
+        gates = clip_frames.gate_run(settings, frame_pool.Run(0, 0, 7, tuple(zip(originals, painted))))
+        outcome = gates[3].outcome
+        assert not outcome.record["passed"] and near_any(outcome.unconfirmed, places[name]), name
+
+
+def test_the_stored_clip_is_the_same_whatever_the_pools_size(tmp_path) -> None:
+    hashes = []
+    for workers in (1, 2):
+        root = tmp_path / f"store{workers}"
+        source = tmp_path / f"black{workers}.mov"
+        black_clip(source)
+        sha = hashlib.sha256(source.read_bytes()).hexdigest()
+        folder = root / sha[:2] / sha
+        folder.mkdir(parents=True)
+        original = folder / "original.mov"
+        original.write_bytes(source.read_bytes())
+        (root / ".partial").mkdir()
+        partials = [str(root / ".partial" / f"{JOB_ID}-clip_encoded.mov.part"), str(root / ".partial" / f"{JOB_ID}-variant.mov.part")]
+        facts = {"mimeType": "video/quicktime", "durationMs": 400.0, "audioStreams": []}
+        out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                                   None, facts, partials, no_progress, workers=workers)
+        assert out["status"] == "ready", out
+        variant = json.loads((folder / "variants" / out["variantId"] / "variant.json").read_text())
+        hashes.append(variant["sha256"])
+        assert sorted(p.name for p in (root / ".partial").iterdir()) == []
+    assert hashes[0] == hashes[1]
+
+
+def test_a_refused_or_failed_clip_leaves_no_partial_file_and_no_variant(tmp_path, monkeypatch) -> None:
+    root = tmp_path / "store"
+    source = tmp_path / "black.mov"
+    black_clip(source, count=6)
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = root / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / "original.mov"
+    original.write_bytes(source.read_bytes())
+    (root / ".partial").mkdir()
+    partials = [str(root / ".partial" / f"{JOB_ID}-clip_encoded.mov.part"), str(root / ".partial" / f"{JOB_ID}-variant.mov.part")]
+    facts = {"mimeType": "video/quicktime", "durationMs": 200.0, "audioStreams": []}
+    record = gate.clip_record
+
+    def refusing(outcomes):
+        out = dict(record(outcomes))
+        out.update(unconfirmedPointCount=1, framesWithUnconfirmed=1, variantPointCount=max(1, out["variantPointCount"]), passed=False)
+        return out
+
+    monkeypatch.setattr(gate, "clip_record", refusing)
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                               None, facts, partials, no_progress, workers=1)
+    assert out["status"] == "rejected", out
+    kept = json.loads((folder / "attempts" / f"{out['attemptId']}.json").read_text())
+    contracts.ProcessingAttempt.model_validate(kept)
+    assert kept["rejection"] == "unconfirmed_points" and not (folder / "variants").exists()
+    assert list((root / ".partial").iterdir()) == []
+    monkeypatch.setattr(gate, "clip_record", record)
+
+    def broken(*args, **kwargs):
+        raise clip_io.ClipError("internal")
+
+    monkeypatch.setattr(clip_io, "check_stored_clip", broken)
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                               None, facts, partials, no_progress, workers=1)
+    assert out == {"status": "failed", "attemptId": out["attemptId"], "failureReason": decode.INTERNAL_ERROR}
+    assert list((root / ".partial").iterdir()) == [] and not (folder / "variants").exists()
+
+
+def test_a_rejected_restoration_ends_rejected_while_its_attempt_is_kept(tmp_path) -> None:
+    # The runner ends a job only when the kind finds its results whole, and a rejected restoration has an attempt and no
+    # variant (platform-8 on main; restore-7 found the same, a rejected clip had ended failed)
+    class Store:
+        def upload_folder(self, sha256: str) -> Path:
+            return tmp_path / sha256[:2] / sha256
+
+    sha, attempt = "e" * 64, "att_" + "1" * 16
+    record = {"state": "rejected", "sourceAssetSha256": sha, "attemptId": attempt}
+    assert not media_jobs._results_stored(Store(), record)
+    attempts = tmp_path / sha[:2] / sha / "attempts"
+    attempts.mkdir(parents=True)
+    (attempts / f"{attempt}.json").write_text("{}")
+    assert media_jobs._results_stored(Store(), record)
+    assert not media_jobs._results_stored(Store(), {**record, "attemptId": "att_" + "2" * 16})
+    assert not media_jobs._results_stored(Store(), {**record, "state": "succeeded", "variantId": "var_" + "1" * 16})
+
+
+def _black_upload(tmp_path: Path, count: int = 6):
+    root = tmp_path / "store"
+    source = tmp_path / "black.mov"
+    black_clip(source, count=count)
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = root / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / "original.mov"
+    original.write_bytes(source.read_bytes())
+    (root / ".partial").mkdir()
+    partials = [str(root / ".partial" / f"{JOB_ID}-clip_encoded.mov.part"), str(root / ".partial" / f"{JOB_ID}-variant.mov.part")]
+    facts = {"mimeType": "video/quicktime", "durationMs": 1000.0 * count / 30, "audioStreams": []}
+    return root, folder, original, sha, partials, facts
+
+
+def test_a_clip_whose_stored_file_differs_from_the_original_is_rejected_with_the_checks_reason(tmp_path, monkeypatch) -> None:
+    root, folder, original, sha, partials, facts = _black_upload(tmp_path)
+    check = clip_io.check_stored_clip
+
+    def differs(*args, **kwargs):
+        kept = check(*args, **kwargs)
+        return clip_io.StoredClipCheck(kept.video_frames, kept.frame_times_equal, kept.audio, False, kept.orientation_equal,
+                                       "audio_differs", kept.last_duration_equal)
+
+    monkeypatch.setattr(clip_io, "check_stored_clip", differs)
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                               None, facts, partials, no_progress, workers=1)
+    assert out["status"] == "rejected", out
+    kept = json.loads((folder / "attempts" / f"{out['attemptId']}.json").read_text())
+    contracts.ProcessingAttempt.model_validate(kept)
+    assert kept["rejection"] == "audio_differs" and "gate" not in kept
+    assert list((root / ".partial").iterdir()) == [] and not (folder / "variants").exists()
+
+
+def test_a_clip_whose_original_changes_while_the_job_runs_fails_and_stores_nothing(tmp_path, monkeypatch) -> None:
+    hashed = media_jobs._sha256
+    for changed_at in (1, 2):
+        # A store of its own each time: an attempt's id is its start, to the millisecond
+        (tmp_path / str(changed_at)).mkdir()
+        root, folder, original, sha, partials, facts = _black_upload(tmp_path / str(changed_at))
+        calls = []
+
+        def changing(path, calls=calls, changed_at=changed_at):
+            calls.append(path)
+            return "0" * 64 if len(calls) == changed_at else hashed(path)
+
+        monkeypatch.setattr(media_jobs, "_sha256", changing)
+        out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                                   None, facts, partials, no_progress, workers=1)
+        assert (out["status"], out.get("failureReason")) == ("failed", media_jobs.CHANGED), changed_at
+        assert list((root / ".partial").iterdir()) == [] and not (folder / "variants").exists()
+
+
+def test_a_clips_bound_is_a_base_and_seconds_for_each_megapixel_of_every_frame_over_its_workers() -> None:
+    # A still's bound is platform-9's (the test above); a clip's: its frames from its duration and rate, rounded up and one more, over the pool's workers
+    clip = {"mediaKind": "video", "width": 1000, "height": 1000, "durationMs": 1000.0, "fpsNumerator": 30000, "fpsDenominator": 1001}
+    assert media_jobs.clip_frame_count(clip) == 31
+    # at three times the worst rate measured on the owner's clips (restore-7), 6.7 s per megapixel of a frame per worker
+    assert media_jobs.CLIP_BOUND_SEC_PER_MEGAPIXEL == 20.0
+    assert media_jobs.bound_s(clip, None) == pytest.approx(120.0 + 20.0 * 31 / media_jobs.frame_pool.default_workers())
+    assert media_jobs.clip_frame_count({"durationMs": 500.0}) == 31
+    assert media_jobs.subject("a" * 64, None) is None
+

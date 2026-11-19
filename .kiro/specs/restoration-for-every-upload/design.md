@@ -438,6 +438,8 @@ it outside every kept region, rounded; where no such sample lies within the aver
 The average reads no kept sample, so the gate computes every kept sample, core and edge, from the original and the
 stored file read back, and compares it within 1 code of 65535: a raised sample in a kept region is refused at any
 size from one code up [tested: AUDIT-B's finding C of 2026-11-19 had one raised in the edge pass at 4 to 64 codes].
+A clip frame's kept regions are stored and checked so on its Y' alone, the edge's blend rounded to the clip's own code
+step (257 sixteen bit codes at 8 bits), so its file holds exactly what the gate computes (restore-7) [tested].
 
 **Raised samples** [proposed for restore-4f]. Outside kept regions and clipped regions, a sample is a point when its
 luma stands 2 codes of 255 (half the stated floor) over the mean of the 16 samples 2 px around it that no kept region
@@ -505,6 +507,22 @@ registered neighbours:
   apertures on `J_k`.
 - For a still, and for a clip frame whose neighbours all failed registration, nothing changes: the one original
   frame decides.
+- As built [tested: restore-7, `gate.py`'s clip section, `tests/media/test_gate.py`, `test_clip_frames.py`,
+  `test_jobs.py`]:
+  - The frames together's stars are `original_stars` run on `J_k`. Those within the match radius of a star of
+    frame k alone are frame k's.
+  - Guard 1 measures each frame that gives every sample of the star's aperture. It uses the frame's own annulus
+    where the frame gives all of it, and `J_k`'s annulus otherwise. A neighbour that gives only part of the aperture
+    is not measured. Each frame's sigma_F is taken on that original frame unmoved. On a test clip, the moved
+    neighbours' lattice gave nan, 0 or a quarter of frame k's sigma_F there, and refused the scene's faint star. A
+    light fixed to the sensor leaves a copy in `J_k` for each neighbour. That copy fails guard 1 on its own
+    neighbour, once that neighbour is measured with part of its annulus outside the frame.
+  - Guard 2 runs at every point the dissolve passes and the gate find, whichever rule confirmed it. A star that it
+    or guard 1 refuses gets no footprint.
+  - A star only `J_k` confirms has no footprint. The filter and the first-scale smoothing leave it whole, and its
+    flux in the variant is compared with its flux on `J_k`.
+  - In a merged frame, every kept region takes back frame k's own original samples before the filter, so the exact
+    check of a kept core holds, as for a still.
 Measured on the owner's clips with the detector's own statistic (M16): an average of 8 registered frames showed
 90 to 415 points per crop that the single frame does not confirm. How many of those the frames together confirm
 and how many guard 2 refuses is for restore-7 to report.
@@ -751,6 +769,18 @@ ffmpeg -y -v error -copyts
   lossless; inference, the FFmpeg wiki page could not be read]. The gate measures what the encode did to star
   flux; if 16 fails the tolerance on real clips the unit lowers it and says so. The value stays [proposed] until
   it is set from restore-7's before and after pictures (section 6).
+  - As built: crf 0, which x264 makes lossless [decided 2026-11-19 by the lead: what is served is the file the gate
+    ran on; a smaller viewing copy would need a gate of its own and is not built now].
+  - The still's gate compares the stored file with the original lifted to within one 16 bit code. On synthetic
+    frames, crf 16 moved a star core's samples by up to 15 codes of 255 between two encodes that were equal there.
+    On the owner's clips, lifted as the job lifts them, it moved a sample by up to 24 to 40 codes. crf 0 moved
+    none, at 1.6 to 3.7 times the bytes, and at either value two encodes of one input were byte-equal [tested].
+  - The gate on a clip compares the Y' plane alone, scaled to 16 bit codes, so one such code asks for equal codes.
+    A 4:2:0 chroma sample covers two by two pixels, so at a kept core's edge it holds light from outside the core.
+  - The gate's flux check on a clip compares the variant, lift undone, with the original lifted and stored as the
+    job stores it, lift undone, as `expected` does for samples. Compared with the original's own light, an 8 bit store
+    of a lift of 16, its chroma at half resolution again, moved a bright star's core by up to 0.13 of white on the
+    owner's clips. Their empty apertures measured 1e-5, so every honest frame was refused [tested: restore-7].
 - A 10 bit clip: `libx265` with `-pix_fmt yuv420p10le`, the colour fields in `-x265-params` as well, `-tag:v
   hvc1`. The job asks `ffmpeg -encoders` first and fails plainly without the encoder.
 - Two runs must write the same bytes (REQ-RST-5.4). x264 is expected to give the same stream for the same input,
@@ -793,6 +823,35 @@ resident size (`resource.getrusage`), and P-RST-17 holds the bound.
 takes, at each pixel, frame `k` and the samples each neighbour may give there (inside its frame once moved, in a
 block that held, not a codec copy); `U_k` takes the same frames at each pixel, unmoved. A codec copy carries the
 previous frame's light, not this frame's, so it is left out of both, as the merge leaves it out.
+
+**A clip through the job, as built** [tested: restore-7, `jobs.py`, `clip_frames.py`, `tests/media/test_jobs.py`]. In
+the media child:
+- The original is hashed, then probed.
+- A first decode keeps the 8 measure frames. The noise table and the lift are measured once from them.
+- A second decode feeds the pool. Each frame is prepared in the photo path's order (`clip_frames.prepare_frame`),
+  goes through the dissolve passes and is lifted. The frames come back in order to the encoder, under the job's
+  partial name.
+- When the clip carries an orientation, the orientation pass follows. The stored-clip checks then run.
+- A third decode pairs each original frame with its stored frame. The pool gates every frame
+  (`clip_frames.gate_run`), with the window, the frames together and the stars rebuilt from the original frames
+  alone. `gate.clip_record` adds the frames' counts up.
+- The original is hashed again. The variant is moved into its folder from the partial file, and the partial
+  files are removed on every other way out.
+
+Other choices as built:
+- Without a noise table nothing changes a frame, so every point is the original's own and the dissolve passes are
+  left out (exact: a test runs them and compares).
+- The job's child is a daemonic process. The pool clears the child's own daemon flag, since multiprocessing forbids a
+  daemon to start children. A stop of the child's group still ends the workers [tested].
+- The bound counts a clip's frames from its record's duration and rate, rounded up and one more, at 60 frames a
+  second where the record gives no rate [proposed]. It divides them by the pool's workers. Its rate is 20 s for each
+  megapixel of a frame, not 6 [proposed]: three times the worst rate measured on the owner's clips, 6.7 s per
+  megapixel of a frame for each of 2 workers, under a load of 13 to 19 [tested]. At black, every frame's hundreds of
+  stars are found twice, once to restore it and once to gate it, and the gate also searches for points and checks
+  each star's flux.
+- The variant's `frameTimesSha256` is the SHA-256 of the canonical JSON of {"timeBase": "n/d", "frameTimes": [...]}
+  [proposed].
+- `ALBEDIAN_MEDIA_WORKERS` holds the pool under its default for agents' test runs. The product sets nothing.
 
 **What to expect on the owner's clips** [tested, M16]. Two of three are recorded almost entirely at black, with
 nothing measurable to reduce and one code step above black to lift; their honest result is a nearly unchanged clip

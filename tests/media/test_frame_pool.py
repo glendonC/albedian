@@ -246,6 +246,7 @@ def test_a_pool_of_no_workers_is_refused() -> None:
 
 @pytest.mark.parametrize("cores,expected", [(None, 1), (1, 1), (2, 1), (3, 1), (4, 2), (18, 9)])
 def test_the_default_pool_is_half_the_cores_and_at_least_one(monkeypatch: pytest.MonkeyPatch, cores, expected) -> None:
+    monkeypatch.delenv(frame_pool.WORKERS_LIMIT_ENV, raising=False)
     monkeypatch.setattr(os, "cpu_count", lambda: cores)
     assert frame_pool.default_workers() == expected
 
@@ -254,3 +255,41 @@ def test_every_numeric_constant_of_the_pool_names_its_source() -> None:
     constants = numeric_constants(frame_pool)
     assert constants
     assert [f"{line} {name}" for name, line, comment in constants if not any(m in comment for m in SOURCE_MARKERS)] == []
+
+
+def test_the_pools_size_can_be_held_under_the_default_and_never_above_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Agents' test runs stay within two processes (restore-7); the product sets nothing and takes half the cores
+    monkeypatch.setattr(os, "cpu_count", lambda: 18)
+    monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, "2")
+    assert frame_pool.default_workers() == 2
+    monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, "40")
+    assert frame_pool.default_workers() == 9
+    for refused in ("0", "-1", "two", ""):
+        monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, refused)
+        assert frame_pool.default_workers() == 9
+    monkeypatch.delenv(frame_pool.WORKERS_LIMIT_ENV)
+    assert frame_pool.default_workers() == 9
+
+
+def _pool_in_a_daemon(out) -> None:
+    try:
+        with frame_pool.FramePool(square_own, workers=2) as pool:
+            out.send(("ok", list(pool.map(frame_pool.runs(iter(range(6)), run_frames=2, window=0)))))
+    except BaseException as error:  # noqa: BLE001 - the parent reads what the child met
+        out.send(("refused", type(error).__name__))
+
+
+def test_a_pool_runs_inside_a_daemonic_child_as_the_jobs_media_child_is() -> None:
+    # services/science/bounded_worker.py starts the job's child as a daemon, which multiprocessing forbids to start
+    # children of its own
+    context = multiprocessing.get_context("spawn")
+    parent, child_end = context.Pipe()
+    process = context.Process(target=_pool_in_a_daemon, args=(child_end,), daemon=True)
+    process.start()
+    try:
+        assert parent.poll(60), "the child did not answer"
+        assert parent.recv() == ("ok", [0, 1, 4, 9, 16, 25])
+    finally:
+        process.join(30)
+        if process.is_alive():
+            process.kill()
