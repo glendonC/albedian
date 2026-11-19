@@ -42,6 +42,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
 from pydantic import ValidationError
 
+from services.contracts.alignment import PersonAlignment
 from services.contracts.ingest import JOB_ID_PATTERN, IngestReceipt
 from services.contracts.pointing import POINTING_RULES, PointingRecord
 from services.contracts.pointing_reply import (
@@ -307,15 +308,51 @@ def get_ingest_original(sha256: str = _sha256_path(), store: IngestStore = Depen
     )
 
 
+# C15 (.lead/uiux/UIUX-alignwords-READY.md, decided 2026-11-19 12:35): a solve sent with a body that is not a person's
+# alignment, a client's fault, and an alignment for an upload whose sky cannot be drawn
+NOT_AN_ALIGNMENT = "The alignment sent with this solve does not meet the contract, so the photo was not solved from it."
+
+
+def alignment_needs_moment(asset: dict[str, Any]) -> Optional[str]:
+    """C15's first sentence for an upload with no capture time or no place, built as the web's own no-sky sentence is
+    (apps/web/src/services/skyLayerWords.ts noSkyReason); None when the upload has both. [open] A photo whose time or
+    place only its pointing record gives is refused here until align-2's wiring reads the lent moment."""
+    clip = str(asset.get("mimeType") or "").startswith("video/")
+    kind, taken = ("clip", "recorded") if clip else ("photo", "taken")
+    captured = asset.get("capturedAtUTC")
+    has_time = isinstance(captured, str) and captured != ""
+    has_place = asset.get("observerLocation") is not None
+    if has_time and has_place:
+        return None
+    which = "when or where" if not has_time and not has_place else "when" if not has_time else "where"
+    return f"Your {kind} does not say {which} it was {taken}, so its sky cannot be lined up by hand."
+
+
 @router.post("/api/ingest/{sha256}/solve", status_code=202)
-def start_ingest_solve_job(
-    sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
+async def start_ingest_solve_job(
+    request: Request, sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
 ) -> JSONResponse:
     """Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate
     denominators. It answers at once: 202 with a new job, 200 with the active job it joined or the current succeeded
-    one. Follow the job at `GET /api/ingest/jobs/{job_id}`."""
+    one. Follow the job at `GET /api/ingest/jobs/{job_id}`.
+
+    An optional JSON body is a person's alignment of the predicted sky (`PersonAlignment`, D24's Solve from here):
+    that solve is its own job, keyed by the alignment, and its record keeps it. A body that is not one, or one for an
+    upload with no capture time or place, is refused (422) in the design lane's words (C15)."""
+    body = await request.body()
+    alignment: dict[str, Any] | None = None
+    if body:
+        try:
+            alignment = PersonAlignment.model_validate(_json_text(body)).to_wire_dict()
+        except (_NotJson, _NoRecordText, ValidationError, RecursionError, ValueError):
+            raise HTTPException(status_code=422, detail=NOT_AN_ALIGNMENT) from None
+        record = store.read_record(sha256)
+        if record is not None:
+            needs = alignment_needs_moment(record.get("sourceAsset") or {})
+            if needs is not None:
+                raise HTTPException(status_code=422, detail=needs)
     try:
-        job, created = runner_for(store).start(sha256, "solve")
+        job, created = await run_in_threadpool(runner_for(store).start, sha256, "solve", alignment)
     except NoUpload:
         raise HTTPException(status_code=404, detail="no file with that hash is stored") from None
     return JSONResponse(job, status_code=202 if created else 200)

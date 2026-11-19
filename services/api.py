@@ -223,7 +223,8 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/ingest": None,
     "/api/ingest/{sha256}": 0,
     "/api/ingest/{sha256}/original": 0,
-    "/api/ingest/{sha256}/solve": 0,
+    # A person's alignment sent with Solve from here (align-2s): under 200 bytes of JSON (services/contracts/alignment.py)
+    "/api/ingest/{sha256}/solve": BODY_LIMIT_FLOOR,
     "/api/ingest/jobs/{job_id}": 0,
     "/api/ingest/jobs/{job_id}/predicted-sky": 0,
     "/api/ingest/jobs/{job_id}/cancel": 0,

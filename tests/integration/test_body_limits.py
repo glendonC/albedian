@@ -37,6 +37,7 @@ import uvicorn
 from uvicorn.protocols.http.flow_control import HIGH_WATER_LIMIT
 
 from services import api
+from services.ingest import router as ingest_router
 
 # A value for each path parameter the routes use, so every row is reached by a real path
 SAMPLE_PARAMS = {"sha256": "0" * 64, "job_id": "job_" + "0" * 16, "variant_id": "var_" + "0" * 16}
@@ -64,6 +65,8 @@ MEASURED_LARGEST_BODY = {
     POINTING_PATH: 1_936,
     # A display copy asked with an exposure, which the contract refuses (tests/media/test_jobs.py)
     "/api/media/{sha256}/restore": 41,
+    # A person's alignment with one unknown key, which the contract refuses (test_aligned_solve_route.py, align-2s)
+    SOLVE_JOB_PATH: 177,
 }
 
 
@@ -216,7 +219,7 @@ def test_only_the_upload_route_has_no_limit_and_routes_with_no_body_take_none() 
     takes_body = {
         route.path
         for route in iter_route_contexts(app.routes)
-        if getattr(route, "body_field", None) is not None or route.path in (UPLOAD_PATH, POINTING_PATH)
+        if getattr(route, "body_field", None) is not None or route.path in (UPLOAD_PATH, POINTING_PATH, SOLVE_JOB_PATH)
     }
     for path, limit in api.BODY_LIMITS.items():
         if path not in takes_body:
@@ -364,11 +367,14 @@ def test_the_voice_route_refuses_a_body_over_its_limit_sent_in_pieces(app: FastA
         assert exchange.pieces_pulled == math.ceil((limit_of(VOICE_PATH) + 1) / 4096)
 
 
-def test_a_solve_start_with_a_body_is_refused_before_a_job_is_made(app: FastAPI, tmp_path: Any) -> None:
+def test_a_solve_start_with_a_body_that_is_not_an_alignment_is_refused_before_a_job_is_made(
+    app: FastAPI, tmp_path: Any
+) -> None:
+    # Since align-2s the solve route takes a person's alignment; any other body is refused in C15's words
     path = sample_path(SOLVE_JOB_PATH)
     exchange = drive(app, "POST", path, [b"{}"], [("content-type", "application/json")])
-    assert exchange.status == 413
-    assert exchange.json() == refusal(0)
+    assert exchange.status == 422
+    assert exchange.json() == {"detail": ingest_router.NOT_AN_ALIGNMENT}
     assert not (tmp_path / "ingest").exists() or not any((tmp_path / "ingest").rglob("job*.json"))
 
 

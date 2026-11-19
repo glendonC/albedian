@@ -311,7 +311,8 @@ class Runner:
             raise NoUpload("no stored upload with that hash")
         if kind.name in MEDIA_JOB_KINDS and request is None:
             raise ValueError("a media job names its request")
-        subject = kind.subject(sha256, request)
+        # A media job's subject is its kind's; a solve's its alignment's, by the store's one rule (align-2s)
+        subject = kind.subject(sha256, request) if kind.name in MEDIA_JOB_KINDS else solve_subject(sha256, request)
         key = (sha256, kind.name, subject)
         lock = self.store.lock_path(sha256, kind.name, subject)
         waited_until = time.monotonic() + JOIN_ELSEWHERE_BOUND_SEC

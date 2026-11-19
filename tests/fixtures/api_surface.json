@@ -816,7 +816,7 @@
       "/api/ingest/{sha256}/solve": {
         "post": {
           "summary": "Start Ingest Solve Job",
-          "description": "Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate\ndenominators. It answers at once: 202 with a new job, 200 with the active job it joined or the current succeeded\none. Follow the job at `GET /api/ingest/jobs/{job_id}`.",
+          "description": "Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate\ndenominators. It answers at once: 202 with a new job, 200 with the active job it joined or the current succeeded\none. Follow the job at `GET /api/ingest/jobs/{job_id}`.\n\nAn optional JSON body is a person's alignment of the predicted sky (`PersonAlignment`, D24's Solve from here):\nthat solve is its own job, keyed by the alignment, and its record keeps it. A body that is not one, or one for an\nupload with no capture time or place, is refused (422) in the design lane's words (C15).",
           "operationId": "start_ingest_solve_job_api_ingest__sha256__solve_post",
           "parameters": [
             {
@@ -1812,7 +1812,7 @@
           "/api/ingest": null,
           "/api/ingest/{sha256}": 0,
           "/api/ingest/{sha256}/original": 0,
-          "/api/ingest/{sha256}/solve": 0,
+          "/api/ingest/{sha256}/solve": 65536,
           "/api/ingest/jobs/{job_id}": 0,
           "/api/ingest/jobs/{job_id}/predicted-sky": 0,
           "/api/ingest/jobs/{job_id}/cancel": 0,
@@ -1943,7 +1943,7 @@
       "body": "Invalid host header"
     },
     "a body on a route that takes none": {
-      "request": "POST /api/ingest/0000000000000000000000000000000000000000000000000000000000000000/solve",
+      "request": "POST /api/ingest/jobs/job_0000000000000000/cancel",
       "status": 413,
       "headers": {
         "vary": "Origin"
