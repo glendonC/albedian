@@ -365,11 +365,11 @@ describe('the app starts an upload from the home', () => {
       const file = choosePhotoOnHome(container);
       expect(createObjectURL).toHaveBeenCalledWith(file);
       expect(q(HOME_SCREEN)).toBeNull();
-      // The upload's first sentence names the chosen file; what follows depends on the server
+      // The working screen shows at once, with the chosen file's own bytes as the browser counts them
+      expect(q('[data-testid="working-screen"] .work-size')!.textContent).toBe('0.000004 MB');
+      expect(q('[data-testid="voice-command-hud"]')).toBeNull();
       await act(async () => {
-        await vi.waitFor(() => {
-          expect(q('[data-testid="voice-status-banner"]')?.textContent).toContain(`"${file.name}"`);
-        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
       });
     } finally {
       if (before) Object.defineProperty(URL, 'createObjectURL', before);

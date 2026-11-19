@@ -1,0 +1,377 @@
+// @vitest-environment jsdom
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import postcss from 'postcss';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LOOK_ICON_PATHS } from '../../look/index.js';
+import type { Arrival } from '../arrival.js';
+import { cornerPaths } from '../cornerPaths.js';
+import { WorkingScreen } from '../WorkingScreen.js';
+
+// The working screen (arrive, approved 2026-11-12, laptop screen 3) and the failed job on it (failed, decided
+// 2026-11-12). Every size and colour is the approved pages' (#l-work in .cache/uiux/arrive/index.html, #w-failed in
+// .cache/uiux/web1/index.html); every word is theirs or the job's own.
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+
+let container: HTMLDivElement;
+let root: Root;
+beforeEach(() => {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.restoreAllMocks();
+});
+
+const BYTES = 2_382_523;
+const stage = (name: string, unit: string, done: number, total: number | null) => ({ stage: name, unit, done, total });
+const WORKING_JOB = {
+  state: 'running',
+  stages: [stage('store', 'bytes', BYTES, BYTES), stage('decode', 'frames', 1, 1), stage('detect', 'frames', 1, 1), stage('solve', 'candidates', 2080, 4160)],
+};
+function arrival(over: Partial<Arrival> = {}): Arrival {
+  return { fileName: 'night.jpg', byteSize: BYTES, stored: true, widthPx: 3024, heightPx: 4032, job: WORKING_JOB, failure: null, ...over };
+}
+const FAILED = arrival({
+  job: { ...WORKING_JOB, state: 'failed', error: 'The solve stopped on an internal error.' },
+  failure: { sentence: 'The solve stopped on an internal error.', canTryAgain: true },
+});
+// The 3:4 sample's place at 1440 by 900, as the approved page draws it
+const RECT = { leftPx: 382.5, topPx: 0, widthPx: 675, heightPx: 900 };
+
+const noop = () => {};
+function show(props: Partial<Parameters<typeof WorkingScreen>[0]> = {}) {
+  act(() => {
+    root.render(createElement(WorkingScreen, { arrival: arrival(), photoRect: RECT, onTryAgain: noop, onUploadAnother: noop, ...props }));
+  });
+}
+const q = (selector: string) => container.querySelector(selector);
+const rows = () => [...container.querySelectorAll('.work-step')];
+const iconPath = (el: Element | null) => el?.querySelector('svg.look-i path')?.getAttribute('d') ?? null;
+
+function declarationsOf(selector: string): Record<string, string> {
+  const found: Record<string, string> = {};
+  let rules = 0;
+  postcss.parse(css).walkRules((rule) => {
+    if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+    rules += 1;
+    rule.walkDecls((decl) => {
+      found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+    });
+  });
+  expect(rules, selector).toBe(1);
+  return found;
+}
+
+describe('the viewfinder corners at the exact frame', () => {
+  it("draws the approved page's four corners for the sample's frame: 18 px inside the photo, 18 px legs", () => {
+    expect(cornerPaths(RECT)).toEqual(['M400.5 36V18H418.5', 'M1039.5 36V18H1021.5', 'M400.5 864V882H418.5', 'M1039.5 864V882H1021.5']);
+  });
+
+  it('follows the photo wherever it is drawn', () => {
+    expect(cornerPaths({ leftPx: 0, topPx: 118, widthPx: 390, heightPx: 520 })).toEqual([
+      'M18 154V136H36',
+      'M372 154V136H354',
+      'M18 602V620H36',
+      'M372 602V620H354',
+    ]);
+  });
+});
+
+describe('WorkingScreen: the approved working screen, word for word', () => {
+  it('shows the logo at 21 px, the file size line and the five rows, and no other word', () => {
+    show();
+    const screen = q('[data-testid="working-screen"]')!;
+    const logo = screen.querySelector('.look-logo') as HTMLElement;
+    expect(logo.getAttribute('aria-label')).toBe('Albedian');
+    expect(logo.style.getPropertyValue('--look-logo-fs')).toBe('21px');
+    expect(q('.work-size')!.textContent).toBe('3024 × 4032 · 2.4 MB');
+    expect(rows().map((row) => row.querySelector('.work-step__word')!.textContent)).toEqual(['Saved', 'Opened', 'Measured', 'Matching', 'Checking']);
+    expect(screen.textContent).toBe('albedian3024 × 4032 · 2.4 MBSaved2.4 MBOpenedMeasuredMatching2,080 of 4,160Checking');
+    // The logo is the one button: it returns to the home, and nothing is written on it
+    expect([...screen.querySelectorAll('button')].map((b) => b.className)).toEqual(['work-word']);
+    expect(q('.work-why')).toBeNull();
+  });
+
+  it('marks finished rows with a check, the row being worked with a filled dot, a row not started with a hollow dot', () => {
+    show();
+    const [saved, opened, measured, matching, checking] = rows();
+    for (const row of [saved!, opened!, measured!]) {
+      expect(row.className).toBe('work-step is-done');
+      expect(iconPath(row.querySelector('.work-step__mark'))).toBe(LOOK_ICON_PATHS.check);
+      expect(row.querySelector('.work-step__dot')).toBeNull();
+    }
+    expect(matching!.className).toBe('work-step is-now');
+    expect(matching!.querySelector('.work-step__dot')).not.toBeNull();
+    expect(matching!.querySelector('svg')).toBeNull();
+    expect(matching!.getAttribute('aria-current')).toBe('step');
+    expect(checking!.className).toBe('work-step is-next');
+    expect(checking!.querySelector('.work-step__dot')).not.toBeNull();
+    for (const row of [saved!, opened!, measured!, checking!]) expect(row.hasAttribute('aria-current')).toBe(false);
+    // The marks are drawings: a screen reader hears the words and counts only
+    for (const mark of container.querySelectorAll('.work-step__mark')) expect(mark.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it("writes each row's count, and draws the bar only on the row being worked, as wide as done over total", () => {
+    show();
+    expect(rows().map((row) => row.querySelector('.work-step__value')!.textContent)).toEqual(['2.4 MB', '', '', '2,080 of 4,160', '']);
+    const bars = [...container.querySelectorAll('.work-step__bar')];
+    expect(bars).toHaveLength(1);
+    expect(bars[0]!.closest('.work-step')).toBe(rows()[3]);
+    expect((bars[0]!.firstElementChild as HTMLElement).style.width).toBe('50%');
+  });
+
+  it('draws the bar from the real fraction, to a thousandth of a percent', () => {
+    show({ arrival: arrival({ job: { state: 'running', stages: [stage('store', 'bytes', BYTES, BYTES), stage('decode', 'frames', 1, 3)] } }) });
+    expect((q('.work-step__bar')!.firstElementChild as HTMLElement).style.width).toBe('33.333%');
+  });
+
+  it('draws no bar and no count while a total is not known', () => {
+    show({ arrival: arrival({ job: { state: 'running', stages: [stage('store', 'bytes', BYTES, BYTES), stage('decode', 'frames', 9, null)] } }) });
+    expect(q('.work-step__bar')).toBeNull();
+    expect(rows()[1]!.className).toBe('work-step is-now');
+    expect(rows()[1]!.querySelector('.work-step__value')!.textContent).toBe('');
+  });
+
+  it('draws the four corners at the photo, and none while there is no photo on screen', () => {
+    show();
+    const paths = [...container.querySelectorAll('svg.photo-corners path')].map((p) => p.getAttribute('d'));
+    expect(paths).toEqual(cornerPaths(RECT));
+    expect(q('svg.photo-corners')!.getAttribute('aria-hidden')).toBe('true');
+    show({ photoRect: null });
+    expect(q('svg.photo-corners')).toBeNull();
+  });
+
+  it('shows the bytes alone, and Saved as the row being worked, while the file is being sent', () => {
+    show({ arrival: arrival({ stored: false, widthPx: null, heightPx: null, job: null }), photoRect: null });
+    expect(q('.work-size')!.textContent).toBe('2.4 MB');
+    expect(rows().map((row) => row.className)).toEqual(['work-step is-now', 'work-step is-next', 'work-step is-next', 'work-step is-next', 'work-step is-next']);
+  });
+});
+
+describe('WorkingScreen: the logo returns to the home', () => {
+  it('is a real button named Albedian that tells its listener once per press, while working and after a failure', () => {
+    const onHome = vi.fn();
+    show({ onHome });
+    const logo = q('[data-testid="working-home"]') as HTMLButtonElement;
+    expect(logo.tagName).toBe('BUTTON');
+    expect(logo.type).toBe('button');
+    expect(logo.querySelector('.look-logo')!.getAttribute('aria-label')).toBe('Albedian');
+    act(() => logo.click());
+    expect(onHome).toHaveBeenCalledTimes(1);
+    show({ arrival: FAILED, onHome });
+    act(() => (q('[data-testid="working-home"]') as HTMLButtonElement).click());
+    expect(onHome).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('WorkingScreen: a failed job (decided 2026-11-12)', () => {
+  it("says the job's own sentence above the rows as an alert, with Try again and Upload another", () => {
+    show({ arrival: FAILED });
+    const why = q('.work-why')!;
+    expect(why.getAttribute('role')).toBe('alert');
+    expect(why.querySelector('p')!.textContent).toBe('The solve stopped on an internal error.');
+    const again = why.querySelector('button.look-main')!;
+    expect(again.textContent).toBe('Try again');
+    expect(again.classList.contains('look-size-compact')).toBe(true);
+    expect(iconPath(again)).toBe(LOOK_ICON_PATHS['arrow-clockwise']);
+    expect(again.querySelector('svg.look-i')!.classList.contains('look-turn')).toBe(false);
+    const another = why.querySelector('button.look-second')!;
+    expect(another.textContent).toBe('Upload another');
+    expect(why.querySelectorAll('button')).toHaveLength(2);
+    expect(container.querySelectorAll('button')).toHaveLength(3);
+    expect(q('[data-testid="working-screen"]')!.textContent).toBe(
+      'albedian3024 × 4032 · 2.4 MBThe solve stopped on an internal error.Try againUpload anotherSaved2.4 MBOpenedMeasuredMatching2,080 of 4,160Checking'
+    );
+  });
+
+  it('marks the stage it stopped at with an x, keeps its count and bar, and leaves the later stages not started', () => {
+    show({ arrival: FAILED });
+    const [, , , matching, checking] = rows();
+    expect(matching!.className).toBe('work-step is-failed');
+    expect(iconPath(matching!.querySelector('.work-step__mark'))).toBe(LOOK_ICON_PATHS.x);
+    expect(matching!.querySelector('.work-step__value')!.textContent).toBe('2,080 of 4,160');
+    expect((matching!.querySelector('.work-step__bar')!.firstElementChild as HTMLElement).style.width).toBe('50%');
+    expect(matching!.hasAttribute('aria-current')).toBe(false);
+    expect(checking!.className).toBe('work-step is-next');
+  });
+
+  it('starts the same work again once per press of Try again', () => {
+    const onTryAgain = vi.fn();
+    show({ arrival: FAILED, onTryAgain });
+    act(() => (q('button.look-main') as HTMLButtonElement).click());
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops Try again when the same work cannot start again, and keeps Upload another', () => {
+    show({ arrival: { ...FAILED, failure: { sentence: 'The solve stopped on an internal error.', canTryAgain: false } } });
+    expect(q('button.look-main')).toBeNull();
+    expect(q('button.look-second')!.textContent).toBe('Upload another');
+  });
+
+  it('opens its own picker from Upload another, hands the chosen file on once, and empties the picker', () => {
+    const onUploadAnother = vi.fn();
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+    show({ arrival: FAILED, onUploadAnother });
+    const input = q('[data-testid="working-file-input"]') as HTMLInputElement;
+    expect(input.type).toBe('file');
+    expect(input.accept).toBe('image/*,video/*');
+    expect(input.tabIndex).toBe(-1);
+    expect(input.getAttribute('aria-hidden')).toBe('true');
+    act(() => (q('button.look-second') as HTMLButtonElement).click());
+    expect(click).toHaveBeenCalledTimes(1);
+    const file = new File([new Uint8Array([0xff, 0xd8])], 'other.jpg', { type: 'image/jpeg' });
+    const written: string[] = [];
+    Object.defineProperty(input, 'value', { configurable: true, get: () => '', set: (v: string) => void written.push(v) });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    act(() => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(onUploadAnother).toHaveBeenCalledTimes(1);
+    expect(onUploadAnother).toHaveBeenCalledWith(file);
+    expect(written).toEqual(['']);
+  });
+
+  it('chooses nothing when the picker closes with no file', () => {
+    const onUploadAnother = vi.fn();
+    show({ arrival: FAILED, onUploadAnother });
+    const input = q('[data-testid="working-file-input"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [], configurable: true });
+    act(() => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(onUploadAnother).not.toHaveBeenCalled();
+  });
+
+  it('has no picker while nothing has failed: the working screen offers no other upload', () => {
+    show();
+    expect(q('[data-testid="working-file-input"]')).toBeNull();
+  });
+});
+
+describe("the working screen's rules are the approved pages'", () => {
+  it('places the logo, the size line and the rows where the approved page has them', () => {
+    expect(declarationsOf('.work-word')).toEqual({ all: 'unset', position: 'absolute', left: '36px', top: '30px', cursor: 'pointer', 'pointer-events': 'auto' });
+    expect(declarationsOf('.work-word:focus-visible')).toEqual({
+      outline: 'var(--look-focus-width) solid var(--look-ink)',
+      'outline-offset': 'var(--look-focus-offset)',
+    });
+    expect(declarationsOf('.work-size')).toEqual({
+      position: 'absolute',
+      left: '36px',
+      top: '66px',
+      margin: '0',
+      font: '400 13px / 1.55 var(--look-font-sans)',
+      'letter-spacing': '-0.005em',
+      color: 'var(--look-ink-2)',
+      'font-variant-numeric': 'tabular-nums',
+    });
+    expect(declarationsOf('.work-steps')).toEqual({
+      position: 'absolute',
+      left: '36px',
+      bottom: '40px',
+      width: '300px',
+      display: 'grid',
+      gap: '4px',
+      margin: '0',
+      padding: '0',
+      'list-style': 'none',
+    });
+  });
+
+  it('lays a row out as a 24 px mark, the word, and the count at the right, 15 px type with even figures', () => {
+    expect(declarationsOf('.work-step')).toEqual({
+      display: 'grid',
+      'grid-template-columns': '24px 1fr auto',
+      'grid-template-rows': '30px auto',
+      'align-items': 'center',
+      font: '400 15px / 1 var(--look-font-sans)',
+      'letter-spacing': '-0.01em',
+      'font-variant-numeric': 'tabular-nums',
+    });
+    expect(declarationsOf('.work-step__mark')).toEqual({ '--look-ic': '14px', display: 'grid', 'place-items': 'start', color: 'var(--look-ink-2)' });
+    expect(declarationsOf('.work-step__dot')).toEqual({
+      width: '7px',
+      height: '7px',
+      'margin-left': '3px',
+      'box-sizing': 'border-box',
+      'border-radius': '50%',
+      border: '1px solid var(--look-ink-3)',
+    });
+  });
+
+  it('colours each state as approved: done quieter, not started quietest, the worked row in ink with a filled dot', () => {
+    expect(declarationsOf('.work-step.is-done')).toEqual({ color: 'var(--look-ink-2)' });
+    expect(declarationsOf('.work-step.is-next')).toEqual({ color: 'var(--look-ink-3)' });
+    expect(declarationsOf('.work-step.is-now .work-step__dot')).toEqual({ background: 'var(--look-ink)', 'border-color': 'var(--look-ink)' });
+    expect(declarationsOf('.work-step.is-failed')).toEqual({ color: 'var(--look-ink)' });
+    expect(declarationsOf('.work-step.is-failed .work-step__mark')).toEqual({ color: 'var(--look-ink)' });
+  });
+
+  it('draws the bar 2 px high under the word and the count, in ink, and grey on a stopped row', () => {
+    expect(declarationsOf('.work-step__bar')).toEqual({
+      'grid-column': '2 / 4',
+      height: '2px',
+      margin: '2px 0 8px',
+      overflow: 'hidden',
+      'border-radius': '2px',
+      background: 'var(--look-hair)',
+    });
+    expect(declarationsOf('.work-step__bar b')).toEqual({ display: 'block', height: '100%', background: 'var(--look-ink)' });
+    expect(declarationsOf('.work-step.is-failed .work-step__bar b')).toEqual({ background: 'var(--look-ink-3)' });
+  });
+
+  it("sets the failed job's sentence in Geist 300 at 24 px above the rows, the two buttons 10 px apart, the size line 4 px lower", () => {
+    expect(declarationsOf('.work-why')).toEqual({
+      position: 'absolute',
+      left: '36px',
+      bottom: '262px',
+      width: '300px',
+      display: 'grid',
+      gap: '18px',
+      'justify-items': 'start',
+    });
+    expect(declarationsOf('.work-why p')).toEqual({
+      margin: '0',
+      font: '300 24px / 1.2 var(--look-font-sans)',
+      'letter-spacing': '-0.03em',
+      'text-wrap': 'balance',
+    });
+    expect(declarationsOf('.work-acts')).toEqual({ display: 'flex', gap: '10px' });
+    expect(declarationsOf('.work-acts .look-main')).toEqual({ '--look-ic': '15px' });
+    expect(declarationsOf('.work-screen.is-failed .work-size')).toEqual({ top: '70px' });
+  });
+
+  it('lets the pointer through to the photo everywhere but its own buttons, which take it', () => {
+    expect(declarationsOf('.work-screen')).toMatchObject({ position: 'fixed', inset: '0', 'pointer-events': 'none' });
+    expect(declarationsOf('.work-acts .look-main, .work-acts .look-second')).toEqual({ 'pointer-events': 'auto' });
+    expect(declarationsOf('.work-word')['pointer-events']).toBe('auto');
+  });
+
+  it("draws the corners in the approved page's stroke", () => {
+    expect(declarationsOf('.photo-corners')).toEqual({
+      position: 'fixed',
+      inset: '0',
+      width: '100%',
+      height: '100%',
+      'pointer-events': 'none',
+    });
+    expect(declarationsOf('.photo-corners path')).toEqual({ fill: 'none', stroke: 'rgba(244, 243, 239, 0.7)', 'stroke-width': '1.2' });
+  });
+
+  it('moves nothing of its own: no animation and no transition in the working rules', () => {
+    const rules = css.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.(work|photo)-[^{]*\{[^}]*\}/g) ?? [];
+    expect(rules.length).toBeGreaterThanOrEqual(20);
+    for (const rule of rules) expect(rule).not.toMatch(/transition|animation/);
+  });
+});

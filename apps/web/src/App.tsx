@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionContext,
   CelestialFinding,
+  IngestReceipt,
   ObservationSession,
 } from '@albedian/contracts';
 import {
@@ -17,8 +18,11 @@ import {
   UploadRefusedError,
   failureReason,
   fetchDiscoveredMedia,
+  solveStoredUpload,
   uploadAndSolveMedia,
+  type UploadEvent,
 } from './services/apiClient.js';
+import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import {
   applyVoiceBackendReply,
   askVoiceBackend,
@@ -41,13 +45,15 @@ import './styles/albedian.css';
  * Upload a chosen file and solve it. Nothing about the file is known until the server's receipt
  * arrives, so until then the session stays empty and says it is uploading; a refused upload says
  * why and that nothing was stored, and `onRefused` hears the server's own words (or null) for the home.
- * A 5xx answer or no answer proves no refusal, so it is not one.
+ * A 5xx answer or no answer proves no refusal, so it is not one: `onEvent`, which hears every step of the upload
+ * and its solve for the working screen, hears it as a failure with the sentence the status line already says.
  */
 export async function ingestAndSolveUploadedFile(
   file: File,
   localObjectUrl: string,
   onSessionUpdate: (session: ObservationSession) => void,
-  onRefused?: (detail: string | null) => void
+  onRefused?: (detail: string | null) => void,
+  onEvent?: (event: UploadEvent) => void
 ): Promise<ObservationSession> {
   onSessionUpdate({
     ...createEmptyObservationSession(),
@@ -58,21 +64,22 @@ export async function ingestAndSolveUploadedFile(
     return await uploadAndSolveMedia(file, file.name, {
       localObjectUrl,
       onSessionUpdate,
+      onEvent,
     });
   } catch (err) {
-    const notStored: ObservationSession = {
-      ...createEmptyObservationSession(),
-      lastStatusBanner:
-        err instanceof UploadRefusedError
-          ? err.status >= 500
-            ? // A 5xx proves neither outcome: the dev proxy answers 500 with no backend at all, and a
-              // crash in the router answers 500 too, so say only that the upload did not finish
-              `The upload of "${file.name}" did not finish: ${err.reason}.`
-            : `Not stored: ${err.reason} ("${file.name}").`
-          : `The upload of "${file.name}" did not finish: ${failureReason(err)}.`,
-    };
+    const refused = err instanceof UploadRefusedError && err.status < 500;
+    const sentence =
+      err instanceof UploadRefusedError
+        ? err.status >= 500
+          ? // A 5xx proves neither outcome: the dev proxy answers 500 with no backend at all, and a
+            // crash in the router answers 500 too, so say only that the upload did not finish
+            `The upload of "${file.name}" did not finish: ${err.reason}.`
+          : `Not stored: ${err.reason} ("${file.name}").`
+        : `The upload of "${file.name}" did not finish: ${failureReason(err)}.`;
+    const notStored: ObservationSession = { ...createEmptyObservationSession(), lastStatusBanner: sentence };
     onSessionUpdate(notStored);
-    if (err instanceof UploadRefusedError && err.status < 500) onRefused?.(err.detail);
+    if (refused) onRefused?.((err as UploadRefusedError).detail);
+    else onEvent?.({ kind: 'failed', sentence, job: null });
     return notStored;
   }
 }
@@ -97,6 +104,10 @@ export const App: React.FC = () => {
   const [uploadRefusal, setUploadRefusal] = useState<HomeRefusal | null>(null);
   // The file chosen last: an older upload's refusal arriving after another choice is not shown
   const latestChoiceRef = useRef<File | null>(null);
+  // The upload on its way to a solved sky, for the working screen; none once its sky is solved or it was refused
+  const [arrival, setArrival] = useState<Arrival | null>(null);
+  // What Try again needs: the file and its browser URL, and the receipt once the file is stored
+  const inFlightRef = useRef<{ file: File; url: string; receipt: IngestReceipt | null } | null>(null);
 
   const audioBusRef = useRef<AlbedianWebAudioBus | null>(null);
   // The session and pointer as they stand now, for spoken words or a backend reply that arrive after later changes
@@ -255,13 +266,55 @@ export const App: React.FC = () => {
   const handleFileChosen = (file: File) => {
     const url = URL.createObjectURL(file);
     latestChoiceRef.current = file;
+    inFlightRef.current = { file, url, receipt: null };
     setUploadRefusal(null);
     setActiveDiscoveredId(null);
     setUploadedMediaUrl(url);
-    void ingestAndSolveUploadedFile(file, url, setSession, (detail) => {
-      if (latestChoiceRef.current !== file) return;
-      setUploadRefusal({ fileName: file.name, detail });
-    });
+    setArrival(arrivalOf(file));
+    void ingestAndSolveUploadedFile(
+      file,
+      url,
+      (next) => {
+        if (latestChoiceRef.current === file) setSession(next);
+      },
+      (detail) => {
+        if (latestChoiceRef.current !== file) return;
+        // Nothing was stored: the home comes back with the refusal, and there is no arrival to show
+        setArrival(null);
+        setUploadRefusal({ fileName: file.name, detail });
+      },
+      (event) => hearUploadEvent(file, event)
+    );
+  };
+
+  // One step of the upload on screen: an older upload's steps arriving after another choice change nothing
+  const hearUploadEvent = (file: File, event: UploadEvent) => {
+    if (latestChoiceRef.current !== file) return;
+    if (event.kind === 'stored' && inFlightRef.current?.file === file) inFlightRef.current.receipt = event.receipt;
+    setArrival((prev) => arrivalAfter(prev, event));
+  };
+
+  // Try again: the same solve of the stored file, or the same file sent again when it never reached the server
+  const handleTryAgain = () => {
+    const inFlight = inFlightRef.current;
+    if (!inFlight) return;
+    const { file, url, receipt } = inFlight;
+    if (receipt === null) {
+      handleFileChosen(file);
+      return;
+    }
+    setArrival((prev) => (prev ? { ...prev, job: null, failure: null } : prev));
+    void solveStoredUpload(
+      receipt,
+      {
+        localObjectUrl: url,
+        onSessionUpdate: (next) => {
+          if (latestChoiceRef.current === file) setSession(next);
+        },
+        onEvent: (event) => hearUploadEvent(file, event),
+      },
+      file.name
+    );
   };
 
   return (
@@ -283,6 +336,8 @@ export const App: React.FC = () => {
         onPushToTalk={handlePushToTalk}
         onFileChosen={handleFileChosen}
         uploadRefusal={uploadRefusal}
+        arrival={arrival}
+        onTryAgain={handleTryAgain}
       />
     </>
   );

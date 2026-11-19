@@ -38,7 +38,9 @@ import { VoiceCommandHud } from './VoiceCommandHud.js';
 import { SourcePhotoStage } from './SourcePhotoStage.js';
 import { HomeScreen } from './HomeScreen.js';
 import type { HomeRefusal } from './homeRefusal.js';
-import { isSourcePhotoShown } from './sourcePhotoRect.js';
+import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
+import { WorkingScreen } from '../reveal/WorkingScreen.js';
+import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
 
 export interface SpatialObservatoryViewportProps {
@@ -68,6 +70,10 @@ export interface SpatialObservatoryViewportProps {
   onTriggerUpload?: () => void;
   /** The upload the server last refused; a new one brings the home back to show it beside Upload. */
   uploadRefusal?: HomeRefusal | null;
+  /** The upload on its way to a solved sky: while there is one, the working screen shows in place of what follows the solve. */
+  arrival?: Arrival | null;
+  /** Starts the failed upload's work again (the working screen's Try again). */
+  onTryAgain?: () => void;
 }
 
 const LANDING_SHOWCASE_SCENES = [
@@ -139,7 +145,10 @@ export const SpatialObservatoryViewport: React.FC<
   onFileChosen,
   onTriggerUpload,
   uploadRefusal = null,
+  arrival = null,
+  onTryAgain,
 }) => {
+  const windowSize = useViewportSize();
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<CosmosRenderer | null>(null);
   const [rendererChoice] = useState<RendererChoice>(readRendererChoice);
@@ -480,7 +489,7 @@ export const SpatialObservatoryViewport: React.FC<
       />
 
       {/* While the home or the photo covers the canvas, the modeled scene's layers are not what is on screen */}
-      {renderLayers && !entryStageActive && !isSourcePhotoShown(session) && (
+      {renderLayers && !entryStageActive && !arrival && !isSourcePhotoShown(session) && (
         <RenderLayerDisclosure layers={renderLayers} />
       )}
 
@@ -500,7 +509,23 @@ export const SpatialObservatoryViewport: React.FC<
         />
       )}
 
-      {!entryStageActive && (
+      {/* An upload on its way (arrive and failed, 2026-11-12): the photo bare where the reveal will place it, under the
+          working rows. Until the receipt there is no photo, so black covers the modeled scene the rows say nothing of */}
+      {!entryStageActive && arrival && (
+        <>
+          {!isSourcePhotoShown(session) && <div className="work-backdrop" />}
+          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare dimmed={arrival.failure !== null} />
+          <WorkingScreen
+            arrival={arrival}
+            photoRect={photoFrameMismatch ? null : sessionPhotoRect(session, windowSize.widthPx, windowSize.heightPx)}
+            onTryAgain={() => onTryAgain?.()}
+            onUploadAnother={(file) => onFileChosen?.(file)}
+            onHome={() => setEntryStageActive(true)}
+          />
+        </>
+      )}
+
+      {!entryStageActive && !arrival && (
         <>
           <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} />
           {!(photoFrameMismatch && isSourcePhotoShown(session)) && (
@@ -546,7 +571,7 @@ export const SpatialObservatoryViewport: React.FC<
       {/* =======================================================================
           TOP BAR: Brand Wordmark + 03-B Mark on Left, Audio Control on Right (past the home only)
           ======================================================================= */}
-      {!entryStageActive && (
+      {!entryStageActive && !arrival && (
         <header
           className="alb-lusion-header alb-visor-topright"
           data-hud-interactive="true"

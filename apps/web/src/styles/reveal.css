@@ -1,0 +1,184 @@
+/* The screens after the home, as the owner approved them on 2026-11-12 (arrive, reveal, ask, fly) and as the design
+   lane decided the same night (failed and the eight details). Every value is the approved pages' own; the controls are
+   the approved parts in look.css and these rules only place them. */
+
+/* The viewfinder corners at the photo's exact frame: paths in screen pixels (reveal/cornerPaths.ts) */
+.photo-corners {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.photo-corners path {
+  fill: none;
+  stroke: rgba(244, 243, 239, 0.7);
+  stroke-width: 1.2;
+}
+
+/* Working (arrive, laptop screen 3): over the photo, which SourcePhotoStage draws under it. Only its buttons take the
+   pointer. Nothing here moves by itself: no transition, no animation. */
+.work-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  color: var(--look-ink);
+  font-family: var(--look-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Until the receipt there is no photo on screen: black covers the modeled scene, as the photo will */
+.work-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: var(--look-field);
+}
+
+/* The logo, which returns to the home as the app's logo does: a button with no box of its own */
+.work-word {
+  all: unset;
+  position: absolute;
+  left: 36px;
+  top: 30px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.work-word:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+.work-size {
+  position: absolute;
+  left: 36px;
+  top: 66px;
+  margin: 0;
+  font: 400 13px / 1.55 var(--look-font-sans);
+  letter-spacing: -0.005em;
+  color: var(--look-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.work-steps {
+  position: absolute;
+  left: 36px;
+  bottom: 40px;
+  width: 300px;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-step {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  grid-template-rows: 30px auto;
+  align-items: center;
+  font: 400 15px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-step__mark {
+  --look-ic: 14px;
+  display: grid;
+  place-items: start;
+  color: var(--look-ink-2);
+}
+
+.work-step__dot {
+  width: 7px;
+  height: 7px;
+  margin-left: 3px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1px solid var(--look-ink-3);
+}
+
+.work-step.is-done {
+  color: var(--look-ink-2);
+}
+
+.work-step.is-next {
+  color: var(--look-ink-3);
+}
+
+.work-step.is-now .work-step__dot {
+  background: var(--look-ink);
+  border-color: var(--look-ink);
+}
+
+.work-step__bar {
+  grid-column: 2 / 4;
+  height: 2px;
+  margin: 2px 0 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--look-hair);
+}
+
+.work-step__bar b {
+  display: block;
+  height: 100%;
+  background: var(--look-ink);
+}
+
+/* A failed job (decided 2026-11-12): the stage it stopped at in ink with an x and a grey bar, the job's own sentence
+   above the rows, Try again and Upload another under it */
+.work-step.is-failed {
+  color: var(--look-ink);
+}
+
+.work-step.is-failed .work-step__mark {
+  color: var(--look-ink);
+}
+
+.work-step.is-failed .work-step__bar b {
+  background: var(--look-ink-3);
+}
+
+.work-screen.is-failed .work-size {
+  top: 70px;
+}
+
+.work-why {
+  position: absolute;
+  left: 36px;
+  bottom: 262px;
+  width: 300px;
+  display: grid;
+  gap: 18px;
+  justify-items: start;
+}
+
+.work-why p {
+  margin: 0;
+  font: 300 24px / 1.2 var(--look-font-sans);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.work-acts {
+  display: flex;
+  gap: 10px;
+}
+
+/* The approved page draws Try again's arrow at 15 px */
+.work-acts .look-main {
+  --look-ic: 15px;
+}
+
+.work-acts .look-main,
+.work-acts .look-second {
+  pointer-events: auto;
+}
+
+.work-file-input {
+  display: none;
+}

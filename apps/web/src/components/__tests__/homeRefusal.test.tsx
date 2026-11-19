@@ -466,7 +466,7 @@ describe('the app: a refusal brings the home back with the message, until the ne
     await waitUntil(() => expect(q('.home-refusal')?.textContent).toBe("Albedian can't open big.mov"));
     chooseOnHome(readableFile('night.jpg', 'image/jpeg'));
     expect(q(HOME_SCREEN)).toBeNull();
-    act(() => (q('.alb-lusion-brand-btn') as HTMLButtonElement).click());
+    act(() => (q('[data-testid="working-home"]') as HTMLButtonElement).click());
     expect(q(HOME_SCREEN)).not.toBeNull();
     expect(q('.home-refusal')!.textContent).toBe('');
     release(new Response('', { status: 503 }));
@@ -479,7 +479,7 @@ describe('the app: a refusal brings the home back with the message, until the ne
     const second = new Promise<Response>(noop);
     await renderApp([() => first, () => second]);
     chooseOnHome(readableFile('first.pdf', 'application/pdf'));
-    act(() => (q('.alb-lusion-brand-btn') as HTMLButtonElement).click());
+    act(() => (q('[data-testid="working-home"]') as HTMLButtonElement).click());
     chooseOnHome(readableFile('second.jpg', 'image/jpeg'));
     refuseFirst(new Response(JSON.stringify({ detail: REFUSAL }), { status: 415 }));
     await settle();
@@ -493,7 +493,9 @@ describe('the app: a refusal brings the home back with the message, until the ne
   ])('stays off the home after %s, which proves no refusal, and says so as main does', async (_label, answer, banner) => {
     await renderApp([answer as Answer]);
     chooseOnHome(readableFile('notes.jpg', 'image/jpeg'));
-    await waitUntil(() => expect(q('[data-testid="voice-status-banner"]')?.textContent).toContain(banner));
+    // On the working screen, where the file was being sent: the sentence, and the way to send it again
+    await waitUntil(() => expect(q('[data-testid="working-screen"] .work-why p')?.textContent).toBe(banner));
     expect(q(HOME_SCREEN)).toBeNull();
+    expect(q('[data-testid="working-screen"] button.look-main')!.textContent).toBe('Try again');
   });
 });

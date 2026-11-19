@@ -481,21 +481,30 @@ async function fetchAnswer(input: string, init?: RequestInit): Promise<Response>
 }
 
 /**
- * Upload a photo or clip to `POST /api/ingest`, run `POST /api/ingest/{sha256}/solve`, and load
- * `GET /api/ingest/{sha256}/solution` into a contract-validated `ObservationSession`.
+ * What happened to an upload on its way to a solved sky, as it happens: the receipt (the file is stored from then
+ * on), each record of the solve job the server answers with, and how it ended. A failure carries the one sentence a
+ * person reads: the job's own error, word for word, or, when no job record says why, that the solve stopped.
+ */
+export type UploadEvent =
+  | { kind: 'stored'; receipt: IngestReceipt }
+  | { kind: 'job'; job: SolveJob }
+  | { kind: 'solved'; job: SolveJob }
+  | { kind: 'failed'; sentence: string; job: SolveJob | null };
+
+export interface SolveOptions {
+  localObjectUrl?: string;
+  onSessionUpdate?: (session: ObservationSession) => void;
+  onEvent?: (event: UploadEvent) => void;
+}
+
+/**
+ * Upload a photo or clip to `POST /api/ingest`, then solve it (`solveStoredUpload`).
  *
  * An error answer to the upload throws `UploadRefusedError` with the server's reason (nothing was
  * stored). Once the receipt arrives the file is stored, so a solve that does not finish returns the
  * stored session with the reason instead of throwing.
  */
-export async function uploadAndSolveMedia(
-  file: Blob,
-  filename: string,
-  options?: {
-    localObjectUrl?: string;
-    onSessionUpdate?: (session: ObservationSession) => void;
-  }
-): Promise<ObservationSession> {
+export async function uploadAndSolveMedia(file: Blob, filename: string, options?: SolveOptions): Promise<ObservationSession> {
   const bytes = await file.arrayBuffer();
   const ingestRes = await fetchAnswer('/api/ingest', {
     method: 'POST',
@@ -509,19 +518,35 @@ export async function uploadAndSolveMedia(
     throw new UploadRefusedError(ingestRes.status, await serverDetail(ingestRes));
   }
   const receipt = IngestReceiptSchema.parse(await ingestRes.json().catch(() => undefined));
+  options?.onEvent?.({ kind: 'stored', receipt });
+  return solveStoredUpload(receipt, options, filename);
+}
+
+/**
+ * Solve a stored upload: run `POST /api/ingest/{sha256}/solve` and load `GET /api/ingest/{sha256}/solution` into a
+ * contract-validated `ObservationSession`. The same call starts the solve again after one that failed. It never
+ * throws: a solve that does not finish returns the stored session with the reason.
+ */
+export async function solveStoredUpload(
+  receipt: IngestReceipt,
+  options?: SolveOptions,
+  filename: string = receipt.sourceAsset.title
+): Promise<ObservationSession> {
+  // The name in the status line: the one the upload was sent under, else the receipt's own
   const ingestedSession = buildSessionFromIngestReceipt(receipt, {
     localObjectUrl: options?.localObjectUrl,
   });
   options?.onSessionUpdate?.(ingestedSession);
 
   // Stored from here on: a solve that does not finish keeps the file on screen and says why
-  const solveDidNotFinish = (err: unknown): ObservationSession => {
+  const solveDidNotFinish = (err: unknown, job: SolveJob | null): ObservationSession => {
     const stored = ObservationSessionSchema.parse({
       ...ingestedSession,
       machines: { ...ingestedSession.machines, calibration: 'not_requested' },
       lastStatusBanner: `Stored "${filename}", but the sky solve did not finish: ${failureReason(err)}.`,
     });
     options?.onSessionUpdate?.(stored);
+    options?.onEvent?.({ kind: 'failed', sentence: solveStoppedSentence(receipt.sourceAsset), job });
     return stored;
   };
 
@@ -532,14 +557,16 @@ export async function uploadAndSolveMedia(
     if (!solveRes.ok) throw new Error(await serverReason(solveRes));
     job = SolveJobSchema.parse(await solveRes.json());
   } catch (err) {
-    return solveDidNotFinish(err);
+    return solveDidNotFinish(err, null);
   }
+  options?.onEvent?.({ kind: 'job', job });
   if (job.state === 'failed') {
     const failedSession = buildSessionFromIngestReceipt(receipt, {
       localObjectUrl: options?.localObjectUrl,
       job,
     });
     options?.onSessionUpdate?.(failedSession);
+    options?.onEvent?.({ kind: 'failed', sentence: job.error ?? solveStoppedSentence(receipt.sourceAsset), job });
     return failedSession;
   }
 
@@ -549,7 +576,7 @@ export async function uploadAndSolveMedia(
     if (!solRes.ok) throw new Error(await serverReason(solRes));
     solution = ObservationSolutionSchema.parse(await solRes.json());
   } catch (err) {
-    return solveDidNotFinish(err);
+    return solveDidNotFinish(err, job);
   }
   const finalSession = buildSessionFromIngestReceipt(receipt, {
     localObjectUrl: options?.localObjectUrl,
@@ -557,6 +584,6 @@ export async function uploadAndSolveMedia(
     solution,
   });
   options?.onSessionUpdate?.(finalSession);
+  options?.onEvent?.({ kind: 'solved', job });
   return finalSession;
 }
-

@@ -17,12 +17,17 @@ export interface SourcePhotoStageProps {
   viewportHeightPx?: number;
   /** Told after each load whether the browser's frame disagrees with the asset's orientation. */
   onFrameMismatch?: (mismatch: boolean) => void;
+  /** The photo alone, with no layer label: the working screen, whose approved picture has none (arrive, 2026-11-12). */
+  bare?: boolean;
+  /** The photo at 55 percent: a failed job's screen, where it stays in its place (failed, decided 2026-11-12). */
+  dimmed?: boolean;
 }
 
 /**
  * The person's own photo or clip, drawn as uploaded in the source view (AGENTS.md section 1: real
  * observation first). It covers the 3D canvas so no modeled scene shows around or through it, and
- * it applies no filter, blend or tone change: the pixels on screen are the file's pixels. Markers
+ * it applies no filter, blend or tone change: the pixels on screen are the file's pixels (a failed job's screen
+ * draws them at 55 percent, the one change, and only there). Markers
  * use the same rectangle (sourcePhotoRect.ts), so each sits on the pixel it was measured at.
  *
  * A phone stores a portrait photo turned on its side with an orientation tag. The browser draws the
@@ -36,6 +41,8 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   viewportWidthPx,
   viewportHeightPx,
   onFrameMismatch,
+  bare = false,
+  dimmed = false,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -93,6 +100,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     display: 'block',
     // The browser turns the photo by its tag; set here so no stylesheet can switch that off
     imageOrientation: 'from-image',
+    ...(dimmed ? { opacity: 0.55 } : {}),
   };
   const failed = failedUri === asset.uri;
   const kind = asset.mediaKind === 'video' ? 'clip' : 'photo';
@@ -182,6 +190,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           rather than shown in the wrong places.
         </p>
       )}
+      {!bare && (
       <div
         className="alb-layer-disclosure"
         data-testid="source-photo-layer-label"
@@ -237,6 +246,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           </p>
         )}
       </div>
+      )}
     </div>
   );
 };

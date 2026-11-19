@@ -116,6 +116,19 @@ export function isSourcePhotoShown(session: ObservationSession): boolean {
   return (session.spatialView?.mode ?? 'source_2d') === 'source_2d';
 }
 
+/**
+ * Where the session's photo is drawn in a window of this size: the rectangle SourcePhotoStage draws the upright photo
+ * in, for anything placed at the photo's frame (the viewfinder corners). None when no photo is on screen, or before
+ * the receipt has given the photo its measured size.
+ */
+export function sessionPhotoRect(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number): PhotoRect | null {
+  const asset = session.sourceAsset;
+  if (!asset || !isSourcePhotoShown(session)) return null;
+  if (!(asset.width > 1 && asset.height > 1)) return null;
+  const upright = orientedSize(asset.width, asset.height, asset.displayOrientation);
+  return sourcePhotoDisplayRect(upright.widthPx, upright.heightPx, viewportWidthPx, viewportHeightPx, session.cropTransform);
+}
+
 /** The browser window's size in CSS pixels, kept current on resize and rotation. */
 export function useViewportSize(): { widthPx: number; heightPx: number } {
   const read = () => ({
