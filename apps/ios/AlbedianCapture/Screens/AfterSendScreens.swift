@@ -13,26 +13,58 @@ struct WaitingScreen: View {
     var body: some View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
+            // D31: the early rings that fall inside the photo; the source sentence stands only beside at least one
+            let earlyDrawn = model.earlyPose.map {
+                !SkyOverlayView.placed(model.earlyMarks, attitude: $0.attitude, acrossFovDeg: $0.acrossPortraitWidthDeg, width: width,
+                                       height: width * 4 / 3).isEmpty
+            } ?? false
             ZStack {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                // D31: the early marks over the photo, from the phone's own record (predicted until matched)
+                if let pose = model.earlyPose, earlyDrawn {
+                    SkyOverlayView(marks: model.earlyMarks, attitude: pose.attitude, acrossFovDeg: pose.acrossPortraitWidthDeg,
+                                   width: width, height: width * 4 / 3)
+                        .atTop(Arrive.photoTop)
+                }
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                 if let row = model.waitRow {
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         let passed = model.solveStartedAt.map { Double((ContinuousClock.now - $0).components.seconds) } ?? 0
                         // A new step is a new row: its line starts from its own count, never sliding back from the last
-                        StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
-                            .id(row.stage)
+                        VStack(alignment: .leading, spacing: 14) {
+                            StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
+                                .id(row.stage)
+                            EarlySource(shown: earlyDrawn)
+                        }
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 } else if let queued = model.queuedRow {
-                    StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
-                        .atTop(Arrive.photoTop + width * 4 / 3 + 30)
+                    VStack(alignment: .leading, spacing: 14) {
+                        StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
+                        EarlySource(shown: earlyDrawn)
+                    }
+                    .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 }
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// D31 item 2: C13's source sentence 14 pt under the step row's line, 24 pt in from each side, 12 pt at ink 44 percent,
+/// line height 1.4; nothing when no early mark is drawn.
+private struct EarlySource: View {
+    let shown: Bool
+
+    var body: some View {
+        if shown {
+            Text(EarlyPose.sourceSentence).font(AlbedianFont.regular(12)).lineSpacing(12 * 0.2)
+                .foregroundStyle(Color(ControlStyle.inkQuiet))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, CGFloat(Arrive.side))
+        }
     }
 }
 

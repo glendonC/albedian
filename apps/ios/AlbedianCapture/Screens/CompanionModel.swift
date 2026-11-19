@@ -214,6 +214,9 @@ final class CompanionModel {
     func close() {
         uploads.reset()
         solver.reset()
+        earlyTask?.cancel()
+        earlyPose = nil
+        earlyMarks = []
         unreachable = false
         shot = nil
         result = nil
@@ -382,9 +385,29 @@ final class CompanionModel {
         }
     }
 
+    /// D31 (UIUX-iphone-lockon-READY): the early pose from the shot's own pointing record, and the marks the kept laptop's
+    /// sky context predicts for its moment and place, asked once when the solve starts; none without either.
+    private(set) var earlyPose: EarlyPose?
+    private(set) var earlyMarks: [SkyMark] = []
+    private var earlyTask: Task<Void, Never>?
+
+    private func startEarlySky(address: LaptopAddress) {
+        earlyTask?.cancel()
+        earlyMarks = []
+        earlyPose = shot?.recordWire.flatMap { EarlyPose.read(recordWire: $0) }
+        guard let pose = earlyPose else { return }
+        let client = SkyContextClient(address: address)
+        earlyTask = Task { @MainActor [weak self] in
+            let marks = await client.marks(at: pose.moment, latDeg: pose.latDeg, lonDeg: pose.lonDeg)
+            guard !Task.isCancelled, let self else { return }
+            self.earlyMarks = marks ?? []
+        }
+    }
+
     private func startSolve(sha256: String, address: LaptopAddress) {
         stoppedSentence = nil
         screen = .waiting
+        startEarlySky(address: address)
         solver.start(sha256: sha256, client: SolveClient(address: address)) { [weak self] end in self?.solved(end, sha256: sha256, address: address) }
     }
 
@@ -529,7 +552,10 @@ final class CompanionModel {
               let photo = FileManager.default.contents(atPath: args[index + 1]) else { return }
         let name = args[index + 1].lowercased()
         let type: PhotoContentType = name.hasSuffix(".heic") ? .heic : name.hasSuffix(".png") ? .png : .jpeg
-        show(KeptShot(photo: photo, contentType: type, recordWire: nil, sha256: PhotoHash.sha256Hex(photo)))
+        // `-AlbedianShotRecord <path>`: a pointing record's wire form sent beside the shot, for simulator captures of D31
+        let record = args.firstIndex(of: "-AlbedianShotRecord").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+            .flatMap { FileManager.default.contents(atPath: $0) }
+        show(KeptShot(photo: photo, contentType: type, recordWire: record, sha256: PhotoHash.sha256Hex(photo)))
         if args.contains("-AlbedianSendShot") { send() }
     }
     #endif
