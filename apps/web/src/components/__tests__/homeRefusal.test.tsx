@@ -390,9 +390,20 @@ describe('the home shows a refused upload beside Upload', () => {
       overflow: 'hidden',
       'overflow-wrap': 'anywhere',
     });
+  });
+
+  it('lays the phone width home out as the design lane draws it (INTERIM: UIUX-phoneweb-QUESTION.md, Boltz at phone width)', () => {
     const narrow = extractBlock(homeCss, '@media (max-width: 720px)')!;
-    expect(declarationsFor(narrow, '.home-refusal {')).toMatchObject({ 'max-width': 'calc(100vw - 100% - 22px - 32px)' });
-    expect(declarationsFor(narrow, '.home-row {')).toEqual({});
+    expect(declarationsFor(narrow, '.home-top {')).toEqual({ right: '16px', top: '16px' });
+    expect(declarationsFor(narrow, '.home-hero {')).toEqual({ left: '16px', right: '16px', bottom: '28px', gap: '22px' });
+    expect(declarationsFor(narrow, '.home-hero .look-logo {')).toEqual({ '--look-logo-fs': '52px !important', 'margin-left': '-2px' });
+    // Upload at Boltz's phone height, 44 px, as wide as its word
+    expect(declarationsFor(narrow, '.home-hero .look-main {')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)', '--look-ic': 'var(--look-ic-phone)' });
+    // A refusal's two lines move under Upload, 18 px below it, with the full width, the reason no longer cut off
+    expect(declarationsFor(narrow, '.home-row {')).toEqual({ display: 'grid', gap: '18px', 'justify-items': 'start' });
+    expect(declarationsFor(narrow, '.home-refusal {')).toEqual({ position: 'static', transform: 'none', width: 'auto', 'max-width': '100%' });
+    expect(declarationsFor(narrow, '.home-refusal:empty {')).toEqual({ display: 'none' });
+    expect(declarationsFor(narrow, '.home-refusal__reason {')).toEqual({ display: 'block', '-webkit-line-clamp': 'unset' });
   });
 
   it('shows a long file name cut in the middle, keeping its ending', () => {

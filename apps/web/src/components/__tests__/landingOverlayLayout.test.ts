@@ -73,7 +73,7 @@ describe('home narrow-width and landscape layout rules', () => {
     expect(logo['--look-logo-fs']).toBe('clamp(56px, 14.6vw, 132px) !important');
   });
 
-  it('uses a 16px gutter, a 24px bottom inset and a 24px gap below 720px, the top controls 16px in', () => {
+  it('uses a 16px gutter, a 28px bottom inset and a 22px gap below 720px, the top controls 16px in (INTERIM: UIUX-phoneweb-QUESTION.md)', () => {
     const media720 = extractBlock(css, '@media (max-width: 720px)');
     expect(media720).not.toBeNull();
 
@@ -83,8 +83,8 @@ describe('home narrow-width and landscape layout rules', () => {
 
     const hero = declarationsFor(media720!, '.home-hero');
     expect(hero['left']).toBe('16px');
-    expect(hero['bottom']).toBe('24px');
-    expect(hero['gap']).toBe('24px');
+    expect(hero['bottom']).toBe('28px');
+    expect(hero['gap']).toBe('22px');
   });
 
   it('compacts the home on short landscape windows below 480px tall', () => {

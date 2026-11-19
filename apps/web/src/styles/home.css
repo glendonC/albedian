@@ -295,6 +295,9 @@
   }
 }
 
+/* The home at phone width (INTERIM: .lead/uiux/UIUX-phoneweb-QUESTION.md, waiting on the owner; Boltz at phone width,
+   read live on 18 Nov): a 16 px gutter, the logo at 52 px, Upload 44 px high, and a refused upload's two lines under
+   Upload with the full width, so the server's reason is not cut off */
 @media (max-width: 720px) {
   .home-top {
     right: 16px;
@@ -303,12 +306,42 @@
 
   .home-hero {
     left: 16px;
-    bottom: 24px;
-    gap: 24px;
+    right: 16px;
+    bottom: 28px;
+    gap: 22px;
+  }
+
+  .home-hero .look-logo {
+    --look-logo-fs: 52px !important;
+    margin-left: -2px;
+  }
+
+  .home-hero .look-main {
+    --look-h: var(--look-h-phone);
+    --look-fs: var(--look-fs-phone);
+    --look-ic: var(--look-ic-phone);
+  }
+
+  .home-row {
+    display: grid;
+    gap: 18px;
+    justify-items: start;
   }
 
   .home-refusal {
-    max-width: calc(100vw - 100% - 22px - 32px);
+    position: static;
+    transform: none;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .home-refusal:empty {
+    display: none;
+  }
+
+  .home-refusal__reason {
+    display: block;
+    -webkit-line-clamp: unset;
   }
 }
 
