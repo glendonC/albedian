@@ -62,6 +62,13 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
       'No real travel time: OSIRIS-REx flew to the asteroid Bennu, within the Solar System.',
       'No real travel time: the Mars Reconnaissance Orbiter orbits Mars.',
     ]);
+    expect(['stardust', 'deep-space-1', 'mars-global-surveyor', 'near-shoemaker', 'maven'].map(none)).toEqual([
+      'No real travel time: Stardust flew to comet Wild 2, within the Solar System.',
+      'No real travel time: Deep Space 1 flew to comet Borrelly, within the Solar System.',
+      'No real travel time: Mars Global Surveyor orbited Mars until contact was lost in 2006.',
+      'No real travel time: NEAR Shoemaker flew to the asteroid Eros and landed on it in 2001.',
+      'No real travel time: MAVEN orbits Mars.',
+    ]);
     // No craft of the hangar is left with neither a speed nor a sentence
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
@@ -107,6 +114,8 @@ describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3, D35 items 1 and 2)', ()
     expect([detail('apollo-lm'), detail('parker-solar-probe')]).toEqual(['to the Moon', 'around the Sun']);
     // The 17:24 ruling (UIUX-hangarpick-READY.md): the six more craft, each from its NASA facts in the hangar's record
     expect(['juno', 'dawn', 'messenger', 'spitzer', 'osiris-rex', 'mro'].map(detail)).toEqual(['around Jupiter', 'to Vesta and Ceres', 'to Mercury', 'around the Sun', 'to Bennu', 'around Mars']);
+    // The 18:00 ruling (hangar-3): five more
+    expect(['stardust', 'deep-space-1', 'mars-global-surveyor', 'near-shoemaker', 'maven'].map(detail)).toEqual(['to comet Wild 2', 'to comet Borrelly', 'around Mars', 'to Eros', 'around Mars']);
 
   });
 });

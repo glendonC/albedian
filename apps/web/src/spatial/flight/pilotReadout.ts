@@ -26,6 +26,12 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   spitzer: 'around the Sun',
   'osiris-rex': 'to Bennu',
   mro: 'around Mars',
+  // The 18:00 ruling (hangar-3), from the hangar's NASA facts
+  stardust: 'to comet Wild 2',
+  'deep-space-1': 'to comet Borrelly',
+  'mars-global-surveyor': 'around Mars',
+  'near-shoemaker': 'to Eros',
+  maven: 'around Mars',
 };
 
 /** D35 item 5 and the 17:24 ruling: each named craft's sentence in place of a trip time, word for word. */
@@ -39,6 +45,11 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   spitzer: 'No real travel time: Spitzer orbits the Sun, trailing Earth.',
   'osiris-rex': 'No real travel time: OSIRIS-REx flew to the asteroid Bennu, within the Solar System.',
   mro: 'No real travel time: the Mars Reconnaissance Orbiter orbits Mars.',
+  stardust: 'No real travel time: Stardust flew to comet Wild 2, within the Solar System.',
+  'deep-space-1': 'No real travel time: Deep Space 1 flew to comet Borrelly, within the Solar System.',
+  'mars-global-surveyor': 'No real travel time: Mars Global Surveyor orbited Mars until contact was lost in 2006.',
+  'near-shoemaker': 'No real travel time: NEAR Shoemaker flew to the asteroid Eros and landed on it in 2001.',
+  maven: 'No real travel time: MAVEN orbits Mars.',
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */
