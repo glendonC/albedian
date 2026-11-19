@@ -24,6 +24,8 @@ export interface AskBarProps {
   phone?: boolean;
   /** There after arrival: "Fly on your own", outlined, beside Back to Moment (D26 item 6, pilot-1f; laptop only). */
   onFlyOnYourOwn?: () => void;
+  /** Back to Moment pressed: there's words leave on words out while the flight flies back (the motion record). */
+  leaving?: boolean;
   /** On the phone while the person steers: "Autopilot", outlined, beside Back to Moment, giving the camera back (D30 item 6). */
   onAutopilot?: () => void;
 }
@@ -65,7 +67,7 @@ function heardLabel(words: HeardWords): React.ReactNode {
  * as they are heard. The keyboard button or "/" turns the ask button into the field in place; Enter or the arrow
  * sends, Esc closes. Nothing on screen names Space or "/".
  */
-export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack, phone = false, onFlyOnYourOwn, onAutopilot }) => {
+export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack, phone = false, onFlyOnYourOwn, onAutopilot, leaving = false }) => {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -86,14 +88,14 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
     const timer = setTimeout(() => setRested(true), restMs);
     return () => clearTimeout(timer);
   }, [there, restMs]);
-  const asks = useLeaving(!there || (!phone && (restMs === 0 || rested)), motion.wordsOutMs);
+  const asks = useLeaving((!there || (!phone && (restMs === 0 || rested))) && !leaving, motion.wordsOutMs);
   // The typing field words in as it opens and stays while its words go when closed; the buttons then come back on
   // words in (the motion record, "Type to ask field")
   const field = useLeaving(typing, motion.wordsOutMs);
   const [typed, setTyped] = useState(false);
   useEffect(() => {
-    if (typing) setTyped(true);
-  }, [typing]);
+    if (typing || there) setTyped(true);
+  }, [typing, there]);
   const asksMotion = asks.leaving ? 'is-leaving' : (there && rested) || typed ? 'is-back' : '';
   const withAsks = (part: string) => (asksMotion ? `${part} ${asksMotion}` : part);
 
@@ -128,10 +130,10 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
   };
 
   return (
-    <div className={phone ? 'ask-bar is-phone' : 'ask-bar'} data-hud-interactive="true" data-testid="ask-bar">
-      {onBack && <MainAction label="Back to Moment" icon="arrow-u-up-left" size="home" onClick={() => onBack()} />}
-      {onBack && !phone && onFlyOnYourOwn && <SecondAction part="ask-bar__fly" label="Fly on your own" size="home" onClick={() => onFlyOnYourOwn()} />}
-      {onBack && phone && onAutopilot && <SecondAction part="ask-bar__autopilot" label="Autopilot" size="phone" onClick={() => onAutopilot()} />}
+    <div className={`${phone ? 'ask-bar is-phone' : 'ask-bar'}${leaving ? ' is-leaving' : ''}`} data-hud-interactive="true" data-testid="ask-bar">
+      {onBack && <MainAction label="Back to Moment" icon="arrow-u-up-left" size="home" inert={leaving} onClick={() => onBack()} />}
+      {onBack && !phone && onFlyOnYourOwn && <SecondAction part="ask-bar__fly" label="Fly on your own" size="home" inert={leaving} onClick={() => onFlyOnYourOwn()} />}
+      {onBack && phone && onAutopilot && <SecondAction part="ask-bar__autopilot" label="Autopilot" size="phone" inert={leaving} onClick={() => onAutopilot()} />}
       {/* There on the phone, Back to Moment alone (fly, approved, iPhone; #p-there .bar) */}
       {!asks.mounted ? null : field.mounted ? (
         <form className={field.leaving ? 'ask-bar__field is-leaving' : withAsks('ask-bar__field')} onSubmit={send} inert={asks.leaving || field.leaving}>

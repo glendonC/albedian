@@ -405,8 +405,11 @@ describe('at Go there, Ask out loud leaves and comes back as the motion record s
       act(() => vi.advanceTimersByTime(1));
       expect(asks().map((el) => el.classList.contains('is-back'))).toEqual([true, true]);
       expect(asks().some((el) => el.hasAttribute('inert'))).toBe(false);
+      // Back on the photo the same buttons stay, still marked back (their words in has run; nothing runs again)
+      const same = asks();
       show();
-      expect(asks().map((el) => el.className.includes('is-back') || el.className.includes('is-leaving'))).toEqual([false, false]);
+      expect(asks()).toEqual(same);
+      expect(asks().map((el) => el.classList.contains('is-leaving'))).toEqual([false, false]);
     } finally {
       vi.useRealTimers();
     }
@@ -566,5 +569,45 @@ describe('the typing field arrives and leaves as the motion record says', () => 
       }
     });
     expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both' });
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Go there (A = 0)", Back to Moment: "words --mo-words-out; second half
+// reversed ..."): pressed, there's words leave on words out, inert, while the flight flies back
+describe('Back to Moment pressed: the bar\'s words leave as the flight flies back', () => {
+  it('marks Back to Moment, Fly on your own and the ask buttons leaving and inert', () => {
+    vi.useFakeTimers();
+    try {
+      show({ onBack: noop, onFlyOnYourOwn: noop });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 2));
+      show({ onBack: noop, onFlyOnYourOwn: noop, leaving: true });
+      const back = q('.ask-bar > .look-main') as HTMLElement;
+      const fly = q('.ask-bar__fly') as HTMLElement;
+      expect(q('[data-testid="ask-bar"]')!.classList.contains('is-leaving')).toBe(true);
+      expect(back.hasAttribute('inert')).toBe(true);
+      expect(fly.hasAttribute('inert')).toBe(true);
+      expect([...container.querySelectorAll('.ask-bar__ask, .ask-bar__type')].every((el) => el.classList.contains('is-leaving'))).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
+      expect(q('.ask-bar__ask')).toBeNull();
+      // Back on the photo the ask buttons come back on words in
+      show({});
+      expect([...container.querySelectorAll('.ask-bar__ask, .ask-bar__type')].map((el) => el.classList.contains('is-back'))).toEqual([true, true]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('times Back to Moment and Fly on your own leaving in motion.css', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.ask-bar.is-leaving > .look-main, .ask-bar.is-leaving > .ask-bar__fly, .ask-bar.is-leaving > .ask-bar__autopilot']).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both',
+    });
   });
 });

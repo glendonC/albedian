@@ -474,6 +474,26 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     return { session: { ...session, selectedFindingId: rigel.id } as ObservationSession, rigel };
   };
 
+  // The motion record ("Go there", Back to Moment: there's words out at the press): on the laptop the readout leaves,
+  // inert, while the status line keeps the Simulated disclosure; on the phone the disclosure rides in the readout, so it stays
+  it('lets the readout leave when Back to Moment is pressed on the laptop, and keeps it on the phone', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, returning: true });
+    expect(q(READOUT)!.classList.contains('is-leaving')).toBe(true);
+    expect(q(READOUT)!.hasAttribute('inert')).toBe(true);
+    expect(q('[data-testid="reveal-status"]')).not.toBeNull();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, returning: true, phone: true });
+    expect(q(READOUT)!.classList.contains('is-leaving')).toBe(false);
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        rules[rule.selector] = { ...(rules[rule.selector] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.flight-readout.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+  });
+
   it('keeps only the picked star\'s mark, white and named, with the line to the readout, and no corners, card, legend or counts', () => {
     const { session, rigel } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });

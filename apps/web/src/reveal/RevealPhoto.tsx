@@ -120,6 +120,8 @@ export interface RevealPhotoProps {
   realSky?: boolean;
   /** There, after Go there: the readout from the flight's own distances, in the card's place (fly, approved 2026-11-12). */
   flight?: FlightReadout | null;
+  /** Back to Moment pressed: on the laptop the readout leaves on words out while the flight flies back (the motion record). */
+  returning?: boolean;
   /** Whether the frame's corners are drawn: a clip filling the width has none (INTERIM: UIUX-clip-QUESTION.md). */
   corners?: boolean;
   /** pilot-1f (D26 item 6): flying on one's own after "Fly on your own", with no star ahead. */
@@ -229,6 +231,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onCloseAnswer,
   realSky = false,
   flight = null,
+  returning = false,
   corners = true,
   freeFlight = false,
   onEndFreeFlight,
@@ -689,7 +692,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {!answer && shownFlight && !cone && (
         <section
           ref={readoutRef}
-          className={phone ? 'flight-readout is-phone' : 'flight-readout'}
+          className={phone ? 'flight-readout is-phone' : returning ? 'flight-readout is-leaving' : 'flight-readout'}
+          inert={returning && !phone}
           data-testid="flight-readout"
           aria-label={shownFlight.name}
           style={phone && details ? { visibility: 'hidden' } : undefined}

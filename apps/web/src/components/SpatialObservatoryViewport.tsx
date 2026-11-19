@@ -645,7 +645,16 @@ export const SpatialObservatoryViewport: React.FC<
         restoreAudio: true,
       }).session
     );
-  const backToMoment = () => (flightShown ? animateReturnToMoment(restoreMoment) : restoreMoment());
+  // Pressed there, there's words leave while the flight flies back (the motion record); gone with the flight
+  const [returning, setReturning] = useState(false);
+  useEffect(() => {
+    if (!flightShown) setReturning(false);
+  }, [flightShown]);
+  const backToMoment = () => {
+    if (!flightShown) return restoreMoment();
+    setReturning(true);
+    return animateReturnToMoment(restoreMoment);
+  };
   const back = useRef(backToMoment);
   back.current = backToMoment;
 
@@ -765,6 +774,7 @@ export const SpatialObservatoryViewport: React.FC<
               onCancelRestore={cancelRestore}
               realSky={realSkyShown}
               flight={flightShown ? flightReadout(session) : null}
+              returning={returning}
               freeFlight={freeFlight}
               onEndFreeFlight={() => setFreeFlight(false)}
               phoneSteering={phoneSteering}
@@ -821,6 +831,7 @@ export const SpatialObservatoryViewport: React.FC<
               onListen={onPushToTalk}
               onSend={(text) => onRunUtterance(text, 'text')}
               onBack={flightShown ? backToMoment : undefined}
+              leaving={returning}
               phone={phoneReveal}
               onFlyOnYourOwn={arrived && !freeFlight ? () => setFreeFlight(true) : undefined}
               onAutopilot={flightShown && phoneReveal && phoneSteering ? () => setPhoneSteering(false) : undefined}

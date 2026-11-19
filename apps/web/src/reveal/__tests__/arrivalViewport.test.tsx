@@ -601,6 +601,11 @@ describe('the viewport shows the approved star card over the photo, above phone 
       if (way === 'pill') act(() => ([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === 'Your photo')!).click());
       // The flight flies back first (the motion record), then the exact moment
       expect(current.spatialView.mode, way).not.toBe('source_2d');
+      // Meanwhile there's words leave (motion-30): the bar's and the readout's, the status keeping its disclosure
+      renderViewport(current, { setSession });
+      expect(q('[data-testid="ask-bar"]')!.classList.contains('is-leaving'), way).toBe(true);
+      expect(q('[data-testid="flight-readout"]')!.classList.contains('is-leaving'), way).toBe(true);
+      expect(q('[data-testid="reveal-status"]'), way).not.toBeNull();
       flyAll(frames);
       expect(current.spatialView.mode, way).toBe('source_2d');
       expect(current.selectedFindingId, way).toBe(picked.selectedFindingId);

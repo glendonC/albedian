@@ -220,6 +220,18 @@
   transition: opacity var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
+/* Back to Moment pressed: Back to Moment, Fly on your own and the phone's Autopilot leave on words out at once, while the flight flies back */
+.ask-bar.is-leaving > .look-main,
+.ask-bar.is-leaving > .ask-bar__fly,
+.ask-bar.is-leaving > .ask-bar__autopilot {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
+/* The readout leaves with them on the laptop; the status line keeps the Simulated disclosure until the photo returns */
+.flight-readout.is-leaving {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
 /* Fly on your own is offered only once the flight has arrived, so it words in as it mounts, with Back to Moment */
 .ask-bar__fly {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
