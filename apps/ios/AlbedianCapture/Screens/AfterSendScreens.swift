@@ -146,8 +146,9 @@ private struct MatchedMark: View {
 /// The early marks as one view each, keyed by their catalogue id (or a body's name), so a better early pose arriving
 /// is one correction, never a blink (ruled 18:05, UIUX-iphone-lockon-READY): a ring in both sets moves from the phone's
 /// place to the laptop's, all together, on the lock-on's travel (0.4 s on .16, 1, .3, 1); a ring only in the old set
-/// leaves on frame out and one only in the new set arrives on frame in; under Reduce Motion the old go and the new
-/// come in the 0.27 s dissolve. Names by D20 over the current set.
+/// leaves on frame out and one only in the new set arrives on frame in once that travel is over, brightest first with
+/// the marks' stagger, as the first set came (MOTION-READY-iphone section 6, `EarlyArrival`); under Reduce Motion the
+/// old go and the new come in the 0.27 s dissolve, together. Names by D20 over the current set.
 private struct EarlyMarksLayer: View {
     let placed: [(SkyMark, CGPoint)]
     /// Which early pose placed them: under Reduce Motion a new source is new marks, so nothing travels and the sets dissolve.
@@ -166,21 +167,46 @@ private struct EarlyMarksLayer: View {
         return placed.compactMap { mark, at in seen.insert(key(mark)).inserted ? Keyed(key: key(mark), mark: mark, at: at) : nil }
     }
 
+    /// The keys drawn before this set: empty for the first set, the old set on a swap (MOTION's section 6).
+    @State private var shown: Set<String> = []
+
     var body: some View {
         let names = SkyOverlayNames.names(placed.map { SkyOverlayNames.Placed(mark: $0.0, x: $0.1.x, y: $0.1.y) }, widthPt: width, heightPt: height)
+        let rings = keyed
+        let delays = EarlyArrival.delays(shown: shown, now: rings.map { EarlyArrival.Ring(key: $0.key, mag: $0.mark.mag) },
+                                         reduceMotion: reduceMotion)
         ZStack(alignment: .topLeading) {
-            ForEach(keyed, id: \.key) { item in
-                EarlyMark(mark: item.mark, onLeft: names[item.mark.id])
+            ForEach(rings, id: \.key) { item in
+                ArrivingMark(delay: delays[item.key] ?? 0) { EarlyMark(mark: item.mark, onLeft: names[item.mark.id]) }
                     .position(item.at)
-                    .transition(.asymmetric(
-                        insertion: .opacity.animation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)),
-                        removal: .opacity.animation(.motion(MotionStyle.frameOut, reduceMotion: reduceMotion))))
+                    .transition(.asymmetric(insertion: .identity,
+                                            removal: .opacity.animation(.motion(MotionStyle.frameOut, reduceMotion: reduceMotion))))
             }
         }
         .frame(width: CGFloat(width), height: CGFloat(height), alignment: .topLeading)
-        .animation(reduceMotion ? nil : .motion(MotionStyle.frameIn, reduceMotion: false), value: placed.map { key($0.0) })
+        // A ring in both sets travels to its new place, from wherever it stands (a later pose included)
+        .animation(reduceMotion ? nil : .motion(MotionStyle.frameIn, reduceMotion: false),
+                   value: rings.map { "\(source) \($0.key) \($0.at.x) \($0.at.y)" })
+        .onAppear { shown = Set(rings.map(\.key)) }
+        .onChange(of: rings.map(\.key)) { _, keys in shown = Set(keys) }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+/// One early ring coming in on frame in after its wait (`EarlyArrival`), or the 0.27 s dissolve under Reduce Motion.
+private struct ArrivingMark<Content: View>: View {
+    let delay: Double
+    @ViewBuilder let content: Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var arrived = false
+
+    var body: some View {
+        content
+            .opacity(arrived ? 1 : 0)
+            .onAppear {
+                withAnimation(.motion(MotionStyle.frameIn, after: delay, reduceMotion: reduceMotion)) { arrived = true }
+            }
     }
 }
 
