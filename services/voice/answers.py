@@ -110,6 +110,14 @@ SENTENCE_TWO_NAMES = "That names more than one thing; ask about one at a time."
 SENTENCE_ONLY_NEGATED = "I heard what not to answer, and no question left to answer."
 # [proposed] An answered value whose number is too long for one spoken sentence
 SENTENCE_TOO_LONG = "That value is too long to say in one sentence."
+# The recording's own noun in every sentence that names it: "clip" for a video, "photo" for a still (C34, ruled 21 Nov
+# 14:40 in .lead/uiux/UIUX-voiceyet2-READY.md; "clip" is the decided noun of C14, C16, C25 and D33)
+NOUNS = ("photo", "clip")
+
+
+def noun_of(media_kind: str | None) -> str:
+    """The noun a sentence names a recording of this SourceAsset media kind by: "clip" for a video, else "photo"."""
+    return "clip" if media_kind == "video" else "photo"
 
 
 def _lowered(question: str) -> str:
@@ -149,23 +157,26 @@ def question_kind(question: str) -> str:
     return next(iter(asked)) if len(asked) == 1 else contract.UNANSWERABLE_QUESTION_KIND
 
 
-def refusal_sentence(reason: str, question: str | None = None, name: str | None = None) -> str:
-    """The one sentence of a refusal, for its reason (the name no finding has, when there is one)."""
+def refusal_sentence(reason: str, question: str | None = None, name: str | None = None, noun: str = "photo") -> str:
+    """The one sentence of a refusal, for its reason (the name no finding has, when there is one), naming the
+    recording by its noun. The sky not worked out says no "yet": it is said while a solve runs and after one ended
+    without a sky (C34)."""
     if reason == "not_found_in_this_sky":
-        said = f"No finding in this photo is named {name}." if name else "No finding in this photo has that name."
-        return said if contract.utf16_length(said) <= contract.ANSWER_SENTENCE_MAX_UTF16 else "No finding in this photo has that name."
+        nameless = f"No finding in this {noun} has that name."
+        said = f"No finding in this {noun} is named {name}." if name else nameless
+        return said if contract.utf16_length(said) <= contract.ANSWER_SENTENCE_MAX_UTF16 else nameless
     return {
-        "photo_not_solved": "This photo's sky has not been worked out, so nothing in it can be answered yet.",
-        "no_time_or_place": "That needs the photo's capture time, which this photo does not have.",
-        "not_in_the_data": "This photo's data holds no value for that.",
-        "outside_the_data": "Nothing in this photo's data answers that.",
+        "photo_not_solved": f"This {noun}'s sky has not been worked out, so nothing in it can be answered.",
+        "no_time_or_place": f"That needs the {noun}'s capture time, which this {noun} does not have.",
+        "not_in_the_data": f"This {noun}'s data holds no value for that.",
+        "outside_the_data": f"Nothing in this {noun}'s data answers that.",
     }[reason]
 
 
 def _refused(question: str, reason: str, solution: dict[str, Any] | None, name: str | None = None,
-             sentence: str | None = None) -> dict[str, Any]:
+             sentence: str | None = None, noun: str = "photo") -> dict[str, Any]:
     answer: dict[str, Any] = {"status": "unanswerable", "question": question, "reason": reason,
-                              "sentence": sentence or refusal_sentence(reason, question, name)}
+                              "sentence": sentence or refusal_sentence(reason, question, name, noun)}
     if solution is not None and isinstance(solution.get("id"), str):
         answer["observationSolutionId"] = solution["id"]
     return answer
@@ -263,8 +274,9 @@ def _plural(count: int, one: str, many: str) -> str:
     return f"{count:,} {one if count == 1 else many}"
 
 
-def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: dict[str, Any] | None) -> tuple[str, list[str]]:
-    """The sentence a person reads, and the quantities it speaks of."""
+def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: dict[str, Any] | None,
+              noun: str = "photo") -> tuple[str, list[str]]:
+    """The sentence a person reads, and the quantities it speaks of, naming the recording by its noun."""
     by = {s["quantity"]: s["value"] for s in statements}
 
     def number(quantity: str) -> float:
@@ -293,8 +305,8 @@ def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: d
             mag = f"{number('apparent_magnitude'):.2f}"
             return fitted(["apparent_magnitude"], f"{name} shines at magnitude {mag}.", f"It shines at magnitude {mag}.")
         times = _plural(round(number("detection_snr")), "time", "times")
-        return fitted(["detection_snr"], f"{name} stands {times} above the photo's noise.",
-                      f"It stands {times} above the photo's noise.")
+        return fitted(["detection_snr"], f"{name} stands {times} above the {noun}'s noise.",
+                      f"It stands {times} above the {noun}'s noise.")
     if kind == "colour_temperature":
         if "colour_index_bp_rp" in by:
             colour = f"{number('colour_index_bp_rp'):.2f}"
@@ -329,10 +341,10 @@ def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: d
             if "matched_star_count" in by:
                 matched = int(number("matched_star_count"))
                 return fitted(["detected_source_count", "matched_star_count"],
-                              f"This photo shows {found}, {matched:,} matched to catalog stars.")
-            return fitted(["detected_source_count"], f"This photo shows {found}.")
+                              f"This {noun} shows {found}, {matched:,} matched to catalog stars.")
+            return fitted(["detected_source_count"], f"This {noun} shows {found}.")
         matched_text = _plural(int(number("matched_star_count")), "star", "stars")
-        return fitted(["matched_star_count"], f"This photo has {matched_text} matched to catalog stars.")
+        return fitted(["matched_star_count"], f"This {noun} has {matched_text} matched to catalog stars.")
     if kind == "confidence":
         status = by["solution_status"]["text"].replace("_", " ")
         if "matched_star_count" in by:
@@ -367,36 +379,40 @@ def with_class_words(sentence: str, classes: set[str]) -> str:
     return sentence
 
 
-def answer_question(question: str, solution: dict[str, Any] | None, selected: str | None = None) -> dict[str, Any]:
-    """The contract VoiceAnswer to `question` about the photo whose stored solution is `solution` (None when none
-    is stored), with `selected` the finding in view, if any."""
+def answer_question(question: str, solution: dict[str, Any] | None, selected: str | None = None, *,
+                    noun: str = "photo") -> dict[str, Any]:
+    """The contract VoiceAnswer to `question` about the recording whose stored solution is `solution` (None when none
+    is stored), with `selected` the finding in view, if any, every sentence naming the recording by `noun` (NOUNS)."""
+    if noun not in NOUNS:
+        raise ValueError("a recording is named a photo or a clip")
     unanswerable = contract.UNANSWERABLE_QUESTION_KIND
     asked, negated = asked_kinds(question)
     if ranks_or_relates(question):
-        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_RANKS)
+        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_RANKS, noun=noun)
     if len(asked) > 1:
-        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_TWO_KINDS)
+        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_TWO_KINDS, noun=noun)
     if not asked:
-        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_ONLY_NEGATED if negated else None)
+        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_ONLY_NEGATED if negated else None,
+                        noun=noun)
     kind = next(iter(asked))
     said_names = intent._said(_lowered(question))[0]
     if len(said_names) > 1:
-        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_TWO_NAMES)
+        return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_TWO_NAMES, noun=noun)
     if kind == "moon_phase" and any(each.finding_id != "finding-predicted-moon" for each in said_names):
-        return _refused(unanswerable, "outside_the_data", solution)
+        return _refused(unanswerable, "outside_the_data", solution, noun=noun)
     if solution is None or solution.get("status") in UNSOLVED:
-        return _refused(kind, "photo_not_solved", solution)
+        return _refused(kind, "photo_not_solved", solution, noun=noun)
     statements: list[dict[str, Any]] = []
     name = "It"
     finding: dict[str, Any] | None = None
     if kind == "moon_phase":
         moment = solution.get("observedAtUTC")
         if not isinstance(moment, str):
-            return _refused(kind, "no_time_or_place", solution)
+            return _refused(kind, "no_time_or_place", solution, noun=noun)
         try:
             statements = moon_statements(moment)
         except ValueError:
-            return _refused(kind, "no_time_or_place", solution)
+            return _refused(kind, "no_time_or_place", solution, noun=noun)
     elif kind in SOLUTION_PATHS:
         for path in SOLUTION_PATHS[kind]:
             row = _row(path, finding=False)
@@ -406,9 +422,9 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
     else:
         index, missing = _target(question, solution, selected)
         if missing is not None:
-            return _refused(kind, "not_found_in_this_sky", solution, missing)
+            return _refused(kind, "not_found_in_this_sky", solution, missing, noun=noun)
         if index is None:
-            return _refused(kind, "not_in_the_data", solution)
+            return _refused(kind, "not_in_the_data", solution, noun=noun)
         finding = solution["findings"][index]
         subject = {"kind": "finding", "findingId": finding["id"], "evidenceClass": finding["evidenceClass"]}
         common = _get(finding, ("catalogRef", "commonName"))
@@ -423,8 +439,8 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
                 statements.append(statement)
     answering = contract.QUESTION_QUANTITIES[kind]
     if not any(s["quantity"] in answering for s in statements):
-        return _refused(kind, "not_in_the_data", solution)
-    sentence, spoken = _sentence(kind, statements, name, finding)
+        return _refused(kind, "not_in_the_data", solution, noun=noun)
+    sentence, spoken = _sentence(kind, statements, name, finding, noun)
     classes = {s["evidenceClass"] for s in statements if s["quantity"] in spoken}
     answer = {"status": "answered", "question": kind, "observationSolutionId": solution["id"],
               "sentence": with_class_words(sentence, classes), "statements": statements[: contract.ANSWER_STATEMENTS_MAX]}

@@ -149,11 +149,12 @@ export function dispatchAlbedianAction(
         if (!base.sourceAsset) {
           return rejectAction(session, action.requestId, 'unresolved_sky', 'There is no photo or video here yet, so there is no sky to show.', ['Import a recording first']);
         }
-        const kind = base.sourceAsset.mediaKind === 'video' ? 'video' : 'photo';
+        // A clip is named "clip", the decided noun; no "yet", since a solve that ended predicted only says it too (C34)
+        const kind = base.sourceAsset.mediaKind === 'video' ? 'clip' : 'photo';
         const sky =
           base.observationSolution?.status === 'unresolved'
             ? `This ${kind}'s sky could not be worked out from its stars.`
-            : `This ${kind}'s sky has not been worked out yet.`;
+            : `This ${kind}'s sky has not been worked out.`;
         const noTime = !base.sourceAsset.capturedAtUTC;
         const noPlace = !base.sourceAsset.observerLocation;
         const lacks = noTime && noPlace ? 'when or where' : noTime ? 'when' : noPlace ? 'where' : undefined;

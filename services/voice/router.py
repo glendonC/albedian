@@ -22,7 +22,7 @@ from services.contracts.voice import (
 from services.ingest.job_store import JobStore, Unreadable
 from services.ingest.router import UNREADABLE_SOLUTION, get_ingest_store
 from services.ingest.store import IngestStore
-from services.voice.answers import answer_question
+from services.voice.answers import answer_question, noun_of
 from services.voice.intent import check_voice_command
 
 _SOLUTION_ID: TypeAdapter[str] = TypeAdapter(SolutionId)
@@ -97,7 +97,10 @@ def post_voice_answer(
     if store.read_record(sha256) is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
     solution = _read_checked_solution(store, sha256)
+    # The recording named by its own noun, from the stored upload's media kind (C34)
+    asset = (store.read_record(sha256) or {}).get("sourceAsset")
+    noun = noun_of(asset.get("mediaKind") if isinstance(asset, dict) else None)
     reply = {"heard": req.question,
-             "answer": answer_question(req.question, solution, req.selected_finding_id)}
+             "answer": answer_question(req.question, solution, req.selected_finding_id, noun=noun)}
     VOICE_QUESTION_REPLY.validate_python(reply)
     return reply

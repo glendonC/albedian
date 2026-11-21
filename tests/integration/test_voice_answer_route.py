@@ -344,3 +344,17 @@ def test_the_question_table_reads_word_edges_as_ascii() -> None:
 
     assert answers.question_kind("éhow far") == "distance"
     assert answers.question_kind("showhow far") == "unanswerable"
+
+
+def test_a_stored_clip_is_answered_as_a_clip(tmp_path: Path, client: TestClient) -> None:
+    """C34: the route names the recording by the stored upload's own media kind, "clip" for a video."""
+    clip = IngestStore(tmp_path / "clip-store", max_bytes=1_000_000)
+    folder = clip.folder(SHA)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "original.bin").write_bytes(BODY)
+    clip.write_record(SHA, {"sha256": SHA, "made_up": True, "sourceAsset": {"mediaKind": "video"}})
+    app.dependency_overrides[ingest_router.get_ingest_store] = lambda: clip
+    answer = _ask(client, "how far is Rigel?")
+    assert answer["sentence"] == "This clip's sky has not been worked out, so nothing in it can be answered."
+    _store_solution(clip, "plate_calibrated")
+    assert _ask(client, "how far is Vega?")["sentence"] == "No finding in this clip is named Vega."

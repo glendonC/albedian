@@ -1255,7 +1255,7 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     for (const sample of ['plate_too_few_sources', 'plate_wcs_failed_verification']) {
       const unresolved = sessionOf(sample);
       expect(unresolved.observationSolution!.warnings.length).toBeGreaterThan(0);
-      expect(said(unresolved)).toEqual(["This video's sky could not be worked out from its stars.", []]);
+      expect(said(unresolved)).toEqual(["This clip's sky could not be worked out from its stars.", []]);
       const photo = { ...unresolved, sourceAsset: { ...unresolved.sourceAsset!, mediaKind: 'image' as const } };
       expect(said(photo)).toEqual(["This photo's sky could not be worked out from its stars.", []]);
     }
@@ -1264,25 +1264,25 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     const unresolved = sessionOf('plate_too_few_sources');
     const { capturedAtUTC: _dropped, ...timeless } = unresolved.sourceAsset!;
     expect(said({ ...unresolved, sourceAsset: timeless })).toEqual([
-      "This video's sky could not be worked out from its stars. The video does not say when it was taken.",
+      "This clip's sky could not be worked out from its stars. The clip does not say when it was taken.",
       [],
     ]);
     const { observerLocation: _nowhere, ...placeless } = unresolved.sourceAsset!;
     expect(said({ ...unresolved, sourceAsset: placeless })).toEqual([
-      "This video's sky could not be worked out from its stars. The video does not say where it was taken.",
+      "This clip's sky could not be worked out from its stars. The clip does not say where it was taken.",
       [],
     ]);
     const { observerLocation: _gone, ...bare } = timeless;
     expect(said({ ...unresolved, sourceAsset: bare })).toEqual([
-      "This video's sky could not be worked out from its stars. The video does not say when or where it was taken.",
+      "This clip's sky could not be worked out from its stars. The clip does not say when or where it was taken.",
       [],
     ]);
 
-    // No solve at all: it has not been worked out yet, which is all the session shows
+    // No solve at all: it has not been worked out, which is all the session shows
     const { observationSolution: _none, ...unsolved } = unresolved;
-    expect(said(unsolved as ObservationSession)).toEqual(["This video's sky has not been worked out yet.", []]);
+    expect(said(unsolved as ObservationSession)).toEqual(["This clip's sky has not been worked out.", []]);
     expect(said({ ...(unsolved as ObservationSession), sourceAsset: bare })).toEqual([
-      "This video's sky has not been worked out yet. The video does not say when or where it was taken.",
+      "This clip's sky has not been worked out. The clip does not say when or where it was taken.",
       [],
     ]);
     // No recording either: there is no sky to speak of, and the next step is to bring one
@@ -1295,6 +1295,6 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     // another state, and the session does not show a failed solve, so neither is said
     const stale = { ...sessionOf('plate_calibrated'), machines: { ...unresolved.machines } };
     expect(stale.observationSolution!.warnings.length).toBeGreaterThan(0);
-    expect(said(stale)).toEqual(["This video's sky has not been worked out yet.", []]);
+    expect(said(stale)).toEqual(["This clip's sky has not been worked out.", []]);
   });
 });

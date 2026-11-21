@@ -10,6 +10,8 @@ Covers:
   kind; an absence is said as no finding having the name; a long name says what the thing is
 - Numbers are never written with an exponent and are no more exact than the stored bounds; one of a thing is one
 - The exact sentence of each form the reader's mutants changed, and the Moon's statements predicted by an assertion
+- A recording is named by its own noun in every sentence that names it, "photo" or "clip", and a sky not worked out
+  is said without "yet", true while a solve runs and after it ended without one (C34, UIUX-voiceyet2-READY.md)
 """
 
 from __future__ import annotations
@@ -387,3 +389,59 @@ def test_subnormal_numbers_and_four_vs_five_letter_est_words() -> None:
     assert "e" not in answers.readable(1e-320).lower()
     assert ask("how high is it, west")["status"] == "answered"
     assert ask("how high is it, abest")["sentence"] == answers.SENTENCE_RANKS
+
+
+# ---- C34: a recording's own noun, and no "yet" for a sky that may never be worked out ----
+
+
+@pytest.mark.parametrize("noun", ["photo", "clip"])
+def test_every_refusal_names_the_recording_by_its_own_noun(noun: str) -> None:
+    assert answers.refusal_sentence("not_found_in_this_sky", name="Vega", noun=noun) == f"No finding in this {noun} is named Vega."
+    assert answers.refusal_sentence("not_found_in_this_sky", noun=noun) == f"No finding in this {noun} has that name."
+    too_long = "V" * contract.ANSWER_SENTENCE_MAX_UTF16
+    assert answers.refusal_sentence("not_found_in_this_sky", name=too_long, noun=noun) == f"No finding in this {noun} has that name."
+    assert answers.refusal_sentence("photo_not_solved", noun=noun) == (
+        f"This {noun}'s sky has not been worked out, so nothing in it can be answered.")
+    assert answers.refusal_sentence("no_time_or_place", noun=noun) == (
+        f"That needs the {noun}'s capture time, which this {noun} does not have.")
+    assert answers.refusal_sentence("not_in_the_data", noun=noun) == f"This {noun}'s data holds no value for that."
+    assert answers.refusal_sentence("outside_the_data", noun=noun) == f"Nothing in this {noun}'s data answers that."
+
+
+def test_a_photo_is_still_a_photo_when_no_noun_is_given() -> None:
+    assert answers.refusal_sentence("photo_not_solved") == "This photo's sky has not been worked out, so nothing in it can be answered."
+    assert answers.answer_question("how far is Rigel?", None)["sentence"] == (
+        "This photo's sky has not been worked out, so nothing in it can be answered.")
+
+
+def test_a_noun_that_is_neither_photo_nor_clip_is_refused() -> None:
+    with pytest.raises(ValueError):
+        answers.answer_question("how far is Rigel?", None, noun="video")
+
+
+@pytest.mark.parametrize("noun", ["photo", "clip"])
+def test_every_answer_that_names_the_recording_names_it_by_its_own_noun(noun: str) -> None:
+    def said(question: str, selected: str | None, solution: dict[str, Any] | None) -> dict[str, Any]:
+        answer = answers.answer_question(question, solution, selected, noun=noun)
+        contract.VOICE_ANSWER.validate_python(answer)
+        return answer
+
+    assert said("how far is Rigel?", None, None)["sentence"] == (
+        f"This {noun}'s sky has not been worked out, so nothing in it can be answered.")
+    assert said("how far is Vega?", None, CALIBRATED)["sentence"] == f"No finding in this {noun} is named Vega."
+    sky = copy.deepcopy(CALIBRATED)
+    sky["quality"]["detectedCandidateCount"] = 1
+    sky["quality"]["matchedInlierCount"] = 1
+    assert said("what's in this photo", None, sky)["sentence"] == f"This {noun} shows 1 point of light, 1 matched to catalog stars."
+    only_found = copy.deepcopy(sky)
+    del only_found["quality"]["matchedInlierCount"]
+    assert said("what's in this photo", None, only_found)["sentence"] == f"This {noun} shows 1 point of light."
+    only_matched = copy.deepcopy(sky)
+    del only_matched["quality"]["detectedCandidateCount"]
+    assert said("what's in this photo", None, only_matched)["sentence"] == f"This {noun} has 1 star matched to catalog stars."
+    faint = with_finding("finding-obs-12", ["sourceDetection", "snr"], 1.2)
+    bright = said("how bright is it", "finding-obs-12", faint)
+    assert bright["sentence"] == f"Observed Point Source #12 stands 1 time above the {noun}'s noise."
+    finding = next(f for f in faint["findings"] if f["id"] == "finding-obs-12")
+    short, _ = answers._sentence("brightness", bright["statements"], "P" * contract.ANSWER_SENTENCE_MAX_UTF16, finding, noun=noun)
+    assert short == f"It stands 1 time above the {noun}'s noise."
