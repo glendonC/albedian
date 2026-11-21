@@ -18,6 +18,7 @@ from services.science import predicted_sky as ps
 from services.science import sun_pose as sp
 from services.science.catalog import get_catalog_stars
 from services.science.detector import detect_point_sources
+from services.science.pose_estimate import MoonBlob, Refusal
 from services.science.solver import _build_unresolved_solution, triangle_solver_identity
 from services.science.wcs_models import SourceDetection
 from tests.science.test_sun_pose import FOCAL35, H, LAT, LON, POSE_MOMENT, W, _level_camera_frame
@@ -132,6 +133,83 @@ def test_a_detection_of_another_frame_on_the_cores_place_is_kept() -> None:
     assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
     served = [f.source_detection for f in solution.findings if f.evidence_class == "observed"]
     assert [d.frame_time_sec for d in served] == [1.0]
+
+
+def test_a_clips_stacked_detections_on_the_stacks_own_core_are_dropped() -> None:
+    # AUDIT's sun-core verdict, note a: a clip's detections come from the stack of its first frames (frame time 0.0)
+    # while the Sun pose lines up a spread frame later in the clip, so the pose's core says nothing of the stack. The
+    # stack's own core, found by the pose's own test on the pixels the detections were measured on, is the glare
+    # there. Here the camera turned between the stack and the pose's frame 2 s in: the Sun sits 40 px further right
+    # in the stack, more than its core's radius
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    stack = np.roll(frame, 40, axis=1)
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    in_stack = sp.sun_core_spot(stack, orientation=None, focal_35mm_mm=FOCAL35, sun=pose.sun)
+    assert isinstance(in_stack, MoonBlob), in_stack
+    assert math.hypot(in_stack.x_px - pose.spot.x_px, in_stack.y_px - pose.spot.y_px) > in_stack.radius_px
+    dropped = [(in_stack.x_px, in_stack.y_px), (in_stack.x_px + 0.9 * in_stack.radius_px, in_stack.y_px)]
+    # The pose frame's core place, empty in the stack, and a point far away: measured in the stack, kept
+    kept = [(pose.spot.x_px, pose.spot.y_px), (40.0, 40.0)]
+    detections = [
+        SourceDetection(x, y, flux=50.0, snr=8.0, fwhm_px=2.4, centroid_uncertainty_px=0.2, asset_id=ASSET_ID)
+        for x, y in dropped + kept
+    ]
+    asset = {**_asset(), "mediaKind": "video"}
+    solution = ps.complete_sky(
+        _unresolved_with(detections), asset, frames=lambda: [(2.0, frame)], stack=lambda: stack,
+    )
+    assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
+    assert solution.frame_time_sec == 2.0
+    assert _served(solution) == sorted((round(x, 6), round(y, 6)) for x, y in kept)
+
+
+def test_a_stack_with_no_core_of_its_own_keeps_its_detections() -> None:
+    # The stack's core is found by the pose's own test or not at all: a stack whose brightest region is a speck has
+    # no core, so nothing in it is taken to be the glare and every stacked detection is served as measured
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    stack = np.full_like(frame, 120.0)
+    stack[300:303, 300:303] = 255.0
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    assert isinstance(sp.sun_core_spot(stack, orientation=None, focal_35mm_mm=FOCAL35, sun=pose.sun), Refusal)
+    points = [(pose.spot.x_px, pose.spot.y_px), (301.0, 301.0)]
+    detections = [
+        SourceDetection(x, y, flux=50.0, snr=8.0, fwhm_px=2.4, centroid_uncertainty_px=0.2, asset_id=ASSET_ID)
+        for x, y in points
+    ]
+    solution = ps.complete_sky(
+        _unresolved_with(detections), {**_asset(), "mediaKind": "video"}, frames=lambda: [(2.0, frame)],
+        stack=lambda: stack,
+    )
+    assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
+    assert _served(solution) == sorted((round(x, 6), round(y, 6)) for x, y in points)
+
+
+def test_a_stacks_clipped_region_wider_than_the_suns_is_not_taken_for_its_core() -> None:
+    # The stack's core passes the pose's own width bound or is no core: a clipped patch far wider than the Sun's glare
+    # through this lens (a white cloud, say) is refused, so the stacked detections on it are served as measured
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    stack = np.full_like(frame, 120.0)
+    stack[600:800, 100:300] = 255.0
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    refused = sp.sun_core_spot(stack, orientation=None, focal_35mm_mm=FOCAL35, sun=pose.sun)
+    assert isinstance(refused, Refusal) and refused.kind == "sun_bloom", refused
+    points = [(200.0, 700.0), (150.0, 650.0)]
+    detections = [
+        SourceDetection(x, y, flux=50.0, snr=8.0, fwhm_px=2.4, centroid_uncertainty_px=0.2, asset_id=ASSET_ID)
+        for x, y in points
+    ]
+    solution = ps.complete_sky(
+        _unresolved_with(detections), {**_asset(), "mediaKind": "video"}, frames=lambda: [(2.0, frame)],
+        stack=lambda: stack,
+    )
+    assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
+    assert _served(solution) == sorted((round(x, 6), round(y, 6)) for x, y in points)
 
 
 def test_the_detectors_own_hits_on_the_core_are_dropped_and_the_rest_kept() -> None:

@@ -217,6 +217,11 @@ def test_the_pose_states_the_suns_core_where_the_stored_frame_holds_it(turns: in
     assert upright[int(round(pose.core.y_px)), int(round(pose.core.x_px))] >= level
     assert stored[int(round(pose.spot.y_px)), int(round(pose.spot.x_px))] >= level
     assert pose.spot.radius_px == pytest.approx(pose.core.diameter_px / 2.0)
+    # The same core by the helper a clip's stack is read with: the pose's own test, the same place and radius
+    alone = sp.sun_core_spot(stored, orientation={"quarterTurnsClockwise": turns, "mirrored": False},
+                             focal_35mm_mm=FOCAL35, sun=pose.sun)
+    assert not isinstance(alone, Refusal), alone
+    assert (alone.x_px, alone.y_px, alone.radius_px) == pytest.approx((pose.spot.x_px, pose.spot.y_px, pose.spot.radius_px))
     if turns == 0:
         assert (pose.spot.x_px, pose.spot.y_px) == pytest.approx((pose.core.x_px, pose.core.y_px))
 

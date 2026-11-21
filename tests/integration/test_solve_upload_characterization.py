@@ -342,10 +342,16 @@ def _pose_spy(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     # it has findings, not how many: a clip's count rests on its decoded pixels)
     seen: list[Any] = []
 
-    def complete_sky(solution: Any, asset: Any, *, frames: Any) -> Any:
+    def complete_sky(solution: Any, asset: Any, *, frames: Any, stack: Any = None) -> Any:
         seen.append(f"the sky was tried on a solution {solution.status} "
                     f"{'with findings' if solution.findings else 'with no finding'}")
         seen.extend([time_s, list(frame.shape), str(frame.dtype), float(frame.mean())] for time_s, frame in frames())
+        # A clip's detections come from the stack of its first frames, which the Sun pose reads for its core
+        if stack is None:
+            seen.append("no stack")
+        else:
+            pixels = stack()
+            seen.append(["the stack", list(pixels.shape), str(pixels.dtype), float(pixels.mean())])
         return solution
 
     monkeypatch.setattr(ingest_jobs, "complete_sky", complete_sky)

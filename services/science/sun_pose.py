@@ -233,6 +233,32 @@ class SunPose:
     spot: MoonBlob
 
 
+def _focal_px(up_width: int, up_height: int, focal_35mm_mm: float) -> float:
+    """The focal length in pixels of a frame of this size through a lens of this 35 mm equivalent focal length."""
+    return math.hypot(up_width, up_height) / 2.0 / (FRAME_35MM_DIAGONAL_MM / 2.0 / float(focal_35mm_mm))
+
+
+def _max_core_diameter_px(focal_px: float, sun: TopocentricMoon) -> float:
+    """The widest core taken to be the Sun's: MAX_DIAMETER_FACTOR times its disk through that lens."""
+    return MAX_DIAMETER_FACTOR * 2.0 * focal_px * math.radians(sun.radius_deg)
+
+
+def sun_core_spot(
+    luma: np.ndarray, *, orientation: Mapping[str, Any] | None, focal_35mm_mm: float, sun: TopocentricMoon,
+) -> MoonBlob | Refusal:
+    """The Sun's core in a frame by the pose's own test (`find_sun_core` in the upright frame, no wider than the pose
+    allows through the same lens), as the fit reads it (`_fit_spot`: its centre in stored pixels, its radius), or the
+    test's refusal. For pixels the pose did not line up but the solve's detections were measured on: a clip's stack of
+    its first frames, whose own core is where the glare sits in them (AUDIT's sun-core verdict, note a)."""
+    turns, _ = _orientation(orientation)
+    upright = np.rot90(np.asarray(luma, dtype=np.float64), -turns)
+    up_h, up_w = upright.shape
+    core = find_sun_core(upright, max_diameter_px=_max_core_diameter_px(_focal_px(up_w, up_h, focal_35mm_mm), sun))
+    if isinstance(core, Refusal):
+        return core
+    return _fit_spot(core, turns, up_w, up_h)
+
+
 def _fit_spot(core: SunCore, turns: int, up_width: int, up_height: int) -> MoonBlob:
     """The core as fit_horizon_pose reads a spot: its position in stored pixels and its size; the fit reads nothing
     else, and a clipped core has no honest flux, SNR or FWHM, so those are NaN."""
@@ -272,8 +298,8 @@ def sun_horizon_pose(
     height, width = luma.shape
     upright = np.rot90(luma, -turns)
     up_h, up_w = upright.shape
-    focal_px = math.hypot(up_w, up_h) / 2.0 / (FRAME_35MM_DIAGONAL_MM / 2.0 / float(focal_35mm_mm))
-    core = find_sun_core(upright, max_diameter_px=MAX_DIAMETER_FACTOR * 2.0 * focal_px * math.radians(sun.radius_deg))
+    focal_px = _focal_px(up_w, up_h, focal_35mm_mm)
+    core = find_sun_core(upright, max_diameter_px=_max_core_diameter_px(focal_px, sun))
     if isinstance(core, Refusal):
         return Refusal("sun_bloom", sun_bloom_reason(float(focal_35mm_mm))) if core.kind == "sun_bloom" else core
     skyline = find_day_skyline(upright, core)

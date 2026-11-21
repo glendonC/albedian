@@ -1179,7 +1179,10 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # one generic warning
     try:
         # A solve from a person's alignment states the person's hint and the lent moment, never a pose from the record
-        solution = complete_sky(solution, asset, frames=pose_frames,
+        # A clip's detections were measured on the stack of its first frames, which a Sun pose reads for the Sun's
+        # core in them (AUDIT's sun-core verdict, note a); a photo's were measured on the frame the pose reads
+        stack = (lambda: solve_image) if frame_count > 1 else None
+        solution = complete_sky(solution, asset, frames=pose_frames, stack=stack,
                                 **_sky_from_record(moment_hint, ctx.record_moment, pointing_hint, pose=alignment is None))
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
@@ -1307,8 +1310,10 @@ SOLVE_PRODUCER_FILES = (
 # 22, the Moon pose's refusals in the design lane's two sentences (C32), the reason first and its numbers second, which
 # a frame the Moon does not line up stores in its warnings; 23, a solve from a person's alignment of a sky whose time
 # or place the photo's pointing record lent (lentalign-1): its hint says moment and the record, and its predicted sky
-# names the record, as the plain solve's does
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 23, SOLVE_PRODUCER_FILES)
+# names the record, as the plain solve's does; 24, a clip lined up from the Sun without the stack's detections on the
+# Sun's core in the stack (AUDIT's sun-core verdict, note a), which a daytime clip lined up after its first frames
+# served as observed points
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 24, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

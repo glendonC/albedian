@@ -84,6 +84,7 @@ from services.science.sun_pose import (
     MIN_SUN_ALT_DEG as SUN_BEACON_MIN_ALT_DEG,
     SUN_POSE_SOLVER_NAME,
     SunPose,
+    sun_core_spot,
     sun_horizon_pose,
     topocentric_sun,
 )
@@ -1144,23 +1145,36 @@ def _sun_pose(
 
 def _sun_lined_up(
     solution: ObservationSolution, asset: Mapping[str, Any], pose: SunPose, frame_time_sec: float, moment: str,
-    lat: float, lon: float, lent: LentMoment | None,
+    lat: float, lon: float, lent: LentMoment | None, stack: Callable[[], np.ndarray] | None = None,
 ) -> ObservationSolution:
     """The approximate solution of a Sun pose (sky-6d): the nominal WCS and its pose estimate, the detector's
-    pixel-only findings as measured minus those of the same frame inside the Sun's core, and the predicted sky for the
-    frame's moment, each saying whether the nominal WCS puts it inside the frame. The glare is named in the pose's
-    assumptions only, not as an observed finding (the lead's answer of 17:37 on 19 Nov: a clipped core gives no honest
-    flux, SNR or width); so a detection on the core, which is the glare measured as a point (AUDIT's sweep of 21 Nov,
-    finding one: on the public lake photo one at the core's centre with an SNR of 0.4 and a width near 200 px), is
-    dropped as the Moon pose drops the detections on its spot (`_lined_up`)."""
+    pixel-only findings as measured minus those on the Sun's core in the pixels they were measured on, and the
+    predicted sky for the frame's moment, each saying whether the nominal WCS puts it inside the frame. The glare is
+    named in the pose's assumptions only, not as an observed finding (the lead's answer of 17:37 on 19 Nov: a clipped
+    core gives no honest flux, SNR or width); so a detection on the core, which is the glare measured as a point
+    (AUDIT's sweep of 21 Nov, finding one: on the public lake photo one at the core's centre with an SNR of 0.4 and a
+    width near 200 px), is dropped as the Moon pose drops the detections on its spot (`_lined_up`). A detection of the
+    pose's own frame is judged by the pose's core; one of `stack` (a clip's stack of its first frames, which the
+    solve's detections were measured on while the pose lined up a spread frame) by the stack's own core, found by the
+    pose's own test (`sun_core_spot`), and kept as measured where the stack shows none (AUDIT's sun-core verdict,
+    note a)."""
     spot = pose.spot
-    kept = [
-        f for f in solution.findings
-        if f.evidence_class == "observed" and f.source_detection is not None
-        and not (
-            abs(f.source_detection.frame_time_sec - frame_time_sec) <= SAME_FRAME_SEC
-            and math.hypot(f.source_detection.x_px - spot.x_px, f.source_detection.y_px - spot.y_px) <= spot.radius_px
+
+    def on(f: CelestialFindingRecord, core: Any) -> bool:
+        d = f.source_detection
+        return math.hypot(d.x_px - core.x_px, d.y_px - core.y_px) <= core.radius_px
+
+    observed = [f for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None]
+    same = [abs(f.source_detection.frame_time_sec - frame_time_sec) <= SAME_FRAME_SEC for f in observed]
+    in_stack = None
+    if stack is not None and not all(same):
+        found = sun_core_spot(
+            stack(), orientation=asset.get("displayOrientation"), focal_35mm_mm=_focal_35mm(asset), sun=pose.sun,
         )
+        in_stack = None if isinstance(found, Refusal) else found
+    kept = [
+        f for f, of_pose in zip(observed, same)
+        if not (on(f, spot) if of_pose else (in_stack is not None and on(f, in_stack)))
     ]
     time_sec = _worked_out_time_sec(asset)
     predicted = _placed(
@@ -1225,6 +1239,7 @@ def _stored_size(asset: Mapping[str, Any]) -> tuple[int, int] | None:
 def complete_sky(
     solution: ObservationSolution, asset: Mapping[str, Any], *, frames: FramesForPose | None = None,
     lent: LentMoment | None = None, attitude: RecordAttitude | None = None, hint: PointingHint | None = None,
+    stack: Callable[[], np.ndarray] | None = None,
 ) -> ObservationSolution:
     """A plate solver's outcome completed with the sky predicted for the recording's own capture time and place
     (`asset` is its SourceAsset): a new solution, the solver's left as it was.
@@ -1246,7 +1261,9 @@ def complete_sky(
       Moon plus horizon pose on the same frames, the first whose bright spot above a skyline passes the Moon test and
       fits at each swept skyline altitude and row: approximate, lined up from that frame.
       `frames` gives the frames to search, each as its time into the recording and its gray pixels, and is called
-      at most once, only when a pose could follow; None asks for no pose (layer 1 alone).
+      at most once, only when a pose could follow; None asks for no pose (layer 1 alone). `stack` gives the pixels
+      the solution's detections were measured on when they are none of `frames` (a clip's stack of its first
+      frames), read only when a Sun pose lines a recording up, for the Sun's core in them.
     - Otherwise unresolved or ambiguous: predicted_only, with the solver's findings (pixel-only observed ones),
       quality, warnings and identity, the predicted objects added, and, when `frames` was given, a warning saying why
       each pose tried found none (the head-worn one's unless the camera has no profile, the horizon one's unless
@@ -1299,7 +1316,7 @@ def complete_sky(
         sun_pose = _sun_pose(asset, _read_once(frames), captured, lat, lon)
         if not isinstance(sun_pose, Refusal):
             pose, frame_time_sec, frame_at = sun_pose
-            return _sun_lined_up(solution, asset, pose, frame_time_sec, frame_at, lat, lon, lent)
+            return _sun_lined_up(solution, asset, pose, frame_time_sec, frame_at, lat, lon, lent, stack)
         no_pose.append(sun_pose.reason)
     elif solution.status != "calibrated" and frames is not None:
         read = _read_once(frames)
