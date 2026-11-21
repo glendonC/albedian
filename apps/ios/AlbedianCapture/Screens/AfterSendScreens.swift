@@ -21,7 +21,7 @@ struct WaitingScreen: View {
             let early = earlyPlaced(width: width, height: width * 4 / 3)
             // The 17:38 tag rule: early marks only while their source line stands under a row (UIUX-built-1756)
             let rowShown = model.waitRow ?? lastRow
-            let earlyDrawn = !early.isEmpty && (rowShown != nil || model.queuedRow != nil)
+            let earlyDrawn = EarlyLine.marksShown(placed: early.count, rowShown: rowShown != nil || model.queuedRow != nil)
             ZStack {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
@@ -47,7 +47,7 @@ struct WaitingScreen: View {
                         VStack(alignment: .leading, spacing: 14) {
                             StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
                                 .id(row.stage)
-                            EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil,
+                            EarlySource(sentence: EarlyLine.sentence(marksShown: earlyDrawn, laptopSource: model.laptopEarly?.sky.source),
                                         leaving: model.lockOnSettled)
                         }
                     }
@@ -56,7 +56,7 @@ struct WaitingScreen: View {
                 } else if let queued = model.queuedRow {
                     VStack(alignment: .leading, spacing: 14) {
                         StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
-                        EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil,
+                        EarlySource(sentence: EarlyLine.sentence(marksShown: earlyDrawn, laptopSource: model.laptopEarly?.sky.source),
                                         leaving: model.lockOnSettled)
                     }
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)

@@ -64,3 +64,20 @@ final class EarlySkyTests: XCTestCase {
         XCTAssertEqual(EarlyPose.evidence, .predicted)
     }
 }
+
+/// The 17:38 tag rule on the iPhone's wait (UIUX-built-1756): early marks stand only while their source line is in view
+/// under a row; the line names the laptop's source when its sky is served, else C13's, and leaves with the marks.
+final class EarlyLineTests: XCTestCase {
+    func testTheMarksStandOnlyWithTheirLineUnderARow() {
+        XCTAssertTrue(EarlyLine.marksShown(placed: 3, rowShown: true))
+        XCTAssertFalse(EarlyLine.marksShown(placed: 3, rowShown: false), "no row, no line, so no marks")
+        XCTAssertFalse(EarlyLine.marksShown(placed: 0, rowShown: true), "no mark inside the photo, no line")
+    }
+
+    func testTheLineNamesItsSourceAndLeavesWithTheMarks() {
+        XCTAssertEqual(EarlyLine.sentence(marksShown: true, laptopSource: nil), "Placed from where your iPhone pointed: predicted until matched.")
+        XCTAssertEqual(EarlyLine.sentence(marksShown: true, laptopSource: .moon), "Placed from the Moon: predicted until matched.")
+        XCTAssertEqual(EarlyLine.sentence(marksShown: true, laptopSource: .pointing), EarlyPose.sourceSentence)
+        XCTAssertNil(EarlyLine.sentence(marksShown: false, laptopSource: .sun))
+    }
+}

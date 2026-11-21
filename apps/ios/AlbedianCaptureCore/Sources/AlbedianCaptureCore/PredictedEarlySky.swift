@@ -1,5 +1,17 @@
 import Foundation
 
+/// The 17:38 tag rule on the iPhone's wait (UIUX-built-1756): the early marks stand only while their source line is
+/// in view, and the line hangs under a row (a step or Queued); it names the laptop's source when its sky is served,
+/// else C13's for the phone's own record.
+public enum EarlyLine {
+    public static func marksShown(placed: Int, rowShown: Bool) -> Bool { placed > 0 && rowShown }
+
+    public static func sentence(marksShown: Bool, laptopSource: PredictedEarlySky.Source?) -> String? {
+        guard marksShown else { return nil }
+        return laptopSource.map(PredictedEarlySky.sentence(for:)) ?? EarlyPose.sourceSentence
+    }
+}
+
 /// The lock-on's early marks from the sky the running solve predicted (platform-10a and 10b: an approximate solution
 /// with its pose estimate, served at `GET /api/ingest/jobs/{id}/predicted-sky`), read as the web reads it
 /// (apps/web/src/reveal/earlyPose.ts `earlyPoseOf`, alignPose.ts `alignTargetOf`): stars to magnitude 3.2 and planets,
@@ -36,7 +48,9 @@ public struct PredictedEarlySky: Equatable, Sendable {
     ]
 
     /// The decided sentence for the source (UIUX-lockon-READY point 1; C13 for the iPhone's record).
-    public var sentence: String {
+    public var sentence: String { Self.sentence(for: source) }
+
+    public static func sentence(for source: Source) -> String {
         switch source {
         case .pointing: EarlyPose.sourceSentence
         case .moon: "Placed from the Moon: predicted until matched."
