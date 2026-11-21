@@ -185,10 +185,15 @@ describe('SourcePhotoStage: bare and dimmed, for the working screen', () => {
     expect((q(STAGE) as HTMLElement).dataset.evidenceClass).toBe('observed');
   });
 
-  it('draws the photo at 55 percent when dimmed, and changes nothing else about it', () => {
+  // The motion record ("A job that stops"): the photo goes to 55 percent on the view time, 400 ms on the standard curve,
+  // so the transition stands on the photo before it is dimmed (measured live on 21 November: it had jumped at once)
+  it('draws the photo at 55 percent when dimmed, on the view time, and changes nothing else about it', () => {
+    act(() => root.render(createElement(SourcePhotoStage, { session: storedPhoto(), viewportWidthPx: 1440, viewportHeightPx: 900, bare: true })));
+    expect((q(`${STAGE} img`) as HTMLImageElement).style.transition).toBe('opacity var(--look-mo-dur-view) var(--look-mo-ease-std)');
     act(() => root.render(createElement(SourcePhotoStage, { session: storedPhoto(), viewportWidthPx: 1440, viewportHeightPx: 900, bare: true, dimmed: true })));
     const img = q(`${STAGE} img`) as HTMLImageElement;
     expect(img.style.opacity).toBe('0.55');
+    expect(img.style.transition).toBe('opacity var(--look-mo-dur-view) var(--look-mo-ease-std)');
     expect(img.style.filter).toBe('');
     expect(img.getAttribute('src')).toBe('blob:photo');
   });

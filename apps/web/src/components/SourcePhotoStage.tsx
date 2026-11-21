@@ -137,6 +137,8 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     // The browser turns the photo by its tag; set here so no stylesheet can switch that off
     imageOrientation: 'from-image',
     ...(dimmed ? { opacity: 0.55 } : {}),
+    // A job that stops dims the photo on the view time (the motion record), so the transition stands before it dims
+    ...(fadeSides ? {} : { transition: 'opacity var(--look-mo-dur-view) var(--look-mo-ease-std)' }),
     ...(fadeSides
       ? {
           maskImage: SIDE_FADE,
