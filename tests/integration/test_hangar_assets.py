@@ -212,18 +212,25 @@ def _blender_version() -> str | None:
     return out.splitlines()[0] if out else None
 
 
-@pytest.mark.parametrize("craft", ["hubble", "newhorizons"])
+def _rebuild_inputs(craft: str) -> list[str]:
+    """The NASA files the build reads for one craft, as the shared cache holds them and data/downloads.json lists them."""
+    src = CRAFTS[craft]["source"]
+    return [f"{CACHE}/{src['local']}/{src[key]}" for key in ("file", "picture")]
+
+
+@pytest.mark.parametrize(
+    "craft", [pytest.param(c, marks=pytest.mark.local_dataset(*_rebuild_inputs(c))) for c in ("hubble", "newhorizons")]
+)
 def test_an_unchanged_craft_rebuilds_byte_for_byte(craft: str, tmp_path: Path) -> None:
     # Hubble's one mesh sits under a transformed parent in NASA's file: a build that drops that transform when it
     # unparents the meshes comes out at another scale and shape (AUDIT-B's read of hangar-20); New Horizons' picker is
     # rendered from the build because its recipe names a reason, so its picture checks that path. Runs only on a machine
-    # with the Blender the hangar was built with and NASA's source in the shared cache; CI has neither.
+    # with NASA's source in the shared cache (the local_dataset marker skips it where the cache is absent, as on CI) and
+    # the Blender the hangar was built with: under --no-unexpected-skips a machine that has the cache but another
+    # Blender fails here rather than passing without the check.
     version = _blender_version()
     if version is None or not version.startswith(BUILT_WITH):
         pytest.skip(f"needs {BUILT_WITH} (found {version})")
-    src = CRAFTS[craft]["source"]
-    if not (ROOT / CACHE / src["local"] / src["file"]).is_file():
-        pytest.skip("NASA's source is not in the shared cache")
     script = ROOT / "scripts" / "lookdev" / "hangar" / "build_craft.py"
     cmd = [shutil.which("blender"), "-b", "--factory-startup", "-P", str(script), "--", "--craft", craft, "--out", str(tmp_path)]
     done = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd=ROOT)
