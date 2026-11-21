@@ -12,12 +12,36 @@ export const REVEAL_KEEP_CLEAR = ['[data-testid="reveal-status"]', '.reveal-nav 
 /** On the working screen: its column (the lead, the source line, Cancel and the rows) and the Sound circle. */
 export const WORKING_KEEP_CLEAR = ['[data-testid="work-early"]', '.reveal-nav .sound-control'] as const;
 
+/**
+ * The status blocks, measured by what they hold (UIUX-keepclear-READY.md: "the block of words and buttons ... from its
+ * top to the buttons' foot"), not by their own box: the phone's aligning block spans the whole screen and the phone's
+ * refused block is taller than it, either of which, taken whole, would keep every ring and name off the photo.
+ */
+export const KEEP_CLEAR_BLOCKS = ['[data-testid="reveal-status"]', '[data-testid="work-early"]'] as const;
+
+const laidOut = (r: DOMRect) => r.width > 0 && r.height > 0;
+const boxOf = (r: DOMRect): Box => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom });
+
 /** Each element's box on screen; one not laid out (no width or height) keeps nothing clear. */
 export function boxesOf(elements: Iterable<Element>): Box[] {
   return [...elements]
     .map((el) => el.getBoundingClientRect())
-    .filter((r) => r.width > 0 && r.height > 0)
-    .map((r) => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }));
+    .filter(laidOut)
+    .map(boxOf);
+}
+
+/** A block's box: the union of its laid-out children, else its own box when none is laid out. */
+export function blockBoxOf(block: Element): Box[] {
+  const inner = [...block.children].map((child) => child.getBoundingClientRect()).filter(laidOut);
+  if (inner.length === 0) return boxesOf([block]);
+  return [
+    {
+      x0: Math.min(...inner.map((r) => r.left)),
+      x1: Math.max(...inner.map((r) => r.right)),
+      y0: Math.min(...inner.map((r) => r.top)),
+      y1: Math.max(...inner.map((r) => r.bottom)),
+    },
+  ];
 }
 
 const sameBoxes = (a: readonly Box[], b: readonly Box[]) =>
@@ -28,11 +52,12 @@ const sameBoxes = (a: readonly Box[], b: readonly Box[]) =>
  * changes with its words) and again when the window is resized or anything scrolls (the phone's block scrolls); none
  * while nothing is drawn.
  */
-export function useKeepClear(active: boolean, selectors: readonly string[] = REVEAL_KEEP_CLEAR): Box[] {
+export function useKeepClear(active: boolean, selectors: readonly string[] = REVEAL_KEEP_CLEAR, blocks: readonly string[] = KEEP_CLEAR_BLOCKS): Box[] {
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [, setResized] = useState(0);
   useLayoutEffect(() => {
-    const next = active ? boxesOf(selectors.flatMap((selector) => [...document.querySelectorAll(selector)])) : [];
+    const isBlock = (el: Element) => blocks.some((block) => el.matches(block));
+    const next = active ? selectors.flatMap((selector) => [...document.querySelectorAll(selector)]).flatMap((el) => (isBlock(el) ? blockBoxOf(el) : boxesOf([el]))) : [];
     setBoxes((now) => (sameBoxes(now, next) ? now : next));
   });
   useEffect(() => {

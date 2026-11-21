@@ -401,3 +401,35 @@ describe('the calibrated reveal keeps its matched marks clear of the status colu
     expect(plan.leaving.map((l) => l.id)).toEqual(['finding-predicted-star-early']);
   });
 });
+
+// A status block is measured by what it holds, from its first line's top to its buttons' foot (UIUX-keepclear-READY.md:
+// "the block of words and buttons ... from its top to the buttons' foot"), not by its own box: the phone's aligning
+// block spans the whole screen (inset 0) and the phone's refused block is 970 px tall from the top, and either, taken
+// whole, would hide every ring and name
+describe('useKeepClear measures a status block by what it holds', () => {
+  const Probe = () => createElement('output', { 'data-boxes': JSON.stringify(useKeepClear(true, ['[data-testid="probe-block"]'], ['[data-testid="probe-block"]'])) });
+  const boxes = () => JSON.parse(container.querySelector('output')!.getAttribute('data-boxes')!);
+  it('takes the union of its laid-out children, and the block itself only when none is laid out', () => {
+    const block = document.createElement('div');
+    block.setAttribute('data-testid', 'probe-block');
+    block.innerHTML = '<span id="probe-tag"></span><p id="probe-lead"></p><div id="probe-go"></div><i id="probe-unlaid"></i>';
+    document.body.append(block);
+    const at: Record<string, { left: number; top: number; right: number; bottom: number }> = {
+      'probe-block': { left: 0, top: 0, right: 390, bottom: 844 },
+      'probe-tag': { left: 24, top: 614, right: 120, bottom: 642 },
+      'probe-lead': { left: 24, top: 654, right: 366, bottom: 690 },
+      'probe-go': { left: 120, top: 772, right: 270, bottom: 816 },
+    };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const id = this.id || this.getAttribute('data-testid') || '';
+      return rectOf(at[id] ?? NONE);
+    });
+    act(() => root.render(createElement(Probe)));
+    expect(boxes()).toEqual([{ x0: 24, x1: 366, y0: 614, y1: 816 }]);
+    // Nothing inside laid out: the block's own box
+    for (const id of ['probe-tag', 'probe-lead', 'probe-go']) delete at[id];
+    act(() => window.dispatchEvent(new Event('resize')));
+    expect(boxes()).toEqual([{ x0: 0, x1: 390, y0: 0, y1: 844 }]);
+    block.remove();
+  });
+});
