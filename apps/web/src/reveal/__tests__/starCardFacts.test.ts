@@ -29,7 +29,7 @@ const acrux = {
     ...betelgeuse.evidence,
     limitations: [
       'Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.',
-      'Apparent magnitude is Hipparcos Hp, not Johnson V.',
+      "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
     ],
   },
 } as CelestialFinding;
@@ -69,7 +69,7 @@ describe('starCardFacts: a catalog matched star', () => {
   it("puts the finding's own limitations at the foot, word for word and in order", () => {
     expect(facts.notes).toEqual([
       'Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.',
-      'Apparent magnitude is Hipparcos Hp, not Johnson V.',
+      "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
     ]);
   });
 
