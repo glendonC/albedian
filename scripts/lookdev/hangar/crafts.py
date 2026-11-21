@@ -2031,6 +2031,8 @@ HANGAR: list[dict] = [
             {"key": "impactorMassKg", "value": 370, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"},
             {"key": "flybySize", "value": "about 3.2 by 1.7 by 2.3 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The flyby spacecraft measures approximately 3.2 m x 1.7 m x 2.3 m"},
             {"key": "dishDiameterM", "value": 1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."},
+            # The mission page's Key Dates line; the same page names the comet in its Target field, "Comet 9P/Tempel 1"
+            {"key": "tempel1Impact", "value": "2005-07-04", "page": "https://science.nasa.gov/mission/deep-impact-epoxi/", "quote": "July 4, 2005: Comet impact"},
             {"key": "hartley2Flyby", "value": "2010-11-04", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The encounter with Hartley 2 took place on 4 November 2010 at approximately 14:00 UT"},
             {"key": "power", "value": "620 W from a 7.2 square metre solar array", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "Power of 620 W at the encounter is provided by a 7.2 square meter solar array"},
         ],
@@ -2048,6 +2050,8 @@ HANGAR: list[dict] = [
             {"key": "footpadTriangleM", "value": 2.21, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "equilateral triangle with 2.21 m sides"},
             {"key": "base", "value": "six-sided, alternate 1.09 m and 0.56 m sides", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "six-sided aluminum base with alternate 1.09 m and .56 m long sides"},
             {"key": "power", "value": "two RTGs", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "Power was provided by two radioisotope thermal generator (RTG) units containing plutonium 238"},
+            # The mission page's Key Dates line; its landing line that names the site is left out for its coordinates
+            {"key": "landedOnMars", "value": "1976-07-20", "page": "https://science.nasa.gov/mission/viking-1/", "quote": "July 20, 1976: Lander touched down"},
             {"key": "contactLost", "value": "1982-11-13", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "It operated until 13 November 1982 when contact was lost."},
         ],
     },

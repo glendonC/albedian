@@ -3081,6 +3081,12 @@
           "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."
         },
         {
+          "key": "tempel1Impact",
+          "value": "2005-07-04",
+          "page": "https://science.nasa.gov/mission/deep-impact-epoxi/",
+          "quote": "July 4, 2005: Comet impact"
+        },
+        {
           "key": "hartley2Flyby",
           "value": "2010-11-04",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
@@ -3129,6 +3135,12 @@
           "value": "two RTGs",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
           "quote": "Power was provided by two radioisotope thermal generator (RTG) units containing plutonium 238"
+        },
+        {
+          "key": "landedOnMars",
+          "value": "1976-07-20",
+          "page": "https://science.nasa.gov/mission/viking-1/",
+          "quote": "July 20, 1976: Lander touched down"
         },
         {
           "key": "contactLost",
