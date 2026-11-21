@@ -255,6 +255,30 @@ describe("the near-black count warning's words on screen (C25)", () => {
   });
 });
 
+// On a clip both count warnings open "This clip's sky" (SCIENCE-INGEST's c25-words, the ruled noun): the same cut
+describe("the count warnings' clip forms on screen (C14 and C25)", () => {
+  const EVEN = "This clip's sky is so even that the smallest steps in its brightness can pass for points of light, so some of the points counted are those steps, not stars.";
+  const EVEN_RECORD = "The detector takes one brightness step as the sky's noise, so the count's false rate is not controlled.";
+  const BLACK = "This clip's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.";
+  const BLACK_RECORD = "On such a sky the detector finds more points on pure noise than its stated rate, so the count's false rate is not controlled.";
+
+  it('shows the first sentence only of each, and keeps a lone first sentence whole', () => {
+    expect(onScreenWarning(`${EVEN} ${EVEN_RECORD}`)).toBe(EVEN);
+    expect(onScreenWarning(`${BLACK} ${BLACK_RECORD}`)).toBe(BLACK);
+    expect(onScreenWarning(EVEN)).toBe(EVEN);
+    expect(onScreenWarning(BLACK)).toBe(BLACK);
+  });
+
+  it("cuts a clip's own warnings as the reveal shows them, the record keeping both sentences", () => {
+    const base = createSyntheticCalibratedSession();
+    const warnings = [`${EVEN} ${EVEN_RECORD}`, `${BLACK} ${BLACK_RECORD}`];
+    const solution = { ...base.observationSolution, warnings } as ObservationSolution;
+    const session: ObservationSession = { ...base, observationSolution: solution };
+    expect(revealStatus(session).warnings).toEqual([EVEN, BLACK]);
+    expect(solution.warnings).toEqual(warnings);
+  });
+});
+
 // C22 (UIUX-blindwords-READY.md, decided by the lead 17:08; SCIENCE-INGEST's blind-words): when the stars alone lined up
 // a photo whose moment the iPhone lent, the warning shows its first sentence; the second stays in the record (C5)
 describe("the moment-blind warning's words on screen (C22)", () => {

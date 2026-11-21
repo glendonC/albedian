@@ -48,6 +48,9 @@ const FIRST_SENTENCE_NOTES: readonly string[] = [
   "This photo's sky is so even that the smallest steps in its brightness",
   // C25 (UIUX-nearblackwords-READY.md): the near-black count warning in C14's shape
   "This photo's sky is so close to black that its faintest noise is cut off",
+  // On a clip both count warnings open with the clip's noun (SCIENCE-INGEST's c25-words): the same cut
+  "This clip's sky is so even that the smallest steps in its brightness",
+  "This clip's sky is so close to black that its faintest noise is cut off",
   // C22: the stars alone placed a photo whose moment the iPhone lent
   'The stars alone lined this photo up;',
   // C21 and C23: a pose's refusal says its reason first; its numbers, in a second sentence, stay in the record
