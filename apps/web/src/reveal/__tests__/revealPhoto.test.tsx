@@ -657,9 +657,9 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       top: '118px',
       width: '320px',
       'pointer-events': 'auto',
-      // between the flight's two halves, as NASA's Eyes' two moves: it mounts as the second half begins, its words
-      // 20 ms after the Simulated disclosure's
-      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
+      // No entrance as a whole: it carries the there screen's Simulated tag, which stands at full as it mounts, while
+      // its other parts word in (motion.css)
+      animation: 'none',
     });
     expect(declarationsOf('.flight-readout h1')).toEqual({ margin: '22px 0 0', font: '400 66px / 1 var(--look-font-sans)', 'letter-spacing': '-0.05em' });
     expect(declarationsOf('.flight-readout__stats')).toEqual({ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '16px', 'margin-top': '30px', 'padding-top': '20px', 'border-top': '1px solid var(--look-hair)' });
@@ -1037,6 +1037,29 @@ describe('the status line comes in at its moment\'s time', () => {
   });
 });
 
+// The motion record: under prefers-reduced-motion every travel becomes the 270 ms dissolve, never a jump with no
+// transition (REQ-DSA-2.1). The tokens do that by themselves (--look-mo-dur-view and the words' times become 270 ms), so
+// no reduced-motion rule may switch the Real sky layer's dissolve or the readout's words off (measured live 21 Nov:
+// the layer jumped to its 30 percent and the readout stood at full on its first frame)
+describe('under reduced motion the Real sky layer and the readout dissolve, never jump', () => {
+  it('has no reduced-motion rule in reveal.css that turns off their transition or animation', () => {
+    const off: string[] = [];
+    postcss.parse(css).walkAtRules('media', (media) => {
+      if (!/prefers-reduced-motion:\s*reduce/.test(media.params)) return;
+      media.walkRules((rule) => {
+        if (!/(^|[\s,])\.(real-sky|flight-readout)(?![\w-])/.test(rule.selector)) return;
+        rule.walkDecls(/^(transition|animation)/, (decl) => {
+          if (/none/.test(decl.value)) off.push(`${rule.selector} ${decl.prop}: ${decl.value}`);
+        });
+      });
+    });
+    expect(off).toEqual([]);
+    // Their own rules run on the tokens the reduced motion turns into the dissolve
+    expect(declarationsOf('.real-sky').transition).toContain('var(--look-mo-dur-view)');
+    expect(motionCss.replace(/\s+/g, ' ')).toContain('.flight-readout > * { animation: look-mo-words-in var(--look-mo-dur-words-in)');
+  });
+});
+
 // AGENTS.md 1.2 with the motion record: a simulated layer on screen always shows its Simulated tag. Measured live
 // (MOTION motion-36's note, 17:31): the tag rode with its line's words, 120 ms after the Real sky layer began to show,
 // and went 100 ms after the line gave way while the layer took 400 ms to go. So a line that names a simulated layer
@@ -1060,10 +1083,11 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     expect(rules[line]).toEqual({ animation: 'none' });
     expect(rules[`${line} > *`]).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
     expect(rules[`${line} > [data-evidence-class="simulated"]`]).toEqual({ animation: 'none' });
-    // At phone width the readout carries the disclosure: its tag row at full as it mounts, the rest on its words' time
-    expect(rules['.flight-readout.is-phone']).toMatchObject({ animation: 'none' });
-    expect(rules['.flight-readout.is-phone > *']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both' });
-    expect(rules['.flight-readout.is-phone > .flight-readout__tagrow']).toEqual({ animation: 'none' });
+    // The readout carries the there screen's disclosure too (its tag on the laptop, its tag row at phone width, where no
+    // status line shows): the tag at full as it mounts, the rest on its words' time; under reduced motion the readout is
+    // the only disclosure until the sky layer has drawn (measured 21 Nov)
+    expect(rules['.flight-readout > *']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both' });
+    expect(rules['.flight-readout > [data-evidence-class="simulated"], .flight-readout > .flight-readout__tagrow']).toEqual({ animation: 'none' });
     expect(rules['.reveal-status.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
   });
 

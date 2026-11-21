@@ -275,17 +275,16 @@
   animation: none;
 }
 
-/* At phone width the there screen's disclosure is the readout's tag row (no status line shows there): it stands at
-   full as the readout mounts, the rest of the readout on its words' time */
-.flight-readout.is-phone {
-  animation: none;
-}
-
-.flight-readout.is-phone > * {
+/* The readout carries the there screen's Simulated disclosure (its tag on the laptop, its tag row at phone width, where
+   no status line shows): the tag stands at full as the readout mounts, while the rest words in 20 ms after the line's
+   words (AGENTS.md 1.2; measured live at phone width on 19 Nov, and under reduced motion on 21 Nov, when the readout
+   is the only disclosure until the sky layer has drawn). The readout itself has no entrance (reveal.css). */
+.flight-readout > * {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
 }
 
-.flight-readout.is-phone > .flight-readout__tagrow {
+.flight-readout > [data-evidence-class="simulated"],
+.flight-readout > .flight-readout__tagrow {
   animation: none;
 }
 

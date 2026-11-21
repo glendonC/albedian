@@ -913,12 +913,6 @@
   display: block;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .real-sky {
-    transition: none;
-  }
-}
-
 /* There, after Go there (fly, approved 2026-11-12; #l-there in .cache/uiux/fly/index.html): the readout in the card's
    place, its words arriving at the flight's halfway point (the motion record; was from 0.45 s over 0.9 s): it mounts
    as the second half begins, its words 20 ms after the Simulated disclosure's */
@@ -928,7 +922,7 @@
   top: 118px;
   width: 320px;
   pointer-events: auto;
-  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+  animation: none;
 }
 
 .flight-readout h1 {
@@ -967,12 +961,6 @@
   margin-top: 8px;
   font-size: 13px;
   color: var(--look-ink-3);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .flight-readout {
-    animation: none;
-  }
 }
 
 /* Keyboard help (INTERIM: .lead/uiux/UIUX-keys-QUESTION.md; #kh-open in .cache/uiux/keys/screen/kh-open.html), with no
