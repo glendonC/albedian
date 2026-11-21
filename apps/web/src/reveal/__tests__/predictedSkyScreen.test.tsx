@@ -127,6 +127,7 @@ describe("the predicted sky's words", () => {
     expect(predictedSkyWords(predictedSky())).toEqual({
       heading: "The sky predicted for your photo's time and place.",
       note: 'Drawn or computed by the app; not measured in the source recording. Not lined up with your photo.',
+      milkyWay: "Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.",
       facts: ['2031-08-30 03:01 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3'],
     });
   });
@@ -135,6 +136,7 @@ describe("the predicted sky's words", () => {
     const words = predictedSkyWords(predictedSky('video'));
     expect(words.heading).toBe("The sky predicted for your clip's time and place.");
     expect(words.note).toBe('Drawn or computed by the app; not measured in the source recording. Not lined up with your clip.');
+    expect(words.milkyWay).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your clip's time and place. Not light your camera recorded.");
   });
 
   it("reads the time and place the solve predicted the sky for, so a time or place lent by the iPhone's record shows (13:04)", () => {
@@ -164,7 +166,10 @@ describe('the predicted sky in the app (laptop)', () => {
     const screen = q('[data-testid="predicted-sky"]')!;
     expect(screen.querySelector('.reveal-word svg')).not.toBeNull();
     const status = screen.querySelector('.predsky-status')!;
-    expect([...status.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__facts']);
+    // The 14:55 ruling (decided 13:08): the stars' Predicted tag, then the Milky Way's Simulated tag, and ESO's line
+    expect([...status.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__sky', 'predsky-status__facts']);
+    expect([...status.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
+    expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
     expect(status.querySelector('.predsky-status__lead')!.textContent).toBe("The sky predicted for your photo's time and place.");
     expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
     expect(q('.ask-bar')).not.toBeNull();
@@ -229,7 +234,9 @@ describe('the predicted sky in the app (laptop)', () => {
       // Only the close circle at the top: not the old Audio strip (the design lane's read, 13:22)
       expect(q('[data-testid="inline-audio-coalescing"]')).toBeNull();
       const status = screen.querySelector('.predsky-status')!;
-      expect([...status.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__facts']);
+      expect([...status.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__sky', 'predsky-status__facts']);
+      expect([...status.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
+      expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
       expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W']);
       expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);
       expect(q('.ask-bar')!.className).toContain('is-phone');
@@ -367,6 +374,8 @@ describe("the predicted sky's rules are the record's", () => {
 
   it('sets the heading 14 px under the tag at 24 px light, the disclosure 12 px under it, the facts after a hairline', () => {
     expect(declarationsOf('.predsky-status .look-tag')).toEqual({ 'margin-bottom': '0' });
+    expect(declarationsOf('.predsky-status__tags')).toEqual({ display: 'flex', gap: '8px' });
+    expect(declarationsOf('.predsky-status__sky')).toEqual({ margin: '8px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
     expect(declarationsOf('.predsky-status__lead')).toEqual({ margin: '14px 0 0', font: '300 24px / 1.2 var(--look-font-sans)', 'letter-spacing': '-0.03em', color: 'var(--look-ink)' });
     expect(declarationsOf('.predsky-status__note')).toEqual({ margin: '12px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
     expect(declarationsOf('.predsky-status__facts')).toEqual({ 'margin-top': '14px', 'padding-top': '12px', 'border-top': '1px solid var(--look-hair)', 'font-size': '12px', 'line-height': '1.6', 'font-variant-numeric': 'tabular-nums', color: 'var(--look-ink-3)' });

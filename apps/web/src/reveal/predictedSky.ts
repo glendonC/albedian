@@ -35,6 +35,11 @@ export const PREDICTED_SKY_CATALOGUES = 'Hipparcos 2007 · Gaia DR3';
 export interface PredictedSkyWords {
   heading: string;
   note: string;
+  /**
+   * The Milky Way's source under its own Simulated tag (the 14:55 ruling, decided 13:08): the renderer's sky dome is
+   * ESO's panorama (layer cislunar.sky, simulated), composed only from decided lines (the flight's, D33's, Real sky's).
+   */
+  milkyWay: string;
   /** The time, the place and the catalogues, one per line, each only when the recording gives it. */
   facts: string[];
 }
@@ -71,6 +76,7 @@ export function predictedSkyWords(session: ObservationSession): PredictedSkyWord
   return {
     heading: `The sky predicted for your ${kind}'s time and place.`,
     note: `Drawn or computed by the app; not measured in the source recording. Not lined up with your ${kind}.`,
+    milkyWay: `Milky Way: ESO/S. Brunier's photograph, placed for your ${kind}'s time and place. Not light your camera recorded.`,
     facts,
   };
 }

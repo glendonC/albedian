@@ -108,9 +108,14 @@ export const PredictedSkyScreen: React.FC<{
         </button>
       )}
       <div ref={status} className="reveal-status predsky-status" data-testid="reveal-status" data-moment="predicted-sky" role="status">
-        <EvidenceTag evidenceClass="predicted" />
+        {/* The 14:55 ruling: the stars' Predicted tag, then the Milky Way's Simulated tag, both at full from the first frame */}
+        <div className="predsky-status__tags">
+          <EvidenceTag evidenceClass="predicted" />
+          <EvidenceTag evidenceClass="simulated" />
+        </div>
         <p className="predsky-status__lead">{words.heading}</p>
         <p className="predsky-status__note">{words.note}</p>
+        <p className="predsky-status__sky">{words.milkyWay}</p>
         <div className="predsky-status__facts">
           {facts.map((fact) => (
             <p key={fact}>{fact}</p>

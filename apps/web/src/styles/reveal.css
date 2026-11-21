@@ -1807,6 +1807,20 @@
   margin-bottom: 0;
 }
 
+/* The 14:55 ruling (UIUX-predsky-READY.md, decided 13:08): the Predicted and Simulated tags side by side, 8 px apart;
+   the Milky Way's ESO line 8 px under the two sentences, as they are set */
+.predsky-status__tags {
+  display: flex;
+  gap: 8px;
+}
+
+.predsky-status__sky {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
 /* D33 at phone width (UIUX-predsky-READY.md, Build, phone): the close circle top left, as the phone There frame; the
    readout from top 584, 24 px from the sides, the heading at 20 px; names at 11 px */
 .predsky-top {
