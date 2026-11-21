@@ -133,7 +133,20 @@ export function revealMarks(
   session: ObservationSession,
   viewportWidthPx: number,
   viewportHeightPx: number,
-  { phone = false, deepSky = null }: { phone?: boolean; deepSky?: DeepSkyTable | null } = {}
+  {
+    phone = false,
+    deepSky = null,
+    clear = [],
+  }: {
+    phone?: boolean;
+    deepSky?: DeepSkyTable | null;
+    /**
+     * Places on screen the marks keep clear of (UIUX-keepclear-READY.md place 3, the estimate reveal): a mark that lies
+     * under or touches one is not drawn while it is there, and a name is placed only where its box clears them all. The
+     * picked star keeps its mark and name, as D33 keeps it (ruled 17:05).
+     */
+    clear?: readonly Box[];
+  } = {}
 ): RevealMark[] {
   const spec = phone ? PHONE_NAMES : LAPTOP_NAMES;
   const solution = session.observationSolution;
@@ -142,7 +155,7 @@ export function revealMarks(
   const verified = solution.status === 'calibrated' && hasVerifiedWcs(solution);
   const pickedId = session.selectedFindingId ?? null;
 
-  const placed = solution.findings.flatMap((finding) => {
+  const placedAll = solution.findings.flatMap((finding) => {
     const catalog = finding.evidenceClass === 'catalog_matched' && verified;
     if (!catalog && finding.evidenceClass !== 'predicted') return [];
     // A deep-sky object on a verified solve (D23): placed through the solve at its catalog centre, drawn only when it
@@ -165,6 +178,13 @@ export function revealMarks(
     if (!position.visible) return [];
     return [{ finding, kind: (catalog ? 'catalog' : 'predicted') as RevealMarkKind, position, symbol: null as DeepSkySymbol | null, magnitude: null as number | null }];
   });
+  const roomOf = (x: number, y: number, symbol: DeepSkySymbol | null): Box => {
+    const room = symbol === null ? MARK_ROOM_PX : DEEP_SKY_ROOM_PX;
+    return { x0: x - room, x1: x + room, y0: y - room, y1: y + room };
+  };
+  const placed = placedAll.filter(
+    ({ finding, position, symbol }) => finding.id === pickedId || !clear.some((box) => overlap(roomOf(position.xPx, position.yPx, symbol), box))
+  );
 
   // Predicted objects (drawn only where a pose lines the sky up) keep the budget of names the app already gives them
   const predictedNamed = chooseLabelledFindingIds(
@@ -196,7 +216,7 @@ export function revealMarks(
     let name: string | null = wanted ? finding.title : null;
     let nameOnLeft = false;
     if (name !== null) {
-      const runsInto = (box: Box) => rooms.some((room) => room.id !== finding.id && overlap(box, room.box));
+      const runsInto = (box: Box) => rooms.some((room) => room.id !== finding.id && overlap(box, room.box)) || clear.some((place) => overlap(box, place));
       // To the right, unless that crosses the photo's right edge
       nameOnLeft = nameBox(position.xPx, position.yPx, name, picked, false, spec).x1 - NAME_MARGIN_PX > right;
       // The picked star keeps its name where its place gives it; any other name gives way to a mark

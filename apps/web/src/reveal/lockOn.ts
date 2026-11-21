@@ -1,5 +1,6 @@
 import { placeMarks, type FrameRect } from './AlignLayer.js';
-import type { EarlyPose } from './earlyPose.js';
+import type { EarlyPose, PlacedTarget } from './earlyPose.js';
+import type { Box } from './predictedSkyMarks.js';
 import type { RevealMark } from './revealMarks.js';
 
 /**
@@ -34,12 +35,26 @@ export interface LockOnPlan {
   lockedIds: Set<string>;
 }
 
+/** The same early marks, however often their pose is read again: their ids and places. */
+const keyOfMarks = (marks: readonly PlacedTarget[]) => marks.map((m) => `${m.id}@${m.u.toFixed(6)},${m.v.toFixed(6)}`).join('|');
+// The places the working screen's early marks kept clear of when it last drew them (UIUX-keepclear-READY.md place 5)
+let workingClear: { key: string; clear: readonly Box[] } | null = null;
+
+/** Said by the working screen each time it draws its early marks: the places they kept clear of. */
+export function rememberWorkingClear(marks: readonly PlacedTarget[], clear: readonly Box[]): void {
+  workingClear = { key: keyOfMarks(marks), clear };
+}
+
 /**
- * The early marks as the working screen drew them over this frame (placeMarks, names where they fit), each sent to the
- * reveal mark of the same catalog object (else the same finding), never to a deep-sky symbol; the rest leave.
+ * The early marks as the working screen drew them over this frame (placeMarks, names where they fit, clear of the
+ * working column as it was), each sent to the reveal mark of the same catalog object (else the same finding), never to
+ * a deep-sky symbol; the rest leave. An early mark the working screen did not draw (under its column) neither travels
+ * nor leaves: its matched mark comes in at its solve place as the reveal's marks do (UIUX-keepclear-READY.md item 6;
+ * MOTION-READY-web.md section 6, the 400 ms row).
  */
 export function lockOnPlan(early: EarlyPose, frame: FrameRect, marks: readonly RevealMark[]): LockOnPlan {
-  const drawn = placeMarks(early.marks, frame, 13);
+  const clear = workingClear !== null && workingClear.key === keyOfMarks(early.marks) ? workingClear.clear : [];
+  const drawn = placeMarks(early.marks, frame, 13, clear);
   const keyOf = new Map(early.marks.map((m) => [m.id, m.key]));
   const targets = marks.filter((mark) => mark.deepSky === null);
   const plan: LockOnPlan = { travelling: [], leaving: [], lockedIds: new Set() };

@@ -5,6 +5,8 @@ import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { useElapsedRows } from './elapsedRows.js';
 import { StillAlignMarks } from './AlignLayer.js';
+import { useKeepClear, WORKING_KEEP_CLEAR } from './keepClear.js';
+import { rememberWorkingClear } from './lockOn.js';
 import { EARLY_SOURCE_WORDS, type EarlyPose, type PlacedTarget } from './earlyPose.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -96,6 +98,16 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       }}
     />
   ) : null;
+  // The lock-on's early state (D25): the marks the early pose places, and at the status place what is happening, where
+  // the pose came from, Cancel (D2) and the job's rows; a stopped job shows as approved
+  const shownEarly: EarlyPose | null = failure === null ? (aligned ? { source: 'alignment', marks: aligned.marks } : (early ?? null)) : null;
+  // The laptop's early marks keep clear of the working column and the Sound circle (UIUX-keepclear-READY.md place 5);
+  // the phone draws none here. The lock-on travels only from the marks drawn (item 6), so it is told what they kept
+  // clear of
+  const keepClear = useKeepClear(!phone && shownEarly !== null && Boolean(photoRect), WORKING_KEEP_CLEAR);
+  useEffect(() => {
+    if (!phone && shownEarly !== null && photoRect) rememberWorkingClear(shownEarly.marks, keepClear);
+  });
 
   if (phone) {
     // D2 at phone width: the close circle, then only the step the job is on (its word large, its count, its bar), or
@@ -166,9 +178,6 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
     );
   }
 
-  // The lock-on's early state (D25): the marks the early pose places, and at the status place what is happening, where
-  // the pose came from, Cancel (D2) and the job's rows; a stopped job shows as approved
-  const shownEarly: EarlyPose | null = failure === null ? (aligned ? { source: 'alignment', marks: aligned.marks } : (early ?? null)) : null;
   const steps = (
         <ol className="work-steps">
           {rows.map((row, i) => (
@@ -208,7 +217,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       <button type="button" className="work-word" data-testid="working-home" onClick={() => onHome?.()}>
         <Logo sizePx={21} />
       </button>
-      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} placed={shownEarly.marks} />}
+      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} placed={shownEarly.marks} clear={keepClear} />}
       {shownEarly ? (
         <div className="work-early" data-testid="work-early">
           <p className="work-early__lead">{aligned ? 'Matching near your alignment.' : 'Matching the stars.'}</p>

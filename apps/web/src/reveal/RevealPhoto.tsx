@@ -77,6 +77,7 @@ const FLIGHT_LINES = {
 import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { threeFigures, type FlightReadout } from './flightView.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
+import { useKeepClear } from './keepClear.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -345,12 +346,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const solution = session.observationSolution;
   const deepSkyWanted = solution?.status === 'calibrated' && hasVerifiedWcs(solution) && solution.findings.some(isDeepSky);
   const deepSky = useDeepSkyTable(deepSkyWanted);
-  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky }).filter((mark) => !there || mark.picked);
+  const status = revealStatus(session);
+  // Rings and names drawn on the photo keep clear of the controls (UIUX-keepclear-READY.md): measured while the
+  // no-match or the estimate reveal shows; the estimate's marks (place 3) here, the kept and aligning rings below
+  const keepClear = useKeepClear(!there && (status.kind === 'unmatched' || status.kind === 'estimate'));
+  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky, clear: status.kind === 'estimate' ? keepClear : [] }).filter((mark) => !there || mark.picked);
   // The order the marks arrive in: brightest first (the motion record)
   // A deep-sky mark is not a matched mark: it takes no place in their arrival and appears without movement (D23)
   const arrivingMarks = marks.filter((mark) => mark.deepSky === null || mark.picked);
   const arrival = markArrivalRanks(arrivingMarks);
-  const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
   // The lock-on (D25, MOTION-READY-web.md section 6): on the laptop, the early sky of this upload, from the reveal's
   // first arrival; it travels only once the check passed, and the arrival lasts until its words are in
@@ -719,13 +723,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {aligning && frame && (
-        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
+        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} clear={keepClear} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
       )}
 
       {/* Refused after Solve from here (D24 step 4): the rings stay amber and dashed at the kept pose */}
-      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} />}
+      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} />}
       {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
-      {earlyKept && <StillAlignMarks rect={frame!} placed={early!.marks} />}
+      {earlyKept && <StillAlignMarks rect={frame!} placed={early!.marks} clear={keepClear} />}
 
       {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
           solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
