@@ -289,7 +289,8 @@ def test_every_predicted_item_says_the_time_and_place_came_from_the_phones_recor
     assert predicted
     for finding in predicted:
         text = " ".join(finding["evidence"]["limitations"])
-        assert predicted_sky.RECORD_TIME_WORDS in text and predicted_sky.RECORD_PLACE_WORDS in text, text
+        # Both lent: C13 item 7, "for the time your iPhone recorded and where it was (within 8 m)"
+        assert predicted_sky.RECORD_TIME_WORDS + " and where it was (within 8 m)" in text, text
         # Nothing in the item, its method included, says the time or the place was the file's own
         everything = json.dumps(finding)
         for words in (FILE_MOMENT_WORDS, "for the recorded time and place", "recorded place at sea level"):
@@ -330,7 +331,7 @@ def test_a_reduced_accuracy_place_is_carried_with_its_own_uncertainty(client: Te
     for x, y in zip(a, b):
         assert y["skyPosition"]["uncertaintyArcsec"] - x["skyPosition"]["uncertaintyArcsec"] == pytest.approx(gap, abs=1e-6)
     sentence = predicted_sky.lent_moment_sentence(predicted_sky.LentMoment("record", "record", 5000.0, "reduced"))
-    assert sentence in reduced["warnings"] and "5000 m" in sentence and "approximate" in sentence
+    assert sentence in reduced["warnings"] and "5,000 m" in sentence and "the rough location you allowed" in sentence
 
 
 def test_a_places_accuracy_bounds_the_turn_of_the_vertical_and_the_moons_parallax() -> None:
@@ -364,5 +365,5 @@ def test_a_sky_lined_up_from_the_moon_says_its_time_and_place_came_from_the_reco
     lent = predicted_sky.LentMoment("record", "record", 8.0, "full")
     assert predicted_sky.lent_moment_sentence(lent) in solution["warnings"]
     for finding in _predicted(solution):
-        assert predicted_sky.RECORD_PLACE_WORDS in " ".join(finding["evidence"]["limitations"])
+        assert "and where it was (within 8 m)" in " ".join(finding["evidence"]["limitations"])
         assert FILE_MOMENT_WORDS not in json.dumps(finding)

@@ -191,9 +191,15 @@ def time_zone_from_gps(uncertainty_sec: float) -> str:
     )
 
 
-# A time or a place a phone's pointing record lent the solve (pointing-moment v2) [proposed: for the design lane]
-RECORD_TIME_WORDS = "the capture time in the phone's pointing record"
-RECORD_PLACE_WORDS = "the place in the phone's pointing record"
+# A time or a place the iPhone's pointing record lent the solve (pointing-moment v2), in the design lane's words
+# (C13, .lead/uiux/UIUX-pointingwords-DECIDED-BY-LEAD.md, decided 2026-11-19 07:40): what the iPhone recorded, said
+# as a person would say it
+RECORD_TIME_WORDS = "the time your iPhone recorded"
+RECORD_PLACE_WORDS = "where your iPhone was"
+# A lent time beside the file's own place, in an item's first limitation: item 7's own pairs, so the place is never
+# read as the iPhone's, and no "(within ...)" since the file's place states no accuracy (C13's last section, ruled
+# 2026-11-21 and decided by the lead at 13:34)
+RECORD_TIME_BESIDE_FILE_PLACE = f"{RECORD_TIME_WORDS} and the photo's recorded place"
 # [inference] The Earth's mean radius and the Moon's nearest distance: a place off by d metres tilts the local vertical,
 # and so every apparent altitude and azimuth, by d over the Earth's radius, and moves the Moon's direction by d over its
 # distance at most
@@ -226,32 +232,51 @@ def _lent_place_arcsec(lent: LentMoment | None) -> float:
     return place_uncertainty_arcsec(lent.place_accuracy_m)
 
 
+def _metres(value: float) -> str:
+    """A distance in metres as C13 writes it: a thousands comma, no trailing zeros (8 m, 5,000 m)."""
+    return f"{value:,g}"
+
+
 def lent_moment_sentence(lent: LentMoment) -> str:
-    """The sentence for a predicted sky whose time or place a phone's pointing record lent. It names no time and no
-    place; for the place it gives the accuracy the phone stated and how far that can move the predicted sky."""
-    place = ""
-    if lent.place_from == "record":
-        allowed = ", the approximate location the person allowed" if lent.accuracy_authorization == "reduced" else ""
-        within = "with no stated accuracy" if lent.place_accuracy_m is None else f"within {lent.place_accuracy_m:g} m"
-        place = (
-            f"{RECORD_PLACE_WORDS}, {within}{allowed}, which can move the predicted sky by up to "
-            f"{_lent_place_arcsec(lent):.1f} arcsec"
+    """The warning for a predicted sky whose time or place the iPhone's record lent, in C13's words (items 3 to 6):
+    the first sentence says what the file lacks and what the sky is predicted for, shown on screen; the second, kept
+    in the record, says how far the place's stated accuracy can move the predicted sky. It names no time and no
+    place. A place with no stated accuracy (reached only by a direct call: the pointing contract requires it for an
+    allowed place) has no bound to state, so it gets no second sentence and no number."""
+    time_lent = lent.time_from == "record"
+    if not time_lent and lent.place_from != "record":
+        raise ValueError("A lent moment lends the time, the place or both.")
+    if lent.place_from != "record":
+        return f"The photo's file has no time, so the sky is predicted for {RECORD_TIME_WORDS}, by its own clock."
+    # The place, after "where your iPhone was" on its own or "where it was" after the time
+    if lent.place_accuracy_m is None:
+        within = " (it gave no accuracy)"
+    else:
+        allowed = ", the rough location you allowed" if lent.accuracy_authorization == "reduced" else ""
+        within = f", to within {_metres(lent.place_accuracy_m)} m{allowed}"
+    if time_lent:
+        first = (
+            f"The photo's file has no time or place, so the sky is predicted for {RECORD_TIME_WORDS}, by its own "
+            f"clock, and where it was{within}."
         )
-    time = f"{RECORD_TIME_WORDS}, by the phone's own clock" if lent.time_from == "record" else ""
-    if time and place:
-        return f"The file holds no capture time and no place: the sky is predicted for {time}, and {place}."
-    if time:
-        return f"The file holds no capture time: the sky is predicted for {time}."
-    return f"The file holds no place: the sky is predicted for {place}."
+    else:
+        first = f"The photo's file has no place, so the sky is predicted for {RECORD_PLACE_WORDS}{within}."
+    if lent.place_accuracy_m is None:
+        return first
+    return f"{first} That can move the predicted sky by up to {_lent_place_arcsec(lent):.1f} arcseconds."
 
 
 def _moment_said(time_said: str, lent: LentMoment | None) -> str:
-    """The time and place a predicted item is placed for, in its first limitation's words."""
-    if lent is not None and lent.time_from == "record":
-        time_said = RECORD_TIME_WORDS
+    """The time and place a predicted item is placed for, in its first limitation's words (C13 item 7): "the time
+    your iPhone recorded and where it was (within 8 m)" when the record lent both, "<the file's time> and where your
+    iPhone was (within 8 m)" when it lent the place only, and "the time your iPhone recorded and the photo's recorded
+    place" when it lent the time only (RECORD_TIME_BESIDE_FILE_PLACE, C13's last section)."""
+    time_lent = lent is not None and lent.time_from == "record"
     if lent is None or lent.place_from != "record":
-        return f"{time_said} and place"
-    within = "" if lent.place_accuracy_m is None else f" (within {lent.place_accuracy_m:g} m)"
+        return RECORD_TIME_BESIDE_FILE_PLACE if time_lent else f"{time_said} and place"
+    within = " (it gave no accuracy)" if lent.place_accuracy_m is None else f" (within {_metres(lent.place_accuracy_m)} m)"
+    if time_lent:
+        return f"{RECORD_TIME_WORDS} and where it was{within}"
     return f"{time_said} and {RECORD_PLACE_WORDS}{within}"
 
 

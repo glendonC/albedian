@@ -104,7 +104,8 @@ BLIND_LENT_WORDS = {
     "both": "The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded "
     "and where it was, which the stars do not confirm. " + _BLIND_SECOND,
 }
-RECORD_NOT_USED = "The photo's stored pointing record is not a record of this photo, so the solve did not use it."
+# C13 item 9 (.lead/uiux/UIUX-pointingwords-DECIDED-BY-LEAD.md, decided 2026-11-19 07:40)
+RECORD_NOT_USED = "The iPhone record stored with this photo belongs to another photo, so it was not used."
 # The warning when the verified calibration's centre lies outside the hint's stated uncertainty: the WCS wins
 # (design component 5, REQ-IOS-2.2) [proposed: for UIUX's review]
 HINT_OUTSIDE = (
@@ -1289,8 +1290,9 @@ SOLVE_PRODUCER_FILES = (
 # 19, a Sun pose's solution without the detections on the Sun's core (AUDIT's sweep of 21 Nov, finding one), which a
 # daytime photo lined up from the Sun served as observed points; 20, the near-black count warning in the design
 # lane's two sentences (C25), which a frame near the black clip stores in its warnings, and on a clip both count
-# warnings opening with the clip's noun ("This clip's sky")
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 20, SOLVE_PRODUCER_FILES)
+# warnings opening with the clip's noun ("This clip's sky"); 21, the words for a time or a place the iPhone's record
+# lent in the design lane's plain words (C13), which a photo with a lent moment stores in its warnings and items
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 21, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
