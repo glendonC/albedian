@@ -54,6 +54,28 @@ interface HangarFile {
 }
 
 /**
+ * The elevation each NASA picture looks down on its craft from (the design lane's 13:35 ruling on 21 Nov): NASA states
+ * no angle, so each was found on the live sheet from 15, 30 and 45 degrees, kept where a panel's apparent width over its
+ * length comes nearest the picture's (elev-1, .cache/uiux/built/elev-1/): NEAR's panels 0.35 and 0.37 in its picture,
+ * 0.33 at 15 and 0.47 at 30; Stardust's arrays about 0.26 in its picture, about 0.10, 0.15 and 0.18 at 15, 30 and 45.
+ */
+export const STARDUST_ELEVATION_DEG = 45;
+export const NEAR_ELEVATION_DEG = 15;
+
+/**
+ * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
+ * horizontal axis, so the craft's top tilts toward the camera and its heading stays as built.
+ */
+function seenFromAbove(forward: Vec3, up: Vec3, deg: number): { readonly forward: Vec3; readonly up: Vec3 } {
+  const c = Math.cos((deg * Math.PI) / 180);
+  const s = Math.sin((deg * Math.PI) / 180);
+  return {
+    forward: [c * forward[0] - s * up[0], c * forward[1] - s * up[1], c * forward[2] - s * up[2]],
+    up: [s * forward[0] + c * up[0], s * forward[1] + c * up[1], s * forward[2] + c * up[2]],
+  };
+}
+
+/**
  * A craft's attitude at rest, by hangar model, where it is not the hangar's own frame (the design lane's rulings in
  * UIUX-pilot-READY.md): the model axis drawn along the way the camera looks (`forward`) and the one drawn up the screen.
  * - 13:32: Voyager stands as D26's render shows it, its long boom (the model's -X) straight down under the dish, its line
@@ -78,7 +100,9 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   dawn: { forward: [0, 1, 0], up: [0, 0, -1] },
   osirisrex: { forward: [0, 1, 0], up: [0, 0, -1] },
   ds1: { forward: [0, -1, 0], up: [0, 0, 1] },
-  near: { forward: [0, -1, 0], up: [0, 0, 1] },
+  near: seenFromAbove([0, -1, 0], [0, 0, 1], NEAR_ELEVATION_DEG),
+  // elev-1: Stardust keeps the hangar's frame, seen from above as its picture
+  stardust: seenFromAbove([0, 0, 1], [0, 1, 0], STARDUST_ELEVATION_DEG),
   // Cassini, from its side: the dish (facing -Z) up, the magnetometer boom (+Y) to the upper left (AUDIT-C's hold on rest-1)
   cassini: { forward: [-1, 0, 0], up: [0, Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)] },
   vanallen: { forward: [0, -1, 0], up: [0, 0, 1] },

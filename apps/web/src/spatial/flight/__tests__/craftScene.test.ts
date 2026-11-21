@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
+import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftFrameRadiusM, craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
@@ -171,7 +171,8 @@ describe('craftFromSearch: the interim choice by page address', () => {
     // face the camera across, NEAR's panels above its body with the engine end at the foot, Cassini's dish on top over
     // its body (a half turn about its line of flight), the Van Allen Probes' octagon facing the camera, panels in a cross
     expect([CRAFTS['deep-space-1']!.modelForward, CRAFTS['deep-space-1']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
-    expect([CRAFTS['near-shoemaker']!.modelForward, CRAFTS['near-shoemaker']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
+    // elev-1, the 13:35 ruling: NEAR seen from above by its picture's elevation, its heading kept (below)
+    expect(CRAFTS['near-shoemaker']!.modelForward[0]).toBe(0);
     // Cassini (AUDIT-C's hold on rest-1): seen from its side, the dish (facing the model's -Z) faces up and the
     // magnetometer boom (the model's +Y) reaches to the upper left, the screen's up tilted 30 degrees toward the boom
     expect(CRAFTS.cassini!.modelForward).toEqual([-1, 0, 0]);
@@ -179,6 +180,24 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(CRAFTS.cassini!.modelUp[1]).toBeCloseTo(0.5, 12);
     expect(CRAFTS.cassini!.modelUp[2]).toBeCloseTo(-Math.sqrt(3) / 2, 12);
     expect([CRAFTS['van-allen-probes']!.modelForward, CRAFTS['van-allen-probes']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
+    // elev-1 (the 13:35 ruling): Stardust and NEAR Shoemaker rest seen from above by their NASA pictures' elevation,
+    // found on the live sheet: the camera's look and the screen's up turned together about the screen's horizontal
+    // axis, the heading (the look's part across the craft's built up) kept, so the craft's top tilts toward the camera
+    const fromAbove: Record<string, [Vec3, Vec3, number]> = {
+      stardust: [[0, 0, 1], [0, 1, 0], STARDUST_ELEVATION_DEG],
+      'near-shoemaker': [[0, -1, 0], [0, 0, 1], NEAR_ELEVATION_DEG],
+    };
+    for (const [id, [f, u, deg]] of Object.entries(fromAbove)) {
+      const e = (deg * Math.PI) / 180;
+      const want = [f.map((x, i) => Math.cos(e) * x - Math.sin(e) * u[i]!), f.map((x, i) => Math.sin(e) * x + Math.cos(e) * u[i]!)];
+      const got = [CRAFTS[id]!.modelForward, CRAFTS[id]!.modelUp];
+      got.forEach((v, k) => v.forEach((x, i) => expect(x).toBeCloseTo(want[k]![i]!, 12)));
+      // Seen from above: the look runs down the craft's built up, the screen's up away from the camera
+      expect(CRAFTS[id]!.modelForward.reduce((a, x, i) => a + x * u[i]!, 0)).toBeCloseTo(-Math.sin(e), 12);
+      expect(CRAFTS[id]!.modelUp.reduce((a, x, i) => a + x * f[i]!, 0)).toBeCloseTo(Math.sin(e), 12);
+    }
+    // The angles kept from the sheet (.cache/uiux/built/elev-1/): Stardust 45, NEAR 15
+    expect([STARDUST_ELEVATION_DEG, NEAR_ELEVATION_DEG]).toEqual([45, 15]);
     // hangar-5, the live check of 21 Nov against each picture (the 12:40 ruling): each seen from its front quarter on
     // the left, level, as the hangar's picture camera looks (about 28.8 degrees off its front), the hangar's up kept, so
     // the Viking Lander stands on its legs
@@ -188,9 +207,9 @@ describe('craftFromSearch: the interim choice by page address', () => {
       expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
       expect([fz < 0, (Math.atan2(fx, -fz) * 180) / Math.PI]).toEqual([true, expect.closeTo(28.81, 2)]);
     }
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'deep-impact', 'viking-lander']);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
-    expect(['juno', 'messenger', 'mro', 'stardust', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
+    expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
     expect(CRAFTS['voyager-1']!.modelForward).toEqual([0, 0, 1]);
     expect(v.kind).toBe('craft');
