@@ -196,6 +196,8 @@ export const AlignLayer: React.FC<{
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      // On a Mac, Ctrl and click is the secondary click: the browser's menu would take the pointer and end the turn
+      onContextMenu={(event) => event.preventDefault()}
     >
       <MarksDrawing marks={marks} rect={rect} />
     </div>

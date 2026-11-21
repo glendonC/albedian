@@ -207,6 +207,23 @@ describe('aligning', () => {
     expect(readout()).toMatch(/· 7\d° across$/);
   });
 
+  it('keeps the context menu off the aligning layer only, so Ctrl and drag turns on a Mac, where Ctrl and click is the secondary click', () => {
+    // macOS turns Ctrl and click into the secondary click: Chrome and Safari send pointerdown, then contextmenu, whose
+    // menu would take the pointer and end the turn (the lead's yes, 13:48 on 21 Nov)
+    start();
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    const menu = (target: Element) => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, ctrlKey: true });
+      act(() => {
+        target.dispatchEvent(event);
+      });
+      return event.defaultPrevented;
+    };
+    expect(menu(layer)).toBe(true);
+    // Elsewhere on the screen the menu stays the browser's
+    expect(menu(container.querySelector('[data-testid="align-readout"]')!)).toBe(false);
+  });
+
   it('keeps nothing after Cancel or Esc: the entry comes back and a new start is the file start', () => {
     start();
     act(() => button('Cancel')!.click());
