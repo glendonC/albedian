@@ -1638,6 +1638,33 @@
   display: flex;
   justify-content: center;
 }
+/* D38 item 1 (UIUX-restorephone-READY.md, decided by the lead 13:32; rp-rest and rp-scroll): Restore 16 px under Ask
+   out loud, its top above the home bar at rest; the whole screen scrolls under the fixed top bar to bring it into
+   view, by 92 px as rp-scroll draws it, the photo and Ask out loud moving with it */
+.restore-phone-rest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 832px;
+  display: flex;
+  justify-content: center;
+}
+.reveal-photo.is-phone.is-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+.reveal-phone-room {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 936px;
+  pointer-events: none;
+}
+:root[data-phone-scroll] .ask-bar.is-phone {
+  translate: 0 calc(-1 * var(--phone-scroll, 0px));
+}
 
 /* The working screen at phone width (D2, decided by the lead 06:11; jp-run, jp-queued in .cache/uiux/jobs) */
 .work-phone-top {

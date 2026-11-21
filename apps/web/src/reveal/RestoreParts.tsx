@@ -348,6 +348,56 @@ export const RestorePhoneFoot: React.FC<{ onDownload: () => void }> = ({ onDownl
 );
 
 /**
+ * D38 item 2 at phone width (UIUX-restorephone-READY.md, decided by the lead 13:32): while the restoration works, D2's
+ * phone row in the counts' place with the step the job is on in D10's words (a still has nothing to count, so the
+ * time passed stands in the count's place, C19, and no bar), or "Queued" and the jobs ahead; Cancel where Ask out loud
+ * sat, held pressed from the press (or the record's cancel time) until the job stops, as on the laptop.
+ */
+export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promise<unknown> | void }> = ({ job, onCancel }) => {
+  const rows = useElapsedRows(restorationRows(job), job.id);
+  const now = rows.find((row) => row.state === 'now') ?? null;
+  const [asked, setAsked] = useState(false);
+  useEffect(() => setAsked(false), [job.id]);
+  const held = asked || job.cancelRequestedAtUTC !== undefined;
+  const cancel = () => {
+    if (held) return;
+    setAsked(true);
+    try {
+      const answer = onCancel();
+      if (answer && typeof (answer as Promise<unknown>).then === 'function') (answer as Promise<unknown>).catch(() => setAsked(false));
+    } catch {
+      setAsked(false);
+    }
+  };
+  const ahead = job.queueAhead ?? 0;
+  return (
+    <div className="restore-phone-wait">
+      {job.state === 'queued' ? (
+        <div className="work-phone-row">
+          <b>
+            Queued
+            {ahead > 0 && <span>{` · ${ahead} ahead`}</span>}
+          </b>
+        </div>
+      ) : now ? (
+        <div className="work-phone-row">
+          <b>{now.word}</b>
+          <span className="work-phone-row__v">{now.value}</span>
+          {now.fraction !== null && (
+            <span className="work-phone-row__bar">
+              <b style={{ width: barWidth(now.fraction) }} />
+            </span>
+          )}
+        </div>
+      ) : null}
+      <div className="restore-phone-go">
+        <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" size="phone" aria-disabled={held ? true : undefined} onClick={cancel} />
+      </div>
+    </div>
+  );
+};
+
+/**
  * D36 (UIUX-restorations-READY.md, decided by the lead 13:45): under Download, only when the photo has two or more
  * ready restorations, one row each, newest first, with no heading: the time it was made, its size at the right, the
  * check on the one shown, and under each older one "Made by an earlier version of Albedian." A row pressed shows it.

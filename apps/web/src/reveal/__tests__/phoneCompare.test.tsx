@@ -141,14 +141,14 @@ describe('a ready restoration at phone width (D10 item 5)', () => {
   it("tells the viewport while it shows, so Ask out loud gives way, and gives the counts' place to the sentence", async () => {
     const told = vi.fn();
     answer([NEWER]);
-    await showPhone({ onPhoneCompareChange: told });
+    await showPhone({ onPhoneFootChange: told });
     expect(told).toHaveBeenLastCalledWith(true);
     expect(q('[data-testid="reveal-legend"]')).toBeNull();
     act(() => root.unmount());
     root = createRoot(container);
     const later = vi.fn();
     answer([]);
-    await showPhone({ onPhoneCompareChange: later });
+    await showPhone({ onPhoneFootChange: later });
     expect(later).not.toHaveBeenCalledWith(true);
     expect(q('[data-testid="restore-compare"]')).toBeNull();
     expect(q('.restore-phone-note')).toBeNull();

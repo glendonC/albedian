@@ -223,8 +223,8 @@ export const SpatialObservatoryViewport: React.FC<
 
   // Line it up yourself (D24) on the phone: while it shows, the close circle cancels it instead of going home
   const [phoneAligning, setPhoneAligning] = useState(false);
-  // While the phone compares a ready restoration, Download takes Ask out loud's place (D10 item 5)
-  const [phoneCompare, setPhoneCompare] = useState(false);
+  // While the phone's restoration holds the foot (its compare's Download, D10 item 5, or its wait's Cancel, D38), Ask out loud gives way
+  const [phoneFoot, setPhoneFoot] = useState(false);
   const [cancelAligningToken, setCancelAligningToken] = useState(0);
   const [entryStageActive, setEntryStageActive] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -700,7 +700,7 @@ export const SpatialObservatoryViewport: React.FC<
               session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
               onAligningChange={setPhoneAligning}
-              onPhoneCompareChange={setPhoneCompare}
+              onPhoneFootChange={setPhoneFoot}
               cancelAligningToken={cancelAligningToken}
               onSelectFinding={onSelectFinding}
               onHome={() => setEntryStageActive(true)}
@@ -782,9 +782,9 @@ export const SpatialObservatoryViewport: React.FC<
           {/* Over the reveal, the approved Ask out loud button (with the keyboard button on the laptop) takes the old
               bar's place (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
           {/* On the phone the picked star's card covers the foot, Ask out loud's place, as #p-pick draws it */}
-          {/* Nor over Real sky on the phone, as #p-real draws it; nor while the phone compares a ready restoration, whose
-              Download stands there (D10 item 5) */}
-          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch || phoneCompare) ? null : revealShown || predictedSkyShown ? (
+          {/* Nor over Real sky on the phone, as #p-real draws it; nor while the phone's restoration holds the foot, whose
+              Download (D10 item 5) or Cancel (D38) stands there */}
+          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch || phoneFoot) ? null : revealShown || predictedSkyShown ? (
             <AskBar
               canListen={canListen}
               listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}

@@ -353,7 +353,9 @@ describe('the viewport shows the approved reveal over the photo, above phone wid
       removeEventListener: () => {},
     });
     open(storedPhoto());
-    expect(q(REVEAL)!.className).toBe('reveal-photo is-phone');
+    // Restore is offered under Ask out loud, so the whole screen scrolls to it (D38 item 1)
+    expect(q(REVEAL)!.className).toBe('reveal-photo is-phone is-scroll');
+    expect([...q(REVEAL)!.querySelectorAll('.restore-phone-rest button')].map((b) => b.textContent)).toEqual(['Restore']);
     expect(q(PANEL)).toBeNull();
     expect(q(OLD_MARKS)).toBeNull();
     expect(q(LABEL)).toBeNull();

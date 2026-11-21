@@ -11,7 +11,7 @@ import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedi
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
-import { RestoreCompare, RestorePhoneFoot, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
+import { RestoreCompare, RestorePhoneFoot, RestorePhoneWait, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
 import type { Restoration } from './restoration.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -126,8 +126,11 @@ export interface RevealPhotoProps {
   onCancelRestore?: () => Promise<unknown> | void;
   /** Told whenever Line it up yourself (D24) starts or ends, so the phone's close circle (the viewport's) can cancel it. */
   onAligningChange?: (active: boolean) => void;
-  /** Told whenever the phone's compare of a ready restoration starts or ends showing, so Ask out loud gives way to Download. */
-  onPhoneCompareChange?: (shown: boolean) => void;
+  /**
+   * Told whenever the phone's restoration takes or frees the foot (its compare's Download, or its wait's Cancel), so
+   * Ask out loud gives way to it.
+   */
+  onPhoneFootChange?: (taken: boolean) => void;
   /** Changed to cancel an alignment from outside: the phone's close circle while aligning. */
   cancelAligningToken?: number;
   /** Solve from here (D24 step 2): the person's alignment, sent as the solve's body, the pose and where it started. */
@@ -296,7 +299,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onRestore,
   onCancelRestore,
   onAligningChange,
-  onPhoneCompareChange,
+  onPhoneFootChange,
   cancelAligningToken = 0,
   onSolveFromHere,
   alignedFrom = null,
@@ -453,10 +456,32 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
   // compare is not on screen, so no predicted layer stands without its tag
   const drawnMarks = compareOn ? marks.filter((mark) => mark.kind !== 'predicted') : marks;
+  // D38 (UIUX-restorephone-READY.md, decided by the lead 13:32): on a matched phone photo, Restore 16 px under Ask out
+  // loud, reached by scrolling the whole screen under the fixed top bar; while it works, D2's phone row in the counts'
+  // place and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
+  const phoneRestoreOffered =
+    phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
+  const phoneRestoring = phonePhoto && !there && !skyShown && restoration?.phase === 'working';
+  // The phone's foot taken by the restoration (its compare's Download, or its wait's Cancel): Ask out loud gives way
+  const phoneFoot = phoneCompare || phoneRestoring;
   useEffect(() => {
-    onPhoneCompareChange?.(phoneCompare);
-  }, [phoneCompare]);
-  useEffect(() => () => onPhoneCompareChange?.(false), []);
+    onPhoneFootChange?.(phoneFoot);
+  }, [phoneFoot]);
+  useEffect(() => () => onPhoneFootChange?.(false), []);
+  // The whole screen scrolls to Restore: the photo and Ask out loud move with it (as the no-match screen's photo does)
+  const revealRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!phoneRestoreOffered) return undefined;
+    const doc = document.documentElement;
+    doc.dataset.phoneScroll = '';
+    return () => {
+      delete doc.dataset.phoneScroll;
+      doc.style.removeProperty('--phone-scroll');
+    };
+  }, [phoneRestoreOffered]);
+  const onRevealScroll = phoneRestoreOffered
+    ? () => document.documentElement.style.setProperty('--phone-scroll', `${revealRoot.current?.scrollTop ?? 0}px`)
+    : undefined;
   // While the compare is zoomed in, the marks step aside (D15)
   const [compareZoomed, setCompareZoomed] = useState(false);
   useEffect(() => {
@@ -791,7 +816,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
 
   return (
-    <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
+    <div
+      ref={revealRoot}
+      className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${phoneRestoreOffered ? ' is-scroll' : ''}${lockOn ? ' is-locking' : ''}`}
+      data-testid="reveal-photo"
+      data-hud-interactive="true"
+      data-arriving={arriving ? 'true' : undefined}
+      onScroll={onRevealScroll}
+    >
+      {/* The room to scroll to Restore, 16 px under Ask out loud (D38 item 1) */}
+      {phoneRestoreOffered && <div className="reveal-phone-room" aria-hidden="true" />}
       {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} />}
       {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
@@ -1010,7 +1044,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <RestorePhoneFoot onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersion.id))} />
       )}
 
-      {phone && !phoneCompare && !answer && !picked && !skyShown && status.kind === 'estimate' && (
+      {/* D38: Restore under Ask out loud, reached by scrolling; while it works, the step and Cancel */}
+      {phoneRestoreOffered && (
+        <div className="restore-phone-rest">
+          <SecondAction label="Restore" size="phone" onClick={() => onRestore?.()} />
+        </div>
+      )}
+      {phoneRestoring && restoration?.phase === 'working' && <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} />}
+
+      {phone && !phoneCompare && !phoneRestoring && !answer && !picked && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
         // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
         // sky rests on), then the counts row as built
@@ -1020,7 +1062,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           {counts.length > 0 && <PhoneCounts counts={counts} />}
         </div>
       )}
-      {phone && !phoneCompare && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
+      {phone && !phoneCompare && !phoneRestoring && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>
