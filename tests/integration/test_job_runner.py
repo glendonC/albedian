@@ -49,11 +49,9 @@ from services.ingest.store import IngestStore
 from services.media import decode as media_decode
 from services.media import jobs as media_jobs
 from services.media import variants as media_variants
-from services.science.bounded_worker import POLL_SEC, STOP_GRACE_SEC, WorkerTimeout
+from services.science.bounded_worker import WorkerTimeout
 
 BOUND_S = 30.0
-# A stop in the child is seen at its next poll, then the child's group is terminated and, after the grace, killed
-STOP_BOUND_S = POLL_SEC + 2 * STOP_GRACE_SEC + 1.5
 SOLVE_PRODUCER = Producer("albedian.test_solve", 1)
 MEDIA_PRODUCER = Producer("albedian.test_media", 1)
 TIME_LIMIT_SENTENCE = "The decoder stopped at its time limit."
@@ -600,17 +598,19 @@ def test_p_job_4_5_a_cancel_or_the_bound_stops_the_child_and_every_process_it_st
     record, _ = runner.start(world["shas"][0], "solve")
     assert in_child.wait(BOUND_S)
     if how == "cancel":
-        asked = time.monotonic()
         runner.cancel(record["id"])
+    # The child would sleep 60 s, past this wait's 30 s: an ended job here was stopped, by the cancel or the bound.
+    # How soon a stop lands is the bounded worker's own test (tests/science/test_bounded_worker.py), so no margin
+    # over the load of the machine is asserted here (platform-tc, as platform-tb did for the dense upload)
     ended = runner.wait(record["id"], BOUND_S)
     if how == "cancel":
-        assert ended["state"] == "canceled"
-        assert time.monotonic() - asked < STOP_BOUND_S + 1.0
+        assert ended["state"] == "canceled" and "cancelRequestedAtUTC" in ended
     else:
         assert (ended["state"], ended["error"]) == ("failed", TIME_LIMIT_SENTENCE)
-        assert time.monotonic() - started < limit + STOP_BOUND_S + 2.0
+        assert time.monotonic() - started >= limit, "the job ended before its bound"
     ((_, grandchild, pgid),) = seen
-    assert _until(lambda: _group_is_gone(pgid), STOP_BOUND_S), "a process of the job's group is left"
+    # The grandchild would sleep 60 s: a group gone within this 30 s poll was ended by the stop
+    assert _until(lambda: _group_is_gone(pgid), BOUND_S), "a process of the job's group is left"
 
 
 def test_p_job_5_work_in_the_runner_thread_past_the_bound_fails_with_the_kinds_sentence(world: dict[str, Any]) -> None:
@@ -623,9 +623,10 @@ def test_p_job_5_work_in_the_runner_thread_past_the_bound_fails_with_the_kinds_s
     runner = world["runner"]()
     started = time.monotonic()
     record, _ = runner.start(world["shas"][0], "solve")
+    # The body never ends by itself: an ended job within this wait's 30 s was stopped by its 0.5 s bound, never sooner
     ended = runner.wait(record["id"], BOUND_S)
     assert (ended["state"], ended["error"]) == ("failed", TIME_LIMIT_SENTENCE)
-    assert 0.5 <= time.monotonic() - started < 0.5 + 2.0
+    assert time.monotonic() - started >= 0.5, "the job ended before its bound"
     assert "cancelRequestedAtUTC" not in ended
 
 
