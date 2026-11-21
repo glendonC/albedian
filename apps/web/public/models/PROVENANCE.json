@@ -301,6 +301,65 @@
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Dawn/Dawn.png (1118264 bytes, SHA-256 2a5c7d395136787354d2155f2a826888c596b912d55fd4ec597a8ad588bcc673)."
     },
     {
+      "path": "hangar/deepimpact/deepimpact_lod0.glb",
+      "sha256": "f71f5797d55c494b7cdc945f9ef63813cb335915b2178706650a172bb623fd44",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft deepimpact --out apps/web/public/models/hangar/deepimpact",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and gold foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, a small printed line in a photo painted over in the colour around it, the parts NASA's model names as aluminium, silver foil and black blanket given physically based materials of that kind, the dish painted white and other baked parts grey with NASA's baked shading moved to the occlusion slot, NASA's flat colours kept for the rest, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Impact%20%28EPOXI%29/EPOXI.glb (2870776 bytes, SHA-256 bbf25a4bc5a43fd7f40f4312c04d778568a5007fb03362e4766ce325df71fe4d); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/deepimpact/deepimpact_lod1.glb",
+      "sha256": "7cdbacad535df5c92e008859e6ce5b7453aa33606abd3776e01f5eeba8fbf58e",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft deepimpact --out apps/web/public/models/hangar/deepimpact",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Impact%20%28EPOXI%29/EPOXI.glb (2870776 bytes, SHA-256 bbf25a4bc5a43fd7f40f4312c04d778568a5007fb03362e4766ce325df71fe4d); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/deepimpact/deepimpact_lod2.glb",
+      "sha256": "d5a7e992c8216a9541572b8d6fe7d39ecfb5e72bc3104e1a51e1f0363199f916",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft deepimpact --out apps/web/public/models/hangar/deepimpact",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Impact%20%28EPOXI%29/EPOXI.glb (2870776 bytes, SHA-256 bbf25a4bc5a43fd7f40f4312c04d778568a5007fb03362e4766ce325df71fe4d); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/deepimpact/deepimpact_picker.webp",
+      "sha256": "d0cb4ebd689cb40f560b4a85850c9d4b601a14844919bc7f73b03e09c1080553",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft deepimpact --out apps/web/public/models/hangar/deepimpact",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Impact%20%28EPOXI%29/EPOXI.png (1135717 bytes, SHA-256 6ea681aeed32b73c09fc423b275ef930c3231094fbe31c5d67fead1a8be4ae11)."
+    },
+    {
       "path": "hangar/ds1/ds1_lod0.glb",
       "sha256": "9362e5c306dfaa4a3c78e0eb36a50dfe921a33d88d9d8816621a07e5ef3842c0",
       "sources": [
@@ -538,7 +597,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "121d596575eec2e26322b1409e0339303659db0c0b19c3cfe154a1a9a4308e08",
+      "sha256": "ca017959e9a9706450950f157d5cd8e7be3e628498d99a508047ab04fc62462c",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

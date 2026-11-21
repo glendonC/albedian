@@ -178,6 +178,17 @@ CHANGES = {
         "colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, the "
         "normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
     ),
+    # lod0 for photo textures, named metals and blankets, a white dish and baked parts (recipe "changes": "epoxi")
+    "lod0_epoxi": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and gold foil kept as "
+        "the base colour, with metalness, roughness and surface relief added from their own colours and shading, a "
+        "small printed line in a photo painted over in the colour around it, the parts NASA's model names as "
+        "aluminium, silver foil and black blanket given physically based materials of that kind, the dish painted "
+        "white and other baked parts grey with NASA's baked shading moved to the occlusion slot, NASA's flat colours "
+        "kept for the rest, the normals made again, smooth within an angle and sharp beyond it, and the textures "
+        "re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

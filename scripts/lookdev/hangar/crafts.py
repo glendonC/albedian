@@ -1442,6 +1442,55 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 2.5,
         "changes": "named_welded",
     },
+    "deepimpact": {
+        "title": "Deep Impact",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-epoxi",
+            "title": "Deep Impact (EPOXI), NASA 3D Resources",
+            "folder": "Deep Impact (EPOXI)",
+            "file": "EPOXI.glb",
+            "bytes": 2_870_776,
+            "sha256": "bbf25a4bc5a43fd7f40f4312c04d778568a5007fb03362e4766ce325df71fe4d",
+            "picture": "EPOXI.png",
+            "picture_bytes": 1_135_717,
+            "picture_sha256": "6ea681aeed32b73c09fc423b275ef930c3231094fbe31c5d67fead1a8be4ae11",
+            "local": "deepimpact",
+        },
+        "drop_objects": [],
+        # NASA's EPOXI file holds the flyby spacecraft with its impactor still attached at -Y in the import frame and the
+        # high-gain dish at the far +Y end, which faces Earth, so the craft is flown along -Y, away from it, as Voyager
+        # is; the solar panel lies on top across +Z.
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the dish, NASA's "dish_AO" part, 0.9948 units across, to NSSDC's 1 m (NASA's model is in metres).
+        "scale_from": {
+            "material": "dish_AO",
+            "axis": "x",
+            "metres": 1,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+            "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal.",
+        },
+        "materials": {
+            "tex_01": {"role": "photo_atlas"},
+            "tex_02": {
+                "role": "photo_atlas",
+                # One line of tiny printed lettering on the photographed panel, illegible at the source's size.
+                "paint_out": [{"box": (196, 455, 246, 467), "what": "a printed line"}],
+            },
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "aluminum": {"role": "pbr", "base": (0.91, 0.92, 0.92), "metallic": 1.0, "roughness": 0.35},
+            "black_krinkle": {"role": "pbr", "base": (0.03, 0.03, 0.03), "metallic": 0.0, "roughness": 0.6},
+            # The dish is white; other parts NASA shades with a baked occlusion map are grey. Each keeps its own map.
+            "dish_AO": {"role": "painted", "base": (0.85, 0.85, 0.83), "roughness": 0.55, "occlusion_from_source": True},
+            "hole_AO": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "body_radius_m": 1.6,
+        "changes": "epoxi",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1931,6 +1980,23 @@ HANGAR: list[dict] = [
             {"key": "bodyDiameterM", "value": 1.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."},
             {"key": "bodyLengthM", "value": 1.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."},
             {"key": "missionYears", "value": "almost seven", "page": "https://science.nasa.gov/mission/van-allen-probes/", "quote": "gathered unprecedented data on the Van Allen belts for almost seven years"},
+        ],
+    },
+    {
+        # Deep Impact flew past comets and NASA states no speed relative to the Sun for it: no speed. NSSDC gives 650 kg
+        # for the flyby bus and 370 kg for the impactor where the mission page gives 601 kg and 372 kg; NSSDC's are used.
+        "id": "deep-impact",
+        "name": "Deep Impact",
+        "model": "deepimpact",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2005-01-12", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "Deep Impact launched on 12 January 2005 at 18:47:08.574 UT"},
+            {"key": "flybyMassKg", "value": 650, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"},
+            {"key": "impactorMassKg", "value": 370, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"},
+            {"key": "flybySize", "value": "about 3.2 by 1.7 by 2.3 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The flyby spacecraft measures approximately 3.2 m x 1.7 m x 2.3 m"},
+            {"key": "dishDiameterM", "value": 1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."},
+            {"key": "hartley2Flyby", "value": "2010-11-04", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The encounter with Hartley 2 took place on 4 November 2010 at approximately 14:00 UT"},
+            {"key": "power", "value": "620 W from a 7.2 square metre solar array", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "Power of 620 W at the encounter is provided by a 7.2 square meter solar array"},
         ],
     },
 ]

@@ -1744,6 +1744,63 @@
         "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m.",
         "trueTo": "part"
       }
+    },
+    "deepimpact": {
+      "title": "Deep Impact",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "deepimpact/deepimpact_lod0.glb",
+          "bytes": 1748828,
+          "triangles": 27631,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "deepimpact/deepimpact_lod1.glb",
+          "bytes": 1294284,
+          "triangles": 13814,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "deepimpact/deepimpact_lod2.glb",
+          "bytes": 483136,
+          "triangles": 4973,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "deepimpact/deepimpact_picker.webp",
+          "bytes": 3460,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.534,
+          -1.085,
+          -0.443
+        ],
+        "max": [
+          1.356,
+          0.914,
+          3.49
+        ]
+      },
+      "bodyRadiusM": 1.6,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "dish_AO",
+        "metres": 1,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+        "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."
+      }
     }
   },
   "entries": [
@@ -2926,6 +2983,56 @@
           "value": "almost seven",
           "page": "https://science.nasa.gov/mission/van-allen-probes/",
           "quote": "gathered unprecedented data on the Van Allen belts for almost seven years"
+        }
+      ]
+    },
+    {
+      "id": "deep-impact",
+      "name": "Deep Impact",
+      "model": "deepimpact",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2005-01-12",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "Deep Impact launched on 12 January 2005 at 18:47:08.574 UT"
+        },
+        {
+          "key": "flybyMassKg",
+          "value": 650,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"
+        },
+        {
+          "key": "impactorMassKg",
+          "value": 370,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"
+        },
+        {
+          "key": "flybySize",
+          "value": "about 3.2 by 1.7 by 2.3 m",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "The flyby spacecraft measures approximately 3.2 m x 1.7 m x 2.3 m"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 1,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."
+        },
+        {
+          "key": "hartley2Flyby",
+          "value": "2010-11-04",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "The encounter with Hartley 2 took place on 4 November 2010 at approximately 14:00 UT"
+        },
+        {
+          "key": "power",
+          "value": "620 W from a 7.2 square metre solar array",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
+          "quote": "Power of 620 W at the encounter is provided by a 7.2 square meter solar array"
         }
       ]
     }
