@@ -110,6 +110,22 @@ describe('the start', () => {
     expect(startPose(withTargets([sky[3]!]))).toBeNull();
   });
 
+  // C26 (UIUX-webuxpieces-READY.md item 2, decided by the lead 12:59): without a lens the readout's second line says
+  // the field was not read from the photo, with the code's own start value
+  it('says the file gives no lens, and the field it starts at, after where the start came from', () => {
+    const brightest = startPose(withTargets(sky))!;
+    expect(alignStartWords(brightest.from)).toBe(`Started from the brightest star, Fomalhaut. The file gives no lens, so the field starts at ${ALIGN_FALLBACK_FOV_DEG}° across.`);
+    const heading = startPose(withTargets(sky), 115.89)!;
+    expect(alignStartWords(heading.from)).toBe(`Started from your photo's compass heading. The file gives no lens, so the field starts at ${ALIGN_FALLBACK_FOV_DEG}° across.`);
+  });
+
+  it('keeps the start field in the words while the person scales the view, and says nothing of a lens the file gives', () => {
+    const start = startPose(withTargets(sky))!;
+    expect(alignReadout(scalePose(start.pose, 0.5))).toContain(`${ALIGN_FALLBACK_FOV_DEG / 2}° across`);
+    expect(alignStartWords(start.from)).toContain(`starts at ${ALIGN_FALLBACK_FOV_DEG}° across.`);
+    expect(alignStartWords(startPose(withTargets(sky, 26))!.from)).not.toContain('lens');
+  });
+
   it('reads a photo turned a quarter as tall as it is shown', () => {
     const session = withTargets(sky, 26);
     const turned = { ...session, sourceAsset: { ...session.sourceAsset!, width: 4032, height: 3024, displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } } } as ObservationSession;

@@ -112,10 +112,14 @@ export function alignTargets(solution: ObservationSolution | undefined): AlignTa
     .sort(brightestFirst);
 }
 
-/** [proposed] The field across when the file gives no 35 mm equivalent focal length: no record words one. */
+/**
+ * The field across when the file gives no 35 mm equivalent focal length: the lane's engineering default [proposed];
+ * the readout says it was not read from the photo, in C26's words, with whatever number this holds.
+ */
 export const ALIGN_FALLBACK_FOV_DEG = 50;
 
-export type AlignStart = { kind: 'heading' } | { kind: 'brightest'; name: string };
+/** Where the start came from, and the field it started at when the file gives no lens (C26). */
+export type AlignStart = ({ kind: 'heading' } | { kind: 'brightest'; name: string }) & { noLensFieldDeg?: number };
 
 /**
  * The alignment the last Solve from here was sent from, for one upload; `refusal` is the route's own sentence when
@@ -140,13 +144,14 @@ export function startPose(session: ObservationSession, headingDeg?: number): { p
   const aspect = turned ? asset.width / asset.height : asset.height / asset.width;
   const focal = asset.cameraMetadata?.focalLength35mmMm;
   const fovXDeg = focal !== undefined ? fovFrom35mm(focal, aspect).x : ALIGN_FALLBACK_FOV_DEG;
+  const noLens = focal === undefined ? { noLensFieldDeg: fovXDeg } : {};
   const altDeg = fovYOf({ fovXDeg, aspect }) / 2;
-  if (headingDeg !== undefined) return { pose: { azDeg: headingDeg, altDeg, rollDeg: 0, fovXDeg, aspect }, from: { kind: 'heading' } };
+  if (headingDeg !== undefined) return { pose: { azDeg: headingDeg, altDeg, rollDeg: 0, fovXDeg, aspect }, from: { kind: 'heading', ...noLens } };
   // The brightest star: a planet the record gives no magnitude is not one
   const brightest = alignTargets(session.observationSolution).find((target) => target.altDeg > 0 && target.magnitude !== null && isStar(target.finding));
   if (!brightest) return null;
   // [proposed] Facing it means it is in view: the centre at its height, never lower than the horizon at the foot
-  return { pose: { azDeg: brightest.azDeg, altDeg: Math.max(altDeg, brightest.altDeg), rollDeg: 0, fovXDeg, aspect }, from: { kind: 'brightest', name: brightest.name } };
+  return { pose: { azDeg: brightest.azDeg, altDeg: Math.max(altDeg, brightest.altDeg), rollDeg: 0, fovXDeg, aspect }, from: { kind: 'brightest', name: brightest.name, ...noLens } };
 }
 
 const wrap360 = (deg: number) => ((deg % 360) + 360) % 360;
@@ -212,5 +217,10 @@ export function alignReadout(pose: AlignPose): string {
 
 /** The readout's second line: where the start came from. */
 export function alignStartWords(from: AlignStart): string {
-  return from.kind === 'heading' ? "Started from your photo's compass heading and lens." : `Started from the brightest star, ${from.name}.`;
+  if (from.noLensFieldDeg === undefined) {
+    return from.kind === 'heading' ? "Started from your photo's compass heading and lens." : `Started from the brightest star, ${from.name}.`;
+  }
+  // C26: with no lens, what the app assumed, plainly, at the start's own field
+  const start = from.kind === 'heading' ? "Started from your photo's compass heading." : `Started from the brightest star, ${from.name}.`;
+  return `${start} The file gives no lens, so the field starts at ${Math.round(from.noLensFieldDeg)}° across.`;
 }
