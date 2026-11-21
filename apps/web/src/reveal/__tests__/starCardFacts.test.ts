@@ -175,3 +175,17 @@ describe('starCardFacts: what a finding does not have is left out', () => {
     expect(starCardFacts({ ...acrux, evidence: { ...acrux.evidence, limitations: [] } }).notes).toEqual([]);
   });
 });
+
+// C24 (UIUX-starplacewords-READY.md item 1): a predicted star's place caution shows its first sentence on the card; what
+// its stated uncertainty adds stays in the solution's record
+describe("starCardFacts: a predicted star's place caution", () => {
+  const PLACE =
+    "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out.";
+  const ADDS =
+    "Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it.";
+  it('shows the first sentence only, the others whole and in order', () => {
+    const facts = starCardFacts({ ...acrux, evidence: { ...acrux.evidence, limitations: [`${PLACE} ${ADDS}`, "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V."] } } as CelestialFinding);
+    expect(facts.notes.slice(0, 2)).toEqual([PLACE, "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V."]);
+    expect(facts.notes.join(' ')).not.toContain('UT1');
+  });
+});

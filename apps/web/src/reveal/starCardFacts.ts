@@ -3,6 +3,7 @@ import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { findingCanEnterSpace } from '../components/askSuggestions.js';
 import { RUWE_CAUTION_ABOVE, astrophysicsOf, formatSignificant } from '../components/scanScales.js';
 import { deepSkyKindWords, deepSkyName, isDeepSky, type DeepSkyRow } from './deepSky.js';
+import { onScreenWarning } from './revealStatus.js';
 
 /**
  * What the picked star's card says (reveal, approved 2026-11-12, laptop screen 3), each fact from the finding itself:
@@ -88,7 +89,8 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
     numbers.push({ value: Math.round(snr).toLocaleString('en-US'), unit: '×', label: 'above the noise', evidenceClass: 'observed' });
   }
 
-  const notes = [...(finding.evidence?.limitations ?? [])];
+  // Each caution as it shows on screen: those C5's rule cuts by their first sentence (C24's place caution), the rest whole
+  const notes = (finding.evidence?.limitations ?? []).map(onScreenWarning);
   // A prediction ends with the solve's own sentence for it (INTERIM: UIUX-predicted-pick-QUESTION.md), said once
   const predictedSaid = finding.evidenceClass === 'predicted' && finding.evidence?.verificationMethod ? `${finding.evidence.verificationMethod.replace(/\.$/, '')}.` : null;
   if (predictedSaid && !notes.includes(predictedSaid)) notes.push(predictedSaid);

@@ -50,6 +50,9 @@ const FIRST_SENTENCE_NOTES: readonly string[] = [
   'The stars alone lined this photo up;',
   // C21 and C23: a pose's refusal says its reason first; its numbers, in a second sentence, stay in the record
   'The sky is not lined up over the picture: ',
+  // C24 (UIUX-starplacewords-READY.md item 1): a predicted star's place caution, on its card; what its stated
+  // uncertainty adds stays in the record
+  'Placed in the sky for that moment and place, at sea level;',
 ];
 
 /**
