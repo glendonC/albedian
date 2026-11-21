@@ -43,6 +43,13 @@ export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.words
 /** The arrival that locks on (D25): the travel, the matched marks' colour at rest, then the words as after the marks. */
 export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colourMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
 
+/** When the last lock-on mark has gone: a travelling one after its travel and colour, a leaving one after frame out. */
+function lockOnMarksEndMs(plan: { travelling: readonly unknown[]; leaving: readonly unknown[] }, reduce: boolean): number {
+  const motion = resolveMotionTokens(reduce);
+  if (plan.travelling.length > 0) return reduce ? motion.dissolveMs : motion.frameInMs + motion.colourMs;
+  return plan.leaving.length > 0 ? motion.frameOutMs : 0;
+}
+
 /** One early mark of the lock-on: its ring at the point, its name beside it as the working screen drew it. */
 const LockOnMark: React.FC<{ className: string; xPx: number; yPx: number; name: string | null; nameOnLeft: boolean; dxPx?: number; dyPx?: number }> = ({ className, xPx, yPx, name, nameOnLeft, dxPx, dyPx }) => (
   <div
@@ -366,6 +373,18 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     return () => clearTimeout(timer);
   }, []);
   const lockOn = lockingAtStart && arriving && early && frame && !bareFrame && !earthOnly ? lockOnPlan(early, frame, arrivingMarks) : null;
+  // The lock-on's early marks keep their source line at full in the status column, with no entrance, from the reveal's
+  // first frame until the last of them has gone (UIUX-lockon-READY.md item 1, "no early marks are ever drawn without a
+  // source line"; the 17:38 tag rule; AUDIT-C's tag sweep, break 1): the travelling ones in the frame-in and colour
+  // times, the leaving ones in frame out; under reduced motion both dissolve where they are (motion.css, the lock-on)
+  const lockOnStarted = lockOn !== null;
+  const lockOnFromEndMs = lockOn === null ? 0 : lockOnMarksEndMs(lockOn, reducedMotion());
+  const [lockOnFromDone, setLockOnFromDone] = useState(false);
+  useEffect(() => {
+    if (!lockOnStarted || lockOnFromEndMs === 0) return undefined;
+    const timer = setTimeout(() => setLockOnFromDone(true), lockOnFromEndMs);
+    return () => clearTimeout(timer);
+  }, [lockOnStarted, lockOnFromEndMs]);
   // The restoration (D10), on the laptop over the photo itself: offered while idle on a still, its steps in the counts'
   // place while it works or once it stopped, the compare once done
   const overPhoto = !phone && !there && !skyShown;
@@ -733,6 +752,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
           solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
+      {lockOn && lockOnFromEndMs > 0 && !lockOnFromDone && (
+        <div className="lockon-from" data-testid="lockon-from">
+          <p className="reveal-status__from">{EARLY_SOURCE_WORDS[early!.source]}</p>
+        </div>
+      )}
       {lockOn && (
         <div className="lockon" data-testid="lockon" aria-hidden="true">
           {lockOn.travelling.map((t) => (

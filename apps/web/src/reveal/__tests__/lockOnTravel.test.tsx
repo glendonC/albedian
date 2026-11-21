@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample, POSE } from '../../components/__tests__/poseSessions.js';
 import { lockOnPlan } from '../lockOn.js';
-import { earlyPoseOf, type EarlyPose } from '../earlyPose.js';
+import { EARLY_SOURCE_WORDS, earlyPoseOf, type EarlyPose } from '../earlyPose.js';
 import { revealMarks, type RevealMark } from '../revealMarks.js';
 import { LOCK_ON_ARRIVAL_MS, RevealPhoto } from '../RevealPhoto.js';
 
@@ -153,6 +153,67 @@ describe('the reveal locking on', () => {
     }
   });
 
+  // AUDIT-C's tag sweep, break 1 (.lead/kiro/verdicts/tagsweep-21nov.md) by UIUX-lockon-READY.md item 1 ("no early
+  // marks are ever drawn without a source line") and the 17:38 tag rule: the early source line stays at full in the
+  // status column, with no entrance, from the reveal's first frame until the last lock-on mark has gone
+  const fromLine = () => q('[data-testid="lockon-from"]');
+  it('keeps the early source line at full from the first frame until the travelling marks have gone (400 + 200 ms)', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated, early());
+      expect(container.querySelectorAll('.lockon-mark.is-travelling').length).toBeGreaterThan(0);
+      expect(fromLine()!.textContent).toBe(EARLY_SOURCE_WORDS[earlyPoseOf(early(), calibrated.sourceAsset)!.source]);
+      // Its own element, outside the status column whose words wait for the colour
+      expect(fromLine()!.closest('[data-testid="reveal-status"]')).toBeNull();
+      act(() => vi.advanceTimersByTime(400 + 200 - 1));
+      expect(fromLine()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(fromLine()).toBeNull();
+      // The lock-on itself lasts on until the words are in
+      expect(q('[data-testid="reveal-photo"]')!.classList.contains('is-locking')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps it until the leaving marks have gone (300 ms) when no early mark travels', () => {
+    vi.useFakeTimers();
+    try {
+      // The early sky as served, naming none of the matched stars: every early mark leaves
+      show(calibrated, { ...POSE, sourceSha256: sha });
+      expect(q('.lockon-mark.is-travelling')).toBeNull();
+      expect(container.querySelectorAll('.lockon-mark.is-leaving').length).toBeGreaterThan(0);
+      act(() => vi.advanceTimersByTime(300 - 1));
+      expect(fromLine()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(fromLine()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps it through the 270 ms dissolve under reduced motion', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+    try {
+      show(calibrated, early());
+      act(() => vi.advanceTimersByTime(270 - 1));
+      expect(fromLine()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(fromLine()).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('draws no source line without a lock-on: no served sky, or the phone', () => {
+    show(calibrated, null);
+    expect(fromLine()).toBeNull();
+    act(() => root.render(createElement(RevealPhoto, { session: calibrated, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true, lockOnSky: early() })));
+    expect(fromLine()).toBeNull();
+  });
+
   it('draws no lock-on at phone width, as the record draws none there', () => {
     act(() => root.render(createElement(RevealPhoto, { session: calibrated, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true, lockOnSky: early() })));
     expect(q('.lockon-mark')).toBeNull();
@@ -196,6 +257,10 @@ describe("the lock-on's motion is the record's", () => {
     expect(rules, selector).toBe(1);
     return found;
   }
+  it('gives the early source line no entrance and no exit of its own: it is at full while it is there', () => {
+    expect(rulesOf('.lockon-from')).toEqual({ animation: 'none' });
+  });
+
   it('travels in the frame-in time on its curve, then the matched mark comes in the colour time at rest', () => {
     expect(rulesOf('.lockon-mark.is-travelling').animation).toBe(
       'lockon-travel var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both, look-mo-frame-out var(--look-mo-dur-colour) var(--look-mo-ease-std) var(--look-mo-dur-frame-in) both'

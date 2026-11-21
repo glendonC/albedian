@@ -1935,6 +1935,21 @@
   color: var(--look-ink-2);
 }
 
+/* The lock-on's early source line (UIUX-lockon-READY.md item 1; AUDIT-C's tag sweep, break 1): the status column's
+   first line while the early marks travel or leave, set as the column sets it; the column's own words come in after */
+.lockon-from {
+  position: absolute;
+  left: 36px;
+  top: 70px;
+  width: 300px;
+  font: 400 13px / 1.55 var(--look-font-sans);
+  letter-spacing: -0.005em;
+  pointer-events: none;
+}
+.lockon-from .reveal-status__from {
+  margin: 0;
+}
+
 /* D24 at phone width (alp-align): "Solve from here" compact and centred at top 772 */
 .align-phone__solve {
   position: absolute;

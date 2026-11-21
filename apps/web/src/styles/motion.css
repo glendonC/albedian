@@ -375,6 +375,12 @@
   animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2);
 }
 
+/* The early marks' source line is at full while they are drawn: no entrance and no exit of its own (the 17:38 tag
+   rule); it is removed at once when the last lock-on mark has gone (RevealPhoto.tsx lockOnMarksEndMs) */
+.lockon-from {
+  animation: none;
+}
+
 /* Reduced motion: nothing travels. The amber marks dissolve where the pose put them and the matched marks dissolve in
    where the solve puts them, together (270 ms); then the words dissolve in. */
 @media (prefers-reduced-motion: reduce) {
