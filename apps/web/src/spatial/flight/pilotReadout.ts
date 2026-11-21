@@ -34,7 +34,22 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   maven: 'around Mars',
   // The 18:05 ruling (cassini-1)
   cassini: 'around Saturn',
+  // The 18:35 ruling (hangar-4)
+  ibex: 'near Earth',
+  'van-allen-probes': 'near Earth',
 };
+
+/**
+ * The fact a craft's words wait for, by entry (the 18:35 ruling: IBEX's place and sentence show once its record names its
+ * orbit, from its NASA page; until then only its name shows).
+ */
+const NEEDS_FACT: Readonly<Record<CraftId, string>> = { ibex: 'orbit' };
+
+/** The fact this craft's words still wait for in the hangar's record, or none. */
+export function awaitingFact(craft: Craft): string | null {
+  const key = NEEDS_FACT[craft.id];
+  return key && !craft.factKeys.includes(key) ? key : null;
+}
 
 /** D35 item 5 and the 17:24 ruling: each named craft's sentence in place of a trip time, word for word. */
 const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
@@ -53,11 +68,13 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   'near-shoemaker': 'No real travel time: NEAR Shoemaker flew to the asteroid Eros and landed on it in 2001.',
   maven: 'No real travel time: MAVEN orbits Mars.',
   cassini: 'No real travel time: Cassini orbited Saturn until its mission ended in 2017.',
+  ibex: 'No real travel time: IBEX stays near Earth.',
+  'van-allen-probes': "No real travel time: the Van Allen Probes studied Earth's radiation belts, near Earth.",
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */
 export function noTravelSentence(craft: Craft): string | null {
-  if (craft.speed) return null;
+  if (craft.speed || awaitingFact(craft)) return null;
   if (craft.kind === 'suit') return 'No real travel time: a spacesuit is worn near a spacecraft, never flown between stars.';
   if (NO_TRAVEL_SENTENCES[craft.id]) return NO_TRAVEL_SENTENCES[craft.id]!;
   if (WHERE_IT_FLIES[craft.id] === 'near Earth') return `No real travel time: ${craft.name} stays near Earth.`;
@@ -140,9 +157,14 @@ export interface CraftGroup {
   readonly choices: readonly CraftChoice[];
 }
 
+/** D35 item 2: the speed to three figures; else where it flies (none while its words wait for a fact); a suit, nothing. */
+export function craftDetail(craft: Craft): string {
+  if (craft.speed) return speedText(craft.speed.kmS);
+  return awaitingFact(craft) ? '' : (WHERE_IT_FLIES[craft.id] ?? '');
+}
+
 function choiceOf(craft: Craft): CraftChoice {
-  // D35 item 2: the speed to three figures; else where it flies; a suit, nothing
-  return { id: craft.id, name: craft.name, detail: craft.speed ? speedText(craft.speed.kmS) : (WHERE_IT_FLIES[craft.id] ?? ''), pictureUrl: craft.pictureUrl };
+  return { id: craft.id, name: craft.name, detail: craftDetail(craft), pictureUrl: craft.pictureUrl };
 }
 
 /**

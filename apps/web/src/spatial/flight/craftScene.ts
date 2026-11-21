@@ -61,6 +61,14 @@ export function restExtentM(craft: Craft, boxSize: Vec3): number {
   return Math.max(along(u), along(r));
 }
 
+/**
+ * Half of what the screen frames for a craft (D26 item 2, D30 item 1): its body's radius where the design lane rules it
+ * framed by the body (18:35); else half of how wide it looks from behind; else its bounding sphere.
+ */
+export function craftFrameRadiusM(craft: Craft, boxSize: Vec3, sphereRadiusM: number): number {
+  return craft.frameByBodyRadiusM ?? (restExtentM(craft, boxSize) / 2 || sphereRadiusM);
+}
+
 export interface CraftScene {
   /** Model space to camera-relative ICRS metres, column-major 4 by 4 (three.js Matrix4.fromArray). */
   readonly modelMatrix: number[];

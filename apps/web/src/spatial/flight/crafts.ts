@@ -35,16 +35,21 @@ export interface Craft {
   readonly modelForward: Vec3;
   readonly modelUp: Vec3;
   readonly speed: CraftSpeed | null;
+  /** The keys of the NASA facts the hangar's record holds for this entry. */
+  readonly factKeys: readonly string[];
+  /** Where the design lane rules a craft framed by its body (the hangar's bodyRadiusM), that radius; else none. */
+  readonly frameByBodyRadiusM: number | null;
 }
 
 interface HangarFile {
   readonly frame: { readonly forward: string; readonly up: string };
-  readonly models: Readonly<Record<string, { readonly kind: string; readonly files: Readonly<Record<string, { readonly path: string }>> }>>;
+  readonly models: Readonly<Record<string, { readonly kind: string; readonly bodyRadiusM?: number; readonly files: Readonly<Record<string, { readonly path: string }>> }>>;
   readonly entries: readonly {
     readonly id: string;
     readonly name: string;
     readonly model: string;
     readonly travel: { readonly speedKmS: number; readonly relativeTo: string; readonly asOf: string | null; readonly page: string } | null;
+    readonly facts?: readonly { readonly key: string }[];
   }[];
 }
 
@@ -69,6 +74,12 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   dawn: { forward: [0, -1, 0], up: [0, 0, 1] },
 };
 
+/**
+ * The models framed by their body, not their whole model (the design lane's 18:35 ruling: framing by the body where the
+ * record names one and the whole model shows a speck): the Van Allen Probes, whose wire antennas make the bounds 42 m.
+ */
+const FRAME_BY_BODY: ReadonlySet<string> = new Set(['vanallen']);
+
 const AXES: Readonly<Record<string, Vec3>> = { '+X': [1, 0, 0], '-X': [-1, 0, 0], '+Y': [0, 1, 0], '-Y': [0, -1, 0], '+Z': [0, 0, 1], '-Z': [0, 0, -1] };
 
 /** The hangar's entries as crafts, in the hangar's own order; an entry whose model or frame cannot be read is left out. */
@@ -85,7 +96,7 @@ export function craftsOfHangar(file: HangarFile, base = '/models/hangar/'): Craf
     const t = entry.travel;
     const speed: CraftSpeed | null =
       t && t.relativeTo === 'Sun' && Number.isFinite(t.speedKmS) && t.speedKmS > 0 ? { kmS: t.speedKmS, relativeTo: 'the Sun', sourceUrl: t.page, asOf: t.asOf } : null;
-    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, speed }];
+    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, speed, factKeys: (entry.facts ?? []).map((fact) => fact.key), frameByBodyRadiusM: FRAME_BY_BODY.has(entry.model) && model.bodyRadiusM && model.bodyRadiusM > 0 ? model.bodyRadiusM : null }];
   });
 }
 

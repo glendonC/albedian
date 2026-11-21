@@ -6,7 +6,7 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
 import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
-import { craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
+import { craftFrameRadiusM, craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
 const H = 900;
@@ -322,6 +322,17 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const top = at([0, 0, 2.5]);
     expect(centre.yPx - top.yPx).toBeGreaterThan(100);
     expect(Math.abs(top.xPx - centre.xPx)).toBeLessThan(0.15 * (centre.yPx - top.yPx));
+  });
+
+  it('frames the Van Allen Probes by their body, not their wire antennas, as the 18:35 ruling says; every other craft by its whole model', () => {
+    const vap = CRAFTS['van-allen-probes']!;
+    expect(vap.frameByBodyRadiusM).toBe(2.5);
+    // Their bounds are 42 m across with the wires: the body's 2.5 m radius frames them instead
+    expect(craftFrameRadiusM(vap, [42.4, 13.3, 42.4], 30)).toBe(2.5);
+    const others = Object.values(CRAFTS).filter((c) => c.id !== 'van-allen-probes');
+    expect(others.every((c) => c.frameByBodyRadiusM === null)).toBe(true);
+    expect(craftFrameRadiusM(CRAFTS['voyager-1']!, [16.4, 7.5, 10.7], 11)).toBeCloseTo(restExtentM(CRAFTS['voyager-1']!, [16.4, 7.5, 10.7]) / 2, 12);
+    expect(craftFrameRadiusM(CRAFTS['voyager-1']!, [0, 0, 0], 11)).toBe(11);
   });
 });
 

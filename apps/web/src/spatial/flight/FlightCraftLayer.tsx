@@ -7,7 +7,7 @@ import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { craftModelUrl, type Craft } from './crafts.js';
-import { craftSceneOf, restExtentM, type CraftFraming } from './craftScene.js';
+import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene.js';
 
 /**
  * pilot-1: a NASA model drawn in the photo's own view during the flight through the stars, a few metres ahead of the
@@ -115,7 +115,7 @@ export const FlightCraftLayer: React.FC<{
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         holder.add(model);
         const size = box.getSize(new THREE.Vector3());
-        const frameRadius = restExtentM(craft, [size.x, size.y, size.z]) / 2 || sphere.radius;
+        const frameRadius = craftFrameRadiusM(craft, [size.x, size.y, size.z], sphere.radius);
         gpu.current = { renderer, scene, camera: cam, holder, sun, centre: [sphere.center.x, sphere.center.y, sphere.center.z], radius: sphere.radius, frameRadius };
         setState(drawCraft(gpu.current, cameraRef.current, craft, steerRef.current ?? undefined, framingRef.current) ? 'drawn' : 'failed');
       },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CRAFTS, HANGAR_CRAFTS } from '../crafts.js';
-import { CRAFT_CHOICES, pilotReadout, threeFigureYears, CRAFT_GROUPS, craftSpeedSource, craftGroups, noTravelSentence } from '../pilotReadout.js';
+import { CRAFT_CHOICES, pilotReadout, threeFigureYears, CRAFT_GROUPS, craftSpeedSource, craftGroups, noTravelSentence, awaitingFact, craftDetail } from '../pilotReadout.js';
 
 const LY_PER_PC = 3.261563777;
 
@@ -71,9 +71,15 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     ]);
     // The 18:05 ruling (cassini-1)
     expect([CRAFT_CHOICES.find((c) => c.id === 'cassini')!.detail, none('cassini')]).toEqual(['around Saturn', 'No real travel time: Cassini orbited Saturn until its mission ended in 2017.']);
-    // No craft of the hangar is left with neither a speed nor a sentence
-    expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c)).map((c) => c.id)).toEqual([]);
-    expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
+    // The 18:35 ruling (hangar-4): the Van Allen Probes near Earth; IBEX's words wait for its record's orbit fact
+    expect([CRAFT_CHOICES.find((c) => c.id === 'van-allen-probes')!.detail, none('van-allen-probes')]).toEqual(['near Earth', 'No real travel time: the Van Allen Probes studied Earth\'s radiation belts, near Earth.']);
+    const ibexWithout = { ...CRAFTS.ibex!, factKeys: CRAFTS.ibex!.factKeys.filter((k) => k !== 'orbit') };
+    const ibexWith = { ...CRAFTS.ibex!, factKeys: [...CRAFTS.ibex!.factKeys, 'orbit'] };
+    expect([awaitingFact(ibexWithout), noTravelSentence(ibexWithout), craftDetail(ibexWithout)]).toEqual(['orbit', null, '']);
+    expect([awaitingFact(ibexWith), noTravelSentence(ibexWith), craftDetail(ibexWith)]).toEqual([null, 'No real travel time: IBEX stays near Earth.', 'near Earth']);
+    // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
+    expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
+    expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
   });
 
   it('keeps Parker Solar Probe, which orbits the Sun, from any trip, with D35\'s place and sentence (its hangar entry)', () => {
