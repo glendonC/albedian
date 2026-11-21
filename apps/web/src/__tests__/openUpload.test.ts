@@ -3,7 +3,7 @@ import path from 'node:path';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ObservationSessionSchema, type IngestReceipt, type ObservationSolution } from '@albedian/contracts';
-import { openStoredUpload, uploadAddressed } from '../services/openUpload';
+import { openStoredUpload, readStoredReceipt, uploadAddressed } from '../services/openUpload';
 
 // The address that opens one stored upload: ?upload=<sha256> (64 lowercase hex; anything else is ignored). It opens
 // that upload's stored reveal through GET /api/ingest/{sha256} and its solution route: no upload, no new solve. A
@@ -181,5 +181,32 @@ describe('openStoredUpload: the stored reveal, with no upload and no new solve',
   ])('opens nothing on %s, and never throws', async (_label, routes) => {
     server(routes);
     await expect(openStoredUpload(sha256)).resolves.toBeNull();
+  });
+});
+
+// solveaddr: Solve from here on an upload opened by its address sends the stored receipt, read again by this
+describe('readStoredReceipt: the stored receipt, as the server gave it', () => {
+  it('reads the receipt, and nothing else', async () => {
+    const calls = server();
+    expect(await readStoredReceipt(sha256)).toEqual(receipt);
+    expect(calls).toEqual([`GET /api/ingest/${sha256}`]);
+  });
+
+  it.each([
+    ['a path', `../../${'a'.repeat(58)}`],
+    ['capital letters', sha256.toUpperCase()],
+    ['empty', ''],
+  ])('makes no request for a value that is not a sha256 (%s)', async (_label, value) => {
+    const calls = server();
+    expect(await readStoredReceipt(value)).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  it('reads nothing back when nothing is stored, or the answer names another file', async () => {
+    server({ receipt: () => json({ detail: 'no file with that hash is stored' }, 404) });
+    expect(await readStoredReceipt(sha256)).toBeNull();
+    const other = 'b'.repeat(64);
+    server({ receipt: () => json({ ...receipt, sourceAsset: { ...receipt.sourceAsset, sha256: other, id: `src_${other.slice(0, 16)}`, uri: `/api/ingest/${other}/original` } }) });
+    expect(await readStoredReceipt(sha256)).toBeNull();
   });
 });

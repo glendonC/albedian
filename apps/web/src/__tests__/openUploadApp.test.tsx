@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IngestReceipt, ObservationSolution } from '@albedian/contracts';
 import { HOME_SCREEN } from '../components/__tests__/homeEntry.js';
+import { poseReceipt } from '../components/__tests__/poseSessions.js';
 
 // The app opened at ?upload=<sha256>: the stored upload's reveal shows with no upload and no solve, and an address
 // that names nothing openable leaves the app on its home, as if it had no such value.
@@ -39,6 +40,12 @@ vi.mock('../audio/ObservatoryAudioEngine.js', () => ({
 }));
 vi.mock('../audio/SkyAudioFeed.js', () => ({ skyAudio: { follow: vi.fn(), setEvidenceClass: vi.fn() } }));
 vi.mock('../components/CoalescingBar.js', () => ({ CoalescingBar: () => null }));
+// The solve as it is, wrapped so one test can make it stop on something unforeseen
+vi.mock('../services/apiClient.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../services/apiClient.js')>();
+  return { ...original, solveStoredUpload: vi.fn(original.solveStoredUpload) };
+});
+const { solveStoredUpload } = await import('../services/apiClient.js');
 
 const { App } = await import('../App.js');
 
@@ -191,5 +198,78 @@ describe('the app opened at ?upload=<sha256>', () => {
     // Still the chosen file's screen: no stored photo took its place
     expect(q('[data-testid="working-screen"]')).not.toBeNull();
     expect(q('[data-testid="source-photo-stage"] img')).toBeNull();
+  });
+});
+
+// Solve from here on an upload opened by its address (as the iPhone's Open leads here): the tab has no upload of its
+// own, so the solve is sent with the stored receipt, whose hints are the stored photo's recorded moment and place (the
+// receipt contract checks each against the asset); a solve that cannot start shows the decided failed job, never a
+// screen that does not move (WEB-UX-solveaddr-NOTE.md: on main the screen stayed on "Matching near your alignment.")
+describe('Solve from here on an upload opened by its address', () => {
+  const placed = samples['horizon_predicted_only']!;
+  const template = placed.findings.find((f) => f.evidenceClass === 'predicted')!;
+  const starRef = samples['pose_moon_level_head']!.findings.find((f) => f.catalogRef?.objectType === 'star')!.catalogRef!;
+  const star = (id: string, title: string, altDeg: number, azDeg: number, apparentMagnitude: number) => ({
+    ...template,
+    id,
+    title,
+    observationSolutionId: solutionId,
+    skyPosition: { ...template.skyPosition!, altDeg, azDeg },
+    catalogRef: { ...starRef, apparentMagnitude },
+  });
+  const sky: ObservationSolution = {
+    ...placed,
+    id: solutionId,
+    sourceAssetId: assetId,
+    sourceSha256: sha256,
+    findings: [star('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16), star('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38)],
+  };
+  // The stored receipt with the photo's recorded moment and place, its hints saying the same
+  const withMoment = poseReceipt(sky, 'image');
+  const stored: IngestReceipt = { ...withMoment, sourceAsset: { ...withMoment.sourceAsset, id: assetId, sha256 }, alreadyStored: true };
+  const press = (label: string) => act(() => [...container.querySelectorAll('button')].find((b) => b.textContent === label)!.click());
+
+  async function openAndSolve(receiptRead: () => Response) {
+    let reads = 0;
+    const sent: Array<{ url: string; body: unknown }> = [];
+    window.history.replaceState({}, '', `/?upload=${sha256}`);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === '/api/media/discover') return json({ items: [] });
+        if (url === `/api/ingest/${sha256}`) return ++reads === 1 ? json(stored) : receiptRead();
+        if (url === `/api/ingest/${sha256}/solution`) return json(sky);
+        if ((init?.method ?? 'GET') === 'POST') sent.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });
+        return json({ detail: 'not found' }, 404);
+      })
+    );
+    await act(async () => {
+      root.render(createElement(App));
+    });
+    await waitUntil(() => expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Line it up yourself')).toBe(true));
+    press('Line it up yourself');
+    press('Solve from here');
+    return sent;
+  }
+
+  it('sends the solve with the person\'s alignment, from the stored receipt read again', async () => {
+    const sent = await openAndSolve(() => json(stored));
+    await waitUntil(() => expect(sent.map((s) => s.url)).toEqual([`/api/ingest/${sha256}/solve?wait=false`]));
+    expect(sent[0]!.body).toMatchObject({ format: 'albedian.person-alignment', source: 'person' });
+  });
+
+  it('shows the failed job when the solve stops on anything unforeseen, never a screen that does not move', async () => {
+    vi.mocked(solveStoredUpload).mockRejectedValueOnce(new Error('unforeseen'));
+    await openAndSolve(() => json(stored));
+    await waitUntil(() => expect(q('[data-testid="working-screen"] [role="alert"]')).not.toBeNull());
+    expect(q('[data-testid="working-screen"]')!.textContent).toContain('The sky solve for your photo stopped before it finished.');
+  });
+
+  it('shows the failed job when the stored receipt cannot be read again, and sends nothing', async () => {
+    const sent = await openAndSolve(() => json({ detail: 'no file with that hash is stored' }, 404));
+    await waitUntil(() => expect(q('[data-testid="working-screen"] [role="alert"]')).not.toBeNull());
+    expect(q('[data-testid="working-screen"]')!.textContent).toContain('The sky solve for your photo stopped before it finished.');
+    expect(sent).toEqual([]);
   });
 });

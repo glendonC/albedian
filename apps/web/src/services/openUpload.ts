@@ -1,4 +1,4 @@
-import { IngestReceiptSchema, ObservationSolutionSchema, type ObservationSession } from '@albedian/contracts';
+import { IngestReceiptSchema, ObservationSolutionSchema, type IngestReceipt, type ObservationSession } from '@albedian/contracts';
 import { buildSessionFromIngestReceipt } from './apiClient.js';
 
 /**
@@ -33,18 +33,28 @@ async function readJson(url: string): Promise<unknown> {
 }
 
 /**
+ * The stored receipt of one upload, as the server gave it when the file was stored (its hints are the asset's, as the
+ * receipt contract checks), or null when the value is no sha256, nothing is stored, or the answer does not fit its
+ * contract or names another file. It never throws.
+ */
+export async function readStoredReceipt(sha256: string): Promise<IngestReceipt | null> {
+  if (!SHA256.test(sha256)) return null;
+  const receipt = IngestReceiptSchema.safeParse(await readJson(`/api/ingest/${sha256}`));
+  return receipt.success && receipt.data.sourceAsset.sha256 === sha256 ? receipt.data : null;
+}
+
+/**
  * The stored upload as a session ready to show, or null when it cannot be opened: the value is no sha256, no file
  * with that hash is stored, it has no stored solution, or an answer does not fit its contract or names another file.
  * The photo shown is the stored original, from the server's own route for that hash. It never throws.
  */
 export async function openStoredUpload(sha256: string): Promise<ObservationSession | null> {
-  if (!SHA256.test(sha256)) return null;
-  const receipt = IngestReceiptSchema.safeParse(await readJson(`/api/ingest/${sha256}`));
-  if (!receipt.success || receipt.data.sourceAsset.sha256 !== sha256) return null;
+  const receipt = await readStoredReceipt(sha256);
+  if (receipt === null) return null;
   const solution = ObservationSolutionSchema.safeParse(await readJson(`/api/ingest/${sha256}/solution`));
   if (!solution.success || solution.data.sourceSha256 !== sha256) return null;
   try {
-    return buildSessionFromIngestReceipt(receipt.data, {
+    return buildSessionFromIngestReceipt(receipt, {
       localObjectUrl: `/api/ingest/${sha256}/original`,
       solution: solution.data,
     });

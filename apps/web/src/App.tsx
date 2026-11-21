@@ -28,7 +28,8 @@ import {
   uploadAndSolveMedia,
   type UploadEvent,
 } from './services/apiClient.js';
-import { openStoredUpload, uploadAddressed } from './services/openUpload.js';
+import { openStoredUpload, readStoredReceipt, uploadAddressed } from './services/openUpload.js';
+import { solveStoppedSentence } from './services/skyLayerWords.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
 import { isSourcePhotoShown } from './components/sourcePhotoRect.js';
@@ -420,8 +421,10 @@ export const App: React.FC = () => {
     if (!asset) return;
     // Kept for what follows: a refusal draws it again, a match names it (D24 steps 4 and 5)
     setAlignedFrom({ sha256: asset.sha256, pose, from });
+    // This tab's own upload's receipt, else the stored one read again: an upload opened by its address (as the
+    // iPhone's Open leads here) has none in this tab, and a receipt made up here would not carry the photo's hints
     const kept = inFlightRef.current?.receipt;
-    const receipt: IngestReceipt = kept && kept.sourceAsset.sha256 === asset.sha256 ? kept : ({ sourceAsset: asset, hints: {}, alreadyStored: true } as IngestReceipt);
+    let known: IngestReceipt | null = kept && kept.sourceAsset.sha256 === asset.sha256 ? kept : null;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
     const aligned = placedAtPose(alignTargets(session.observationSolution), pose);
     const localObjectUrl = uploadedMediaUrl ?? undefined;
@@ -429,22 +432,42 @@ export const App: React.FC = () => {
       const token = ++solveHereRef.current;
       latestChoiceRef.current = null;
       setArrival({ fileName: asset.title, byteSize: asset.byteSize ?? 0, stored: true, widthPx: shown.widthPx, heightPx: shown.heightPx, job: null, failure: null, aligned });
-      void solveStoredUpload(receipt, {
-        alignment,
-        localObjectUrl,
-        onSessionUpdate: (next) => {
-          if (solveHereRef.current === token) setSession(next);
-        },
-        onEvent: (event) => {
-          if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
-        },
-        // C15: refused outright, not stopped: back to the photo, the route's sentence in the refusal line's place
-        onRefused: (sentence) => {
-          if (solveHereRef.current !== token) return;
-          setArrival(null);
-          setAlignedFrom((prev) => (prev && prev.sha256 === asset.sha256 ? { ...prev, refusal: sentence } : prev));
-        },
-      });
+      // A solve that cannot start, or stops on anything unforeseen, shows the decided failed job with its Try again,
+      // never a screen that does not move
+      const stopped = () => {
+        if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, { kind: 'failed', sentence: solveStoppedSentence(asset), job: null }));
+      };
+      const start = (receipt: IngestReceipt) =>
+        solveStoredUpload(receipt, {
+          alignment,
+          localObjectUrl,
+          onSessionUpdate: (next) => {
+            if (solveHereRef.current === token) setSession(next);
+          },
+          onEvent: (event) => {
+            if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
+          },
+          // C15: refused outright, not stopped: back to the photo, the route's sentence in the refusal line's place
+          onRefused: (sentence) => {
+            if (solveHereRef.current !== token) return;
+            setArrival(null);
+            setAlignedFrom((prev) => (prev && prev.sha256 === asset.sha256 ? { ...prev, refusal: sentence } : prev));
+          },
+        }).catch(stopped);
+      // A receipt in hand is sent at once, as before; the stored one is read only when this tab has none, and kept
+      // for Try again
+      if (known) {
+        void start(known);
+        return;
+      }
+      void readStoredReceipt(asset.sha256)
+        .then((receipt) => {
+          if (solveHereRef.current !== token) return undefined;
+          if (receipt === null) return stopped();
+          known = receipt;
+          return start(receipt);
+        })
+        .catch(stopped);
     };
     solveHereAgainRef.current = send;
     send();
