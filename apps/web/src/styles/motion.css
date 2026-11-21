@@ -194,6 +194,35 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both;
 }
 
+/* Under Reduce Motion the sheet dissolves rather than rising (--look-mo-sheet-from-opacity 0): on the whole card that
+   would fade the card's Predicted tag in while the status block's tag fades under it, neither at full (AUDIT-C, 21 Nov
+   14:36). Over the predicted sky only the sheet's fill and hairline dissolve, so the card's tag stands at full from the
+   sheet's first frame to its last; its lines keep their own dissolves (words in and out are the 270 ms dissolve then),
+   as motion-43 kept Real sky's line through its layer's fade. */
+@keyframes reveal-sheet-fill-in {
+  from {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+@keyframes reveal-sheet-fill-out {
+  to {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .predsky.is-phone .reveal-card.is-phone {
+    animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+  }
+
+  .predsky.is-phone .reveal-card.is-phone.is-leaving {
+    animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+  }
+}
+
 /* An answer, a refusal, or listening that failed, in the card's place: the question as heard, the sentence 20 ms
    later, then its statements 20 ms after that (a refusal has no statements). */
 .reveal-answer__q {

@@ -289,6 +289,32 @@ describe("the card's rules are the approved pages'", () => {
     expect(motionOf('.reveal-card__top')).toEqual({ animation: lineIn(0) });
   });
 
+  it("under Reduce Motion dissolves the phone sheet's fill and hairline over the predicted sky, not the whole card, so its tag stays at full (AUDIT-C, 21 Nov 14:36)", () => {
+    // Under Reduce Motion the sheet dissolves rather than rising (--look-mo-sheet-from-opacity 0): on the whole card the
+    // card's Predicted tag would fade in while the status block's tag fades under it, neither at full
+    const reduced: Record<string, Record<string, string>> = {};
+    const keyframes: Record<string, string> = {};
+    postcss.parse(motionCss).walkAtRules((at) => {
+      if (at.name === 'keyframes') keyframes[at.params] = at.toString().replace(/\s+/g, ' ');
+      if (at.name !== 'media' || !/prefers-reduced-motion:\s*reduce/.test(at.params)) return;
+      at.walkRules((rule) => {
+        const sel = rule.selector.replace(/\s+/g, ' ');
+        rule.walkDecls((decl) => {
+          reduced[sel] = { ...(reduced[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+        });
+      });
+    });
+    expect(reduced['.predsky.is-phone .reveal-card.is-phone']).toEqual({ animation: 'reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
+    expect(reduced['.predsky.is-phone .reveal-card.is-phone.is-leaving']).toEqual({ animation: 'reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
+    // Only the fill and the hairline: no opacity, so the tag inside is at full on every frame
+    expect(keyframes['reveal-sheet-fill-in']).toBe('@keyframes reveal-sheet-fill-in { from { background-color: transparent; border-color: transparent; } }');
+    expect(keyframes['reveal-sheet-fill-out']).toBe('@keyframes reveal-sheet-fill-out { to { background-color: transparent; border-color: transparent; } }');
+    // Every other line of the card keeps a dissolve of its own (the tokens make words in and out the 270 ms dissolve)
+    for (const part of ['.reveal-card__name', '.reveal-card__sub', '.reveal-card__numbers', '.reveal-card__source', '.reveal-card__acts', '.reveal-card__notes']) {
+      expect(motionOf(part).animation, part).toMatch(/^look-mo-words-in /);
+    }
+  });
+
   it('raises the phone card from the bottom edge as Apple\'s sheet, and turns the picked mark white in the colour time', () => {
     expect(motionOf('.reveal-card.is-phone')).toEqual({ animation: 'look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
     expect(motionOf('.reveal-marks .reveal-mark')).toMatchObject({ transition: 'color var(--look-mo-dur-colour) var(--look-mo-ease-std)' });
