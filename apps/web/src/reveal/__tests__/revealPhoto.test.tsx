@@ -1114,6 +1114,29 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     }
   });
 
+  // Leaving there at once (reduced motion: the flight back does not travel), the sky layer still fades out on the view
+  // time; no Real sky line came before it (there shows its own line, and on the phone only the readout), so one is
+  // shown for the fade, its Simulated tag with it (measured at phone width under reduced motion, 21 Nov: six frames)
+  for (const phone of [false, true])
+  it(`shows the Simulated tag while the layer fades out after there, though no Real sky line came before${phone ? ', at phone width' : ''}`, () => {
+    vi.useFakeTimers();
+    try {
+      const session = calibrated();
+      const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+      const there = { ...session, selectedFindingId: rigel.id } as ObservationSession;
+      show(there, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone });
+      show(session, { phone });
+      expect(q('[data-testid="real-sky"]')).not.toBeNull();
+      expect(momentOf()).toBe('real-sky');
+      expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS));
+      expect(q('[data-testid="real-sky"]')).toBeNull();
+      expect(momentOf()).toBe(phone ? null : 'photo');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('lets the line go at once with the layer when Original pixels takes the layer away at once', () => {
     show(calibrated(), { realSky: true });
     expect(momentOf()).toBe('real-sky');

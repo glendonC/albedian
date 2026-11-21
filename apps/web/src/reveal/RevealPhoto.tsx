@@ -484,7 +484,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // While the Real sky layer is still on screen leaving, its line stays with its Simulated tag (AGENTS.md 1.2): the
   // photo's line comes once the layer has gone. Original pixels takes the layer away at once, and the line with it.
   const lastSkyLine = useRef<React.ReactElement | null>(null);
-  const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly && lastSkyLine.current !== null;
+  // Left at once from there (reduced motion), no Real sky line came before the fade: one is shown for it, its tag with it
+  const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly;
   const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
   const statusLine: React.ReactElement | null = phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
@@ -535,9 +536,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </>
           )}
         </div>
-      ) : skyLeaving ? (
+      ) : skyLeaving && lastSkyLine.current ? (
         lastSkyLine.current
-      ) : skyOnScreen ? (
+      ) : skyOnScreen || skyLeaving ? (
         <div key="real-sky" className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" data-moment="real-sky" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
