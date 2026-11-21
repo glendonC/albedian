@@ -1665,6 +1665,21 @@
 :root[data-phone-scroll] .ask-bar.is-phone {
   translate: 0 calc(-1 * var(--phone-scroll, 0px));
 }
+/* D36 item 5 (UIUX-restorations-READY.md): at phone width the same list under Download (its foot at 816, then the
+   laptop's 12 px), in the phone's 24 px gutters, rows 44 px, reached by scrolling the screen */
+.restore-phone-versions {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 828px;
+  padding-bottom: 40px;
+}
+.restore-phone-versions .restore-versions {
+  margin: 0;
+}
+.restore-phone-versions .restore-versions__row {
+  min-height: 44px;
+}
 
 /* The working screen at phone width (D2, decided by the lead 06:11; jp-run, jp-queued in .cache/uiux/jobs) */
 .work-phone-top {

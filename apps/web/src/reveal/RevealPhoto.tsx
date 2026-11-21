@@ -472,18 +472,22 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     onPhoneFootChange?.(phoneFoot);
   }, [phoneFoot]);
   useEffect(() => () => onPhoneFootChange?.(false), []);
-  // The whole screen scrolls to Restore: the photo and Ask out loud move with it (as the no-match screen's photo does)
+  // D36 item 5: two or more ready restorations are listed under the phone's Download, reached by scrolling too
+  const phoneVersionsShown = phoneCompare && versions.length >= 2 && picked === null && !answer;
+  // The whole screen scrolls to Restore or to the list: the photo and Ask out loud move with it (as the no-match
+  // screen's photo does)
+  const phoneScroll = phoneRestoreOffered || phoneVersionsShown;
   const revealRoot = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!phoneRestoreOffered) return undefined;
+    if (!phoneScroll) return undefined;
     const doc = document.documentElement;
     doc.dataset.phoneScroll = '';
     return () => {
       delete doc.dataset.phoneScroll;
       doc.style.removeProperty('--phone-scroll');
     };
-  }, [phoneRestoreOffered]);
-  const onRevealScroll = phoneRestoreOffered
+  }, [phoneScroll]);
+  const onRevealScroll = phoneScroll
     ? () => document.documentElement.style.setProperty('--phone-scroll', `${revealRoot.current?.scrollTop ?? 0}px`)
     : undefined;
   // While the compare is zoomed in, the marks step aside (D15)
@@ -822,7 +826,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   return (
     <div
       ref={revealRoot}
-      className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${phoneRestoreOffered ? ' is-scroll' : ''}${lockOn ? ' is-locking' : ''}`}
+      className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${phoneScroll ? ' is-scroll' : ''}${lockOn ? ' is-locking' : ''}`}
       data-testid="reveal-photo"
       data-hud-interactive="true"
       data-arriving={arriving ? 'true' : undefined}
@@ -1046,6 +1050,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           picked star's card covers the foot, as it covers Ask out loud */}
       {phoneCompare && !answer && !picked && asset && shownVersion && (
         <RestorePhoneFoot onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersion.id))} />
+      )}
+      {/* D36 item 5: the list under Download, reached by scrolling, its rows 44 px */}
+      {phoneVersionsShown && shownVersion && (
+        <div className="restore-phone-versions">
+          <RestoreVersions versions={versions} shownId={shownVersion.id} onShow={setPickedVersion} />
+        </div>
       )}
 
       {/* D38: Restore under Ask out loud, reached by scrolling; while it works, the step and Cancel */}
