@@ -9,10 +9,7 @@ import {
   HUD_GLASS,
   HUD_HIGHLIGHT,
   HUD_INK,
-  HUD_MOTION,
-  HUD_REDUCED_MOTION_CSS_OVERRIDES,
   compositeOver,
-  resolveHudMotion,
 } from '../hudGlass.js';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
@@ -96,18 +93,10 @@ describe('HUD type', () => {
 });
 
 describe('HUD motion', () => {
-  it('keeps the reference easings and durations when motion is allowed', () => {
-    expect(resolveHudMotion(false)).toEqual(HUD_MOTION);
-    expect(HUD_MOTION.easeStandard).toBe('cubic-bezier(0.35, 0, 0, 1)');
-    expect(HUD_MOTION.easeSpring).toBe('cubic-bezier(0.22, 1, 0.36, 1)');
-    expect(HUD_MOTION.easeOutExpo).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
-  });
-
-  it('sets every duration to 0 ms under reduced motion', () => {
-    const reduced = resolveHudMotion(true);
-    const durations = Object.entries(reduced).filter(([key]) => key.endsWith('Ms'));
-    expect(durations.length).toBeGreaterThan(0);
-    for (const [key, value] of durations) expect(value, key).toBe(0);
+  it('has none of its own: the motion record retires the HUD durations and easings, which had no source', async () => {
+    const pkg = (await import('../hudGlass.js')) as Record<string, unknown>;
+    expect(['HUD_MOTION', 'resolveHudMotion', 'HUD_REDUCED_MOTION_CSS_OVERRIDES'].filter((name) => name in pkg)).toEqual([]);
+    expect(Object.keys(HUD_CSS_CUSTOM_PROPERTIES).filter((name) => /^--hud-(dur|ease|caption-stagger)/.test(name))).toEqual([]);
   });
 });
 
@@ -127,21 +116,11 @@ describe('HUD CSS custom properties', () => {
     expect(HUD_CSS_CUSTOM_PROPERTIES['--hud-glass-filter']).toBe('blur(40px) saturate(140%)');
     expect(HUD_CSS_CUSTOM_PROPERTIES['--hud-font-sans']).toBe(HUD_FONTS.sans);
     expect(HUD_CSS_CUSTOM_PROPERTIES['--hud-ev-predicted']).toBe(HUD_EVIDENCE_COLORS.predicted);
-    expect(HUD_CSS_CUSTOM_PROPERTIES['--hud-dur-fast']).toBe(`${HUD_MOTION.fastMs}ms`);
   });
 
-  it('overrides only durations under reduced motion, each to 0ms', () => {
-    const overrides = Object.entries(HUD_REDUCED_MOTION_CSS_OVERRIDES);
-    expect(overrides.length).toBeGreaterThan(0);
-    for (const [name, value] of overrides) {
-      expect(HUD_CSS_CUSTOM_PROPERTIES).toHaveProperty(name);
-      expect(HUD_CSS_CUSTOM_PROPERTIES[name as keyof typeof HUD_CSS_CUSTOM_PROPERTIES]).toMatch(/^\d+ms$/);
-      expect(value, name).toBe('0ms');
-    }
-    const durationNames = Object.keys(HUD_CSS_CUSTOM_PROPERTIES).filter((name) =>
-      /ms$/.test(HUD_CSS_CUSTOM_PROPERTIES[name as keyof typeof HUD_CSS_CUSTOM_PROPERTIES])
-    );
-    expect(Object.keys(HUD_REDUCED_MOTION_CSS_OVERRIDES).sort()).toEqual(durationNames.sort());
+  it('holds no durations: nothing of the HUD needs a reduced-motion form of its own', () => {
+    const durations = Object.keys(HUD_CSS_CUSTOM_PROPERTIES).filter((name) => /ms$/.test(HUD_CSS_CUSTOM_PROPERTIES[name as keyof typeof HUD_CSS_CUSTOM_PROPERTIES]));
+    expect(durations).toEqual([]);
   });
 
   it('is exported from the package entry', () => {

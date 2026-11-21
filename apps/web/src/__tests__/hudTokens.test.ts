@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import {
   HUD_CSS_CUSTOM_PROPERTIES,
   HUD_FONTS,
-  HUD_REDUCED_MOTION_CSS_OVERRIDES,
 } from '@albedian/design-system';
 
 // The HUD tokens live once in @albedian/design-system and once as CSS custom properties. These checks keep the two
@@ -93,11 +92,9 @@ describe('hud-tokens.css matches @albedian/design-system', () => {
     expect(declarations(body ?? '', '--')).toEqual(squashAll(HUD_CSS_CUSTOM_PROPERTIES));
   });
 
-  it('zeroes exactly the package durations under prefers-reduced-motion', () => {
-    const media = blockBody(withoutComments(hudCss), /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{/);
-    expect(media).not.toBeNull();
-    const body = blockBody(media ?? '', /:root\s*\{/);
-    expect(declarations(body ?? '', '--')).toEqual(squashAll(HUD_REDUCED_MOTION_CSS_OVERRIDES));
+  it('has no motion of its own, so nothing to change under prefers-reduced-motion (the motion record times the HUD)', () => {
+    expect(blockBody(withoutComments(hudCss), /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{/)).toBeNull();
+    expect(Object.keys(HUD_CSS_CUSTOM_PROPERTIES).filter((name) => /^--hud-(dur|ease|caption-stagger)/.test(name))).toEqual([]);
   });
 });
 

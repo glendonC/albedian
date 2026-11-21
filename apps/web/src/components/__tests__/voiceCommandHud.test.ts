@@ -542,12 +542,15 @@ describe('voice element CSS (hud-4)', () => {
     for (const m of block.matchAll(/\bfont:\s*([^;]+);/g)) expect(m[1]).toMatch(/var\(--hud-font-(sans|mono)\)$/);
   });
 
-  it('animates captions and the palette with the HUD motion tokens and turns animation off under reduced motion', () => {
-    expect(rule('.alb-voice-word').animation).toMatch(/var\(--hud-dur-caption-word\) var\(--hud-ease-out-expo\)/);
-    expect(rule('.alb-voice-word')['animation-delay']).toBe('calc(var(--i, 0) * var(--hud-caption-stagger))');
-    expect(rule('.alb-ask-palette').animation).toMatch(/var\(--hud-dur-enter\) var\(--hud-ease-spring\)/);
+  it('lets heard words arrive with no movement of their own, and the palette word in on the record\'s tokens (MOTION-READY-web.md)', () => {
+    // The listening words follow the ask record: each word appears as heard, with no movement of its own
+    expect(rule('.alb-voice-word').animation).toBe('none');
+    expect(rule('.alb-voice-word')['animation-delay']).toBeUndefined();
+    // The palette, while still shown, words in; under reduced motion the tokens make that the 270 ms dissolve, so it
+    // has no rule there that would make it jump
+    expect(rule('.alb-ask-palette').animation).toBe('look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both');
     const reduced = mediaBody(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
-    expect(reduced).toMatch(/\.alb-voice-word,\s*\.alb-ask-palette\s*\{[^}]*animation:\s*none;/);
+    expect(reduced).not.toMatch(/\.alb-ask-palette/);
   });
 
   it('pins the voice element to the bottom and turns the palette into a bottom sheet on a phone', () => {

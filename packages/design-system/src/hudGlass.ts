@@ -67,54 +67,8 @@ export const HUD_FONTS = {
   mono: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
 } as const;
 
-export interface HudMotion {
-  easeStandard: string;
-  easeSpring: string;
-  easeOutExpo: string;
-  fastMs: number;
-  baseMs: number;
-  enterMs: number;
-  captionWordMs: number;
-  captionStaggerMs: number;
-}
-
-export const HUD_MOTION: Readonly<HudMotion> = {
-  easeStandard: 'cubic-bezier(0.35, 0, 0, 1)',
-  easeSpring: 'cubic-bezier(0.22, 1, 0.36, 1)',
-  easeOutExpo: 'cubic-bezier(0.16, 1, 0.3, 1)',
-  fastMs: 180,
-  baseMs: 320,
-  enterMs: 420,
-  captionWordMs: 480,
-  captionStaggerMs: 45,
-};
-
-/** Under `prefers-reduced-motion: reduce` every HUD duration is 0 ms; the easings stay so nothing else changes. */
-export function resolveHudMotion(reducedMotion: boolean): HudMotion {
-  if (!reducedMotion) return { ...HUD_MOTION };
-  return {
-    ...HUD_MOTION,
-    fastMs: 0,
-    baseMs: 0,
-    enterMs: 0,
-    captionWordMs: 0,
-    captionStaggerMs: 0,
-  };
-}
-
 const rgba = (fill: HudRgba) => `rgba(${fill.join(', ')})`;
 const glassFilter = (surface: HudGlassSurface) => `blur(${surface.blurPx}px) saturate(${surface.saturatePct}%)`;
-const ms = (value: number) => `${value}ms`;
-
-function motionProperties(motion: HudMotion) {
-  return {
-    '--hud-dur-fast': ms(motion.fastMs),
-    '--hud-dur-base': ms(motion.baseMs),
-    '--hud-dur-enter': ms(motion.enterMs),
-    '--hud-dur-caption-word': ms(motion.captionWordMs),
-    '--hud-caption-stagger': ms(motion.captionStaggerMs),
-  } as const;
-}
 
 /** The `:root` custom properties of apps/web/src/styles/hud-tokens.css. */
 export const HUD_CSS_CUSTOM_PROPERTIES = {
@@ -144,14 +98,7 @@ export const HUD_CSS_CUSTOM_PROPERTIES = {
   '--hud-ev-catalog': HUD_EVIDENCE_COLORS.catalog_matched,
   '--hud-ev-predicted': HUD_EVIDENCE_COLORS.predicted,
   '--hud-ev-simulated': HUD_EVIDENCE_COLORS.simulated,
-  '--hud-ease-standard': HUD_MOTION.easeStandard,
-  '--hud-ease-spring': HUD_MOTION.easeSpring,
-  '--hud-ease-out-expo': HUD_MOTION.easeOutExpo,
-  ...motionProperties(HUD_MOTION),
 } as const;
-
-/** The custom properties hud-tokens.css overrides under `prefers-reduced-motion: reduce`. */
-export const HUD_REDUCED_MOTION_CSS_OVERRIDES = motionProperties(resolveHudMotion(true));
 
 /** The opaque colour a glass fill shows over a `#rrggbb` backdrop, rounded to `#rrggbb`. */
 export function compositeOver(fill: HudRgba, backdropHex: string): string {

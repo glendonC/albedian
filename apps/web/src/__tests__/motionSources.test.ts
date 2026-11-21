@@ -50,6 +50,16 @@ describe('the web times its motion from the motion record', () => {
     expect(look).toMatch(/\.look-second,[\s\S]*?transition:\s*transform var\(--look-dur-press\)/);
   });
 
+  it('times nothing from the hud motion tokens the record retires, which have no source', () => {
+    // MOTION-READY-web.md: "Retire, as they have no source: ... hud-tokens.css --hud-dur-* and --hud-ease-*"
+    const retired: string[] = [];
+    for (const file of fs.readdirSync(styles).filter((name) => name.endsWith('.css')).sort()) {
+      const text = fs.readFileSync(path.join(styles, file), 'utf8');
+      for (const m of text.matchAll(/--hud-(dur|ease|caption-stagger)[\w-]*/g)) retired.push(`${file} ${m[0]}`);
+    }
+    expect(retired).toEqual([]);
+  });
+
   it('still finds a time written out, so the check is not empty', () => {
     const found: string[] = [];
     postcss.parse('.a { transition: opacity 0.18s ease; } .b { animation: x-2s var(--t) both; }').walkDecls((decl) => {

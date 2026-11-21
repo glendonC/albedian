@@ -181,23 +181,11 @@
   margin-right: 2px;
 }
 
+/* Heard words follow the ask record (MOTION-READY-web.md, "Listening: words as heard"): each appears as heard, with no
+   movement of its own */
 .alb-voice-word {
   display: inline-block;
-  animation: alb-voice-word-in var(--hud-dur-caption-word) var(--hud-ease-out-expo) both;
-  animation-delay: calc(var(--i, 0) * var(--hud-caption-stagger));
-}
-
-@keyframes alb-voice-word-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.3em);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
+  animation: none;
 }
 
 /* Listen key: one pill, the ring carries the listening state */
@@ -226,7 +214,7 @@
   font: 400 13px/1 var(--hud-font-sans);
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--hud-dur-fast) var(--hud-ease-standard);
+  transition: background-color var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
 .alb-listen-key {
@@ -253,8 +241,8 @@
   height: 20px;
   border-radius: 50%;
   border: 1.25px solid rgba(255, 255, 255, 0.75);
-  transition: border-color var(--hud-dur-fast) var(--hud-ease-standard),
-    box-shadow var(--hud-dur-fast) var(--hud-ease-standard);
+  transition: border-color var(--look-mo-dur-colour) var(--look-mo-ease-std),
+    box-shadow var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
 .alb-listen-ring::after {
@@ -285,6 +273,8 @@
 }
 
 /* Ask palette: the equipped-test palette, dropped in from the top */
+/* The palette, while still shown, words in on the record's tokens (MOTION-READY-web.md, section 4); under reduced motion
+   they make it the 270 ms dissolve */
 .alb-ask-palette {
   position: fixed;
   top: 96px;
@@ -301,18 +291,7 @@
   box-shadow: var(--hud-shadow), var(--hud-hairline), var(--hud-specular);
   color: var(--hud-ink);
   font-family: var(--hud-font-sans);
-  animation: alb-ask-palette-in var(--hud-dur-enter) var(--hud-ease-spring) both;
-}
-
-@keyframes alb-ask-palette-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
 
 .alb-ask-head {
@@ -432,11 +411,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alb-voice-word,
-  .alb-ask-palette {
-    animation: none;
-  }
-
   .alb-listen-key,
   .alb-type-key,
   .alb-listen-ring {
@@ -945,7 +919,7 @@
   color: var(--hud-ink);
   font: 500 13px/1 var(--hud-font-sans);
   cursor: pointer;
-  transition: background-color var(--hud-dur-fast) var(--hud-ease-standard);
+  transition: background-color var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
 .alb-scan-action:hover:not(:disabled) {
@@ -1456,7 +1430,7 @@
   .alb-source-stage > video,
   .alb-marker-overlay {
     translate: calc(-1 * var(--alb-sheet-shift-x, 0px)) calc(-1 * var(--alb-sheet-lift, 0px));
-    transition: translate var(--hud-dur-base) var(--hud-ease-standard);
+    transition: translate var(--look-mo-dur-sheet) var(--look-mo-ease-sheet);
   }
 
   .alb-scan-solve {
@@ -1563,7 +1537,7 @@
   .alb-source-stage > video,
   .alb-marker-overlay {
     translate: calc(-1 * var(--alb-sheet-shift-x, 0px)) calc(-1 * var(--alb-sheet-lift, 0px));
-    transition: translate var(--hud-dur-base) var(--hud-ease-standard);
+    transition: translate var(--look-mo-dur-sheet) var(--look-mo-ease-sheet);
   }
 
   .alb-scan-solve {
@@ -1810,5 +1784,17 @@
 
   .alb-root:has(.alb-audio-notes) .alb-layer-disclosure {
     top: calc(88px + 30vh);
+  }
+}
+
+/* Under reduced motion the photo's shift beside the phone sheet has no settle: the flight starts at once then
+   (phoneSheet.ts runAfterSheetSettles), on the photo's own pixels. It must stay after both phone layouts above, whose
+   rules for the same selectors set the settle's transition with the same specificity: the later rule wins (AUDIT-B,
+   21 Nov 15:33, found it losing when it stood before them). */
+@media (prefers-reduced-motion: reduce) {
+  .alb-source-stage > img,
+  .alb-source-stage > video,
+  .alb-marker-overlay {
+    transition: none;
   }
 }

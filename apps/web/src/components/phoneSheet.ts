@@ -31,8 +31,8 @@ export const LANDSCAPE_BOTTOM_CLEAR_PX = 110;
  * the captions stack above it (albedian.css).
  */
 export const LANDSCAPE_PILL_CLEAR_PX = 60;
-/** How long the photo takes to settle back (the --hud-dur-base transition). */
-export const SHEET_SETTLE_MS = 320;
+/** How long the photo takes to settle back: the sheet's own time (the --look-mo-dur-sheet transition, MOTION-READY-web.md). */
+export const SHEET_SETTLE_MS = 500;
 
 /** The root's copies of env(safe-area-inset-right) and env(safe-area-inset-bottom), resolved by albedian.css. */
 export const SAFE_AREA_RIGHT_VAR = '--alb-safe-area-right';

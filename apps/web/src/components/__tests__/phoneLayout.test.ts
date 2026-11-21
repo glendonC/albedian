@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import fc from 'fast-check';
+import postcss from 'postcss';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -922,10 +923,53 @@ describe('phone layout CSS', () => {
     const key = parseFloat(rule('.alb-type-key', voiceCss).height ?? '');
     const gap = parseFloat(rule('.alb-voice-hud', voiceCss).gap ?? '');
     expect(Number(bottom?.[1]) + 2 * pad + key + gap).toBe(LANDSCAPE_PILL_CLEAR_PX);
-    // The settle: the shift's transition runs on --hud-dur-base, which the tokens set to SHEET_SETTLE_MS
-    for (const media of [phone, short]) expect(media).toMatch(/transition:\s*translate var\(--hud-dur-base\) /);
-    const tokens = fs.readFileSync(path.resolve(__dirname, '../../styles/hud-tokens.css'), 'utf8');
-    expect(Number(/:root\s*\{[^}]*--hud-dur-base:\s*(\d+)ms;/.exec(tokens)?.[1])).toBe(SHEET_SETTLE_MS);
+    // The settle: the shift's transition runs on the sheet's time and curve (MOTION-READY-web.md: the phone card, 500 ms
+    // on Apple's sheet curve), which the tokens set to SHEET_SETTLE_MS; under reduced motion the shift has none, since
+    // the flight starts at once then (runAfterSheetSettles)
+    for (const media of [phone, short]) expect(media).toMatch(/transition:\s*translate var\(--look-mo-dur-sheet\) var\(--look-mo-ease-sheet\);/);
+    const tokens = fs.readFileSync(path.resolve(__dirname, '../../styles/look-tokens.css'), 'utf8');
+    expect(Number(/:root\s*\{[^}]*--look-mo-dur-sheet:\s*(\d+)ms;/.exec(tokens)?.[1])).toBe(SHEET_SETTLE_MS);
+  });
+
+  it("settles the photo's shift on the sheet's time at phone width and not at all under reduced motion, by the rule that wins the cascade (AUDIT-B, 21 Nov 15:33)", () => {
+    // Every rule that sets the shift's transition, in source order, with the media it sits in: they share one
+    // specificity, so the last whose media all match the screen wins (a block's mere presence proved nothing: the
+    // reduced-motion rule stood before the phone layouts and lost to them)
+    type Screen = { width: number; height: number; coarse: boolean; reduced: boolean };
+    const feature = (condition: string, screen: Screen): boolean => {
+      const m = /^\(([a-z-]+):\s*([a-z0-9]+?)(px)?\)$/.exec(condition.trim());
+      if (!m) throw new Error(`media condition not read: ${condition}`);
+      const [, name, value] = m;
+      if (name === 'max-width') return screen.width <= Number(value);
+      if (name === 'min-width') return screen.width >= Number(value);
+      if (name === 'max-height') return screen.height <= Number(value);
+      if (name === 'min-height') return screen.height >= Number(value);
+      if (name === 'pointer') return value === (screen.coarse ? 'coarse' : 'fine');
+      if (name === 'prefers-reduced-motion') return value === 'reduce' ? screen.reduced : !screen.reduced;
+      throw new Error(`media feature not read: ${name}`);
+    };
+    const winner = (selector: string, screen: Screen): string | null => {
+      let value: string | null = null;
+      postcss.parse(css).walkRules((rule) => {
+        if (!rule.selectors.map((one) => one.replace(/\s+/g, ' ')).includes(selector)) return;
+        for (let node = rule.parent; node && node.type !== 'root'; node = node.parent) {
+          if (node.type !== 'atrule') continue;
+          const at = node as postcss.AtRule;
+          if (at.name !== 'media' || !at.params.split(/\s+and\s+/).every((condition) => feature(condition, screen))) return;
+        }
+        rule.walkDecls('transition', (decl) => {
+          value = decl.value.replace(/\s+/g, ' ');
+        });
+      });
+      return value;
+    };
+    const glide = 'translate var(--look-mo-dur-sheet) var(--look-mo-ease-sheet)';
+    for (const selector of ['.alb-source-stage > img', '.alb-source-stage > video', '.alb-marker-overlay']) {
+      for (const [width, height] of [[390, 844], [844, 390]] as const) {
+        expect(winner(selector, { width, height, coarse: true, reduced: false }), `${selector} ${width} by ${height}`).toBe(glide);
+        expect(winner(selector, { width, height, coarse: true, reduced: true }), `${selector} ${width} by ${height}, reduced`).toBe('none');
+      }
+    }
   });
 
   it('keeps the evidence line clear of Close on the card', () => {
