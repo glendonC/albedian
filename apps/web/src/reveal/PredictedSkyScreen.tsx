@@ -9,7 +9,7 @@ import { predictedSkyMarks, skyLeaderPath, type Box } from './predictedSkyMarks.
 
 /** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
 function clearOf(status: HTMLElement | null): Box[] {
-  // On the phone: the readout from top 584 and the close circle
+  // On the phone: the readout, its foot at y 756 (F2), and the close circle
   const rects = [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar'), document.querySelector('.predsky-top')]
     .filter((el): el is Element => el !== null)
     .map((el) => el.getBoundingClientRect())

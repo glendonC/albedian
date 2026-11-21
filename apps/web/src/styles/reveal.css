@@ -1822,7 +1822,8 @@
 }
 
 /* D33 at phone width (UIUX-predsky-READY.md, Build, phone): the close circle top left, as the phone There frame; the
-   readout from top 584, 24 px from the sides, the heading at 20 px; names at 11 px */
+   readout 24 px from the sides, the heading at 20 px; names at 11 px. F2 (UIUX-tagphone-READY.md, decided 13:08): the
+   readout anchors by its foot 16 px above Back to Moment (y 756) and grows upward, as D19 and D30 */
 .predsky-top {
   position: absolute;
   left: 20px;
@@ -1833,7 +1834,8 @@
 .predsky.is-phone .predsky-status {
   left: 24px;
   right: 24px;
-  top: 584px;
+  top: auto;
+  bottom: calc(100% - 756px);
   width: auto;
 }
 

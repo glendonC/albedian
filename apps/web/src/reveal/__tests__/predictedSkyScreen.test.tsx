@@ -67,7 +67,7 @@ vi.mock('../../components/CoalescingBar.js', () => ({ CoalescingBar: () => null 
 
 const { SpatialObservatoryViewport } = await import('../../components/SpatialObservatoryViewport.js');
 const { poseSession, sample } = await import('../../components/__tests__/poseSessions.js');
-const { formatSkyPlace, formatSkyTime, isPredictedSkyShown, predictedSkyWords } = await import('../predictedSky.js');
+const { formatSkyPlace, formatSkyTime, isPredictedSkyShown, phoneFacts, predictedSkyWords } = await import('../predictedSky.js');
 const postcss = (await import('postcss')).default;
 
 // D33 (UIUX-predsky-READY.md, decided by the lead 12:45): the sky Show predicted sky opens, on the laptop, in the
@@ -153,6 +153,13 @@ describe("the predicted sky's words", () => {
     expect(formatSkyPlace(-33.9, 151.2)).toBe('33.90° S · 151.20° E');
   });
 
+  it('keeps the catalogues at phone width, under the time and place or alone (F2)', () => {
+    const words = predictedSkyWords(predictedSky());
+    expect(phoneFacts(words)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
+    expect(phoneFacts({ ...words, facts: ['Hipparcos 2007 · Gaia DR3'] })).toEqual(['Hipparcos 2007 · Gaia DR3']);
+    expect(phoneFacts({ ...words, facts: ['2031-08-30 03:01 UTC', 'Hipparcos 2007 · Gaia DR3'] })).toEqual(['2031-08-30 03:01 UTC', 'Hipparcos 2007 · Gaia DR3']);
+  });
+
   it('names no time or place the solution does not give', () => {
     const session = predictedSky();
     const { observedAtUTC: _t, observerLocation: _p, ...solution } = session.observationSolution!;
@@ -223,7 +230,7 @@ describe('the predicted sky in the app (laptop)', () => {
     expect(q('.reveal-nav .look-views')).toBeNull();
   });
 
-  it("at phone width: the close circle top left, the readout from top 584 with the time and place on one line, Back to Moment at the foot", () => {
+  it("at phone width: the close circle top left, the readout with the time and place on one line and the catalogues under it, Back to Moment at the foot", () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
     try {
       renderViewport(predictedSky());
@@ -237,7 +244,8 @@ describe('the predicted sky in the app (laptop)', () => {
       expect([...status.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__sky', 'predsky-status__facts']);
       expect([...status.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
       expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
-      expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W']);
+      // F2 (UIUX-tagphone-READY.md, decided 13:08): the block keeps the stars' catalogue line under the time and place
+      expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
       expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);
       expect(q('.ask-bar')!.className).toContain('is-phone');
       const text = container.textContent ?? '';
@@ -353,8 +361,9 @@ describe("the predicted sky's rules are the record's", () => {
     expect(declarationsOf('.reveal-photo')['z-index']).toBe('30');
   });
 
-  it('places the phone readout from top 584, 24 px from the sides, the heading at 20 px, names at 11 px', () => {
-    expect(declarationsOf('.predsky.is-phone .predsky-status')).toEqual({ left: '24px', right: '24px', top: '584px', width: 'auto' });
+  it('anchors the phone readout by its foot 16 px above Back to Moment (y 756), growing upward, 24 px from the sides, the heading at 20 px, names at 11 px', () => {
+    // F2, as D19 and D30: the foot at y 756, so the two tags, ESO's line and the catalogues push the block up, not down
+    expect(declarationsOf('.predsky.is-phone .predsky-status')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 756px)', width: 'auto' });
     expect(declarationsOf('.predsky.is-phone .predsky-status__lead')).toEqual({ 'font-size': '20px' });
     expect(declarationsOf('.predsky.is-phone .align-layer__name')).toEqual({ 'font-size': '11px' });
     expect(declarationsOf('.predsky-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', 'pointer-events': 'auto' });
