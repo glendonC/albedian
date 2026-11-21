@@ -266,8 +266,12 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   measures it].
 - The child is started in a new process group (`os.setpgid(0, 0)` first thing in `_serve`), and `close` signals the
   whole group (`os.killpg`), so processes the child started (the restoration's pool, an ffmpeg it runs) stop with it
-  [proposed: `terminate()` reaches only the child; a pool worker or an ffmpeg whose parent was killed can run on
-  [inference from POSIX signal delivery]; P-JOB-4 asserts no process of the job's group is left].
+  [tested: `terminate()` reaches only the child; P-JOB-4 asserts no process of the job's group is left].
+- The child watches its caller (REQ-JOB-3.8, platform-or): `_serve` is given the caller's pid and starts a daemon
+  thread, `_watch_parent`, that reads `os.getppid()` every `PARENT_POLL_SEC` (0.5 s); once the parent is not that
+  pid, the caller has gone and the system has adopted the child, so the child sends SIGKILL to the group it leads,
+  or, sharing its caller's group, ends alone. Before it, a child whose server was killed mid-call ran its call to
+  its end with no bound [tested on 21 Nov: alive 30 s after its parent's SIGKILL, gone within 1 s with the watch].
 
 ### 3.4 The solve kind (`services/ingest/jobs.py`)
 - `solve_upload(ctx) -> KindResult`: today's body of `run_solve_job` from decode to `complete_sky` (:509-623), moved

@@ -114,6 +114,11 @@ to say it is running forever.
      keep its meaning: a search stopped at 180 s still ends the job `succeeded` with an `unresolved` solution.
   7. `rejected` SHALL be a terminal state for kinds whose work ends in a check that can refuse (the display copy's
      comparison and the restoration's gate); the solve never ends `rejected`.
+  8. WHEN the server process ends without stopping a job's child (killed, or its terminal closed), THE child SHALL
+     end its own process group, itself and every process it started, at its watch's next look (every 0.5 s), so
+     no work of a job runs on past its server; what it left is removed by the next start's sweep (3.1, 5.5) [added
+     2026-11-21, platform-or: in the night batch's probe a child whose caller was killed with SIGKILL still ran
+     30 s later].
 
 ### REQ-JOB-4: Cancel
 **User Story:** As someone who started the wrong file, I want to stop the job and know that it stopped.

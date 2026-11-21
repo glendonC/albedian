@@ -8,11 +8,15 @@ Covers:
   call, a dense simulated frame is stopped at 0.08 s, while the child detects its point sources (the plate solve
   after detection is too short to stop with a margin). SIGALRM could only act between bytecodes and only on the main
   thread; the worker also runs off the main thread.
+- A child whose caller was killed mid-call (a server's crash, its terminal closed) ends its own group, and every
+  process it started, well before its call's own end; a child whose caller is already gone does so at once; and the
+  watch never signals a group the child does not lead (platform-or, REQ-JOB-3.8).
 """
 
 from __future__ import annotations
 
 import math
+import multiprocessing
 import operator
 import os
 from pathlib import Path
@@ -354,3 +358,86 @@ def test_close_never_signals_a_group_the_child_does_not_lead(monkeypatch: pytest
     worker.close()
     assert _pid_is_gone(pid), "the child itself is still stopped"
     assert sent == [], "no group but the child's own is ever signalled"
+
+
+# A child whose caller is gone ends its group within the watch's poll, against a call that would run on for 60 s: the
+# bound proves the stop without a margin over the machine's load (platform-tc's rule)
+ORPHAN_CALL_S = 60.0
+ORPHAN_BOUND_S = 30.0
+# No process of this machine has it as its parent: process ids start at 1, and 0 is the kernel's own
+NOT_A_PARENT = 0
+
+
+def _caller_of_a_long_call(report: Any) -> None:
+    """A server's stand-in, in its own process: one call that would run ORPHAN_CALL_S, its child's grandchild and group
+    sent to the test as soon as the call has started them."""
+    worker = BoundedWorker()
+    worker.call(_start_grandchild_then_sleep, (ORPHAN_CALL_S,), timeout_s=2 * ORPHAN_CALL_S, progress_kwarg="report",
+                on_event=lambda *event: report.send(event))
+
+
+def test_a_child_whose_caller_is_killed_mid_call_ends_every_process_it_started() -> None:
+    """The night batch found a solve's child running on after its server was killed: nothing stops a child but its
+    caller, and the caller is gone. Now the child sees its parent gone and ends its own group (platform-or)."""
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    caller = context.Process(target=_caller_of_a_long_call, args=(send,))
+    caller.start()
+    send.close()
+    pgid = grandchild = None
+    try:
+        assert receive.poll(60.0), "the stand-in server's call never started"
+        _, grandchild, pgid = receive.recv()
+        os.kill(caller.pid, signal.SIGKILL)
+        caller.join(30.0)
+        assert _wait_until(lambda: _group_is_gone(pgid), ORPHAN_BOUND_S), "the child's group runs on past its caller"
+        assert _wait_until(lambda: _pid_is_gone(grandchild), ORPHAN_BOUND_S)
+    finally:
+        caller.kill()
+        caller.join()
+        if pgid is not None and pgid != os.getpgid(0) and not _group_is_gone(pgid):
+            os.killpg(pgid, signal.SIGKILL)
+
+
+def test_a_child_whose_caller_is_already_gone_ends_its_group_at_once() -> None:
+    """The watch compares the child's parent with the caller's pid it was given, never with the parent it finds when
+    it begins: a caller gone by then has the child adopted, and the adopter is not taken for the caller."""
+    from services.science import bounded_worker
+
+    with BoundedWorker() as worker:
+        worker.call(operator.add, (1, 1), timeout_s=30.0)
+        pid = worker.pid
+        with pytest.raises(WorkerFailed, match="ChildExited"):
+            worker.call(bounded_worker._watch_parent, (NOT_A_PARENT,), timeout_s=ORPHAN_BOUND_S)
+        assert _wait_until(lambda: _pid_is_gone(pid), ORPHAN_BOUND_S)
+        assert worker.call(operator.mul, (6, 7), timeout_s=30.0) == 42, "the next call starts a fresh child"
+
+
+def _watch_from_a_member_of_a_new_group(report: Any) -> None:
+    """A process that leads a new group starts a member of it that does not lead it, whose watch finds no caller: the
+    member must end alone, so this process lives to report the member's exit code."""
+    from services.science import bounded_worker
+
+    os.setpgid(0, 0)
+    member = multiprocessing.get_context("spawn").Process(target=bounded_worker._watch_parent, args=(NOT_A_PARENT,))
+    member.start()
+    member.join(ORPHAN_BOUND_S)
+    report.send(("member ended", member.exitcode, os.getpgid(member.pid) if member.exitcode is None else None))
+
+
+def test_the_watch_never_signals_a_group_the_child_does_not_lead() -> None:
+    """A child that shares its caller's group (one that never led its own) would stop the caller with that group; the
+    watch ends such a child alone. The groups here are a stand-in's own, never the test's."""
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    leader = context.Process(target=_watch_from_a_member_of_a_new_group, args=(send,))
+    leader.start()
+    send.close()
+    try:
+        assert receive.poll(ORPHAN_BOUND_S + 30.0), "the group's leader was stopped by its member's watch"
+        _, code, _ = receive.recv()
+        assert code == 1, "the member did not end alone, by its watch"
+    finally:
+        leader.join(30.0)
+        leader.kill()
+        leader.join()

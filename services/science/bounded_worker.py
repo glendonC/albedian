@@ -9,9 +9,14 @@ the parent's main script again, so a script that solves must keep its work under
 
 The child leads its own process group, made first thing in its loop, and a stop signals that whole group, so a
 process the child started (an ffmpeg, a pool of workers) is stopped with it (upload jobs design 3.3). `terminate()`
-alone reaches only the child, and a process whose parent was killed can run on [inference from POSIX signal
-delivery]. The child reports its group before it runs any call, so the caller knows the group is the child's own;
-before that report the child has started nothing, and only the child itself is stopped.
+alone reaches only the child. The child reports its group before it runs any call, so the caller knows the group is
+the child's own; before that report the child has started nothing, and only the child itself is stopped.
+
+Nothing stops a child but its caller, so a caller killed mid-call (a server's crash, its terminal closed) would leave
+the call running on with no bound [tested: in platform-or's probe for the night batch, a child whose caller was
+killed with SIGKILL mid-call still ran 30 s later]. The child therefore watches its caller: once its parent is no
+longer the caller whose pid it was given (the system has adopted it), it ends its own group, and so every process it
+started (REQ-JOB-3.8).
 """
 
 from __future__ import annotations
@@ -27,6 +32,8 @@ from typing import Any, Callable, Optional
 # How long the caller waits for a stopped child to exit before killing it
 STOP_GRACE_SEC = 2.0
 POLL_SEC = 0.25
+# How often a child looks for its caller (REQ-JOB-3.8)
+PARENT_POLL_SEC = 0.5
 
 
 class WorkerTimeout(Exception):
@@ -46,10 +53,22 @@ class WorkerFailed(Exception):
         self.detail = detail
 
 
-def _serve(conn: Connection) -> None:
-    """The child's loop: lead a new process group and say so, then run each call it is sent and send back its events,
-    then its result or its error."""
+def _watch_parent(caller_pid: int) -> None:
+    """Return only to end the child: once its parent is no longer `caller_pid`, the caller has gone and the system has
+    adopted the child, so it ends the group it leads, itself and every process it started; a child that does not lead
+    its group shares its caller's, so it ends alone, never signalling that group (REQ-JOB-3.8)."""
+    while os.getppid() == caller_pid:
+        time.sleep(PARENT_POLL_SEC)
+    if os.getpgid(0) == os.getpid():
+        os.killpg(0, signal.SIGKILL)
+    os._exit(1)
+
+
+def _serve(conn: Connection, caller_pid: int) -> None:
+    """The child's loop: lead a new process group and say so, watch the caller whose pid it was given, then run each
+    call it is sent and send back its events, then its result or its error."""
     os.setpgid(0, 0)
+    threading.Thread(target=_watch_parent, args=(caller_pid,), name="albedian-caller-watch", daemon=True).start()
     conn.send(("group", os.getpgid(0)))
     while True:
         try:
@@ -104,7 +123,7 @@ class BoundedWorker:
             return self._process, self._conn
         self.close()
         parent_conn, child_conn = self._context.Pipe(duplex=True)
-        process = self._context.Process(target=_serve, args=(child_conn,), daemon=True)
+        process = self._context.Process(target=_serve, args=(child_conn, os.getpid()), daemon=True)
         process.start()
         child_conn.close()
         self._process, self._conn, self._pgid = process, parent_conn, None

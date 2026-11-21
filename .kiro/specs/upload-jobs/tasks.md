@@ -81,6 +81,12 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - After the web's own lane changes the two calls of `design.md` 3.9.
   - _Requirements: REQ-JOB-7.5_
 
+- [x] 8. platform-or: a child whose server is gone ends its group (REQ-JOB-3.8)
+  - Found for the night batch (the lead's unit of 21 Nov 12:38): a caller killed mid-call left its child running
+    the call with no bound (a probe of the worker itself). The child watches its caller and ends its group once the caller is gone
+    (`design.md` 3.3); tests in `tests/science/test_bounded_worker.py`.
+  - _Requirements: REQ-JOB-3.8_
+
 ## Not units of this lane
 - The web follows jobs (`apps/web/src/services/apiClient.ts`, the two calls of `design.md` 3.9), by the web's own
   lane, after task 5 [decided 2026-11-11].
