@@ -34,7 +34,9 @@ export const AnswerPanel: React.FC<{
   onClose: () => void;
   /** At phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer). */
   phone?: boolean;
-}> = ({ shown, solution, onClose, phone = false }) => {
+  /** Its foot's distance from the screen's foot, where something it must not cover stands (UIUX-tagphone-READY.md item B). */
+  footPx?: number | null;
+}> = ({ shown, solution, onClose, phone = false, footPx = null }) => {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
@@ -49,7 +51,7 @@ export const AnswerPanel: React.FC<{
 
   const { heard, sentence, sub, answer } = shown;
   return (
-    <section className={phone ? 'reveal-answer is-phone' : 'reveal-answer'} data-testid="reveal-answer" aria-live="polite">
+    <section className={phone ? 'reveal-answer is-phone' : 'reveal-answer'} data-testid="reveal-answer" aria-live="polite" style={footPx === null ? undefined : { bottom: `${footPx}px` }}>
       {heard !== '' && <p className="reveal-answer__q">{heard}</p>}
       <p className="reveal-answer__s">{sentence}</p>
       {sub !== undefined && <p className="reveal-answer__sub">{sub}</p>}

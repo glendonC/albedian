@@ -345,10 +345,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // its foot
   const readoutRef = useRef<HTMLElement>(null);
   const [readoutTopPx, setReadoutTopPx] = useState<number | null>(null);
+  // UIUX-tagphone-READY.md item B: an answer open in the phone's flight keeps the readout's tag row and first sentence,
+  // and its own foot stands 16 px above that tag row; meanwhile the sky band and the craft keep the full readout's top
+  const [answerFootPx, setAnswerFootPx] = useState<number | null>(null);
   useLayoutEffect(() => {
+    const answerOverReadout = phone && Boolean(answer);
     const box = readoutRef.current?.getBoundingClientRect();
     const top = box && box.height > 0 ? box.top : null;
-    if (top !== readoutTopPx) setReadoutTopPx(top);
+    if (!answerOverReadout && top !== readoutTopPx) setReadoutTopPx(top);
+    const row = answerOverReadout ? readoutRef.current?.querySelector('.flight-readout__tagrow')?.getBoundingClientRect() : undefined;
+    const foot = row && row.height > 0 ? viewH - row.top + 16 : null;
+    if (foot !== answerFootPx) setAnswerFootPx(foot);
   });
   // pilot-1e: a press on the sky hands the flight's camera to the person and takes it back; leaving there, or the cone
   // view, ends it. While they steer, the readout's numbers are their camera's own
@@ -852,9 +859,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {statusLine}
       {outgoingLine}
 
-      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
+      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} footPx={answerFootPx} />}
 
-      {!answer && shownFlight && !cone && (
+      {(!answer || phone) && shownFlight && !cone && (
         <section
           ref={readoutRef}
           className={phone ? 'flight-readout is-phone' : returning ? 'flight-readout is-leaving' : 'flight-readout'}
@@ -886,27 +893,32 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               )}
             </p>
           )}
-          <h1>{shownFlight.name}</h1>
-          <div className="flight-readout__stats">
-            {shownFlight.toStarLy !== null && (
-              <div className="flight-readout__stat">
-                <b>
-                  {threeFigures(shownFlight.toStarLy)}
-                  <small>ly</small>
-                </b>
-                <span>{`to ${shownFlight.name}`}</span>
+          {/* Under an open answer the phone keeps only the tag row and the first sentence (tag place B) */}
+          {!answer && (
+            <>
+              <h1>{shownFlight.name}</h1>
+              <div className="flight-readout__stats">
+                {shownFlight.toStarLy !== null && (
+                  <div className="flight-readout__stat">
+                    <b>
+                      {threeFigures(shownFlight.toStarLy)}
+                      <small>ly</small>
+                    </b>
+                    <span>{`to ${shownFlight.name}`}</span>
+                  </div>
+                )}
+                <div className="flight-readout__stat">
+                  <b>
+                    {threeFigures(shownFlight.fromEarthLy)}
+                    <small>ly</small>
+                  </b>
+                  <span>from Earth</span>
+                </div>
               </div>
-            )}
-            <div className="flight-readout__stat">
-              <b>
-                {threeFigures(shownFlight.fromEarthLy)}
-                <small>ly</small>
-              </b>
-              <span>from Earth</span>
-            </div>
-          </div>
-          {!freeFlight && craft && picked && placeFinding(picked).kind === 'at_distance' && (
-            <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} phone={phone} />
+              {!freeFlight && craft && picked && placeFinding(picked).kind === 'at_distance' && (
+                <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} phone={phone} />
+              )}
+            </>
           )}
         </section>
       )}

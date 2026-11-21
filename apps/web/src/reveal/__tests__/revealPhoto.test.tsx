@@ -638,6 +638,40 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     }
   });
 
+  // UIUX-tagphone-READY.md item B (decided 13:08 on 21 Nov): on the phone the readout keeps its tag row and D27's first
+  // sentence while an answer is open, the rest hidden; the answer's foot stands 16 px above the readout's tag row
+  it("keeps the phone readout's tag row and first sentence under an open answer, whose foot stands 16 px above the tag row", () => {
+    const { session } = rigelPicked();
+    const box = (left: number, top: number, right: number, bottom: number) =>
+      ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('flight-readout__tagrow')) return box(24, 640, 366, 676);
+      if (this.classList.contains('flight-readout')) return box(24, 640, 366, 696);
+      return box(0, 0, 0, 0);
+    });
+    try {
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true, viewportWidthPx: 390, viewportHeightPx: 844, answer });
+      const readout = q(READOUT)!;
+      expect(readout.querySelector('.flight-readout__tagrow .look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+      expect(readout.querySelector('.flight-readout__note')!.textContent).toBe('Drawn or computed by the app; not measured in the source recording.');
+      // The rest of the readout is hidden while the answer is open, as before
+      expect(readout.querySelector('h1')).toBeNull();
+      expect(readout.querySelector('.flight-readout__stats')).toBeNull();
+      // 844 - 640 + 16: the answer's foot 16 px above the tag row's top
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe('220px');
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('keeps the whole phone readout, and the answer where it was, when no answer is open', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true, viewportWidthPx: 390, viewportHeightPx: 844 });
+    expect(q(READOUT)!.querySelector('h1')!.textContent).toBe('Rigel');
+    show(session, { answer, viewportWidthPx: 390, viewportHeightPx: 844, phone: true });
+    expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe('');
+  });
+
   it('says the Milky Way line with an answer open once the panorama has drawn', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
