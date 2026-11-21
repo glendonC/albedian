@@ -189,6 +189,13 @@ CHANGES = {
         "kept for the rest, the normals made again, smooth within an angle and sharp beyond it, and the textures "
         "re-encoded as WebP."
     ),
+    # lod0 for a lander of flat colours scaled from its footpads' spacing (recipe "changes": "pads")
+    "lod0_pads": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states, the spacing of its three footpads measured "
+        "between their centres seen from above; NASA's own flat colours kept, the normals made again, smooth within "
+        "an angle and sharp beyond it, and fewer triangles kept at every level."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
@@ -806,7 +813,45 @@ def main() -> None:
     else:
         if sf["metres"] is None:
             raise SystemExit("the recipe has no sourced dimension to scale from")
-        if sf["material"] is None:
+        if sf.get("pads"):
+            # the mean distance between the lowest loose parts of the material, seen from above: a lander's footpads
+            # on the triangle NASA states the side of
+            import bmesh
+
+            from scripts.lookdev.hangar.geometry import mean_plan_distance
+
+            mat_index = {i for i, mt in enumerate(me.materials) if mt and mt.name == sf["material"]}
+            bm = bmesh.new()
+            bm.from_mesh(me)
+            bm.faces.ensure_lookup_table()
+            bm.verts.ensure_lookup_table()
+            seen: set[int] = set()
+            parts = []
+            for f in bm.faces:
+                if f.index in seen or f.material_index not in mat_index:
+                    continue
+                stack, verts = [f], set()
+                seen.add(f.index)
+                while stack:
+                    g = stack.pop()
+                    verts.update(v.index for v in g.verts)
+                    for e in g.edges:
+                        for h in e.link_faces:
+                            if h.index not in seen and h.material_index in mat_index:
+                                seen.add(h.index)
+                                stack.append(h)
+                pc = np.array([bm.verts[i].co[:] for i in sorted(verts)])
+                parts.append((float(pc[:, 2].min()), ((pc.max(0) + pc.min(0)) / 2).tolist()))
+            bm.free()
+            parts.sort(key=lambda p: p[0])
+            pads = [c for _, c in parts[: sf["pads"]]]
+            if len(pads) < sf["pads"]:
+                raise SystemExit("the recipe's material has fewer loose parts than its pads")
+            extent = mean_plan_distance(pads)
+            centre = Vector(np.mean(np.array(pads), axis=0).tolist())
+            scale = sf["metres"] / extent
+            co = None
+        elif sf["material"] is None:
             # the whole model's extent along the axis (for a span NASA states end to end, such as landing legs)
             co = np.array([v.co for v in me.vertices])
         else:
@@ -820,10 +865,11 @@ def main() -> None:
                 co = co[(co[:, b] >= band["min"]) & (co[:, b] <= band["max"])]
                 if len(co) < 3:
                     raise SystemExit("the recipe's band holds no part of its material")
-        axis = "xyz".index(sf["axis"])
-        extent = co[:, axis].max() - co[:, axis].min()
-        centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())
-        scale = sf["metres"] / extent
+        if co is not None:
+            axis = "xyz".index(sf["axis"])
+            extent = co[:, axis].max() - co[:, axis].min()
+            centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())
+            scale = sf["metres"] / extent
     m = orient_matrix(recipe["forward"], recipe["up"]) @ Matrix.Diagonal((scale, scale, scale, 1.0)) @ Matrix.Translation(-centre)
     me.transform(m)
     me.update()

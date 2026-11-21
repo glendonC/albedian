@@ -1801,6 +1801,64 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
         "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."
       }
+    },
+    "viking": {
+      "title": "Viking Lander",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "viking/viking_lod0.glb",
+          "bytes": 1149308,
+          "triangles": 49762,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "viking/viking_lod1.glb",
+          "bytes": 368136,
+          "triangles": 14920,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "viking/viking_lod2.glb",
+          "bytes": 125984,
+          "triangles": 4953,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "viking/viking_picker.webp",
+          "bytes": 4516,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.085,
+          -0.032,
+          -1.248
+        ],
+        "max": [
+          1.466,
+          1.792,
+          2.155
+        ]
+      },
+      "bodyRadiusM": 1.6,
+      "lodTriangleShare": {
+        "lod0": 0.5,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "part": "blinn4SG",
+        "metres": 2.21,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+        "quote": "equilateral triangle with 2.21 m sides",
+        "partPads": 3
+      }
     }
   },
   "entries": [
@@ -3033,6 +3091,50 @@
           "value": "620 W from a 7.2 square metre solar array",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
           "quote": "Power of 620 W at the encounter is provided by a 7.2 square meter solar array"
+        }
+      ]
+    },
+    {
+      "id": "viking-lander",
+      "name": "Viking Lander",
+      "model": "viking",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1975-08-20",
+          "page": "https://science.nasa.gov/mission/viking-1/",
+          "quote": "Aug. 20, 1975 / 21:22:00 UT"
+        },
+        {
+          "key": "launchMassKg",
+          "value": 657,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+          "quote": "giving a total launch mass of 657 kg"
+        },
+        {
+          "key": "footpadTriangleM",
+          "value": 2.21,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+          "quote": "equilateral triangle with 2.21 m sides"
+        },
+        {
+          "key": "base",
+          "value": "six-sided, alternate 1.09 m and 0.56 m sides",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+          "quote": "six-sided aluminum base with alternate 1.09 m and .56 m long sides"
+        },
+        {
+          "key": "power",
+          "value": "two RTGs",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+          "quote": "Power was provided by two radioisotope thermal generator (RTG) units containing plutonium 238"
+        },
+        {
+          "key": "contactLost",
+          "value": "1982-11-13",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+          "quote": "It operated until 13 November 1982 when contact was lost."
         }
       ]
     }

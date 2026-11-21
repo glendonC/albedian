@@ -597,7 +597,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "ca017959e9a9706450950f157d5cd8e7be3e628498d99a508047ab04fc62462c",
+      "sha256": "6d026539944295749c54b965a48aced25bfbdb618af8c85553f0a67c0f5ce08b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1788,6 +1788,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Van%20Allen%20Probes/Van%20Allen%20Probes.png (508169 bytes, SHA-256 4e3a6170f06e40fbc2b0fa6f8acbcffd5688c1718cfb9796bf5b32ff992bd083)."
+    },
+    {
+      "path": "hangar/viking/viking_lod0.glb",
+      "sha256": "347332fbc35b876ea32934c57aa81644f2392c8963c9bf0220218849ede1245b",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft viking --out apps/web/public/models/hangar/viking",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states, the spacing of its three footpads measured between their centres seen from above; NASA's own flat colours kept, the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Viking%20Lander/Viking%20Lander.glb (1849384 bytes, SHA-256 1233dc2c96a1c0b08ca9a20f7ed9c09e0223f06f14f6ae6371349504c1929149); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/viking/viking_lod1.glb",
+      "sha256": "1f307de7331bee34c20fa776b3a3caf7ee8ef0b03ebd4bc813fe28c360e307c5",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft viking --out apps/web/public/models/hangar/viking",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Viking%20Lander/Viking%20Lander.glb (1849384 bytes, SHA-256 1233dc2c96a1c0b08ca9a20f7ed9c09e0223f06f14f6ae6371349504c1929149); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/viking/viking_lod2.glb",
+      "sha256": "76a78c193984196838c39c2f9b6846ef15608eb5f38f8d98b7d8e5e79cae7197",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft viking --out apps/web/public/models/hangar/viking",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Viking%20Lander/Viking%20Lander.glb (1849384 bytes, SHA-256 1233dc2c96a1c0b08ca9a20f7ed9c09e0223f06f14f6ae6371349504c1929149); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/viking/viking_picker.webp",
+      "sha256": "ccbfb7689cf406e5873aabcd58a4a7e3694c8b71f8d58205af1193ec7189c8a8",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft viking --out apps/web/public/models/hangar/viking",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Viking%20Lander/Viking%20Lander.png (447880 bytes, SHA-256 3d6ef08b7abb92c8f0a6d070371f93e249beba6e0260a0078c7dc4f34c77813b)."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",

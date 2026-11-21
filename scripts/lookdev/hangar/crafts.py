@@ -1491,6 +1491,42 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.6,
         "changes": "epoxi",
     },
+    "viking": {
+        "title": "Viking Lander",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-viking-lander",
+            "title": "Viking Lander, NASA 3D Resources",
+            "folder": "Viking Lander",
+            "file": "Viking Lander.glb",
+            "bytes": 1_849_384,
+            "sha256": "1233dc2c96a1c0b08ca9a20f7ed9c09e0223f06f14f6ae6371349504c1929149",
+            "picture": "Viking Lander.png",
+            "picture_bytes": 447_880,
+            "picture_sha256": "3d6ef08b7abb92c8f0a6d070371f93e249beba6e0260a0078c7dc4f34c77813b",
+            "local": "viking",
+        },
+        "drop_objects": [],
+        # The lander stands on its three legs along +Z in the import frame. A lander has no flight front, so it is shown
+        # facing +X with +Z up (a choice of view, not a sourced attitude).
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's file is not in metres. Scale from the footpads: the three lowest loose parts of NASA's "blinn4SG"
+        # material, their centres 10.67 to 11.05 units apart seen from above (mean 10.873), to NSSDC's equilateral
+        # triangle of 2.21 m sides between them; the pads then come out about 0.35 m across.
+        "scale_from": {
+            "material": "blinn4SG",
+            "pads": 3,
+            "metres": 2.21,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
+            "quote": "equilateral triangle with 2.21 m sides",
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.5, "lod1": 0.15, "lod2": 0.05},
+        "body_radius_m": 1.6,
+        "changes": "pads",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1997,6 +2033,22 @@ HANGAR: list[dict] = [
             {"key": "dishDiameterM", "value": 1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."},
             {"key": "hartley2Flyby", "value": "2010-11-04", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The encounter with Hartley 2 took place on 4 November 2010 at approximately 14:00 UT"},
             {"key": "power", "value": "620 W from a 7.2 square metre solar array", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "Power of 620 W at the encounter is provided by a 7.2 square meter solar array"},
+        ],
+    },
+    {
+        # The Viking landers (1 and 2 were twins; the facts are Viking 1's) stood on Mars: no speed between stars. NSSDC
+        # dates the lost contact 13 November 1982 where the mission page says 11 November; NSSDC's line is used.
+        "id": "viking-lander",
+        "name": "Viking Lander",
+        "model": "viking",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1975-08-20", "page": "https://science.nasa.gov/mission/viking-1/", "quote": "Aug. 20, 1975 / 21:22:00 UT"},
+            {"key": "launchMassKg", "value": 657, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "giving a total launch mass of 657 kg"},
+            {"key": "footpadTriangleM", "value": 2.21, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "equilateral triangle with 2.21 m sides"},
+            {"key": "base", "value": "six-sided, alternate 1.09 m and 0.56 m sides", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "six-sided aluminum base with alternate 1.09 m and .56 m long sides"},
+            {"key": "power", "value": "two RTGs", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "Power was provided by two radioisotope thermal generator (RTG) units containing plutonium 238"},
+            {"key": "contactLost", "value": "1982-11-13", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "It operated until 13 November 1982 when contact was lost."},
         ],
     },
 ]

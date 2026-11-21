@@ -105,6 +105,8 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
             # a part picked by a slab of the import frame says so, with the slab
             assert sf.get("partBand") == CRAFTS[name]["scale_from"].get("band")
+            # a size measured between footpads says how many
+            assert sf.get("partPads") == CRAFTS[name]["scale_from"].get("pads")
             # a model true to its scale part only says so, and none of its entries states a span, unless the span is
             # the very dimension it is scaled from (the whole model's width, part null)
             assert (sf.get("trueTo") == "part") is (CRAFTS[name]["scale_from"].get("true_to") == "part")
@@ -166,6 +168,23 @@ def test_a_picker_rendered_from_the_build_has_a_clear_background_and_says_why() 
         assert "rendered by Blender's Cycles" in record[f"hangar/{m}/{m}_picker.webp"]["producedBy"]["changes"]
 
 
+def test_footpad_spacing_is_the_mean_distance_between_pads_seen_from_above() -> None:
+    from math import cos, radians, sin
+
+    from scripts.lookdev.hangar.geometry import mean_plan_distance
+
+    # three pads on an equilateral triangle of side 2.21, at different heights: the heights do not count
+    r = 2.21 / (3**0.5)
+    pads = [(r * cos(radians(a)), r * sin(radians(a)), z) for a, z in ((90, 0.0), (210, 0.4), (330, -0.3))]
+    assert abs(mean_plan_distance(pads) - 2.21) < 1e-9
+    # the plane is across the axis named up: the same pads lying across Y measure the same
+    assert abs(mean_plan_distance([(x, z, y) for x, y, z in pads], up=1) - 2.21) < 1e-9
+    # an uneven triangle gives the mean of its three sides
+    assert abs(mean_plan_distance([(0, 0, 0), (3, 0, 0), (0, 4, 0)]) - 4.0) < 1e-9
+    with pytest.raises(ValueError):
+        mean_plan_distance([(0, 0, 0)])
+
+
 def test_the_frame_and_the_evidence_class() -> None:
     assert FACTS["evidenceClass"] == "simulated"
     assert FACTS["frame"] == {"forward": "+Z", "up": "+Y", "unit": "metre", "origin": "the centre of the part the scale is taken from"}
@@ -194,7 +213,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
-    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact"}
+    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander"}
     for e in FACTS["entries"]:
         if e["travel"] is not None:
             assert e["travel"]["speedKmS"] > 0

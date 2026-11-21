@@ -145,6 +145,9 @@ def build_facts(models: list[str]) -> dict:
         if sf.get("true_to") == "part":
             # only the named part is held to NASA's size; the model's other sizes are its own and state nothing
             scale_from["trueTo"] = "part"
+        if sf.get("pads"):
+            # the size is the mean spacing, seen from above, of that many lowest loose parts of the material (footpads)
+            scale_from["partPads"] = sf["pads"]
         if sf.get("quoted_cm") is not None:
             scale_from["quotedCm"] = sf["quoted_cm"]
         if sf.get("quoted_ft") is not None:
