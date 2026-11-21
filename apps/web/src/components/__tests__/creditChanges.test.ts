@@ -67,11 +67,11 @@ const COPY =
   "The 3D view's WebGPU renderer draws a copy made from it in its place, graded the same way and scaled by 0.3 " +
   "before the frame's exposure of 3 (0.9 net before the AgX tone map).";
 
+// C29 (UIUX-webuxpieces-READY.md item 5, decided by the lead 12:59): the change noted and briefly described, after
+// Creative Commons' recommended practice, with the layer's own numbers
 const REAL_SKY =
-  "In Real sky, over a photo the app has matched to stars, it is resampled into that photo's frame through the " +
-  "photo's solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are " +
-  "darkened toward the window's edges, up to 74 percent black; on a phone the bands above and below the photo are " +
-  'darkened the same way, up to 78 percent black.';
+  'In Real sky: redrawn to line up with a photo the app has matched, its pixels otherwise unchanged, and darkened ' +
+  'beside the photo, up to 74 percent black (78 on a phone).';
 
 describe('the Milky Way row states every change the app makes to the panorama, by kind', () => {
   it('says each change, where it is made: the home, the 3D view, the copy the WebGPU renderer draws, and Real sky', () => {

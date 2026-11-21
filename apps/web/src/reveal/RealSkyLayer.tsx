@@ -84,14 +84,12 @@ export function phoneThereScrim(viewportHeightPx: number, readoutTopPx: number):
 }
 
 /**
- * The Credits page's line for what Real sky does to ESO's panorama (CC BY 4.0 asks that changes be indicated), worded
- * from the layer's own numbers [proposed: no record words the Credits lines].
+ * The Credits page's line for what Real sky does to ESO's panorama (CC BY 4.0 asks that changes be indicated), in C29's
+ * words (UIUX-webuxpieces-READY.md item 5: a change noted and briefly described, as Creative Commons' recommended
+ * practice has it), with the layer's own numbers.
  */
 export function realSkyChanges(shade: Readonly<RealSkyShade> = REAL_SKY_SHADE): string {
-  return (
-    "In Real sky, over a photo the app has matched to stars, it is resampled into that photo's frame through the photo's " +
-    `solve and the same registration, its pixels otherwise unchanged, and the columns beside the photo are darkened toward the window's edges, up to ${Math.round(shade.edge * 100)} percent black; on a phone the bands above and below the photo are darkened the same way, up to ${Math.round(PHONE_REAL_SKY_SHADE.foot * 100)} percent black.`
-  );
+  return `In Real sky: redrawn to line up with a photo the app has matched, its pixels otherwise unchanged, and darkened beside the photo, up to ${Math.round(shade.edge * 100)} percent black (${Math.round(PHONE_REAL_SKY_SHADE.foot * 100)} on a phone).`;
 }
 
 const VERTEX = `#version 300 es
