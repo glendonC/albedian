@@ -1122,10 +1122,21 @@ def _sun_lined_up(
     lat: float, lon: float, lent: LentMoment | None,
 ) -> ObservationSolution:
     """The approximate solution of a Sun pose (sky-6d): the nominal WCS and its pose estimate, the detector's
-    pixel-only findings as measured, and the predicted sky for the frame's moment, each saying whether the nominal
-    WCS puts it inside the frame. The glare is named in the pose's assumptions only, not as an observed finding (the
-    lead's answer of 17:37: a clipped core gives no honest flux, SNR or width)."""
-    kept = [f for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None]
+    pixel-only findings as measured minus those of the same frame inside the Sun's core, and the predicted sky for the
+    frame's moment, each saying whether the nominal WCS puts it inside the frame. The glare is named in the pose's
+    assumptions only, not as an observed finding (the lead's answer of 17:37 on 19 Nov: a clipped core gives no honest
+    flux, SNR or width); so a detection on the core, which is the glare measured as a point (AUDIT's sweep of 21 Nov,
+    finding one: on the public lake photo one at the core's centre with an SNR of 0.4 and a width near 200 px), is
+    dropped as the Moon pose drops the detections on its spot (`_lined_up`)."""
+    spot = pose.spot
+    kept = [
+        f for f in solution.findings
+        if f.evidence_class == "observed" and f.source_detection is not None
+        and not (
+            abs(f.source_detection.frame_time_sec - frame_time_sec) <= SAME_FRAME_SEC
+            and math.hypot(f.source_detection.x_px - spot.x_px, f.source_detection.y_px - spot.y_px) <= spot.radius_px
+        )
+    ]
     time_sec = _worked_out_time_sec(asset)
     predicted = _placed(
         predicted_sky_findings(

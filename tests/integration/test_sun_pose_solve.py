@@ -8,14 +8,18 @@ are open ocean and point at nobody.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
+import pytest
 
 from services.science import predicted_sky as ps
 from services.science import sun_pose as sp
 from services.science.catalog import get_catalog_stars
+from services.science.detector import detect_point_sources
 from services.science.solver import _build_unresolved_solution, triangle_solver_identity
+from services.science.wcs_models import SourceDetection
 from tests.science.test_sun_pose import FOCAL35, H, LAT, LON, POSE_MOMENT, W, _level_camera_frame
 
 SHA = "f" * 63 + "6"
@@ -68,6 +72,88 @@ def test_an_unsolved_daytime_photo_is_lined_up_from_the_sun_and_its_skyline() ->
     assert within == int(np.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg))
     assert str(LAT) not in " ".join(solution.warnings) and POSE_MOMENT[:10] not in " ".join(solution.warnings)
     solution.to_contract_dict()
+
+
+def _unresolved_with(detections: list[SourceDetection], moment: str = POSE_MOMENT) -> Any:
+    return _build_unresolved_solution(
+        detections, "sol-synthetic-daytime", ASSET_ID, SHA, 0.0, moment, LAT, LON, "Too few sources.",
+        "Pixel position only: no verified WCS places it on the sky.", triangle_solver_identity(get_catalog_stars()),
+    )
+
+
+def _served(solution: Any) -> list[tuple[float, float]]:
+    return sorted(
+        (round(f.source_detection.x_px, 6), round(f.source_detection.y_px, 6))
+        for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None
+    )
+
+
+@pytest.mark.parametrize("turns", [0, 1])
+def test_no_detection_inside_the_suns_core_is_served_beside_a_sun_pose(turns: int) -> None:
+    # AUDIT's sweep of 21 Nov, finding one, and the ruling of 19 Nov (no observed glare finding until sky-6 (a)): the
+    # pose drops the detections of its own frame inside the core it found, as the Moon pose drops the Moon's; the
+    # glare is named in the pose's assumptions only. Points just inside and just outside the core's radius, in stored
+    # pixels, on a photo stored as shown and on one stored turned (shown after one clockwise quarter turn)
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    stored = np.rot90(_level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg), turns)
+    orientation = {"quarterTurnsClockwise": turns, "mirrored": False}
+    pose = sp.sun_horizon_pose(stored, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=orientation, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    cx, cy, r = pose.spot.x_px, pose.spot.y_px, pose.spot.radius_px
+    inside = [(cx, cy), (cx + 0.95 * r, cy), (cx, cy - 0.6 * r)]
+    outside = [(cx + 1.05 * r, cy), (40.0, 40.0), (850.0, 60.0)]
+    detections = [
+        SourceDetection(x, y, flux=50.0, snr=8.0, fwhm_px=2.4, centroid_uncertainty_px=0.2, asset_id=ASSET_ID)
+        for x, y in inside + outside
+    ]
+    asset = {**_asset(), "width": stored.shape[1], "height": stored.shape[0], "displayOrientation": orientation}
+    solution = ps.complete_sky(_unresolved_with(detections), asset, frames=_frames(stored))
+    assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
+    assert _served(solution) == sorted((round(x, 6), round(y, 6)) for x, y in outside)
+    # The detector's count is what it measured; nothing else stands for the glare
+    assert solution.quality.detected_candidate_count == len(detections)
+    assert not any("Sun" in f.title for f in solution.findings if f.evidence_class == "observed")
+    solution.to_contract_dict()
+
+
+def test_a_detection_of_another_frame_on_the_cores_place_is_kept() -> None:
+    # As the Moon pose's rule: only the pose's own frame shows the core there, so a point another frame measured at
+    # that place is not the glare the pose found, and it is served as measured
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    same, other = (
+        SourceDetection(pose.spot.x_px, pose.spot.y_px, flux=50.0, snr=8.0, fwhm_px=2.4, centroid_uncertainty_px=0.2,
+                        asset_id=ASSET_ID, frame_time_sec=t)
+        for t in (0.0, 1.0)
+    )
+    solution = ps.complete_sky(_unresolved_with([same, other]), _asset(), frames=_frames(frame))
+    assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
+    served = [f.source_detection for f in solution.findings if f.evidence_class == "observed"]
+    assert [d.frame_time_sec for d in served] == [1.0]
+
+
+def test_the_detectors_own_hits_on_the_core_are_dropped_and_the_rest_kept() -> None:
+    # The detector on the synthetic day frame: its clipped core detection (one source at the core's centre) and any
+    # other hit inside the core are dropped; every hit outside it is served as measured
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    # Three points of light well away from the core, so the detector has hits to keep
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float64)
+    for x, y in ((120.0, 140.0), (780.0, 220.0), (160.0, 520.0)):
+        frame = frame + 60.0 * np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2.0 * 1.3**2))
+    frame = np.clip(frame, 0, 255)
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    detections = detect_point_sources(frame, asset_id=ASSET_ID)
+    on_core = [d for d in detections if math.hypot(d.x_px - pose.spot.x_px, d.y_px - pose.spot.y_px) <= pose.spot.radius_px]
+    assert on_core, "the synthetic core is detected, as the public lake photo's was"
+    kept = [d for d in detections if all(d is not c for c in on_core)]
+    assert any(math.hypot(d.x_px - 780.0, d.y_px - 220.0) < 2.0 for d in kept), "a point away from the core is kept"
+    solution = ps.complete_sky(_unresolved_with(detections), _asset(), frames=_frames(frame))
+    assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
+    assert _served(solution) == sorted((round(d.x_px, 6), round(d.y_px, 6)) for d in kept)
 
 
 def test_a_camera_clock_that_disagrees_with_the_sun_gets_no_pose_and_says_so() -> None:

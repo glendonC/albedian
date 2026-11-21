@@ -200,6 +200,27 @@ def test_the_sun_pose_lines_up_a_level_camera_within_its_stated_bound() -> None:
     assert estimate.beacon_centroid_uncertainty_deg < sun.radius_deg + sun.uncertainty_deg + sp.SUN_CORE_OFFSET_DEG + 0.01
 
 
+@pytest.mark.parametrize("turns", [0, 1, 2, 3])
+def test_the_pose_states_the_suns_core_where_the_stored_frame_holds_it(turns: int) -> None:
+    # The core is found in the upright frame; the pose states it in stored pixels too (`spot`), where the solve's
+    # detections are measured, with the core's own radius (AUDIT's sweep of 21 Nov, finding one)
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    upright = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    # Shown after `turns` clockwise quarter turns, so stored as the upright frame turned back that many times
+    stored = np.rot90(upright, turns)
+    pose = sp.sun_horizon_pose(
+        stored, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation={"quarterTurnsClockwise": turns, "mirrored": False},
+        focal_35mm_mm=FOCAL35,
+    )
+    assert isinstance(pose, sp.SunPose), pose
+    level = float(np.max(upright)) - sp.SUN_CORE_CODES
+    assert upright[int(round(pose.core.y_px)), int(round(pose.core.x_px))] >= level
+    assert stored[int(round(pose.spot.y_px)), int(round(pose.spot.x_px))] >= level
+    assert pose.spot.radius_px == pytest.approx(pose.core.diameter_px / 2.0)
+    if turns == 0:
+        assert (pose.spot.x_px, pose.spot.y_px) == pytest.approx((pose.core.x_px, pose.core.y_px))
+
+
 def test_no_sun_pose_when_the_camera_clock_disagrees_with_the_sun() -> None:
     sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
     # Drawn for the Sun 4 degrees higher than the photo's time puts it

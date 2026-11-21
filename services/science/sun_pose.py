@@ -220,7 +220,9 @@ def find_day_skyline(luma: np.ndarray, core: SunCore) -> Skyline | Refusal:
 @dataclass(frozen=True)
 class SunPose:
     """A pose lined up from the Sun and a skyline: the nominal WCS, its pose estimate, the Sun's core and the skyline
-    (in the upright frame), the Sun it was lined up to, and the Sun's measured height above the skyline."""
+    (in the upright frame), the Sun it was lined up to, the Sun's measured height above the skyline, and the core as
+    the fit read it (`spot`: its centre in stored pixels, where the solve's detections are measured, and its radius,
+    half its equivalent diameter; no flux, SNR or width, which a clipped core does not give)."""
 
     wcs: WCSModel
     estimate: PoseEstimate
@@ -228,6 +230,7 @@ class SunPose:
     skyline: Skyline
     sun: TopocentricMoon
     measured_height_deg: float
+    spot: MoonBlob
 
 
 def _fit_spot(core: SunCore, turns: int, up_width: int, up_height: int) -> MoonBlob:
@@ -328,7 +331,7 @@ def sun_horizon_pose(
         ),
         beacon_centroid_uncertainty_deg=sun.radius_deg + sun.uncertainty_deg + SUN_CORE_OFFSET_DEG + term / 3600.0,
     )
-    return SunPose(nominal, estimate, core, skyline, sun, measured)
+    return SunPose(nominal, estimate, core, skyline, sun, measured, spot)
 
 
 def angular_separation(a: WCSModel, b: WCSModel) -> float:
