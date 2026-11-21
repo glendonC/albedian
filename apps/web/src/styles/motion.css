@@ -332,8 +332,8 @@
   animation: look-mo-frame-in var(--look-mo-dur-colour) var(--look-mo-ease-std) var(--look-mo-dur-frame-in) both;
 }
 
-/* The other matched marks come in as the approved reveal's do, from when the travel is at rest [proposed: the record
-   names only the marks that travel] */
+/* The other matched marks come in as the approved reveal's do, from when the travel is at rest (MOTION-READY-web.md
+   section 6, its 400 ms row: added 19 Nov 12:58 at WEB-UX's lockon-3, as built) */
 .is-locking .reveal-marks .reveal-mark:not(.is-locked-on) {
   animation-delay: calc(var(--look-mo-dur-frame-in) + var(--mark-i) * var(--mark-step));
 }
