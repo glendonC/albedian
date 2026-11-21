@@ -180,6 +180,8 @@ describe('aligning', () => {
     act(() => button('Line it up yourself')!.click());
     const solve = q('.align-phone__solve button') as HTMLButtonElement;
     expect(solve.textContent).toBe('Solve from here');
+    // C30 (UIUX-webuxpieces-READY.md item 6): the approved phone button, 44 px high, as alp-refused's Line it up again
+    expect(solve.className).toContain('look-size-phone');
     act(() => solve.click());
     expect(sent).toHaveLength(1);
   });

@@ -494,13 +494,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // The status line for this moment (each moment its own element, keyed: motion-14)
   const statusLine: React.ReactElement | null = phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
-        // compact and centred at 772; the close circle cancels
+        // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         <div className="align-phone" data-testid="reveal-status" role="status">
           <p className="align-phone__lead">Drag the stars onto the dots you see.</p>
           <p className="align-phone__help">Drag to move. Turn or pinch with two fingers.</p>
           {onSolveFromHere && (
             <div className="align-phone__solve">
-              <MainAction label="Solve from here" onClick={() => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from)} />
+              <MainAction label="Solve from here" size="phone" onClick={() => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from)} />
             </div>
           )}
         </div>
