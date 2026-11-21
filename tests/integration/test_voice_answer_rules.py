@@ -19,7 +19,6 @@ from __future__ import annotations
 import copy
 from decimal import Decimal
 import json
-import math
 from pathlib import Path
 import re
 from typing import Any
@@ -273,16 +272,40 @@ def test_a_number_is_read_to_what_its_bounds_support(amount: float, bounds: tupl
 @given(st.floats(min_value=1e-6, max_value=1e15), st.floats(min_value=1e-6, max_value=0.9))
 @example(999.4, 0.0)
 @example(307.0, 0.1)
+# Bounds whose half width is a power of ten in decimals and a hair off it in floats (the lead's 15:31 finding), and
+# one a hair under 100,000 whose float logarithm is exactly 5 (AUDIT's verdict steptest.md)
+@example(0.5, 0.2)
+@example(5.0, 0.02)
+@example(0.05, 0.2)
+@example(343825.89191598876, 0.2908448791995986)
 def test_a_number_never_has_an_exponent_and_keeps_within_half_its_step(amount: float, spread: float) -> None:
     bounds = (amount * (1 - spread), amount * (1 + spread)) if spread > 0 else None
     said = answers.readable(amount, bounds)
     assert not EXPONENT.search(said) and "e" not in said.lower(), said
     value = Decimal(said.replace(",", ""))
     if bounds is not None:
-        half = (bounds[1] - bounds[0]) / 2
-        step = 10 ** math.floor(math.log10(half))
+        # The bounds and the amount as the decimals they are stored as (readable reads the amount so, by its repr),
+        # with no float rounding: 0.6 less 0.4 is 0.2 here, where in floats it comes out a hair under it, and its
+        # logarithm then gave a step of 0.1 over a half width a hair under 0.1. The step is the largest power of ten
+        # not more than the half width, read off the half's own leading digit, exactly
+        half = (Decimal(repr(bounds[1])) - Decimal(repr(bounds[0]))) / 2
+        step = Decimal(10) ** half.adjusted()
         assert step <= half < step * 10
-        assert abs(float(value) - amount) <= step / 2 + 1e-9 * amount, (amount, said, step)
+        assert abs(value - Decimal(repr(amount))) <= step / 2, (amount, said, step)
+        # And it is said to that step, neither finer nor coarser: a multiple of it, with as many decimals as it has
+        assert value % step == 0, (amount, said, step)
+        assert len(said.partition(".")[2]) == max(0, -half.adjusted()), (amount, said, step)
+
+
+def test_a_half_width_a_hair_from_a_power_of_ten_is_read_by_its_exact_decimals() -> None:
+    """The step is the largest power of ten not more than the half width of the bounds as stored (AUDIT's verdict
+    steptest.md): a float logarithm took 99,999.99... for 100,000 and said 300,000, and 4.9 to 5.1 for a half width a
+    hair under 0.1 and said 5.00."""
+    amount, spread = 343825.89191598876, 0.2908448791995986
+    assert answers.readable(amount, (amount * (1 - spread), amount * (1 + spread))) == "340,000"
+    assert answers.readable(5.0, (4.9, 5.1)) == "5.0"
+    assert answers.readable(0.5, (0.4, 0.6)) == "0.5"
+    assert answers.readable(0.05, (0.04, 0.06)) == "0.05"
 
 
 def test_a_distance_far_past_the_old_exponent_is_said_in_plain_figures() -> None:

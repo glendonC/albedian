@@ -14,7 +14,7 @@ sentence. Nothing here logs.
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 import math
 import re
 from typing import Any
@@ -103,6 +103,9 @@ PARSEC_LIGHT_YEARS = 3.261563777  # IAU: one parsec in light years, for the sent
 CLASS_WORDS = {"predicted": "Predicted, not measured: ", "simulated": "Drawn by the app, not measured: "}
 # [proposed] With no stored bounds a number keeps two significant figures
 FIGURES_WITHOUT_BOUNDS = 2
+# Decimal digits that hold the exact difference of any two doubles' shortest reprs (17 significant digits each, their
+# exponents from -324 to 308), so a half width's leading digit is read with no rounding
+EXACT_DIGITS = 700
 # [proposed] The sentences of the refusals the words themselves cause
 SENTENCE_RANKS = "That compares or ranks things; I answer one value of one thing."
 SENTENCE_TWO_KINDS = "That asks more than one thing; ask one at a time."
@@ -257,11 +260,18 @@ def readable(amount: float, bounds: tuple[float, float] | None = None) -> str:
 
     With bounds, it is rounded to the largest power of ten that is not more than half the bounds' width (the bounds
     say the value is known to about that much either way, so a finer figure says more than the data); with none, to
-    FIGURES_WITHOUT_BOUNDS significant figures. Thousands are written with commas."""
+    FIGURES_WITHOUT_BOUNDS significant figures. Thousands are written with commas.
+
+    The half width is read off the bounds as the decimals they are stored as (each float's repr, as the amount is),
+    exactly: a float logarithm of a float difference moved the step by a factor of ten where the half width lies a hair
+    either side of a power of ten (it said 300,000 for 340,000, and 5.00 for 4.9 to 5.1; AUDIT's verdict steptest.md)."""
     if amount == 0:
         return "0"
     if bounds is not None and bounds[1] > bounds[0]:
-        exp = math.floor(math.log10((bounds[1] - bounds[0]) / 2))
+        # Wide enough that the difference of any two doubles' reprs is exact, so the leading digit is the true one
+        with localcontext() as exact:
+            exact.prec = EXACT_DIGITS
+            exp = ((Decimal(repr(bounds[1])) - Decimal(repr(bounds[0]))) / 2).adjusted()
     else:
         exp = math.floor(math.log10(abs(amount))) - FIGURES_WITHOUT_BOUNDS + 1
     places = max(0, -exp)
