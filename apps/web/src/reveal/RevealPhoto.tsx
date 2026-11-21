@@ -11,7 +11,7 @@ import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedi
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
-import { RestoreCompare, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
+import { RestoreCompare, RestorePhoneFoot, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
 import type { Restoration } from './restoration.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -126,6 +126,8 @@ export interface RevealPhotoProps {
   onCancelRestore?: () => Promise<unknown> | void;
   /** Told whenever Line it up yourself (D24) starts or ends, so the phone's close circle (the viewport's) can cancel it. */
   onAligningChange?: (active: boolean) => void;
+  /** Told whenever the phone's compare of a ready restoration starts or ends showing, so Ask out loud gives way to Download. */
+  onPhoneCompareChange?: (shown: boolean) => void;
   /** Changed to cancel an alignment from outside: the phone's close circle while aligning. */
   cancelAligningToken?: number;
   /** Solve from here (D24 step 2): the person's alignment, sent as the solve's body, the pose and where it started. */
@@ -294,6 +296,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onRestore,
   onCancelRestore,
   onAligningChange,
+  onPhoneCompareChange,
   cancelAligningToken = 0,
   onSolveFromHere,
   alignedFrom = null,
@@ -439,6 +442,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const restoring = overPhoto && (restoration?.phase === 'working' || restoration?.phase === 'stopped');
   // Original pixels shows the photo bare, the compare too (D15)
   const compareShown = overPhoto && restoration?.phase === 'done' && !originalPixels;
+  // D10 item 5 at phone width (the lead's 13:17 answer, D38 item 4): a photo that already has a ready restoration shows
+  // the compare in the slot, the fixed sentence under it and Download where Ask out loud sits. A clip's waits for
+  // D16's phone player, which is not built
+  const phonePhoto = phone && session.sourceAsset !== undefined && session.sourceAsset.mediaKind !== 'video';
+  const [versions, setVersions] = useState<StoredRestoration[]>([]);
+  const phoneCompare = phonePhoto && !there && !skyShown && !originalPixels && !bareFrame && frame !== null && versions.length > 0;
+  const compareOn = compareShown || phoneCompare;
+  useEffect(() => {
+    onPhoneCompareChange?.(phoneCompare);
+  }, [phoneCompare]);
+  useEffect(() => () => onPhoneCompareChange?.(false), []);
   // While the compare is zoomed in, the marks step aside (D15)
   const [compareZoomed, setCompareZoomed] = useState(false);
   useEffect(() => {
@@ -450,7 +464,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
   const [aligningState, setAligning] = useState<{ pose: AlignPose; from: AlignStart } | null>(null);
   // On the laptop and at phone width alike (alp-align), over the photo itself
-  const alignAllowed = !there && !skyShown && !compareShown && status.kind === 'unmatched' && frame !== null && !bareFrame;
+  const alignAllowed = !there && !skyShown && !compareOn && status.kind === 'unmatched' && frame !== null && !bareFrame;
   // The alignment the last Solve from here was sent from, for this upload only
   const kept = alignedFrom && session.sourceAsset && alignedFrom.sha256 === session.sourceAsset.sha256 ? alignedFrom : null;
   const aligning = alignAllowed ? aligningState : null;
@@ -488,11 +502,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // D36: the photo's ready restorations, read once its restoration is done; the compare shows the newest, or the row
   // pressed until the compare is left; Download saves the one shown
   const doneVariant = restoration?.phase === 'done' ? restoration.job.variantId : undefined;
-  const [versions, setVersions] = useState<StoredRestoration[]>([]);
   const [pickedVersion, setPickedVersion] = useState<string | null>(null);
   useEffect(() => {
     setVersions([]);
-    if (doneVariant === undefined || !asset) return undefined;
+    // On the phone a photo's stored restorations are read at once (D10 item 5 there)
+    if ((doneVariant === undefined && !phonePhoto) || !asset) return undefined;
     let live = true;
     readRestorations(asset.sha256)
       .then((list) => {
@@ -502,10 +516,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     return () => {
       live = false;
     };
-  }, [doneVariant, asset?.sha256]);
+  }, [doneVariant, phonePhoto, asset?.sha256]);
   useEffect(() => {
-    if (!compareShown) setPickedVersion(null);
-  }, [compareShown]);
+    if (!compareOn) setPickedVersion(null);
+  }, [compareOn]);
   const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
   const ready = compareShown && restoration?.phase === 'done' ? shownVersionId : undefined;
@@ -557,7 +571,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly;
   const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
-  const statusLine: React.ReactElement | null = phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
+  // The phone's compare holds the foot (D10 item 5): its own sentence and Download, drawn below
+  const statusLine: React.ReactElement | null = phoneCompare ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         <div className="align-phone" data-testid="reveal-status" role="status">
@@ -797,6 +812,18 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
+      {/* The phone's compare (D10 item 5) in the slot, the pictures where the stage draws the photo; no zoom is drawn
+          for the phone, and the marks stay over it (D15) */}
+      {phoneCompare && frame && asset && shownVersion && (
+        <RestoreCompare
+          rect={frame}
+          slot={phoneSlotRect(frame, viewW)}
+          src={variantFileUrl(asset.sha256, shownVersion.id)}
+          originalSrc={asset.uri}
+          orientation={shownVersion.orientation}
+        />
+      )}
+
       {aligning && frame && (
         <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} clear={keepClear} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
       )}
@@ -973,7 +1000,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {phone && !answer && !picked && !skyShown && status.kind === 'estimate' && (
+      {/* The phone's compare: the fixed sentence in the counts' place and Download in Ask out loud's (D10 item 5); a
+          picked star's card covers the foot, as it covers Ask out loud */}
+      {phoneCompare && !answer && !picked && asset && shownVersion && (
+        <RestorePhoneFoot onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersion.id))} />
+      )}
+
+      {phone && !phoneCompare && !answer && !picked && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
         // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
         // sky rests on), then the counts row as built
@@ -983,7 +1016,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           {counts.length > 0 && <PhoneCounts counts={counts} />}
         </div>
       )}
-      {phone && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
+      {phone && !phoneCompare && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>

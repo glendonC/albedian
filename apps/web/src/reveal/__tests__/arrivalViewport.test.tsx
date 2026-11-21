@@ -370,6 +370,29 @@ describe('the viewport shows the approved reveal over the photo, above phone wid
     expect(q('[data-testid="voice-command-hud"]')).toBeNull();
   });
 
+  it("gives Ask out loud's place to Download on a phone while a photo's ready restoration is compared (D10 item 5)", async () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    const base = storedPhoto();
+    const sha = base.sourceAsset!.sha256;
+    const media = JSON.parse(fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../tests/fixtures/media_contract.json'), 'utf8')) as {
+      valid: { MediaVariant: Array<Record<string, unknown>> };
+    };
+    const id = 'var_0000000000000002';
+    const ready = {
+      ...media.valid.MediaVariant.find((v) => v.kind === 'restoration')!,
+      id,
+      sourceSha256: sha,
+      sourceAssetId: `src_${sha.slice(0, 16)}`,
+      uri: `/api/media/${sha}/variants/${id}/file`,
+    };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants: [ready], attempts: [] }), { status: 200 }));
+    open(base);
+    for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    expect(q('[data-testid="restore-compare"]')!.className).toBe('restore-compare is-phone');
+    expect(q('[data-testid="ask-bar"]')).toBeNull();
+    expect(q('.restore-phone-go button')!.textContent).toBe('Download');
+  });
+
   it('shows the phone no-match reveal, never matched marks, over a solve that failed its check on a phone', () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
     const base = storedPhoto();

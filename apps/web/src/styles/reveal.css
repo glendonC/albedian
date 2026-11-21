@@ -1602,6 +1602,42 @@
 .restore-compare__label.is-right {
   right: 24px;
 }
+/* D10 item 5 at phone width (rsp-cmp in .cache/uiux/restore/screen; the lead's 13:17 answer, D38 item 4): the compare
+   in the 390 by 520 slot from y 118, its labels 16 px in; the fixed sentence under it at 662, as the laptop's note but
+   13 px in the second ink; Download compact and centred at 772, where Ask out loud sits */
+.restore-compare.is-phone .restore-compare__label {
+  top: 16px;
+}
+.restore-compare.is-phone .restore-compare__label.is-left {
+  left: 16px;
+}
+.restore-compare.is-phone .restore-compare__label.is-right {
+  right: 16px;
+}
+.restore-phone-note {
+  --look-ic: 13px;
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 662px;
+  margin: 0;
+  display: flex;
+  gap: 7px;
+  font: 400 13px / 1.45 var(--look-font-sans);
+  color: var(--look-ink-2);
+}
+.restore-phone-note .look-i {
+  flex: none;
+  margin-top: 3px;
+}
+.restore-phone-go {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 772px;
+  display: flex;
+  justify-content: center;
+}
 
 /* The working screen at phone width (D2, decided by the lead 06:11; jp-run, jp-queued in .cache/uiux/jobs) */
 .work-phone-top {

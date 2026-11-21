@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useElapsedRows } from './elapsedRows.js';
 import { followParent } from './clipSync.js';
-import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
+import { DISCLOSURES, type DisplayOrientation, type UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { restorationRows, type RestoreRow } from './restoration.js';
@@ -170,8 +170,14 @@ export const RestoreCompare: React.FC<{
    * does not zoom.
    */
   clipParent?: HTMLVideoElement | null;
-}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent }) => {
+  /**
+   * At phone width (D10 item 5): the compare's own box is the phone's slot, and both pictures stay where the stage
+   * draws the photo (rect), which covers the slot, so the box cuts them; the labels sit 16 px in.
+   */
+  slot?: PhotoRect;
+}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot }) => {
   const clip = clipParent !== undefined;
+  const boxRect = slot ?? rect;
   const restoredClip = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const child = restoredClip.current;
@@ -243,14 +249,19 @@ export const RestoreCompare: React.FC<{
     if (split === edge) setZoom(WHOLE);
     else setSplit(edge);
   };
-  const layer = { transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})` };
-  // A clip's labels sit 18 px down at the window's middle band, clear of the logo and the views (D34 item 1)
-  const labelTop = clip ? null : compareLabelTop(rect.topPx);
+  const transform = `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})`;
+  // In a slot, each picture's layer is placed where the stage draws the photo, from the slot's corner
+  const layer: React.CSSProperties = slot
+    ? { left: `${rect.leftPx - slot.leftPx}px`, top: `${rect.topPx - slot.topPx}px`, width: `${rect.widthPx}px`, height: `${rect.heightPx}px`, transform }
+    : { transform };
+  // A clip's labels sit 18 px down at the window's middle band, clear of the logo and the views (D34 item 1); the
+  // phone's 16 px in (D10 item 5)
+  const labelTop = clip || slot ? null : compareLabelTop(rect.topPx);
   const style = {
-    left: `${rect.leftPx}px`,
-    top: `${rect.topPx}px`,
-    width: `${rect.widthPx}px`,
-    height: `${rect.heightPx}px`,
+    left: `${boxRect.leftPx}px`,
+    top: `${boxRect.topPx}px`,
+    width: `${boxRect.widthPx}px`,
+    height: `${boxRect.heightPx}px`,
     '--split': `${split}%`,
     ...(labelTop === null ? {} : { '--compare-label-top': `${labelTop}px` }),
     ...(fade ? { maskImage: fade, WebkitMaskImage: fade } : {}),
@@ -258,7 +269,7 @@ export const RestoreCompare: React.FC<{
   return (
     <div
       ref={box}
-      className={`restore-compare${clip ? ' is-clip' : ''}${drag ? ' is-drag' : ''}`}
+      className={`restore-compare${clip ? ' is-clip' : ''}${slot ? ' is-phone' : ''}${drag ? ' is-drag' : ''}`}
       data-testid="restore-compare"
       data-hud-interactive="true"
       style={style}
@@ -319,6 +330,22 @@ export const RestoreCompare: React.FC<{
     </div>
   );
 };
+
+/**
+ * D10 item 5 at phone width (UIUX-restoration-READY.md; rsp-cmp): under the compare the fixed sentence of REQ-RST-9.3,
+ * verbatim, with the info icon, and Download compact where Ask out loud sits, saving the restoration shown.
+ */
+export const RestorePhoneFoot: React.FC<{ onDownload: () => void }> = ({ onDownload }) => (
+  <>
+    <p className="restore-phone-note">
+      <LookIcon name="info" />
+      <span>{DISCLOSURES.restoration}</span>
+    </p>
+    <div className="restore-phone-go">
+      <MainAction label="Download" icon="download-simple" size="phone" onClick={onDownload} />
+    </div>
+  </>
+);
 
 /**
  * D36 (UIUX-restorations-READY.md, decided by the lead 13:45): under Download, only when the photo has two or more
