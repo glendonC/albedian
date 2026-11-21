@@ -155,9 +155,12 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     the positions come from (a star subset and an ephemeris on the phone, each tested against the laptop's, or
     positions asked from the laptop); the owner's yes on the look.
   - Only on an iPhone: the overlay against the real sky, with the accuracy it states.
+  - Built and on main: positions asked from the laptop (the sky-context route, skycontext-1 to 4), the rings and
+    the source line with the heading's accuracy (mobile-5), names by D20 (aimnames-1), every ring wholly inside the
+    preview (drift-1); the capture coach under it (D29, coach-0 to 3). Left open: iPhone checks 25 to 29.
   - _Requirements: REQ-IOS-3.1, 3.2_
 
-- [ ] 12. mobile-6: the look from the reference board
+- [x] 12. mobile-6: the look from the reference board
   - The screens styled from the board the owner says yes to (the owner asked on 2026-11-11 for clean typography,
     no extra text and clean colour); no change in behaviour.
   - Needs first: the design-mobile lane's board and the owner's yes.
@@ -165,6 +168,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     reach the laptop, the result (its "Open" and the Credits links are mobile-4b). Not built: the
     states with no record (a refused send, a failed job, a bad address, no camera), asked of the lead on
     2026-11-18; the box is ticked once those land.
+  - Landed (19 Nov): a failed job and a refused photo (D7, mobile-8), a wrong address (D11), the camera refused and
+    the sensors missing (D8), kept photos (D13), a queued solve (D32); the zero count left out of the result
+    (result-0). Left open: iPhone check 20 (outdoors at night).
   - Only on an iPhone: how it reads outdoors at night (dark adaptation, brightness).
   - _Requirements: REQ-IOS-3.2 (the labels stay legible)_
 
@@ -175,6 +181,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     format's range, one photo and one record, with the approved hold-still screen; no set of frames.
   - Needs first: mobile-2; that later spec.
   - Only on an iPhone: every part.
+  - Built and on main (e43836c4): one long exposure at the format's longest duration with the approved hold-still
+    screen. Left open: iPhone checks 21 to 24 and 31.
   - _Requirements: REQ-IOS-1.1, 1.2_
 
 - [x] 14. mobile-8: the iPhone after Send (UIUX-iphone-solve-APPROVED and -READY, the owner's yes of 2026-11-18)
@@ -182,3 +190,13 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     with its counts, and a failed job (or a refused photo) in its own sentence with "Try again".
   - Only on an iPhone: the wait's steps over the hotspot on a full-size photo.
   - _Requirements: REQ-IOS-4.2 (solve), REQ-IOS-5.1_
+
+- [ ] 15. lockon-m: the lock-on on the iPhone's wait, as UIUX-iphone-lockon-READY draws it
+  - Early amber rings over the photo while the solve runs, from the job's predicted sky (platform-10b) placed through
+    its pose's own WCS, or the phone's own record projected through the sky context until it arrives; C13's source
+    line beside them; on a calibrated solve each matched ring travels onto its detection, the rest leave, then the
+    result (MOTION section 5); the swap to the laptop's sky in one correction (ruled 19 Nov 18:05).
+  - Built and on main: lockon-m1 to m5e, solread-1b; lockon-m5f READY. Shown end to end on a real solve in the
+    simulator (.lead/kiro/reports/MOBILE/lockon-m5.md).
+  - Only on an iPhone: the early rings against the real sky and the pass (iPhone checks 35 and 36).
+  - _Requirements: REQ-IOS-3.1, 5.1_
