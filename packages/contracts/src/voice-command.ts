@@ -183,6 +183,8 @@ function capitalized(text: string): string {
 
 /** The one sentence a refusal is shown as, from its kind, what was said, and the recording's media word. */
 export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'photo'): string {
+  // The token stays the contract's (REFUSAL_MEDIA); the sentence names a video "clip", the decided noun (C35)
+  const word = media === 'video' ? 'clip' : media;
   const said = refusal.said ?? '';
   const name = refusal.name ?? '';
   switch (refusal.kind) {
@@ -190,7 +192,7 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
       // [proposed, for the UIUX work] It fits a name no list holds ("pluto") as well as a word: it asks for nothing
       return `I did not understand "${said}": no list of the app holds that word.`;
     case 'not_in_this_sky':
-      return `${capitalized(name)} was not found in this ${media}'s sky.`;
+      return `${capitalized(name)} was not found in this ${word}'s sky.`;
     case 'deep_sky_out_of_reach':
       return `${capitalized(name)} is in the app's deep-sky catalogue (OpenNGC ${refusal.catalogRow ?? ''}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
     case 'no_named_row':
@@ -202,9 +204,9 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
     case 'nothing_in_view':
       return 'Nothing is selected or pointed at. Select a star or planet first, or say its name.';
     case 'sky_not_worked_out':
-      return `The sky in this ${media} has not been worked out, so nothing in it can be found by name.`;
+      return `The sky in this ${word} has not been worked out, so nothing in it can be found by name.`;
     case 'nothing_in_view_sky_not_worked_out':
-      return `The sky in this ${media} has not been worked out, and nothing is selected or pointed at.`;
+      return `The sky in this ${word} has not been worked out, and nothing is selected or pointed at.`;
     case 'not_a_request':
       // [proposed, for the UIUX work]
       return `I did not take that as a request: "${said}" is not a word of one.`;

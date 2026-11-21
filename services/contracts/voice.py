@@ -494,14 +494,17 @@ def _capitalized(text: str) -> str:
 
 
 def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
-    """The one sentence a refusal is shown as, from its kind, what was said, and the recording's media word."""
+    """The one sentence a refusal is shown as, from its kind, what was said, and the recording's media token. The token
+    stays the contract's (REFUSAL_MEDIA); the sentence names a video "clip", the decided noun (C35, the lead's answer of
+    21 Nov 14:59 to C34's question)."""
     kind, said, row = refusal["kind"], refusal.get("said", ""), refusal.get("catalogRow", "")
+    word = "clip" if media == "video" else media
     name = refusal.get("name", "")
     if kind == "not_understood":
         # [proposed, for the UIUX work] It fits a name no list holds ("pluto") as well as a word: it asks for nothing
         return f'I did not understand "{said}": no list of the app holds that word.'
     if kind == "not_in_this_sky":
-        return f"{_capitalized(name)} was not found in this {media}'s sky."
+        return f"{_capitalized(name)} was not found in this {word}'s sky."
     if kind == "deep_sky_out_of_reach":
         return (
             f"{_capitalized(name)} is in the app's deep-sky catalogue (OpenNGC {row}), but voice does not reach "
@@ -519,9 +522,9 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
     if kind == "nothing_in_view":
         return "Nothing is selected or pointed at. Select a star or planet first, or say its name."
     if kind == "sky_not_worked_out":
-        return f"The sky in this {media} has not been worked out, so nothing in it can be found by name."
+        return f"The sky in this {word} has not been worked out, so nothing in it can be found by name."
     if kind == "nothing_in_view_sky_not_worked_out":
-        return f"The sky in this {media} has not been worked out, and nothing is selected or pointed at."
+        return f"The sky in this {word} has not been worked out, and nothing is selected or pointed at."
     if kind == "not_a_request":
         # [proposed, for the UIUX work]
         return f'I did not take that as a request: "{said}" is not a word of one.'

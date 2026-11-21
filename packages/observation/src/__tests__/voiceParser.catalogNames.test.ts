@@ -64,7 +64,7 @@ describe('@albedian/observation voice parser: every catalog star name', () => {
         const result = parse(said, lacking);
         expect(result.action, said).toBeUndefined();
         expect(result.reason, said).toBe('ambiguous_target');
-        expect(result.error, said).toBe(`${shown} was not found in this video's sky.`);
+        expect(result.error, said).toBe(`${shown} was not found in this clip's sky.`);
       }
     }
   );

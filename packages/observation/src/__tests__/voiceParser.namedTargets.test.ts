@@ -409,7 +409,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     ];
     const photo = { ...rigel, sourceAsset: { ...rigel.sourceAsset!, mediaKind: 'image' as const } };
     for (const [utterance, shown] of cases) {
-      for (const [session, kind] of [[rigel, 'video'], [photo, 'photo'], [sessionOf('plate_calibrated'), 'video']] as const) {
+      for (const [session, kind] of [[rigel, 'clip'], [photo, 'photo'], [sessionOf('plate_calibrated'), 'clip']] as const) {
         const parsed = parse(utterance, session);
         expect([utterance, parsed.action, parsed.disambiguation, parsed.reason, parsed.error]).toEqual([
           utterance,
@@ -423,7 +423,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     // On a sky that holds the body, the same words act on it
     const horizon = sessionOf('horizon_predicted_only', 'finding-predicted-uranus');
     expect(readingOf('how far is the Moon?', horizon)).toEqual({ target: 'finding-predicted-moon' });
-    expect(parse('how far is the Moon from Mars?', horizon).error).toBe("Mars was not found in this video's sky.");
+    expect(parse('how far is the Moon from Mars?', horizon).error).toBe("Mars was not found in this clip's sky.");
   });
 
   it('says a name is missing only of a sky that was worked out, and says so of one that was not', () => {
@@ -442,23 +442,23 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
           utterance,
           undefined,
           reason,
-          'The sky in this video has not been worked out, so nothing in it can be found by name.',
+          'The sky in this clip has not been worked out, so nothing in it can be found by name.',
         ]);
       }
     }
     // A session with no solve at all, and one with no recording either, say the same
     const { observationSolution: _none, ...unsolved } = sessionOf('pending_unsolved');
     expect(parse('select Betelgeuse', unsolved as ObservationSession).error).toBe(
-      'The sky in this video has not been worked out, so nothing in it can be found by name.'
+      'The sky in this clip has not been worked out, so nothing in it can be found by name.'
     );
     // The app can mark a sky unresolved while the session still holds an older solution
     const stale = { ...sessionOf('plate_calibrated'), machines: { ...sessionOf('plate_too_few_sources').machines } };
     expect(parse('how far is Sirius?', stale).error).toBe(
-      'The sky in this video has not been worked out, so nothing in it can be found by name.'
+      'The sky in this clip has not been worked out, so nothing in it can be found by name.'
     );
     // A solved and a predicted sky were worked out: the name is missing from them
     for (const sample of ['plate_calibrated', 'horizon_approximate', 'horizon_predicted_only', 'pose_moon_level_head']) {
-      expect(parse('how far is Sirius?', sessionOf(sample)).error, sample).toBe("Sirius was not found in this video's sky.");
+      expect(parse('how far is Sirius?', sessionOf(sample)).error, sample).toBe("Sirius was not found in this clip's sky.");
     }
   });
 
@@ -466,10 +466,10 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     // A request to seek or to show the sky that also names a star stops at a name that is not here, as it did
     // when it named that star alone; with only names that are here, it is the seek or the sky it asks for
     const cases: Array<[string, string]> = [
-      ['seek to 5 seconds and look at Sirius', "Sirius was not found in this video's sky."],
-      ['seek to 5 seconds and look at Rigel and Sirius', "Sirius was not found in this video's sky."],
-      ['show sky around Rigel and the Moon', "The Moon was not found in this video's sky."],
-      ['what is in the sky near Betelgeuse and Saturn?', "Saturn was not found in this video's sky."],
+      ['seek to 5 seconds and look at Sirius', "Sirius was not found in this clip's sky."],
+      ['seek to 5 seconds and look at Rigel and Sirius', "Sirius was not found in this clip's sky."],
+      ['show sky around Rigel and the Moon', "The Moon was not found in this clip's sky."],
+      ['what is in the sky near Betelgeuse and Saturn?', "Saturn was not found in this clip's sky."],
     ];
     for (const [utterance, words] of cases) {
       const parsed = parse(utterance, rigel);
@@ -530,7 +530,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
         undefined,
         undefined,
         'ambiguous_target',
-        `${shown} was not found in this video's sky.`,
+        `${shown} was not found in this clip's sky.`,
       ]);
     }
     // On a sky that holds the star too, the two names are a question, in the order said
@@ -583,8 +583,8 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     const cases: Array<[string, string]> = [
       ['how far is Andromeda from the brightest star?', 'I did not understand "andromeda": no list of the app holds that word.'],
       ['is Zorblax the brightest star?', 'I did not understand "zorblax": no list of the app holds that word.'],
-      ['how far is Vega from the brightest star?', "Vega was not found in this video's sky."],
-      ['is Saturn brighter than the brightest star?', "Saturn was not found in this video's sky."],
+      ['how far is Vega from the brightest star?', "Vega was not found in this clip's sky."],
+      ['is Saturn brighter than the brightest star?', "Saturn was not found in this clip's sky."],
     ];
     for (const [utterance, words] of cases) {
       const parsed = parse(utterance, measured);
@@ -622,7 +622,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
         utterance,
         undefined,
         'unresolved_sky',
-        'The sky in this video has not been worked out, so nothing in it can be found by name.',
+        'The sky in this clip has not been worked out, so nothing in it can be found by name.',
       ]);
     }
     // A word it does not know is not a name it looked for: there, too, it says only that it did not understand
@@ -635,7 +635,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
         utterance,
         undefined,
         'unresolved_sky',
-        'The sky in this video has not been worked out, and nothing is selected or pointed at.',
+        'The sky in this clip has not been worked out, and nothing is selected or pointed at.',
       ]);
     }
     // What is selected there is still what "that" points at
@@ -724,7 +724,7 @@ describe('@albedian/observation voice parser: no refusal says what the parser ca
       refused += 1;
       const words = outcome.explanation;
       expect(words, says).not.toMatch(/nothing called/i);
-      const lacks = /^(.+) was not found in this (?:photo|video)'s sky\.$/.exec(words);
+      const lacks = /^(.+) was not found in this (?:photo|clip)'s sky\.$/.exec(words);
       if (lacks) {
         // The name is one a table writes, the sky was worked out, and its solution holds no record of that name
         const records = TABLE.get(lacks[1]!);
@@ -732,7 +732,7 @@ describe('@albedian/observation voice parser: no refusal says what the parser ca
         const here = records!.some((id) => held.has(id) || held.has(id.replace(/^finding-/, 'finding-predicted-')));
         expect(here, `${says}: ${words}`).toBe(false);
         expect(['calibrated', 'approximate', 'predicted_only'], `${says}: ${words}`).toContain(session.observationSolution!.status);
-      } else if (words !== 'The sky in this video has not been worked out, so nothing in it can be found by name.') {
+      } else if (words !== 'The sky in this clip has not been worked out, so nothing in it can be found by name.') {
         // No other refusal speaks of what was or was not found
         expect(words, says).not.toMatch(/\bfound\b/i);
       }
@@ -1099,7 +1099,7 @@ describe('@albedian/observation voice parser: properties over sessions and names
     expect(reading, said).toEqual({ refused: true });
     expect(parsed.disambiguation, said).toBeUndefined();
     if (missing) {
-      expect([said, parsed.action, parsed.error]).toEqual([said, undefined, `${missing.shown} was not found in this video's sky.`]);
+      expect([said, parsed.action, parsed.error]).toEqual([said, undefined, `${missing.shown} was not found in this clip's sky.`]);
     } else if (parsed.action) {
       // A question: no rule acted on it, names alone or a sentence no rule takes ("is the North Star ...")
       expect(parsed.action.type, said).toBe('question.ask');

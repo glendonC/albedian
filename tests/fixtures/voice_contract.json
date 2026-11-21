@@ -269,7 +269,7 @@
         "name": "Vega"
       },
       "media": "video",
-      "sentence": "Vega was not found in this video's sky."
+      "sentence": "Vega was not found in this clip's sky."
     },
     {
       "refusal": {
@@ -287,7 +287,7 @@
         "name": "Rigil Kentaurus"
       },
       "media": "video",
-      "sentence": "Rigil Kentaurus was not found in this video's sky."
+      "sentence": "Rigil Kentaurus was not found in this clip's sky."
     },
     {
       "refusal": {
@@ -439,7 +439,7 @@
         "kind": "sky_not_worked_out"
       },
       "media": "video",
-      "sentence": "The sky in this video has not been worked out, so nothing in it can be found by name."
+      "sentence": "The sky in this clip has not been worked out, so nothing in it can be found by name."
     },
     {
       "refusal": {
@@ -453,7 +453,7 @@
         "kind": "nothing_in_view_sky_not_worked_out"
       },
       "media": "video",
-      "sentence": "The sky in this video has not been worked out, and nothing is selected or pointed at."
+      "sentence": "The sky in this clip has not been worked out, and nothing is selected or pointed at."
     },
     {
       "refusal": {
@@ -517,7 +517,7 @@
         "name": "tx"
       },
       "media": "video",
-      "sentence": "Tx was not found in this video's sky."
+      "sentence": "Tx was not found in this clip's sky."
     },
     {
       "refusal": {
@@ -535,7 +535,7 @@
         "name": "the Moon"
       },
       "media": "video",
-      "sentence": "The Moon was not found in this video's sky."
+      "sentence": "The Moon was not found in this clip's sky."
     },
     {
       "refusal": {
@@ -553,7 +553,7 @@
         "name": "Bibh\u0101"
       },
       "media": "video",
-      "sentence": "Bibh\u0101 was not found in this video's sky."
+      "sentence": "Bibh\u0101 was not found in this clip's sky."
     },
     {
       "refusal": {
@@ -571,7 +571,7 @@
         "name": "al Na'ir"
       },
       "media": "video",
-      "sentence": "Al Na'ir was not found in this video's sky."
+      "sentence": "Al Na'ir was not found in this clip's sky."
     },
     {
       "refusal": {
@@ -589,7 +589,7 @@
         "name": "7 star"
       },
       "media": "video",
-      "sentence": "7 star was not found in this video's sky."
+      "sentence": "7 star was not found in this clip's sky."
     },
     {
       "refusal": {

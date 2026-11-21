@@ -98,7 +98,7 @@ describe('@albedian/observation voice parser: star names that are everyday words
     expect(targetOf(utterance, withStars([word]))).toBe(TABLE.get(word)!.id);
     const lacking = parse(utterance, withStars([]));
     expect(lacking.action).toBeUndefined();
-    expect(lacking.error).toBe(`${TABLE.get(word)!.shown} was not found in this video's sky.`);
+    expect(lacking.error).toBe(`${TABLE.get(word)!.shown} was not found in this clip's sky.`);
   });
 
   it.each(EVERYDAY)('never takes "%s" as a star without a naming verb or the word star', (word) => {
@@ -142,7 +142,7 @@ describe('@albedian/observation voice parser: star names that are everyday words
       expect(targetOf(utterance, withStars([word])), said).toBe(separates ? TABLE.get(word)!.id : SELECTED);
       const lacking = parse(utterance, withStars([]));
       if (separates) {
-        expect(lacking.error, said).toBe(`${TABLE.get(word)!.shown} was not found in this video's sky.`);
+        expect(lacking.error, said).toBe(`${TABLE.get(word)!.shown} was not found in this clip's sky.`);
       } else {
         expect(lacking.action?.type, said).toBe('finding.select');
         expect(targetOf(utterance, withStars([])), said).toBe(SELECTED);
@@ -152,6 +152,6 @@ describe('@albedian/observation voice parser: star names that are everyday words
 
   it('keeps a famous star name that is also a word a plain name', () => {
     expect(targetOf('what is spica', withStars(['spica']))).toBe(TABLE.get('spica')!.id);
-    expect(parse('what is pollux', withStars([])).error).toBe("Pollux was not found in this video's sky.");
+    expect(parse('what is pollux', withStars([])).error).toBe("Pollux was not found in this clip's sky.");
   });
 });
