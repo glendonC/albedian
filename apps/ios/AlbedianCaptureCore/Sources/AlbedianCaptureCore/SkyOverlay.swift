@@ -269,6 +269,22 @@ public enum AimLine: Equatable, Sendable {
     }
 }
 
+/// The aim view leaving at the press, or coming back, inside the capture's one place (the lead, 21 Nov 13:48, as
+/// AUDIT-C's item 5 ruled, with the 17:38 rule in MOTION-READY-iphone): the stage runs `hidden` from 0 to 1 on its own
+/// timing (out on frame out 0.15 s after the press, in on frame in; the 0.27 s dissolve under Reduce Motion). The rings
+/// and the rest of the view fade with it; the Predicted tag and the source line stand at full from the first frame to
+/// the rings' last and leave with the view at once, so nothing predicted is drawn without them.
+public enum AimExit {
+    public enum Part: Sendable { case rings, tag, sourceLine, rest }
+
+    public static func opacity(_ part: Part, hidden: Double) -> Double {
+        switch part {
+        case .tag, .sourceLine: 1
+        case .rings, .rest: 1 - min(max(hidden, 0), 1)
+        }
+    }
+}
+
 extension SkyProjection {
     /// The attitude of a phone held upright in portrait, its back camera toward an azimuth and tilted up by an angle,
     /// its top up: the device's axes written in the reference frame, in the attitude's convention (`point`) [open: the

@@ -177,10 +177,13 @@ struct CreditsScreen: View {
 }
 
 /// Aiming (arrive iPhone 2, without its overlay until mobile-5): close top left, the 3:4 preview from y 118 and the
-/// capture button bottom centre. With no overlay drawn there is no "Predicted" tag and no source line.
+/// capture button bottom centre. With no overlay drawn there is no "Predicted" tag and no source line. Leaving at the
+/// press or coming back, every part fades on the stage's `aimHidden` but the tag and the source line, which stand at
+/// full until the rings' last frame (`AimExit`).
 struct AimScreen: View {
     let model: CompanionModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.aimHidden) private var hidden
 
     var body: some View {
         GeometryReader { geometry in
@@ -201,12 +204,15 @@ struct AimScreen: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, CGFloat(Arrive.side))
                     .atTop(340)
+                    .opacity(AimExit.opacity(.rest, hidden: hidden))
                     MainButton(title: "Open Settings", icon: .arrow, action: SettingsPage.open).atBottom(Arrive.mainBottomGap)
+                        .opacity(AimExit.opacity(.rest, hidden: hidden))
                 } else {
                     let width = Double(geometry.size.width)
                     CameraPreview(session: model.camera.session)
                         .frame(width: geometry.size.width, height: geometry.size.width * 4 / 3).clipped()
                         .atTop(Arrive.photoTop)
+                        .opacity(AimExit.opacity(.rest, hidden: hidden))
                     // mobile-5: the overlay over the preview, the "Predicted" tag at top centre and the source line under it,
                     // redrawn with every frame while the laptop's marks are there
                     TimelineView(.animation) { _ in
@@ -218,8 +224,10 @@ struct AimScreen: View {
                         ZStack {
                             PlacedSkyOverlay(placed: placed, width: width, height: width * 4 / 3)
                                 .atTop(Arrive.photoTop)
+                                .opacity(AimExit.opacity(.rings, hidden: hidden))
                             if !placed.isEmpty {
                                 EvidenceTag(evidence: .predicted).frame(height: 44).atTop(Arrive.topControls)
+                                    .opacity(AimExit.opacity(.tag, hidden: hidden))
                             }
                             // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
                             // with both and marks drawn, the overlay's sources and the heading accuracy
@@ -228,9 +236,11 @@ struct AimScreen: View {
                             switch aim.shownLine(drawn: placed.map(\.0), headingAccuracyDeg: model.skyHeadingAccuracyDeg) {
                             case .why(let words)?:
                                 AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                                    .opacity(AimExit.opacity(.rest, hidden: hidden))
                                     .transition(.words(reduceMotion: reduceMotion))
                             case .source(let words)?:
                                 AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                                    .opacity(AimExit.opacity(.sourceLine, hidden: hidden))
                                     .transition(.identity)
                             case nil:
                                 EmptyView()
@@ -251,13 +261,16 @@ struct AimScreen: View {
                             }
                             .frame(maxWidth: .infinity).padding(.horizontal, 24)
                             .atTop(Arrive.photoTop + width * 4 / 3 + 32)
+                            .opacity(AimExit.opacity(.rest, hidden: hidden))
                         }
                     }
                     // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's
                     CaptureButton(action: model.shoot).atBottom(Arrive.referenceHeight - 706 - 64)
+                        .opacity(AimExit.opacity(.rest, hidden: hidden))
                 }
                 IconButton(icon: .close, label: "Close", action: model.showHome)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+                    .opacity(AimExit.opacity(.rest, hidden: hidden))
             }
         }
         .ignoresSafeArea()

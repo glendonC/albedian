@@ -100,6 +100,9 @@ struct ExposureButton: View {
 /// crossfading the two shows exactly the note's sequence: 0.15 s after the press the aiming tag, rings and line leave
 /// (frameOut) and "Hold still", the crosshairs and the length arrive (frameIn), the preview and the button unchanged. The
 /// shot taken: the hold-still pieces leave and the photo with Take again and Send arrive. The dissolve with Reduce Motion.
+/// The aim view goes and comes on the same timings by `aimHidden` instead of its opacity, so its rings fade while its
+/// Predicted tag and source line stand at full until the rings' last frame and leave with it at once (the lead, 21 Nov
+/// 13:48, `AimExit`).
 struct CaptureStage: View {
     let model: CompanionModel
     let screen: CompanionModel.Screen
@@ -108,7 +111,7 @@ struct CaptureStage: View {
     var body: some View {
         ZStack {
             switch screen {
-            case .aim: AimScreen(model: model).transition(stage(inAfter: 0, outAfter: MotionStyle.captureSequenceDelaySeconds))
+            case .aim: AimScreen(model: model).transition(aimStage)
             case .holdStill: HoldStillScreen(model: model).transition(stage(inAfter: MotionStyle.captureSequenceDelaySeconds, outAfter: 0))
             default: AfterShotScreen(model: model).transition(stage(inAfter: 0, outAfter: 0))
             }
@@ -119,4 +122,30 @@ struct CaptureStage: View {
         .asymmetric(insertion: .opacity.animation(.motion(MotionStyle.frameIn, after: inAfter, reduceMotion: reduceMotion)),
                     removal: .opacity.animation(.motion(MotionStyle.frameOut, after: outAfter, reduceMotion: reduceMotion)))
     }
+
+    /// The aim view's stage: in on frame in at once, out on frame out 0.15 s after the press, each frame's `hidden`
+    /// handed to the view (`AimHidden`) rather than its opacity.
+    private var aimStage: AnyTransition {
+        let hiding = AnyTransition.modifier(active: AimHidden(hidden: 1), identity: AimHidden(hidden: 0))
+        return .asymmetric(insertion: hiding.animation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)),
+                           removal: hiding.animation(.motion(MotionStyle.frameOut, after: MotionStyle.captureSequenceDelaySeconds,
+                                                             reduceMotion: reduceMotion)))
+    }
+}
+
+/// How far the aim view has gone on its stage, 0 shown to 1 gone, on every frame of the stage's animation.
+private struct AimHidden: ViewModifier, Animatable {
+    var hidden: Double
+
+    nonisolated var animatableData: Double {
+        get { hidden }
+        set { hidden = newValue }
+    }
+
+    func body(content: Content) -> some View { content.environment(\.aimHidden, hidden) }
+}
+
+extension EnvironmentValues {
+    /// The aim view's place on its stage (`AimHidden`): 0 while it stands, 1 at the end of its leaving.
+    @Entry var aimHidden: Double = 0
 }
