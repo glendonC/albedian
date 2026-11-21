@@ -223,13 +223,17 @@ struct AimScreen: View {
                             }
                             // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
                             // with both and marks drawn, the overlay's sources and the heading accuracy
-                            if let line = aim.line ?? model.skyHeadingAccuracyDeg.flatMap({
-                                SkyOverlayWords.sourceLine(placed.map(\.0), headingAccuracyDeg: $0) }) {
-                                Text(line).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
-                                    .foregroundStyle(Color(ControlStyle.inkQuiet))
-                                    .atTop(Arrive.photoTop + width * 4 / 3 + 16)
-                                    // MOTION-READY-iphone: a missing-sensor line words in
+                            // MOTION-READY-iphone: a missing-sensor line words in; the source line stands from the rings'
+                            // first frame, no words-in delay or fade from nothing (the 17:38 rule, `AimLine`)
+                            switch aim.shownLine(drawn: placed.map(\.0), headingAccuracyDeg: model.skyHeadingAccuracyDeg) {
+                            case .why(let words)?:
+                                AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
                                     .transition(.words(reduceMotion: reduceMotion))
+                            case .source(let words)?:
+                                AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                                    .transition(.identity)
+                            case nil:
+                                EmptyView()
                             }
                             // D29, the capture coach: up to two lines 16 pt under the source line (670 on the 390 point
                             // screen), each one line, centred, 12 pt at ink 66 percent, 1.35 a line, 1 pt apart, its 14 pt
@@ -257,6 +261,16 @@ struct AimScreen: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// The one small line under the aiming preview: 12 pt, tabular figures, ink at 44 percent.
+private struct AimLineText: View {
+    let words: String
+
+    var body: some View {
+        Text(words).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
+            .foregroundStyle(Color(ControlStyle.inkQuiet))
     }
 }
 

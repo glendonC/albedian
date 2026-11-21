@@ -240,6 +240,33 @@ public struct AimingNow: Equatable, Sendable {
 
     /// The laptop's last marks to draw now: all of them while the sky is there, none without it.
     public func marks(_ asked: [SkyMark]) -> [SkyMark] { sky == nil ? [] : asked }
+
+    /// The one line under the preview: D8's why while it has one, else the drawn rings' sources and the heading accuracy
+    /// they were asked with, none while no ring is drawn.
+    public func shownLine(drawn: [SkyMark], headingAccuracyDeg: Double?) -> AimLine? {
+        if let line { return .why(line) }
+        return headingAccuracyDeg.flatMap { SkyOverlayWords.sourceLine(drawn, headingAccuracyDeg: $0) }.map(AimLine.source)
+    }
+}
+
+/// The line under the aiming preview and how it arrives: D8's line saying why there is no overlay words in
+/// (MOTION-READY-iphone section 4); the overlay's source line names the predicted rings' source and limits, so it
+/// stands from the rings' first frame with no words-in delay or fade from nothing (the 17:38 rule as that record
+/// writes it for the aim view).
+public enum AimLine: Equatable, Sendable {
+    case why(String)
+    case source(String)
+
+    public var words: String {
+        switch self {
+        case .why(let words), .source(let words): words
+        }
+    }
+
+    public var wordsIn: Bool {
+        if case .why = self { return true }
+        return false
+    }
 }
 
 extension SkyProjection {

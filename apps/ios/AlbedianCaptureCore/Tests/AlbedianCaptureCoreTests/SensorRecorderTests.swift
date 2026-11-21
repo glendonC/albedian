@@ -195,6 +195,24 @@ final class SensorRecorderTests: XCTestCase {
         XCTAssertEqual(AimingNow(line: nil, sky: nil).marks(asked), [])
     }
 
+    /// The 17:38 rule as MOTION-READY-iphone writes it: the aim view's source line stands from the first frame its
+    /// rings do, with no words-in delay or fade; only D8's line saying why there is no overlay words in.
+    func testTheAimSourceLineNeverWordsInAndTheWhyLineDoes() {
+        let sky = AimingSky(latDeg: -10, lonDeg: -150, headingAccuracyDeg: 7.2)
+        let drawn = [SkyMark(id: "hip-32349", name: "Sirius", altDeg: 30, azDeg: 120, source: .catalog(release: "Hipparcos"),
+                             mag: -1.46, catalogSourceId: "HIP 32349")]
+        let source = AimingNow(line: nil, sky: sky).shownLine(drawn: drawn, headingAccuracyDeg: 7.2)
+        XCTAssertEqual(source, .source("Hipparcos · heading ±8°"))
+        XCTAssertEqual(source?.words, "Hipparcos · heading ±8°")
+        XCTAssertEqual(source?.wordsIn, false, "the source line is the rings' tag: at once")
+        let why = AimingNow(line: "No heading: no heading event", sky: nil).shownLine(drawn: [], headingAccuracyDeg: 7.2)
+        XCTAssertEqual(why, .why("No heading: no heading event"))
+        XCTAssertEqual(why?.words, "No heading: no heading event")
+        XCTAssertEqual(why?.wordsIn, true, "a missing-sensor line words in")
+        XCTAssertNil(AimingNow(line: nil, sky: sky).shownLine(drawn: [], headingAccuracyDeg: 7.2), "no ring drawn, no source line")
+        XCTAssertNil(AimingNow(line: nil, sky: sky).shownLine(drawn: drawn, headingAccuracyDeg: nil), "marks not asked yet")
+    }
+
     func testHandsTheBuilderWhatTheSourcesSaidAndARecordTheContractTakes() throws {
         let motion = StandInMotion(Set(AttitudeFrame.allCases))
         let place = StandInPlace()
