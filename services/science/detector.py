@@ -653,10 +653,13 @@ def _clipped_flats(luma: np.ndarray) -> np.ndarray:
 NEAR_CLIP_NOISES = 1.25
 # What each flag tells a reader of the result, in plain words
 NOISE_LIMIT_WORDS = {
+    # A sky near the black clip: the clip cuts the noise's lower tail, so the count's false rate is not the stated one.
+    # The design lane's words in C14's shape (C25, decided by the lead on 21 Nov): the first sentence for the screen,
+    # the second for the record
     "near_black_clip": (
-        "The photo's sky sits near its darkest value, where the black clip cuts the noise; on such a sky the detector "
-        "finds more points on pure noise than its stated rate, so the count of detected points is points above the "
-        "threshold on a frame whose false rate is not controlled."
+        "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be "
+        "that noise, not stars. On such a sky the detector finds more points on pure noise than its stated rate, so the "
+        "count's false rate is not controlled."
     ),
     # A sky that varies by less than its own steps: its noise is the steps', not one measured, so the count's false
     # rate is not the stated one. The design lane's words (C14, decided by the lead on 19 Nov; FIELD field-8b): the
@@ -686,6 +689,21 @@ def noise_limit_warnings_for(limits: Sequence[str]) -> list[str]:
     already say the count is not controlled (`_COUNT_NOT_CONTROLLED_SAID_BY`), so that is said once."""
     said = any(flag in limits for flag in _COUNT_NOT_CONTROLLED_SAID_BY)
     return [NOISE_LIMIT_WORDS[flag] for flag in limits if flag in NOISE_LIMIT_WORDS and not (flag == "noise_floor" and said)]
+
+
+# The noun of a flag's words on a clip (the design lane's ruling of 21 Nov, decided by the lead at 13:08, for C14's and
+# C25's first sentences): a clip's sky is the clip's, as D33 says "your clip's"; the rest of each sentence and the
+# record's second sentence are the same. NOISE_LIMIT_WORDS keeps the photo's noun, which a frame alone is read in
+PHOTO_SKY_NOUN = "This photo's sky "
+CLIP_SKY_NOUN = "This clip's sky "
+
+
+def clip_words(words: str) -> str:
+    """A flag's words (NOISE_LIMIT_WORDS) as a clip's warning: "This clip's sky" in place of the photo's noun that opens
+    them. Any other warning is returned as it is, so a job can pass every warning of a clip's solution through."""
+    if words in NOISE_LIMIT_WORDS.values() and words.startswith(PHOTO_SKY_NOUN):
+        return CLIP_SKY_NOUN + words[len(PHOTO_SKY_NOUN):]
+    return words
 
 
 def _noise_limits(luma: np.ndarray, bg: np.ndarray, sigma_eff: float, sky_mask: np.ndarray | None) -> tuple[str, ...]:

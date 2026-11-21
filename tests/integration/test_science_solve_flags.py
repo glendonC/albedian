@@ -38,6 +38,29 @@ def _body(frame: np.ndarray) -> dict:
     return {**ROUTE_MOMENT, "image_luma": frame.tolist(), "sourceAssetId": "src_abababababababab", "sourceSha256": digest}
 
 
+# C25 (.lead/uiux/UIUX-nearblackwords-READY.md, decided by the lead at 12:38 on 21 Nov), in C14's shape: the first
+# sentence is the one shown on screen, the second stays in the solution's record
+C25_SCREEN = (
+    "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be "
+    "that noise, not stars."
+)
+C25_RECORD = (
+    "On such a sky the detector finds more points on pure noise than its stated rate, so the count's false rate is not "
+    "controlled."
+)
+
+
+def test_the_near_black_words_are_the_decided_ones_screen_sentence_first() -> None:
+    assert NOISE_LIMIT_WORDS["near_black_clip"] == f"{C25_SCREEN} {C25_RECORD}"
+
+
+def test_a_near_black_frames_warning_is_the_decided_words_once() -> None:
+    frame = _dark_grey_frame()
+    response = TestClient(app).post("/api/science/solve", json=_body(frame))
+    assert response.status_code == 200, response.text
+    assert response.json()["warnings"].count(f"{C25_SCREEN} {C25_RECORD}") == 1
+
+
 def test_the_image_luma_path_says_the_frames_flags_in_its_warnings() -> None:
     frame = _dark_grey_frame()
     flags = detect_point_sources(frame)[0].noise_limits

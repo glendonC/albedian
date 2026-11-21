@@ -20,10 +20,10 @@
    "services/media/frame_pool.py",
    "services/media/temporal.py"
   ],
-  "digest": "53852511e51e02c2b5119b353193e6438b5343fcdf51b7028a7f9d6bfac956d4"
+  "digest": "2bf1ef7d7e784d717e596d7673394db9c0e1b2681633014ca0cfb4ce4b6b55aa"
  },
  "albedian.solve_chain": {
-  "revision": 19,
+  "revision": 20,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -69,6 +69,6 @@
    "services/science/person_hint.py",
    "services/science/sun_pose.py"
   ],
-  "digest": "102f639094f31987a0d37349bbeda92455d6eda22d3956311fec5bd035e71e5d"
+  "digest": "4eb045615c4fef0690fe5106846a0b89c0692c2356fd584c7fd0634913ad19e1"
  }
 }

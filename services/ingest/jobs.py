@@ -53,6 +53,7 @@ from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.ingest.store_pointing import PointingUnreadable, read_stored_pointing
 from services.science.detector import (
     _to_luma_2d,
+    clip_words,
     detect_point_sources,
     noise_limit_warnings,
     stack_rounding_noise,
@@ -1171,6 +1172,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
     if pointing_hint is not None and solution.pointing_hint is None:
         solution = replace(solution, pointing_hint=pointing_hint)
+    if media_kind == "video":
+        # A clip's count warnings name the clip (C14 and C25, the clip's noun), whichever search or stop made them
+        solution = replace(solution, warnings=[clip_words(words) for words in solution.warnings])
     return solution
 
 
@@ -1283,8 +1287,10 @@ SOLVE_PRODUCER_FILES = (
 # sun_pose.py joins the files), which lines up daytime photos that were predicted only; 18, the phone solver's upright
 # pass in the picture as it is shown (the cut for a turned frame), which lines a photo stored sideways up in that pass;
 # 19, a Sun pose's solution without the detections on the Sun's core (AUDIT's sweep of 21 Nov, finding one), which a
-# daytime photo lined up from the Sun served as observed points
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 19, SOLVE_PRODUCER_FILES)
+# daytime photo lined up from the Sun served as observed points; 20, the near-black count warning in the design
+# lane's two sentences (C25), which a frame near the black clip stores in its warnings, and on a clip both count
+# warnings opening with the clip's noun ("This clip's sky")
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 20, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
