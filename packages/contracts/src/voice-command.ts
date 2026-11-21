@@ -202,9 +202,9 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
     case 'nothing_in_view':
       return 'Nothing is selected or pointed at. Select a star or planet first, or say its name.';
     case 'sky_not_worked_out':
-      return `The sky in this ${media} has not been worked out yet, so nothing in it can be found by name.`;
+      return `The sky in this ${media} has not been worked out, so nothing in it can be found by name.`;
     case 'nothing_in_view_sky_not_worked_out':
-      return `The sky in this ${media} has not been worked out yet, and nothing is selected or pointed at.`;
+      return `The sky in this ${media} has not been worked out, and nothing is selected or pointed at.`;
     case 'not_a_request':
       // [proposed, for the UIUX work]
       return `I did not take that as a request: "${said}" is not a word of one.`;

@@ -442,19 +442,19 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
           utterance,
           undefined,
           reason,
-          'The sky in this video has not been worked out yet, so nothing in it can be found by name.',
+          'The sky in this video has not been worked out, so nothing in it can be found by name.',
         ]);
       }
     }
     // A session with no solve at all, and one with no recording either, say the same
     const { observationSolution: _none, ...unsolved } = sessionOf('pending_unsolved');
     expect(parse('select Betelgeuse', unsolved as ObservationSession).error).toBe(
-      'The sky in this video has not been worked out yet, so nothing in it can be found by name.'
+      'The sky in this video has not been worked out, so nothing in it can be found by name.'
     );
     // The app can mark a sky unresolved while the session still holds an older solution
     const stale = { ...sessionOf('plate_calibrated'), machines: { ...sessionOf('plate_too_few_sources').machines } };
     expect(parse('how far is Sirius?', stale).error).toBe(
-      'The sky in this video has not been worked out yet, so nothing in it can be found by name.'
+      'The sky in this video has not been worked out, so nothing in it can be found by name.'
     );
     // A solved and a predicted sky were worked out: the name is missing from them
     for (const sample of ['plate_calibrated', 'horizon_approximate', 'horizon_predicted_only', 'pose_moon_level_head']) {
@@ -622,7 +622,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
         utterance,
         undefined,
         'unresolved_sky',
-        'The sky in this video has not been worked out yet, so nothing in it can be found by name.',
+        'The sky in this video has not been worked out, so nothing in it can be found by name.',
       ]);
     }
     // A word it does not know is not a name it looked for: there, too, it says only that it did not understand
@@ -635,7 +635,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
         utterance,
         undefined,
         'unresolved_sky',
-        'The sky in this video has not been worked out yet, and nothing is selected or pointed at.',
+        'The sky in this video has not been worked out, and nothing is selected or pointed at.',
       ]);
     }
     // What is selected there is still what "that" points at
@@ -732,7 +732,7 @@ describe('@albedian/observation voice parser: no refusal says what the parser ca
         const here = records!.some((id) => held.has(id) || held.has(id.replace(/^finding-/, 'finding-predicted-')));
         expect(here, `${says}: ${words}`).toBe(false);
         expect(['calibrated', 'approximate', 'predicted_only'], `${says}: ${words}`).toContain(session.observationSolution!.status);
-      } else if (words !== 'The sky in this video has not been worked out yet, so nothing in it can be found by name.') {
+      } else if (words !== 'The sky in this video has not been worked out, so nothing in it can be found by name.') {
         // No other refusal speaks of what was or was not found
         expect(words, says).not.toMatch(/\bfound\b/i);
       }

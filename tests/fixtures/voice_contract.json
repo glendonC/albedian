@@ -432,28 +432,28 @@
         "kind": "sky_not_worked_out"
       },
       "media": "photo",
-      "sentence": "The sky in this photo has not been worked out yet, so nothing in it can be found by name."
+      "sentence": "The sky in this photo has not been worked out, so nothing in it can be found by name."
     },
     {
       "refusal": {
         "kind": "sky_not_worked_out"
       },
       "media": "video",
-      "sentence": "The sky in this video has not been worked out yet, so nothing in it can be found by name."
+      "sentence": "The sky in this video has not been worked out, so nothing in it can be found by name."
     },
     {
       "refusal": {
         "kind": "nothing_in_view_sky_not_worked_out"
       },
       "media": "photo",
-      "sentence": "The sky in this photo has not been worked out yet, and nothing is selected or pointed at."
+      "sentence": "The sky in this photo has not been worked out, and nothing is selected or pointed at."
     },
     {
       "refusal": {
         "kind": "nothing_in_view_sky_not_worked_out"
       },
       "media": "video",
-      "sentence": "The sky in this video has not been worked out yet, and nothing is selected or pointed at."
+      "sentence": "The sky in this video has not been worked out, and nothing is selected or pointed at."
     },
     {
       "refusal": {
@@ -3279,7 +3279,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The sky in this photo has not been worked out yet, so nothing in it can be found by name.",
+        "explanation": "The sky in this photo has not been worked out, so nothing in it can be found by name.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3298,7 +3298,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The sky in this photo has not been worked out yet, and nothing is selected or pointed at.",
+        "explanation": "The sky in this photo has not been worked out, and nothing is selected or pointed at.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],

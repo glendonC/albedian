@@ -519,9 +519,9 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
     if kind == "nothing_in_view":
         return "Nothing is selected or pointed at. Select a star or planet first, or say its name."
     if kind == "sky_not_worked_out":
-        return f"The sky in this {media} has not been worked out yet, so nothing in it can be found by name."
+        return f"The sky in this {media} has not been worked out, so nothing in it can be found by name."
     if kind == "nothing_in_view_sky_not_worked_out":
-        return f"The sky in this {media} has not been worked out yet, and nothing is selected or pointed at."
+        return f"The sky in this {media} has not been worked out, and nothing is selected or pointed at."
     if kind == "not_a_request":
         # [proposed, for the UIUX work]
         return f'I did not take that as a request: "{said}" is not a word of one.'
