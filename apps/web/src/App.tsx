@@ -9,6 +9,7 @@ import {
   orientedSize,
 } from '@albedian/contracts';
 import { alignTargets, placedAtPose, type AlignedFrom, type AlignPose, type AlignStart } from './reveal/alignPose.js';
+import type { PlacedTarget } from './reveal/earlyPose.js';
 import {
   createEmptyObservationSession,
   dispatchAlbedianAction,
@@ -131,6 +132,8 @@ export const App: React.FC = () => {
   const [arrival, setArrival] = useState<Arrival | null>(null);
   // The sky the solve predicted from an early pose (the lock-on, D25), kept past the job's end for the reveal
   const [lockOnSky, setLockOnSky] = useState<ObservationSolution | null>(null);
+  // The rings a Solve from here was sent from: that job's early marks, which lock on when it matches (D25 items 1 and 2)
+  const [lockOnAligned, setLockOnAligned] = useState<{ sha256: string; marks: PlacedTarget[] } | null>(null);
   // The answer to the last question asked over the laptop reveal, or a command's refusal, with the photo it is about
   // (ask, approved 2026-11-12; command, decided the same night)
   const [answer, setAnswer] = useState<({ photoKey: string } & ShownAnswer) | null>(null);
@@ -385,6 +388,7 @@ export const App: React.FC = () => {
     setUploadedMediaUrl(url);
     setArrival(arrivalOf(file));
     setLockOnSky(null);
+    setLockOnAligned(null);
     void ingestAndSolveUploadedFile(
       file,
       url,
@@ -427,6 +431,9 @@ export const App: React.FC = () => {
     let known: IngestReceipt | null = kept && kept.sourceAsset.sha256 === asset.sha256 ? kept : null;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
     const aligned = placedAtPose(alignTargets(session.observationSolution), pose);
+    // This solve's early marks are the alignment's rings: an earlier job's served sky is no longer what the person sees
+    setLockOnSky(null);
+    setLockOnAligned({ sha256: asset.sha256, marks: aligned });
     const localObjectUrl = uploadedMediaUrl ?? undefined;
     const send = () => {
       const token = ++solveHereRef.current;
@@ -521,6 +528,7 @@ export const App: React.FC = () => {
         uploadRefusal={uploadRefusal}
         arrival={arrival}
         lockOnSky={lockOnSky}
+        lockOnAligned={lockOnAligned}
         onTryAgain={handleTryAgain}
         onCancelJob={() => (arrival?.job?.id ? cancelJob(arrival.job.id) : undefined)}
         onSolveFromHere={handleSolveFromHere}

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { alignReadout, alignStartWords, alignTargets, personAlignmentOf, placedAtPose, startPose, type AlignedFrom, type AlignPose, type AlignStart } from './alignPose.js';
 import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
-import { EARLY_SOURCE_WORDS, earlyPoseOf } from './earlyPose.js';
+import { EARLY_SOURCE_WORDS, earlyPoseOf, type EarlyPose, type PlacedTarget } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
 import type { ObservationSolution, PersonAlignment } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
@@ -138,6 +138,11 @@ export interface RevealPhotoProps {
    * at the early pose when it was refused.
    */
   lockOnSky?: ObservationSolution | null;
+  /**
+   * The rings a Solve from here was sent from, for that upload: its job's early marks (UIUX-lockon-READY.md item 1,
+   * "Placed from your alignment"), which lock on in place of any earlier served sky when that solve matches (item 2).
+   */
+  lockOnAligned?: { sha256: string; marks: readonly PlacedTarget[] } | null;
   /** A clip's playing original on the stage: the parent of D34's one clock when its restoration is compared. */
   clipVideo?: HTMLVideoElement | null;
   onSelectFinding: (findingId: string, pointerCoords?: { xPx: number; yPx: number }) => void;
@@ -284,6 +289,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   viewportHeightPx,
   restoration,
   lockOnSky = null,
+  lockOnAligned = null,
   clipVideo = null,
   onRestore,
   onCancelRestore,
@@ -402,13 +408,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // The lock-on (D25, MOTION-READY-web.md section 6): on the laptop, the early sky of this upload, from the reveal's
   // first arrival; it travels only once the check passed, and the arrival lasts until its words are in
   const early = !phone && !there && frame !== null ? earlyPoseOf(lockOnSky, session.sourceAsset) : null;
-  const [lockingAtStart] = useState(() => early !== null && status.kind === 'calibrated');
+  // The early marks the lock-on starts from: a Solve from here's alignment rings for this upload, else the served sky's
+  const alignedEarly: EarlyPose | null =
+    !phone && !there && frame !== null && lockOnAligned !== null && lockOnAligned.sha256 === session.sourceAsset?.sha256 ? { source: 'alignment', marks: [...lockOnAligned.marks] } : null;
+  const lockOnEarly = alignedEarly ?? early;
+  const [lockingAtStart] = useState(() => lockOnEarly !== null && status.kind === 'calibrated');
   const [arriving, setArriving] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setArriving(false), lockingAtStart ? LOCK_ON_ARRIVAL_MS : REVEAL_ARRIVAL_MS);
     return () => clearTimeout(timer);
   }, []);
-  const lockOn = lockingAtStart && arriving && early && frame && !bareFrame && !earthOnly ? lockOnPlan(early, frame, arrivingMarks) : null;
+  const lockOn = lockingAtStart && arriving && lockOnEarly && frame && !bareFrame && !earthOnly ? lockOnPlan(lockOnEarly, frame, arrivingMarks) : null;
   // The lock-on's early marks keep their source line at full in the status column, with no entrance, from the reveal's
   // first frame until the last of them has gone (UIUX-lockon-READY.md item 1, "no early marks are ever drawn without a
   // source line"; the 17:38 tag rule; AUDIT-C's tag sweep, break 1): the travelling ones in the frame-in and colour
@@ -800,7 +810,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
       {lockOn && lockOnFromEndMs > 0 && !lockOnFromDone && (
         <div className="lockon-from" data-testid="lockon-from">
-          <p className="reveal-status__from">{EARLY_SOURCE_WORDS[early!.source]}</p>
+          <p className="reveal-status__from">{EARLY_SOURCE_WORDS[lockOnEarly!.source]}</p>
         </div>
       )}
       {lockOn && (

@@ -44,7 +44,7 @@ import { HomeScreen } from './HomeScreen.js';
 import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
-import { earlyPoseOf } from '../reveal/earlyPose.js';
+import { earlyPoseOf, type PlacedTarget } from '../reveal/earlyPose.js';
 import { PredictedSkyScreen } from '../reveal/PredictedSkyScreen.js';
 import { isPredictedSkyShown, predictedSkyStart } from '../reveal/predictedSky.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
@@ -95,6 +95,8 @@ export interface SpatialObservatoryViewportProps {
   arrival?: Arrival | null;
   /** The sky the last solve predicted from an early pose, kept after its job ended, for the reveal's lock-on (D25). */
   lockOnSky?: ObservationSolution | null;
+  /** The rings the last Solve from here was sent from, for the reveal's lock-on when it matches (D25 item 2). */
+  lockOnAligned?: { sha256: string; marks: readonly PlacedTarget[] } | null;
   /** Starts the failed upload's work again (the working screen's Try again). */
   onTryAgain?: () => void;
   /** Asks the server to cancel the upload's job (the working screen's Cancel, D2). */
@@ -159,6 +161,7 @@ export const SpatialObservatoryViewport: React.FC<
   uploadRefusal = null,
   arrival = null,
   lockOnSky = null,
+  lockOnAligned = null,
   onSolveFromHere,
   alignedFrom = null,
   answer = null,
@@ -688,6 +691,7 @@ export const SpatialObservatoryViewport: React.FC<
           {revealShown && (
             <RevealPhoto
               lockOnSky={lockOnSky}
+              lockOnAligned={lockOnAligned}
               clipVideo={clipVideo}
               onSolveFromHere={onSolveFromHere}
               alignedFrom={alignedFrom}

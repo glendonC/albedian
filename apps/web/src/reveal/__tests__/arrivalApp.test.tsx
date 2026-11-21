@@ -395,6 +395,124 @@ describe('the app follows an upload on the working screen', () => {
     expect(calls).toContain(`GET /api/ingest/jobs/${running.id}/predicted-sky`);
   });
 
+  // A Solve from here that matches locks on from the alignment's rings the person just watched, under their own source
+  // line (UIUX-lockon-READY.md items 1 and 2: "Placed from your alignment" is an early mark's source), never from the
+  // early sky the photo's first job served (WEB-UX-solvehere-lockon-NOTE.md; the lead's yes, 16:05 on 21 Nov)
+  it("locks a matching Solve from here on from the alignment's rings, not from the first job's early sky", async () => {
+    const running = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      kind: 'solve',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      producer: { name: 'albedian.solve', revision: 1 },
+      state: 'running',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      stages: [STORE],
+      predictedSkyAtUTC: '2026-01-19T05:31:01Z',
+    };
+    // The first job: a Moon pose served early, then no star matched; two bright predicted stars to line up with
+    const moonSky = { ...samples['pose_moon_level_head']!, sourceSha256: sha256, sourceAssetId: assetId };
+    const plain = samples['horizon_predicted_only']!;
+    const template = plain.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const starRef = samples['pose_moon_level_head']!.findings.find((f) => f.catalogRef?.objectType === 'star')!.catalogRef!;
+    const target = (id: string, title: string, altDeg: number, azDeg: number, magnitude: number, key: string) => ({
+      ...template,
+      id,
+      title,
+      observationSolutionId: solutionId,
+      skyPosition: { ...template.skyPosition!, altDeg, azDeg },
+      catalogRef: { ...starRef, apparentMagnitude: magnitude, catalogSourceId: key, commonName: title },
+      evidence: { ...template.evidence, sourceAssetSha256: sha256 },
+    });
+    const KEYS = ['HIP 113368', 'HIP 107315'];
+    const unmatched = {
+      ...plain,
+      id: solutionId,
+      sourceAssetId: assetId,
+      sourceSha256: sha256,
+      findings: [target('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16, KEYS[0]!), target('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38, KEYS[1]!)],
+    } as unknown as ObservationSolution;
+    // The aligned solve's answer: matched, two of its matched stars being those two
+    let named = 0;
+    const matched = {
+      ...solution,
+      findings: solution.findings.map((f) => (f.evidenceClass === 'catalog_matched' && named < KEYS.length ? { ...f, catalogRef: { ...f.catalogRef!, catalogSourceId: KEYS[named++]! } } : f)),
+    } as ObservationSolution;
+    await renderApp({
+      ingest: [async () => json(receipt, 201)],
+      solve: [async () => json(running, 202), async () => json(succeeded, 201)],
+      jobs: [async () => json(moonSky), async () => json(succeeded)],
+      solution: [async () => json(unmatched), async () => json(matched)],
+    });
+    chooseOnHome(readableFile('night.jpg'));
+    const button = (label: string) => [...container.querySelectorAll('button')].find((b) => b.textContent === label) as HTMLButtonElement | undefined;
+    await waitUntil(() => expect(button('Line it up yourself')).toBeDefined());
+    act(() => button('Line it up yourself')!.click());
+    await waitUntil(() => expect(button('Solve from here')).toBeDefined());
+    act(() => button('Solve from here')!.click());
+    await waitUntil(() => expect(q('[data-testid="reveal-photo"].is-locking')).not.toBeNull());
+    expect(q('[data-testid="lockon-from"]')!.textContent).toBe('Placed from your alignment: predicted until matched.');
+    expect(container.querySelectorAll('.lockon-mark.is-travelling').length).toBeGreaterThan(0);
+  });
+
+  // Refused, the kept alignment's rings stay alone (D24 step 4): the first job's served sky draws nothing beside them
+  it("keeps only the alignment's rings when a Solve from here is refused, none of the first job's early marks", async () => {
+    const running = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      kind: 'solve',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      producer: { name: 'albedian.solve', revision: 1 },
+      state: 'running',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      stages: [STORE],
+      predictedSkyAtUTC: '2026-01-19T05:31:01Z',
+    };
+    // The first job: a Moon pose served early, then no star matched; two bright predicted stars to line up with
+    const moonSky = { ...samples['pose_moon_level_head']!, sourceSha256: sha256, sourceAssetId: assetId };
+    const plain = samples['horizon_predicted_only']!;
+    const template = plain.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const starRef = samples['pose_moon_level_head']!.findings.find((f) => f.catalogRef?.objectType === 'star')!.catalogRef!;
+    const target = (id: string, title: string, altDeg: number, azDeg: number, magnitude: number, key: string) => ({
+      ...template,
+      id,
+      title,
+      observationSolutionId: solutionId,
+      skyPosition: { ...template.skyPosition!, altDeg, azDeg },
+      catalogRef: { ...starRef, apparentMagnitude: magnitude, catalogSourceId: key, commonName: title },
+      evidence: { ...template.evidence, sourceAssetSha256: sha256 },
+    });
+    const KEYS = ['HIP 113368', 'HIP 107315'];
+    const unmatched = {
+      ...plain,
+      id: solutionId,
+      sourceAssetId: assetId,
+      sourceSha256: sha256,
+      findings: [target('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16, KEYS[0]!), target('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38, KEYS[1]!)],
+    } as unknown as ObservationSolution;
+    // The aligned solve's answer: matched, two of its matched stars being those two
+    let named = 0;
+    const matched = {
+      ...solution,
+      findings: solution.findings.map((f) => (f.evidenceClass === 'catalog_matched' && named < KEYS.length ? { ...f, catalogRef: { ...f.catalogRef!, catalogSourceId: KEYS[named++]! } } : f)),
+    } as ObservationSolution;
+    await renderApp({
+      ingest: [async () => json(receipt, 201)],
+      solve: [async () => json(running, 202), async () => json(succeeded, 201)],
+      jobs: [async () => json(moonSky), async () => json(succeeded)],
+      solution: [async () => json(unmatched), async () => json(unmatched)],
+    });
+    chooseOnHome(readableFile('night.jpg'));
+    const button = (label: string) => [...container.querySelectorAll('button')].find((b) => b.textContent === label) as HTMLButtonElement | undefined;
+    await waitUntil(() => expect(button('Line it up yourself')).toBeDefined());
+    act(() => button('Line it up yourself')!.click());
+    await waitUntil(() => expect(button('Solve from here')).toBeDefined());
+    act(() => button('Solve from here')!.click());
+    await waitUntil(() => expect(q('.align-refused__kept')).not.toBeNull());
+    expect(container.querySelectorAll('[data-testid="early-marks"]')).toHaveLength(1);
+    expect(q('[data-testid="reveal-status"] .reveal-status__from')).toBeNull();
+  });
+
   it("changes nothing for an older upload's steps once another file was chosen", async () => {
     const first = held();
     const second = held();

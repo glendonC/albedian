@@ -1,3 +1,4 @@
+import type { PlacedTarget } from './earlyPose.js';
 import { properName } from './predictedSkyMarks.js';
 import {
   PERSON_ALIGNMENT_FORMAT,
@@ -183,10 +184,13 @@ export function scalePose(pose: AlignPose, factor: number): AlignPose {
 }
 
 /** The targets inside the frame through a pose, as shares of the shown photo (the sent state's rings, D24 step 3). */
-export function placedAtPose(targets: readonly AlignTarget[], pose: AlignPose): Array<{ id: string; name: string; u: number; v: number }> {
+export function placedAtPose(targets: readonly AlignTarget[], pose: AlignPose): PlacedTarget[] {
   return targets.flatMap((target) => {
     const at = projectAltAz(target.altDeg, target.azDeg, pose);
-    return at && at.u >= 0 && at.u <= 1 && at.v >= 0 && at.v <= 1 ? [{ id: target.finding.id, name: target.name, u: at.u, v: at.v }] : [];
+    if (!(at && at.u >= 0 && at.u <= 1 && at.v >= 0 && at.v <= 1)) return [];
+    // Its catalog object, so a lock-on from the alignment finds the star again among the solve's matches
+    const key = target.finding.catalogRef?.catalogSourceId;
+    return [{ id: target.finding.id, name: target.name, u: at.u, v: at.v, ...(key ? { key } : {}) }];
   });
 }
 
