@@ -150,7 +150,8 @@ export function startPose(session: ObservationSession, headingDeg?: number): { p
   // The brightest star: a planet the record gives no magnitude is not one
   const brightest = alignTargets(session.observationSolution).find((target) => target.altDeg > 0 && target.magnitude !== null && isStar(target.finding));
   if (!brightest) return null;
-  // [proposed] Facing it means it is in view: the centre at its height, never lower than the horizon at the foot
+  // C27 (UIUX-webuxpieces-READY.md item 3): facing it puts the centre on its heading and at its height, never lower
+  // than the height that puts the horizon at the photo's foot; a star lower than that shows below the centre
   return { pose: { azDeg: brightest.azDeg, altDeg: Math.max(altDeg, brightest.altDeg), rollDeg: 0, fovXDeg, aspect }, from: { kind: 'brightest', name: brightest.name, ...noLens } };
 }
 

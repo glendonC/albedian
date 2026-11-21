@@ -71,8 +71,8 @@ const grouped = (n: number) => n.toLocaleString('en-US');
 
 /**
  * A byte count in millions of bytes, as the approved page writes the sample's 2,382,523 bytes ("2.4 MB"): one decimal
- * from a tenth of a megabyte up. Below that one figure is kept, so a small file is never written as nothing [proposed:
- * the approved page shows one size only].
+ * from a tenth of a megabyte up. Below that one significant figure ("0.04 MB"), so a small file is never "0.0 MB" and
+ * every file reads in one unit (C28, UIUX-webuxpieces-READY.md item 4).
  */
 export function megabytes(bytes: number): string {
   if (bytes <= 0) return '0 MB';
