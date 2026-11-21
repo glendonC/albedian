@@ -7,7 +7,16 @@ import type { Box } from './predictedSkyMarks.js';
  * column as one box, the Sound circle and the foot's buttons; on the phone the block of words and buttons and the close
  * circle.
  */
-export const REVEAL_KEEP_CLEAR = ['[data-testid="reveal-status"]', '.reveal-nav .sound-control', '.ask-bar', '.reveal-phone-top button[aria-label="Close"]'] as const;
+export const REVEAL_KEEP_CLEAR = [
+  '[data-testid="reveal-status"]',
+  '.reveal-nav .sound-control',
+  '.ask-bar',
+  '.reveal-phone-top button[aria-label="Close"]',
+  // On the phone the counts block is the reveal's block of words (UIUX-keepclear-READY.md, its last section), and the
+  // estimate's block holds it (UIUX-tagphone-READY.md item A)
+  '[data-testid="reveal-phone-estimate"]',
+  '.reveal-phone-counts',
+] as const;
 
 /** On the working screen: its column (the lead, the source line, Cancel and the rows) and the Sound circle. */
 export const WORKING_KEEP_CLEAR = ['[data-testid="work-early"]', '.reveal-nav .sound-control'] as const;
@@ -17,7 +26,7 @@ export const WORKING_KEEP_CLEAR = ['[data-testid="work-early"]', '.reveal-nav .s
  * top to the buttons' foot"), not by their own box: the phone's aligning block spans the whole screen and the phone's
  * refused block is taller than it, either of which, taken whole, would keep every ring and name off the photo.
  */
-export const KEEP_CLEAR_BLOCKS = ['[data-testid="reveal-status"]', '[data-testid="work-early"]'] as const;
+export const KEEP_CLEAR_BLOCKS = ['[data-testid="reveal-status"]', '[data-testid="work-early"]', '[data-testid="reveal-phone-estimate"]', '.reveal-phone-counts'] as const;
 
 const laidOut = (r: DOMRect) => r.width > 0 && r.height > 0;
 const boxOf = (r: DOMRect): Box => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom });

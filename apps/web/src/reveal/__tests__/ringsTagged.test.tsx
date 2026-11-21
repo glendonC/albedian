@@ -74,6 +74,38 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
     expect(status().classList.contains('has-predicted')).toBe(true);
   });
 
+  // UIUX-tagphone-READY.md item A (decided 13:08 on 21 Nov): on the phone, one block under the photo anchored by its foot
+  // 16 px above Ask out loud (y 756), growing upward: the Predicted tag at full, 8 px under it the pose's first
+  // sentence, 14 px under that the counts row as built
+  it("the phone's estimate reveal: the Predicted tag and the pose's first sentence over its counts, in one block", () => {
+    act(() => root.render(createElement(RevealPhoto, { session: poseSession(POSE), onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true })));
+    const block = q('[data-testid="reveal-phone-estimate"]')!;
+    const [tag, source, counts] = [...block.children];
+    expect(tag!.getAttribute('data-evidence-class')).toBe('predicted');
+    expect(source!.className).toBe('reveal-phone-estimate__source');
+    // The app's own pose sentence, its first sentence only (C5's rule): what the sky rests on
+    expect(source!.textContent).toMatch(/^Lined up by [^.]+\.$/);
+    expect(counts!.getAttribute('data-testid')).toBe('reveal-legend');
+    const rule = (selector: string) => {
+      const found: Record<string, string> = {};
+      postcss.parse(revealCss).walkRules((r) => {
+        if (r.selector === selector) r.walkDecls((d) => void (found[d.prop] = d.value));
+      });
+      return found;
+    };
+    expect(rule('.reveal-phone-estimate')).toEqual({ position: 'absolute', left: '24px', right: '24px', bottom: 'calc(100% - 756px)', display: 'flex', 'flex-direction': 'column', 'align-items': 'flex-start', 'pointer-events': 'none' });
+    expect(rule('.reveal-phone-estimate__source')).toEqual({ margin: '8px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
+    expect(rule('.reveal-phone-estimate .reveal-phone-counts')).toEqual({ 'margin-top': '14px' });
+    // No entrance: nothing in the motion record animates the block
+    expect(motionCss.includes('reveal-phone-estimate')).toBe(false);
+  });
+
+  it("keeps the phone's calibrated counts where they were, outside any block, with no tag line over them", () => {
+    act(() => root.render(createElement(RevealPhoto, { session: poseSession(sample('plate_calibrated')), onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true })));
+    expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+    expect(q('.reveal-phone-counts')!.parentElement!.getAttribute('data-testid')).not.toBe('reveal-phone-estimate');
+  });
+
   it('aligning: the column over the rings the person drags leads with the Predicted tag', () => {
     show(unmatched());
     expect(leadsWithPredicted()).toBe(false);

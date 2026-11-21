@@ -69,8 +69,13 @@ const FIRST_SENTENCE_NOTES: readonly string[] = [
  */
 export function onScreenWarning(warning: string): string {
   if (!FIRST_SENTENCE_NOTES.some((start) => warning.startsWith(start))) return warning;
-  const end = warning.indexOf('. ');
-  return end < 0 ? warning : warning.slice(0, end + 1);
+  return firstSentenceOf(warning);
+}
+
+/** A text's first sentence, cut at its first ". " (C5's rule), or the whole text when it has one sentence. */
+export function firstSentenceOf(text: string): string {
+  const end = text.indexOf('. ');
+  return end < 0 ? text : text.slice(0, end + 1);
 }
 
 export function revealStatus(session: ObservationSession, starSearchRan = true): RevealStatus {

@@ -43,6 +43,33 @@ export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.words
 /** The arrival that locks on (D25): the travel, the matched marks' colour at rest, then the words as after the marks. */
 export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colourMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
 
+/**
+ * Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs; an answer
+ * takes their place (ask, approved, iPhone; #p-answer). In the estimate's block (tag place A) the same row, in its flow.
+ */
+const PhoneCounts: React.FC<{ counts: ReturnType<typeof evidenceCounts> }> = ({ counts }) => (
+  <div className="reveal-phone-counts" data-testid="reveal-legend">
+    {counts
+      .filter((row) => row.evidenceClass === 'catalog_matched')
+      .map((row) => (
+        <p key={row.evidenceClass} className="reveal-phone-counts__big">
+          <b>{row.text}</b>
+          <EvidenceTag evidenceClass={row.evidenceClass} />
+        </p>
+      ))}
+    <p className="reveal-phone-counts__more">
+      {counts
+        .filter((row) => row.evidenceClass !== 'catalog_matched')
+        .map((row) => (
+          <span key={row.evidenceClass} className="reveal-phone-counts__item">
+            <b>{row.text}</b>
+            <EvidenceTag evidenceClass={row.evidenceClass} />
+          </span>
+        ))}
+    </p>
+  </div>
+);
+
 /** When the last lock-on mark has gone: a travelling one after its travel and colour, a leaving one after frame out. */
 function lockOnMarksEndMs(plan: { travelling: readonly unknown[]; leaving: readonly unknown[] }, reduce: boolean): number {
   const motion = resolveMotionTokens(reduce);
@@ -83,7 +110,7 @@ const FLIGHT_LINES = {
 } as const;
 import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { threeFigures, type FlightReadout } from './flightView.js';
-import { evidenceCounts, revealStatus } from './revealStatus.js';
+import { evidenceCounts, firstSentenceOf, revealStatus } from './revealStatus.js';
 import { useKeepClear } from './keepClear.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -918,30 +945,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {phone && !answer && !picked && !skyShown && status.kind !== 'unmatched' && counts.length > 0 && (
-        // Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs;
-        // an answer takes their place (ask, approved, iPhone; #p-answer)
-        <div className="reveal-phone-counts" data-testid="reveal-legend">
-          {counts
-            .filter((row) => row.evidenceClass === 'catalog_matched')
-            .map((row) => (
-              <p key={row.evidenceClass} className="reveal-phone-counts__big">
-                <b>{row.text}</b>
-                <EvidenceTag evidenceClass={row.evidenceClass} />
-              </p>
-            ))}
-          <p className="reveal-phone-counts__more">
-            {counts
-              .filter((row) => row.evidenceClass !== 'catalog_matched')
-              .map((row) => (
-                <span key={row.evidenceClass} className="reveal-phone-counts__item">
-                  <b>{row.text}</b>
-                  <EvidenceTag evidenceClass={row.evidenceClass} />
-                </span>
-              ))}
-          </p>
+      {phone && !answer && !picked && !skyShown && status.kind === 'estimate' && (
+        // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
+        // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
+        // sky rests on), then the counts row as built
+        <div className="reveal-phone-estimate" data-testid="reveal-phone-estimate">
+          <EvidenceTag evidenceClass="predicted" />
+          <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
+          {counts.length > 0 && <PhoneCounts counts={counts} />}
         </div>
       )}
+      {phone && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>

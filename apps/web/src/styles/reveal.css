@@ -1173,6 +1173,37 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The estimate at phone width (UIUX-tagphone-READY.md item A): one block under the photo, its foot 16 px above Ask out
+   loud (y 756, as D19 anchors the answer), growing upward: the Predicted tag, 8 px under it the pose's first sentence
+   (13 px, ink 66 percent), 14 px under that the counts row as built, here in the block's flow; no entrance */
+.reveal-phone-estimate {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: calc(100% - 756px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.reveal-phone-estimate__source {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+.reveal-phone-estimate .reveal-phone-counts {
+  margin-top: 14px;
+}
+.reveal-phone-estimate .reveal-phone-counts__big,
+.reveal-phone-estimate .reveal-phone-counts__more {
+  position: static;
+  margin: 0;
+}
+.reveal-phone-estimate .reveal-phone-counts__big + .reveal-phone-counts__more {
+  margin-top: 14px;
+}
+
 .reveal-phone-counts__item b {
   font-weight: 400;
   margin-right: 8px;

@@ -7,7 +7,7 @@ import { poseSession, sample, POSE } from '../../components/__tests__/poseSessio
 import { ALIGN_RING_PX, placeMarks } from '../AlignLayer.js';
 import type { AlignPose } from '../alignPose.js';
 import type { EarlyPose } from '../earlyPose.js';
-import { useKeepClear } from '../keepClear.js';
+import { KEEP_CLEAR_BLOCKS, REVEAL_KEEP_CLEAR, useKeepClear } from '../keepClear.js';
 import { lockOnPlan, rememberWorkingClear } from '../lockOn.js';
 import { revealMarks, type RevealMark } from '../revealMarks.js';
 import { RevealPhoto } from '../RevealPhoto.js';
@@ -431,5 +431,14 @@ describe('useKeepClear measures a status block by what it holds', () => {
     act(() => window.dispatchEvent(new Event('resize')));
     expect(boxes()).toEqual([{ x0: 0, x1: 390, y0: 0, y1: 844 }]);
     block.remove();
+  });
+});
+
+describe("the phone's counts are a control too", () => {
+  it('measures the counts block and the estimate block, each by what it holds', () => {
+    for (const selector of ['[data-testid="reveal-phone-estimate"]', '.reveal-phone-counts']) {
+      expect(REVEAL_KEEP_CLEAR).toContain(selector);
+      expect(KEEP_CLEAR_BLOCKS).toContain(selector);
+    }
   });
 });
