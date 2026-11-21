@@ -82,8 +82,8 @@ describe('D24 refused at phone width', () => {
     expect(status.children[0]!.getAttribute('data-evidence-class')).toBe('predicted');
     expect(status.children[1]!.textContent).toBe('No stars matched near your alignment.');
     expect(status.children[2]!.textContent).toBe('Your alignment is kept, drawn as predicted.');
-    // Restore is drawn too, but the phone offers no restoration anywhere today (restoreOffered is the laptop's), so none
-    expect([...status.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Line it up again', 'Show predicted sky']);
+    // Restore under Show predicted sky, as alp-refused draws it, now that the phone restores (D38)
+    expect([...status.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Line it up again', 'Show predicted sky', 'Restore']);
     for (const b of status.querySelectorAll('button')) expect(b.className).toContain('look-size-phone');
     // The kept rings stay drawn over the photo, amber and dashed, and the no-match screen's own actions are not offered
     expect(q('[data-testid="early-marks"]')!.className).toBe('align-layer is-still');

@@ -462,6 +462,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const phoneRestoreOffered =
     phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
   const phoneRestoring = phonePhoto && !there && !skyShown && restoration?.phase === 'working';
+  // D38's no-match rule: on the phone's no-match screen and its refused alignment, Restore under the screen's own
+  // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused)
+  const phoneNoMatchRestore =
+    phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && status.kind === 'unmatched';
   // The phone's foot taken by the restoration (its compare's Download, or its wait's Cancel): Ask out loud gives way
   const phoneFoot = phoneCompare || phoneRestoring;
   useEffect(() => {
@@ -600,8 +604,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly;
   const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
-  // The phone's compare holds the foot (D10 item 5): its own sentence and Download, drawn below
-  const statusLine: React.ReactElement | null = phoneCompare ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
+  // The phone's restoration holds the foot: its compare's sentence and Download (D10 item 5), or its wait's row and Cancel (D38)
+  const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         <div className="align-phone" data-testid="reveal-status" role="status">
@@ -621,7 +625,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <PhoneAlignRefused
           onAgain={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })}
           onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
-          onRestore={restoreOffered ? () => onRestore?.() : undefined}
+          onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
         />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />

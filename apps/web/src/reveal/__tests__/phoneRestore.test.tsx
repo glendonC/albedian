@@ -188,6 +188,17 @@ describe('the restoration working at phone width (D38 item 2)', () => {
     expect(button('Cancel')).not.toBeUndefined();
   });
 
+  it("takes the no-match screen's place too while it works, so its row and Cancel hold the foot alone", async () => {
+    const noMatch = slotted(poseSession(sample('horizon_predicted_only')));
+    await showPhone({ session: noMatch, restoration: { phase: 'idle' } });
+    expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
+    await showPhone({ session: noMatch, restoration: { phase: 'working', job: RUNNING }, onCancelRestore: () => {} });
+    expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+    expect(q('.restore-phone-wait .work-phone-row > b')!.textContent).toBe('Restoring');
+    expect(button('Cancel')).not.toBeUndefined();
+    expect(button('Show predicted sky')).toBeUndefined();
+  });
+
   it('frees Ask out loud again once nothing of the restoration holds the foot', async () => {
     const told = vi.fn();
     await showPhone({ onPhoneFootChange: told });
