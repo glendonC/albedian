@@ -186,13 +186,16 @@ function answerFor(question: string) {
 async function typeAndSend(words: string) {
   // A field still leaving after the last send (its words out, 100 ms: the motion record) is not the one to type in
   if (q('.ask-bar__field.is-leaving')) await waitUntil(() => expect(q('.ask-bar__field')).toBeNull());
-  // There after Go there the ask buttons are away until the camera rests (1500 ms after the press: the motion record)
-  await waitUntil(() => expect(q('.ask-bar__field input') ?? q('.ask-bar__type') ?? q('.ask-bar__ask')).not.toBeNull());
-  if (!q('.ask-bar__field input')) {
+  // There after Go there the ask buttons are away until the camera rests (1500 ms after the press: the motion record).
+  // As the there screen mounts they leave for 100 ms, still drawn but inert: only a control that is neither leaving nor
+  // inert is one a person can use, so the wait is for that, however long the machine takes between two steps
+  const usable = (selector: string) => [...container.querySelectorAll<HTMLElement>(selector)].find((el) => !el.closest('.is-leaving, [inert]')) ?? null;
+  await waitUntil(() => expect(usable('.ask-bar__field input') ?? usable('.ask-bar__type') ?? usable('.ask-bar__ask')).not.toBeNull());
+  if (!usable('.ask-bar__field input')) {
     // jsdom has no speech recognition, so the ask button itself reads "Type to ask" and opens the field
-    await act(async () => ((q('.ask-bar__type') ?? q('.ask-bar__ask')) as HTMLButtonElement).click());
+    await act(async () => (usable('.ask-bar__type') ?? usable('.ask-bar__ask'))!.click());
   }
-  const input = q('.ask-bar__field input') as HTMLInputElement;
+  const input = usable('.ask-bar__field input') as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, words);
     input.dispatchEvent(new Event('input', { bubbles: true }));
