@@ -79,21 +79,60 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
     }
   };
 
+  const fileChooser = failure ? (
+    <input
+      ref={fileInput}
+      className="work-file-input"
+      data-testid="working-file-input"
+      type="file"
+      accept="image/*,video/*"
+      tabIndex={-1}
+      aria-hidden="true"
+      onChange={(event) => {
+        const file = event.currentTarget.files?.[0];
+        // The same file chosen again still counts as a choice
+        event.currentTarget.value = '';
+        if (file) onUploadAnother(file);
+      }}
+    />
+  ) : null;
+
   if (phone) {
     // D2 at phone width: the close circle, then only the step the job is on (its word large, its count, its bar), or
-    // "Queued" and the jobs ahead; Cancel compact where Ask out loud sits. A stopped job's sentence and Try again are
-    // laid out like the phone's answer [proposed: no record draws a stopped job at phone width]
+    // "Queued" and the jobs ahead; Cancel compact where Ask out loud sits
     const now = rows.find((row) => row.state === 'now') ?? null;
     const ahead = job?.queueAhead ?? 0;
+    // D37 (UIUX-webuxpieces-READY.md item 1, decided by the lead 12:59 on 21 Nov): a stopped job keeps D2's row where it
+    // ran, A1's x before the step it stopped at, its last count and its bar in A1's grey; the job's own sentence above
+    // it, anchored at its foot as D19 anchors the phone answer, over the photo's lower edge darkened as D19 darkens it;
+    // Try again and Upload another where Cancel was, so the buttons never move
+    const stopped = failure ? (rows.find((row) => row.state === 'failed') ?? null) : null;
     return (
       <div className="work-screen is-phone" data-testid="working-screen" data-hud-interactive="true">
         <div className="work-phone-top">
           <IconButton label="Close" icon="x" size="phone" onClick={() => onHome?.()} />
         </div>
         {failure ? (
-          <p className="work-phone-why" role="alert">
-            {failure.sentence}
-          </p>
+          <>
+            <span className="work-phone-fade" aria-hidden="true" />
+            <p className="work-phone-why" role="alert">
+              {failure.sentence}
+            </p>
+            {stopped && (
+              <div className="work-phone-row is-stopped">
+                <span className="work-phone-row__x" aria-hidden="true">
+                  <LookIcon name="x" />
+                </span>
+                <b>{stopped.word}</b>
+                <span className="work-phone-row__v">{stopped.value}</span>
+                {stopped.fraction !== null && (
+                  <span className="work-phone-row__bar">
+                    <b style={{ width: barWidth(stopped.fraction) }} />
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         ) : job?.state === 'queued' ? (
           <div className="work-phone-row">
             <b>
@@ -114,11 +153,15 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
         ) : null}
         <div className="work-phone-go">
           {failure ? (
-            failure.canTryAgain && <MainAction label="Try again" icon="arrow-clockwise" size="phone" onClick={onTryAgain} />
+            <>
+              {failure.canTryAgain && <MainAction label="Try again" icon="arrow-clockwise" size="phone" onClick={onTryAgain} />}
+              <SecondAction label="Upload another" size="phone" onClick={() => fileInput.current?.click()} />
+            </>
           ) : cancellable ? (
             <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" size="phone" aria-disabled={held ? true : undefined} onClick={cancel} />
           ) : null}
         </div>
+        {fileChooser}
       </div>
     );
   }
@@ -203,23 +246,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
         </div>
       )}
       {shownEarly ? null : steps}
-      {failure && (
-        <input
-          ref={fileInput}
-          className="work-file-input"
-          data-testid="working-file-input"
-          type="file"
-          accept="image/*,video/*"
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            // The same file chosen again still counts as a choice
-            event.currentTarget.value = '';
-            if (file) onUploadAnother(file);
-          }}
-        />
-      )}
+      {fileChooser}
     </div>
   );
 };

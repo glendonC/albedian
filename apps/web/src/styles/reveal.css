@@ -1616,6 +1616,7 @@
   height: 100%;
   background: var(--look-ink);
 }
+/* D37: a stopped job's Try again and Upload another sit here, 10 px apart, where Cancel was */
 .work-phone-go {
   position: absolute;
   left: 0;
@@ -1623,17 +1624,48 @@
   top: 772px;
   display: flex;
   justify-content: center;
+  gap: 10px;
 }
-/* A stopped job at phone width, laid out like the phone's answer [proposed: no record draws it] */
+/* D37, a stopped job at phone width (UIUX-webuxpieces-READY.md item 1, decided by the lead 12:59 on 21 Nov; sp-failed
+   in .cache/uiux/stopped-phone): the job's own sentence in D19's phone answer size, its foot 14 px above the row, so a
+   longer one rises over the photo and never pushes the buttons */
 .work-phone-why {
   position: absolute;
   left: 24px;
   right: 24px;
-  bottom: calc(100% - 756px);
+  bottom: calc(100% - 654px);
   margin: 0;
   font: 300 22px / 1.2 var(--look-font-sans);
   letter-spacing: -0.03em;
   text-wrap: balance;
+  color: var(--look-ink);
+}
+/* D2's row where it ran, A1's x 8 px before the step it stopped at, its bar in A1's grey */
+.work-phone-row.is-stopped {
+  grid-template-columns: auto 1fr auto;
+  column-gap: 8px;
+}
+.work-phone-row__x {
+  --look-ic: 14px;
+  align-self: center;
+  display: flex;
+  color: var(--look-ink);
+}
+.work-phone-row.is-stopped .work-phone-row__bar {
+  grid-column: 1 / 4;
+}
+.work-phone-row.is-stopped .work-phone-row__bar b {
+  background: var(--look-ink-3);
+}
+/* The photo's lower edge (the slot ends at 638) darkened to 82 percent black over 44 px, as D19 darkens it */
+.work-phone-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 594px;
+  height: 44px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.82));
+  pointer-events: none;
 }
 
 /* A deep-sky object (D23), unpicked: its symbol 12 px across at 1.1 in amber, its common name 6 px beside the symbol,

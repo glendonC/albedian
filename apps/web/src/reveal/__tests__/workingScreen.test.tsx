@@ -528,18 +528,6 @@ describe('the working screen at phone width (D2)', () => {
     expect(onHome).toHaveBeenCalledTimes(1);
   });
 
-  it("says a stopped job's sentence with Try again at the phone size [proposed: no record draws it]", () => {
-    const onTryAgain = vi.fn();
-    show({ arrival: FAILED, phone: true, onTryAgain });
-    expect(q('.work-phone-why')!.textContent).toBe('The solve stopped on an internal error.');
-    const again = q('.work-phone-go button') as HTMLButtonElement;
-    expect(again.textContent).toBe('Try again');
-    expect(again.className).toContain('look-size-phone');
-    act(() => again.click());
-    expect(onTryAgain).toHaveBeenCalledTimes(1);
-    expect(q('.work-phone-row')).toBeNull();
-  });
-
   it('sets the row and the button as jp-run does', () => {
     expect(declarationsOf('.work-phone-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', height: '44px', display: 'flex', 'align-items': 'center' });
     expect(declarationsOf('.work-phone-row')).toEqual({
@@ -558,6 +546,120 @@ describe('the working screen at phone width (D2)', () => {
     expect(declarationsOf('.work-phone-row__v')).toEqual({ font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', color: 'var(--look-ink-2)' });
     expect(declarationsOf('.work-phone-row__bar')).toEqual({ 'grid-column': '1 / 3', height: '2px', background: 'var(--look-hair)', 'border-radius': '2px', overflow: 'hidden' });
     expect(declarationsOf('.work-phone-row__bar b')).toEqual({ display: 'block', height: '100%', background: 'var(--look-ink)' });
-    expect(declarationsOf('.work-phone-go')).toEqual({ position: 'absolute', left: '0', right: '0', top: '772px', display: 'flex', 'justify-content': 'center' });
+    expect(declarationsOf('.work-phone-go')).toEqual({
+      position: 'absolute',
+      left: '0',
+      right: '0',
+      top: '772px',
+      display: 'flex',
+      'justify-content': 'center',
+      gap: '10px',
+    });
+  });
+});
+
+// D37, a stopped job at phone width (UIUX-webuxpieces-READY.md item 1, decided by the lead 12:59 on 21 Nov; sp-failed,
+// sp-canceled, sp-interrupted, sp-noretry in .cache/uiux/stopped-phone): D2's row stays where it ran with A1's x before
+// the step it stopped at, the job's own sentence above it as D19 anchors the phone answer, the photo's lower edge
+// darkened as D19 does, and Try again with Upload another where Cancel was. Nothing new is drawn.
+describe('a stopped job at phone width (D37)', () => {
+  const STOPPED = arrival({
+    job: { ...WORKING_JOB, state: 'failed', stages: [...WORKING_JOB.stages.slice(0, 3), stage('solve', 'candidates', 14, 364)] },
+    failure: { sentence: 'The solve stopped on an internal error.', canTryAgain: true },
+  });
+  const buttons = () => [...container.querySelectorAll('.work-phone-go button')] as HTMLButtonElement[];
+
+  it("keeps the row it stopped at, A1's x first, its last count and its bar, under the job's own sentence as an alert", () => {
+    show({ arrival: STOPPED, phone: true });
+    expect(q('.work-screen')!.className).toBe('work-screen is-phone');
+    const row = q('.work-phone-row')!;
+    expect(row.className).toBe('work-phone-row is-stopped');
+    expect([...row.children].map((child) => child.className || child.tagName)).toEqual(['work-phone-row__x', 'B', 'work-phone-row__v', 'work-phone-row__bar']);
+    expect(iconPath(q('.work-phone-row__x'))).toBe(LOOK_ICON_PATHS.x);
+    expect(q('.work-phone-row__x')!.getAttribute('aria-hidden')).toBe('true');
+    expect(q('.work-phone-row > b')!.textContent).toBe('Matching');
+    expect(q('.work-phone-row__v')!.textContent).toBe('14 of 364');
+    expect((q('.work-phone-row__bar b') as HTMLElement).style.width).toBe('3.846%');
+    const why = q('.work-phone-why')!;
+    expect(why.textContent).toBe('The solve stopped on an internal error.');
+    expect(why.getAttribute('role')).toBe('alert');
+    // The sentence comes before the row, so it is read first
+    expect(why.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(q('.work-phone-fade')!.getAttribute('aria-hidden')).toBe('true');
+    expect(q('.work-phone-top button')!.getAttribute('aria-label')).toBe('Close');
+  });
+
+  it('puts Try again and Upload another where Cancel was, at the phone size, each doing its own work', () => {
+    const onTryAgain = vi.fn();
+    const onUploadAnother = vi.fn();
+    show({ arrival: STOPPED, phone: true, onTryAgain, onUploadAnother, onCancel: noop });
+    expect(buttons().map((b) => b.textContent)).toEqual(['Try again', 'Upload another']);
+    const [again, other] = buttons();
+    expect(again!.className).toContain('look-main');
+    expect(again!.className).toContain('look-size-phone');
+    expect(iconPath(again!)).toBe(LOOK_ICON_PATHS['arrow-clockwise']);
+    expect(other!.className).toContain('look-second');
+    expect(other!.className).toContain('look-size-phone');
+    act(() => again!.click());
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
+    const input = q('[data-testid="working-file-input"]') as HTMLInputElement;
+    const picked = vi.spyOn(input, 'click');
+    act(() => other!.click());
+    expect(picked).toHaveBeenCalledTimes(1);
+    const file = new File(['x'], 'another.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    act(() => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(onUploadAnother).toHaveBeenCalledWith(file);
+    expect(container.textContent).not.toContain('Cancel');
+  });
+
+  it('leaves Try again out when the runner does not allow it, so Upload another stands alone', () => {
+    show({ arrival: { ...STOPPED, failure: { sentence: 'The solve stopped on an internal error.', canTryAgain: false } }, phone: true });
+    expect(buttons().map((b) => b.textContent)).toEqual(['Upload another']);
+  });
+
+  it('says a canceled or interrupted job in its own words, over the same row', () => {
+    show({ arrival: { ...STOPPED, job: { ...STOPPED.job!, state: 'canceled' }, failure: { sentence: 'Canceled', canTryAgain: true } }, phone: true });
+    expect(q('.work-phone-why')!.textContent).toBe('Canceled');
+    expect(q('.work-phone-row > b')!.textContent).toBe('Matching');
+    const interrupted = 'The server stopped before this job finished.';
+    show({ arrival: { ...STOPPED, job: { ...STOPPED.job!, state: 'interrupted' }, failure: { sentence: interrupted, canTryAgain: true } }, phone: true });
+    expect(q('.work-phone-why')!.textContent).toBe(interrupted);
+    expect(buttons().map((b) => b.textContent)).toEqual(['Try again', 'Upload another']);
+  });
+
+  it('draws no bar on a stopped step that had nothing to count, as the running row does', () => {
+    show({ arrival: { ...STOPPED, job: { ...STOPPED.job!, stages: [...WORKING_JOB.stages, stage('verify', 'steps', 0, null)] } }, phone: true });
+    expect(q('.work-phone-row > b')!.textContent).toBe('Checking');
+    expect(q('.work-phone-row__bar')).toBeNull();
+  });
+
+  it('sets the sentence, the x, the grey bar and the darkened edge as sp-failed does', () => {
+    expect(declarationsOf('.work-phone-why')).toEqual({
+      position: 'absolute',
+      left: '24px',
+      right: '24px',
+      bottom: 'calc(100% - 654px)',
+      margin: '0',
+      font: '300 22px / 1.2 var(--look-font-sans)',
+      'letter-spacing': '-0.03em',
+      'text-wrap': 'balance',
+      color: 'var(--look-ink)',
+    });
+    expect(declarationsOf('.work-phone-row.is-stopped')).toEqual({ 'grid-template-columns': 'auto 1fr auto', 'column-gap': '8px' });
+    expect(declarationsOf('.work-phone-row__x')).toEqual({ '--look-ic': '14px', 'align-self': 'center', display: 'flex', color: 'var(--look-ink)' });
+    expect(declarationsOf('.work-phone-row.is-stopped .work-phone-row__bar')).toEqual({ 'grid-column': '1 / 4' });
+    expect(declarationsOf('.work-phone-row.is-stopped .work-phone-row__bar b')).toEqual({ background: 'var(--look-ink-3)' });
+    expect(declarationsOf('.work-phone-fade')).toEqual({
+      position: 'absolute',
+      left: '0',
+      right: '0',
+      top: '594px',
+      height: '44px',
+      background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.82))',
+      'pointer-events': 'none',
+    });
   });
 });
