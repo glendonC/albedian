@@ -1737,6 +1737,15 @@
   pointer-events: none;
 }
 
+/* The Predicted tag over the person's rings (UIUX-tagphone-READY.md item C, tag place 3 at phone width): left 24, its
+   foot 12 px above the sentence's top at 654, so 614 to 642; no entrance of its own */
+.align-phone__tag {
+  position: absolute;
+  left: 24px;
+  top: 614px;
+  display: flex;
+}
+
 .align-phone__lead {
   position: absolute;
   left: 24px;

@@ -517,6 +517,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         <div className="align-phone" data-testid="reveal-status" role="status">
+          {/* UIUX-tagphone-READY.md item C: the person's rings carry the Predicted tag, at full from their first frame */}
+          <span className="align-phone__tag">
+            <EvidenceTag evidenceClass="predicted" />
+          </span>
           <p className="align-phone__lead">Drag the stars onto the dots you see.</p>
           <p className="align-phone__help">Drag to move. Turn or pinch with two fingers.</p>
           {onSolveFromHere && (

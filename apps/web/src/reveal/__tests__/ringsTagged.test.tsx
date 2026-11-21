@@ -23,6 +23,7 @@ vi.mock('../RealSkyLayer.js', async (importOriginal) => {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const motionCss = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
+const revealCss = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
 
 // The no-match sample with predicted stars above the horizon, as the align screen's tests draw it
 const base = sample('horizon_predicted_only');
@@ -109,11 +110,23 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
     expect(status().classList.contains('has-predicted')).toBe(false);
   });
 
-  it('at phone width the aligning screen is unchanged until a record places the tag there', () => {
+  // UIUX-tagphone-READY.md item C (decided 13:08 on 21 Nov): the phone's aligning screen leads with the Predicted tag at
+  // left 24, its foot 12 px above "Drag the stars onto the dots you see." (top 654): 614 to 642, at full, no entrance
+  it('at phone width the aligning screen leads with the Predicted tag above its sentence, at full from the first frame', () => {
     act(() => root.render(createElement(RevealPhoto, { session: unmatched(), onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true, onShowPredictedSky: () => {} })));
     act(() => button('Line it up yourself')!.click());
-    expect(q('.align-phone')).not.toBeNull();
-    expect(q('.look-tag')).toBeNull();
+    const block = q('.align-phone')!;
+    const tag = block.firstElementChild!;
+    expect(tag.className).toBe('align-phone__tag');
+    expect(tag.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
+    expect(tag.nextElementSibling!.className).toBe('align-phone__lead');
+    const rule: Record<string, string> = {};
+    postcss.parse(revealCss).walkRules((r) => {
+      if (r.selector === '.align-phone__tag') r.walkDecls((d) => void (rule[d.prop] = d.value));
+    });
+    expect(rule).toEqual({ position: 'absolute', left: '24px', top: '614px', display: 'flex' });
+    // No entrance: the block is not a reveal status column, and nothing in the motion record animates it
+    expect(motionCss.includes('align-phone')).toBe(false);
   });
 
   it('gives that column no entrance, arriving or not, and keeps its words out when it leaves', () => {
