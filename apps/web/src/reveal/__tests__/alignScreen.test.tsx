@@ -124,19 +124,49 @@ describe('at phone width (alp-align)', () => {
     };
     expect(Number.isNaN(fov())).toBe(true);
     const before = spread();
-    touch('pointerdown', 1, 100, 300);
-    touch('pointerdown', 2, 200, 300);
+    // About the frame's centre: the sky turns and scales about the point between the fingers (MOTION-READY-web.md
+    // section 6 A), so both fingers move out and that point stays where it was
+    const cx = parseFloat(layer.style.left) + parseFloat(layer.style.width) / 2;
+    const cy = parseFloat(layer.style.top) + parseFloat(layer.style.height) / 2;
+    touch('pointerdown', 1, cx - 50, cy);
+    touch('pointerdown', 2, cx + 50, cy);
     // Fingers apart, twice the spread: the sky grows twice as large
-    touch('pointermove', 2, 300, 300);
+    touch('pointermove', 2, cx + 100, cy);
+    touch('pointermove', 1, cx - 100, cy);
     expect(spread() / before).toBeGreaterThan(1.8);
-    touch('pointerup', 2, 300, 300);
-    touch('pointerup', 1, 100, 300);
+    touch('pointerup', 2, cx + 100, cy);
+    touch('pointerup', 1, cx - 100, cy);
     // Both lifted, one finger only moves the sky: its size stays, but for the tangent plane's bend (under 2 percent)
     const after = spread();
     touch('pointerdown', 3, 150, 300);
     touch('pointermove', 3, 190, 330);
     touch('pointerup', 3, 190, 330);
     expect(Math.abs(spread() / after - 1)).toBeLessThan(0.02);
+  });
+
+  it('holds the star between two fingers between them as they spread (MOTION-READY-web.md section 6 A)', () => {
+    show(unmatched(), { phone: true });
+    act(() => button('Line it up yourself')!.click());
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    const left = parseFloat(layer.style.left);
+    const top = parseFloat(layer.style.top);
+    const rings = () => [...layer.querySelectorAll('circle')].map((el) => ({ x: left + Number(el.getAttribute('cx')), y: top + Number(el.getAttribute('cy')) }));
+    const touch = (type: string, id: number, x: number, y: number) =>
+      act(() => {
+        const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y });
+        Object.defineProperty(event, 'pointerId', { value: id });
+        layer.dispatchEvent(event);
+      });
+    // Fingers 50 px either side of a ring; the second moves 100 px further out in 10 moves: the point between them
+    // goes 50 px right, and the ring with it
+    const ring = rings()[0]!;
+    touch('pointerdown', 1, ring.x - 50, ring.y);
+    touch('pointerdown', 2, ring.x + 50, ring.y);
+    for (let k = 1; k <= 10; k += 1) touch('pointermove', 2, ring.x + 50 + 10 * k, ring.y);
+    touch('pointerup', 2, ring.x + 150, ring.y);
+    touch('pointerup', 1, ring.x - 50, ring.y);
+    const nearest = Math.min(...rings().map((r) => Math.hypot(r.x - (ring.x + 50), r.y - ring.y)));
+    expect(nearest).toBeLessThan(0.5);
   });
 });
 
@@ -224,6 +254,25 @@ describe('aligning', () => {
     expect(menu(layer)).toBe(true);
     // Elsewhere on the screen the menu stays the browser's
     expect(menu(container.querySelector('[data-testid="align-readout"]')!)).toBe(false);
+  });
+
+  it('keeps the ring taken under the pointer through a drag, wherever it was taken (MOTION-READY-web.md section 6 A)', () => {
+    start();
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    const left = parseFloat(layer.style.left);
+    const top = parseFloat(layer.style.top);
+    const rings = () => [...layer.querySelectorAll('circle')].map((el) => ({ x: left + Number(el.getAttribute('cx')), y: top + Number(el.getAttribute('cy')) }));
+    const pointer = (type: string, x: number, y: number) =>
+      act(() => {
+        layer.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }) as PointerEvent);
+      });
+    // The ring farthest from the frame's centre (720, 450), taken and moved 150 px across and 100 px down in 15 moves
+    const taken = rings().reduce((a, b) => (Math.hypot(b.x - 720, b.y - 450) > Math.hypot(a.x - 720, a.y - 450) ? b : a));
+    pointer('pointerdown', taken.x, taken.y);
+    for (let k = 1; k <= 15; k += 1) pointer('pointermove', taken.x + 10 * k, taken.y + (100 * k) / 15);
+    pointer('pointerup', taken.x + 150, taken.y + 100);
+    const nearest = Math.min(...rings().map((r) => Math.hypot(r.x - (taken.x + 150), r.y - (taken.y + 100))));
+    expect(nearest).toBeLessThan(0.5);
   });
 
   it('keeps nothing after Cancel or Esc: the entry comes back and a new start is the file start', () => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { dragPose, projectAltAz, scalePose, turnPose, type AlignPose, type AlignTarget } from './alignPose.js';
+import { grabPose, pinchPose, projectAltAz, scalePose, skyAt, turnPose, type AlignPose, type AlignTarget } from './alignPose.js';
 import type { PlacedTarget } from './earlyPose.js';
 import type { Box } from './predictedSkyMarks.js';
 
@@ -134,6 +134,9 @@ export const AlignLayer: React.FC<{
   // Every pointer held on the layer: one drags; two (a phone's fingers) turn by the angle between them and scale by
   // their spread
   const held = useRef(new Map<number, { x: number; y: number }>());
+  // The sky one pointer holds, from its first move until a second pointer, Ctrl or letting go: it comes back under the
+  // pointer once a pose can put it there again (near the zenith none may)
+  const holding = useRef<{ altDeg: number; azDeg: number } | null>(null);
 
   // The wheel is taken without the page scrolling (a passive listener cannot stop it)
   useEffect(() => {
@@ -152,6 +155,7 @@ export const AlignLayer: React.FC<{
   const centre = { x: rect.leftPx + rect.widthPx / 2, y: rect.topPx + rect.heightPx / 2 };
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     held.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    holding.current = null;
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -159,23 +163,29 @@ export const AlignLayer: React.FC<{
     const from = pointers.get(event.pointerId);
     if (!from) return;
     const to = { x: event.clientX, y: event.clientY };
+    // A place on screen in the frame's own pixels, and as shares of it
+    const inFrame = (p: { x: number; y: number }) => ({ x: p.x - rect.leftPx, y: p.y - rect.topPx });
+    const share = (p: { x: number; y: number }) => ({ u: (p.x - rect.leftPx) / rect.widthPx, v: (p.y - rect.topPx) / rect.heightPx });
     let next: AlignPose;
     if (pointers.size >= 2) {
-      // Two fingers: the other one stays where it was for this move
+      // Two fingers: the other one stays where it was for this move; the sky turns and scales about the point between
+      // them and follows it (MOTION-READY-web.md section 6 A)
       const other = [...pointers.entries()].find(([id]) => id !== event.pointerId)![1];
-      const a0 = Math.atan2(from.y - other.y, from.x - other.x);
-      const a1 = Math.atan2(to.y - other.y, to.x - other.x);
-      const d0 = Math.hypot(from.x - other.x, from.y - other.y);
-      const d1 = Math.hypot(to.x - other.x, to.y - other.y);
-      next = turnPose(live.current, ((a1 - a0) * 180) / Math.PI);
-      if (d0 > 0 && d1 > 0) next = scalePose(next, d0 / d1);
+      next = pinchPose(live.current, [inFrame(from), inFrame(other)], [inFrame(to), inFrame(other)], rect.widthPx, rect.heightPx);
+      holding.current = null;
     } else if (event.ctrlKey) {
       // The angle swept about the photo's centre
       const a0 = Math.atan2(from.y - centre.y, from.x - centre.x);
       const a1 = Math.atan2(to.y - centre.y, to.x - centre.x);
       next = turnPose(live.current, ((a1 - a0) * 180) / Math.PI);
+      holding.current = null;
     } else {
-      next = dragPose(live.current, to.x - from.x, to.y - from.y, rect.widthPx);
+      // The sky under the pointer stays under it (MOTION-READY-web.md section 6 A)
+      if (!holding.current) {
+        const taken = share(from);
+        holding.current = skyAt(taken.u, taken.v, live.current);
+      }
+      next = grabPose(live.current, holding.current, share(to));
     }
     pointers.set(event.pointerId, to);
     live.current = next;
@@ -183,6 +193,7 @@ export const AlignLayer: React.FC<{
   };
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     held.current.delete(event.pointerId);
+    holding.current = null;
   };
 
   const marks = alignMarks(targets, pose, rect, phone ? 11 : 13, clear);

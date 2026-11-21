@@ -158,18 +158,152 @@ export function startPose(session: ObservationSession, headingDeg?: number): { p
 
 const wrap360 = (deg: number) => ((deg % 360) + 360) % 360;
 
-/** A drag of this many screen pixels over a photo drawn this wide: the stars follow the pointer. */
-export function dragPose(pose: AlignPose, dxPx: number, dyPx: number, frameWidthPx: number): AlignPose {
-  // The angle one pixel spans at the centre of the tangent plane
-  const degPerPx = (2 * Math.tan((pose.fovXDeg / 2) * R)) / Math.max(1, frameWidthPx) / R;
-  // The pointer's move in the unturned photo's axes: across to the right, and down
+/** A place in the photo as a direction in the camera before its height: x right, y up, 1 ahead, the turn undone. */
+function rayOf(u: number, v: number, pose: AlignPose): { x: number; y: number } {
+  const half = Math.tan((pose.fovXDeg / 2) * R);
+  const xr = (u - 0.5) * 2 * half;
+  const yr = (0.5 - v) * 2 * half * pose.aspect;
   const c = Math.cos(pose.rollDeg * R);
   const s = Math.sin(pose.rollDeg * R);
-  const across = dxPx * c + dyPx * s;
-  const down = dyPx * c - dxPx * s;
-  // A heading step spans less sky away from the horizon
-  const perHeading = Math.max(0.05, Math.cos(pose.altDeg * R));
-  return { ...pose, azDeg: wrap360(pose.azDeg - (across * degPerPx) / perHeading), altDeg: Math.max(-89, Math.min(89, pose.altDeg + down * degPerPx)) };
+  return { x: xr * c - yr * s, y: xr * s + yr * c };
+}
+
+/** The sky under a place in the photo (u and v shares of its width and height) through a pose: projectAltAz undone. */
+export function skyAt(u: number, v: number, pose: AlignPose): { altDeg: number; azDeg: number } {
+  const forward = vec(pose.altDeg, pose.azDeg);
+  const right: Vec = [Math.cos(pose.azDeg * R), -Math.sin(pose.azDeg * R), 0];
+  const up = cross(right, forward);
+  const { x, y } = rayOf(u, v, pose);
+  const d = [0, 1, 2].map((i) => forward[i]! + x * right[i]! + y * up[i]!);
+  const n = Math.hypot(d[0]!, d[1]!, d[2]!);
+  return { altDeg: Math.asin(Math.max(-1, Math.min(1, d[2]! / n))) / R, azDeg: wrap360(Math.atan2(d[0]!, d[1]!) / R) };
+}
+
+/**
+ * The person's hand holds the sky (MOTION-READY-web.md section 6 A; k12: Stellarium Web and Aladin Lite grab the sky
+ * 1:1): the pose, its turn and field kept, whose heading and height put the sky point `sky` at `to` (shares of the
+ * shown photo), so a star taken anywhere in the frame stays under the pointer. Walked along the straight path from
+ * where the point stands to `to` in steps of at most 2 percent of the width, so the pose found is the one the hand
+ * carries it to: at each step the exact pose nearest the last (exactGrab); where no pose puts it there (with the turn
+ * held, the zenith always lies on the frame's middle line, so a star near it cannot go far to the side; Stellarium
+ * Web's held horizon is alike), the nearest found by Newton's method on the two angles in the photo's own square
+ * measure, until the hand comes back to where a pose can follow it.
+ */
+export function grabPose(pose: AlignPose, sky: { altDeg: number; azDeg: number }, to: { u: number; v: number }): AlignPose {
+  const at = projectAltAz(sky.altDeg, sky.azDeg, pose);
+  if (!at) return pose;
+  const steps = Math.min(64, Math.max(1, Math.ceil(Math.hypot(to.u - at.u, (to.v - at.v) * pose.aspect) / 0.02)));
+  let posed = pose;
+  for (let i = 1; i <= steps; i += 1) {
+    const step = { u: at.u + ((to.u - at.u) * i) / steps, v: at.v + ((to.v - at.v) * i) / steps };
+    posed = exactGrab(posed, sky, step) ?? solveGrab(posed, sky, step);
+  }
+  return posed;
+}
+
+/**
+ * The pose that puts `sky` exactly at `to` with the turn and field held, nearest the pose the hand is at, or null when
+ * none does within the height clamp. A place's direction (x, y, 1) at camera height a stands at the height whose sine
+ * is (y cos a + sin a) / |(x, y, 1)|, whatever the heading, so a comes in closed form (two answers at most), then the
+ * heading from the place's bearing; so once the hand comes back to where a pose can follow it, the star is under it
+ * again, wherever the nearest pose was left.
+ */
+function exactGrab(pose: AlignPose, sky: { altDeg: number; azDeg: number }, to: { u: number; v: number }): AlignPose | null {
+  const { x, y } = rayOf(to.u, to.v, pose);
+  const k = (Math.hypot(x, y, 1) * Math.sin(sky.altDeg * R)) / Math.hypot(y, 1);
+  if (Math.abs(k) > 1) return null;
+  const phi = Math.atan2(y, 1);
+  const halfTurn = (a: number) => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+  const here = vec(pose.altDeg, pose.azDeg);
+  let best: AlignPose | null = null;
+  let nearest = -Infinity;
+  for (const a of [Math.asin(k) - phi, Math.PI - Math.asin(k) - phi].map(halfTurn)) {
+    if (Math.abs(a) > 89 * R) continue;
+    const azDeg = wrap360(sky.azDeg - Math.atan2(x, Math.cos(a) - y * Math.sin(a)) / R);
+    const closeness = dot(vec(a / R, azDeg), here);
+    if (closeness > nearest) {
+      nearest = closeness;
+      best = { ...pose, azDeg, altDeg: a / R };
+    }
+  }
+  return best;
+}
+
+function solveGrab(pose: AlignPose, sky: { altDeg: number; azDeg: number }, to: { u: number; v: number }): AlignPose {
+  const miss = (p: AlignPose): [number, number] | null => {
+    const at = projectAltAz(sky.altDeg, sky.azDeg, p);
+    return at ? [at.u - to.u, (at.v - to.v) * p.aspect] : null;
+  };
+  const size = (m: [number, number]) => Math.hypot(m[0], m[1]);
+  const posed = (azDeg: number, altDeg: number): AlignPose => ({ ...pose, azDeg: wrap360(azDeg), altDeg: Math.max(-89, Math.min(89, altDeg)) });
+  let best = pose;
+  let bestMiss = miss(pose);
+  if (!bestMiss) return pose;
+  const h = 1e-4;
+  for (let i = 0; i < 24 && size(bestMiss) > 1e-9; i += 1) {
+    // At the height clamp the height's difference is taken inward: taken past it, the clamp would read as no change
+    // and the pose would never move again (AUDIT-C, 21 Nov)
+    const hAlt = best.altDeg + h > 89 ? -h : h;
+    const column = (moved: AlignPose, by: number): [number, number] | null => {
+      const m = miss(moved);
+      return m ? [(m[0] - bestMiss![0]) / by, (m[1] - bestMiss![1]) / by] : null;
+    };
+    const byAz = column(posed(best.azDeg + h, best.altDeg), h);
+    const byAlt = column(posed(best.azDeg, best.altDeg + hAlt), hAlt);
+    if (!byAz || !byAlt) break;
+    const [a, c] = byAz;
+    const [b, d] = byAlt;
+    const det = a * d - b * c;
+    if (Math.abs(det) < 1e-12) break;
+    let stepAz = (-bestMiss[0] * d + bestMiss[1] * b) / det;
+    let stepAlt = (-a * bestMiss[1] + c * bestMiss[0]) / det;
+    const longest = Math.max(Math.abs(stepAz), Math.abs(stepAlt));
+    if (longest > 20) {
+      stepAz *= 20 / longest;
+      stepAlt *= 20 / longest;
+    }
+    // Halved until it lands nearer than where it stands
+    let moved = false;
+    for (let k = 0; k < 8 && !moved; k += 1) {
+      const next = posed(best.azDeg + stepAz, best.altDeg + stepAlt);
+      const m = miss(next);
+      if (m && size(m) < size(bestMiss)) {
+        best = next;
+        bestMiss = m;
+        moved = true;
+      }
+      stepAz /= 2;
+      stepAlt /= 2;
+    }
+    if (!moved) break;
+  }
+  return best;
+}
+
+/**
+ * Two fingers (MOTION-READY-web.md section 6 A): the sky turns and scales about the point between them, 1:1 in angle and
+ * in spread, the field scaled in the tangent of its half width (log-tan-half-FOV, as the camera rig), and the star under
+ * the point between them follows it. Places in pixels of a frame `widthPx` by `heightPx`, from its top left.
+ */
+export function pinchPose(
+  pose: AlignPose,
+  from: readonly [{ x: number; y: number }, { x: number; y: number }],
+  to: readonly [{ x: number; y: number }, { x: number; y: number }],
+  widthPx: number,
+  heightPx: number
+): AlignPose {
+  const [a0, b0] = from;
+  const [a1, b1] = to;
+  const turn = (Math.atan2(b1.y - a1.y, b1.x - a1.x) - Math.atan2(b0.y - a0.y, b0.x - a0.x)) / R;
+  const d0 = Math.hypot(b0.x - a0.x, b0.y - a0.y);
+  const d1 = Math.hypot(b1.x - a1.x, b1.y - a1.y);
+  const sky = skyAt((a0.x + b0.x) / 2 / widthPx, (a0.y + b0.y) / 2 / heightPx, pose);
+  let next = turnPose(pose, turn);
+  if (d0 > 0 && d1 > 0) {
+    const half = Math.atan(Math.tan((next.fovXDeg / 2) * R) * (d0 / d1)) / R;
+    next = { ...next, fovXDeg: Math.max(5, Math.min(150, 2 * half)) };
+  }
+  return grabPose(next, sky, { u: (a1.x + b1.x) / 2 / widthPx, v: (a1.y + b1.y) / 2 / heightPx });
 }
 
 /** A turn by this many degrees, clockwise on screen. */

@@ -7,11 +7,13 @@ import {
   alignReadout,
   alignStartWords,
   alignTargets,
-  dragPose,
   fovFrom35mm,
   fovYOf,
+  grabPose,
+  pinchPose,
   projectAltAz,
   scalePose,
+  skyAt,
   startPose,
   turnPose,
   type AlignPose,
@@ -135,20 +137,22 @@ describe('the start', () => {
 
 describe("the person's drag, turn and scale", () => {
   it('moves the stars with the pointer: a drag right turns the view left, a drag down raises it', () => {
-    // The star under the centre follows the pointer to within 5 percent (the tangent plane bends away from it)
-    const after = projectAltAz(START.altDeg, START.azDeg, dragPose(START, 40, 30, 675))!;
-    expect((after.u - 0.5) * 675).toBeGreaterThan(38);
-    expect((after.u - 0.5) * 675).toBeLessThan(42);
-    expect((after.v - 0.5) * 900).toBeGreaterThan(28.5);
-    expect((after.v - 0.5) * 900).toBeLessThan(31.5);
+    // The star under the centre goes with the pointer, 40 px right and 30 px down of a 675 by 900 frame
+    const sky = skyAt(0.5, 0.5, START);
+    const pose = grabPose(START, sky, { u: 0.5 + 40 / 675, v: 0.5 + 30 / 900 });
+    const after = projectAltAz(sky.altDeg, sky.azDeg, pose)!;
+    expect((after.u - 0.5) * 675).toBeCloseTo(40, 3);
+    expect((after.v - 0.5) * 900).toBeCloseTo(30, 3);
+    expect(pose.azDeg).toBeLessThan(START.azDeg);
+    expect(pose.altDeg).toBeGreaterThan(START.altDeg);
   });
 
   it('keeps the drag in the turned axes once turned', () => {
     const turned = { ...START, rollDeg: 90 };
-    const star = { alt: START.altDeg, az: START.azDeg };
-    const after = projectAltAz(star.alt, star.az, dragPose(turned, 40, 0, 675))!;
-    expect(after.u - 0.5).toBeGreaterThan(0.04);
-    expect(Math.abs(after.v - 0.5)).toBeLessThan(0.01);
+    const sky = skyAt(0.5, 0.5, turned);
+    const after = projectAltAz(sky.altDeg, sky.azDeg, grabPose(turned, sky, { u: 0.5 + 40 / 675, v: 0.5 }))!;
+    expect((after.u - 0.5) * 675).toBeCloseTo(40, 3);
+    expect(Math.abs(after.v - 0.5) * 900).toBeLessThan(0.001);
   });
 
   it('turns by the angle swept, within a half turn either way, and scales the field between 5 and 150 degrees', () => {
@@ -168,11 +172,261 @@ describe("the person's drag, turn and scale", () => {
     for (let seed = 1; seed <= 20; seed += 1) {
       fc.assert(
         fc.property(fc.double({ min: -5000, max: 5000, noNaN: true }), fc.double({ min: -5000, max: 5000, noNaN: true }), fc.double({ min: -180, max: 180, noNaN: true }), (dx, dy, roll) => {
-          const pose = dragPose({ ...START, rollDeg: roll }, dx, dy, 675);
+          const turned = { ...START, rollDeg: roll };
+          const pose = grabPose(turned, skyAt(0.5, 0.5, turned), { u: 0.5 + dx / 675, v: 0.5 + dy / 900 });
           return pose.azDeg >= 0 && pose.azDeg < 360 && pose.altDeg >= -89 && pose.altDeg <= 89;
         }),
         { seed, numRuns: 50 }
       );
     }
+  });
+});
+
+// MOTION-READY-web.md section 6 A (k12: Stellarium Web and Aladin Lite grab the sky 1:1 and stop dead): the star under
+// the pointer stays under it, wherever in the frame it was taken and however high the photo points
+describe('the sky held by the hand (MOTION-READY-web.md section 6 A)', () => {
+  const W = 675;
+  /** A sky point's place in frame pixels through a pose. */
+  const placeOf = (sky: { altDeg: number; azDeg: number }, pose: AlignPose) => {
+    const at = projectAltAz(sky.altDeg, sky.azDeg, pose)!;
+    return { x: at.u * W, y: at.v * W * pose.aspect };
+  };
+
+  it('finds the sky under any place in the frame, the projection undone', () => {
+    for (const pose of [START, { ...START, altDeg: 80, rollDeg: -35, fovXDeg: 100 }]) {
+      for (const [u, v] of [[0.5, 0.5], [0.05, 0.1], [0.9, 0.8]] as const) {
+        const sky = skyAt(u, v, pose);
+        const at = projectAltAz(sky.altDeg, sky.azDeg, pose)!;
+        expect(at.u).toBeCloseTo(u, 9);
+        expect(at.v).toBeCloseTo(v, 9);
+      }
+    }
+  });
+
+  it('keeps a star taken off the centre under the pointer through a drag, low and high in the sky', () => {
+    // Live on rp-b-06 (21 Nov 12:40): a ring taken 425 px off the centre ended 541 px off the pointer after 180 px
+    for (const altDeg of [20, START.altDeg, 70]) {
+      const dy = 100;
+      for (const [u, v] of [[0.1, 0.1], [0.8, 0.7], [0.5, 0.5]] as const) {
+        let pose: AlignPose = { ...START, altDeg };
+        const sky = skyAt(u, v, pose);
+        const start = placeOf(sky, pose);
+        // 15 pointer moves, 150 px across and 100 down (or up) in all, each from where the last left the pointer
+        for (let k = 1; k <= 15; k += 1) {
+          const to = { u: (start.x + (150 * k) / 15) / W, v: (start.y + (dy * k) / 15) / (W * pose.aspect) };
+          const from = { u: (start.x + (150 * (k - 1)) / 15) / W, v: (start.y + (dy * (k - 1)) / 15) / (W * pose.aspect) };
+          pose = grabPose(pose, skyAt(from.u, from.v, pose), to);
+        }
+        const end = placeOf(sky, pose);
+        expect(Math.hypot(end.x - (start.x + 150), end.y - (start.y + dy))).toBeLessThan(0.05);
+      }
+    }
+  });
+
+  it('carries the star along the hand\'s path in one long move, as when a slow frame joins many pointer moves', () => {
+    // From the top of an 82 degree frame to its foot in one move: solved in one go, the pose lands 33 px off the
+    // pointer (found by a sweep of 40000 moves, 61 such); walked along the path in steps, on it
+    const pose: AlignPose = { azDeg: 100.64, altDeg: -6.88, rollDeg: -14.24, fovXDeg: 82.13, aspect: 4 / 3 };
+    const sky = skyAt(0.566, 0.034, pose);
+    const at = placeOf(sky, grabPose(pose, sky, { u: 0.695, v: 0.991 }));
+    expect(Math.hypot(at.x - 0.695 * W, at.y - 0.991 * W * pose.aspect)).toBeLessThan(0.05);
+  });
+
+  /** One drag as the aligning layer makes it: the sky taken at the first place held, each move from the live pose. */
+  const dragThrough = (pose: AlignPose, sky: { altDeg: number; azDeg: number }, places: ReadonlyArray<{ u: number; v: number }>) => {
+    const heights: number[] = [];
+    for (const to of places) {
+      pose = grabPose(pose, sky, to);
+      heights.push(pose.altDeg);
+    }
+    return { pose, heights };
+  };
+  const along = (from: { u: number; v: number }, to: { u: number; v: number }, moves: number) =>
+    Array.from({ length: moves }, (_, k) => ({ u: from.u + ((to.u - from.u) * (k + 1)) / moves, v: from.v + ((to.v - from.v) * (k + 1)) / moves }));
+
+  it('follows a drag down the sky from a pose at the height clamp, 89 degrees', () => {
+    // AUDIT-C, 21 Nov 20:29: at 89 the height's difference was taken past the clamp, so it read as no change and the
+    // pose never moved again
+    const high: AlignPose = { ...START, altDeg: 89 };
+    const sky = skyAt(0.5, 0.8, high);
+    const { pose } = dragThrough(high, sky, along({ u: 0.5, v: 0.8 }, { u: 0.5, v: 0.5 }, 15));
+    const at = placeOf(sky, pose);
+    expect(Math.hypot(at.x - 0.5 * W, at.y - 0.5 * W * pose.aspect)).toBeLessThan(0.05);
+    expect(pose.altDeg).toBeLessThan(89);
+  });
+
+  it('keeps a star taken beyond the zenith on its own side: a small drag never turns the view half round', () => {
+    // A 100 degree frame at 70 degrees reaches past the zenith; a star at its top lies beyond it. Two poses put a star
+    // at a place there, one facing each way; the hand carries the view on, the one nearer the pose it is at
+    const wide: AlignPose = { azDeg: 0, altDeg: 70, rollDeg: 0, fovXDeg: 100, aspect: 4 / 3 };
+    const sky = skyAt(0.5, 0.05, wide);
+    expect(sky.azDeg).toBeCloseTo(180, 6);
+    // Moves of 0.4 percent, as a pointer gives them, each one step of the path: the view checked after every one
+    let pose = wide;
+    for (const to of along({ u: 0.5, v: 0.05 }, { u: 0.52, v: 0.07 }, 5)) {
+      pose = grabPose(pose, sky, to);
+      const at = placeOf(sky, pose);
+      expect(Math.hypot(at.x - to.u * W, at.y - to.v * W * pose.aspect)).toBeLessThan(0.05);
+      expect(Math.min(pose.azDeg, 360 - pose.azDeg)).toBeLessThan(5);
+      expect(Math.abs(pose.altDeg - 70)).toBeLessThan(5);
+    }
+  });
+
+  it('at the height clamp, still turns the heading to bring a star no pose can reach as near the pointer as it goes', () => {
+    // From 89 degrees a star in the frame's lower right corner dragged to its lower left: no pose with the turn held
+    // puts it there; the nearest keeps the height at the clamp and turns the heading until no turn brings it nearer
+    const high: AlignPose = { azDeg: 0, altDeg: 89, rollDeg: 0, fovXDeg: 30, aspect: 4 / 3 };
+    const sky = skyAt(0.9, 0.9, high);
+    const to = { u: 0.05, v: 0.95 };
+    const missAt = (pose: AlignPose) => {
+      const at = placeOf(sky, pose);
+      return Math.hypot(at.x - to.u * W, at.y - to.v * W * pose.aspect);
+    };
+    const pose = grabPose(high, sky, to);
+    expect(pose.altDeg).toBe(89);
+    for (const turn of [-2, -0.5, 0.5, 2]) expect(missAt({ ...pose, azDeg: pose.azDeg + turn })).toBeGreaterThan(missAt(pose) - 1);
+  });
+
+  it('brings the star back under the pointer once a pose can put it there, after the drag has met the clamp', () => {
+    // AUDIT-C's probe: from 75 degrees the centre star dragged to the foot in 2 percent moves meets 89 at v 0.72;
+    // dragged back to the centre in the same drag it ended 19 percent of the height off the pointer
+    const pose: AlignPose = { ...START, altDeg: 75 };
+    const sky = skyAt(0.5, 0.5, pose);
+    const down = dragThrough(pose, sky, along({ u: 0.5, v: 0.5 }, { u: 0.5, v: 1 }, 25));
+    expect(Math.max(...down.heights)).toBe(89);
+    const back = dragThrough(down.pose, sky, along({ u: 0.5, v: 1 }, { u: 0.5, v: 0.5 }, 25));
+    const at = placeOf(sky, back.pose);
+    expect(Math.hypot(at.x - 0.5 * W, at.y - 0.5 * W * back.pose.aspect)).toBeLessThan(0.05);
+    expect(back.pose.altDeg).toBeCloseTo(75, 6);
+  });
+
+  it('moves only the heading and height: the turn and the field stay', () => {
+    const turned = { ...START, rollDeg: 40, fovXDeg: 30 };
+    const after = grabPose(turned, skyAt(0.3, 0.6, turned), { u: 0.45, v: 0.5 });
+    expect(after.rollDeg).toBe(40);
+    expect(after.fovXDeg).toBe(30);
+    expect(after.aspect).toBe(turned.aspect);
+  });
+
+  /**
+   * Whether a pose with this turn and field puts a star this high at this place: with the turn held, the camera's
+   * height `a` must solve sin(star height) = (y cos a + sin a) / |(x, y, 1)| for the place's direction (x right, y up,
+   * 1 ahead) in the unturned camera, within the poles (the zenith always lies on the frame's middle line, so a star
+   * near it cannot go far to the side; Stellarium Web's held horizon is alike).
+   */
+  const heights = (altDeg: number, u: number, v: number, pose: AlignPose): [number, number] | null => {
+    const half = Math.tan((pose.fovXDeg / 2) * (Math.PI / 180));
+    const xr = (u - 0.5) * 2 * half;
+    const yr = (0.5 - v) * 2 * half * pose.aspect;
+    const c = Math.cos(pose.rollDeg * (Math.PI / 180));
+    const sn = Math.sin(pose.rollDeg * (Math.PI / 180));
+    const x = xr * c - yr * sn;
+    const y = xr * sn + yr * c;
+    const k = (Math.hypot(x, y, 1) * Math.sin(altDeg * (Math.PI / 180))) / Math.hypot(y, 1);
+    if (Math.abs(k) > 0.999) return null;
+    const phi = Math.atan2(y, 1);
+    // The two heights that solve it, in degrees, each wrapped to within a half turn
+    const wrap = (a: number) => ((((a * 180) / Math.PI + 540) % 360) - 180);
+    return [wrap(Math.asin(k) - phi), wrap(Math.PI - Math.asin(k) - phi)];
+  };
+  /** Whether the camera height the hand carries from the start stays solvable and within the poles along the path. */
+  const reachable = (altDeg: number, path: ReadonlyArray<readonly [number, number]>, pose: AlignPose) => {
+    const first = heights(altDeg, path[0]![0], path[0]![1], pose);
+    if (!first) return false;
+    const branch = Math.abs(first[0] - pose.altDeg) < Math.abs(first[1] - pose.altDeg) ? 0 : 1;
+    if (Math.abs(first[branch] - pose.altDeg) > 1e-6) return false;
+    return path.every(([pu, pv]) => {
+      const h = heights(altDeg, pu, pv, pose);
+      return h !== null && Math.abs(h[branch]) < 88;
+    });
+  };
+
+  it('holds the star under the pointer wherever a pose with the held turn can, along the whole move (property, 20 seeds)', () => {
+    let held = 0;
+    for (let seed = 1; seed <= 20; seed += 1) {
+      fc.assert(
+        fc.property(
+          fc.double({ min: 0, max: 359.9, noNaN: true }),
+          fc.double({ min: -60, max: 75, noNaN: true }),
+          fc.double({ min: -180, max: 180, noNaN: true }),
+          fc.double({ min: 10, max: 110, noNaN: true }),
+          fc.double({ min: 0.05, max: 0.95, noNaN: true }),
+          fc.double({ min: 0.05, max: 0.95, noNaN: true }),
+          fc.double({ min: 0.05, max: 0.95, noNaN: true }),
+          fc.double({ min: 0.05, max: 0.95, noNaN: true }),
+          (azDeg, altDeg, rollDeg, fovXDeg, u, v, u2, v2) => {
+            const pose: AlignPose = { azDeg, altDeg, rollDeg, fovXDeg, aspect: 4 / 3 };
+            const sky = skyAt(u, v, pose);
+            const after = grabPose(pose, sky, { u: u2, v: v2 });
+            const inRange = after.azDeg >= 0 && after.azDeg < 360 && after.altDeg >= -89 && after.altDeg <= 89 && after.rollDeg === rollDeg && after.fovXDeg === fovXDeg;
+            const path = Array.from({ length: 21 }, (_, i) => [u + ((u2 - u) * i) / 20, v + ((v2 - v) * i) / 20] as const);
+            if (!reachable(sky.altDeg, path, pose)) return inRange;
+            held += 1;
+            const at = placeOf(sky, after);
+            return inRange && Math.hypot(at.x - u2 * W, at.y - v2 * W * pose.aspect) < 0.05;
+          }
+        ),
+        { seed, numRuns: 50 }
+      );
+    }
+    // Most moves are ones a pose can follow
+    expect(held).toBeGreaterThan(500);
+  });
+
+  it('leaves the height clamp whenever the drag comes back to where a pose can follow it (property, 20 seeds)', () => {
+    let clamped = 0;
+    for (let seed = 1; seed <= 20; seed += 1) {
+      fc.assert(
+        fc.property(
+          fc.double({ min: 0, max: 359.9, noNaN: true }),
+          fc.double({ min: 55, max: 89, noNaN: true }),
+          fc.double({ min: -30, max: 30, noNaN: true }),
+          fc.double({ min: 20, max: 110, noNaN: true }),
+          fc.double({ min: 0.1, max: 0.9, noNaN: true }),
+          fc.double({ min: 0.1, max: 0.6, noNaN: true }),
+          (azDeg, altDeg, rollDeg, fovXDeg, u, v) => {
+            // A star taken high in the frame, dragged to its foot (the view rises into the clamp), and back
+            const pose: AlignPose = { azDeg, altDeg, rollDeg, fovXDeg, aspect: 4 / 3 };
+            const sky = skyAt(u, v, pose);
+            const down = dragThrough(pose, sky, along({ u, v }, { u, v: 0.98 }, 50));
+            if (down.heights.includes(89)) clamped += 1;
+            const back = dragThrough(down.pose, sky, along({ u, v: 0.98 }, { u, v }, 50));
+            const at = placeOf(sky, back.pose);
+            return Math.hypot(at.x - u * W, at.y - v * W * pose.aspect) < 0.05;
+          }
+        ),
+        // Found by this property and a sweep of 1000: a star high in a frame's corner, left 217 and 269 px off the
+        // pointer by Newton's method alone, from where the nearest pose had been left on the way down
+        {
+          seed,
+          numRuns: 25,
+          examples: [
+            [0, 55, 0, 60.50988173213951, 0.8999508849316039, 0.10000000000000023],
+            [0, 55, 0, 88.75819962188253, 0.9, 0.12520034225857085],
+          ],
+        }
+      );
+    }
+    // Most of these drags meet the clamp on the way down
+    expect(clamped).toBeGreaterThan(250);
+  });
+
+  it('turns and scales about the point between two fingers: that star stays between them, 1:1 in angle and spread', () => {
+    const H = W * START.aspect;
+    // Two fingers 120 px apart about a place up and left of the centre, spread to 180 px and turned 20 degrees
+    const mid = { x: W * 0.33, y: H * 0.33 };
+    const sky = skyAt(mid.x / W, mid.y / H, START);
+    const at = (gap: number, deg: number) => {
+      const c = Math.cos((deg * Math.PI) / 180);
+      const s = Math.sin((deg * Math.PI) / 180);
+      return [{ x: mid.x - (gap / 2) * c, y: mid.y - (gap / 2) * s }, { x: mid.x + (gap / 2) * c, y: mid.y + (gap / 2) * s }] as const;
+    };
+    let pose = START;
+    for (let k = 1; k <= 10; k += 1) pose = pinchPose(pose, at(120 + 6 * (k - 1), 2 * (k - 1)), at(120 + 6 * k, 2 * k), W, H);
+    const end = placeOf(sky, pose);
+    expect(Math.hypot(end.x - mid.x, end.y - mid.y)).toBeLessThan(0.05);
+    expect(pose.rollDeg).toBeCloseTo(20, 6);
+    // 1:1 in spread: the field's half width in tangent measure shrinks by 120 over 180 (log-tan-half-FOV, as the rig)
+    expect(Math.tan((pose.fovXDeg / 2) * (Math.PI / 180)) / Math.tan((START.fovXDeg / 2) * (Math.PI / 180))).toBeCloseTo(120 / 180, 9);
   });
 });
