@@ -196,6 +196,14 @@ CHANGES = {
         "between their centres seen from above; NASA's own flat colours kept, the normals made again, smooth within "
         "an angle and sharp beyond it, and fewer triangles kept at every level."
     ),
+    # lod0 for a model of flat colours with drawn flag, panel and solar cell textures (recipe "changes": "flags")
+    "lod0_flags": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, NASA's drawn textures "
+        "(the national flags with their lettering, the window and stripe panels, the solar cells) kept as the base "
+        "colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the "
+        "normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

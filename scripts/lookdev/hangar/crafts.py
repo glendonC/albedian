@@ -1527,6 +1527,58 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.6,
         "changes": "pads",
     },
+    "apollosoyuz": {
+        "title": "Apollo-Soyuz",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-apollo-soyuz",
+            "title": "Apollo Soyuz, NASA 3D Resources",
+            "folder": "Apollo Soyuz",
+            "file": "Apollo Soyuz.glb",
+            "bytes": 952_608,
+            "sha256": "4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db",
+            "picture": "Apollo Soyuz.png",
+            "picture_bytes": 1_032_455,
+            "picture_sha256": "26dcfbc11184427c1829fe73a8cfc19f8f1cb4c17fe4f170bbc03cb8f9fd657c",
+            "local": "apollo-soyuz",
+        },
+        "drop_objects": [],
+        # NASA's file holds the docked pair along X in the import frame: Apollo's engine bell at the far -X end, its
+        # command module's nose against the docking module, Soyuz along +X with its two solar panels spanning Z. The
+        # pair is flown along +X, Apollo's main engine behind it, with +Z up as NASA's own render stands it (a choice of
+        # view, not a sourced attitude).
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # ASTP's Apollo was CSM 111, "essentially the same type of spacecraft flown on Apollo 12, 13, and 14" (NASA
+        # SP-4209, The Partnership, page 197), so NSSDC's Apollo 12 record gives its service module's diameter. Scale
+        # from that module's skin, NASA's "blinn11SG", one plain cylinder 5.1237 units across in both y and z. The model
+        # does not hold NASA's other sizes: its command module comes out about 2.7 m tall against that record's 3.65 m,
+        # so the scale is true to the service module alone.
+        "scale_from": {
+            "material": "blinn11SG",
+            "axis": "y",
+            "metres": 3.9,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099A",
+            "true_to": "part",
+            "quote": "The SM was a cylinder 3.9 meters in diameter and 7.6 m long which was attached to the back of the CM.",
+        },
+        # NASA's drawn textures (the service module's panel with the US flag and UNITED STATES, the command module's
+        # windows, Soyuz's panel with the Soviet flag and CCCP, its stripes, the solar cells) kept as the base colour
+        # with one roughness and no metalness; no NASA insignia or logotype in any of them. The rest NASA's flat colours.
+        "materials": {
+            "blinn11SG": {"role": "textured", "metallic": 0.0, "roughness": 0.41},
+            "blinn14SG": {"role": "textured", "metallic": 0.0, "roughness": 0.41},
+            "lambert5SG": {"role": "textured", "metallic": 0.0, "roughness": 0.41},
+            "lambert6SG": {"role": "textured", "metallic": 0.0, "roughness": 0.41},
+            "lambert4SG": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # Half the docked pair's length (about 16.5 m at this scale), as the picker frames a craft by its body radius.
+        "body_radius_m": 8.0,
+        "changes": "flags",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2053,6 +2105,24 @@ HANGAR: list[dict] = [
             # The mission page's Key Dates line; its landing line that names the site is left out for its coordinates
             {"key": "landedOnMars", "value": "1976-07-20", "page": "https://science.nasa.gov/mission/viking-1/", "quote": "July 20, 1976: Lander touched down"},
             {"key": "contactLost", "value": "1982-11-13", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C", "quote": "It operated until 13 November 1982 when contact was lost."},
+        ],
+    },
+    {
+        # Apollo and Soyuz docked in Earth orbit: no speed between stars. NASA's two pages date the docking without its
+        # year ("on July 17", "on 17 July."), so the dated fact is the handshake the overview gives with its year. The
+        # service module's size is Apollo 12's, the same type of spacecraft by NASA's history of the project.
+        "id": "apollo-soyuz",
+        "name": "Apollo-Soyuz",
+        "model": "apollosoyuz",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1975-07-15", "page": "https://www.nasa.gov/apollo-soyuz-test-project/", "quote": "On July 15, 1975, an Apollo spacecraft launched"},
+            {"key": "handshake", "value": "1975-07-17", "page": "https://www.nasa.gov/history/astp/overview.html", "quote": "On 17 July 1975, Thomas Stafford of the United States shook hands with Alexei Leonov"},
+            {"key": "dockingModule", "value": "an airlock and transfer corridor", "page": "https://www.nasa.gov/apollo-soyuz-test-project/", "quote": "The docking module was designed and constructed by NASA to serve as an airlock and transfer corridor between the two craft."},
+            {"key": "csmType", "value": "as on Apollo 12, 13 and 14", "page": "https://www.nasa.gov/wp-content/uploads/2023/04/sp-4209.pdf", "quote": "essentially the same type of spacecraft flown on Apollo 12, 13, and 14"},
+            {"key": "smDiameterM", "value": 3.9, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099A", "quote": "The SM was a cylinder 3.9 meters in diameter and 7.6 m long which was attached to the back of the CM."},
+            # The project page's caption under its commemorative painting, the line the design lane's row rests on
+            {"key": "orbit", "value": "Earth orbit", "page": "https://www.nasa.gov/apollo-soyuz-test-project/", "quote": "The joint U.S.-USSR ASTP docking mission in Earth orbit took place in July 1975."},
         ],
     },
 ]

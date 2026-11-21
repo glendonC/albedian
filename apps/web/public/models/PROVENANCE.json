@@ -183,6 +183,65 @@
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.png (1124858 bytes, SHA-256 ceaaee11e4f5475462257287e73f3dcd547e3eab87810e48ffe51a7c66dcaf1f)."
     },
     {
+      "path": "hangar/apollosoyuz/apollosoyuz_lod0.glb",
+      "sha256": "e8efaaaadb0fe5900132427385aa72c863721a620b356fe87cd5b35c2a830ed1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, NASA's drawn textures (the national flags with their lettering, the window and stripe panels, the solar cells) kept as the base colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.glb (952608 bytes, SHA-256 4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/apollosoyuz/apollosoyuz_lod1.glb",
+      "sha256": "883c0782e9bd43718ee07123856302f4fa88b5709b50afc2191ca467e96a3cd8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.glb (952608 bytes, SHA-256 4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/apollosoyuz/apollosoyuz_lod2.glb",
+      "sha256": "8a05c3aecc7ec25b98ffaef4bc5eaa0123d9cd48b24ed6e0e3d3c17077da2887",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.glb (952608 bytes, SHA-256 4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/apollosoyuz/apollosoyuz_picker.webp",
+      "sha256": "ef3618c2b1256141b5b47ab5a588a792bc7e72f45be63f9899d8f444ac5f4da0",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.png (1032455 bytes, SHA-256 26dcfbc11184427c1829fe73a8cfc19f8f1cb4c17fe4f170bbc03cb8f9fd657c)."
+    },
+    {
       "path": "hangar/cassini/cassini_lod0.glb",
       "sha256": "33cafd6c0bca4407ea8c37fd1565bdac0f0933ffe0ba5b948161c04ca82115f1",
       "sources": [
@@ -597,7 +656,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "04d5d7d882e93ff302454f546c014706dd30d187c961cef6ba5b0bf356df97ee",
+      "sha256": "f56ea5613106c409340ec32ced3a61e47f451fc1949e73175dc5e1affe40e763",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

@@ -1859,6 +1859,64 @@
         "quote": "equilateral triangle with 2.21 m sides",
         "partPads": 3
       }
+    },
+    "apollosoyuz": {
+      "title": "Apollo-Soyuz",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "apollosoyuz/apollosoyuz_lod0.glb",
+          "bytes": 1028452,
+          "triangles": 32954,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "apollosoyuz/apollosoyuz_lod1.glb",
+          "bytes": 540184,
+          "triangles": 16477,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "apollosoyuz/apollosoyuz_lod2.glb",
+          "bytes": 215556,
+          "triangles": 5931,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "apollosoyuz/apollosoyuz_picker.webp",
+          "bytes": 2816,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.95,
+          -3.656,
+          -4.312
+        ],
+        "max": [
+          1.95,
+          3.677,
+          12.164
+        ]
+      },
+      "bodyRadiusM": 8.0,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "blinn11SG",
+        "metres": 3.9,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099A",
+        "quote": "The SM was a cylinder 3.9 meters in diameter and 7.6 m long which was attached to the back of the CM.",
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -3147,6 +3205,50 @@
           "value": "1982-11-13",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1975-075C",
           "quote": "It operated until 13 November 1982 when contact was lost."
+        }
+      ]
+    },
+    {
+      "id": "apollo-soyuz",
+      "name": "Apollo-Soyuz",
+      "model": "apollosoyuz",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1975-07-15",
+          "page": "https://www.nasa.gov/apollo-soyuz-test-project/",
+          "quote": "On July 15, 1975, an Apollo spacecraft launched"
+        },
+        {
+          "key": "handshake",
+          "value": "1975-07-17",
+          "page": "https://www.nasa.gov/history/astp/overview.html",
+          "quote": "On 17 July 1975, Thomas Stafford of the United States shook hands with Alexei Leonov"
+        },
+        {
+          "key": "dockingModule",
+          "value": "an airlock and transfer corridor",
+          "page": "https://www.nasa.gov/apollo-soyuz-test-project/",
+          "quote": "The docking module was designed and constructed by NASA to serve as an airlock and transfer corridor between the two craft."
+        },
+        {
+          "key": "csmType",
+          "value": "as on Apollo 12, 13 and 14",
+          "page": "https://www.nasa.gov/wp-content/uploads/2023/04/sp-4209.pdf",
+          "quote": "essentially the same type of spacecraft flown on Apollo 12, 13, and 14"
+        },
+        {
+          "key": "smDiameterM",
+          "value": 3.9,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099A",
+          "quote": "The SM was a cylinder 3.9 meters in diameter and 7.6 m long which was attached to the back of the CM."
+        },
+        {
+          "key": "orbit",
+          "value": "Earth orbit",
+          "page": "https://www.nasa.gov/apollo-soyuz-test-project/",
+          "quote": "The joint U.S.-USSR ASTP docking mission in Earth orbit took place in July 1975."
         }
       ]
     }
