@@ -1469,7 +1469,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "x",
             "metres": 1,
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
-            "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal.",
+            "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal",
         },
         "materials": {
             "tex_01": {"role": "photo_atlas"},
@@ -2030,7 +2030,7 @@ HANGAR: list[dict] = [
             {"key": "flybyMassKg", "value": 650, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"},
             {"key": "impactorMassKg", "value": 370, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "a 370 kg cylindrical copper impactor attached to a 650 kg flyby bus"},
             {"key": "flybySize", "value": "about 3.2 by 1.7 by 2.3 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The flyby spacecraft measures approximately 3.2 m x 1.7 m x 2.3 m"},
-            {"key": "dishDiameterM", "value": 1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."},
+            {"key": "dishDiameterM", "value": 1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal"},
             # The mission page's Key Dates line; the same page names the comet in its Target field, "Comet 9P/Tempel 1"
             {"key": "tempel1Impact", "value": "2005-07-04", "page": "https://science.nasa.gov/mission/deep-impact-epoxi/", "quote": "July 4, 2005: Comet impact"},
             {"key": "hartley2Flyby", "value": "2010-11-04", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A", "quote": "The encounter with Hartley 2 took place on 4 November 2010 at approximately 14:00 UT"},

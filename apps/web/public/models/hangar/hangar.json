@@ -1799,7 +1799,7 @@
         "part": "dish_AO",
         "metres": 1,
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
-        "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."
+        "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal"
       }
     },
     "viking": {
@@ -3078,7 +3078,7 @@
           "key": "dishDiameterM",
           "value": 1,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A",
-          "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal."
+          "quote": "through a 1 meter diameter parabolic dish antenna mounted on a 2-axis gimbal"
         },
         {
           "key": "tempel1Impact",
