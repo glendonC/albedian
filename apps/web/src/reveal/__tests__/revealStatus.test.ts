@@ -242,3 +242,30 @@ describe("the moment-blind warning's words on screen (C22)", () => {
     for (const screen of SCREENS) expect(onScreenWarning(`${screen} ${RECORD}`)).toBe(screen);
   });
 });
+
+// C21 (UIUX-skylinewords-READY.md) and C23 (UIUX-sunwords-READY.md): a pose's refusal, under the family's prefix, shows its
+// reason; the numbers that follow in a second sentence stay in the solution's record (C5's rule)
+describe("a pose's refusal on screen", () => {
+  it("shows C21's skyline refusal by its reason only", () => {
+    const record =
+      "The sky is not lined up over the picture: no skyline was found to line the Moon up with. A skyline here is a row 38 to 72 percent of the way down below which the picture turns brighter by at least 6 times the sky's noise.";
+    expect(onScreenWarning(record)).toBe('The sky is not lined up over the picture: no skyline was found to line the Moon up with.');
+  });
+
+  it("shows C23's Sun refusals by their reasons only", () => {
+    expect(onScreenWarning('The sky is not lined up over the picture: the camera\'s clock or its time zone looks wrong. The Sun stands about 14.1 degrees above the skyline in the picture, but was 9.9 degrees up at the recorded time.')).toBe(
+      "The sky is not lined up over the picture: the camera's clock or its time zone looks wrong."
+    );
+    expect(onScreenWarning("The sky is not lined up over the picture: the brightest glare is too wide to be the Sun's. It is wider than 8 times the Sun's disk through the file's own 26 mm lens.")).toBe(
+      "The sky is not lined up over the picture: the brightest glare is too wide to be the Sun's."
+    );
+  });
+
+  it('keeps a one-sentence refusal whole, numbers in it and all', () => {
+    for (const whole of [
+      'The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.',
+      'The sky is not lined up over the picture: the fit found no camera that puts the Moon on the bright spot at (412, 233) px from the left and top with the skyline at row 610 level within 0.5 px.',
+    ])
+      expect(onScreenWarning(whole)).toBe(whole);
+  });
+});
