@@ -538,7 +538,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "ab27c128edde5f57784112d02abc1351c3ba587c4f21da7ee168ef74afc46046",
+      "sha256": "121d596575eec2e26322b1409e0339303659db0c0b19c3cfe154a1a9a4308e08",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

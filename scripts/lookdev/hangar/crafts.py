@@ -1911,6 +1911,7 @@ HANGAR: list[dict] = [
         "travel": None,
         "facts": [
             {"key": "launch", "value": "2008-10-19", "page": "https://science.nasa.gov/mission/ibex/", "quote": "Oct. 19, 2008 | 17:48 UT"},
+            {"key": "orbit", "value": "around Earth", "page": "https://science.nasa.gov/mission/ibex/", "quote": "IBEX is observing the solar system boundary from orbit around Earth."},
             {"key": "dryMassKg", "value": 80, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The dry mass is 80 kg of which the instrument payload comprises 26 kg."},
             {"key": "launchMassKg", "value": 462, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "the entire flight system launch mass, including the ATK Star 27 solid rocket motor, is 462 kg"},
             {"key": "baseAcrossCm", "value": 95, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."},

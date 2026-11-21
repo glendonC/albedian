@@ -2854,6 +2854,12 @@
           "quote": "Oct. 19, 2008 | 17:48 UT"
         },
         {
+          "key": "orbit",
+          "value": "around Earth",
+          "page": "https://science.nasa.gov/mission/ibex/",
+          "quote": "IBEX is observing the solar system boundary from orbit around Earth."
+        },
+        {
           "key": "dryMassKg",
           "value": 80,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
