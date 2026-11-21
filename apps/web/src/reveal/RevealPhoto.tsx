@@ -449,6 +449,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const [versions, setVersions] = useState<StoredRestoration[]>([]);
   const phoneCompare = phonePhoto && !there && !skyShown && !originalPixels && !bareFrame && frame !== null && versions.length > 0;
   const compareOn = compareShown || phoneCompare;
+  // UIUX-restorephone-READY.md, ruled 15:38 and decided by the lead 15:43 on 21 Nov (D15's pictures): over the
+  // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
+  // compare is not on screen, so no predicted layer stands without its tag
+  const drawnMarks = compareOn ? marks.filter((mark) => mark.kind !== 'predicted') : marks;
   useEffect(() => {
     onPhoneCompareChange?.(phoneCompare);
   }, [phoneCompare]);
@@ -544,7 +548,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   }, [picked]);
   const cardStar = picked ?? heldStar;
   const card = useLeaving(!answer && !there && picked !== null, cardLeaveMs);
-  const leaderMark = !phone && !bareFrame && !earthOnly && picked ? (marks.find((mark) => mark.picked) ?? null) : null;
+  const leaderMark = !phone && !bareFrame && !earthOnly && picked ? (drawnMarks.find((mark) => mark.picked) ?? null) : null;
   const leaderNow = leaderMark ? { d: leaderPath(leaderMark, viewW), predicted: leaderMark.kind === 'predicted' } : null;
   const [heldLeader, setHeldLeader] = useState(leaderNow);
   useEffect(() => {
@@ -853,7 +857,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {marksShown && !earthOnly && !(compareShown && compareZoomed) && (
       <div className={marksClass} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
-        {marks.map((mark) =>
+        {drawnMarks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg
               key={`may-be-off-${mark.finding.id}`}
@@ -867,7 +871,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </svg>
           )
         )}
-        {marks.map((mark) => (
+        {drawnMarks.map((mark) => (
           <button
             key={mark.finding.id}
             type="button"
