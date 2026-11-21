@@ -77,6 +77,13 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     const ibexWith = { ...CRAFTS.ibex!, factKeys: [...CRAFTS.ibex!.factKeys, 'orbit'] };
     expect([awaitingFact(ibexWithout), noTravelSentence(ibexWithout), craftDetail(ibexWithout)]).toEqual(['orbit', null, '']);
     expect([awaitingFact(ibexWith), noTravelSentence(ibexWith), craftDetail(ibexWith)]).toEqual([null, 'No real travel time: IBEX stays near Earth.', 'near Earth']);
+    // The 21 Nov 12:40 ruling (hangar-5): Deep Impact's words wait for Tempel 1 in its record, the Viking Lander's for its landing on Mars
+    const withFact = (id: string, key: string, has: boolean) => ({ ...CRAFTS[id]!, factKeys: has ? [...CRAFTS[id]!.factKeys, key] : CRAFTS[id]!.factKeys.filter((k) => k !== key) });
+    const rows = (craft: ReturnType<typeof withFact>) => [awaitingFact(craft), noTravelSentence(craft), craftDetail(craft)];
+    expect(rows(withFact('deep-impact', 'tempel1Impact', false))).toEqual(['tempel1Impact', null, '']);
+    expect(rows(withFact('deep-impact', 'tempel1Impact', true))).toEqual([null, 'No real travel time: Deep Impact flew to comet Tempel 1 and then comet Hartley 2, within the Solar System.', 'to comet Tempel 1']);
+    expect(rows(withFact('viking-lander', 'landedOnMars', false))).toEqual(['landedOnMars', null, '']);
+    expect(rows(withFact('viking-lander', 'landedOnMars', true))).toEqual([null, "No real travel time: Viking 1's lander stood on Mars until contact was lost in 1982.", 'on Mars']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);

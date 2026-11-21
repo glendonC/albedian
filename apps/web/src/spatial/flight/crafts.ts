@@ -66,6 +66,9 @@ interface HangarFile {
  * Every other model keeps the hangar's frame: +Z its line of flight, +Y the up of its picker picture (build_craft.py
  * renders the pictures with the camera's up along it).
  */
+/** The look from the front quarter on the left, level (the hangar's picture camera's view across, build_craft.py). */
+const FRONT_QUARTER: Vec3 = [0.55 / Math.hypot(0.55, 1), 0, -1 / Math.hypot(0.55, 1)];
+
 const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly up: Vec3 }>> = {
   voyager: { up: [1, 0, 0] },
   hubble: { forward: [0, -1, 0], up: [0, 0, 1] },
@@ -79,6 +82,13 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   // Cassini, from its side: the dish (facing -Z) up, the magnetometer boom (+Y) to the upper left (AUDIT-C's hold on rest-1)
   cassini: { forward: [-1, 0, 0], up: [0, Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)] },
   vanallen: { forward: [0, -1, 0], up: [0, 0, 1] },
+  // hangar-5, checked live on 21 Nov against the pictures (the 12:40 ruling): each seen from its front quarter on the
+  // left, as the hangar's own picture camera looks (build_craft.py's view -0.55 across to 1 along the front, about
+  // 28.8 degrees; its "a little above" not taken), so Deep Impact's camera opening sits at the front right with the dish
+  // behind on the left, and the Viking Lander's dish at the upper left with its sampler arm to the lower right. Both keep
+  // the hangar's up: the lander stands on its legs, its only pose
+  deepimpact: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  viking: { forward: FRONT_QUARTER, up: [0, 1, 0] },
 };
 
 /**

@@ -37,13 +37,17 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   // The 18:35 ruling (hangar-4)
   ibex: 'near Earth',
   'van-allen-probes': 'near Earth',
+  // The 21 Nov 12:40 ruling (hangar-5)
+  'deep-impact': 'to comet Tempel 1',
+  'viking-lander': 'on Mars',
 };
 
 /**
  * The fact a craft's words wait for, by entry (the 18:35 ruling: IBEX's place and sentence show once its record names its
- * orbit, from its NASA page; until then only its name shows).
+ * orbit, from its NASA page; until then only its name shows). The 21 Nov 12:40 ruling holds Deep Impact's until its
+ * record names Tempel 1 and the Viking Lander's until it names the landing on Mars, each from NASA's mission page.
  */
-const NEEDS_FACT: Readonly<Record<CraftId, string>> = { ibex: 'orbit' };
+const NEEDS_FACT: Readonly<Record<CraftId, string>> = { ibex: 'orbit', 'deep-impact': 'tempel1Impact', 'viking-lander': 'landedOnMars' };
 
 /** The fact this craft's words still wait for in the hangar's record, or none. */
 export function awaitingFact(craft: Craft): string | null {
@@ -70,6 +74,8 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   cassini: 'No real travel time: Cassini orbited Saturn until its mission ended in 2017.',
   ibex: 'No real travel time: IBEX stays near Earth.',
   'van-allen-probes': "No real travel time: the Van Allen Probes studied Earth's radiation belts, near Earth.",
+  'deep-impact': 'No real travel time: Deep Impact flew to comet Tempel 1 and then comet Hartley 2, within the Solar System.',
+  'viking-lander': "No real travel time: Viking 1's lander stood on Mars until contact was lost in 1982.",
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */

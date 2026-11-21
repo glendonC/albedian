@@ -179,7 +179,16 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(CRAFTS.cassini!.modelUp[1]).toBeCloseTo(0.5, 12);
     expect(CRAFTS.cassini!.modelUp[2]).toBeCloseTo(-Math.sqrt(3) / 2, 12);
     expect([CRAFTS['van-allen-probes']!.modelForward, CRAFTS['van-allen-probes']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes']);
+    // hangar-5, the live check of 21 Nov against each picture (the 12:40 ruling): each seen from its front quarter on
+    // the left, level, as the hangar's picture camera looks (about 28.8 degrees off its front), the hangar's up kept, so
+    // the Viking Lander stands on its legs
+    for (const id of ['deep-impact', 'viking-lander']) {
+      const [fx, fy, fz] = CRAFTS[id]!.modelForward;
+      expect(CRAFTS[id]!.modelUp).toEqual([0, 1, 0]);
+      expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
+      expect([fz < 0, (Math.atan2(fx, -fz) * 180) / Math.PI]).toEqual([true, expect.closeTo(28.81, 2)]);
+    }
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'deep-impact', 'viking-lander']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
     expect(['juno', 'messenger', 'mro', 'stardust', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
