@@ -338,9 +338,11 @@ counts only].
   frame centre than it is from the zenith. The closed form finds the same poses as an independent numerical search.
   [tested, a property under 20 seeds]
 - The sweep: the profile's two limits and its middle (80, 95 and 110 degrees) by a roll of -10, 0 and +10 degrees,
-  nine values. A second level pose at any of them refuses the pose, with a sentence that the bright spot's place in
-  the frame fits two different directions of view, so which way the camera faced is not known; no pose at any of
-  them refuses it with a sentence that the stated ranges of field of view and head roll could not all be fitted.
+  nine values. A second level pose at any of them refuses the pose, with a sentence that the bright spot taken to be
+  the Moon fits two different directions of view, so which way the camera faced is not known; no pose at any of
+  them refuses it with a sentence that at one or more of the fields of view and head rolls the camera is stated to
+  have, no level head puts the Moon on the bright spot. The spot's place and the ranges follow in a second sentence
+  the record keeps (C32).
   [tested] For a fixed spot a wider field of view puts the Moon farther from the centre: the count of level poses can
   then leave one (a second pose appears, or the one is lost, and two can meet and vanish) but never come back to one,
   so one pose at the widest swept field of view means one at every narrower field of view in the range at that roll

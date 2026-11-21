@@ -610,8 +610,9 @@ def test_a_fit_whose_field_of_view_is_outside_20_to_130_degrees_or_whose_spot_is
     refusal = _pose(luma)
     assert isinstance(refusal, Refusal) and refusal.kind == "fit"
     assert refusal.reason.startswith(
-        "The sky is not lined up over the picture: the fit found no camera that puts the Moon on the bright spot at ("
-    ) and refusal.reason.endswith("level within -1 px."), refusal.reason
+        "The sky is not lined up over the picture: the fit found no camera that puts the Moon on the bright spot with "
+        "the skyline level. The spot is at ("
+    ) and refusal.reason.endswith("; the fit allows -1 px."), refusal.reason
 
 
 def test_each_refused_horizon_fit_names_its_own_cause(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -622,23 +623,25 @@ def test_each_refused_horizon_fit_names_its_own_cause(monkeypatch: pytest.Monkey
     pose = _pose(luma)
     assert isinstance(pose, PoseResult)
     moon = pose.moon
-    below = pe.fit_horizon_pose(moon, replace(pose.blob, y_px=pose.skyline.row + 10.0), width=WIDTH, height=HEIGHT,
+    below_blob = replace(pose.blob, y_px=pose.skyline.row + 10.0)
+    below = pe.fit_horizon_pose(moon, below_blob, width=WIDTH, height=HEIGHT,
                                 skyline_alt_deg=1.5, skyline_row=pose.skyline.row, turns=0, moment=MOON_MOMENT, lat=LAT,
                                 lon=LON, where="in the photo")
     assert isinstance(below, Refusal) and below.kind == "fit"
-    assert below.reason.endswith("so no fit could start.") and "is not above the skyline at row" in below.reason
+    assert below.reason == pe.horizon_start_reason(below_blob.x_px, below_blob.y_px, "in the photo", pose.skyline.row)
+    assert "so no fit could start. " in below.reason and " and the skyline at row " in below.reason
     # The Moon below the skyline's altitude: the same refusal
     low = pe.fit_horizon_pose(replace(moon, alt_deg=1.0), pose.blob, width=WIDTH, height=HEIGHT,
                               skyline_alt_deg=1.5, skyline_row=pose.skyline.row, turns=0, moment=MOON_MOMENT, lat=LAT,
                               lon=LON)
-    assert isinstance(low, Refusal) and low.reason.endswith("so no fit could start.")
+    assert isinstance(low, Refusal) and "so no fit could start. " in low.reason
     # The fit's own camera turned half a turn about the frame centre, its constraints taken as met: upside down
     real = pe._normalized
     monkeypatch.setattr(pe, "_fit_accepted", lambda residuals: True)
     monkeypatch.setattr(pe, "_normalized", lambda wcs: real(replace(wcs, rotation_deg=wcs.rotation_deg + 180.0)))
     upside = _pose(luma)
     assert isinstance(upside, Refusal) and upside.kind == "fit"
-    assert upside.reason.endswith("shows the sky upside down."), upside.reason
+    assert "shows the sky upside down. The spot is at " in upside.reason, upside.reason
 
 
 def test_a_fit_starts_only_from_a_spot_above_the_skyline_and_a_moon_above_its_altitude() -> None:
@@ -652,7 +655,7 @@ def test_a_fit_starts_only_from_a_spot_above_the_skyline_and_a_moon_above_its_al
                   lat=LAT, lon=LON)
 
     def no_start(result: WCSModel | Refusal) -> bool:
-        return isinstance(result, Refusal) and result.reason.endswith("so no fit could start.")
+        return isinstance(result, Refusal) and "so no fit could start. " in result.reason
 
     assert no_start(pe.fit_horizon_pose(moon, replace(pose.blob, y_px=row), **kwargs))
     assert not no_start(pe.fit_horizon_pose(moon, replace(pose.blob, y_px=row - 0.05), **kwargs))

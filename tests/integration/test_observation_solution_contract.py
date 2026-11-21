@@ -3748,7 +3748,8 @@ def test_a_beacon_of_no_width_is_no_beacon() -> None:
             for valid_name in ("two wide", "two pixels"):
                 valid = answers[valid_name]
                 assert valid["quality"]["detectedCandidateCount"] == 1, (valid_name, moment)
-                assert "bright spot at (150," in valid["warnings"][0] and valid["warnings"][1] == sun_said
+                # The spot's place, in the lined-up sentence or in a refusal's second sentence (C32)
+                assert "(150, " in valid["warnings"][0] and valid["warnings"][1] == sun_said
                 if valid["status"] == "approximate":
                     lined_up += int(valid_name == "two wide")
                     (observed,) = [f for f in valid["findings"] if f["evidenceClass"] == "observed"]

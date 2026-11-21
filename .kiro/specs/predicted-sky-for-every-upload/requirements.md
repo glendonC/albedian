@@ -200,10 +200,11 @@ sky lined up over my clip, with an honest sense of how far off it may be.
      `test_a_head_worn_clip_with_the_moon_is_lined_up_from_it`; P-SKY-5 (a).
   8. THE level-head pointings that see the Moon at the spot SHALL be found in closed form (design component 4) at
      each of the nine swept values: none, one or two. WHEN any swept value has two, THE pose SHALL be refused before
-     any fit, the solution staying `predicted_only` and saying that the bright spot's place in the frame "fits two
-     different directions of view with a level head inside the stated field of view and roll, so which way the
-     camera faced is not known"; WHEN none has two but any has none, saying that "the stated ranges of field of view
-     (...) and head roll (...) could not all be fitted with a level head". Tests:
+     any fit, the solution staying `predicted_only` and saying first that "the bright spot taken to be the Moon fits
+     two different directions of view, so which way the camera faced is not known"; WHEN none has two but any has
+     none, saying first that "at one or more of the fields of view and head rolls the camera is stated to have, no
+     level head puts the Moon on the bright spot". The spot's place and the ranges follow in a second sentence the
+     record keeps (C32). Tests:
      `test_the_closed_form_finds_every_level_pose_the_independent_search_finds`,
      `test_a_level_pose_count_that_is_not_one_stays_not_one_at_any_wider_field_of_view`,
      `test_two_level_poses_refuse_the_pose_with_a_plain_sentence`,
@@ -215,7 +216,7 @@ sky lined up over my clip, with an honest sense of how far off it may be.
      pose and SHALL be refused when its largest residual exceeds 0.5 px, its upright frame shows the sky upside down,
      or its centre leaves the closed form's pose by more than 0.001 deg [proposed]; a fitted centre past a pole SHALL
      be brought back inside the contract's range as the same pointing. Any refused fit SHALL refuse the pose, saying
-     that the fit did not put the Moon on the bright spot. Tests:
+     that the fit could not put the Moon on the bright spot with a level head. Tests:
      `test_the_sweep_takes_the_profiles_limits_and_middle_and_rolls_of_ten_degrees_either_way`,
      `test_the_fit_is_accepted_only_up_to_half_a_pixel`, `test_a_fit_that_shows_the_sky_upside_down_is_refused`,
      `test_a_fit_that_leaves_the_closed_forms_pose_is_refused`, `test_any_refused_swept_fit_refuses_the_pose`,

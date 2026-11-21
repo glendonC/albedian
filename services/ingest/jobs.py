@@ -1291,8 +1291,10 @@ SOLVE_PRODUCER_FILES = (
 # daytime photo lined up from the Sun served as observed points; 20, the near-black count warning in the design
 # lane's two sentences (C25), which a frame near the black clip stores in its warnings, and on a clip both count
 # warnings opening with the clip's noun ("This clip's sky"); 21, the words for a time or a place the iPhone's record
-# lent in the design lane's plain words (C13), which a photo with a lent moment stores in its warnings and items
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 21, SOLVE_PRODUCER_FILES)
+# lent in the design lane's plain words (C13), which a photo with a lent moment stores in its warnings and items;
+# 22, the Moon pose's refusals in the design lane's two sentences (C32), the reason first and its numbers second, which
+# a frame the Moon does not line up stores in its warnings
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 22, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

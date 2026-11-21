@@ -1260,9 +1260,9 @@ def test_two_level_poses_refuse_the_pose_with_a_plain_sentence() -> None:
     assert out.status == "predicted_only", out.warnings
     blob = _blob_at(luma, frame_moment(MOON_MOMENT, 2.0), lat, lon)
     reason = (
-        "The sky is not lined up over the picture: the bright spot's place in the frame, "
-        f"({blob.x_px:.0f}, {blob.y_px:.0f}) px in the frame 2.00 s into the clip, fits two different directions of "
-        "view with a level head inside the stated field of view and roll, so which way the camera faced is not known."
+        "The sky is not lined up over the picture: the bright spot taken to be the Moon fits two different directions "
+        f"of view, so which way the camera faced is not known. The spot is at ({blob.x_px:.0f}, {blob.y_px:.0f}) px in "
+        "the frame 2.00 s into the clip; both directions keep a level head inside the stated field of view and roll."
     )
     _assert_sky_2_plus(out, solver, asset, reason)
 
@@ -1313,7 +1313,8 @@ def test_one_fit_refuses_a_pixel_with_two_level_poses_or_none() -> None:
     moon = topocentric_moon(MOON_MOMENT, lat, lon)
     none = fit_level_pose(moon, 0.732 * WIDTH, 0.783 * HEIGHT, **{**kwargs, "fov_diagonal_deg": 110.0, "lat": lat,
                                                                   "lon": lon})
-    assert none.kind == "ranges" and "no level head at a field of view of 110 degrees" in none.reason
+    assert none.kind == "ranges"
+    assert none.reason == pe.level_ranges_reason(0.732 * WIDTH, 0.783 * HEIGHT, "in the frame", 110.0, 0.0)
 
 
 def test_a_fit_that_leaves_the_closed_forms_pose_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1371,9 +1372,9 @@ def test_two_frame_times_are_the_same_frame_within_a_microsecond() -> None:
 
 def test_a_swept_value_with_no_level_pose_refuses_with_a_sentence_that_is_true(monkeypatch: pytest.MonkeyPatch) -> None:
     """One level pose at the nominal field of view and roll, none at the widest field of view (the Moon about 58
-    degrees up, the spot low and right, found by the lane's search): the nominal fit exists, so the sentence says the
-    stated ranges could not all be fitted, never that no level-head pose put the spot there. The closed form decides
-    it before any fit is run."""
+    degrees up, the spot low and right, found by the lane's search): the nominal fit exists, so the sentence says at
+    one or more of the stated fields of view and rolls no level head puts the Moon on the spot, never that none does. The
+    closed form decides it before any fit is run."""
     lat, lon = _place_with_moon(58.4, 0.0)
     ra, dec, radius = _topocentric(MOON_MOMENT, lat, lon)
     alt, az = icrs_to_altaz(ra, dec, lat, lon, MOON_MOMENT)
@@ -1388,9 +1389,10 @@ def test_a_swept_value_with_no_level_pose_refuses_with_a_sentence_that_is_true(m
     assert out.status == "predicted_only", out.warnings
     blob = _blob_at(luma, frame_moment(MOON_MOMENT, 1.0), lat, lon)
     reason = (
-        f"The sky is not lined up over the picture: with the bright spot at ({blob.x_px:.0f}, {blob.y_px:.0f}) px in "
-        "the frame 1.00 s into the clip taken to be the Moon, the stated ranges of field of view (80 to 110 degrees "
-        "across the diagonal) and head roll (within 10 degrees either way) could not all be fitted with a level head."
+        "The sky is not lined up over the picture: at one or more of the fields of view and head rolls the camera is "
+        f"stated to have, no level head puts the Moon on the bright spot. The spot is at ({blob.x_px:.0f}, "
+        f"{blob.y_px:.0f}) px in the frame 1.00 s into the clip; the field of view was 80 to 110 degrees across the diagonal and the roll within 10 "
+        "degrees either way."
     )
     assert fits == []
     _assert_sky_2_plus(out, solver, asset, reason)
@@ -1628,10 +1630,10 @@ def test_fold_brings_a_place_past_a_pole_or_the_date_line_into_range_and_leaves_
 # --- Through the job's frames: the soft-peaked Moon ------------------------------------------------------------------
 
 NOT_CONFIRMED = (
-    "The sky is not lined up over the picture: what was seen {where} was not confirmed as the Moon (that needs a frame "
-    "whose brightest spot peaks at 200 of 255 or more and at least 10 times the noise above the sky, is whole inside "
-    "the frame, measures at half its peak between 0.8 times the Moon's predicted diameter at the widest field of view "
-    "and 8 times it at the narrowest, and is the only spot in the frame that passes this test)."
+    "The sky is not lined up over the picture: what was seen {where} was not confirmed as the Moon. The Moon test needs "
+    "a spot whose peak is at 200 of 255 or more and at least 10 times the noise above the sky, that is whole inside the "
+    "frame, that measures at half its peak between 0.8 times the Moon's predicted diameter at the widest field of view "
+    "and 8 times it at the narrowest, and that is the only spot in the frame passing this test."
 )
 
 
@@ -1876,7 +1878,8 @@ def test_pbt_p_sky_5_whenever_two_level_poses_exist_the_answer_is_never_approxim
     assert solution.wcs is None and solution.pose_estimate is None
     # Refused because a swept value has two poses, or none (two can meet and vanish at a wider field of view)
     reason = solution.warnings[-2]
-    assert "fits two different directions of view" in reason or "could not all be fitted" in reason, reason
+    assert ("fits two different directions of view" in reason
+            or "at one or more of the fields of view and head rolls the camera is stated to have" in reason), reason
 
 
 # --- P-SKY-6 -------------------------------------------------------------------------------------------------------
@@ -2165,8 +2168,8 @@ def test_a_refused_fit_gives_no_pose_with_the_reason(monkeypatch: pytest.MonkeyP
     out = complete_sky(solver, asset, frames=lambda: [(0.0, _frame(500.0, 700.0, 8.0))])
     reason = out.warnings[-2]
     assert reason == (
-        "The sky is not lined up over the picture: the fit did not put the Moon on the bright spot at (500, 700) px in "
-        "the frame 0.00 s into the clip with a level head within -1 px."
+        "The sky is not lined up over the picture: the fit could not put the Moon on the bright spot with a level head. "
+        "The spot is at (500, 700) px in the frame 0.00 s into the clip; the fit allows -1 px."
     )
     _assert_sky_2_plus(out, solver, asset, reason)
 

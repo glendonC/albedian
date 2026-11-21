@@ -294,12 +294,13 @@ describe("the moment-blind warning's words on screen (C22)", () => {
   });
 });
 
-// C21 (UIUX-skylinewords-READY.md) and C23 (UIUX-sunwords-READY.md): a pose's refusal, under the family's prefix, shows its
-// reason; the numbers that follow in a second sentence stay in the solution's record (C5's rule)
+// C21 (UIUX-skylinewords-READY.md), C23 (UIUX-sunwords-READY.md) and C32 (UIUX-moonposewords-READY.md): a pose's refusal,
+// under the family's prefix, shows its reason; the numbers that follow in a second sentence stay in the solution's
+// record (C5's rule)
 describe("a pose's refusal on screen", () => {
   it("shows C21's skyline refusal by its reason only", () => {
     const record =
-      "The sky is not lined up over the picture: no skyline was found to line the Moon up with. A skyline here is a row 38 to 72 percent of the way down below which the picture turns brighter by at least 6 times the sky's noise.";
+      "The sky is not lined up over the picture: no skyline was found to line the Moon up with. A skyline here is a row 38 to 72 percent of the way down below which the picture turns brighter by at least 10 times the sky's noise.";
     expect(onScreenWarning(record)).toBe('The sky is not lined up over the picture: no skyline was found to line the Moon up with.');
   });
 
@@ -312,11 +313,17 @@ describe("a pose's refusal on screen", () => {
     );
   });
 
+  it("shows C32's Moon-pose refusals by their reasons only", () => {
+    expect(onScreenWarning('The sky is not lined up over the picture: the fit found no camera that puts the Moon on the bright spot with the skyline level. The spot is at (412, 233) px in the photo and the skyline at row 610; the fit allows 0.5 px.')).toBe(
+      'The sky is not lined up over the picture: the fit found no camera that puts the Moon on the bright spot with the skyline level.'
+    );
+    expect(onScreenWarning('The sky is not lined up over the picture: what was seen in the 2 frames searched was not confirmed as the Moon. The Moon test needs a spot whose peak is at 200 of 255 or more and at least 10 times the noise above the sky, that is whole inside the frame, that measures at half its peak between 0.8 times the Moon\'s predicted diameter at the widest field of view and 8 times it at the narrowest, and that is the only spot in the frame passing this test.')).toBe(
+      'The sky is not lined up over the picture: what was seen in the 2 frames searched was not confirmed as the Moon.'
+    );
+  });
+
   it('keeps a one-sentence refusal whole, numbers in it and all', () => {
-    for (const whole of [
-      'The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.',
-      'The sky is not lined up over the picture: the fit found no camera that puts the Moon on the bright spot at (412, 233) px from the left and top with the skyline at row 610 level within 0.5 px.',
-    ])
-      expect(onScreenWarning(whole)).toBe(whole);
+    const whole = 'The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.';
+    expect(onScreenWarning(whole)).toBe(whole);
   });
 });

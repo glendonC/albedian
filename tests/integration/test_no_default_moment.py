@@ -96,7 +96,8 @@ def test_horizon_solver_rejects_a_pose_that_misses_its_constraints() -> None:
     sol = solve_horizon_and_beacon_pose(frame, **MOMENT, **_sources(frame))
     assert sol.status == "predicted_only"
     assert sol.wcs is None
-    assert "is outside the 20 to 130 degrees a camera is taken to have" in sol.warnings[0]
+    assert "is outside what a camera is taken to have. " in sol.warnings[0]
+    assert sol.warnings[0].endswith("outside 20 to 130.")
     assert "taken to be the Moon" in sol.warnings[0]
     assert all(f.evidence_class == "predicted" for f in sol.findings)
 

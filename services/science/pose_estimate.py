@@ -17,8 +17,8 @@ Moon: a lamp or another light of similar size would be taken the same way. One f
    swept field of view (the profile's limits and middle) and roll (`SWEPT_ROLLS_DEG`): a level camera pitched to a0
    sees the Moon at tangent offsets (X right, Y up) when sin(a0) + Y cos(a0) = sin(Moon) sqrt(1 + X^2 + Y^2), so
    a0 + atan(Y) is asin(q) or 180 - asin(q), with q = sin(Moon) sqrt(1 + X^2 / (1 + Y^2)): none, one or two poses.
-   Two at any swept value refuse the pose (which way the camera faced is not known); so does none (the stated ranges
-   could not all be fitted).
+   Two at any swept value refuse the pose (which way the camera faced is not known); so does none (at one or more of
+   the stated fields of view and rolls, no level head puts the Moon on the spot).
 5. Each of the nine is then a TAN WCS at that fixed scale (parity -1, no distortion, crpix at the frame centre), its
    centre and rotation polished by least squares from the closed form so the Moon lands on the centroid and the
    horizon has that roll in the upright frame (the frame as displayed). A fit whose largest residual exceeds
@@ -134,37 +134,50 @@ def _spot(x_px: float, y_px: float, where: str) -> str:
     return f"({x_px:.0f}, {y_px:.0f}) px {where}"
 
 
+# C32's two sentences (.lead/uiux/UIUX-moonposewords-READY.md, decided 2026-11-21), C21's shape: the reason in plain
+# words with no number but a count of frames, which the warnings list shows, then the spot, the rows, the degrees and
+# the thresholds in a second sentence kept in the record (C5's rule)
 def two_poses_reason(x_px: float, y_px: float, where: str) -> str:
     return (
-        _NOT_LINED_UP + f"the bright spot's place in the frame, {_spot(x_px, y_px, where)}, fits two different "
-        "directions of view with a level head inside the stated field of view and roll, so which way the camera faced "
-        "is not known."
+        _NOT_LINED_UP + "the bright spot taken to be the Moon fits two different directions of view, so which way the "
+        f"camera faced is not known. The spot is at {_spot(x_px, y_px, where)}; both directions keep a level head inside "
+        "the stated field of view and roll."
     )
 
 
 def ranges_reason(x_px: float, y_px: float, where: str, profile: CameraProfile) -> str:
     low, high = profile.fov_diagonal_deg_range
     return (
-        _NOT_LINED_UP + f"with the bright spot at {_spot(x_px, y_px, where)} taken to be the Moon, the stated ranges of "
-        f"field of view ({low:g} to {high:g} degrees across the diagonal) and head roll (within {ROLL_LIMIT_DEG:g} "
-        "degrees either way) could not all be fitted with a level head."
+        # C32 as amended (the lead, 13:20 on 21 November): true whether one swept value or all hold no level pose
+        _NOT_LINED_UP + "at one or more of the fields of view and head rolls the camera is stated to have, no level head "
+        f"puts the Moon on the bright spot. The spot is at {_spot(x_px, y_px, where)}; the field of view was {low:g} to "
+        f"{high:g} degrees across the diagonal and the roll within {ROLL_LIMIT_DEG:g} degrees either way."
+    )
+
+
+def level_ranges_reason(x_px: float, y_px: float, where: str, fov_diagonal_deg: float, roll_deg: float) -> str:
+    """No level head at one field of view and roll (`fit_level_pose`'s own refusal)."""
+    return (
+        _NOT_LINED_UP + "no level head puts the Moon on the bright spot at this field of view and roll. The spot is at "
+        f"{_spot(x_px, y_px, where)}; the field of view was {fov_diagonal_deg:g} degrees across the diagonal and the "
+        f"roll {roll_deg:g} degrees."
     )
 
 
 def fit_reason(x_px: float, y_px: float, where: str) -> str:
     return (
-        _NOT_LINED_UP + f"the fit did not put the Moon on the bright spot at {_spot(x_px, y_px, where)} with a level head "
-        f"within {MAX_FIT_RESIDUAL_PX:g} px."
+        _NOT_LINED_UP + "the fit could not put the Moon on the bright spot with a level head. The spot is at "
+        f"{_spot(x_px, y_px, where)}; the fit allows {MAX_FIT_RESIDUAL_PX:g} px."
     )
 
 
 def not_confirmed_reason(where: str) -> str:
     return (
-        _NOT_LINED_UP + f"what was seen {where} was not confirmed as the Moon (that needs a frame whose brightest spot "
-        f"peaks at {MIN_PEAK_LUMA:g} of 255 or more and at least {MIN_PEAK_SNR:g} times the noise above the sky, is "
-        f"whole inside the frame, measures at half its peak between {MIN_DIAMETER_FACTOR:g} times the Moon's predicted "
-        f"diameter at the widest field of view and {MAX_DIAMETER_FACTOR:g} times it at the narrowest, and is the only "
-        "spot in the frame that passes this test)."
+        _NOT_LINED_UP + f"what was seen {where} was not confirmed as the Moon. The Moon test needs a spot whose peak is "
+        f"at {MIN_PEAK_LUMA:g} of 255 or more and at least {MIN_PEAK_SNR:g} times the noise above the sky, that is whole "
+        f"inside the frame, that measures at half its peak between {MIN_DIAMETER_FACTOR:g} times the Moon's predicted "
+        f"diameter at the widest field of view and {MAX_DIAMETER_FACTOR:g} times it at the narrowest, and that is the "
+        "only spot in the frame passing this test."
     )
 
 
@@ -550,11 +563,7 @@ def fit_level_pose(
     if len(centres) == 2:
         return Refusal("two_poses", two_poses_reason(x_px, y_px, "in the frame"))
     if not centres:
-        return Refusal(
-            "ranges",
-            _NOT_LINED_UP + f"no level head at a field of view of {fov_diagonal_deg:g} degrees and a roll of "
-            f"{roll_deg:g} degrees sees the Moon at the bright spot at {_spot(x_px, y_px, 'in the frame')}.",
-        )
+        return Refusal("ranges", level_ranges_reason(x_px, y_px, "in the frame", fov_diagonal_deg, roll_deg))
     ((centre_alt, centre_az),) = centres
     frame = pose_frame(moon, lat, lon, moment)
     scale = scale_deg_per_px(fov_diagonal_deg, width, height)
@@ -826,52 +835,53 @@ NO_SKYLINE = (
 HORIZON_REFUSALS = ("fit", "fov", "size")
 
 
+# C32's two sentences for the skyline's refusals, as for the level head's above
 def horizon_fit_reason(x_px: float, y_px: float, where: str, row: float) -> str:
     return (
-        _NOT_LINED_UP + f"the fit found no camera that puts the Moon on the bright spot at {_spot(x_px, y_px, where)} "
-        f"with the skyline at row {row:.0f} level within {MAX_FIT_RESIDUAL_PX:g} px."
+        _NOT_LINED_UP + "the fit found no camera that puts the Moon on the bright spot with the skyline level. The spot "
+        f"is at {_spot(x_px, y_px, where)} and the skyline at row {row:.0f}; the fit allows {MAX_FIT_RESIDUAL_PX:g} px."
     )
 
 
 def horizon_start_reason(x_px: float, y_px: float, where: str, row: float) -> str:
     return (
-        _NOT_LINED_UP + f"the bright spot at {_spot(x_px, y_px, where)} is not above the skyline at row {row:.0f}, or "
-        "the Moon is not above the skyline's altitude, so no fit could start."
+        _NOT_LINED_UP + "the bright spot is not above the skyline, or the Moon is not above the skyline's altitude, so no "
+        f"fit could start. The spot is at {_spot(x_px, y_px, where)} and the skyline at row {row:.0f}."
     )
 
 
 def horizon_upside_down_reason(x_px: float, y_px: float, where: str, row: float) -> str:
     return (
-        _NOT_LINED_UP + f"the only camera the fit found for the bright spot at {_spot(x_px, y_px, where)} and the "
-        f"skyline at row {row:.0f} shows the sky upside down."
+        _NOT_LINED_UP + "the only camera the fit found shows the sky upside down. The spot is at "
+        f"{_spot(x_px, y_px, where)} and the skyline at row {row:.0f}."
     )
 
 
 def horizon_fov_reason(x_px: float, y_px: float, where: str, row: float, fov_deg: float) -> str:
     low, high = HORIZON_FOV_DIAGONAL_RANGE_DEG
     return (
-        _NOT_LINED_UP + f"with the bright spot at {_spot(x_px, y_px, where)} taken to be the Moon and the skyline at "
-        f"row {row:.0f} taken to be level ground, the field of view they give, {fov_deg:.0f} degrees across the "
-        f"diagonal, is outside the {low:g} to {high:g} degrees a camera is taken to have."
+        _NOT_LINED_UP + "with the bright spot taken to be the Moon and the skyline taken to be level ground, the field "
+        f"of view they give is outside what a camera is taken to have. The spot is at {_spot(x_px, y_px, where)} and the "
+        f"skyline at row {row:.0f}; they give {fov_deg:.0f} degrees across the diagonal, outside {low:g} to {high:g}."
     )
 
 
 def horizon_size_reason(x_px: float, y_px: float, where: str, diameter_px: float, ratio: float) -> str:
     return (
-        _NOT_LINED_UP + f"the bright spot at {_spot(x_px, y_px, where)} measures {diameter_px:.1f} px across at half its "
-        f"peak, {ratio:.1f} times the Moon's predicted diameter at the field of view the skyline gives, outside "
-        f"{MIN_DIAMETER_FACTOR:g} to {MAX_DIAMETER_FACTOR:g} times."
+        _NOT_LINED_UP + "the bright spot is not the Moon's size at the field of view the skyline gives. It measures "
+        f"{diameter_px:.1f} px across at half its peak, {ratio:.1f} times the Moon's predicted diameter, outside "
+        f"{MIN_DIAMETER_FACTOR:g} to {MAX_DIAMETER_FACTOR:g} times; it is at {_spot(x_px, y_px, where)}."
     )
 
 
 def not_confirmed_above_skyline_reason(where: str) -> str:
     low, high = HORIZON_FOV_DIAGONAL_RANGE_DEG
     return (
-        _NOT_LINED_UP + f"what was seen above the skyline {where} was not confirmed as the Moon (that needs a spot "
-        f"there whose peak is at {MIN_PEAK_LUMA:g} of 255 or more and at least {MIN_PEAK_SNR:g} times the noise above "
-        f"the sky, is whole inside the frame and clear of the skyline, measures at half its peak between "
+        _NOT_LINED_UP + f"what was seen above the skyline {where} was not confirmed as the Moon. The Moon test needs a "
+        f"spot there whose peak is at {MIN_PEAK_LUMA:g} of 255 or more and at least {MIN_PEAK_SNR:g} times the noise "
+        "above the sky, that is whole inside the frame and clear of the skyline, that measures at half its peak between "
         f"{MIN_DIAMETER_FACTOR:g} times the Moon's predicted diameter at {high:g} degrees across the diagonal and "
-        f"{MAX_DIAMETER_FACTOR:g} times it at {low:g}, and is the only spot above the skyline that passes this test)."
+        f"{MAX_DIAMETER_FACTOR:g} times it at {low:g}, and that is the only spot above the skyline passing this test."
     )
 
 
