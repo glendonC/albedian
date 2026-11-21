@@ -62,6 +62,18 @@ describe('the time passed on a working row with no total', () => {
     expect(now()).toBe('7 s');
   });
 
+  // AUDIT-C's gap on elapsed-2 (.lead/kiro/verdicts/web-ux-elapsed-2-c25-nearblack.md): Try again on a stopped
+  // restoration starts a new job, which the steps, staying mounted, time from its own start
+  it("times a restoration's Try again from the new job's own start", () => {
+    const job = { id: 'job_7e6f5a4b3c2d1e0f9a8b7c6d', kind: 'restoration', state: 'running', stages: [stage('decode', 'frames', 1, 1), stage('measure', 'frames', 0, null)] } as unknown as UploadJob;
+    act(() => root.render(createElement(RestoreSteps, { job })));
+    const now = () => container.querySelector('.work-step.is-now .work-step__value')?.textContent;
+    act(() => vi.advanceTimersByTime(9_000));
+    expect(now()).toBe('9 s');
+    act(() => root.render(createElement(RestoreSteps, { job: { ...job, id: 'job_0f9e8d7c6b5a4f3e2d1c0b9a' } as UploadJob })));
+    expect(now()).toBe('0 s');
+  });
+
   it('keeps counting a step from its start when it leaves the timed state for a record and comes back (FIELD walk-0620)', () => {
     show(arrival(searching));
     act(() => vi.advanceTimersByTime(1_000));
