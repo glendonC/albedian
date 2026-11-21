@@ -615,6 +615,35 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     }
   });
 
+  const answer = { heard: 'Is that a plane?', sentence: "Nothing in this photo's data answers that.", answer: { status: 'unanswerable', question: 'unanswerable', reason: 'outside_the_data', sentence: "Nothing in this photo's data answers that." } } as const;
+  // AUDIT-C's tag sweep, break 3, laptop half (the lead, 12:59 on 21 Nov): an answer open in the flight hides the readout
+  // and its Simulated tag; before the panorama has drawn the column was the photo's own, so no tag showed at all. With an
+  // answer open the column is the flight's, at full, its Milky Way line waiting for the panorama it names
+  it('keeps the Simulated tag with an answer open in the flight, the Milky Way line only once the panorama has drawn', () => {
+    const { session } = rigelPicked();
+    sky.drawn = false;
+    try {
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+      expect(q(READOUT)).toBeNull();
+      const status = q('[data-testid="reveal-status"]')!;
+      expect(status.getAttribute('data-moment')).toBe('there');
+      expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+      expect([...status.querySelectorAll('.reveal-status__line')].map((p) => p.textContent)).toEqual([
+        'Drawn or computed by the app; not measured in the source recording.',
+        'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
+        'Rings: the stars your photo matched.',
+      ]);
+    } finally {
+      sky.drawn = true;
+    }
+  });
+
+  it('says the Milky Way line with an answer open once the panorama has drawn', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+    expect(q('[data-testid="reveal-status"]')!.textContent).toContain('Milky Way: ESO/S. Brunier');
+  });
+
   it('keeps the photo\'s own status there while the sky is not drawn, the readout staying (the verdict on unit-realsky-1)', () => {
     sky.drawn = false;
     try {

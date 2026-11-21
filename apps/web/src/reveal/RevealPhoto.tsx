@@ -564,7 +564,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />
-      ) : phone && (!skyLineShown || there) ? null : there && (skyOnScreen || earthOnly) ? (
+      ) : phone && (!skyLineShown || there) ? null : there && (skyOnScreen || earthOnly || Boolean(answer)) ? (
+        // The flight's column once its panorama has drawn, or in the cone view or while steering; and whenever an answer
+        // hides the readout, so its Simulated tag stays in view (AUDIT-C's tag sweep, break 3, laptop half)
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {cone ? (
@@ -581,7 +583,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
               <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>
               {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
-              {!steering && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
+              {/* The Milky Way line names the panorama, so only once it has drawn */}
+              {!steering && skyOnScreen && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
               {/* While steering, D26 item 6's plain lines at 13 px, ink 66 percent */}
               {steering &&
                 STEER_LINES.map((line) => (
