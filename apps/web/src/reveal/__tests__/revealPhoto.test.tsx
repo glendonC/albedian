@@ -521,6 +521,23 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     ]);
   });
 
+  // UIUX-tagphone-READY.md item F1 (decided 13:08 on 21 Nov): while a craft is drawn the laptop's there line ends with D26's
+  // own decided line, 13 px like the lines above it; it leaves when no craft is drawn (the phone keeps it in its sheet)
+  it("ends the there line with the craft models' source while a craft is drawn, and drops it when none is", () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    const lines = () => [...q('[data-testid="reveal-status"]')!.querySelectorAll('.reveal-status__line')].map((p) => p.textContent);
+    expect(lines()).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
+    act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
+    act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
+    expect(lines().at(-1)).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+    // Back to your own view: no craft is drawn, so no line
+    act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
+    const yours = [...container.querySelectorAll('[role="option"]')].find((o) => o.textContent?.startsWith('Your view')) as HTMLButtonElement;
+    act(() => yours.click());
+    expect(lines()).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
+  });
+
   it('offers the craft picker there on the laptop, and the craft\'s real trip under the distances once one flies (D26)', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });

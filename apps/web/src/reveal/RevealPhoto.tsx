@@ -599,6 +599,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                     {line}
                   </p>
                 ))}
+              {/* While a craft is drawn (outside the cone view), D26's own line names its models' source
+                  (UIUX-tagphone-READY.md item F1); the phone keeps it in its details sheet */}
+              {craft && <p className="reveal-status__line">{CRAFT_PICKER_FOOT}</p>}
             </>
           )}
         </div>
