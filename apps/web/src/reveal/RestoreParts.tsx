@@ -410,12 +410,15 @@ export const RestorePhoneStopped: React.FC<{
   subline: string | null;
   canTryAgain: boolean;
   onTryAgain: () => void;
-}> = ({ job, sentence, subline, canTryAgain, onTryAgain }) => {
+  /** At the block's head, while predicted marks stay drawn: their tag (and an estimate's pose sentence), item A's. */
+  lead?: React.ReactNode;
+}> = ({ job, sentence, subline, canTryAgain, onTryAgain, lead = null }) => {
   const stopped = job ? (restorationRows(job).find((row) => row.state === 'failed') ?? null) : null;
   return (
     <div className="restore-phone-stopped">
       <span className="work-phone-fade" aria-hidden="true" />
       <div className="restore-phone-why" role="alert">
+        {lead !== null && <div className="restore-phone-why__lead">{lead}</div>}
         {sentence !== null && <p className="restore-phone-why__s">{sentence}</p>}
         {subline !== null && <p className="restore-phone-why__sub">{subline}</p>}
       </div>

@@ -1690,6 +1690,25 @@
   color: var(--look-ink-2);
   letter-spacing: -0.005em;
 }
+/* The tag rule through the phone restoration (EXPORT-d38tag-QUESTION.md, recommended): item A's lead (the Predicted tag,
+   on an estimate the pose sentence 8 px under it) stays while predicted marks are drawn; in the wait one block rising
+   from 14 px above the row; in a stop at the head of the stop's block, 14 px above its sentence (4 px and the gap) */
+.restore-phone-lead {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: calc(100% - 654px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.restore-phone-why__lead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
 /* D36 item 5 (UIUX-restorations-READY.md): at phone width the same list under Download (its foot at 816, then the
    laptop's 12 px), in the phone's 24 px gutters, rows 44 px, reached by scrolling the screen */
 .restore-phone-versions {

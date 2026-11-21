@@ -595,6 +595,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // the browser turned wrongly drops them at once (a correction, not a press)
   const marksLayer = useLeaving(!bareFrame, leaveMotion.wordsOutMs);
   const marksShown = marksLayer.mounted && !frameMismatch;
+  // The tag rule through the phone restoration (AUDIT-B's FAIL of d38-3; EXPORT-d38tag-QUESTION.md, recommended): while
+  // D38's row and its button hold the foot and predicted marks stay drawn, item A's lead stands above the row: their
+  // tag at full and, on an estimate, the pose's first sentence (UIUX-tagphone-READY.md item A); a picked star's card
+  // carries its own tag (item D)
+  const phoneRestoreLead =
+    (phoneRestoring || phoneStopped) && picked === null && !answer && marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted') ? (
+      <>
+        <EvidenceTag evidenceClass="predicted" />
+        {status.kind === 'estimate' && <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>}
+      </>
+    ) : null;
   // Released, they come back on the words-in time, all together, not one by one as they first arrived
   const [marksBack, setMarksBack] = useState(false);
   useEffect(() => {
@@ -1066,6 +1077,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <SecondAction label="Restore" size="phone" onClick={() => onRestore?.()} />
         </div>
       )}
+      {phoneRestoring && phoneRestoreLead !== null && <div className="restore-phone-lead">{phoneRestoreLead}</div>}
       {phoneRestoring && restoration?.phase === 'working' && <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} />}
       {phoneStopped && restoration?.phase === 'stopped' && (
         <RestorePhoneStopped
@@ -1074,6 +1086,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           subline={restoration.subline}
           canTryAgain={restoration.canTryAgain}
           onTryAgain={() => onRestore?.()}
+          lead={phoneRestoreLead}
         />
       )}
 
