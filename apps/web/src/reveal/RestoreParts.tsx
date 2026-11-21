@@ -34,7 +34,7 @@ export function compareLabelTop(frameTopPx: number): number | null {
 /** The restoration job's own steps, in the counts' place, drawn as the working screen draws a solve's (D10). */
 export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => {
   // C19 item 1: a step with no total shows the time passed
-  const rows = useElapsedRows(restorationRows(job));
+  const rows = useElapsedRows(restorationRows(job), job.id);
   return (
   <ol className="work-steps restore-steps" data-testid="restore-steps">
     {rows.map((row) => (

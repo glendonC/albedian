@@ -58,7 +58,7 @@ const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`
  */
 export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect, onTryAgain, onUploadAnother, onHome, onCancel, phone = false, early = null, aligned = null }) => {
   // C19 item 1: the row being worked shows the time passed when its step reports no total
-  const rows = useElapsedRows(stageRows(arrival));
+  const rows = useElapsedRows(stageRows(arrival), arrival.job?.id ?? null);
   const fileInput = useRef<HTMLInputElement>(null);
   const failure = arrival.failure;
   const job = arrival.job;

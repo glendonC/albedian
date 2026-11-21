@@ -61,4 +61,26 @@ describe('the time passed on a working row with no total', () => {
     act(() => vi.advanceTimersByTime(7_000));
     expect(now()).toBe('7 s');
   });
+
+  it('keeps counting a step from its start when it leaves the timed state for a record and comes back (FIELD walk-0620)', () => {
+    show(arrival(searching));
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(values().at(-2)).toBe('1 s');
+    // A record with a count, then one with none again, as between the pose try and the search
+    show(arrival(counted));
+    act(() => vi.advanceTimersByTime(2_000));
+    show(arrival(searching));
+    expect(values().at(-2)).toBe('3 s');
+    act(() => vi.advanceTimersByTime(4_000));
+    expect(values().at(-2)).toBe('7 s');
+  });
+
+  it('times a new job from its own start', () => {
+    show(arrival(searching));
+    act(() => vi.advanceTimersByTime(9_000));
+    expect(values().at(-2)).toBe('9 s');
+    const again = arrival(searching);
+    show({ ...again, job: { ...again.job!, id: 'job_fedcba9876543210' } } as Arrival);
+    expect(values().at(-2)).toBe('0 s');
+  });
 });
