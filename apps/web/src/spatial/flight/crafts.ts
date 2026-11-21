@@ -71,7 +71,14 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   hubble: { forward: [0, -1, 0], up: [0, 0, 1] },
   gemini: { forward: [0, -1, 0], up: [0, 0, 1] },
   spitzer: { forward: [0, 1, 0], up: [0, 0, 1] },
-  dawn: { forward: [0, -1, 0], up: [0, 0, 1] },
+  // rest-1, checked live on 21 Nov against the pictures (17:58, 18:05, 18:35 rulings); Stardust, MGS, MAVEN, IBEX keep the frame
+  dawn: { forward: [0, 1, 0], up: [0, 0, -1] },
+  osirisrex: { forward: [0, 1, 0], up: [0, 0, -1] },
+  ds1: { forward: [0, -1, 0], up: [0, 0, 1] },
+  near: { forward: [0, -1, 0], up: [0, 0, 1] },
+  // Cassini, from its side: the dish (facing -Z) up, the magnetometer boom (+Y) to the upper left (AUDIT-C's hold on rest-1)
+  cassini: { forward: [-1, 0, 0], up: [0, Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)] },
+  vanallen: { forward: [0, -1, 0], up: [0, 0, 1] },
 };
 
 /**

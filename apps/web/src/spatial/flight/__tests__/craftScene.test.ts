@@ -163,10 +163,25 @@ describe('craftFromSearch: the interim choice by page address', () => {
     // (the turn the other way round, so the shield's side faces away), Dawn's wings straight across with their faces
     // to the camera; Juno, MESSENGER, OSIRIS-REx and MRO already stand as their pictures do in the hangar's frame
     expect([CRAFTS.spitzer!.modelForward, CRAFTS.spitzer!.modelUp]).toEqual([[0, 1, 0], [0, 0, 1]]);
-    expect([CRAFTS.dawn!.modelForward, CRAFTS.dawn!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn']);
+    // hangar-2c, the design lane's 17:56 read: Dawn and OSIRIS-REx turned the other way round, so the faces with their
+    // cells (Dawn) and the panels' faces under the dish on top (OSIRIS-REx) show, as their pictures
+    expect([CRAFTS.dawn!.modelForward, CRAFTS.dawn!.modelUp]).toEqual([[0, 1, 0], [0, 0, -1]]);
+    expect([CRAFTS['osiris-rex']!.modelForward, CRAFTS['osiris-rex']!.modelUp]).toEqual([[0, 1, 0], [0, 0, -1]]);
+    // rest-1, the live check of 21 Nov against each picture (the 17:58, 18:05 and 18:35 rulings): Deep Space 1's wings
+    // face the camera across, NEAR's panels above its body with the engine end at the foot, Cassini's dish on top over
+    // its body (a half turn about its line of flight), the Van Allen Probes' octagon facing the camera, panels in a cross
+    expect([CRAFTS['deep-space-1']!.modelForward, CRAFTS['deep-space-1']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
+    expect([CRAFTS['near-shoemaker']!.modelForward, CRAFTS['near-shoemaker']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
+    // Cassini (AUDIT-C's hold on rest-1): seen from its side, the dish (facing the model's -Z) faces up and the
+    // magnetometer boom (the model's +Y) reaches to the upper left, the screen's up tilted 30 degrees toward the boom
+    expect(CRAFTS.cassini!.modelForward).toEqual([-1, 0, 0]);
+    expect(CRAFTS.cassini!.modelUp[0]).toBe(0);
+    expect(CRAFTS.cassini!.modelUp[1]).toBeCloseTo(0.5, 12);
+    expect(CRAFTS.cassini!.modelUp[2]).toBeCloseTo(-Math.sqrt(3) / 2, 12);
+    expect([CRAFTS['van-allen-probes']!.modelForward, CRAFTS['van-allen-probes']!.modelUp]).toEqual([[0, -1, 0], [0, 0, 1]]);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
-    expect(['juno', 'messenger', 'osiris-rex', 'mro'].every((id) => others.some((c) => c.id === id))).toBe(true);
+    expect(['juno', 'messenger', 'mro', 'stardust', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
     expect(CRAFTS['voyager-1']!.modelForward).toEqual([0, 0, 1]);
     expect(v.kind).toBe('craft');
@@ -333,6 +348,25 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(others.every((c) => c.frameByBodyRadiusM === null)).toBe(true);
     expect(craftFrameRadiusM(CRAFTS['voyager-1']!, [16.4, 7.5, 10.7], 11)).toBeCloseTo(restExtentM(CRAFTS['voyager-1']!, [16.4, 7.5, 10.7]) / 2, 12);
     expect(craftFrameRadiusM(CRAFTS['voyager-1']!, [0, 0, 0], 11)).toBe(11);
+  });
+
+  it('rests Cassini with its dish facing up and its boom reaching to the upper left, as ruled (AUDIT-C\'s hold on rest-1)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 1440, 900)!;
+    const scene = craftSceneOf(camera, CRAFTS.cassini!, [0, 0, 0], 12, undefined, undefined, 6)!;
+    const at = (m: Vec3) => {
+      const w = apply(scene.modelMatrix, m);
+      const c = apply(scene.clipMatrix, [w[0], w[1], w[2]]);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 1440, yPx: ((1 - c[1] / c[3]) / 2) * 900 };
+    };
+    const centre = at([0, 0, 0]);
+    const boomEnd = at([0, 11, 0]);
+    const dishFace = at([0, 0, -3]);
+    // The boom: to the left and up
+    expect(boomEnd.xPx).toBeLessThan(centre.xPx - 50);
+    expect(boomEnd.yPx).toBeLessThan(centre.yPx - 20);
+    // The dish's facing: up the screen more than sideways (the 30 degree tilt that raises the boom leans it a little right)
+    expect(centre.yPx - dishFace.yPx).toBeGreaterThan(Math.abs(dishFace.xPx - centre.xPx));
   });
 });
 
