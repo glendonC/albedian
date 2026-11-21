@@ -225,6 +225,23 @@ public struct AimingSky: Equatable, Sendable {
     }
 }
 
+/// What the aim view shows at one moment, read once a frame (AUDIT-C's sweep, items 10 and 11): D8's line saying why
+/// there is no overlay, and the sky the overlay is drawn for, nil whenever a photo's record would have no place or no
+/// heading. The laptop's marks are drawn only while that sky is there, so they go the moment the line says why,
+/// never on the asking loop's next turn, and no ring stands without its source line and its tag.
+public struct AimingNow: Equatable, Sendable {
+    public let line: String?
+    public let sky: AimingSky?
+
+    public init(line: String?, sky: AimingSky?) {
+        self.line = line
+        self.sky = sky
+    }
+
+    /// The laptop's last marks to draw now: all of them while the sky is there, none without it.
+    public func marks(_ asked: [SkyMark]) -> [SkyMark] { sky == nil ? [] : asked }
+}
+
 extension SkyProjection {
     /// The attitude of a phone held upright in portrait, its back camera toward an azimuth and tilted up by an angle,
     /// its top up: the device's axes written in the reference frame, in the attitude's convention (`point`) [open: the

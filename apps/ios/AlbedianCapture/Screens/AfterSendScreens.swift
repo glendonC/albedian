@@ -12,6 +12,10 @@ struct WaitingScreen: View {
     /// The last step the running job reported, kept once the job has ended until the result comes: through the lock-on's
     /// pass (D31's il-move keeps "Matching" and the sentence while the marks travel) and the moment before it starts.
     @State private var lastRow: WaitRow?
+    /// The phone's own early rings have stood over the photo on this wait, so a swap to the laptop's keeps the phone's
+    /// words until they have gone (`EarlyLine.namedSource`).
+    @State private var phoneRingsDrawn = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
@@ -22,6 +26,11 @@ struct WaitingScreen: View {
             // The 17:38 tag rule: early marks only while their source line stands under a row (UIUX-built-1756)
             let rowShown = model.waitRow ?? lastRow
             let earlyDrawn = EarlyLine.marksShown(placed: early.count, rowShown: rowShown != nil || model.queuedRow != nil)
+            let sentence = EarlyLine.sentence(marksShown: earlyDrawn,
+                                              laptopSource: EarlyLine.namedSource(laptop: model.laptopEarly?.sky.source,
+                                                                                  phoneRingsDrawn: phoneRingsDrawn,
+                                                                                  swapOver: model.laptopSwapOver,
+                                                                                  reduceMotion: reduceMotion))
             ZStack {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
@@ -47,8 +56,7 @@ struct WaitingScreen: View {
                         VStack(alignment: .leading, spacing: 14) {
                             StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
                                 .id(row.stage)
-                            EarlySource(sentence: EarlyLine.sentence(marksShown: earlyDrawn, laptopSource: model.laptopEarly?.sky.source),
-                                        leaving: model.lockOnSettled)
+                            EarlySource(sentence: sentence)
                         }
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
@@ -56,11 +64,13 @@ struct WaitingScreen: View {
                 } else if let queued = model.queuedRow {
                     VStack(alignment: .leading, spacing: 14) {
                         StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
-                        EarlySource(sentence: EarlyLine.sentence(marksShown: earlyDrawn, laptopSource: model.laptopEarly?.sky.source),
-                                        leaving: model.lockOnSettled)
+                        EarlySource(sentence: sentence)
                     }
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 }
+            }
+            .onChange(of: earlyDrawn && model.laptopEarly == nil, initial: true) { _, phoneDrawn in
+                if phoneDrawn { phoneRingsDrawn = true }
             }
         }
         .ignoresSafeArea()
@@ -229,13 +239,11 @@ private extension SkyMark {
 }
 
 /// D31 item 2: C13's source sentence 14 pt under the step row's line, 24 pt in from each side, 12 pt at ink 44 percent,
-/// line height 1.4; nothing when no early mark is drawn.
+/// line height 1.4; nothing when no early mark is drawn. On the lock-on's pass it stays at full until the early rings'
+/// last frame and leaves with the wait (the lead, 21 Nov 12:59, AUDIT-C's sweep item 5, as motion-43 did on the web).
 private struct EarlySource: View {
     /// The early sky's source sentence (C13 for the iPhone's record, D25's for the Moon or the Sun), or none.
     let sentence: String?
-    /// The marks have turned matched: the line leaves with the early layer, on the class change's own timing.
-    let leaving: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if let sentence {
@@ -243,8 +251,6 @@ private struct EarlySource: View {
                 .foregroundStyle(Color(ControlStyle.inkQuiet))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, CGFloat(Arrive.side))
-                .opacity(leaving ? 0 : 1)
-                .animation(.motion(MotionStyle.colour, reduceMotion: reduceMotion), value: leaving)
         }
     }
 }

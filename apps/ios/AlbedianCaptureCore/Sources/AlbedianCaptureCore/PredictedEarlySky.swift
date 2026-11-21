@@ -10,6 +10,21 @@ public enum EarlyLine {
         guard marksShown else { return nil }
         return laptopSource.map(PredictedEarlySky.sentence(for:)) ?? EarlyPose.sourceSentence
     }
+
+    /// When a swap's words change: at the end of the shared rings' travel (frame in), the old-only rings having left on
+    /// frame out before it, which is when the new-only rings start (`EarlyArrival`).
+    public static let swapWordsAfterSeconds = MotionStyle.frameIn.seconds
+
+    /// The source the line names, nil for the phone's own (C13): on a swap from the phone's own rings to the laptop's
+    /// the phone's words stay until the phone's rings have gone (`swapOver`, `swapWordsAfterSeconds` after the laptop's
+    /// sky came), so no ring stands under another source's words (the lead, 21 Nov 12:59, AUDIT-C's sweep item 9). With
+    /// no phone ring drawn before, the laptop's words come with its rings. Under Reduce Motion both sets dissolve
+    /// together, so the words change at once, as MOTION-READY-iphone section 6 has them.
+    public static func namedSource(laptop: PredictedEarlySky.Source?, phoneRingsDrawn: Bool, swapOver: Bool,
+                                   reduceMotion: Bool) -> PredictedEarlySky.Source? {
+        guard let laptop else { return nil }
+        return phoneRingsDrawn && !swapOver && !reduceMotion ? nil : laptop
+    }
 }
 
 /// The lock-on's early marks from the sky the running solve predicted (platform-10a and 10b: an approximate solution

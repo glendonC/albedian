@@ -278,10 +278,15 @@ public final class SensorRecorder: @unchecked Sendable {
     /// What the aim overlay needs (mobile-5): the place and the heading accuracy a photo's record would carry now, by
     /// the same rules as `aimingLine`; nil whenever that record would have no place or no heading, so the overlay is
     /// drawn only while both are there (UIUX-iphone-aim-QUESTION: no usable heading or no place, no overlay).
-    public func aimingSky(at deviceClock: Date) -> AimingSky? {
+    public func aimingSky(at deviceClock: Date) -> AimingSky? { aimingNow(at: deviceClock).sky }
+
+    /// The aim view's line and sky together, from one read of the readings (AUDIT-C's sweep, items 10 and 11).
+    public func aimingNow(at deviceClock: Date) -> AimingNow {
         let (place, heading) = aimingReadings(at: deviceClock)
-        guard case .allowed(let allowed) = place, case .measured(let measured)? = heading else { return nil }
-        return AimingSky(latDeg: allowed.latDeg, lonDeg: allowed.lonDeg, headingAccuracyDeg: measured.headingAccuracyDeg)
+        let line = AimNotice.line(place: place, heading: heading)
+        guard case .allowed(let allowed) = place, case .measured(let measured)? = heading else { return AimingNow(line: line, sky: nil) }
+        return AimingNow(line: line, sky: AimingSky(latDeg: allowed.latDeg, lonDeg: allowed.lonDeg,
+                                                    headingAccuracyDeg: measured.headingAccuracyDeg))
     }
 
     private func aimingReadings(at deviceClock: Date) -> (PointingRecord.Place, PointingRecord.Heading?) {

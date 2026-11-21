@@ -164,6 +164,37 @@ final class SensorRecorderTests: XCTestCase {
         XCTAssertNil(recorder.aimingSky(at: moment.addingTimeInterval(step)), "no true north")
     }
 
+    /// AUDIT-C's sweep, items 10 and 11: the aim view reads its line and its sky once a frame, from one read of the
+    /// readings, and draws no laptop mark from the moment the record would lose its place or heading, so no ring stands
+    /// while the line under the preview says why there is none.
+    func testTheAimViewsLineAndMarksComeFromOneReadAndGoTogether() throws {
+        let motion = StandInMotion(Set(AttitudeFrame.allCases))
+        let place = StandInPlace()
+        let recorder = try XCTUnwrap(SensorRecorder(motion: motion, place: place))
+        _ = recorder.start(interface: .portrait)
+        let deliverMotion = try XCTUnwrap(motion.deliver)
+        let deliverPlace = try XCTUnwrap(place.deliver)
+        let asked = [SkyMark(id: "hip-32349", name: "Sirius", altDeg: 30, azDeg: 120, source: .catalog(release: "Hipparcos"),
+                             mag: -1.46, catalogSourceId: "HIP 32349")]
+        deliverPlace(.authorization(.authorizedWhenInUse, .full))
+        deliverPlace(fixEvent(-2.5))
+        deliverMotion(motionEvent(0))
+        deliverPlace(headingEvent(-0.5))
+        let both = recorder.aimingNow(at: moment)
+        XCTAssertNil(both.line)
+        XCTAssertEqual(both.sky, recorder.aimingSky(at: moment))
+        XCTAssertEqual(both.marks(asked), asked)
+        // The heading goes past the limit: the line says why and the marks go in the same frame
+        deliverPlace(.heading(HeadingEvent(trueHeadingDeg: 212.5, headingAccuracyDeg: 40, timestamp: moment.addingTimeInterval(-0.25), orientation: .portrait)))
+        let gone = recorder.aimingNow(at: moment)
+        XCTAssertEqual(gone.line, "No heading: ±40° is past 25°")
+        XCTAssertEqual(gone.line, recorder.aimingLine(at: moment))
+        XCTAssertNil(gone.sky)
+        XCTAssertEqual(gone.marks(asked), [], "no ring while the line says there is no heading")
+        // No motion sample says whether a heading could be: no line and no marks
+        XCTAssertEqual(AimingNow(line: nil, sky: nil).marks(asked), [])
+    }
+
     func testHandsTheBuilderWhatTheSourcesSaidAndARecordTheContractTakes() throws {
         let motion = StandInMotion(Set(AttitudeFrame.allCases))
         let place = StandInPlace()

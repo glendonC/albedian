@@ -158,6 +158,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - Built and on main: positions asked from the laptop (the sky-context route, skycontext-1 to 4), the rings and
     the source line with the heading's accuracy (mobile-5), names by D20 (aimnames-1), every ring wholly inside the
     preview (drift-1); the capture coach under it (D29, coach-0 to 3). Left open: iPhone checks 25 to 29.
+  - tagsweep-m (AUDIT-C's tag sweep of 21 Nov, items 10 and 11): the rings, their tag and their source line come
+    from one read a frame, and no ring stands once the line under the preview says there is no place or heading.
   - _Requirements: REQ-IOS-3.1, 3.2_
 
 - [x] 12. mobile-6: the look from the reference board
@@ -196,7 +198,10 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     its pose's own WCS, or the phone's own record projected through the sky context until it arrives; C13's source
     line beside them; on a calibrated solve each matched ring travels onto its detection, the rest leave, then the
     result (MOTION section 5); the swap to the laptop's sky in one correction (ruled 19 Nov 18:05).
-  - Built and on main: lockon-m1 to m5e, solread-1b; lockon-m5f READY. Shown end to end on a real solve in the
-    simulator (.lead/kiro/reports/MOBILE/lockon-m5.md).
+  - Built and on main: lockon-m1 to m5f, solread-1b, tagrule-1, swaparrive-1. Shown end to end on a real solve in
+    the simulator (.lead/kiro/reports/MOBILE/lockon-m5.md).
+  - tagsweep-m (AUDIT-C's tag sweep of 21 Nov, items 5 and 9, as the lead ruled them): the source line stays at full
+    through the pass until the early rings' last frame, and on a swap it keeps the phone's words until the phone's
+    rings have gone, at the end of the shared rings' travel.
   - Only on an iPhone: the early rings against the real sky and the pass (iPhone checks 35 and 36).
   - _Requirements: REQ-IOS-3.1, 5.1_

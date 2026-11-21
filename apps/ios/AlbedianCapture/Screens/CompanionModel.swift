@@ -139,8 +139,14 @@ final class CompanionModel {
         startSky()
     }
 
-    /// D8, INTERIM: the line under the aiming preview, what the photo's record would say of its place and heading now.
-    var aimingLine: String? { recorder?.aimingLine(at: Date()) }
+    /// D8, INTERIM: the line under the aiming preview, what the photo's record would say of its place and heading now,
+    /// with the sky the overlay is drawn for, from one read of the readings, once a frame (AUDIT-C's sweep, items 10, 11).
+    func aimingNow() -> AimingNow {
+        #if DEBUG
+        if let standIn = standInAim { return AimingNow(line: nil, sky: standIn.sky) }
+        #endif
+        return recorder?.aimingNow(at: Date()) ?? AimingNow(line: nil, sky: nil)
+    }
 
     // MARK: The aim overlay (mobile-5)
 
@@ -215,11 +221,13 @@ final class CompanionModel {
         uploads.reset()
         solver.reset()
         earlyTask?.cancel()
+        swapTask?.cancel()
         earlyPose = nil
         earlyMarks = []
         lockOnPass = nil
         lockOnSettled = false
         laptopEarly = nil
+        laptopSwapOver = false
         laptopEarlyAsked = false
         unreachable = false
         shot = nil
@@ -403,14 +411,19 @@ final class CompanionModel {
     /// Whether early marks stand over the photo, from either source.
     var hasEarlyMarks: Bool { laptopEarly != nil || (earlyPose != nil && !earlyMarks.isEmpty) }
     private(set) var lockOnSettled = false
+    /// The laptop's early sky came `EarlyLine.swapWordsAfterSeconds` ago or more: the phone's rings have gone.
+    private(set) var laptopSwapOver = false
+    private var swapTask: Task<Void, Never>?
     private var earlyTask: Task<Void, Never>?
 
     private func startEarlySky(address: LaptopAddress) {
         earlyTask?.cancel()
+        swapTask?.cancel()
         earlyMarks = []
         lockOnPass = nil
         lockOnSettled = false
         laptopEarly = nil
+        laptopSwapOver = false
         laptopEarlyAsked = false
         earlyPose = shot?.recordWire.flatMap { EarlyPose.read(recordWire: $0) }
         guard let pose = earlyPose else { return }
@@ -438,8 +451,14 @@ final class CompanionModel {
         let client = SolveClient(address: address)
         Task { @MainActor [weak self] in
             let early = await client.earlySky(jobId: job.id, sha256: sha256)
-            guard let self, self.laptopEarlyAsked, self.lockOnPass == nil else { return }
+            guard let self, self.laptopEarlyAsked, self.lockOnPass == nil, let early else { return }
             self.laptopEarly = early
+            // The swap's words change once the phone's rings have gone (EarlyLine.namedSource)
+            self.swapTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(EarlyLine.swapWordsAfterSeconds))
+                guard !Task.isCancelled else { return }
+                self?.laptopSwapOver = true
+            }
         }
     }
 

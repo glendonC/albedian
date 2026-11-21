@@ -80,4 +80,30 @@ final class EarlyLineTests: XCTestCase {
         XCTAssertEqual(EarlyLine.sentence(marksShown: true, laptopSource: .pointing), EarlyPose.sourceSentence)
         XCTAssertNil(EarlyLine.sentence(marksShown: false, laptopSource: .sun))
     }
+
+    /// AUDIT-C's sweep, item 9, as the lead ruled it (21 Nov 12:59): on a swap from the phone's own rings to the
+    /// laptop's, the line keeps the phone's words until the phone's rings have gone, then names the laptop's source.
+    func testOnASwapThePhonesWordsStayUntilThePhonesRingsHaveGone() {
+        XCTAssertNil(EarlyLine.namedSource(laptop: .moon, phoneRingsDrawn: true, swapOver: false, reduceMotion: false),
+                     "the phone's rings still leave or travel: its own words")
+        XCTAssertEqual(EarlyLine.namedSource(laptop: .moon, phoneRingsDrawn: true, swapOver: true, reduceMotion: false), .moon)
+        XCTAssertEqual(EarlyLine.namedSource(laptop: .sun, phoneRingsDrawn: false, swapOver: false, reduceMotion: false), .sun,
+                       "no phone ring was drawn: the laptop's words come with its rings")
+        XCTAssertEqual(EarlyLine.namedSource(laptop: .moon, phoneRingsDrawn: true, swapOver: false, reduceMotion: true), .moon,
+                       "Reduce Motion: both sets dissolve together and the words change at once (section 6)")
+        XCTAssertNil(EarlyLine.namedSource(laptop: nil, phoneRingsDrawn: true, swapOver: true, reduceMotion: false))
+        XCTAssertEqual(EarlyLine.sentence(marksShown: true, laptopSource: EarlyLine.namedSource(laptop: .moon, phoneRingsDrawn: true,
+                                                                                                swapOver: false, reduceMotion: false)),
+                       EarlyPose.sourceSentence)
+    }
+
+    /// The words change when the swap's travel ends, the old-only rings gone on frame out before it, and that is the
+    /// moment the new-only rings start (EarlyArrival), so no ring stands under another source's words.
+    func testTheWordsChangeWhenTheNewRingsStart() {
+        XCTAssertEqual(EarlyLine.swapWordsAfterSeconds, MotionStyle.frameIn.seconds, accuracy: 1e-12)
+        XCTAssertGreaterThanOrEqual(EarlyLine.swapWordsAfterSeconds, MotionStyle.frameOut.seconds)
+        let delays = EarlyArrival.delays(shown: ["a"], now: [EarlyArrival.Ring(key: "a", mag: 1), EarlyArrival.Ring(key: "b", mag: 2)],
+                                         reduceMotion: false)
+        XCTAssertEqual(delays["b"]!, EarlyLine.swapWordsAfterSeconds, accuracy: 1e-12)
+    }
 }

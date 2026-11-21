@@ -210,18 +210,20 @@ struct AimScreen: View {
                     // mobile-5: the overlay over the preview, the "Predicted" tag at top centre and the source line under it,
                     // redrawn with every frame while the laptop's marks are there
                     TimelineView(.animation) { _ in
-                        let placed = SkyOverlayView.placed(model.skyMarks, attitude: model.currentAttitude,
+                        // One read a frame: the rings, their tag and their source line from the same set, and no ring
+                        // once the line says why there is none (AUDIT-C's sweep, items 10 and 11)
+                        let aim = model.aimingNow()
+                        let placed = SkyOverlayView.placed(aim.marks(model.skyMarks), attitude: model.currentAttitude,
                                                            acrossFovDeg: model.previewFovDeg, width: width, height: width * 4 / 3)
                         ZStack {
-                            SkyOverlayView(marks: model.skyMarks, attitude: model.currentAttitude,
-                                           acrossFovDeg: model.previewFovDeg, width: width, height: width * 4 / 3)
+                            PlacedSkyOverlay(placed: placed, width: width, height: width * 4 / 3)
                                 .atTop(Arrive.photoTop)
                             if !placed.isEmpty {
                                 EvidenceTag(evidence: .predicted).frame(height: 44).atTop(Arrive.topControls)
                             }
                             // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
                             // with both and marks drawn, the overlay's sources and the heading accuracy
-                            if let line = model.aimingLine ?? model.skyHeadingAccuracyDeg.flatMap({
+                            if let line = aim.line ?? model.skyHeadingAccuracyDeg.flatMap({
                                 SkyOverlayWords.sourceLine(placed.map(\.0), headingAccuracyDeg: $0) }) {
                                 Text(line).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
                                     .foregroundStyle(Color(ControlStyle.inkQuiet))
