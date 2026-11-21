@@ -538,8 +538,15 @@ def test_a_persons_alignment_rides_as_a_search_only_hint_with_its_roll_and_field
                        "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "rollDeg": -3.0, "fovDiagonalDeg": 72.7,
                        "timeFrom": "file", "placeFrom": "file"}  # fmt: skip
     assert hint().source == "record" and "rollDeg" not in hint().to_contract_dict()
-    for changes in (dict(used_as=("search_hint", "pose_estimate")), dict(used_as=("search_hint", "moment"), time_from="record"),
-                    dict(place_from="record"), dict(roll_deg=None), dict(fov_diagonal_deg=None), dict(roll_deg=180.5),
+    # The sky the person lined up was drawn for the moment the photo's pointing record lent: the hint says moment, and
+    # which of the time and the place came from the record (lentalign-0); never the person's own
+    for lent in (dict(time_from="record"), dict(place_from="record"), dict(time_from="record", place_from="record")):
+        written = hint(**{**person, "used_as": ("search_hint", "moment"), **lent}).to_contract_dict()
+        assert written["usedAs"] == ["search_hint", "moment"] and written["source"] == "person", lent
+    for changes in (dict(used_as=("search_hint", "pose_estimate")), dict(used_as=("search_hint", "moment")),
+                    dict(used_as=("moment",), time_from="record"), dict(place_from="record"), dict(time_from="record"),
+                    dict(used_as=("search_hint", "pose_estimate", "moment"), time_from="record"),
+                    dict(roll_deg=None), dict(fov_diagonal_deg=None), dict(roll_deg=180.5),
                     dict(fov_diagonal_deg=0.0), dict(fov_diagonal_deg=175.5), dict(roll_deg=True), dict(source="voice")):
         with pytest.raises(ValueError):
             hint(**{**person, **changes})

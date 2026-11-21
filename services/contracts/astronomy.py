@@ -249,8 +249,13 @@ HINT_PERSON_POSE = "A pointing hint gives the roll and the field of view exactly
 # The fields only a person's alignment gives: the roll and the field of view the person left the drawn sky at
 HINT_PERSON_FIELDS = (("rollDeg", "roll_deg"), ("fovDiagonalDeg", "fov_diagonal_deg"))
 HINT_PERSON_USE = (
-    "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file."
+    "A person's alignment is used only as a search hint and lends no time or place of its own: it lists moment "
+    "exactly when the photo's pointing record lent the time or the place."
 )
+# What a person's alignment is used as: a search hint, and with it the moment exactly when the photo's pointing record
+# lent the time or the place of the sky the person lined up (lentalign-0)
+PERSON_POINTING_USES = ("search_hint",)
+PERSON_POINTING_USES_LENT = ("search_hint", "moment")
 HINT_OFFSET = (
     "A pointing hint gives the verified centre's offset from its h"
     "inted centre exactly on a calibrated solution whose hint gives one."
@@ -839,10 +844,12 @@ def hint_centre_issues(hint: Any) -> list[Issue]:
 
 def hint_person_issues(hint: Any) -> list[Issue]:
     """A person's alignment gives its roll and field of view, and only a person's; it is only a search hint and lends no
-    time or place (align-1b)."""
+    time or place of its own (align-1b). It says moment exactly when the photo's pointing record lent the time or the
+    place of the sky the person lined up, which timeFrom and placeFrom name (lentalign-0)."""
     person = hint.source == "person"
     issues = [((wire,), HINT_PERSON_POSE) for wire, name in HINT_PERSON_FIELDS if (getattr(hint, name) is not None) != person]
-    if person and (tuple(hint.used_as) != ("search_hint",) or hint.time_from != "file" or hint.place_from != "file"):
+    lent = hint.time_from == "record" or hint.place_from == "record"
+    if person and tuple(hint.used_as) != (PERSON_POINTING_USES_LENT if lent else PERSON_POINTING_USES):
         issues.append((("usedAs",), HINT_PERSON_USE))
     return issues
 

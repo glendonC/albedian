@@ -231,7 +231,10 @@ SAYS = {
         "whose hint gives one."
     ),
     "hint_person_pose": "A pointing hint gives the roll and the field of view exactly when a person aligned it.",
-    "hint_person_use": "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file.",
+    "hint_person_use": (
+        "A person's alignment is used only as a search hint and lends no time or place of its own: it lists moment "
+        "exactly when the photo's pointing record lent the time or the place."
+    ),
     "hint_moment": (
         "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
         "observerLocation."
@@ -535,6 +538,16 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
         **copy.deepcopy(valid["calibrated_at_the_gate"]), "pointingHint": {**person, "verifiedCenterOffsetDeg": 2.25},
     }
     valid["predicted_only_with_a_persons_alignment"] = {**copy.deepcopy(valid["predicted_only"]), "pointingHint": person}
+    # A person's alignment of a sky drawn for the moment the photo's pointing record lent (lentalign-0): still only a
+    # search hint of the person's, saying moment because the record lent the time and the place, never the person
+    lent_person = {**person, "usedAs": ["search_hint", "moment"], "timeFrom": "record", "placeFrom": "record"}
+    valid["predicted_only_with_a_persons_alignment_of_the_records_moment"] = {
+        **copy.deepcopy(valid["predicted_only"]), "pointingHint": lent_person,
+    }
+    valid["calibrated_with_a_persons_alignment_of_the_records_time"] = {
+        **copy.deepcopy(valid["calibrated_at_the_gate"]),
+        "pointingHint": {**lent_person, "placeFrom": "file", "verifiedCenterOffsetDeg": 2.25},
+    }
     # In an approximate solution, the status a pose estimate has, an observed finding may hold the pose fit's residual
     # (the lead's ruling of 2026-11-12 on the observed Moon; the horizon solver writes its beacon so)
     with_fit_residual = copy.deepcopy(valid["approximate"])
@@ -777,11 +790,16 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
     bad("persons_alignment_as_the_pose", device, "a person's alignment used as a pose from the device attitude",
         ["pointingHint.usedAs"], put(["pointingHint"], {**valid[aligned]["pointingHint"], "usedAs": ["search_hint", "pose_estimate"]}),
         says=(SAYS["hint_person_use"],))
-    bad("persons_alignment_lending_a_time", aligned, "a person's alignment that lends the photo a time",
-        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["search_hint", "moment"]), put(["pointingHint", "timeFrom"], "record"),
+    bad("persons_alignment_as_the_moment_alone", aligned, "a person's alignment used only as the moment",
+        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["moment"]), put(["pointingHint", "timeFrom"], "record"),
+        drop(["pointingHint", "centerAltDeg"]), drop(["pointingHint", "centerAzDeg"]), drop(["pointingHint", "uncertaintyDeg"]),
         says=(SAYS["hint_person_use"],))
-    bad("persons_alignment_lending_a_place", aligned, "a person's alignment whose place came from the record",
-        ["pointingHint.usedAs"], put(["pointingHint", "placeFrom"], "record"), says=(SAYS["hint_person_use"],))
+    bad("persons_alignment_lending_a_place", aligned, "a person's alignment whose place came from the record, not saying moment",
+        ["pointingHint.usedAs"], put(["pointingHint", "placeFrom"], "record"),
+        says=(SAYS["hint_person_use"],))
+    bad("persons_alignment_saying_moment_from_the_file", aligned,
+        "a person's alignment that says moment when the time and the place came from the file", ["pointingHint.usedAs"],
+        put(["pointingHint", "usedAs"], ["search_hint", "moment"]), says=(SAYS["hint_person_use"],))
     bad("persons_alignment_without_its_offset", aligned_calibrated, "a calibrated solution's alignment with no verified offset",
         ["pointingHint.verifiedCenterOffsetDeg"], drop(["pointingHint", "verifiedCenterOffsetDeg"]), says=(SAYS["hint_offset"],))
     bad("hint_without_a_source", searched, "a pointing hint that names no source", ["pointingHint.source"],

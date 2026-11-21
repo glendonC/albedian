@@ -567,7 +567,13 @@ const HINT_OFFSET =
   "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one.";
 const HINT_PERSON_POSE = 'A pointing hint gives the roll and the field of view exactly when a person aligned it.';
 const HINT_PERSON_USE =
-  "A person's alignment is used only as a search hint and lends no time or place: its timeFrom and placeFrom are file.";
+  "A person's alignment is used only as a search hint and lends no time or place of its own: it lists moment exactly when the photo's pointing record lent the time or the place.";
+/**
+ * What a person's alignment is used as: a search hint, and with it the moment exactly when the photo's pointing record
+ * lent the time or the place of the sky the person lined up (lentalign-0).
+ */
+const PERSON_POINTING_USES = 'search_hint';
+const PERSON_POINTING_USES_LENT = 'search_hint,moment';
 const HINT_MOMENT =
   'A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation.';
 
@@ -612,7 +618,8 @@ export const PointingHintSchema = z
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: HINT_PERSON_POSE });
       }
     });
-    if (person && (hint.usedAs.join() !== 'search_hint' || hint.timeFrom !== 'file' || hint.placeFrom !== 'file')) {
+    const lent = hint.timeFrom === 'record' || hint.placeFrom === 'record';
+    if (person && hint.usedAs.join() !== (lent ? PERSON_POINTING_USES_LENT : PERSON_POINTING_USES)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['usedAs'], message: HINT_PERSON_USE });
     }
     if (!listsEachOnceInOrder(hint.usedAs, POINTING_USES)) {
