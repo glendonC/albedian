@@ -26,6 +26,7 @@ Pure functions on arrays: no file, no job. The flux check is design section 7's.
 
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
@@ -516,9 +517,11 @@ def aperture_flux(image: np.ndarray, x: float, y: float, radius: int, occupied: 
     return float(window[inside].sum() - inside.sum() * ring.mean())
 
 
-def empty_aperture_sigma(image: np.ndarray, radius: int, occupied: np.ndarray, clipped: np.ndarray) -> float:
-    """sigma_F: 1.4826 x MAD of `aperture_flux` at design section 7's empty places of the frame."""
-    places = stars.empty_places(np.shape(image), radius, occupied, clipped)
+def empty_aperture_sigma(image: np.ndarray, radius: int, occupied: np.ndarray, clipped: np.ndarray,
+                         clearance: np.ndarray | None = None) -> float:
+    """sigma_F: 1.4826 x MAD of `aperture_flux` at design section 7's empty places of the frame (`clearance`, when
+    given, is `stars.clearance_map(occupied, clipped)`, measured once for every radius)."""
+    places = stars.empty_places(np.shape(image), radius, occupied, clipped, clearance)
     # The mask once for every place: a frame-sized comparison per place cost 5.7 s of photo 1's 35 s gate
     # [tested: .lanetools/speed/cprofile_photo.py]
     mask = np.asarray(occupied) > 0
@@ -662,6 +665,39 @@ def original_stars(codes: np.ndarray, peak: float) -> stars.StarField:
     placed_stars = tuple(placed)
     return stars.StarField(placed_stars, stars.footprint_map(luma.shape, placed_stars), clipped, len(points),
                            len(placed_stars), left_out)
+
+
+@dataclass(frozen=True)
+class OwnStars:
+    """A frame's criterion 1 stars as `original_stars` found them, small enough to hand from one pass to another: the
+    SHA-256 of the luma codes they were found on, the stars, and the found and clipped counts (restore-7s)."""
+
+    digest: str
+    stars: tuple[stars.Star, ...]
+    found: int
+    left_out: int
+
+
+def codes_digest(codes: np.ndarray) -> str:
+    """The SHA-256 of an array's shape, type and bytes."""
+    array = np.ascontiguousarray(codes)
+    hasher = hashlib.sha256(f"{array.shape}|{array.dtype.str}|".encode("ascii"))
+    hasher.update(array.tobytes())
+    return hasher.hexdigest()
+
+
+def own_stars_of(field_of_stars: stars.StarField, codes: np.ndarray) -> OwnStars:
+    """The record of `original_stars(codes, peak)`'s answer, for `star_field_from`."""
+    return OwnStars(codes_digest(codes), field_of_stars.stars, field_of_stars.found, field_of_stars.clipped_left_out)
+
+
+def star_field_from(own: OwnStars, codes: np.ndarray, peak: float) -> stars.StarField | None:
+    """`original_stars(codes, peak)` again from its record: the same stars and counts, their footprints and the clipped
+    map built as it builds them; None when `codes` are not the codes the record was found on, so the caller finds them."""
+    if codes_digest(codes) != own.digest:
+        return None
+    return stars.StarField(own.stars, stars.footprint_map(stars.luma_codes(codes).shape, own.stars),
+                           stars.clipped_map(codes, peak), own.found, len(own.stars), own.left_out)
 
 
 def bloom_discs(codes: np.ndarray, peak: float) -> list[stars.Star]:
@@ -902,8 +938,11 @@ def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant
     # The mask once for every star: a frame-sized comparison per star and aperture was 19 s of photo 1's 35 s gate,
     # growing with stars times samples [tested: .lanetools/speed/cprofile_photo.py]
     mask = occupied > 0
-    # sigma_F depends on the aperture's radius only: measured once per radius (at most FOOTPRINT_MAX_PX of them)
+    # sigma_F depends on the aperture's radius only: measured once per radius (at most FOOTPRINT_MAX_PX of them), each
+    # from the one clearance of the frame's occupied and clipped samples (restore-7s: a distance transform per radius
+    # was 0.5 s of a 2 megapixel frame's gate)
     sigmas: dict[int, float] = {}
+    clearance = None
     for star in field.stars:
         aperture = max(star.radius_px, stars.APERTURE_MIN_PX)
         reach = aperture + stars.ANNULUS_OUTER_PX + 1
@@ -915,7 +954,9 @@ def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant
             continue
         radius = max(star.radius_px, stars.APERTURE_MIN_PX)
         if radius not in sigmas:
-            sigmas[radius] = empty_aperture_sigma(original_luminance, radius, occupied, field.clipped)
+            if clearance is None:
+                clearance = stars.clearance_map(occupied, field.clipped)
+            sigmas[radius] = empty_aperture_sigma(original_luminance, radius, occupied, field.clipped, clearance)
         change = flux_change_sigma(star, original_luminance, variant_luminance, occupied, field.clipped, sigmas[radius],
                                    occupied_mask=mask)
         before = aperture_flux(original_luminance, star.x_px, star.y_px, star.radius_px, mask)
@@ -1125,11 +1166,13 @@ def _star_field(field_of_stars: stars.StarField, kept: Sequence[stars.Star], fou
                            len(kept), left_out)
 
 
-def clip_stars(luma: np.ndarray, peak: float, together: Together | None) -> ClipStars:
-    """Frame k's stars (`original_stars` on its own luma codes), and with registered neighbours the stars of J_k that
-    none of frame k's lies within the match radius of and that agree with each frame (guard 1); where the scene moved,
-    every one of either that guard 2 finds fixed to the sensor taken out."""
-    own = original_stars(luma, peak)
+def clip_stars(luma: np.ndarray, peak: float, together: Together | None,
+               own: stars.StarField | None = None) -> ClipStars:
+    """Frame k's stars (`original_stars` on its own luma codes, or `own` when its caller found them so already), and
+    with registered neighbours the stars of J_k that none of frame k's lies within the match radius of and that agree
+    with each frame (guard 1); where the scene moved, every one of either that guard 2 finds fixed to the sensor taken
+    out."""
+    own = original_stars(luma, peak) if own is None else own
     if together is None:
         return ClipStars(own, _star_field(own, (), 0, 0), 0)
     mean = original_stars(together.luma, peak)

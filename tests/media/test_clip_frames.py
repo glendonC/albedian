@@ -534,3 +534,58 @@ def test_an_8_bit_frames_kept_edges_are_codes_its_file_holds_and_the_gate_passes
     # The frame stored as recorded keeps its edges the original's, which is not what a kept edge must be
     as_recorded = clip_frames.gate_run(measured, frame_pool.Run(0, 0, 1, ((frames[0], lifted),)))[0].outcome
     assert as_recorded.rejection == "unconfirmed_points", as_recorded.record
+
+
+def test_the_gate_given_each_frames_own_stars_from_the_restore_answers_as_it_does_alone() -> None:
+    # restore-7s: the restore pass hands each frame's own stars, found on its original Y', to the gate pass, which takes
+    # them only for the very frame they were found on (by its Y' digest); every answer is the one it gives finding them
+    # again itself, and another frame's stars are refused and the frame's own found again
+    clip = clip_frames.clip_colour(video(width=128, height=128))
+    frames = scene_clip(clip, 6, 43, sigma=0.002, sky=0.03, moving=True, size=128)
+    measured = clip_frames.measure_clip(clip, frames)
+    results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, len(frames), tuple(frames)))
+    assert all(r.own_stars is not None and r.own_stars.stars for r in results)
+    pairs = tuple(zip(frames, [r.planes for r in results]))
+    alone = clip_frames.gate_run(measured, frame_pool.Run(0, 0, len(frames), pairs))
+    given = clip_frames.gate_run(measured, frame_pool.Run(0, 0, len(frames), tuple(
+        (o, s, r.own_stars) for (o, s), r in zip(pairs, results))))
+    others = clip_frames.gate_run(measured, frame_pool.Run(0, 0, len(frames), tuple(
+        (o, s, results[(i + 1) % len(results)].own_stars) for i, (o, s) in enumerate(pairs))))
+    assert len({r.own_stars.digest for r in results}) == len(results)
+    for a, b, c in zip(alone, given, others):
+        for outcome in (b.outcome, c.outcome):
+            assert outcome.record == a.outcome.record and outcome.unconfirmed == a.outcome.unconfirmed
+            assert (outcome.changes, outcome.ratios) == (a.outcome.changes, a.outcome.ratios)
+        assert {(g.stars_found, g.stars_confirmed, g.together, g.fixed) for g in (a, b, c)} == {
+            (a.stars_found, a.stars_confirmed, a.together, a.fixed)}
+
+
+def test_a_frames_own_stars_rebuild_the_star_field_found_on_it_exactly() -> None:
+    clip = clip_frames.clip_colour(video(width=128, height=128))
+    frames = scene_clip(clip, 2, 44, sigma=0.002, sky=0.03, moving=True, size=128)
+    luma = clip.luma_codes(frames[0])
+    found = gate.original_stars(luma, clip.peak_code())
+    own = gate.own_stars_of(found, luma)
+    rebuilt = gate.star_field_from(own, luma, clip.peak_code())
+    assert rebuilt is not None and rebuilt.stars == found.stars and found.stars
+    assert np.array_equal(rebuilt.footprint, found.footprint) and np.array_equal(rebuilt.clipped, found.clipped)
+    assert (rebuilt.found, rebuilt.confirmed, rebuilt.clipped_left_out) == (found.found, found.confirmed, found.clipped_left_out)
+    # On another frame's Y' the record is not taken
+    assert gate.star_field_from(own, clip.luma_codes(frames[1]), clip.peak_code()) is None
+    # The record's own counts come back as they are: found past the confirmed, and those left out for clipping
+    counted = gate.star_field_from(gate.OwnStars(own.digest, own.stars, len(own.stars) + 3, 2), luma, clip.peak_code())
+    assert (counted.found, counted.confirmed, counted.clipped_left_out) == (len(own.stars) + 3, len(own.stars), 2)
+
+
+def test_with_neighbours_and_a_patch_fixed_to_the_sensor_the_gate_given_own_stars_answers_as_alone() -> None:
+    # The record holds frame k's own stars before guard 2, so the gate's guard 2 refuses the patch again and counts it
+    clip, frames, _, measured, results = merged_clip(53, lambda k, o, c: spot(128.3, 140.6, 0.05))
+    assert results[3].fixed >= 1
+    pairs = tuple(zip(frames, [r.planes for r in results]))
+    alone = clip_frames.gate_run(measured, frame_pool.Run(0, 0, len(frames), pairs))
+    given = clip_frames.gate_run(measured, frame_pool.Run(0, 0, len(frames), tuple(
+        (o, s, r.own_stars) for (o, s), r in zip(pairs, results))))
+    assert alone[3].fixed >= 1
+    for a, b in zip(alone, given):
+        assert b.outcome.record == a.outcome.record and b.outcome.unconfirmed == a.outcome.unconfirmed
+        assert (b.stars_found, b.stars_confirmed, b.together, b.fixed) == (a.stars_found, a.stars_confirmed, a.together, a.fixed)

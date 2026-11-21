@@ -536,3 +536,20 @@ def test_the_tiles_holding_a_point_are_found_as_testing_each_tile_finds_them(hei
         holding = [k for k, t in enumerate(grid) if t.x0 <= x < t.x1 and t.y0 <= y < t.y1]
         found = sorted(int(r * columns + c) for r in range(rows0[i], rows1[i] + 1) for c in range(columns0[i], columns1[i] + 1))
         assert found == holding and int(first[i]) == holding[0], (x, y, height, width)
+
+
+def test_empty_places_from_a_clearance_measured_once_are_the_places_measured_for_each_radius() -> None:
+    # restore-7s: a frame's flux check asks for empty places at every aperture radius of its stars; the clearance from
+    # its footprints and clipped regions does not depend on the radius, so it is measured once and handed to each
+    rng = np.random.default_rng(61)
+    footprint = np.zeros((300, 360))
+    for x, y in rng.uniform(20, 280, (40, 2)):
+        footprint[int(y) - 3:int(y) + 4, int(x) - 3:int(x) + 4] = 0.5
+    clipped = np.zeros((300, 360), bool)
+    clipped[40:60, 300:330] = True
+    clearance = stars.clearance_map(footprint, clipped)
+    for radius in range(1, stars.FOOTPRINT_MAX_PX + 1):
+        assert stars.empty_places((300, 360), radius, footprint, clipped, clearance) == \
+            stars.empty_places((300, 360), radius, footprint, clipped), radius
+    nothing = np.zeros((50, 50))
+    assert np.all(np.isinf(stars.clearance_map(nothing, nothing.astype(bool))))

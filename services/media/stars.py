@@ -320,15 +320,23 @@ def aperture_flux(image: np.ndarray, x: float, y: float, radius: int) -> float:
     return float(window[inside].sum() - inside.sum() * np.median(window[annulus]))
 
 
-def empty_places(shape: tuple[int, int], radius: int, footprint: np.ndarray, clipped: np.ndarray) -> list[tuple[int, int]]:
+def clearance_map(footprint: np.ndarray, clipped: np.ndarray) -> np.ndarray:
+    """Each sample's distance to the nearest footprint or clipped sample; infinite everywhere when there is none."""
+    occupied = (np.asarray(footprint) > 0) | np.asarray(clipped, dtype=bool)
+    return ndimage.distance_transform_edt(~occupied) if occupied.any() else np.full(occupied.shape, np.inf)
+
+
+def empty_places(shape: tuple[int, int], radius: int, footprint: np.ndarray, clipped: np.ndarray,
+                 clearance: np.ndarray | None = None) -> list[tuple[int, int]]:
     """The first EMPTY_APERTURES points (x, y) of a fixed lattice, in row order, EMPTY_CLEARANCE_PX clear of every
     footprint and clipped region, with the aperture and its annulus inside the frame. The lattice spaces apertures
-    so that no two annuli overlap; it is the same for every call."""
+    so that no two annuli overlap; it is the same for every call. `clearance` is `clearance_map(footprint, clipped)`
+    when the caller measured it once for several radii (restore-7s)."""
     aperture = max(radius, APERTURE_MIN_PX)
     margin = aperture + ANNULUS_OUTER_PX
     spacing = 2 * margin + 1
-    occupied = (np.asarray(footprint) > 0) | np.asarray(clipped, dtype=bool)
-    clearance = ndimage.distance_transform_edt(~occupied) if occupied.any() else np.full(shape, np.inf)
+    if clearance is None:
+        clearance = clearance_map(footprint, clipped)
     height, width = shape
     places = []
     for y in range(margin, height - margin, spacing):

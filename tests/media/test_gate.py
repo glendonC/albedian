@@ -879,6 +879,31 @@ def test_a_ring_read_at_some_samples_is_the_ring_read_everywhere_there(outer: bo
     assert np.all(np.isnan(rise[~at]))
 
 
+def test_the_flux_checks_one_clearance_gives_each_radius_the_empty_places_it_gives_alone() -> None:
+    # restore-7s: the flux check measures the frame's clearance once for all its stars' radii; with clipped regions where
+    # the lattice's first places would lie, every star is measured as it is measured alone
+    rng = np.random.default_rng(39)
+    original = 0.01 + 0.0004 * rng.standard_normal((240, 240))
+    placed = [stars.Star(60.0, 60.0, 50.0, 2), stars.Star(120.0, 150.0, 30.0, 4), stars.Star(180.0, 90.0, 40.0, 6)]
+    for star in placed:
+        original += gaussian((240, 240), star.x_px, star.y_px, 0.05)
+    footprint = stars.footprint_map((240, 240), placed)
+    clipped = np.zeros((240, 240), bool)
+    clipped[5:45, 100:235] = True
+    clipped[205:235, 130:235] = True
+    field = stars.StarField(tuple(placed), footprint, clipped, 3, 3, 0)
+    variant = original + 0.0003 * rng.standard_normal((240, 240))
+    changes = []
+    for star in placed:
+        radius = max(star.radius_px, stars.APERTURE_MIN_PX)
+        assert stars.empty_places((240, 240), radius, footprint, clipped) != stars.empty_places(
+            (240, 240), radius, footprint, np.zeros_like(clipped)), "the control: the clipped regions move the places"
+        sigma = gate.empty_aperture_sigma(original, radius, footprint, clipped)
+        changes.append(gate.flux_change_sigma(star, original, variant, footprint, clipped, sigma))
+    measured, outside, worst, _ = gate.flux_check(field, original, variant, footprint)
+    assert measured == 3 and worst == pytest.approx(max(changes), rel=1e-12)
+
+
 def test_the_flux_checks_one_mask_measures_each_star_as_the_star_alone_is_measured(monkeypatch) -> None:
     # The restore speed unit computes the occupied mask once for every star; a star whose annulus crosses another's
     # kept edge (weight between 0 and 1) is measured with that edge left out, as flux_change_sigma alone leaves it

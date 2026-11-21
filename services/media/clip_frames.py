@@ -321,6 +321,8 @@ class OriginalSide:
     together: Optional[gate.Together]
     window: Optional[temporal.Window]
     window_start: int
+    # Frame k's own stars before guard 2 (`gate.original_stars` on its luma), for the gate pass (restore-7s)
+    own: Optional[stars.StarField] = None
 
     @property
     def neighbours(self) -> int:
@@ -372,6 +374,8 @@ class FrameResult:
     repeats: int = 0
     samples: int = 0
     clipped: bool = False
+    # Its own stars as found on its original luma, for the gate pass (restore-7s)
+    own_stars: Optional[gate.OwnStars] = None
 
 
 class _RunFrames:
@@ -387,11 +391,14 @@ class _RunFrames:
         self.stacked = [clip.stacked_codes(planes).astype(np.int16) if stacked else None for planes in self.planes]
 
 
-def original_side(settings: ClipSettings, frames: _RunFrames, centre: int) -> OriginalSide:
+def original_side(settings: ClipSettings, frames: _RunFrames, centre: int,
+                  own_stars: Optional[gate.OwnStars] = None) -> OriginalSide:
     """Frame `centre` of a run as its original pixels say: with a noise table, its window registered (codec copies found
     against each frame's previous one) and its frames together; criterion 1's stars on its own luma and those the frames
     together confirm, past both guards (`gate.clip_stars`); the regions kept as it recorded them (`gate.kept_regions`).
-    The same for the pipeline and for the gate, from original pixels alone."""
+    The same for the pipeline and for the gate, from original pixels alone: frame k's own stars, when the restore
+    pass found them on this very luma (`own_stars`, its digest checked), are rebuilt from that record, as finding them
+    again gives (restore-7s)."""
     clip = settings.colour
     original = frames.linear[centre]
     luma = frames.luma[centre]
@@ -411,10 +418,12 @@ def original_side(settings: ClipSettings, frames: _RunFrames, centre: int) -> Or
         window = temporal.register_window(frames.luma[low:high], centre - low, copies)
         luminances = [frames.linear[i] @ np.asarray(LUMA) for i in range(low, high)]
         together = gate.Together.of(frames.luma[low:high], luminances, centre - low, window)
-    found = gate.clip_stars(luma, clip.peak_code(), together)
+    own = None if own_stars is None else gate.star_field_from(own_stars, luma, clip.peak_code())
+    own = gate.original_stars(luma, clip.peak_code()) if own is None else own
+    found = gate.clip_stars(luma, clip.peak_code(), together, own)
     measurement = settings.measurement if settings.measurement.reason is None else None
     kept = gate.kept_regions(found.field, luma, clip.peak_code(), luminance, measurement)
-    return OriginalSide(original, found, kept, together, window, low)
+    return OriginalSide(original, found, kept, together, window, low, own)
 
 
 def prepare_frame(settings: ClipSettings, frames: _RunFrames, centre: int) -> Prepared:
@@ -508,7 +517,8 @@ def restore_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameResult
         repeats, samples = _repeats(settings.colour, run, k)
         results.append(FrameResult(run.first + k, finish_frame(settings, dissolved.working, side), side.neighbours, own.found,
                                    own.confirmed, settings.lift.beta, together.confirmed, side.found.fixed,
-                                   list(dissolved.per_pass), closure, repeats, samples, bool(own.clipped.any())))
+                                   list(dissolved.per_pass), closure, repeats, samples, bool(own.clipped.any()),
+                                   gate.own_stars_of(side.own, frames.luma[first + k])))
     return results
 
 
@@ -555,13 +565,15 @@ def gate_frame(settings: ClipSettings, side: OriginalSide, stored_planes: Sequen
 
 
 def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
-    """The pool's work for the gate: a run of (original planes, stored planes) pairs, each of its own frames gated, in
-    order. The window, the frames together and the stars are rebuilt from the original frames alone, by the same rule
-    as the merge's (design section 10)."""
+    """The pool's work for the gate: a run of (original planes, stored planes) pairs, or triples with the frame's own
+    stars as the restore pass found them (`gate.OwnStars`), each of its own frames gated, in order. The window, the
+    frames together and the stars are rebuilt from the original frames alone, by the same rule as the merge's (design
+    section 10); a frame's own stars are taken from its record only for the luma they were found on."""
     frames, first = _run_frames(settings, run, [pair[0] for pair in run.frames])
     results = []
     for k in range(run.count):
-        side = original_side(settings, frames, first + k)
+        item = run.frames[run.before + k]
+        side = original_side(settings, frames, first + k, item[2] if len(item) > 2 else None)
         outcome = gate_frame(settings, side, run.frames[run.before + k][1])
         own, together = side.found.field, side.found.together
         results.append(FrameGate(run.first + k, outcome, own.found + together.found, own.confirmed + together.confirmed,

@@ -520,7 +520,10 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
     gated: list[clip_frames.FrameGate] = []
     with clip_io.ClipDecoder(original_path, probe) as originals, clip_io.ClipDecoder(stored, stored_probe) as kept, \
             frame_pool.FramePool(functools.partial(clip_frames.gate_run, settings), workers=workers) as pool:
-        pairs = ((a.planes, b.planes) for a, b in zip(originals, kept))
+        # Each frame's own stars as the restore pass found them on the same original frame (restore-7s): the gate takes
+        # them only for the luma they were found on, and finds them itself otherwise
+        own_stars = {f.index: f.own_stars for f in frames}
+        pairs = ((a.planes, b.planes, own_stars.get(a.index)) for a, b in zip(originals, kept))
         for result in pool.map(frame_pool.runs(pairs, window=clip_frames.RUN_WINDOW)):
             gated.append(result)
             verify.add()
