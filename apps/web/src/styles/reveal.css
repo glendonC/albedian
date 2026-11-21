@@ -1665,6 +1665,31 @@
 :root[data-phone-scroll] .ask-bar.is-phone {
   translate: 0 calc(-1 * var(--phone-scroll, 0px));
 }
+/* D38 item 5 with the ruling of 15:43 (UIUX-restorephone-READY.md, last section): a stopped restoration at phone width
+   in D37's layout: the block's foot 14 px above the row at 668, rising over the darkened lower edge; the sentence in
+   D37's phone size, and under a refusal D21's "Your photo is unchanged." 10 px below it at the laptop's 14 px */
+.restore-phone-why {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: calc(100% - 654px);
+  display: grid;
+  gap: 10px;
+}
+.restore-phone-why__s {
+  margin: 0;
+  font: 300 22px / 1.2 var(--look-font-sans);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: var(--look-ink);
+}
+.restore-phone-why__sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+  letter-spacing: -0.005em;
+}
 /* D36 item 5 (UIUX-restorations-READY.md): at phone width the same list under Download (its foot at 816, then the
    laptop's 12 px), in the phone's 24 px gutters, rows 44 px, reached by scrolling the screen */
 .restore-phone-versions {

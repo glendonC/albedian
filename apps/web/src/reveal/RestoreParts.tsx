@@ -398,6 +398,51 @@ export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promis
 };
 
 /**
+ * D38 item 5 with the ruling of 15:43 on 21 Nov (UIUX-restorephone-READY.md, last section): a stopped restoration at
+ * phone width in D37's layout with D21's sentences: the sentence (and under a refusal "Your photo is unchanged.") in one
+ * block rising from 14 px above the row over the photo's darkened lower edge, the step it stopped at with A1's x in
+ * D2's row at 668, and Try again alone at 772 when the same work may start again; a refusal has no button, so Ask out
+ * loud comes back there.
+ */
+export const RestorePhoneStopped: React.FC<{
+  job: UploadJob | null;
+  sentence: string | null;
+  subline: string | null;
+  canTryAgain: boolean;
+  onTryAgain: () => void;
+}> = ({ job, sentence, subline, canTryAgain, onTryAgain }) => {
+  const stopped = job ? (restorationRows(job).find((row) => row.state === 'failed') ?? null) : null;
+  return (
+    <div className="restore-phone-stopped">
+      <span className="work-phone-fade" aria-hidden="true" />
+      <div className="restore-phone-why" role="alert">
+        {sentence !== null && <p className="restore-phone-why__s">{sentence}</p>}
+        {subline !== null && <p className="restore-phone-why__sub">{subline}</p>}
+      </div>
+      {stopped && (
+        <div className="work-phone-row is-stopped">
+          <span className="work-phone-row__x" aria-hidden="true">
+            <LookIcon name="x" />
+          </span>
+          <b>{stopped.word}</b>
+          <span className="work-phone-row__v">{stopped.value}</span>
+          {stopped.fraction !== null && (
+            <span className="work-phone-row__bar">
+              <b style={{ width: barWidth(stopped.fraction) }} />
+            </span>
+          )}
+        </div>
+      )}
+      {canTryAgain && (
+        <div className="restore-phone-go">
+          <MainAction label="Try again" icon="arrow-clockwise" size="phone" onClick={onTryAgain} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * D36 (UIUX-restorations-READY.md, decided by the lead 13:45): under Download, only when the photo has two or more
  * ready restorations, one row each, newest first, with no heading: the time it was made, its size at the right, the
  * check on the one shown, and under each older one "Made by an earlier version of Albedian." A row pressed shows it.

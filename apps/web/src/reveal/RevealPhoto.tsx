@@ -11,7 +11,7 @@ import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedi
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
-import { RestoreCompare, RestorePhoneFoot, RestorePhoneWait, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
+import { RestoreCompare, RestorePhoneFoot, RestorePhoneStopped, RestorePhoneWait, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
 import type { Restoration } from './restoration.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -462,12 +462,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const phoneRestoreOffered =
     phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
   const phoneRestoring = phonePhoto && !there && !skyShown && restoration?.phase === 'working';
+  // D38 item 5 (ruled 15:43): stopped, in D37's layout with D21's sentences; only Try again holds the foot (a refusal frees it)
+  const phoneStopped = phonePhoto && !there && !skyShown && restoration?.phase === 'stopped';
   // D38's no-match rule: on the phone's no-match screen and its refused alignment, Restore under the screen's own
   // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused)
   const phoneNoMatchRestore =
     phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && status.kind === 'unmatched';
   // The phone's foot taken by the restoration (its compare's Download, or its wait's Cancel): Ask out loud gives way
-  const phoneFoot = phoneCompare || phoneRestoring;
+  const phoneFoot = phoneCompare || phoneRestoring || (phoneStopped && restoration?.phase === 'stopped' && restoration.canTryAgain);
   useEffect(() => {
     onPhoneFootChange?.(phoneFoot);
   }, [phoneFoot]);
@@ -609,7 +611,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
   // The phone's restoration holds the foot: its compare's sentence and Download (D10 item 5), or its wait's row and Cancel (D38)
-  const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
+  const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring || phoneStopped ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         <div className="align-phone" data-testid="reveal-status" role="status">
@@ -1065,8 +1067,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
       {phoneRestoring && restoration?.phase === 'working' && <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} />}
+      {phoneStopped && restoration?.phase === 'stopped' && (
+        <RestorePhoneStopped
+          job={restoration.job}
+          sentence={restoration.sentence}
+          subline={restoration.subline}
+          canTryAgain={restoration.canTryAgain}
+          onTryAgain={() => onRestore?.()}
+        />
+      )}
 
-      {phone && !phoneCompare && !phoneRestoring && !answer && !picked && !skyShown && status.kind === 'estimate' && (
+      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
         // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
         // sky rests on), then the counts row as built
@@ -1076,7 +1087,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           {counts.length > 0 && <PhoneCounts counts={counts} />}
         </div>
       )}
-      {phone && !phoneCompare && !phoneRestoring && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
+      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>
