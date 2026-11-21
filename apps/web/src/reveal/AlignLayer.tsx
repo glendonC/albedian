@@ -116,6 +116,13 @@ const MarksDrawing: React.FC<{ marks: readonly AlignMark[]; rect: FrameRect }> =
 
 /** A wheel step of this many pixels scales the field by e to this power: up enlarges, down shrinks. */
 const WHEEL_SCALE_PER_PX = 0.0015;
+/**
+ * A wheel notch glides to its field (MOTION-READY-web.md section 6 A; k10, NASA's Eyes' zoom smoothing): what is left
+ * of it, in the log of the field, keeps this share of itself each sixtieth of a second, time-scaled, so it settles in
+ * about 0.22 s, then ends on the exact value. A trackpad's pinch and reduced motion step at once.
+ */
+const WHEEL_GLIDE_PER_60TH = 0.8;
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
 export const AlignLayer: React.FC<{
   rect: FrameRect;
@@ -138,18 +145,50 @@ export const AlignLayer: React.FC<{
   // pointer once a pose can put it there again (near the zenith none may)
   const holding = useRef<{ altDeg: number; azDeg: number } | null>(null);
 
+  // A wheel notch's glide: the field it ends on, when it was last carried and its frame
+  const glide = useRef<{ fovXDeg: number; last: number; frame: number } | null>(null);
+  const stopGlide = () => {
+    if (glide.current) cancelAnimationFrame(glide.current.frame);
+    glide.current = null;
+  };
+
   // The wheel is taken without the page scrolling (a passive listener cannot stop it)
   useEffect(() => {
     const el = layer.current;
     if (!el) return undefined;
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const next = scalePose(live.current, Math.exp(event.deltaY * WHEEL_SCALE_PER_PX));
+    const carry = (now: number) => {
+      const g = glide.current;
+      if (!g) return;
+      const keep = Math.pow(WHEEL_GLIDE_PER_60TH, (Math.max(0, now - g.last) / 1000) * 60);
+      g.last = now;
+      const left = (Math.log(live.current.fovXDeg) - Math.log(g.fovXDeg)) * keep;
+      const done = Math.abs(left) < 1e-4;
+      const next = { ...live.current, fovXDeg: done ? g.fovXDeg : g.fovXDeg * Math.exp(left) };
       live.current = next;
       report.current(next);
+      if (done) glide.current = null;
+      else g.frame = requestAnimationFrame(carry);
+    };
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const factor = Math.exp(event.deltaY * WHEEL_SCALE_PER_PX);
+      // A trackpad's pinch comes as a wheel with Ctrl held: it is the hand, so it follows at once, as under reduced motion
+      if (event.ctrlKey || (typeof window.matchMedia === 'function' && window.matchMedia(REDUCED_MOTION).matches)) {
+        stopGlide();
+        const next = scalePose(live.current, factor);
+        live.current = next;
+        report.current(next);
+        return;
+      }
+      const target = scalePose({ ...live.current, fovXDeg: glide.current?.fovXDeg ?? live.current.fovXDeg }, factor).fovXDeg;
+      if (glide.current) glide.current.fovXDeg = target;
+      else glide.current = { fovXDeg: target, last: performance.now(), frame: requestAnimationFrame(carry) };
     };
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      stopGlide();
+    };
   }, []);
 
   const centre = { x: rect.leftPx + rect.widthPx / 2, y: rect.topPx + rect.heightPx / 2 };
@@ -171,6 +210,8 @@ export const AlignLayer: React.FC<{
       // Two fingers: the other one stays where it was for this move; the sky turns and scales about the point between
       // them and follows it (MOTION-READY-web.md section 6 A)
       const other = [...pointers.entries()].find(([id]) => id !== event.pointerId)![1];
+      // The fingers take the field from any wheel glide
+      stopGlide();
       next = pinchPose(live.current, [inFrame(from), inFrame(other)], [inFrame(to), inFrame(other)], rect.widthPx, rect.heightPx);
       holding.current = null;
     } else if (event.ctrlKey) {

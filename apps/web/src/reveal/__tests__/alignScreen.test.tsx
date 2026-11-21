@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { alignMarks, ALIGN_RING_PX } from '../AlignLayer.js';
@@ -233,10 +233,99 @@ describe('aligning', () => {
     pointer('pointermove', 720, 550, true);
     pointer('pointerup', 720, 550, true);
     expect(readout()).toMatch(/turned 90°/);
+    // A trackpad's pinch (a wheel with Ctrl held, as browsers send it) is the hand: it scales at once
+    act(() => {
+      layer.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 200, ctrlKey: true }));
+    });
+    expect(readout()).toMatch(/· 7\d° across$/);
+  });
+
+  it('glides a wheel notch to its exact value, 0.8 of what is left kept each sixtieth of a second (MOTION-READY-web.md section 6 A)', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => (frames.push(cb), frames.length));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    vi.spyOn(performance, 'now').mockReturnValue(1000);
+    start();
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    const across = () => Number(/(\d+)° across/.exec(q('[data-testid="align-readout"]')!.textContent ?? '')![1]);
+    // Every frame asked for so far runs at this time (the reveal asks for its own too)
+    const frame = (t: number) => act(() => frames.splice(0).forEach((cb) => cb(t)));
+    frame(1000);
+    const others = frames.length;
+    expect(across()).toBe(53);
+    // One notch of 200: the field 53.06 degrees times e to the 0.3, 71.62, reached in the log of the field
     act(() => {
       layer.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 200 }));
     });
-    expect(readout()).toMatch(/· 7\d° across$/);
+    expect(across()).toBe(53);
+    // A sixtieth of a second on: 71.62 times (53.06 / 71.62) to the 0.8, 56.3
+    frame(1000 + 1000 / 60);
+    expect(across()).toBe(56);
+    // At 0.217 s (13 sixtieths) 5.5 percent is left: 70.4
+    for (let k = 2; k <= 13; k += 1) frame(1000 + (1000 * k) / 60);
+    expect(across()).toBe(70);
+    // It ends on the exact value and asks for no more frames
+    for (let k = 14; k < 200 && frames.length > others; k += 1) frame(1000 + (1000 * k) / 60);
+    expect(frames.length).toBe(others);
+    expect(across()).toBe(72);
+    vi.restoreAllMocks();
+  });
+
+  it('ends two quick notches on both their factors, and lets two fingers take the field from a glide', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => (frames.push(cb), frames.length));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    vi.spyOn(performance, 'now').mockReturnValue(1000);
+    start();
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    const across = () => Number(/(\d+)° across/.exec(q('[data-testid="align-readout"]')!.textContent ?? '')![1]);
+    const frame = (t: number) => act(() => frames.splice(0).forEach((cb) => cb(t)));
+    const wheel = (deltaY: number) =>
+      act(() => {
+        layer.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY }));
+      });
+    // Two notches of 100 in one frame: 53.06 times e to the 0.3, 71.62, as one of 200
+    wheel(100);
+    wheel(100);
+    for (let k = 1; k < 120; k += 1) frame(1000 + (1000 * k) / 60);
+    expect(across()).toBe(72);
+    // A notch back down, then two fingers spread to twice their gap about the centre before it settles: the field the
+    // fingers leave stands, and the notch's 53.06 is not reached
+    vi.spyOn(performance, 'now').mockReturnValue(3000);
+    wheel(-200);
+    frame(3000 + 1000 / 60);
+    const cx = parseFloat(layer.style.left) + parseFloat(layer.style.width) / 2;
+    const cy = parseFloat(layer.style.top) + parseFloat(layer.style.height) / 2;
+    const touch = (type: string, id: number, x: number, y: number) =>
+      act(() => {
+        const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y });
+        Object.defineProperty(event, 'pointerId', { value: id });
+        layer.dispatchEvent(event);
+      });
+    touch('pointerdown', 1, cx - 50, cy);
+    touch('pointerdown', 2, cx + 50, cy);
+    const pinched = () => {
+      touch('pointermove', 2, cx + 100, cy);
+      touch('pointermove', 1, cx - 100, cy);
+    };
+    pinched();
+    const field = across();
+    for (let k = 2; k < 120; k += 1) frame(3000 + (1000 * k) / 60);
+    expect(across()).toBe(field);
+    expect(field).toBeLessThan(45);
+    vi.restoreAllMocks();
+  });
+
+  it('steps a wheel notch at once under reduced motion', () => {
+    const reduce = vi.fn((query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    vi.stubGlobal('matchMedia', reduce);
+    start();
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    act(() => {
+      layer.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 200 }));
+    });
+    expect(q('[data-testid="align-readout"]')!.textContent).toMatch(/72° across/);
+    vi.unstubAllGlobals();
   });
 
   it('keeps the context menu off the aligning layer only, so Ctrl and drag turns on a Mac, where Ctrl and click is the secondary click', () => {
