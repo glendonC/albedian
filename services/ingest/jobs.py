@@ -784,14 +784,16 @@ def lent_moment(moment_hint: PointingHint | None, moment: RecordMoment | None) -
 
 
 def _sky_from_record(
-    moment_hint: PointingHint | None, moment: RecordMoment | None, hint: PointingHint | None
+    moment_hint: PointingHint | None, moment: RecordMoment | None, hint: PointingHint | None, *, pose: bool = True
 ) -> dict[str, Any]:
     """What `complete_sky` is given from the photo's pointing record, one rule for the early try and the final sky
     (platform-10d): the lent moment only when the record lent one, so a file's own solve calls the predicted sky as
     before; and the record's attitude, which lines up a photo the stars did not solve (pointing-5), with the hint the
-    solution states, the record as its pose."""
+    solution states, the record as its pose. A solve from a person's alignment (`pose` False) takes the lent moment
+    and never the record's attitude: the person lined up the sky, and the record lent only its time and place
+    (lentalign-1)."""
     lent = lent_moment(moment_hint, moment)
-    attitude = None if moment is None else moment.attitude
+    attitude = None if moment is None or not pose else moment.attitude
     return {**({} if lent is None else {"lent": lent}),
             **({} if attitude is None else {"attitude": attitude, "hint": hint})}
 
@@ -924,18 +926,27 @@ def person_pose_axes(asset: Mapping[str, Any], alignment: PersonAlignment) -> li
 
 
 def person_pointing_hint(
-    solution: ObservationSolution, search: SearchHint, alignment: PersonAlignment, sha256: str, width: int, height: int
+    solution: ObservationSolution,
+    search: SearchHint,
+    alignment: PersonAlignment,
+    sha256: str,
+    width: int,
+    height: int,
+    moment_hint: PointingHint | None = None,
 ) -> PointingHint:
-    """The solution's pointing hint for a solve from a person's alignment (align-1b's shape): a search hint only,
-    never the pose or the moment, with the person's roll and field of view and, on a calibrated solution, how far the
-    verified centre lay from the person's. The alignment stays the person's: never observed, never catalog matched."""
+    """The solution's pointing hint for a solve from a person's alignment (align-1b's shape): a search hint, never the
+    pose, with the person's roll and field of view and, on a calibrated solution, how far the verified centre lay from
+    the person's. When the photo's pointing record lent the time or the place of the sky the person lined up
+    (`moment_hint`), it says moment and which came from the record, as the plain solve's hint does (lentalign-1); the
+    person lends neither. The alignment stays the person's: never observed, never catalog matched."""
     offset: float | None = None
     if solution.status == "calibrated" and solution.wcs is not None:
         ra, dec = solution.wcs.pixel_to_world(width / 2.0, height / 2.0)
         offset = min(180.0, angular_separation_deg(ra, dec, search.ra_deg, search.dec_deg))
+    time_from, place_from = ("file", "file") if moment_hint is None else (moment_hint.time_from, moment_hint.place_from)
     return PointingHint(
-        source_asset_sha256=sha256, used_as=("search_hint",), time_from="file", place_from="file",
-        center_alt_deg=search.alt_deg, center_az_deg=search.az_deg, uncertainty_deg=search.uncertainty_deg,
+        source_asset_sha256=sha256, used_as=("search_hint", *(("moment",) if moment_hint is not None else ())),
+        time_from=time_from, place_from=place_from, center_alt_deg=search.alt_deg, center_az_deg=search.az_deg, uncertainty_deg=search.uncertainty_deg,
         verified_center_offset_deg=offset, source="person", roll_deg=float(alignment.roll_deg),
         fov_diagonal_deg=float(alignment.fov_diagonal_deg),
     )
@@ -1156,7 +1167,8 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # The hint the solution states, judged against the verified centre before the predicted sky adds its own last
     # warning; it is attached after, since only a calibrated solution has an offset and the sky keeps it calibrated
     if alignment is not None and search is not None:
-        pointing_hint, hint_warning = person_pointing_hint(solution, search, alignment, sha256, width, height), None
+        pointing_hint = person_pointing_hint(solution, search, alignment, sha256, width, height, moment_hint)
+        hint_warning = None
     else:
         pointing_hint, hint_warning = pointing_hint_for(solution, moment_hint, search, sha256, width, height)
     if hint_warning is not None:
@@ -1166,9 +1178,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
     # one generic warning
     try:
-        # A solve from a person's alignment states the person's hint, never a pose from the record
+        # A solve from a person's alignment states the person's hint and the lent moment, never a pose from the record
         solution = complete_sky(solution, asset, frames=pose_frames,
-                                **_sky_from_record(moment_hint, ctx.record_moment if alignment is None else None, pointing_hint))
+                                **_sky_from_record(moment_hint, ctx.record_moment, pointing_hint, pose=alignment is None))
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
     if pointing_hint is not None and solution.pointing_hint is None:
@@ -1293,8 +1305,10 @@ SOLVE_PRODUCER_FILES = (
 # warnings opening with the clip's noun ("This clip's sky"); 21, the words for a time or a place the iPhone's record
 # lent in the design lane's plain words (C13), which a photo with a lent moment stores in its warnings and items;
 # 22, the Moon pose's refusals in the design lane's two sentences (C32), the reason first and its numbers second, which
-# a frame the Moon does not line up stores in its warnings
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 22, SOLVE_PRODUCER_FILES)
+# a frame the Moon does not line up stores in its warnings; 23, a solve from a person's alignment of a sky whose time
+# or place the photo's pointing record lent (lentalign-1): its hint says moment and the record, and its predicted sky
+# names the record, as the plain solve's does
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 23, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

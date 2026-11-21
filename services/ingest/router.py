@@ -56,6 +56,7 @@ from services.contracts.pointing_reply import (
     PointingRecordRefusal,
 )
 from services.ingest.job_store import JobStore, Unreadable
+from services.ingest.jobs import lend_record_moment, read_record_moment
 from services.ingest.runner import NoUpload, runner_for
 from services.ingest.metadata import HeifError, display_matrix_hint, exif_hints, quicktime_hints, read_heif
 from services.ingest.probe import MediaFacts, ProbeError, probe_media
@@ -315,8 +316,8 @@ NOT_AN_ALIGNMENT = "The alignment sent with this solve does not meet the contrac
 
 def alignment_needs_moment(asset: dict[str, Any]) -> Optional[str]:
     """C15's first sentence for an upload with no capture time or no place, built as the web's own no-sky sentence is
-    (apps/web/src/services/skyLayerWords.ts noSkyReason); None when the upload has both. [open] A photo whose time or
-    place only its pointing record gives is refused here until align-2's wiring reads the lent moment."""
+    (apps/web/src/services/skyLayerWords.ts noSkyReason); None when the upload has both. The route asks it of the asset
+    the solve reads, the photo's pointing record's time and place lent where the file holds none (lentalign-1)."""
     clip = str(asset.get("mimeType") or "").startswith("video/")
     kind, taken = ("clip", "recorded") if clip else ("photo", "taken")
     captured = asset.get("capturedAtUTC")
@@ -326,6 +327,18 @@ def alignment_needs_moment(asset: dict[str, Any]) -> Optional[str]:
         return None
     which = "when or where" if not has_time and not has_place else "when" if not has_time else "where"
     return f"Your {kind} does not say {which} it was {taken}, so its sky cannot be lined up by hand."
+
+
+def _solved_asset(store: IngestStore, sha256: str, asset: dict[str, Any]) -> dict[str, Any]:
+    """The asset as the solve job reads it: the stored pointing record's time and place lent where the file holds
+    none (jobs.read_record_moment and lend_record_moment, the job's own rule), so the route judges an alignment by the
+    sky the person saw drawn. The receipt keeps the file's own."""
+    original = store.original(sha256)
+    if original is None:
+        return asset
+    moment, _ = read_record_moment(original, sha256)
+    lent, _ = lend_record_moment(asset, moment, sha256)
+    return dict(lent)
 
 
 @router.post("/api/ingest/{sha256}/solve", status_code=202)
@@ -348,7 +361,7 @@ async def start_ingest_solve_job(
             raise HTTPException(status_code=422, detail=NOT_AN_ALIGNMENT) from None
         record = store.read_record(sha256)
         if record is not None:
-            needs = alignment_needs_moment(record.get("sourceAsset") or {})
+            needs = alignment_needs_moment(_solved_asset(store, sha256, record.get("sourceAsset") or {}))
             if needs is not None:
                 raise HTTPException(status_code=422, detail=needs)
     try:
