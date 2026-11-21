@@ -110,6 +110,13 @@ BEHAVIOURS = {
     "closes stdout and stderr, works, exits 3": "os.close(1)\nos.close(2)\ntime.sleep(0.5)\nsys.exit(3)",
     "closes stdout and stderr, then never answers": (
         f"os.close(1)\nos.close(2)\ndeaf()\ntime.sleep({STANDIN_LIFETIME_SEC})"),
+    # Lives until a file named go appears beside it (so its id stays its own until the test makes that file), then
+    # writes and exits 4
+    "waits for its go file, writes and exits 4": (
+        "go = os.path.join(os.path.dirname(sys.argv[0]), 'go')\n"
+        f"until = time.monotonic() + {STANDIN_LIFETIME_SEC}\n"
+        "while not os.path.exists(go) and time.monotonic() < until:\n    time.sleep(0.01)\n"
+        "sys.stdout.write('done')\nsys.exit(4)"),
 }
 # AUDIT H's three stand-ins with a descendant, and one that never answers. The one that exits is held to its own end
 # with a bound it cannot miss under a heavy load (its start takes the longest then); the others to a bound of 1 s
@@ -160,6 +167,26 @@ def running(pid: int, holds: str) -> bool:
     to another process is never taken for it). A zombie (ended, not yet reaped) is not running."""
     found = shown(pid)
     return found is not None and not found[0].startswith("Z") and holds in found[1]
+
+
+def stopped_or_gone(pid: int) -> bool:
+    """The process with this id is stopped (state T), a zombie, or gone: what a SIGSTOP leaves, or an end."""
+    found = shown(pid)
+    return found is None or found[0].startswith(("T", "Z"))
+
+
+def cpu_seconds(pid: int) -> float:
+    """The processor time, user and system, the process with this id has used: from /proc where the system has it
+    (clock ticks), else from ps's time column (macOS, [[h:]m:]s.hh)."""
+    if Path("/proc/self/stat").exists():
+        fields = (Path("/proc") / str(pid) / "stat").read_text().rsplit(")", 1)[1].split()
+        return (int(fields[11]) + int(fields[12])) / os.sysconf("SC_CLK_TCK")
+    shown_time = subprocess.run(["ps", "-o", "time=", "-p", str(pid)], stdin=subprocess.DEVNULL, capture_output=True,
+                                text=True, timeout=CHILD_BOUND_SEC).stdout.strip()
+    seconds = 0.0
+    for part in shown_time.split(":"):
+        seconds = seconds * 60 + float(part)
+    return seconds
 
 
 def left_running(calls: Path, within: float = LEFT_MARGIN_SEC) -> list[str]:
@@ -1249,6 +1276,86 @@ def test_a_guard_sent_a_stop_signal_ends_its_group(stop: signal.Signals, tmp_pat
     end, took = in_time(work, running_calls)
     assert end == Cut(by_caller=False)
     assert took < RETURN_MARGIN_SEC  # the guard ended the group itself: the read did not wait for its bound
+    assert left_running(calls) == []
+
+
+# How long a stopped tool is held stopped, and the most processor time its guard may use meanwhile: a guard that waits
+# uses none; one that went round its wait without draining its wake pipe would use most of the hold [proposed]
+STOPPED_HOLD_SEC = 1.0
+STOPPED_GUARD_CPU_SEC = 0.05
+
+
+def test_a_tool_stopped_and_continued_keeps_its_group_and_runs_to_its_own_end(tmp_path: Path) -> None:
+    """RESTORE-CLIP's note of 21 Nov: a tool that stops (SIGSTOP, SIGTSTP) or continues (SIGCONT) sends its guard
+    SIGCHLD as one that ends does; neither is its end. The guard keeps its group while the tool is stopped, waits
+    without spinning, and once the tool goes on and exits by itself the call ends with the tool's own answer and its
+    output whole. (A clip restore paused by SIGSTOP to its tree lost both its ffmpeg calls at once.)"""
+    tool, calls = standin(tmp_path / "standin", "waits for its go file, writes and exits 4")
+    running_calls = RunningCalls()
+
+    def work() -> tuple[bool, float, bytes, Any]:
+        call = guarded_call.start([str(tool)], stdout="pipe", running=running_calls)
+        wait_for(lambda: logged(calls, "met"), "the tool's start")
+        pid = logged(calls, "met")[0]
+        os.kill(pid, signal.SIGSTOP)  # the tool lives until its go file exists, so the id is still its own
+        wait_for(lambda: stopped_or_gone(pid), "the tool's stop")
+        before = cpu_seconds(call.pid)
+        time.sleep(STOPPED_HOLD_SEC)
+        spent = cpu_seconds(call.pid) - before
+        kept = running(call.pid, "child_guard.py") and running(pid, str(calls.parent))
+        if kept:
+            os.kill(pid, signal.SIGCONT)  # still the stopped tool: nothing has ended it
+        (tmp_path / "standin" / "go").write_text("")
+        out = bytearray()
+        chunk = bytearray(64)
+        while (got := call.read_into(chunk, bound_sec=CHILD_BOUND_SEC / 4)) > 0:
+            out += chunk[:got]
+        return kept, spent, bytes(out), call.end(wait_sec=CHILD_BOUND_SEC / 4)
+
+    kept, spent, out, end = in_time(work, running_calls)
+    assert kept, "the guard ended its group when its tool stopped"
+    assert spent < STOPPED_GUARD_CPU_SEC, f"the guard used {spent} s of processor time while its tool was stopped"
+    assert (out, end) == (b"done", Exited(4))
+    assert left_running(calls) == []
+
+
+@pytest.mark.parametrize("way", ["the caller's stop", "SIGTERM to the guard"])
+def test_a_call_whose_tool_is_stopped_still_ends_its_whole_group_at_once(
+        way: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """While its tool is stopped the guard still ends its group the moment the watched pipe closes or it is sent a stop
+    signal, the stopped tool and its descendant with it, so the call ends within the margin a told guard is given; on
+    the caller's stop no id is signalled (a guard ended from outside always gets the caller's one SIGKILL to its group
+    after it has ended, `_finish`'s rule for a guard that reported no tool's end)."""
+    tool, calls = standin(tmp_path / "standin", "never answers, its kid holding the pipes")
+    running_calls = RunningCalls()
+    signalled: list[tuple[int, int]] = []
+    real_killpg = os.killpg
+
+    def noting(pid: int, sig: int) -> None:
+        signalled.append((pid, sig))
+        real_killpg(pid, sig)
+
+    monkeypatch.setattr(os, "killpg", noting)
+
+    def work() -> tuple[Any, float]:
+        call = guarded_call.start([str(tool)], stdout="pipe", running=running_calls)
+        wait_for(lambda: logged(calls, "kid"), "the kid's start")
+        pid = logged(calls, "met")[0]
+        os.kill(pid, signal.SIGSTOP)  # the tool never ends by itself, so the id is still its own
+        wait_for(lambda: stopped_or_gone(pid), "the tool's stop")
+        sent = time.monotonic()
+        if way == "the caller's stop":
+            call.stop()
+        else:
+            os.kill(call.pid, signal.SIGTERM)  # this process's own child, not yet waited for: the id is the guard's
+        end = call.end(wait_sec=CHILD_BOUND_SEC / 4)
+        return end, time.monotonic() - sent
+
+    end, took = in_time(work, running_calls)
+    assert end == Cut(by_caller=way == "the caller's stop")
+    assert took < guarded_call.GROUP_END_WAIT_SEC
+    if way == "the caller's stop":
+        assert signalled == []
     assert left_running(calls) == []
 
 

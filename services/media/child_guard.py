@@ -5,7 +5,8 @@ The caller starts this file in a new interpreter, in a session of its own (so a 
 this process's), with two pipes beside the tool's streams: one it watches and one it reports on. It reports that it
 runs, starts the tool in its group with its own standard streams (which the caller set), points its own 0, 1 and 2 at
 the null device so only the tool holds its streams, and waits for the first of:
-the tool's end, the watched pipe closing, or SIGTERM, SIGINT or SIGHUP sent to it. Then it ends its whole group,
+the tool's end, the watched pipe closing, or SIGTERM, SIGINT or SIGHUP sent to it. A tool that stops or continues
+(SIGSTOP, SIGTSTP, SIGCONT) wakes the wait as its end does, and the wait goes on. Then it ends its whole group,
 itself included, with SIGKILL; when the tool had ended it first reports the tool's status, and when the tool could not
 be started it reports that instead. It ends its group on every way out of its own code, an exception included.
 Any other descriptor the caller passed it (a lock, say) stays open in it while it lives; the tool gets none of them.
@@ -67,7 +68,16 @@ def main() -> None:
         with selectors.DefaultSelector() as selector:
             selector.register(watched, selectors.EVENT_READ)
             selector.register(woken_read, selectors.EVENT_READ)
-            selector.select()
+            while True:
+                ready = {key.fd for key, _ in selector.select()}
+                if watched in ready:
+                    break
+                # A wake is a signal handled here; SIGCHLD comes as the tool ends and as it stops or continues, which
+                # are not its end, so the wait goes on until it has ended (RESTORE-CLIP's note of 21 Nov: a clip
+                # restore paused by SIGSTOP lost its ffmpeg calls). The wake bytes are read so the wait sleeps again.
+                os.read(woken_read, 512)
+                if tool.poll() is not None:
+                    break
         if tool.poll() is not None:
             os.write(report, f"exit {tool.returncode}\n".encode())
     finally:
