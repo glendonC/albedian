@@ -213,7 +213,7 @@ describe("the count warning's words on screen (C14)", () => {
     expect(onScreenWarning(SCREEN)).toBe(SCREEN);
   });
 
-  it('leaves the near-black warning, which has no decided cut, whole', () => {
+  it("leaves the near-black warning in the engine's old words, one sentence with no decided cut, whole", () => {
     const nearBlack =
       "The photo's sky sits near its darkest value, where the black clip cuts the noise; on such a sky the detector finds more points on pure noise than its stated rate, so the count of detected points is points above the threshold on a frame whose false rate is not controlled.";
     expect(onScreenWarning(nearBlack)).toBe(nearBlack);
@@ -225,6 +225,33 @@ describe("the count warning's words on screen (C14)", () => {
     const session: ObservationSession = { ...base, observationSolution: solution };
     expect(revealStatus(session).warnings).toContain(SCREEN);
     expect(revealStatus(session).warnings.join(' ')).not.toContain(RECORD);
+  });
+});
+
+// C25 (UIUX-nearblackwords-READY.md): the near-black count warning (services/science/detector.py
+// NOISE_LIMIT_WORDS["near_black_clip"]) in C14's shape shows its first sentence on screen; the second stays in the record (C5)
+describe("the near-black count warning's words on screen (C25)", () => {
+  const SCREEN =
+    "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.";
+  const RECORD =
+    "On such a sky the detector finds more points on pure noise than its stated rate, so the count's false rate is not controlled.";
+
+  it('shows the first sentence only of the near-black warning, and keeps it whole when it stands alone', () => {
+    expect(onScreenWarning(`${SCREEN} ${RECORD}`)).toBe(SCREEN);
+    expect(onScreenWarning(SCREEN)).toBe(SCREEN);
+  });
+
+  it('leaves the second sentence whole when it stands alone, since only the first opens the cut', () => {
+    expect(onScreenWarning(RECORD)).toBe(RECORD);
+  });
+
+  it("cuts the job's own warning as the reveal shows it, the record keeping both sentences", () => {
+    const base = createSyntheticCalibratedSession();
+    const solution = { ...base.observationSolution, warnings: [`${SCREEN} ${RECORD}`] } as ObservationSolution;
+    const session: ObservationSession = { ...base, observationSolution: solution };
+    expect(revealStatus(session).warnings).toContain(SCREEN);
+    expect(revealStatus(session).warnings.join(' ')).not.toContain(RECORD);
+    expect(solution.warnings).toEqual([`${SCREEN} ${RECORD}`]);
   });
 });
 
