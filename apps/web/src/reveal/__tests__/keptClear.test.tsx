@@ -360,3 +360,44 @@ describe('useKeepClear', () => {
     unlaid.remove();
   });
 });
+
+// keepcal (UIUX-keepclear-READY.md, last section, decided 13:34): the calibrated reveal's matched marks keep clear too,
+// the picked star excepted; MOTION's first line follows: an early mark whose matched place lies under the column has
+// no target, so it leaves on frame out
+describe('the calibrated reveal keeps its matched marks clear of the status column', () => {
+  const calibrated = () => poseSession(sample('plate_calibrated'));
+  const marksOn = () => [...container.querySelectorAll('[data-testid^="reveal-mark-"]')].map((el) => ({ id: el.getAttribute('data-testid')!.slice('reveal-mark-'.length), x: parseFloat((el as HTMLElement).style.left), y: parseFloat((el as HTMLElement).style.top) }));
+  const reveal = (session: ObservationSession) =>
+    act(() => root.render(createElement(RevealPhoto, { session, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 1440, viewportHeightPx: 900 })));
+
+  it('does not draw a matched mark while it sits under the column', () => {
+    const session = calibrated();
+    reveal(session);
+    const all = marksOn();
+    expect(all.length).toBeGreaterThanOrEqual(2);
+    const first = all[0]!;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return rectOf(this.matches('[data-testid="reveal-status"]') ? { left: first.x - 30, top: first.y - 30, right: first.x + 30, bottom: first.y + 30 } : NONE);
+    });
+    reveal(session);
+    const clearOfColumn = (m: { x: number; y: number }) => Math.abs(m.x - first.x) >= 30 + 14 || Math.abs(m.y - first.y) >= 30 + 14;
+    expect(marksOn().map((m) => m.id)).toEqual(all.filter(clearOfColumn).map((m) => m.id));
+    // Picked, it stays, with its card's leader
+    reveal({ ...session, selectedFindingId: first.id } as ObservationSession);
+    expect(marksOn().some((m) => m.id === first.id)).toBe(true);
+  });
+
+  it('sends no early mark to a matched place under the column: that early mark leaves', () => {
+    const session = calibrated();
+    const free = revealMarks(session, 1440, 900);
+    const target = free.find((m) => m.kind === 'catalog' && m.finding.catalogRef?.catalogSourceId)!;
+    const frame = { leftPx: 0, topPx: 0, widthPx: 1440, heightPx: 900 };
+    const early: EarlyPose = { source: 'moon', marks: [{ id: 'finding-predicted-star-early', name: 'Early', u: 0.9, v: 0.9, key: target.finding.catalogRef!.catalogSourceId }] };
+    expect(lockOnPlan(early, frame, free).travelling.map((t) => t.id)).toEqual(['finding-predicted-star-early']);
+    const column = { x0: target.xPx - 5, x1: target.xPx + 5, y0: target.yPx - 5, y1: target.yPx + 5 };
+    const cleared = revealMarks(session, 1440, 900, { clear: [column] });
+    const plan = lockOnPlan(early, frame, cleared);
+    expect(plan.travelling).toEqual([]);
+    expect(plan.leaving.map((l) => l.id)).toEqual(['finding-predicted-star-early']);
+  });
+});

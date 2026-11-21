@@ -354,10 +354,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const deepSkyWanted = solution?.status === 'calibrated' && hasVerifiedWcs(solution) && solution.findings.some(isDeepSky);
   const deepSky = useDeepSkyTable(deepSkyWanted);
   const status = revealStatus(session);
-  // Rings and names drawn on the photo keep clear of the controls (UIUX-keepclear-READY.md): measured while the
-  // no-match or the estimate reveal shows; the estimate's marks (place 3) here, the kept and aligning rings below
-  const keepClear = useKeepClear(!there && (status.kind === 'unmatched' || status.kind === 'estimate'));
-  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky, clear: status.kind === 'estimate' ? keepClear : [] }).filter((mark) => !there || mark.picked);
+  // Every ring and name drawn on the photo keeps clear of the controls (UIUX-keepclear-READY.md, its last section
+  // decided 13:34): the reveal's marks here, the calibrated reveal's and Real sky's too, the picked star excepted; the
+  // kept and aligning rings below. A matched mark left out under the column is no lock-on target, so its early mark
+  // leaves on frame out (MOTION's first line)
+  const keepClear = useKeepClear(!there);
+  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky, clear: there ? [] : keepClear }).filter((mark) => !there || mark.picked);
   // The order the marks arrive in: brightest first (the motion record)
   // A deep-sky mark is not a matched mark: it takes no place in their arrival and appears without movement (D23)
   const arrivingMarks = marks.filter((mark) => mark.deepSky === null || mark.picked);

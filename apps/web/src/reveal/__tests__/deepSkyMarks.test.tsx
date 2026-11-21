@@ -431,3 +431,17 @@ describe("the deep-sky marks and MOTION's arrival (D23: no movement where MOTION
     expect(found).toEqual({ animation: 'none' });
   });
 });
+
+// keepcal (UIUX-keepclear-READY.md, last section, decided 13:34): every name on the photo keeps clear of the controls
+describe('a deep-sky name keeps clear of a place kept clear', () => {
+  it('goes to its other side, or is not placed, when its box would run into one', () => {
+    const session = sessionOf([deep('NGC5139', 'Omega Centauri', 321, 222)]);
+    const free = revealMarks(session, VIEW.w, VIEW.h, { deepSky: TABLE }).find((m) => m.deepSky !== null)!;
+    expect(free).toMatchObject({ name: 'Omega Centauri', nameOnLeft: false });
+    // Right of the symbol's 8 px room, where its name sits
+    const box = { x0: free.xPx + 20, x1: free.xPx + 60, y0: free.yPx - 2, y1: free.yPx + 2 };
+    const kept = revealMarks(session, VIEW.w, VIEW.h, { deepSky: TABLE, clear: [box] }).find((m) => m.finding.id === free.finding.id)!;
+    expect(kept).toBeDefined();
+    expect(kept.name === null || kept.nameOnLeft).toBe(true);
+  });
+});

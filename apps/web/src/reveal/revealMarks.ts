@@ -141,9 +141,10 @@ export function revealMarks(
     phone?: boolean;
     deepSky?: DeepSkyTable | null;
     /**
-     * Places on screen the marks keep clear of (UIUX-keepclear-READY.md place 3, the estimate reveal): a mark that lies
-     * under or touches one is not drawn while it is there, and a name is placed only where its box clears them all. The
-     * picked star keeps its mark and name, as D33 keeps it (ruled 17:05).
+     * Places on screen the marks keep clear of (UIUX-keepclear-READY.md: place 3, the estimate reveal, and its last
+     * section, every mark on the photo, the calibrated reveal's and Real sky's too): a mark that lies under or touches
+     * one is not drawn while it is there, and a name, a deep-sky one too, is placed only where its box clears them all.
+     * The picked star keeps its mark and name, as D33 keeps it (ruled 17:05).
      */
     clear?: readonly Box[];
   } = {}
@@ -266,6 +267,7 @@ export function revealMarks(
       // A mark over the symbol's own centre (a star the object holds) does not stand in its way, as build.mjs has it
       const holds = (room: Box) => room.x0 <= mark.xPx && mark.xPx <= room.x1 && room.y0 <= mark.yPx && mark.yPx <= room.y1;
       if (deepRooms.some((room) => room.id !== mark.finding.id && !holds(room.box) && overlap(box, room.box)) || taken.some((other) => overlap(box, other))) continue;
+      if (clear.some((place) => overlap(box, place))) continue;
       taken.push(box);
       marks[index] = { ...mark, name, nameOnLeft: onLeft };
       break;
