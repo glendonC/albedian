@@ -170,6 +170,11 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       {open && phone && (
         <OverAskBar>
           <div role="listbox" aria-label="Craft" data-testid="craft-picker-panel" data-hud-interactive="true" style={{ ...PHONE_SHEET, top: 150, display: 'flex', flexDirection: 'column' }}>
+            {/* E (UIUX-tagphone-READY.md, decided 13:08): the readout's tag row carried at the sheet's top, as D30 item 5's
+                details sheet does: the Simulated tag in the sheet's padding, 10 px above the list, no caret circle */}
+            <div data-testid="craft-picker-tagrow" style={{ display: 'flex', alignItems: 'center', marginBottom: 10, flex: '0 0 auto' }}>
+              <EvidenceTag evidenceClass="simulated" />
+            </div>
             {rows}
             <p style={{ margin: '8px 10px 4px', fontSize: 11, lineHeight: 1.4, color: INK_44 }}>{CRAFT_PICKER_FOOT}</p>
           </div>

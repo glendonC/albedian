@@ -154,6 +154,21 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     expect(sheet.textContent).toContain("NASA's own 3D models. Drawn by the app, not measured.");
   });
 
+  it("carries the readout's Simulated tag at the sheet's top, no caret circle, 10 px above the list (E, UIUX-tagphone-READY.md)", () => {
+    showPhone();
+    click(q('[data-testid="craft-picker"] > button'));
+    const sheet = q('[data-testid="craft-picker-panel"]') as HTMLElement;
+    const row = sheet.firstElementChild as HTMLElement;
+    expect(row.getAttribute('data-testid')).toBe('craft-picker-tagrow');
+    expect([...row.children].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['simulated']);
+    expect(row.querySelector('[data-testid="details-circle"]')).toBeNull();
+    expect([row.style.display, row.style.marginBottom, row.style.flex]).toEqual(['flex', '10px', '0 0 auto']);
+    // Inside the sheet's own 14 px padding, at full from its first frame: no animation or fade on the row or the sheet
+    expect(sheet.style.padding.split(' ')[0]).toBe('14px');
+    expect([row.style.animation, row.style.opacity, sheet.style.animation, sheet.style.opacity]).toEqual(['', '', '', '']);
+    expect(row.nextElementSibling!.getAttribute('data-testid')).toBe('craft-picker-list');
+  });
+
   it('names Webb "Webb" on the phone\'s pill', () => {
     showPhone();
     click(q('[data-testid="craft-picker"] > button'));
