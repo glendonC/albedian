@@ -289,6 +289,13 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     expect(card.className).toBe('reveal-card is-sky');
     await act(async () => await new Promise((r) => setTimeout(r, 30)));
     expect(container.querySelector('.predsky svg.reveal-leader.is-predicted path')).not.toBeNull();
+    // At phone width the card is the sheet inside the phone's predicted sky, its own Predicted tag in its top row
+    // (UIUX-tagphone-READY.md item D: motion.css stands that tag at full there)
+    act(() => root.render(createElement(PredictedSkyScreen, { session: { ...session, selectedFindingId: 'finding-predicted-star-a' }, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop, phone: true })));
+    const sheet = container.querySelector('.predsky.is-phone > .reveal-card.is-phone')!;
+    expect(sheet).not.toBeNull();
+    expect(sheet.querySelector('.reveal-card__top > .look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
+    expect([...sheet.querySelector('.reveal-card__top')!.children].map((el) => el.matches('.look-tag'))).toEqual([true, false]);
   });
 });
 

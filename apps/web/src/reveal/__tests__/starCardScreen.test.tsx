@@ -276,6 +276,19 @@ describe("the card's rules are the approved pages'", () => {
     });
   });
 
+  it("stands the phone card's own Predicted tag at full on the predicted sky, riding the sheet in and out, the close on its time (UIUX-tagphone-READY.md item D)", () => {
+    // Over the predicted sky's status block, which the sheet covers, the card's tag stands in for it from the sheet's
+    // first frame to its last: the top row has no words of its own in or out there; its close keeps the row's times
+    expect(motionOf('.predsky.is-phone .reveal-card__top')).toEqual({ animation: 'none' });
+    expect(motionOf('.predsky.is-phone .reveal-card__top > :not(.look-tag)')).toEqual({ animation: lineIn(0) });
+    expect(motionOf('.predsky.is-phone .reveal-card.is-leaving .reveal-card__top')).toEqual({ animation: 'none' });
+    expect(motionOf('.predsky.is-phone .reveal-card.is-leaving .reveal-card__top > :not(.look-tag)')).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both',
+    });
+    // Elsewhere the card's lines keep their order, the top row first
+    expect(motionOf('.reveal-card__top')).toEqual({ animation: lineIn(0) });
+  });
+
   it('raises the phone card from the bottom edge as Apple\'s sheet, and turns the picked mark white in the colour time', () => {
     expect(motionOf('.reveal-card.is-phone')).toEqual({ animation: 'look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
     expect(motionOf('.reveal-marks .reveal-mark')).toMatchObject({ transition: 'color var(--look-mo-dur-colour) var(--look-mo-ease-std)' });

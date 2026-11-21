@@ -174,6 +174,26 @@
   animation: look-mo-sheet-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
 }
 
+/* On the predicted sky at phone width the sheet covers the status block and its Predicted tag: the card's own tag stands
+   in for it at full from the sheet's first frame to its last, riding the sheet up and down, so one tag is always in
+   view (UIUX-tagphone-READY.md item D, DECIDED 21 Nov). The close beside it keeps the top row's times; the card's
+   other lines keep theirs. */
+.predsky.is-phone .reveal-card__top {
+  animation: none;
+}
+
+.predsky.is-phone .reveal-card.is-leaving .reveal-card__top {
+  animation: none;
+}
+
+.predsky.is-phone .reveal-card__top > :not(.look-tag) {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 0) both;
+}
+
+.predsky.is-phone .reveal-card.is-leaving .reveal-card__top > :not(.look-tag) {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both;
+}
+
 /* An answer, a refusal, or listening that failed, in the card's place: the question as heard, the sentence 20 ms
    later, then its statements 20 ms after that (a refusal has no statements). */
 .reveal-answer__q {
@@ -286,6 +306,12 @@
 .flight-readout > [data-evidence-class="simulated"],
 .flight-readout > .flight-readout__tagrow {
   animation: none;
+}
+
+/* At phone width the readout's first sentence (D27's, and D28's in the cone view) is the disclosure's first sentence: it
+   arrives on the words-in time, no later (the 17:38 rule; AUDIT-C's tag sweep of 21 Nov, item 8, found it 20 ms late) */
+.flight-readout > .flight-readout__note {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
 }
 
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this

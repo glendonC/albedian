@@ -1088,6 +1088,9 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     // the only disclosure until the sky layer has drawn (measured 21 Nov)
     expect(rules['.flight-readout > *']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both' });
     expect(rules['.flight-readout > [data-evidence-class="simulated"], .flight-readout > .flight-readout__tagrow']).toEqual({ animation: 'none' });
+    // Its first sentence (D27's, and D28's in the cone view) is the disclosure's first sentence: on the words-in time, no
+    // later (the 17:38 rule; AUDIT-C's tag sweep of 21 Nov, item 8, found it 20 ms late)
+    expect(rules['.flight-readout > .flight-readout__note']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
     expect(rules['.reveal-status.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
   });
 
