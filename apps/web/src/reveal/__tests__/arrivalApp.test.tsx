@@ -513,6 +513,68 @@ describe('the app follows an upload on the working screen', () => {
     expect(q('[data-testid="reveal-status"] .reveal-status__from')).toBeNull();
   });
 
+  // AUDIT-C's owed mutants (22 Nov 03:46), survivor 1: a new upload lets the alignment's rings go. The same photo uploaded
+  // again after a Solve from here has the same sha256, so only that keeps its new reveal locking on from its own served
+  // sky, under its own source line, and not from the old rings under "Placed from your alignment"
+  it('locks the same photo, uploaded again after a Solve from here, on from its own served sky', async () => {
+    const running = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      kind: 'solve',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      producer: { name: 'albedian.solve', revision: 1 },
+      state: 'running',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      stages: [STORE],
+      predictedSkyAtUTC: '2026-01-19T05:31:01Z',
+    };
+    const moonSky = { ...samples['pose_moon_level_head']!, sourceSha256: sha256, sourceAssetId: assetId };
+    const plain = samples['horizon_predicted_only']!;
+    const template = plain.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const starRef = samples['pose_moon_level_head']!.findings.find((f) => f.catalogRef?.objectType === 'star')!.catalogRef!;
+    const target = (id: string, title: string, altDeg: number, azDeg: number, magnitude: number, key: string) => ({
+      ...template,
+      id,
+      title,
+      observationSolutionId: solutionId,
+      skyPosition: { ...template.skyPosition!, altDeg, azDeg },
+      catalogRef: { ...starRef, apparentMagnitude: magnitude, catalogSourceId: key, commonName: title },
+      evidence: { ...template.evidence, sourceAssetSha256: sha256 },
+    });
+    const KEYS = ['HIP 113368', 'HIP 107315'];
+    const unmatched = {
+      ...plain,
+      id: solutionId,
+      sourceAssetId: assetId,
+      sourceSha256: sha256,
+      findings: [target('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16, KEYS[0]!), target('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38, KEYS[1]!)],
+    } as unknown as ObservationSolution;
+    let named = 0;
+    const matched = {
+      ...solution,
+      findings: solution.findings.map((f) => (f.evidenceClass === 'catalog_matched' && named < KEYS.length ? { ...f, catalogRef: { ...f.catalogRef!, catalogSourceId: KEYS[named++]! } } : f)),
+    } as ObservationSolution;
+    await renderApp({
+      // The first upload, its Solve from here, then the same file uploaded again: a Moon pose served early, then matched
+      ingest: [async () => json(receipt, 201), async () => json(receipt, 201)],
+      solve: [async () => json(running, 202), async () => json(succeeded, 201), async () => json(running, 202)],
+      jobs: [async () => json(moonSky), async () => json(succeeded), async () => json(moonSky), async () => json(succeeded)],
+      solution: [async () => json(unmatched), async () => json(matched), async () => json(matched)],
+    });
+    chooseOnHome(readableFile('night.jpg'));
+    const button = (label: string) => [...container.querySelectorAll('button')].find((b) => b.textContent === label) as HTMLButtonElement | undefined;
+    await waitUntil(() => expect(button('Line it up yourself')).toBeDefined());
+    act(() => button('Line it up yourself')!.click());
+    await waitUntil(() => expect(button('Solve from here')).toBeDefined());
+    act(() => button('Solve from here')!.click());
+    await waitUntil(() => expect(q('[data-testid="lockon-from"]')?.textContent).toBe('Placed from your alignment: predicted until matched.'));
+    // Home, and the same file again
+    act(() => (q('[data-testid="reveal-home"]') as HTMLButtonElement).click());
+    await waitUntil(() => expect(q('[data-testid="home-file-input"]')).not.toBeNull());
+    chooseOnHome(readableFile('night.jpg'));
+    await waitUntil(() => expect(q('[data-testid="lockon-from"]')?.textContent).toBe('Placed from the Moon: predicted until matched.'));
+  });
+
   it("changes nothing for an older upload's steps once another file was chosen", async () => {
     const first = held();
     const second = held();

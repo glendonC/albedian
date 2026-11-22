@@ -441,4 +441,32 @@ describe("the phone's counts are a control too", () => {
       expect(KEEP_CLEAR_BLOCKS).toContain(selector);
     }
   });
+
+  // AUDIT-C's owed mutants (22 Nov 03:55): either entry dropped from KEEP_CLEAR_BLOCKS survived, as the screens' tests
+  // stub a block's own box with nothing laid out inside it. Without the entry the phone's aligning block (inset 0) and
+  // its refused block (970 px tall) are kept clear whole and hide every ring and name (FIELD's walk-0621)
+  it('measures the reveal status column and the working screen column by what they hold, with the lists as built', () => {
+    for (const testid of ['reveal-status', 'work-early']) {
+      const selector = `[data-testid="${testid}"]`;
+      expect(KEEP_CLEAR_BLOCKS).toContain(selector);
+      const block = document.createElement('div');
+      block.setAttribute('data-testid', testid);
+      block.innerHTML = '<p id="probe-lead"></p>';
+      document.body.append(block);
+      const at: Record<string, { left: number; top: number; right: number; bottom: number }> = {
+        [testid]: { left: 0, top: 0, right: 390, bottom: 844 },
+        'probe-lead': { left: 24, top: 654, right: 366, bottom: 690 },
+      };
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        return rectOf(at[this.id || this.getAttribute('data-testid') || ''] ?? NONE);
+      });
+      // The hook's own list of blocks, as every screen calls it
+      const Probe = () => createElement('output', { 'data-boxes': JSON.stringify(useKeepClear(true, [selector])) });
+      act(() => root.render(createElement(Probe)));
+      expect(JSON.parse(container.querySelector('output')!.getAttribute('data-boxes')!), testid).toEqual([{ x0: 24, x1: 366, y0: 654, y1: 690 }]);
+      act(() => root.render(createElement('div')));
+      block.remove();
+      vi.restoreAllMocks();
+    }
+  });
 });

@@ -240,6 +240,29 @@ describe('the reveal locking on', () => {
     expect(still.className).toBe('align-layer is-still');
     expect(still.querySelectorAll('circle').length).toBe(earlyPoseOf(sky, refused.sourceAsset)!.marks.filter((m) => m.u >= 0 && m.u <= 1 && m.v >= 0 && m.v <= 1).length);
   });
+
+  // AUDIT-C's owed mutants (22 Nov 03:46), survivor 2: the alignment's rings are kept by the photo's sha256, the only
+  // guard when another upload is opened (by its address, as the iPhone's Open writes it) while they are still held
+  it("locks on from an alignment's rings only on the photo they were lined up on, never on another upload", () => {
+    const keys = matched.slice(0, 2).map((f) => f.catalogRef!.catalogSourceId);
+    const marks = [
+      { id: 'finding-predicted-star-a', name: 'A', u: 0.3, v: 0.4, key: keys[0] },
+      { id: 'finding-predicted-star-b', name: 'B', u: 0.6, v: 0.5, key: keys[1] },
+    ];
+    const render = (alignedSha: string) =>
+      act(() => root.render(createElement(RevealPhoto, { session: calibrated, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h, lockOnSky: null, lockOnAligned: { sha256: alignedSha, marks } })));
+    // Lined up on another photo: nothing of them is drawn here, and no lock-on
+    render('f'.repeat(64));
+    expect(q('.lockon-mark')).toBeNull();
+    expect(fromLine()).toBeNull();
+    expect(q('[data-testid="reveal-photo"]')!.classList.contains('is-locking')).toBe(false);
+    // On this photo the same rings lock on, under their own source line
+    act(() => root.unmount());
+    root = createRoot(container);
+    render(sha);
+    expect(container.querySelectorAll('.lockon-mark.is-travelling').length).toBeGreaterThan(0);
+    expect(fromLine()!.textContent).toBe(EARLY_SOURCE_WORDS.alignment);
+  });
 });
 
 describe("the lock-on's motion is the record's", () => {

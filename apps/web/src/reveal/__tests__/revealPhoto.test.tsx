@@ -18,13 +18,15 @@ import { MOTION_TOKENS } from '@albedian/design-system';
 import { linesLeaveMs } from '../../hooks/useLeaving.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
-const sky = vi.hoisted(() => ({ drawn: true }));
+const sky = vi.hoisted(() => ({ drawn: true, readoutTopPx: undefined as number | null | undefined }));
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; readoutTopPx?: number | null }) => {
+      // The phone's sky band ends at the readout's top it is given (D30 item 1)
+      sky.readoutTopPx = props.readoutTopPx;
       useEffect(() => {
         props.onDrawn?.(sky.drawn);
       }, [props.onDrawn]);
@@ -678,6 +680,31 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe('220px');
     } finally {
       vi.restoreAllMocks();
+    }
+  });
+
+  // AUDIT-C's owed mutants (22 Nov 03:48): tagb's guard on the readout's measured top survived. That top ends the phone's
+  // sky band and frames the craft (D30 item 1); an answer shrinking the readout to its tag row must move neither
+  it("keeps the sky band and the craft on the full readout's top while an answer shrinks the phone readout", () => {
+    const { session } = rigelPicked();
+    const box = (left: number, top: number, right: number, bottom: number) =>
+      ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('flight-readout__tagrow')) return box(24, 640, 366, 676);
+      // The whole readout, its name and numbers in it, stands taller than the tag row and first sentence alone
+      if (this.classList.contains('flight-readout')) return this.querySelector('h1') ? box(24, 560, 366, 800) : box(24, 640, 366, 696);
+      return box(0, 0, 0, 0);
+    });
+    try {
+      const flight = { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 };
+      show(session, { flight, phone: true, viewportWidthPx: 390, viewportHeightPx: 844 });
+      expect(sky.readoutTopPx).toBe(560);
+      show(session, { flight, phone: true, viewportWidthPx: 390, viewportHeightPx: 844, answer });
+      expect(q(READOUT)!.querySelector('h1')).toBeNull();
+      expect(sky.readoutTopPx).toBe(560);
+    } finally {
+      vi.restoreAllMocks();
+      sky.readoutTopPx = undefined;
     }
   });
 
