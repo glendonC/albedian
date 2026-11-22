@@ -139,7 +139,9 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
   });
 
   it("item D: the card's own Predicted tag at full from the sheet's first frame to its last over the estimate block, under Reduce Motion too", () => {
-    const over = '.reveal-photo.is-phone:has(.reveal-phone-estimate)';
+    // Over item A's block, and over the same tag where the phone restoration carries it (its lead in the wait, or at the
+    // head of a stop's block: phoneRestoreTag.test.tsx)
+    const over = '.reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead)';
     const top: Record<string, Record<string, string>> = {};
     const reduced: Record<string, Record<string, string>> = {};
     postcss.parse(motionCss).walkRules((rule) => {

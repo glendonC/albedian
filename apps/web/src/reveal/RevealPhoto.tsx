@@ -598,10 +598,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const marksShown = marksLayer.mounted && !frameMismatch;
   // The tag rule through the phone restoration (AUDIT-B's FAIL of d38-3; EXPORT-d38tag-QUESTION.md, recommended): while
   // D38's row and its button hold the foot and predicted marks stay drawn, item A's lead stands above the row: their
-  // tag at full and, on an estimate, the pose's first sentence (UIUX-tagphone-READY.md item A); a picked star's card
-  // carries its own tag (item D)
+  // tag at full and, on an estimate, the pose's first sentence (UIUX-tagphone-READY.md item A). A picked star's card
+  // sheet rises over it: the lead stays drawn until the sheet covers it, and the card's own tag stands in for it at full
+  // (item D; the card's rules in motion.css)
   const phoneRestoreLead =
-    (phoneRestoring || phoneStopped) && picked === null && !answer && marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted') ? (
+    (phoneRestoring || phoneStopped) && !answer && marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted') ? (
       <>
         <EvidenceTag evidenceClass="predicted" />
         {status.kind === 'estimate' && <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>}
@@ -1058,6 +1059,21 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           {counts.length > 0 && <PhoneCounts counts={counts} hidden={picked !== null} />}
         </div>
       )}
+      {/* D38 at phone width: while the restoration works, its lead (item A's tag) over the step and Cancel; once it stops,
+          the stop's own block. Drawn before the card, so a picked star's sheet rises over them, the lead's tag drawn
+          until the sheet covers it (item D), as the sheet covers Ask out loud */}
+      {phoneRestoring && phoneRestoreLead !== null && <div className="restore-phone-lead">{phoneRestoreLead}</div>}
+      {phoneRestoring && restoration?.phase === 'working' && <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} />}
+      {phoneStopped && restoration?.phase === 'stopped' && (
+        <RestorePhoneStopped
+          job={restoration.job}
+          sentence={restoration.sentence}
+          subline={restoration.subline}
+          canTryAgain={restoration.canTryAgain}
+          onTryAgain={() => onRestore?.()}
+          lead={phoneRestoreLead}
+        />
+      )}
 
       {!answer && card.mounted && cardStar && (
         <StarCard
@@ -1085,23 +1101,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
-      {/* D38: Restore under Ask out loud, reached by scrolling; while it works, the step and Cancel */}
+      {/* D38: Restore under Ask out loud, reached by scrolling (its wait and stop: before the card) */}
       {phoneRestoreOffered && (
         <div className="restore-phone-rest">
           <SecondAction label="Restore" size="phone" onClick={() => onRestore?.()} />
         </div>
-      )}
-      {phoneRestoring && phoneRestoreLead !== null && <div className="restore-phone-lead">{phoneRestoreLead}</div>}
-      {phoneRestoring && restoration?.phase === 'working' && <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} />}
-      {phoneStopped && restoration?.phase === 'stopped' && (
-        <RestorePhoneStopped
-          job={restoration.job}
-          sentence={restoration.sentence}
-          subline={restoration.subline}
-          canTryAgain={restoration.canTryAgain}
-          onTryAgain={() => onRestore?.()}
-          lead={phoneRestoreLead}
-        />
       )}
 
       {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}

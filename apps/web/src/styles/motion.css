@@ -194,22 +194,22 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both;
 }
 
-/* The same on the photo's estimate reveal at phone width, where the sheet covers item A's block and its Predicted tag
-   (UIUX-tagphone-READY.md item D): the block stays drawn under the sheet while a star is picked, and the card's own tag
-   stands in for it at full from the sheet's first frame to its last. */
-.reveal-photo.is-phone:has(.reveal-phone-estimate) .reveal-card__top {
+/* The same on the photo at phone width wherever the sheet covers item A's Predicted tag: its block on the estimate reveal,
+   or the phone restoration's lead in the wait or at the head of a stop (UIUX-tagphone-READY.md item D): the tag stays
+   drawn under the sheet while a star is picked, and the card's own tag stands in for it at full, first frame to last. */
+.reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead) .reveal-card__top {
   animation: none;
 }
 
-.reveal-photo.is-phone:has(.reveal-phone-estimate) .reveal-card.is-leaving .reveal-card__top {
+.reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead) .reveal-card.is-leaving .reveal-card__top {
   animation: none;
 }
 
-.reveal-photo.is-phone:has(.reveal-phone-estimate) .reveal-card__top > :not(.look-tag) {
+.reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead) .reveal-card__top > :not(.look-tag) {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 0) both;
 }
 
-.reveal-photo.is-phone:has(.reveal-phone-estimate) .reveal-card.is-leaving .reveal-card__top > :not(.look-tag) {
+.reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead) .reveal-card.is-leaving .reveal-card__top > :not(.look-tag) {
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both;
 }
 
@@ -241,12 +241,12 @@
     animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
   }
 
-  /* Over the estimate block on the phone, the same (item D, ruled 14:40) */
-  .reveal-photo.is-phone:has(.reveal-phone-estimate) .reveal-card.is-phone {
+  /* Over item A's tag on the phone (the estimate block, the restoration's lead), the same (item D, ruled 14:40) */
+  .reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead) .reveal-card.is-phone {
     animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
   }
 
-  .reveal-photo.is-phone:has(.reveal-phone-estimate) .reveal-card.is-phone.is-leaving {
+  .reveal-photo.is-phone:has(.reveal-phone-estimate, .restore-phone-lead, .restore-phone-why__lead) .reveal-card.is-phone.is-leaving {
     animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
   }
 }

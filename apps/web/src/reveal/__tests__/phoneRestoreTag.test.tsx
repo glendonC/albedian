@@ -107,7 +107,7 @@ describe('the Predicted tag through the phone restoration (the tag rule)', () =>
     expect(q('.restore-phone-lead')).toBeNull();
   });
 
-  it('draws no lead where no predicted mark is drawn, or under a picked star whose card carries the tag', async () => {
+  it('draws no lead where no predicted mark is drawn', async () => {
     const noPredicted = {
       ...matched,
       observationSolution: { ...matched.observationSolution!, findings: matched.observationSolution!.findings.filter((f) => f.evidenceClass !== 'predicted') },
@@ -115,9 +115,26 @@ describe('the Predicted tag through the phone restoration (the tag rule)', () =>
     await showPhone({ session: noPredicted, restoration: { phase: 'working', job: RUNNING } });
     expect(container.querySelectorAll('.reveal-mark.is-predicted')).toHaveLength(0);
     expect(q('.restore-phone-lead')).toBeNull();
+  });
+
+  // UIUX-tagphone-READY.md item D (decided 13:08 on 21 Nov): where the phone card sheet covers a layer's tag, the covered
+  // tag stays drawn until the sheet covers it and the card's own tag stands in for it (AUDIT-C's open point on tagd: the
+  // restoration's lead is item A's tag, so a star picked during the wait or after a stop leaves it drawn under the sheet)
+  it('item D: under a picked star the lead stays drawn, with the wait or the stop, all drawn before the card so its sheet covers them', async () => {
     const star = estimate.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
-    await showPhone({ session: { ...estimate, selectedFindingId: star.id }, restoration: { phase: 'working', job: RUNNING } });
-    expect(q('.restore-phone-lead')).toBeNull();
+    const picked = { ...estimate, selectedFindingId: star.id };
+    await showPhone({ session: picked, restoration: { phase: 'working', job: RUNNING } });
+    const card = q('[data-testid="star-card"]')!;
+    expect(card).not.toBeNull();
+    const lead = q('.restore-phone-lead')!;
+    expect(lead).not.toBeNull();
+    expect(lead.firstElementChild!.getAttribute('data-evidence-class')).toBe('predicted');
+    // The opaque sheet (no stacking of its own) paints over what comes before it in the page: the lead, the row, Cancel
+    for (const part of [lead, q('.restore-phone-wait')!]) expect(part.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await showPhone({ session: picked, restoration: { phase: 'stopped', job: REFUSED, sentence: REASON, subline: UNCHANGED, canTryAgain: false } });
+    const stopped = q('.restore-phone-stopped')!;
+    expect(stopped.querySelector('.restore-phone-why__lead .look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
+    expect(stopped.compareDocumentPosition(q('[data-testid="star-card"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('sets the lead as item A does, rising from 14 px above the row, and 14 px above the stop sentence in a stop', () => {
