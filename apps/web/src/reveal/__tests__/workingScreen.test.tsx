@@ -482,14 +482,24 @@ describe('Cancel on a job that waits or works (D2, INTERIM)', () => {
     expect([...container.querySelectorAll('.work-acts button')].map((b) => b.textContent)).toEqual(['Try again', 'Upload another']);
   });
 
-  it("sets the count ahead in the third ink and a held Cancel as the record draws it", () => {
+  // UIUX-jobs-DECIDED-BY-LEAD.md: "the pill stays pressed and greyed until the job has really stopped", at every width:
+  // the laptop's Cancel in .work-acts, the phone working screen's in .work-phone-go and the phone restoration's in
+  // .restore-phone-go (UIUX's live read of main dd6eeeeb found the phone's two never greyed; the lead's 05:02 answer)
+  it("sets the count ahead in the third ink and a held Cancel as the record draws it, at every width", () => {
     expect(declarationsOf('.work-why p span')).toEqual({ color: 'var(--look-ink-3)' });
-    expect(declarationsOf('.work-acts .look-second.is-asked')).toEqual({
-      background: 'var(--look-wash)',
-      color: 'var(--look-ink-3)',
-      'border-color': 'var(--look-hair)',
-      cursor: 'default',
-    });
+    for (const held of ['.work-acts .look-second.is-asked', '.work-phone-go .look-second.is-asked', '.restore-phone-go .look-second.is-asked']) {
+      const found: Record<string, string> = {};
+      postcss.parse(css).walkRules((rule) => {
+        if (rule.parent?.type !== 'root' || !rule.selectors.map((s) => s.replace(/\s+/g, ' ')).includes(held)) return;
+        rule.walkDecls((decl) => void (found[decl.prop] = decl.value.replace(/\s+/g, ' ')));
+      });
+      expect(found, held).toEqual({
+        background: 'var(--look-wash)',
+        color: 'var(--look-ink-3)',
+        'border-color': 'var(--look-hair)',
+        cursor: 'default',
+      });
+    }
   });
 });
 

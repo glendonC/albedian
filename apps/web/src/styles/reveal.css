@@ -169,8 +169,11 @@
   color: var(--look-ink-3);
 }
 
-/* Cancel, once pressed: held pressed and greyed until the job has really stopped (D2, INTERIM) */
-.work-acts .look-second.is-asked {
+/* Cancel, once pressed: held pressed and greyed until the job has really stopped (D2, INTERIM; UIUX-jobs-DECIDED-BY-LEAD.md),
+   on the laptop and at phone width alike: the working screen's Cancel and the restoration's */
+.work-acts .look-second.is-asked,
+.work-phone-go .look-second.is-asked,
+.restore-phone-go .look-second.is-asked {
   background: var(--look-wash);
   color: var(--look-ink-3);
   border-color: var(--look-hair);
