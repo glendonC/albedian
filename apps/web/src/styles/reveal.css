@@ -1638,6 +1638,12 @@
   display: flex;
   justify-content: center;
 }
+/* The reveal lets the pointer through to the photo; the phone restoration's buttons take it, as the laptop's do */
+.restore-phone-go .look-main,
+.restore-phone-go .look-second,
+.restore-phone-rest .look-second {
+  pointer-events: auto;
+}
 /* D38 item 1 (UIUX-restorephone-READY.md, decided by the lead 13:32; rp-rest and rp-scroll): Restore 16 px under Ask
    out loud, its top above the home bar at rest; the whole screen scrolls under the fixed top bar to bring it into
    view, by 92 px as rp-scroll draws it, the photo and Ask out loud moving with it */
@@ -1778,6 +1784,12 @@
   display: flex;
   justify-content: center;
   gap: 10px;
+}
+/* The working screen lets the pointer through to the photo; its phone buttons take it, as .work-acts does on the laptop */
+.work-phone-top .look-icon,
+.work-phone-go .look-main,
+.work-phone-go .look-second {
+  pointer-events: auto;
 }
 /* D37, a stopped job at phone width (UIUX-webuxpieces-READY.md item 1, decided by the lead 12:59 on 21 Nov; sp-failed
    in .cache/uiux/stopped-phone): the job's own sentence in D19's phone answer size, its foot 14 px above the row, so a
