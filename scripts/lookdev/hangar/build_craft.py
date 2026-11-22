@@ -204,6 +204,16 @@ CHANGES = {
         "colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the "
         "normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for a photo texture, gold and grey foil ramps, solar cells and two baked parts (recipe "changes": "kepler")
+    "lod0_kepler": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and its gold and grey "
+        "foils kept as the base colour, with metalness, roughness and surface relief added from their own colours "
+        "and shading, the solar array's cells keeping their texture with one roughness and no metalness, two parts "
+        "painted white with NASA's baked shading moved to the occlusion slot, faces NASA's file keeps apart at shared "
+        "corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures "
+        "re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

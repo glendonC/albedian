@@ -1917,6 +1917,64 @@
         "quote": "The SM was a cylinder 3.9 meters in diameter and 7.6 m long which was attached to the back of the CM.",
         "trueTo": "part"
       }
+    },
+    "kepler": {
+      "title": "Kepler",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "kepler/kepler_lod0.glb",
+          "bytes": 913120,
+          "triangles": 8990,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "kepler/kepler_lod1.glb",
+          "bytes": 710296,
+          "triangles": 4478,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "kepler/kepler_lod2.glb",
+          "bytes": 309536,
+          "triangles": 1558,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "kepler/kepler_picker.webp",
+          "bytes": 1982,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.356,
+          -1.35,
+          -2.55
+        ],
+        "max": [
+          1.356,
+          1.35,
+          2.55
+        ]
+      },
+      "bodyRadiusM": 2.6,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 2.7,
+        "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf",
+        "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high.",
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -3249,6 +3307,56 @@
           "value": "Earth orbit",
           "page": "https://www.nasa.gov/apollo-soyuz-test-project/",
           "quote": "The joint U.S.-USSR ASTP docking mission in Earth orbit took place in July 1975."
+        }
+      ]
+    },
+    {
+      "id": "kepler",
+      "name": "Kepler",
+      "model": "kepler",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2009-03-07",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-011A",
+          "quote": "Kepler was an American (NASA) astronomy probe launched by a Delta 2 rocket from Cape Canaveral at 03:50 UT on 07 March 2009."
+        },
+        {
+          "key": "orbit",
+          "value": "Earth-trailing, around the Sun",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-011A",
+          "quote": "In order to maintain a stable pointing attitude, the spacecraft was placed into a Earth-trailing heliocentric orbit of period 372.5 days."
+        },
+        {
+          "key": "launchMassKg",
+          "value": 1052.4,
+          "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf",
+          "quote": "The total mass at launch is 1052.4 kilograms (2,320.1 pounds)"
+        },
+        {
+          "key": "diameterM",
+          "value": 2.7,
+          "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf",
+          "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high."
+        },
+        {
+          "key": "heightM",
+          "value": 4.7,
+          "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf",
+          "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high."
+        },
+        {
+          "key": "mirrorDiameterM",
+          "value": 1.4,
+          "page": "https://science.nasa.gov/mission/kepler/",
+          "quote": "The diameter of the telescope’s mirror was 4 feet, 7 inches (1.4 meters), one of the largest mirrors beyond Earth orbit."
+        },
+        {
+          "key": "missionEnd",
+          "value": "2018-10-30",
+          "page": "https://science.nasa.gov/mission/kepler/in-depth/",
+          "quote": "On Oct. 30, 2018, after nine years in deep space collecting data, NASA announced that Kepler had run out of fuel."
         }
       ]
     }

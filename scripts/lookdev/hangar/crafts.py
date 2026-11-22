@@ -1579,6 +1579,58 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 8.0,
         "changes": "flags",
     },
+    "kepler": {
+        "title": "Kepler",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-kepler-a",
+            "title": "Kepler (A), NASA 3D Resources",
+            "folder": "Kepler (A)",
+            "file": "Kepler (A).glb",
+            "bytes": 2_003_276,
+            "sha256": "382014d90e2cf3e1f23e931d233547e652fe3629fddfb5acb8a99e2ceb72ff19",
+            "picture": "Kepler (A).png",
+            "picture_bytes": 383_848,
+            "picture_sha256": "5497ace149d07e6fcd6938b1bcd3221562ad8dfe9eaa03add8c8aeea1e1465aa",
+            "local": "kepler",
+        },
+        "drop_objects": [],
+        # The photometer's aperture points along +Z in the import frame and the solar array wraps the -X side, facing
+        # -X: flown aperture first, array on top, as Spitzer is.
+        "forward": (0.0, 0.0, 1.0),
+        "up": (-1.0, 0.0, 0.0),
+        # NASA's model is drawn in metres: the whole model is 2.6511 units across along X, and from the bottom of the
+        # bus's blanket to the sunshade's rim 4.698 units, against the press kit's "about 2.7 meters" and "4.7 meters"
+        # high. Scaled from the width; the height then comes out about 4.79 m to the rim, and 5.10 m with the small
+        # brackets that hang below the bus, so the scale is called true to the width alone.
+        "scale_from": {
+            "material": None,
+            "axis": "x",
+            "metres": 2.7,
+            "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf",
+            "true_to": "part",
+            "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high.",
+        },
+        # NASA's photo texture (the solar cells, white radiator and equipment panels, the thrusters' foil), with no
+        # insignia or lettering where the model's UVs fall (a photo's maker's mark, a placard and a gloved hand lie
+        # outside them), and NASA's gold and grey foil ramps: base colour kept, metalness, roughness and relief from
+        # their own colours. The array's cells under cover glass: no metalness, fairly smooth. Two parts NASA shades
+        # with a baked map (the ring under the bus, the antenna dish): painted white, that shading as occlusion.
+        "materials": {
+            "tex_01": {"role": "photo_atlas"},
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "photo_atlas"},
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+            "ring_AO": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
+            "dish_AO.001": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # About half the height (5.1 m with the brackets at this scale).
+        "body_radius_m": 2.6,
+        "changes": "kepler",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2123,6 +2175,23 @@ HANGAR: list[dict] = [
             {"key": "smDiameterM", "value": 3.9, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099A", "quote": "The SM was a cylinder 3.9 meters in diameter and 7.6 m long which was attached to the back of the CM."},
             # The project page's caption under its commemorative painting, the line the design lane's row rests on
             {"key": "orbit", "value": "Earth orbit", "page": "https://www.nasa.gov/apollo-soyuz-test-project/", "quote": "The joint U.S.-USSR ASTP docking mission in Earth orbit took place in July 1975."},
+        ],
+    },
+    {
+        # Kepler trailed Earth around the Sun, staring at one field of stars: no speed between stars. Its sizes and
+        # launch mass are the launch press kit's (NASA's, on JPL's site); its mirror is the mission page's.
+        "id": "kepler",
+        "name": "Kepler",
+        "model": "kepler",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2009-03-07", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-011A", "quote": "Kepler was an American (NASA) astronomy probe launched by a Delta 2 rocket from Cape Canaveral at 03:50 UT on 07 March 2009."},
+            {"key": "orbit", "value": "Earth-trailing, around the Sun", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-011A", "quote": "In order to maintain a stable pointing attitude, the spacecraft was placed into a Earth-trailing heliocentric orbit of period 372.5 days."},
+            {"key": "launchMassKg", "value": 1052.4, "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf", "quote": "The total mass at launch is 1052.4 kilograms (2,320.1 pounds)"},
+            {"key": "diameterM", "value": 2.7, "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf", "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high."},
+            {"key": "heightM", "value": 4.7, "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf", "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high."},
+            {"key": "mirrorDiameterM", "value": 1.4, "page": "https://science.nasa.gov/mission/kepler/", "quote": "The diameter of the telescope’s mirror was 4 feet, 7 inches (1.4 meters), one of the largest mirrors beyond Earth orbit."},
+            {"key": "missionEnd", "value": "2018-10-30", "page": "https://science.nasa.gov/mission/kepler/in-depth/", "quote": "On Oct. 30, 2018, after nine years in deep space collecting data, NASA announced that Kepler had run out of fuel."},
         ],
     },
 ]
