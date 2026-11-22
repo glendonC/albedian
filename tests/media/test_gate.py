@@ -293,8 +293,8 @@ def test_a_pass_dissolves_a_point_the_detector_reports_only_at_the_gates_thresho
     kept = gate.Kept(field, np.zeros((256, 256)))
     real = gate.variant_points
 
-    def only_at_the_gate(luma, clipped, *, only_tiles=None, threshold=gate.VARIANT_THRESHOLD_SNR, kept=None):
-        points, left = real(luma, clipped, only_tiles=only_tiles, threshold=threshold, kept=kept)
+    def only_at_the_gate(luma, clipped, *, only_tiles=None, threshold=gate.VARIANT_THRESHOLD_SNR, kept=None, searches=None):
+        points, left = real(luma, clipped, only_tiles=only_tiles, threshold=threshold, kept=kept, searches=searches)
         return (points if threshold == gate.VARIANT_THRESHOLD_SNR else []), left
 
     monkeypatch.setattr(gate, "variant_points", only_at_the_gate)
@@ -788,6 +788,106 @@ def test_the_next_pass_looks_in_every_tile_a_pass_changed(monkeypatch) -> None:
                   kept=gate.Kept(field, np.zeros((600, 600))))
     holding = {i for i, t in enumerate(stars.tiles(600, 600)) if t.x0 <= 300 < t.x1 and t.y0 <= 310 < t.y1}
     assert looked[0] is None and looked[2] is not None and holding <= looked[2]
+
+
+def ladder_statistic(size: int = 600) -> np.ndarray:
+    """The gate's statistic of a quiet sky holding a ladder of faint stars, 1.2 to 2.6 codes at their peaks, so some
+    stand between the dissolve's threshold and the gate's, and two brighter ones."""
+    rng = np.random.default_rng(21)
+    luma = 40.0 + 0.02 * rng.standard_normal((size, size))
+    for k, peak in enumerate(np.arange(1.2, 2.7, 0.2)):
+        luma += gaussian(luma.shape, 70.3 + 60 * k, 90.6 + 50 * k, float(peak))
+    luma += gaussian(luma.shape, 500.2, 120.7, 20.0) + gaussian(luma.shape, 110.4, 480.3, 12.0)
+    return gate.statistic_image(luma)
+
+
+def test_a_kept_search_gives_on_each_tile_exactly_the_points_a_fresh_search_gives() -> None:
+    image = ladder_statistic()
+    clipped = np.zeros(image.shape, dtype=bool)
+    tiles = len(stars.tiles(*image.shape))
+    fresh = gate.points_on(image, clipped)
+    searches = gate.Searches()
+    assert gate.points_on(image, clipped, searches=searches) == fresh
+    assert (searches.searched, searches.reused) == (tiles, 0)
+    assert gate.points_on(image, clipped, searches=searches) == fresh
+    assert (searches.searched, searches.reused) == (tiles, tiles)
+    # A star added: every tile where one value differs by a bit is searched afresh, every other is answered from its
+    # search, and the answer is a fresh search's
+    changed = image + gate.statistic_image(gaussian(image.shape, 300.4, 420.2, 20.0))
+    differs = changed != image
+    touched = {i for i, t in enumerate(stars.tiles(*image.shape)) if differs[t.y0:t.y1, t.x0:t.x1].any()}
+    assert 0 < len(touched) < tiles
+    again = gate.points_on(changed, clipped, searches=searches)
+    assert again == gate.points_on(changed, clipped)
+    assert any(math.hypot(p.x_px - 300.4, p.y_px - 420.2) <= stars.MATCH_RADIUS_PX for p in again[0])
+    assert (searches.searched, searches.reused) == (tiles + len(touched), 2 * tiles - len(touched))
+
+
+def test_a_kept_search_is_kept_apart_by_its_threshold_and_its_noise_floor() -> None:
+    image = ladder_statistic()
+    floor = gate.noise_floor()
+    searches = gate.Searches()
+    asked = [(gate.DISSOLVE_THRESHOLD_SNR, floor), (2 * gate.VARIANT_THRESHOLD_SNR, floor),
+             (gate.DISSOLVE_THRESHOLD_SNR, 3 * floor)]
+    fresh = [gate._tile_points(image, threshold, at, None) for threshold, at in asked]
+    # The controls: the threshold and the floor each change what the search finds on these values (on this ladder
+    # the dissolve's threshold and the gate's find the same points, so the second threshold is twice the gate's)
+    assert len(fresh[0]) > len(fresh[1]) and len(fresh[0]) > len(fresh[2])
+    for (threshold, at), expected in zip(asked, fresh):
+        assert gate._tile_points(image, threshold, at, None, searches) == expected
+    assert searches.reused == 0
+
+
+def test_a_kept_search_gives_its_points_in_the_place_and_tile_it_is_asked_for() -> None:
+    # Two tiles of the same values, a tile's width less the overlap apart: the second is answered from the first's
+    # search, at its own place and with its own index
+    period = stars.TILE_PX - stars.OVERLAP_PX
+    rng = np.random.default_rng(22)
+    base = 40.0 + 0.02 * rng.standard_normal((256, period)) + gaussian((256, period), 100.3, 128.6, 20.0)
+    image = gate.statistic_image(np.tile(base, (1, 4)))[:, period:period + 2 * period + stars.OVERLAP_PX]
+    grid = stars.tiles(*image.shape)
+    assert len(grid) == 2 and np.array_equal(image[:, grid[0].x0:grid[0].x1], image[:, grid[1].x0:grid[1].x1])
+    searches = gate.Searches()
+    floor = gate.noise_floor()
+    found = gate._tile_points(image, gate.VARIANT_THRESHOLD_SNR, floor, None, searches)
+    assert found == gate._tile_points(image, gate.VARIANT_THRESHOLD_SNR, floor, None)
+    assert searches.reused == 1
+    assert {(round(p.x_px), round(p.y_px), p.tile) for p in found} >= {(100, 129, 0), (100 + period, 129, 1)}
+
+
+def test_a_kept_search_is_kept_apart_by_its_tiles_shape() -> None:
+    # The same bytes laid out as another shape are other values: they are searched afresh
+    rng = np.random.default_rng(23)
+    luma = 40.0 + 0.02 * rng.standard_normal((256, 128)) + gaussian((256, 128), 60.3, 40.6, 20.0)
+    image = gate.statistic_image(luma)
+    turned = image.reshape(128, 256)
+    assert gate._tile_points(image, gate.DISSOLVE_THRESHOLD_SNR, gate.noise_floor(), None), "the control: a star here"
+    searches = gate.Searches()
+    floor = gate.noise_floor()
+    gate._tile_points(image, gate.DISSOLVE_THRESHOLD_SNR, floor, None, searches)
+    assert gate._tile_points(turned, gate.DISSOLVE_THRESHOLD_SNR, floor, None, searches) == gate._tile_points(
+        turned, gate.DISSOLVE_THRESHOLD_SNR, floor, None)
+    assert searches.reused == 0
+
+
+def test_a_kept_search_reads_every_value_of_its_tile() -> None:
+    # A tile alike but for its last sample by one bit, and one alike but for a star in its last corner: each is
+    # searched afresh, and found as a fresh search finds it
+    rng = np.random.default_rng(24)
+    luma = 40.0 + 0.02 * rng.standard_normal((256, 256)) + gaussian((256, 256), 60.3, 40.6, 20.0)
+    part = gate.statistic_image(luma)
+    last = part.copy()
+    last[-1, -1] = np.nextafter(last[-1, -1], np.inf)
+    corner = gate.statistic_image(luma + gaussian((256, 256), 230.2, 228.7, 20.0))
+    floor = gate.noise_floor()
+    searches = gate.Searches()
+    first = searches.points(part, gate.DISSOLVE_THRESHOLD_SNR, floor)
+    assert searches.points(last, gate.DISSOLVE_THRESHOLD_SNR, floor) == gate._search_tile(last, gate.DISSOLVE_THRESHOLD_SNR, floor)
+    found = searches.points(corner, gate.DISSOLVE_THRESHOLD_SNR, floor)
+    assert found == gate._search_tile(corner, gate.DISSOLVE_THRESHOLD_SNR, floor)
+    near = [any(math.hypot(x - 230.2, y - 228.7) <= stars.MATCH_RADIUS_PX for x, y, _ in points) for points in (first, found)]
+    assert near == [False, True], "the control: the corner's star is found only where it is"
+    assert (searches.searched, searches.reused) == (3, 0)
 
 
 def test_light_just_over_the_bright_rule_is_kept_and_light_under_it_is_not() -> None:

@@ -119,27 +119,60 @@ def stored_luma(codes16: np.ndarray) -> np.ndarray:
     return stars.luma_codes(np.asarray(codes16, dtype=np.float64) / CODES_PER_8_BIT)
 
 
-def _tile_points(image: np.ndarray, threshold: float, floor: float, only: set[int] | None) -> list[stars.Point]:
+def _search_tile(part: np.ndarray, threshold: float, floor: float) -> tuple[tuple[float, float, float], ...]:
+    """The points of one tile of the gate's statistic, (x, y, snr) on the tile: the detector's at `threshold` with the
+    noise floor `floor` that its own forced photometry on the same values verifies."""
+    detections = detect_point_sources(part, snr_threshold=threshold, noise_floor=floor)
+    if not detections:
+        return ()
+    verified = verify_candidates_on_original_pixels(part, [(d.x_px, d.y_px) for d in detections],
+                                                    snr_threshold=threshold, noise_floor=floor)
+    return tuple((d.x_px, d.y_px, float(d.snr)) for d in detections
+                 if any(math.hypot(v.x_px - d.x_px, v.y_px - d.y_px) <= stars.MATCH_RADIUS_PX for v in verified))
+
+
+class Searches:
+    """One restoration's tile searches (`_search_tile`), each kept by everything it reads: the tile's values exactly
+    (their shape, type and every byte, `codes_digest`), the threshold and the noise floor. The detector and its forced
+    photometry read nothing else and give the same answer every time, so values the same to the bit give the same points
+    wherever the tile lies, and values that differ in one bit are searched afresh. The gate's search of the stored
+    file so takes, tile by tile, what the passes found on the same values: the passes' last search of each tile reads
+    the stored codes the job then writes, outside the kept regions the search leaves out [tested: speed-2, the five
+    design crops' stored files and gate records and rp-a-01's whole gate record the same to the byte with and without
+    it, .lanetools/speed/hashes.py]. `searched` and `reused` count the tiles each way."""
+
+    def __init__(self) -> None:
+        self._found: dict[tuple[str, str, str], tuple[tuple[float, float, float], ...]] = {}
+        self.searched = 0
+        self.reused = 0
+
+    def points(self, part: np.ndarray, threshold: float, floor: float) -> tuple[tuple[float, float, float], ...]:
+        key = (codes_digest(part), float(threshold).hex(), float(floor).hex())
+        found = self._found.get(key)
+        if found is None:
+            found = self._found[key] = _search_tile(part, threshold, floor)
+            self.searched += 1
+        else:
+            self.reused += 1
+        return found
+
+
+def _tile_points(image: np.ndarray, threshold: float, floor: float, only: set[int] | None,
+                 searches: Searches | None = None) -> list[stars.Point]:
     found = []
     for index, tile in enumerate(stars.tiles(*image.shape)):
         if only is not None and index not in only:
             continue
         part = image[tile.y0:tile.y1, tile.x0:tile.x1]
-        detections = detect_point_sources(part, snr_threshold=threshold, noise_floor=floor)
-        if not detections:
-            continue
-        verified = verify_candidates_on_original_pixels(part, [(d.x_px, d.y_px) for d in detections],
-                                                        snr_threshold=threshold, noise_floor=floor)
-        for d in detections:
-            if any(math.hypot(v.x_px - d.x_px, v.y_px - d.y_px) <= stars.MATCH_RADIUS_PX for v in verified):
-                found.append(stars.Point(d.x_px + tile.x0, d.y_px + tile.y0, float(d.snr), index))
+        on_tile = _search_tile(part, threshold, floor) if searches is None else searches.points(part, threshold, floor)
+        found.extend(stars.Point(x + tile.x0, y + tile.y0, snr, index) for x, y, snr in on_tile)
     return found
 
 
 def points_on(image: np.ndarray, clipped: np.ndarray, *, only_tiles: set[int] | None = None,
-              threshold: float = VARIANT_THRESHOLD_SNR) -> tuple[list[stars.Point], int]:
+              threshold: float = VARIANT_THRESHOLD_SNR, searches: Searches | None = None) -> tuple[list[stars.Point], int]:
     """`variant_points` on an image already of the gate's statistic."""
-    merged = stars._merged(_tile_points(image, threshold, noise_floor(), only_tiles))
+    merged = stars._merged(_tile_points(image, threshold, noise_floor(), only_tiles, searches))
     height, width = image.shape
     points, left_out = [], 0
     for point in merged:
@@ -175,15 +208,17 @@ def search_statistic(luma: np.ndarray, left_out: np.ndarray | None) -> np.ndarra
 
 
 def variant_points(luma: np.ndarray, clipped: np.ndarray, *, only_tiles: set[int] | None = None,
-                   threshold: float = VARIANT_THRESHOLD_SNR, kept: "Kept | None" = None) -> tuple[list[stars.Point], int]:
+                   threshold: float = VARIANT_THRESHOLD_SNR, kept: "Kept | None" = None,
+                   searches: Searches | None = None) -> tuple[list[stars.Point], int]:
     """The variant's points: on the gate's statistic of its luma (codes of 255), with `kept`'s regions left out
     (`search_statistic`), tile by tile, the detector's points at `threshold` with the gate's noise floor that its own
     forced photometry verifies, duplicates merged; and how many were left out inside clipped regions. The floor is the
     gate's whatever the threshold, so a dissolve pass at a lower threshold looks at the same scale. `only_tiles` limits
     the search to some tiles. [tested, restore-4e: adding the plain statistic's points to these left rp-b-03 whole
-    rejected and rp-b-01's lattice refused from 6 codes, where these alone left both ready and rp-b-01 from 4]"""
+    rejected and rp-b-01's lattice refused from 6 codes, where these alone left both ready and rp-b-01 from 4]
+    `searches` keeps each tile's search for the rest of one restoration (`Searches`)."""
     return points_on(search_statistic(luma, None if kept is None else kept.left_out), clipped, only_tiles=only_tiles,
-                     threshold=threshold)
+                     threshold=threshold, searches=searches)
 
 
 @dataclass(frozen=True)
@@ -838,14 +873,14 @@ class Dissolved:
 
 
 def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_codes, original: Original, kept: Kept,
-             max_passes: int = MAX_PASSES, luma_of=None) -> Dissolved:
+             max_passes: int = MAX_PASSES, luma_of=None, searches: Searches | None = None) -> Dissolved:
     """At most `max_passes` passes: the working image's points, in the stored codes (`to_stored`: linear light to
     the 16 bit codes as they will be stored; `luma_of` reads their luma on the scale of 255, `stored_luma` unless
     given), that the original does not confirm are replaced inside their discs by the fill,
     never inside a kept core. A disc that reaches a kept core takes the original itself there, so the kept region
     grows over the point instead of leaving a seam beside it. Each pass's count is kept. A pass after the first looks
     only in the tiles the last pass changed: the detector works tile by tile, so another tile's points are the ones
-    already found there, every one confirmed."""
+    already found there, every one confirmed. The tile searches go into `searches`, for the gate (`Searches`)."""
     per_pass = []
     core = kept.core
     left_out = kept.left_out.astype(np.float64)
@@ -862,9 +897,9 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
         # threshold are not all the gate's: a pass takes both [tested: a point of SNR 18.9 under the gate's
         # threshold was found by no pass at 4 on photo 1, .lanetools/restore-4/trace.py]
         lower, _ = variant_points(luma, kept.field.clipped, threshold=DISSOLVE_THRESHOLD_SNR, only_tiles=dirty,
-                                  kept=kept)
+                                  kept=kept, searches=searches)
         at_gate, _ = variant_points(luma, kept.field.clipped, threshold=VARIANT_THRESHOLD_SNR, only_tiles=dirty,
-                                    kept=kept)
+                                    kept=kept, searches=searches)
         points = stars._merged(lower + at_gate + raised_places(luma, expected_luma, kept.left_out, kept.field.clipped,
                                                                only_tiles=dirty))
         ok = confirmed(points, original, stored, expected, kept.left_out)
@@ -971,7 +1006,7 @@ def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant
 def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np.ndarray,
              original_luminance: np.ndarray, variant_luminance: np.ndarray, luma_of=None,
              together: stars.StarField | None = None, together_luminance: np.ndarray | None = None,
-             code_step: float = 1.0) -> GateOutcome:
+             code_step: float = 1.0, searches: Searches | None = None) -> GateOutcome:
     """The gate on the stored file's codes: every point confirmed, a raised sample or small cluster among the points
     (`raised_places`), every kept region's samples what they must be (`kept_samples`), and every measured star's flux
     within the tolerance. A place where a kept region's samples changed counts among the variant's points and its
@@ -980,10 +1015,11 @@ def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np
     `luma_of` reads the stored codes' luma on the scale of 255 (`stored_luma` unless given), and `code_step` is the
     stored file's own code step in 16 bit codes (`kept_samples`: 1 for a still, 257 for an 8 bit clip's Y'). A clip
     frame's stars that only its original frames together confirm (`together`) have their flux compared with the frames
-    together's own (`together_luminance`), against the noise of empty apertures there (design section 7)."""
+    together's own (`together_luminance`), against the noise of empty apertures there (design section 7). `searches`
+    answers each tile whose values a search of the same restoration already read (`Searches`)."""
     read_luma = stored_luma if luma_of is None else luma_of
     luma = read_luma(stored)
-    points, left_out = variant_points(luma, kept.field.clipped, kept=kept)
+    points, left_out = variant_points(luma, kept.field.clipped, kept=kept, searches=searches)
     points = stars._merged(points + raised_places(luma, read_luma(expected), kept.left_out, kept.field.clipped))
     ok = confirmed(points, original, stored, expected, kept.left_out)
     changed = kept_changed(stored, kept_samples(stored, expected, kept.weight, code_step), kept.left_out)

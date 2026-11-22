@@ -54,6 +54,8 @@ class Context:
     top: float
     original_luminance: np.ndarray
     expected: np.ndarray  # the original lifted and stored as the job stores it, 16 bit codes
+    # The restoration's tile searches, which the gate answers each tile of the same values from (`gate.Searches`)
+    searches: gate.Searches = field(default_factory=gate.Searches)
 
     @property
     def field(self) -> stars.StarField:
@@ -172,8 +174,9 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
         return transfer.encode(light) * top
 
     lap("lift")
+    searches = gate.Searches()
     dissolved = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=to_original_codes,
-                              original=original, kept=kept, max_passes=max_passes)
+                              original=original, kept=kept, max_passes=max_passes, searches=searches)
     lap("dissolve")
     steps.append({"kind": "dissolve_unconfirmed", "version": gate.STEP_VERSION, "parameters": [
         _parameter("maxPasses", max_passes), _parameter("variantThresholdSnr", gate.DISSOLVE_THRESHOLD_SNR),
@@ -193,7 +196,7 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     data = encode.write_still(stored, profile_without_text(still.icc_profile))
     read_back = encode.read_still(data)
     lap("encode")
-    context = Context(original, kept, transfer, lift.beta, top, luminance, expected)
+    context = Context(original, kept, transfer, lift.beta, top, luminance, expected, searches)
     verdict = check_full(context, read_back)
     lap("gate")
     measured["dissolvedPerPass"] = dissolved.per_pass
@@ -214,7 +217,7 @@ def check_full(context: Context, stored: np.ndarray) -> Verdict:
     """The gate on a whole stored file."""
     outcome = gate.run_gate(stored, original=context.original, kept=context.kept, expected=context.expected,
                             original_luminance=context.original_luminance,
-                            variant_luminance=context.variant_luminance(stored))
+                            variant_luminance=context.variant_luminance(stored), searches=context.searches)
     return Verdict(outcome.record, outcome.unconfirmed)
 
 

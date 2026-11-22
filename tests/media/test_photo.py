@@ -222,6 +222,37 @@ def test_p_rst_10_two_runs_write_the_same_bytes(tmp_path) -> None:
     assert first.data == second.data and np.array_equal(first.stored, second.stored)
 
 
+def test_the_gate_takes_from_the_passes_the_search_of_every_tile_the_stored_file_holds_as_they_left_it(
+        tmp_path, monkeypatch) -> None:
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    still = still_of(scene.codes, tmp_path)
+    taken = []
+    real = photo.check_full
+
+    def counted(context, stored):
+        before = context.searches.reused
+        verdict = real(context, stored)
+        taken.append(context.searches.reused - before)
+        return verdict
+
+    monkeypatch.setattr(photo, "check_full", counted)
+    result = photo.restore_still(still)
+    assert result.status == "ready"
+    assert taken == [len(stars.tiles(320, 320))]
+
+
+def test_a_restoration_that_keeps_its_searches_stores_what_one_searching_every_tile_afresh_stores(
+        tmp_path, monkeypatch) -> None:
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    still = still_of(scene.codes, tmp_path)
+    kept = photo.restore_still(still)
+    monkeypatch.setattr(gate.Searches, "points", lambda self, part, threshold, floor: gate._search_tile(part, threshold, floor))
+    afresh = photo.restore_still(still)
+    assert afresh.context.searches.reused == 0, "the control: nothing was taken from a search"
+    assert kept.status == afresh.status and kept.data == afresh.data
+    assert kept.gate == afresh.gate and kept.measured == afresh.measured and kept.unconfirmed == afresh.unconfirmed
+
+
 def test_a_trial_beside_a_star_on_the_tiles_its_patch_touches_agrees_with_the_whole_gate(honest) -> None:
     trials = photo.Trials(honest)
     peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
