@@ -7,7 +7,12 @@ import type { RevealStatus } from './revealStatus.js';
  * photo, Show predicted sky centred where Ask out loud sits when a predicted sky can open, and under it the warnings in
  * one list, reached by scrolling the whole screen; the photo moves up with it (the lead's answer 23:50, INTERIM).
  */
-export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: () => void; onAlign?: () => void }> = ({ status, onShowPredictedSky, onAlign }) => {
+export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: () => void; onAlign?: () => void; onRestore?: () => void }> = ({
+  status,
+  onShowPredictedSky,
+  onAlign,
+  onRestore,
+}) => {
   const { screen, onScroll } = usePhoneScroll();
   return (
     <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
@@ -28,6 +33,12 @@ export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: 
         {onAlign && (
           <div className="reveal-phone-go reveal-phone-go--more">
             <SecondAction label="Line it up yourself" size="phone" onClick={() => onAlign()} />
+          </div>
+        )}
+        {/* Restore after the screen's own actions, in the laptop's order (d38-2b; UIUX-nomatch-restore-READY.md, UIUX-align-READY.md point 1) */}
+        {onRestore && (
+          <div className="reveal-phone-go reveal-phone-go--restore">
+            <SecondAction label="Restore" size="phone" onClick={() => onRestore()} />
           </div>
         )}
         {status.warnings.length > 0 && (

@@ -672,7 +672,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
         />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
-        <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />
+        <PhoneNoMatch
+          status={status}
+          onShowPredictedSky={() => onShowPredictedSky?.()}
+          onAlign={alignOffered ? () => setAligning(alignStart) : undefined}
+          onRestore={phoneNoMatchRestore ? () => onRestore?.() : undefined}
+        />
       ) : phone && (!skyLineShown || there) ? null : there && (skyOnScreen || earthOnly || Boolean(answer)) ? (
         // The flight's column once its panorama has drawn, or in the cone view or while steering; and whenever an answer
         // hides the readout, so its Simulated tag stays in view (AUDIT-C's tag sweep, break 3, laptop half)
@@ -1098,6 +1103,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onTryAgain={() => onRestore?.()}
           lead={phoneRestoreLead}
         />
+      )}
+      {/* After a refusal on a phone no-match photo, the no-match screen's own main action comes back at 772, as Ask out
+          loud comes back on the reveal (DECIDED-BY-LEAD 05:02 on 22 Nov, on UIUX's proposal); the stop's sentence and
+          "Your photo is unchanged." stand above it */}
+      {phoneStopped && restoration?.phase === 'stopped' && !restoration.canTryAgain && status.kind === 'unmatched' && status.predictedSky && (
+        <div className="restore-phone-go">
+          <MainAction label="Show predicted sky" size="phone" onClick={() => onShowPredictedSky?.()} />
+        </div>
       )}
 
       {!answer && card.mounted && cardStar && (

@@ -1898,6 +1898,14 @@
 .reveal-phone-go--more {
   margin-top: 16px;
 }
+/* d38-2b: Restore on the phone no-match screen after its own actions, as on the laptop: 16 px under Show predicted sky
+   (UIUX-nomatch-restore-READY.md), 10 px under Line it up yourself (UIUX-align-READY.md point 1) */
+.reveal-phone-go--restore {
+  margin-top: 16px;
+}
+.reveal-phone-go--more + .reveal-phone-go--restore {
+  margin-top: 10px;
+}
 
 .align-phone {
   position: absolute;
