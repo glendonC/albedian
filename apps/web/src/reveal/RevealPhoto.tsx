@@ -45,10 +45,11 @@ export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colour
 
 /**
  * Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs; an answer
- * takes their place (ask, approved, iPhone; #p-answer). In the estimate's block (tag place A) the same row, in its flow.
+ * takes their place (ask, approved, iPhone; #p-answer). In the estimate's block (tag place A) the same row, in its flow;
+ * there, with a star picked, it goes from view but keeps its room (item D), so the tag above it holds its place.
  */
-const PhoneCounts: React.FC<{ counts: ReturnType<typeof evidenceCounts> }> = ({ counts }) => (
-  <div className="reveal-phone-counts" data-testid="reveal-legend">
+const PhoneCounts: React.FC<{ counts: ReturnType<typeof evidenceCounts>; hidden?: boolean }> = ({ counts, hidden = false }) => (
+  <div className="reveal-phone-counts" data-testid="reveal-legend" style={hidden ? { visibility: 'hidden' } : undefined}>
     {counts
       .filter((row) => row.evidenceClass === 'catalog_matched')
       .map((row) => (
@@ -1045,6 +1046,19 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
       {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} phone={phone} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
+      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !skyShown && status.kind === 'estimate' && (
+        // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
+        // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
+        // sky rests on), then the counts row as built. With a star picked the counts go and the card sheet rises over the
+        // block (item D): drawn before the card, so the sheet paints over it, the tag stays drawn until the sheet covers
+        // it, and the counts keep their room so the tag does not move (the card's own tag: motion.css)
+        <div className="reveal-phone-estimate" data-testid="reveal-phone-estimate">
+          <EvidenceTag evidenceClass="predicted" />
+          <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
+          {counts.length > 0 && <PhoneCounts counts={counts} hidden={picked !== null} />}
+        </div>
+      )}
+
       {!answer && card.mounted && cardStar && (
         <StarCard
           key={cardStar.id}
@@ -1090,16 +1104,6 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'estimate' && (
-        // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
-        // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
-        // sky rests on), then the counts row as built
-        <div className="reveal-phone-estimate" data-testid="reveal-phone-estimate">
-          <EvidenceTag evidenceClass="predicted" />
-          <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
-          {counts.length > 0 && <PhoneCounts counts={counts} />}
-        </div>
-      )}
       {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (

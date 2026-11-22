@@ -96,8 +96,71 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
     expect(rule('.reveal-phone-estimate')).toEqual({ position: 'absolute', left: '24px', right: '24px', bottom: 'calc(100% - 756px)', display: 'flex', 'flex-direction': 'column', 'align-items': 'flex-start', 'pointer-events': 'none' });
     expect(rule('.reveal-phone-estimate__source')).toEqual({ margin: '8px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
     expect(rule('.reveal-phone-estimate .reveal-phone-counts')).toEqual({ 'margin-top': '14px' });
-    // No entrance: nothing in the motion record animates the block
-    expect(motionCss.includes('reveal-phone-estimate')).toBe(false);
+    // No entrance: nothing in the motion record animates the block or anything in it. It is named only inside :has(), as
+    // the condition item D's card rules keep, and every such rule's subject is in the card (AUDIT-C's gap on tagd: a rule
+    // like ':has(.reveal-phone-estimate) .look-tag' would reach the block's own tag)
+    postcss.parse(motionCss).walkRules((r) => {
+      r.selectors.forEach((one) => {
+        const outside = one.replace(/:has\([^)]*\)/g, '');
+        expect(outside.includes('reveal-phone-estimate'), one).toBe(false);
+        if (one.includes('reveal-phone-estimate')) expect(outside, one).toMatch(/\.reveal-card/);
+      });
+    });
+  });
+
+  // UIUX-tagphone-READY.md item D (decided 13:08 on 21 Nov; Reduce Motion ruled 14:40): where the phone card sheet covers
+  // item A's block, the covered tag stays drawn until the sheet covers it, and the card's own Predicted tag stands in for
+  // it at full from the sheet's first frame to its last; with a star picked the counts go (item A)
+  it("item D: with a star picked, the estimate block's Predicted tag stays drawn in its place under the card sheet, the counts gone", () => {
+    const session = poseSession(POSE);
+    const star = session.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const render = (selectedFindingId: string | null) =>
+      act(() => root.render(createElement(RevealPhoto, { session: { ...session, selectedFindingId }, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true })));
+    render(star.id);
+    const block = q('[data-testid="reveal-phone-estimate"]')!;
+    const card = q('[data-testid="star-card"]')!;
+    expect(block).not.toBeNull();
+    expect(card).not.toBeNull();
+    const [tag, source, counts] = [...block.children] as HTMLElement[];
+    expect(tag!.getAttribute('data-evidence-class')).toBe('predicted');
+    expect(source!.className).toBe('reveal-phone-estimate__source');
+    // The counts go from view but keep their room, so the tag above them does not move while the sheet rises over it
+    expect(counts!.getAttribute('data-testid')).toBe('reveal-legend');
+    expect(counts!.style.visibility).toBe('hidden');
+    // Drawn before the card, so the sheet (no stacking of its own) paints over the block as it rises
+    expect(block.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The motion rules below reach this card: the block is in the phone reveal while the card is up
+    expect(q('.reveal-photo.is-phone [data-testid="reveal-phone-estimate"]')).toBe(block);
+    // Let go: the sheet goes down over the block, which is drawn throughout, the counts back in view
+    render(null);
+    expect(q('[data-testid="star-card"]')!.classList.contains('is-leaving')).toBe(true);
+    expect(q('[data-testid="reveal-phone-estimate"]')).toBe(block);
+    expect((block.children[2] as HTMLElement).style.visibility).toBe('');
+  });
+
+  it("item D: the card's own Predicted tag at full from the sheet's first frame to its last over the estimate block, under Reduce Motion too", () => {
+    const over = '.reveal-photo.is-phone:has(.reveal-phone-estimate)';
+    const top: Record<string, Record<string, string>> = {};
+    const reduced: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      const into = rule.parent?.type === 'root' ? top : rule.parent?.type === 'atrule' && /prefers-reduced-motion:\s*reduce/.test((rule.parent as { params?: string }).params ?? '') ? reduced : null;
+      if (!into) return;
+      rule.walkDecls((d) => void (into[sel] = { ...(into[sel] ?? {}), [d.prop]: d.value.replace(/\s+/g, ' ') }));
+    });
+    // The tag row rides the sheet at full, in and out; the close beside it keeps the top row's own times
+    expect(top[`${over} .reveal-card__top`]).toEqual({ animation: 'none' });
+    expect(top[`${over} .reveal-card.is-leaving .reveal-card__top`]).toEqual({ animation: 'none' });
+    expect(top[`${over} .reveal-card__top > :not(.look-tag)`]).toEqual({
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 0) both',
+    });
+    expect(top[`${over} .reveal-card.is-leaving .reveal-card__top > :not(.look-tag)`]).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both',
+    });
+    // Under Reduce Motion only the sheet's fill and hairline dissolve (MOTION's keyframes for the predicted sky), so the
+    // card's tag is at full on every frame while the block's tag stays drawn under it
+    expect(reduced[`${over} .reveal-card.is-phone`]).toEqual({ animation: 'reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
+    expect(reduced[`${over} .reveal-card.is-phone.is-leaving`]).toEqual({ animation: 'reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
   });
 
   it("keeps the phone's calibrated counts where they were, outside any block, with no tag line over them", () => {
