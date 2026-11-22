@@ -116,7 +116,7 @@ describe('a ready restoration at phone width (D10 item 5)', () => {
     }
     expect(compare.querySelector('.restore-compare__original img')!.getAttribute('src')).toBe(photo.sourceAsset!.uri);
     expect(compare.querySelector('.restore-compare__pic img')!.getAttribute('src')).toBe(`/api/media/${sha}/variants/${NEWER.id}/file`);
-    expect([...compare.querySelectorAll('.restore-compare__label')].map((b) => b.textContent)).toEqual(['Original', 'Restored']);
+    expect([...container.querySelectorAll('.restore-compare__label')].map((b) => b.textContent)).toEqual(['Original', 'Restored']);
     expect(compare.style.getPropertyValue('--compare-label-top')).toBe('');
   });
 

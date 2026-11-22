@@ -244,9 +244,9 @@ describe('the restoration on the reveal (laptop)', () => {
     const compare = q('[data-testid="restore-compare"]') as HTMLElement;
     await untilSplit(() => compare, '50%');
     expect(compare.style.getPropertyValue('--split')).toBe('50%');
-    act(() => ([...compare.querySelectorAll('button')].find((b) => b.textContent === 'Original') as HTMLButtonElement).click());
+    act(() => ([...container.querySelectorAll('.restore-compare__label')].find((b) => b.textContent === 'Original') as HTMLButtonElement).click());
     expect(compare.style.getPropertyValue('--split')).toBe('100%');
-    act(() => ([...compare.querySelectorAll('button')].find((b) => b.textContent === 'Restored') as HTMLButtonElement).click());
+    act(() => ([...container.querySelectorAll('.restore-compare__label')].find((b) => b.textContent === 'Restored') as HTMLButtonElement).click());
     expect(compare.style.getPropertyValue('--split')).toBe('0%');
     compare.getBoundingClientRect = () => ({ left: 100, top: 0, width: 400, height: 900, right: 500, bottom: 900, x: 100, y: 0, toJSON: () => ({}) });
     act(() => {
@@ -393,7 +393,7 @@ describe('D15: marks over the compare and zooming both pictures together (UIUX-r
     expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
     expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
     wheel(-300);
-    const original = [...compare().querySelectorAll('button')].find((b) => b.textContent === 'Original') as HTMLButtonElement;
+    const original = [...container.querySelectorAll('.restore-compare__label')].find((b) => b.textContent === 'Original') as HTMLButtonElement;
     act(() => original.click());
     expect(compare().style.getPropertyValue('--split')).toBe('100%');
     expect(layers()[0]!.style.transform).not.toBe('translate(0px, 0px) scale(1)');

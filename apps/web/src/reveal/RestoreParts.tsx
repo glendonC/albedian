@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useElapsedRows } from './elapsedRows.js';
 import { followParent } from './clipSync.js';
 import { DISCLOSURES, type DisplayOrientation, type UploadJob } from '@albedian/contracts';
@@ -175,7 +176,13 @@ export const RestoreCompare: React.FC<{
    * draws the photo (rect), which covers the slot, so the box cuts them; the labels sit 16 px in.
    */
   slot?: PhotoRect;
-}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot }) => {
+  /**
+   * Where the labels are drawn when the star marks stand over the compare: a place after the marks and before the answer
+   * and the star card, so the labels stand above the marks and take the press (AUDIT-B's finding, the lead 04:27 on
+   * 22 Nov). They keep the compare's box, classes, label top and fade, so they sit and look as they did.
+   */
+  labelHost?: HTMLElement | null;
+}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot, labelHost = null }) => {
   const clip = clipParent !== undefined;
   const boxRect = slot ?? rect;
   const restoredClip = useRef<HTMLVideoElement>(null);
@@ -257,19 +264,26 @@ export const RestoreCompare: React.FC<{
   // A clip's labels sit 18 px down at the window's middle band, clear of the logo and the views (D34 item 1); the
   // phone's 16 px in (D10 item 5)
   const labelTop = clip || slot ? null : compareLabelTop(rect.topPx);
-  const style = {
+  const boxStyle = {
     left: `${boxRect.leftPx}px`,
     top: `${boxRect.topPx}px`,
     width: `${boxRect.widthPx}px`,
     height: `${boxRect.heightPx}px`,
-    '--split': `${split}%`,
     ...(labelTop === null ? {} : { '--compare-label-top': `${labelTop}px` }),
     ...(fade ? { maskImage: fade, WebkitMaskImage: fade } : {}),
   } as React.CSSProperties;
+  const style = { ...boxStyle, '--split': `${split}%` } as React.CSSProperties;
+  const modifiers = `${clip ? ' is-clip' : ''}${slot ? ' is-phone' : ''}`;
+  const labels = (
+    <>
+      <SecondAction part="restore-compare__label is-left" label="Original" onClick={label(100)} />
+      <SecondAction part="restore-compare__label is-right" label="Restored" onClick={label(0)} />
+    </>
+  );
   return (
     <div
       ref={box}
-      className={`restore-compare${clip ? ' is-clip' : ''}${slot ? ' is-phone' : ''}${drag ? ' is-drag' : ''}`}
+      className={`restore-compare${modifiers}${drag ? ' is-drag' : ''}`}
       data-testid="restore-compare"
       data-hud-interactive="true"
       style={style}
@@ -325,8 +339,14 @@ export const RestoreCompare: React.FC<{
         </div>
       </div>
       <span className="restore-compare__line" aria-hidden="true" />
-      <SecondAction part="restore-compare__label is-left" label="Original" onClick={label(100)} />
-      <SecondAction part="restore-compare__label is-right" label="Restored" onClick={label(0)} />
+      {labelHost === null
+        ? labels
+        : createPortal(
+            <div className={`restore-compare is-labels ${clip ? 'is-clip ' : ''}${slot ? 'is-phone' : ''}`.trim()} data-hud-interactive="true" style={boxStyle}>
+              {labels}
+            </div>,
+            labelHost
+          )}
     </div>
   );
 };

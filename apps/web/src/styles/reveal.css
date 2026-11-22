@@ -1588,6 +1588,14 @@
     transition: none !important;
   }
 }
+/* The labels' own layer in the compare's box, drawn after the star marks so the labels stand above them and take the
+   press (AUDIT-B's finding, the lead 04:27 on 22 Nov); the layer itself lets the pointer through to the compare */
+.restore-compare.is-labels {
+  pointer-events: none;
+}
+.restore-compare.is-labels .restore-compare__label {
+  pointer-events: auto;
+}
 .restore-compare__label {
   position: absolute;
   /* C19 item 2: moved down together under the logo where the frame reaches it (RestoreParts.tsx compareLabelTop) */

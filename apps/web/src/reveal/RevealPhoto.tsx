@@ -498,6 +498,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     : undefined;
   // While the compare is zoomed in, the marks step aside (D15)
   const [compareZoomed, setCompareZoomed] = useState(false);
+  // The compare's labels are drawn here, after the marks (AUDIT-B's finding, the lead 04:27 on 22 Nov)
+  const [compareLabelHost, setCompareLabelHost] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!compareShown) setCompareZoomed(false);
   }, [compareShown]);
@@ -900,6 +902,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           maxZoom={asset.mediaKind === 'video' ? 1 : uprightWidth / Math.max(1, frame.widthPx)}
           onZoomed={setCompareZoomed}
           clipParent={asset.mediaKind === 'video' ? clipVideo : undefined}
+          labelHost={compareLabelHost}
         />
       )}
 
@@ -912,6 +915,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           src={variantFileUrl(asset.sha256, shownVersion.id)}
           originalSrc={asset.uri}
           orientation={shownVersion.orientation}
+          labelHost={compareLabelHost}
         />
       )}
 
@@ -979,6 +983,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         ))}
       </div>
       )}
+
+      {/* The compare's Original and Restored, above the marks and under the answer and the star card */}
+      {compareOn && <div ref={setCompareLabelHost} />}
 
       {!phone && (
       <button type="button" className="reveal-word" data-testid="reveal-home" onClick={onHome}>
