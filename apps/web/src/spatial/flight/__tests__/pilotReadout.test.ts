@@ -84,6 +84,11 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('deep-impact', 'tempel1Impact', true))).toEqual([null, 'No real travel time: Deep Impact flew to comet Tempel 1 and then comet Hartley 2, within the Solar System.', 'to comet Tempel 1']);
     expect(rows(withFact('viking-lander', 'landedOnMars', false))).toEqual(['landedOnMars', null, '']);
     expect(rows(withFact('viking-lander', 'landedOnMars', true))).toEqual([null, "No real travel time: Viking 1's lander stood on Mars until contact was lost in 1982.", 'on Mars']);
+    // The 21 Nov 14:33 ruling (decided 14:38, as-1): Apollo-Soyuz near Earth, its words waiting for the docking in Earth
+    // orbit in its record, which ASSETS' entry carries (hangar-42, NASA's project page)
+    expect(rows(withFact('apollo-soyuz', 'orbit', false))).toEqual(['orbit', null, '']);
+    expect(rows(withFact('apollo-soyuz', 'orbit', true))).toEqual([null, 'No real travel time: the Apollo and Soyuz spacecraft docked in Earth orbit in 1975.', 'near Earth']);
+    expect([CRAFTS['apollo-soyuz']!.name, CRAFT_CHOICES.find((c) => c.id === 'apollo-soyuz')!.detail, none('apollo-soyuz')]).toEqual(['Apollo-Soyuz', 'near Earth', 'No real travel time: the Apollo and Soyuz spacecraft docked in Earth orbit in 1975.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
