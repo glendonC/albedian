@@ -188,6 +188,15 @@ describe('the restoration working at phone width (D38 item 2)', () => {
     expect(button('Cancel')).not.toBeUndefined();
   });
 
+  it("is not set at 832 on a no-match photo, whose own screen places Restore under its actions (D38's no-match rule)", async () => {
+    const noMatch = slotted(poseSession(sample('horizon_predicted_only')));
+    await showPhone({ session: noMatch, restoration: { phase: 'idle' } });
+    expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
+    expect(q('.restore-phone-rest')).toBeNull();
+    expect(q('.reveal-phone-room')).toBeNull();
+    expect(q('[data-testid="reveal-photo"]')!.className).not.toContain('is-scroll');
+  });
+
   it("takes the no-match screen's place too while it works, so its row and Cancel hold the foot alone", async () => {
     const noMatch = slotted(poseSession(sample('horizon_predicted_only')));
     await showPhone({ session: noMatch, restoration: { phase: 'idle' } });

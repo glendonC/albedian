@@ -105,6 +105,18 @@ describe('only the matched marks over the restore compare (the ruling of 15:43)'
     expect(count('.reveal-mark.is-predicted')).toBe(0);
   });
 
+  it("draws no leader line to a picked predicted star over the laptop compare, and keeps a picked matched star's", async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants: [], attempts: [] }), { status: 200 }));
+    const guess = estimate.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    await show(done({ ...estimate, selectedFindingId: guess.id } as ObservationSession));
+    expect(q('[data-testid="restore-compare"]')).not.toBeNull();
+    expect(q('[data-testid="reveal-leader"]')).toBeNull();
+    const star = matched.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    await show(done({ ...matched, selectedFindingId: star.id } as ObservationSession));
+    expect(q('[data-testid="restore-compare"]')).not.toBeNull();
+    expect(q('[data-testid="reveal-leader"]')).not.toBeNull();
+  });
+
   it('brings the predicted marks back with their tag once the compare is left (Original pixels shows the photo bare)', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants: [], attempts: [] }), { status: 200 }));
     await show(done(estimate));
