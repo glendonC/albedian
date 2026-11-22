@@ -38,8 +38,10 @@ from scipy import ndimage
 
 from services.media import noise, stars, temporal
 from services.science.detector import (
+    DetectionField,
     _build_gaussian_psf_kernel,
     detect_point_sources,
+    detection_field,
     verify_candidates_on_original_pixels,
 )
 
@@ -121,12 +123,14 @@ def stored_luma(codes16: np.ndarray) -> np.ndarray:
 
 def _search_tile(part: np.ndarray, threshold: float, floor: float) -> tuple[tuple[float, float, float], ...]:
     """The points of one tile of the gate's statistic, (x, y, snr) on the tile: the detector's at `threshold` with the
-    noise floor `floor` that its own forced photometry on the same values verifies."""
-    detections = detect_point_sources(part, snr_threshold=threshold, noise_floor=floor)
+    noise floor `floor` that its own forced photometry on the same values verifies. The tile is measured once for
+    both, which read the same values with the same settings (`detection_field`, restore-7s2)."""
+    field = detection_field(part, snr_threshold=threshold, noise_floor=floor)
+    detections = detect_point_sources(part, snr_threshold=threshold, noise_floor=floor, field=field)
     if not detections:
         return ()
     verified = verify_candidates_on_original_pixels(part, [(d.x_px, d.y_px) for d in detections],
-                                                    snr_threshold=threshold, noise_floor=floor)
+                                                    snr_threshold=threshold, noise_floor=floor, field=field)
     return tuple((d.x_px, d.y_px, float(d.snr)) for d in detections
                  if any(math.hypot(v.x_px - d.x_px, v.y_px - d.y_px) <= stars.MATCH_RADIUS_PX for v in verified))
 
@@ -241,7 +245,10 @@ class Original:
         return cls(np.array(places, dtype=np.float64).reshape(-1, 2), together)
 
 
-def _verified_by_photometry(points: list[stars.Point], image: np.ndarray) -> list[bool]:
+def _verified_by_photometry(points: list[stars.Point], image: np.ndarray,
+                            fields: dict[int, DetectionField] | None = None) -> list[bool]:
+    """For each point, whether forced photometry at the detector's defaults on a tile of `image` holding it verifies a
+    detection within the match radius. `fields` are the tiles' own measures from their detection, by tile index."""
     grid = stars.tiles(*image.shape)
     by_tile: dict[int, list[int]] = {}
     if points:
@@ -259,7 +266,7 @@ def _verified_by_photometry(points: list[stars.Point], image: np.ndarray) -> lis
         if not members:
             continue
         places = [(points[i].x_px - tile.x0, points[i].y_px - tile.y0) for i in members]
-        verified = verify_candidates_on_original_pixels(part, places)
+        verified = verify_candidates_on_original_pixels(part, places, field=(fields or {}).get(index))
         for i, (x, y) in zip(members, places):
             if any(math.hypot(d.x_px - x, d.y_px - y) <= stars.MATCH_RADIUS_PX for d in verified):
                 confirmed[i] = True
@@ -681,9 +688,13 @@ def original_stars(codes: np.ndarray, peak: float) -> stars.StarField:
     clipped = stars.clipped_map(codes, peak)
     found = []
     grid = stars.tiles(*luma.shape)
+    # Each tile is measured once for its detection and its forced photometry below, which read the same pixels with the
+    # same settings (restore-7s2); the fields are kept by tile until the merged points are verified
+    fields: dict[int, DetectionField] = {}
     for index, tile in enumerate(grid):
         part = luma[tile.y0:tile.y1, tile.x0:tile.x1]
-        for d in detect_point_sources(part):
+        fields[index] = detection_field(part)
+        for d in detect_point_sources(part, field=fields[index]):
             found.append(stars.Point(d.x_px + tile.x0, d.y_px + tile.y0, float(d.snr), index))
     points, left_out = [], 0
     for point in stars._merged(found):
@@ -691,7 +702,8 @@ def original_stars(codes: np.ndarray, peak: float) -> stars.StarField:
             left_out += 1
         else:
             points.append(point)
-    verified = _verified_by_photometry(points, luma)
+    verified = _verified_by_photometry(points, luma, fields)
+    del fields
     placed = []
     for point, ok in zip(points, verified):
         if ok:

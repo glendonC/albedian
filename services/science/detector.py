@@ -5,6 +5,7 @@ and synthetic starfield rendering.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import hashlib
 import math
 from typing import NamedTuple, Sequence
 
@@ -1480,6 +1481,94 @@ def _measure_peak_photometry(
     )
 
 
+@dataclass(frozen=True, eq=False)
+class DetectionField:
+    """What `detect_point_sources` and `verify_candidates_on_original_pixels` both measure on one image before they
+    look at a peak: the background residual, the pixel noise, the statistic they threshold (with the noise limits it
+    was chosen under), the clipped cores that are sources, and the frame measures each detection carries. A clip
+    frame's star search runs both on each tile, which measured each tile twice (restore-7s2).
+
+    `key` names the image and the settings it was measured with (`_field_key`: the SHA-256 of the image's type, shape
+    and bytes, of the sky mask's, and the threshold and noise floor), so `fits` tells whether it is this image's own:
+    an array changed in place since does not fit. `searched` is False where the detector stops before any peak (a
+    frame under 12 px a side, or a residual with nothing above the background), and the other fields are then empty."""
+
+    key: str
+    searched: bool
+    residual: np.ndarray | None = None
+    sigma_eff: float = 0.0
+    statistic: DetectionStatistic | None = None
+    cores: tuple[ClippedCore, ...] = ()
+    measures: FrameMeasures | None = None
+
+    def fits(self, image: np.ndarray, sky_mask: np.ndarray | None, snr_threshold: float, noise_floor: float) -> bool:
+        """Whether this field was measured on `image` as it is now, with these settings."""
+        return self.key == _field_key(image, sky_mask, snr_threshold, noise_floor)
+
+
+def _field_key(image: np.ndarray, sky_mask: np.ndarray | None, snr_threshold: float, noise_floor: float) -> str:
+    digest = hashlib.sha256()
+    for array in (image, sky_mask):
+        if array is None:
+            digest.update(b"none;")
+            continue
+        values = np.ascontiguousarray(array)
+        digest.update(f"{values.dtype.str}{values.shape};".encode())
+        digest.update(values)
+    digest.update(repr((float(snr_threshold), float(noise_floor))).encode())
+    return digest.hexdigest()
+
+
+def _check_threshold(snr_threshold: float) -> None:
+    if not (math.isfinite(float(snr_threshold)) and float(snr_threshold) > 0.0):
+        raise ValueError(f"snr_threshold must be a positive number of noises, got {snr_threshold}")
+
+
+def _measure_field(
+    image: np.ndarray, sky_mask: np.ndarray | None, snr_threshold: float, noise_floor: float, key: str
+) -> DetectionField:
+    """The measures both functions take before any peak, in the order they took them."""
+    luma = _to_luma_2d(image)
+    h, w = luma.shape
+    if h < 12 or w < 12:
+        return DetectionField(key, False)
+    bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask, grouped=True)
+    residual = luma - bg
+    max_res = float(np.max(residual))
+    if max_res <= 1e-5 or (sigma_bg <= 1e-6 and max_res <= 1e-3):
+        return DetectionField(key, False)
+    sigma_eff = _effective_sigma(sigma_bg, image, noise_floor)
+    limits = _noise_limits(luma, bg, sigma_eff, sky_mask)
+    statistic = _detection_statistic(luma, residual, sky_mask, sigma_eff, float(snr_threshold), limits)
+    mask_bool = np.asarray(sky_mask, dtype=bool) if sky_mask is not None else None
+    cores = tuple(_star_cores(luma, residual, sigma_eff, mask_bool))
+    measures = _frame_measures(statistic, _all_limits(image, luma, bg, sigma_eff, sky_mask, statistic, sigma_bg=sigma_bg))
+    return DetectionField(key, True, residual, sigma_eff, statistic, cores, measures)
+
+
+def detection_field(
+    image_luma: np.ndarray,
+    sky_mask: np.ndarray | None = None,
+    snr_threshold: float = DETECTION_THRESHOLD,
+    noise_floor: float = 0.0,
+) -> DetectionField:
+    """`DetectionField` of an image with these settings, for `detect_point_sources` and
+    `verify_candidates_on_original_pixels` on the same image with the same settings."""
+    _check_threshold(snr_threshold)
+    return _measure_field(image_luma, sky_mask, snr_threshold, noise_floor,
+                          _field_key(image_luma, sky_mask, snr_threshold, noise_floor))
+
+
+def _field_for(
+    field: DetectionField | None, image: np.ndarray, sky_mask: np.ndarray | None, snr_threshold: float, noise_floor: float
+) -> DetectionField:
+    """`field` when it is this image's own with these settings; else the image measured here (no key: a caller that
+    hands no field pays for no digest)."""
+    if field is not None and field.fits(image, sky_mask, snr_threshold, noise_floor):
+        return field
+    return _measure_field(image, sky_mask, snr_threshold, noise_floor, "")
+
+
 def detect_point_sources(
     image_luma: np.ndarray,
     sky_mask: np.ndarray | None = None,
@@ -1487,6 +1576,7 @@ def detect_point_sources(
     asset_id: str | None = None,
     frame_time_sec: float = 0.0,
     noise_floor: float = 0.0,
+    field: DetectionField | None = None,
 ) -> list[SourceDetection]:
     """Extract astronomical point sources above local sky background noise.
 
@@ -1512,25 +1602,17 @@ def detect_point_sources(
 
     Each detection carries `asset_id` when the caller names the recording it was measured in, and none
     otherwise: a solution serializes it under its own recording's id.
+
+    `field`, from `detection_field` on this image with these settings, is used in place of measuring them again; a
+    field that does not fit (`DetectionField.fits`) is set aside and the image measured here, so the answer is the
+    same either way.
     """
-    if not (math.isfinite(float(snr_threshold)) and float(snr_threshold) > 0.0):
-        raise ValueError(f"snr_threshold must be a positive number of noises, got {snr_threshold}")
-    luma = _to_luma_2d(image_luma)
-    h, w = luma.shape
-    if h < 12 or w < 12:
+    _check_threshold(snr_threshold)
+    measured = _field_for(field, image_luma, sky_mask, snr_threshold, noise_floor)
+    if not measured.searched:
         return []
-
-    bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask, grouped=True)
-    residual = luma - bg
-    max_res = float(np.max(residual))
-
-    if max_res <= 1e-5 or (sigma_bg <= 1e-6 and max_res <= 1e-3):
-        return []
-
-    sigma_eff = _effective_sigma(sigma_bg, image_luma, noise_floor)
+    residual, sigma_eff, statistic, cores = measured.residual, measured.sigma_eff, measured.statistic, list(measured.cores)
     kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
-    limits = _noise_limits(luma, bg, sigma_eff, sky_mask)
-    statistic = _detection_statistic(luma, residual, sky_mask, sigma_eff, float(snr_threshold), limits)
     noise_map, snr_map = statistic.noise_map, statistic.snr_map
 
     gate = float(snr_threshold)
@@ -1547,7 +1629,6 @@ def detect_point_sources(
     if mask_bool is not None:
         is_peak &= mask_bool
 
-    cores = _star_cores(luma, residual, sigma_eff, mask_bool)
     psf_core3 = kernel[2:5, 2:5]
     psf_core3_norm = float(np.linalg.norm(psf_core3))
 
@@ -1577,8 +1658,7 @@ def detect_point_sources(
         if det is not None:
             detections.append(det)
 
-    measures = _frame_measures(statistic, _all_limits(image_luma, luma, bg, sigma_eff, sky_mask, statistic, sigma_bg=sigma_bg))
-    detections = [replace(d, frame=measures) for d in detections]
+    detections = [replace(d, frame=measured.measures) for d in detections]
     detections.sort(key=lambda d: d.snr, reverse=True)
     return detections
 
@@ -1592,6 +1672,7 @@ def verify_candidates_on_original_pixels(
     asset_id: str | None = None,
     frame_time_sec: float = 0.0,
     noise_floor: float = 0.0,
+    field: DetectionField | None = None,
 ) -> list[SourceDetection]:
     """Verify candidate positions proposed by a processed `MediaVariant` via forced photometry on `original_image`.
 
@@ -1600,24 +1681,20 @@ def verify_candidates_on_original_pixels(
     `original_image`, its SNR against the matched-filter noise of `original_image` as `detect_point_sources`
     measures it, through the same threshold and gates. A candidate inside a clipped core of `original_image` is that
     core, reported once, flagged `saturated` with its area.
+
+    `field`, from `detection_field` on `original_image` with these settings, is used in place of measuring them again;
+    a field that does not fit (`DetectionField.fits`) is set aside and the image measured here.
     """
-    if not (math.isfinite(float(snr_threshold)) and float(snr_threshold) > 0.0):
-        raise ValueError(f"snr_threshold must be a positive number of noises, got {snr_threshold}")
-    luma = _to_luma_2d(original_image)
-    h, w = luma.shape
-    if h < 12 or w < 12 or not proposed_candidates:
+    _check_threshold(snr_threshold)
+    if not proposed_candidates:
+        _to_luma_2d(original_image)  # an image of no frame's shape is refused, candidates or none
         return []
-
-    bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask, grouped=True)
-    residual = luma - bg
-    max_res = float(np.max(residual))
-    if max_res <= 1e-5 or (sigma_bg <= 1e-6 and max_res <= 1e-3):
+    measured = _field_for(field, original_image, sky_mask, snr_threshold, noise_floor)
+    if not measured.searched:
         return []
-
-    sigma_eff = _effective_sigma(sigma_bg, original_image, noise_floor)
+    residual, sigma_eff, statistic, cores = measured.residual, measured.sigma_eff, measured.statistic, list(measured.cores)
+    h, w = residual.shape
     kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
-    limits = _noise_limits(luma, bg, sigma_eff, sky_mask)
-    statistic = _detection_statistic(luma, residual, sky_mask, sigma_eff, float(snr_threshold), limits)
     noise_map, snr_map = statistic.noise_map, statistic.snr_map
     gate = float(snr_threshold)
 
@@ -1626,7 +1703,6 @@ def verify_candidates_on_original_pixels(
     psf_core3_norm = float(np.linalg.norm(psf_core3))
     margin = EDGE_MARGIN_PX
 
-    cores = _star_cores(luma, residual, sigma_eff, mask_bool)
     seen_cores: set[int] = set()
     seen_peaks: set[tuple[int, int]] = set()
     verified: list[SourceDetection] = []
@@ -1687,10 +1763,7 @@ def verify_candidates_on_original_pixels(
             seen_peaks.add((y0, x0))
             verified.append(det)
 
-    measures = _frame_measures(
-        statistic, _all_limits(original_image, luma, bg, sigma_eff, sky_mask, statistic, sigma_bg=sigma_bg)
-    )
-    verified = [replace(d, frame=measures) for d in verified]
+    verified = [replace(d, frame=measured.measures) for d in verified]
     verified.sort(key=lambda d: d.snr, reverse=True)
     return verified
 

@@ -20,7 +20,7 @@
    "services/media/frame_pool.py",
    "services/media/temporal.py"
   ],
-  "digest": "35c58048108745c2749b41bbb493e6f88603877d35f280e840abef3b99a7e01c"
+  "digest": "d44ea57aef38169980fdd82ad67365348473fd826cbf23ba58c19ab56fc14e9c"
  },
  "albedian.solve_chain": {
   "revision": 24,
@@ -69,6 +69,6 @@
    "services/science/person_hint.py",
    "services/science/sun_pose.py"
   ],
-  "digest": "8a81b21ffdbd61d3069c88c2613c5cc25445825d532fcc5737c49bdbc5491384"
+  "digest": "dc5eeb2f5f9c9f4716b058350b8b726db39670c11a3edc1f1d9bca5743c93752"
  }
 }
