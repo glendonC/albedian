@@ -200,7 +200,8 @@
   margin-left: -1px;
 }
 
-.look-views__item:hover:not(:disabled) {
+/* The hover wash is not the current pill's: it keeps its ink fill and its words under the pointer */
+.look-views__item:hover:not(:disabled):not(.is-current) {
   background: var(--look-wash);
 }
 

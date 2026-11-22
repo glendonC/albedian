@@ -194,6 +194,17 @@ describe('look.css draws the parts from the tokens', () => {
     for (const [prop, value] of Object.entries(expected)) expect(found[prop], `${selector} ${prop}`).toBe(value);
   });
 
+  // UIUX's live read of main dd6eeeeb (UIUX-built-main-dd6e-READY.md, drift 3; the lead's 05:02 answer): the views' hover
+  // wash outranked the current pill's fill, so right after a press, the pointer still on it, the current pill turned
+  // dark with dark words. The current pill keeps its ink fill and its words on hover: no hover rule reaches it
+  it('keeps the current view pill filled, its words in view, under the pointer', () => {
+    const hovers: string[] = [];
+    postcss.parse(lookCss).walkRules((rule) => {
+      for (const one of rule.selectors) if (one.includes('.look-views__item') && one.includes(':hover')) hovers.push(one.replace(/\s+/g, ' '));
+    });
+    expect(hovers).toEqual(['.look-views__item:hover:not(:disabled):not(.is-current)']);
+  });
+
   it('carries no em or en dash', () => {
     expect(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`).test(tokensCss + lookCss)).toBe(false);
   });

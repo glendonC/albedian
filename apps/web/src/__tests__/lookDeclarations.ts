@@ -199,7 +199,7 @@ export const LOOK_DECLARATIONS: ReadonlyArray<LookDeclaration> = [
   ['look.css', '.look-views__item', 'background', 'transparent'],
   ['look.css', '.look-views__item', 'color', 'var(--look-ink)'],
   ['look.css', '.look-views__item + .look-views__item', 'margin-left', '-1px'],
-  ['look.css', '.look-views__item:hover:not(:disabled)', 'background', 'var(--look-wash)'],
+  ['look.css', '.look-views__item:hover:not(:disabled):not(.is-current)', 'background', 'var(--look-wash)'],
   ['look.css', '.look-views__item.is-current', 'position', 'relative'],
   ['look.css', '.look-views__item.is-current', 'z-index', '1'],
   ['look.css', '.look-views__item.is-current', 'border-color', 'var(--look-ink)'],
