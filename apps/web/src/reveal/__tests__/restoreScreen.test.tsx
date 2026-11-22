@@ -120,6 +120,66 @@ describe("restorationRows: the job's own steps in order", () => {
       'done', 'done', 'done', 'failed', 'next', 'next',
     ]);
   });
+
+  // FIELD's walk of 22 Nov (FIELD-cliprows-BREAK-NOTE.md), ruled by the lead 04:27: a clip runs decode, restore and
+  // encode together, the server listing each from the start; a row takes its tick only on its own full count (or once
+  // the job has finished), a partial count is the step being worked with its count and bar, so several rows may be
+  // worked at once, and a row with no count yet reads next. A photo's rows are unchanged (the tests above).
+  const clipAt = (decode: number, restore: number, encode: number, state: UploadJob['state'] = 'running') =>
+    ({
+      ...still(0, state),
+      stages: [
+        { stage: 'decode', unit: 'frames', done: decode, total: 328 },
+        { stage: 'measure', unit: 'frames', done: 8, total: 8 },
+        { stage: 'restore', unit: 'frames', done: restore, total: 328 },
+        { stage: 'encode', unit: 'frames', done: encode, total: 328 },
+      ],
+    }) as UploadJob;
+  const shape = (job: UploadJob) => restorationRows(job).map((r) => [r.word, r.state, r.value, r.fraction]);
+
+  it("ticks a running clip's step only on its own full count, the ones counting worked together, the rest next", () => {
+    // The record FIELD read a minute in: decode 20, restore and encode not started
+    expect(shape(clipAt(20, 0, 0))).toEqual([
+      ['Opened', 'now', '20 of 328', 20 / 328],
+      ['Measured', 'done', '8', null],
+      ['Restoring', 'next', null, null],
+      ['Encoding', 'next', null, null],
+      ['Saving', 'next', null, null],
+      ['Checking', 'next', null, null],
+    ]);
+    // And two minutes in: all three counting at once
+    expect(shape(clipAt(36, 16, 16))).toEqual([
+      ['Opened', 'now', '36 of 328', 36 / 328],
+      ['Measured', 'done', '8', null],
+      ['Restoring', 'now', '16 of 328', 16 / 328],
+      ['Encoding', 'now', '16 of 328', 16 / 328],
+      ['Saving', 'next', null, null],
+      ['Checking', 'next', null, null],
+    ]);
+    // Every frame read: Opened takes its tick while the others count on
+    expect(shape(clipAt(328, 300, 299)).slice(0, 4)).toEqual([
+      ['Opened', 'done', '328', null],
+      ['Measured', 'done', '8', null],
+      ['Restoring', 'now', '300 of 328', 300 / 328],
+      ['Encoding', 'now', '299 of 328', 299 / 328],
+    ]);
+  });
+
+  it('marks each step a stopped clip left partway as where it stopped, and nothing it finished or never began', () => {
+    expect(shape(clipAt(36, 16, 16, 'canceled')).map(([word, state]) => [word, state])).toEqual([
+      ['Opened', 'failed'],
+      ['Measured', 'done'],
+      ['Restoring', 'failed'],
+      ['Encoding', 'failed'],
+      ['Saving', 'next'],
+      ['Checking', 'next'],
+    ]);
+    // Stopped before any frame was counted: where it stopped is the first step not finished
+    expect(restorationRows(clipAt(0, 0, 0, 'canceled')).map((r) => r.state)).toEqual(['failed', 'done', 'next', 'next', 'next', 'next']);
+    // Refused by the gate after Saving: Checking, as before
+    const gated = { ...clipAt(328, 328, 328, 'rejected'), stages: [...clipAt(328, 328, 328).stages, { stage: 'write', unit: 'bytes', done: 9_000_000, total: 9_000_000 }, { stage: 'verify', unit: 'frames', done: 40, total: 328 }] } as UploadJob;
+    expect(restorationRows(gated).map((r) => r.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'failed']);
+  });
 });
 
 describe('the restoration on the reveal (laptop)', () => {

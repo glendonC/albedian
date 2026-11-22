@@ -166,6 +166,36 @@ type Entry = UploadJob['stages'][number];
 const full = (entry: Entry) => entry.total !== null && entry.done >= entry.total;
 
 /**
+ * A clip's rows (the lead's ruling of 04:27 on 22 Nov, recorded beside D10 and D34): each step by its own count. A step
+ * takes its tick only on its own full count, or once the job has finished; a step partly counted is being worked, its
+ * count and bar as before, so several may be worked at once, and on a stopped job it is where the job stopped; a step
+ * with no count yet reads next. A stopped job that left no step partway stopped at the first step it had not finished.
+ */
+function countedRows(entries: ReadonlyMap<string, Entry>, succeeded: boolean, stopped: boolean, working: boolean): RestoreRow[] {
+  const counting = (name: (typeof RESTORE_STEPS)[number], state: RestoreRow['state'], entry: Entry | null): RestoreRow => {
+    const word = RESTORE_STEP_WORDS[name];
+    if (entry === null) return { stage: name, word, state, value: null, fraction: null };
+    if (entry.unit === 'bytes') return { stage: name, word, state, value: megabytes(entry.done), fraction: null };
+    if (entry.total === null || entry.total <= 1) return { stage: name, word, state, value: null, fraction: null };
+    return { stage: name, word, state, value: `${grouped(entry.done)} of ${grouped(entry.total)}`, fraction: entry.done / entry.total };
+  };
+  const rows = RESTORE_STEPS.map((name): RestoreRow => {
+    const entry = entries.get(name) ?? null;
+    if (succeeded || (entry !== null && full(entry))) {
+      const value = entry === null ? null : entry.unit === 'bytes' ? megabytes(entry.done) : entry.total !== null && entry.total > 1 ? grouped(entry.total) : null;
+      return { stage: name, word: RESTORE_STEP_WORDS[name], state: 'done', value, fraction: null };
+    }
+    if (entry === null || entry.done === 0) return counting(name, 'next', null);
+    return counting(name, stopped ? 'failed' : working ? 'now' : 'next', entry);
+  });
+  if (stopped && !rows.some((row) => row.state === 'failed')) {
+    const at = rows.findIndex((row) => row.state !== 'done');
+    if (at >= 0) rows[at] = counting(RESTORE_STEPS[at]!, 'failed', entries.get(RESTORE_STEPS[at]!) ?? null);
+  }
+  return rows;
+}
+
+/**
  * One row per step, read from the job's record as the working screen reads a solve's (arrival.ts): done once a later
  * step reported or its own count is full; the row being worked only for a running job; a stopped job marks where it
  * stopped. Frames are counted as "done of total" only when there is more than one; Saving shows megabytes so far.
@@ -185,6 +215,11 @@ export function restorationRows(job: UploadJob): RestoreRow[] {
   const final = RESTORE_STEPS.length - 1;
   // A still has one frame and nothing to count: its rows carry no numbers, Saving included (D10)
   const still = job.stages.some((entry) => entry.unit === 'frames' && entry.total === 1);
+  // A clip runs decode, restore and encode together, the server listing each from the start, so a later step's report
+  // says nothing about an earlier one (FIELD's walk of 22 Nov; the lead's ruling 04:27)
+  if (!still && job.stages.some((entry) => entry.unit === 'frames' && entry.total !== null && entry.total > 1)) {
+    return countedRows(entries, succeeded, stopped, working);
+  }
   let at = -1;
   if (!succeeded && (stopped || working)) {
     if (!lastFull) at = Math.max(0, last);
