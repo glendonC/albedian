@@ -162,7 +162,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     from one read a frame, and no ring stands once the line under the preview says there is no place or heading.
     tagsweep-m2: the source line stands from its rings' first frame (only the line saying why words in). aimexit-m
     (the lead, 21 Nov 13:48): at the press, and on coming back, the rings and the rest fade on the stage's timing
-    while the tag and the source line stay at full until the rings' last frame.
+    while the tag and the source line stay at full until the rings' last frame. aimexit-m2 (the simulator strip of
+    22 Nov): the stage keeps the aim view live through its leaving and animates its `hidden`, since a removal
+    transition froze it with the rings at full; the tag stands from the rings' first frame however they arrive.
   - _Requirements: REQ-IOS-3.1, 3.2_
 
 - [x] 12. mobile-6: the look from the reference board

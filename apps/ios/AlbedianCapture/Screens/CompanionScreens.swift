@@ -178,12 +178,13 @@ struct CreditsScreen: View {
 
 /// Aiming (arrive iPhone 2, without its overlay until mobile-5): close top left, the 3:4 preview from y 118 and the
 /// capture button bottom centre. With no overlay drawn there is no "Predicted" tag and no source line. Leaving at the
-/// press or coming back, every part fades on the stage's `aimHidden` but the tag and the source line, which stand at
-/// full until the rings' last frame (`AimExit`).
+/// press or coming back, every part fades as the stage animates `hidden` but the tag and the source line, which stand
+/// at full until the rings' last frame (`AimExit`).
 struct AimScreen: View {
     let model: CompanionModel
+    /// How far the view has gone on its stage, 0 shown to 1 gone (`CaptureStage`), animated while the view stays live
+    let hidden: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.aimHidden) private var hidden
 
     var body: some View {
         GeometryReader { geometry in
@@ -225,9 +226,12 @@ struct AimScreen: View {
                             PlacedSkyOverlay(placed: placed, width: width, height: width * 4 / 3)
                                 .atTop(Arrive.photoTop)
                                 .opacity(AimExit.opacity(.rings, hidden: hidden))
+                            // The tag stands from the rings' first frame however they come: the sky can arrive while the
+                            // view is coming back on its stage's animation, which would otherwise fade the tag in with them
                             if !placed.isEmpty {
                                 EvidenceTag(evidence: .predicted).frame(height: 44).atTop(Arrive.topControls)
                                     .opacity(AimExit.opacity(.tag, hidden: hidden))
+                                    .transition(.identity)
                             }
                             // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
                             // with both and marks drawn, the overlay's sources and the heading accuracy

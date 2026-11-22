@@ -100,20 +100,60 @@ struct ExposureButton: View {
 /// crossfading the two shows exactly the note's sequence: 0.15 s after the press the aiming tag, rings and line leave
 /// (frameOut) and "Hold still", the crosshairs and the length arrive (frameIn), the preview and the button unchanged. The
 /// shot taken: the hold-still pieces leave and the photo with Take again and Send arrive. The dissolve with Reduce Motion.
-/// The aim view goes and comes on the same timings by `aimHidden` instead of its opacity, so its rings fade while its
-/// Predicted tag and source line stand at full until the rings' last frame and leave with it at once (the lead, 21 Nov
-/// 13:48, `AimExit`).
+/// The aim view goes and comes on the same timings, but as a live view the stage keeps drawn until its leaving ends:
+/// SwiftUI does not redraw a view's contents while a transition removes it, so a removal transition could not fade the
+/// rings apart from the tag (the simulator strip of 22 Nov: the rings stood at full and went at once). Its `hidden`
+/// is animated instead, so its rings fade while its Predicted tag and source line stand at full until the rings' last
+/// frame, and the view is then taken away at once (the lead, 21 Nov 13:48, `AimExit`). It is drawn over the stage's
+/// other screens so the rings fade by their own timing, and takes no touch once the press has left aiming.
 struct CaptureStage: View {
     let model: CompanionModel
     let screen: CompanionModel.Screen
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Whether the aim view is drawn: while aiming, until its leaving ends, and again from coming back
+    @State private var aimDrawn: Bool
+    /// How far the aim view has gone, 0 shown to 1 gone; 1 whenever it is not drawn, so coming back starts from gone
+    @State private var aimHidden: Double
+
+    init(model: CompanionModel, screen: CompanionModel.Screen) {
+        self.model = model
+        self.screen = screen
+        _aimDrawn = State(initialValue: screen == .aim)
+        _aimHidden = State(initialValue: screen == .aim ? 0 : 1)
+    }
 
     var body: some View {
         ZStack {
             switch screen {
-            case .aim: AimScreen(model: model).transition(aimStage)
+            case .aim: EmptyView()
             case .holdStill: HoldStillScreen(model: model).transition(stage(inAfter: MotionStyle.captureSequenceDelaySeconds, outAfter: 0))
             default: AfterShotScreen(model: model).transition(stage(inAfter: 0, outAfter: 0))
+            }
+            if aimDrawn {
+                AimScreen(model: model, hidden: aimHidden)
+                    .allowsHitTesting(screen == .aim)
+                    .accessibilityHidden(screen != .aim)
+                    .transition(.identity)
+                    // Coming back: drawn from gone, then in on frame in at once (a no-op when the stage opens on aiming)
+                    .onAppear {
+                        withAnimation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)) { aimHidden = 0 }
+                    }
+            }
+        }
+        .onChange(of: screen) { old, new in
+            if new == .aim {
+                if aimDrawn {
+                    withAnimation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)) { aimHidden = 0 }
+                } else {
+                    aimDrawn = true
+                }
+            } else if old == .aim {
+                // Out on frame out 0.15 s after the press; taken away at the rings' last frame unless aiming came back
+                withAnimation(.motion(MotionStyle.frameOut, after: MotionStyle.captureSequenceDelaySeconds, reduceMotion: reduceMotion)) {
+                    aimHidden = 1
+                } completion: {
+                    if model.captureScreen != .aim { aimDrawn = false }
+                }
             }
         }
     }
@@ -122,30 +162,4 @@ struct CaptureStage: View {
         .asymmetric(insertion: .opacity.animation(.motion(MotionStyle.frameIn, after: inAfter, reduceMotion: reduceMotion)),
                     removal: .opacity.animation(.motion(MotionStyle.frameOut, after: outAfter, reduceMotion: reduceMotion)))
     }
-
-    /// The aim view's stage: in on frame in at once, out on frame out 0.15 s after the press, each frame's `hidden`
-    /// handed to the view (`AimHidden`) rather than its opacity.
-    private var aimStage: AnyTransition {
-        let hiding = AnyTransition.modifier(active: AimHidden(hidden: 1), identity: AimHidden(hidden: 0))
-        return .asymmetric(insertion: hiding.animation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)),
-                           removal: hiding.animation(.motion(MotionStyle.frameOut, after: MotionStyle.captureSequenceDelaySeconds,
-                                                             reduceMotion: reduceMotion)))
-    }
-}
-
-/// How far the aim view has gone on its stage, 0 shown to 1 gone, on every frame of the stage's animation.
-private struct AimHidden: ViewModifier, Animatable {
-    var hidden: Double
-
-    nonisolated var animatableData: Double {
-        get { hidden }
-        set { hidden = newValue }
-    }
-
-    func body(content: Content) -> some View { content.environment(\.aimHidden, hidden) }
-}
-
-extension EnvironmentValues {
-    /// The aim view's place on its stage (`AimHidden`): 0 while it stands, 1 at the end of its leaving.
-    @Entry var aimHidden: Double = 0
 }

@@ -565,9 +565,11 @@ final class CompanionModel {
                 startSky()
                 // `-AlbedianSequence <photo path>` then plays the capture's two changes for a look at their motion
                 // (MOTION-READY-iphone section 3): Hold still 3 s in, with the mockup's 1.1 s exposure, and after the shot
-                // with that photo 2 s later. A stand-in, never a capture
+                // with that photo 2 s later; with `-AlbedianSequenceBack`, back to aiming 2 s after that, for the aim
+                // view's coming back (aimexit-m2). A stand-in, never a capture
                 if let at = args.firstIndex(of: "-AlbedianSequence"), args.indices.contains(at + 1),
                    let photo = FileManager.default.contents(atPath: args[at + 1]) {
+                    let back = args.contains("-AlbedianSequenceBack")
                     Task { @MainActor [weak self] in
                         try? await Task.sleep(for: .seconds(3))
                         guard let self else { return }
@@ -576,6 +578,15 @@ final class CompanionModel {
                         self.screen = .holdStill
                         try? await Task.sleep(for: .seconds(2))
                         self.show(KeptShot(photo: photo, contentType: .jpeg, recordWire: nil, sha256: PhotoHash.sha256Hex(photo)))
+                        guard back else { return }
+                        try? await Task.sleep(for: .seconds(2))
+                        // Take again as `takeAgain` does after `show(_:)` stopped aiming: back to aiming and the sky drawn
+                        // again from nothing, with the stand-in's sky in place of the sensors `startAiming` would start
+                        // (in the simulator they would ask for the place, and that prompt would cover the screen)
+                        self.unreachable = false
+                        self.shot = nil
+                        self.screen = .aim
+                        self.startSky()
                     }
                 }
                 return
