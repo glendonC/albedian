@@ -158,4 +158,99 @@ describe('the Predicted tag through the phone restoration (the tag rule)', () =>
     expect(declarationsOf('.restore-phone-lead::before, .restore-phone-why::before')).toEqual(d19);
     expect(d19).toMatchObject({ top: '-44px', bottom: '0', 'z-index': '-1', background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px)' });
   });
+
+  it('phone-stopped-answer-1: under an open answer after a non-retryable phone refusal, steps RestorePhoneStopped aside and keeps any required Predicted lead anchored 16 px below AnswerPanel', async () => {
+    const refused = { phase: 'stopped' as const, job: REFUSED, sentence: REASON, subline: UNCHANGED, canTryAgain: false };
+    const answer = { heard: 'Take me to Zorblax', sentence: 'Nothing named Zorblax is in the sky.', answer: null };
+    const origBcr = HTMLElement.prototype.getBoundingClientRect;
+    let estTop = 688;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') === 'reveal-phone-estimate') {
+        return { left: 24, top: estTop, right: 366, bottom: estTop + 68, width: 342, height: 68, x: 24, y: estTop, toJSON: () => ({}) } as DOMRect;
+      }
+      return origBcr.call(this);
+    });
+    try {
+      // 1. Pose-estimated phone photo: RestorePhoneStopped yields, Predicted tag + pose sentence stay, AnswerPanel stands 16 px above
+      await showPhone({ restoration: refused, answer });
+      expect(q('.restore-phone-stopped')).toBeNull();
+      const photoLead = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(photoLead).not.toBeNull();
+      expect(photoLead.className).toBe('reveal-phone-estimate');
+      expect([...photoLead.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'reveal-phone-estimate__source']);
+      expect(photoLead.querySelector('.reveal-phone-counts')).toBeNull();
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 688 + 16}px`);
+
+      // Closing the answer restores RestorePhoneStopped with its lead
+      await showPhone({ restoration: refused, answer: null });
+      expect(q('.restore-phone-stopped')).not.toBeNull();
+      expect(q('.restore-phone-why__lead .look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
+
+      // 2. Pose-estimated phone clip: .reveal-phone-estimate.is-clip above ClipPlayer, AnswerPanel 16 px above it
+      estTop = 570;
+      const estimateClip = slotted(poseSession(POSE, 'video'));
+      await showPhone({ session: estimateClip, restoration: refused, answer });
+      expect(q('.restore-phone-stopped')).toBeNull();
+      const clipLead = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(clipLead.className).toBe('reveal-phone-estimate is-clip');
+      expect([...clipLead.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'reveal-phone-estimate__source']);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 570 + 16}px`);
+
+      // 3. Calibrated phone photo WITH a naked-eye OpenNGC predicted mark: Predicted tag alone stays, AnswerPanel 16 px above it
+      estTop = 728;
+      const wcs = matched.observationSolution!.wcs!;
+      const dso = {
+        ...estimate.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!,
+        id: 'finding-openngc-ngc0224',
+        title: 'M31',
+        evidenceClass: 'predicted' as const,
+        skyPosition: { raDeg: wcs.crvalRaDeg, decDeg: wcs.crvalDecDeg, altDeg: 45, azDeg: 180 },
+        catalogRef: { catalogName: 'OpenNGC', catalogSourceId: 'NGC0224', objectType: 'deep_sky', apparentMagnitude: 3.44 },
+      };
+      const matchedWithDso = {
+        ...matched,
+        observationSolution: { ...matched.observationSolution!, findings: [...matched.observationSolution!.findings, dso] },
+      } as unknown as ObservationSession;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        String(input).includes('openngc.json')
+          ? new Response(JSON.stringify({ format: 'albedian.deep-sky-catalog', columns: ['name', 'type', 'vMag', 'bMag'], rows: [['NGC0224', 'G', 3.44, 4.36]] }), { status: 200 })
+          : new Response(JSON.stringify({ variants: [], attempts: [] }), { status: 200 })
+      );
+      await showPhone({ session: matchedWithDso, restoration: refused, answer });
+      expect(container.querySelectorAll('.reveal-mark.is-predicted').length).toBeGreaterThan(0);
+      expect(q('.restore-phone-stopped')).toBeNull();
+      const matchedLead = q('[data-testid="reveal-phone-estimate"]')!;
+      expect([...matchedLead.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted']);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 728 + 16}px`);
+
+      // 4. Calibrated phone photo and clip WITHOUT predicted marks: no Predicted tag, RestorePhoneStopped still yields cleanly
+      const noPredictedPhoto = {
+        ...matched,
+        observationSolution: { ...matched.observationSolution!, findings: matched.observationSolution!.findings.filter((f) => f.evidenceClass !== 'predicted') },
+      } as ObservationSession;
+      await showPhone({ session: noPredictedPhoto, restoration: refused, answer });
+      expect(q('.restore-phone-stopped')).toBeNull();
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect(tags()).toEqual([]);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe('');
+
+      const calibratedClip = slotted(poseSession(sample('plate_calibrated'), 'video'));
+      const noPredictedClip = {
+        ...calibratedClip,
+        observationSolution: { ...calibratedClip.observationSolution!, findings: calibratedClip.observationSolution!.findings.filter((f) => f.evidenceClass !== 'predicted') },
+      } as ObservationSession;
+      await showPhone({ session: noPredictedClip, restoration: refused, answer });
+      expect(q('.restore-phone-stopped')).toBeNull();
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect(tags()).toEqual([]);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe('206px');
+
+      // 5. Retryable failure (canTryAgain: true) keeps RestorePhoneStopped and Try again mounted
+      const retryable = { phase: 'stopped' as const, job: REFUSED, sentence: 'Stopped.', subline: null, canTryAgain: true };
+      await showPhone({ restoration: retryable, answer });
+      expect(q('.restore-phone-stopped')).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

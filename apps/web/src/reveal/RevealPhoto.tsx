@@ -629,8 +629,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // drawn through the restoration as their own layer, so the lead stands for them too, the alignment's own source line
   // in the pose sentence's place
   const keptRingsDrawn = keptRefused !== null && frame !== null;
+  const phoneStoppedUnderAnswer = phoneStopped && Boolean(answer) && restoration?.phase === 'stopped' && !restoration.canTryAgain;
   const phoneRestoreLead =
-    (phoneRestoring || phoneStopped) && !answer && ((marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn) ? (
+    (phoneRestoring || phoneStopped) && (!answer || phoneStoppedUnderAnswer) && ((marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn) ? (
       <>
         <EvidenceTag evidenceClass="predicted" />
         {status.kind === 'estimate' ? (
@@ -1141,13 +1142,22 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* D38 at phone width: while the restoration works, its lead (item A's tag) over the step and Cancel; once it stops,
           the stop's own block. Drawn before the card, so a picked star's sheet rises over them, the lead's tag drawn
           until the sheet covers it (item D), as the sheet covers Ask out loud */}
+      {phoneStoppedUnderAnswer && phoneRestoreLead !== null && (
+        <div
+          ref={estimateRef}
+          className={phoneClip ? 'reveal-phone-estimate is-clip' : 'reveal-phone-estimate'}
+          data-testid="reveal-phone-estimate"
+        >
+          {phoneRestoreLead}
+        </div>
+      )}
       {phoneRestoring && phoneRestoreLead !== null && (
         <div className={phoneClip ? 'restore-phone-lead is-clip' : 'restore-phone-lead'}>{phoneRestoreLead}</div>
       )}
       {phoneRestoring && restoration?.phase === 'working' && (
         <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} clip={phoneClip} />
       )}
-      {phoneStopped && restoration?.phase === 'stopped' && (
+      {phoneStopped && !phoneStoppedUnderAnswer && restoration?.phase === 'stopped' && (
         <RestorePhoneStopped
           job={restoration.job}
           sentence={restoration.sentence}

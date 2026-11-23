@@ -141,4 +141,30 @@ describe('the Predicted tag over a refused line-up\'s kept rings through a phone
     expect(q('[data-testid="early-marks"]')).toBeNull();
     expect(container.textContent).not.toContain(EARLY_SOURCE_WORDS.alignment);
   });
+
+  it('phone-stopped-answer-1: under an open answer after a refusal over kept alignment rings, steps RestorePhoneStopped aside while keeping Predicted tag, alignment source line, and Line it up again', async () => {
+    const origBcr = HTMLElement.prototype.getBoundingClientRect;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') === 'reveal-phone-estimate') {
+        return { left: 24, top: 688, right: 366, bottom: 756, width: 342, height: 68, x: 24, y: 688, toJSON: () => ({}) } as DOMRect;
+      }
+      return origBcr.call(this);
+    });
+    try {
+      await showPhone({
+        onSolveFromHere: () => {},
+        restoration: { phase: 'stopped', job: REFUSED, sentence: REASON, subline: UNCHANGED, canTryAgain: false },
+        answer: { heard: 'Stop', sentence: 'Listening stopped.', answer: null },
+      });
+      expect(q('[data-testid="early-marks"]')).not.toBeNull();
+      expect(q('.restore-phone-stopped')).toBeNull();
+      const lead = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(lead).not.toBeNull();
+      expect(leadOf(lead)).toEqual([TAG, ['reveal-phone-estimate__source', EARLY_SOURCE_WORDS.alignment]]);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 688 + 16}px`);
+      expect(q('.restore-phone-go button')!.textContent).toBe('Line it up again');
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
