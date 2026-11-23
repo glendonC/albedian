@@ -48,6 +48,36 @@ describe('SteerHands: what the hands do while steering (D26 item 6)', () => {
     for (let i = 0; i < 26; i++) rate = hands.frame(1 / 120).input.yawRadPerS;
     expect(rate).toBeLessThan(lastRate * 0.1);
   });
+
+  // MOTION-READY-web.md section seven, DECIDED-BY-LEAD 22 Nov 21:50: under Reduce Motion a released steering drag stops
+  // at once with no carry, as section six A steps the wheel's glide; the drag itself and the arrow keys are the hand
+  it('under Reduce Motion follows the drag exactly, then stops at once when the hand lets go', () => {
+    const hands = new SteerHands(() => true);
+    const dt = 1 / 60;
+    hands.drag(-10, 4, dt);
+    const f = hands.frame(dt);
+    expect(f.input.yawRadPerS * dt).toBeCloseTo(10 * STEER_DRAG_RAD_PER_PX, 12);
+    expect(f.input.pitchRadPerS * dt).toBeCloseTo(4 * STEER_DRAG_RAD_PER_PX, 12);
+    hands.release();
+    expect(hands.frame(dt).input).toEqual({ yawRadPerS: 0, pitchRadPerS: 0 });
+    expect(hands.frame(dt).input).toEqual({ yawRadPerS: 0, pitchRadPerS: 0 });
+    hands.keyDown('ArrowLeft');
+    expect(hands.frame(dt).input.yawRadPerS).toBe(-STEER_KEY_TURN_RAD_S);
+  });
+
+  it('ends a glide already going when Reduce Motion comes on, for good', () => {
+    let reduced = false;
+    const hands = new SteerHands(() => reduced);
+    const dt = 1 / 60;
+    hands.drag(-10, 0, dt);
+    hands.frame(dt);
+    hands.release();
+    expect(hands.frame(dt).input.yawRadPerS).toBeCloseTo((10 * STEER_DRAG_RAD_PER_PX) / dt, 9);
+    reduced = true;
+    expect(hands.frame(dt).input.yawRadPerS).toBe(0);
+    reduced = false;
+    expect(hands.frame(dt).input.yawRadPerS).toBe(0);
+  });
 });
 
 describe('the words while steering', () => {

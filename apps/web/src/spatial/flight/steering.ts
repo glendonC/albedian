@@ -4,7 +4,8 @@ import type { SteerInput } from '@albedian/camera-rig';
  * pilot-1e (D26 item 6, with the lead's answer of 08:55: a press on the flight hands over and takes back the steering,
  * Space stays Ask out loud): what the person's hands do while they steer. W and S change the speed while held, the
  * arrow keys turn at a steady rate, a drag turns with the hand and after release keeps its last turn, slowing by the
- * motion record's rule for drags (k10: a factor of 0.8 per sixtieth of a second, settled in about 0.22 s).
+ * motion record's rule for drags (k10: a factor of 0.8 per sixtieth of a second, settled in about 0.22 s), stopping at
+ * once under Reduce Motion.
  */
 
 /** Where steering starts: one light year a second [proposed: the record names no starting speed]. */
@@ -39,6 +40,13 @@ export class SteerHands {
   private residualYaw = 0;
   private residualPitch = 0;
   private dragging = false;
+
+  /**
+   * `reduced` says whether Reduce Motion is on: then a released drag stops at once with no carry (MOTION-READY-web.md
+   * section seven, DECIDED-BY-LEAD 22 Nov 21:50, as section six A steps the wheel's glide); the drag itself and the
+   * arrow keys are the hand and stay as they are.
+   */
+  constructor(private readonly reduced: () => boolean = () => false) {}
 
   /** Whether a key is one steering takes (so the page's own use of it waits while steering). */
   static takes(code: string): boolean {
@@ -94,6 +102,10 @@ export class SteerHands {
     this.pendingYaw = 0;
     this.pendingPitch = 0;
     if (!this.dragging) {
+      if (this.reduced()) {
+        this.residualYaw = 0;
+        this.residualPitch = 0;
+      }
       yaw += this.residualYaw;
       pitch += this.residualPitch;
       const decay = Math.pow(DRAG_DECAY_PER_60TH, dt * 60);

@@ -225,14 +225,14 @@ export const FlightStarsLayer: React.FC<{
   const [steer, setSteer] = useState<(SteerState & { chase: WcsCameraRows }) | null>(null);
   const reducedRef = useRef(session.reducedMotion === true);
   reducedRef.current = session.reducedMotion === true;
-  const hands = useRef(new SteerHands());
+  const hands = useRef(new SteerHands(() => reducedRef.current));
   const flying = steering && !cone && camera !== null;
   useEffect(() => {
     if (!flying || !cameraRef.current) {
       setSteer(null);
       return undefined;
     }
-    hands.current = new SteerHands();
+    hands.current = new SteerHands(() => reducedRef.current);
     const start = steerStartOf(cameraRef.current);
     setSteer({ ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows });
     let raf = 0;
