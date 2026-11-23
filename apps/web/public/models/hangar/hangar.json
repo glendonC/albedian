@@ -2033,6 +2033,70 @@
         "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip",
         "partSpanAcross": "z"
       }
+    },
+    "perseverance": {
+      "title": "Perseverance",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "perseverance/perseverance_lod0.glb",
+          "bytes": 3593224,
+          "triangles": 51770,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "perseverance/perseverance_lod1.glb",
+          "bytes": 1370300,
+          "triangles": 18597,
+          "textureEdgeMax": 512,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "perseverance/perseverance_lod2.glb",
+          "bytes": 524864,
+          "triangles": 6354,
+          "textureEdgeMax": 256,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "perseverance/perseverance_picker.webp",
+          "bytes": 4178,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.35,
+          -0.261,
+          -1.699
+        ],
+        "max": [
+          1.35,
+          1.579,
+          1.404
+        ]
+      },
+      "bodyRadiusM": 1.6,
+      "lodTriangleShare": {
+        "lod0": 0.26,
+        "lod1": 0.095,
+        "lod2": 0.035
+      },
+      "scaleFrom": {
+        "part": "aluminum_black",
+        "metres": 0.525,
+        "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+        "quote": "20.7 inches (52.5 centimeters) in diameter",
+        "partBand": {
+          "axis": "z",
+          "min": 0.0,
+          "max": 0.6
+        },
+        "trueTo": "part",
+        "quotedCm": 52.5
+      }
     }
   },
   "entries": [
@@ -3453,6 +3517,68 @@
           "value": 1.2,
           "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
           "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip"
+        }
+      ]
+    },
+    {
+      "id": "perseverance",
+      "name": "Perseverance",
+      "model": "perseverance",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2020-07-30",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2020-052A",
+          "quote": "Mars 2020 launched on 30 July 2020 at 11:50 UT on an Atlas V-541 from Cape Canaveral Air Force Station."
+        },
+        {
+          "key": "landedOnMars",
+          "value": "2021-02-18",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2020-052A",
+          "quote": "After a 7 month cruise, landing took place on 18 February 2021 at 20:55 UT (3:55 p.m. EST) Earth received time (There is a roughly 11 min., 20 sec. delay at this distance from Mars)."
+        },
+        {
+          "key": "landingSite",
+          "value": "Jezero Crater, Mars",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2020-052A",
+          "quote": "Landing was in Jezero Crater on the western edge of the Isidis Planitia impact basin on Mars."
+        },
+        {
+          "key": "massKg",
+          "value": "1,025",
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+          "quote": "2,260 pounds / 1,025 kilograms"
+        },
+        {
+          "key": "lengthM",
+          "value": 3,
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+          "quote": "10 feet (3 meters)"
+        },
+        {
+          "key": "widthM",
+          "value": 2.7,
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+          "quote": "9 feet (2.7 meters)"
+        },
+        {
+          "key": "wheelDiameterCm",
+          "value": 52.5,
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+          "quote": "20.7 inches (52.5 centimeters) in diameter"
+        },
+        {
+          "key": "armLengthM",
+          "value": 2.1,
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+          "quote": "7 feet (2.1 meters)"
+        },
+        {
+          "key": "power",
+          "value": "MMRTG, about 110 W at launch",
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+          "quote": "About 110 watts at launch, declining a few percent per year"
         }
       ]
     }

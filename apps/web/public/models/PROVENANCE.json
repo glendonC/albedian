@@ -656,7 +656,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "545bc7951722d429ac4ea718e2751f7a504a8854e20403977b61adcd3fd59859",
+      "sha256": "e38136507ff71bae99aa61729e210d289e6023d2b318ad97e3a1b1f031ffa06d",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1670,6 +1670,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Parker%20Solar%20Probe/Parker%20Solar%20Probe.png (604383 bytes, SHA-256 c62a1851d27fcb6985722a3cd7249fde654fe72f385362c770cc4a935513724e)."
+    },
+    {
+      "path": "hangar/perseverance/perseverance_lod0.glb",
+      "sha256": "bc511eda50e81c32114272011e9b1e42a9440cab5f68ec1df4bb7e8e4da701ea",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects and an animation action removed, the parts joined into one mesh, extra UV layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's rover, turret, wheel hub and calibration target photo textures kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA logotype, JPL logo, placard markings and a small camera mark painted over in the colour around them; the arm's label texture and the body plates' flag texture kept as the base colour with one roughness and no metalness, with the NASA insignia, JPL logo, Mars 2020 emblem and a printed part number painted over in the colour around them while the US flag and the rover's plain lettering stay; NASA's own colour, metalness and roughness kept for the metal parts, the lens covers given dark glass, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb (4987176 bytes, SHA-256 10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/perseverance/perseverance_lod1.glb",
+      "sha256": "763279f6f4553f0b7400115542e7d15ee31b176dae579b6f7e45918282be4397",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb (4987176 bytes, SHA-256 10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/perseverance/perseverance_lod2.glb",
+      "sha256": "9e1f3cbe0512528bdfd9022f61ea111ac6484aac0956f38482d25a0442d53b03",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb (4987176 bytes, SHA-256 10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/perseverance/perseverance_picker.webp",
+      "sha256": "47f463836320bb044a69f99d751abe2520ce8c95d43913aa5a9d58df32d704e1",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
+        "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
+      },
+      "note": "Rendered from this folder's lod0 build of https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb."
     },
     {
       "path": "hangar/pioneer10/pioneer10_lod0.glb",

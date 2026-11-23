@@ -1691,6 +1691,123 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 0.6,
         "changes": "ingenuity",
     },
+    "perseverance": {
+        "title": "Perseverance",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-mars-2020-perseverance-rover",
+            "title": "Mars 2020 Perseverance Rover, NASA 3D Resources",
+            "folder": "Mars 2020 Perseverance Rover",
+            "file": "Mars 2020 Perseverance Rover.glb",
+            "bytes": 4_987_176,
+            "sha256": "10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f",
+            "picture": "Mars 2020 Perseverance Rover.png",
+            "picture_bytes": 867_821,
+            "picture_sha256": "ec9dcdcec46ae2c41d4c3f249f158cc89cb452af4e65ac5e665dbdeefb535836",
+            # NASA's own render shows the NASA insignia on the rear crossbeam and the JPL logo on the front body,
+            # which the rebuild covers: the picker picture is rendered from the build instead.
+            "picker_render_reason": "insignia",
+            "local": "perseverance",
+        },
+        # An unassigned 2 m helper sphere at the origin and six invisible clear-textured pivot cylinders.
+        "drop_objects": ["Icosphere", "Cylinder", "Cylinder.001", "Cylinder.002", "hinge", "arm_01_pivot", "arm_02_pivot"],
+        "drop_animations": True,
+        "strip_unused_layers": True,
+        # The wheels sit on Z = 0 with +Z up; the robotic arm, turret and front hazard cameras face -Y, the RTG +Y.
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's model is built in metres: the six black-anodized wheels (aluminum_black below Z = 0.6, below the body)
+        # stand 0.5260 units tall (each wheel 0.5250 to 0.5253 units across) against NASA's 52.5 cm wheel diameter, and
+        # the outer wheel width comes out 2.70 m against NASA's 2.7 m. Because NASA's model stows the remote sensing
+        # mast flat on the deck, the rover stands 1.84 m tall to its UHF antenna rather than NASA's 2.2 m with the mast
+        # raised, and 3.10 m long with the outstretched arm against NASA's 3 m body length: true to the wheels alone.
+        "scale_from": {
+            "material": "aluminum_black",
+            "band": {"axis": "z", "min": 0.0, "max": 0.6},
+            "axis": "z",
+            "metres": 0.525,
+            "quoted_cm": 52.5,
+            "true_to": "part",
+            "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+            "quote": "20.7 inches (52.5 centimeters) in diameter",
+        },
+        "materials": {
+            "arm_graphics": {
+                "role": "textured",
+                "image": "arm_graphics",
+                "metallic": 0.0,
+                "roughness": 0.5,
+                "paint_out": [
+                    {"box": (108, 276, 292, 342), "what": "the NASA insignia and the JPL logo on the rear crossbeam plate"},
+                    {"box": (428, 36, 492, 94), "what": "the Mars 2020 mission emblem on the upper arm"},
+                    {"box": (6, 30, 20, 92), "what": "a printed part number on the upper arm"},
+                ],
+            },
+            "blades": {
+                "role": "textured",
+                "image": "blade",
+                "metallic": 0.0,
+                "roughness": 0.45,
+                "paint_out": [
+                    {"box": (20, 165, 152, 208), "fill_from": (65, 140, 110, 160), "what": "the JPL logo on a front body plate"},
+                    {"box": (887, 398, 1020, 508), "fill_from": (925, 393, 980, 399), "what": "the NASA insignia on a front body plate"},
+                ],
+            },
+            "mars_2020_07": {"role": "photo_atlas", "image": "mars_2020_07"},
+            "hub": {"role": "photo_atlas", "image": "mars_2020_hub"},
+            "sample_handling_door": {"role": "photo_atlas", "image": "sample_handling_door"},
+            "aluminum.001": {"role": "pbr", "base": (0.965, 0.965, 0.965), "metallic": 1.0, "roughness": 0.45},
+            "array gold trim": {"role": "pbr", "base": (1.0, 0.757, 0.242), "metallic": 1.0, "roughness": 0.2},
+            "brass": {"role": "pbr", "base": (0.294, 0.274, 0.150), "metallic": 1.0, "roughness": 0.35},
+            "bronze": {"role": "pbr", "base": (0.523, 0.344, 0.203), "metallic": 1.0, "roughness": 0.35},
+            "copper": {"role": "pbr", "base": (0.357, 0.165, 0.108), "metallic": 1.0, "roughness": 0.5},
+            "foil_orange": {"role": "pbr", "base": (0.458, 0.182, 0.025), "metallic": 1.0, "roughness": 0.236},
+            "Material": {"role": "pbr", "base": (0.453, 0.183, 0.080), "metallic": 1.0, "roughness": 0.527},
+            "gold": {"role": "pbr", "base": (1.0, 0.631, 0.051), "metallic": 1.0, "roughness": 0.5},
+            "grey_brushed": {"role": "pbr", "base": (0.607, 0.607, 0.607), "metallic": 1.0, "roughness": 0.945},
+            "gunmetal": {"role": "pbr", "base": (0.301, 0.283, 0.283), "metallic": 1.0, "roughness": 0.35},
+            "gunmetal_dark": {"role": "pbr", "base": (0.083, 0.078, 0.078), "metallic": 1.0, "roughness": 0.55},
+            "iron": {"role": "pbr", "base": (0.447, 0.447, 0.447), "metallic": 1.0, "roughness": 0.5},
+            "spring": {"role": "pbr", "base": (0.523, 0.523, 0.523), "metallic": 1.0, "roughness": 0.4},
+        },
+        # Variants sharing one NASA atlas map become one glTF material so no 1024 px texture is stored twice.
+        "material_rules": [
+            {"match": ["mars_2020_01"], "role": "photo_atlas", "image": "mars_2020_01"},
+            {"match": ["mars_2020_02"], "role": "photo_atlas", "image": "mars_2020_02"},
+            {
+                "match": ["mars_2020_03"],
+                "role": "photo_atlas",
+                "image": "mars_2020_03",
+                "paint_out": [
+                    {"box": (185, 893, 280, 936), "what": "the NASA logotype in a vent grill"},
+                    {"box": (395, 843, 468, 888), "what": "the JPL logo in a vent grill"},
+                ],
+            },
+            {
+                "match": ["mars_2020_04"],
+                "role": "photo_atlas",
+                "image": "mars_2020_04",
+                "paint_out": [
+                    {"box": (630, 80, 708, 108), "fill_from": (555, 80, 625, 105), "what": "the explorer count on the rear placard"},
+                    {"box": (525, 108, 725, 166), "fill_from": (555, 80, 625, 105), "what": "the starburst graphic on the rear placard"},
+                    {"box": (406, 77, 446, 87), "what": "a small mark on a camera housing"},
+                ],
+            },
+            {"match": ["mars_2020_05", "mars_2020_gunmetal_dark"], "role": "photo_atlas", "image": "mars_2020_05"},
+            {"match": ["mars_2020_06"], "role": "photo_atlas", "image": "mars_2020_06"},
+            {"match": ["aluminum_black"], "role": "pbr", "base": (0.078, 0.074, 0.074), "metallic": 1.0, "roughness": 0.3},
+            {"match": ["aluminum"], "role": "pbr", "base": (0.965, 0.965, 0.965), "metallic": 1.0, "roughness": 0.277},
+            {"match": ["glass_trans", "glass_2"], "role": "pbr", "base": (0.05, 0.06, 0.07), "metallic": 0.0, "roughness": 0.05},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.26, "lod1": 0.095, "lod2": 0.035},
+        "drop_parts_under_m": {"lod1": 0.02, "lod2": 0.04},
+        "texture_edge": {"lod1": 512, "lod2": 256},
+        "body_radius_m": 1.6,
+        "changes": "perseverance",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2267,6 +2384,28 @@ HANGAR: list[dict] = [
             {"key": "lastFlight", "value": "2024-01-18", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "It flew for the last time on Jan. 18, 2024."},
             {"key": "massKg", "value": 1.8, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "3.97 pounds (1.8 kilograms)"},
             {"key": "rotorSpanM", "value": 1.2, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip"},
+        ],
+    },
+    {
+        # Perseverance drives on Mars in Jezero Crater: no speed between stars. NSSDC gives "approximately 1050 kg"
+        # where NASA's rover-components Tech Specs table gives "2,260 pounds / 1,025 kilograms"; the table's mass,
+        # wheel diameter, body length and width, robotic arm length and MMRTG power are paired with NSSDC's dated
+        # launch, touchdown and landing site sentences. Height (2.2 m with the mast raised) is omitted because the
+        # model stows the mast on the deck.
+        "id": "perseverance",
+        "name": "Perseverance",
+        "model": "perseverance",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2020-07-30", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2020-052A", "quote": "Mars 2020 launched on 30 July 2020 at 11:50 UT on an Atlas V-541 from Cape Canaveral Air Force Station."},
+            {"key": "landedOnMars", "value": "2021-02-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2020-052A", "quote": "After a 7 month cruise, landing took place on 18 February 2021 at 20:55 UT (3:55 p.m. EST) Earth received time (There is a roughly 11 min., 20 sec. delay at this distance from Mars)."},
+            {"key": "landingSite", "value": "Jezero Crater, Mars", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2020-052A", "quote": "Landing was in Jezero Crater on the western edge of the Isidis Planitia impact basin on Mars."},
+            {"key": "massKg", "value": "1,025", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "2,260 pounds / 1,025 kilograms"},
+            {"key": "lengthM", "value": 3, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "10 feet (3 meters)"},
+            {"key": "widthM", "value": 2.7, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "9 feet (2.7 meters)"},
+            {"key": "wheelDiameterCm", "value": 52.5, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "20.7 inches (52.5 centimeters) in diameter"},
+            {"key": "armLengthM", "value": 2.1, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "7 feet (2.1 meters)"},
+            {"key": "power", "value": "MMRTG, about 110 W at launch", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "About 110 watts at launch, declining a few percent per year"},
         ],
     },
 ]

@@ -224,6 +224,20 @@ CHANGES = {
         "roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made "
         "again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for a rover scaled from its wheels, agency marks and placard painted out ("changes": "perseverance")
+    "lod0_perseverance": (
+        "Rebuilt from NASA's model, not copied: helper objects and an animation action removed, the parts joined into "
+        "one mesh, extra UV layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a "
+        "dimension NASA states; NASA's rover, turret, wheel hub and calibration target photo textures kept as the base "
+        "colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA "
+        "logotype, JPL logo, placard markings and a small camera mark painted over in the colour around them; the "
+        "arm's label texture and the body plates' flag texture kept as the base colour with one roughness and no "
+        "metalness, with the NASA insignia, JPL logo, Mars 2020 emblem and a printed part number painted over in the "
+        "colour around them while the US flag and the rover's plain lettering stay; NASA's own colour, metalness and "
+        "roughness kept for the metal parts, the lens covers given dark glass, NASA's flat colours kept for the rest, "
+        "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
+        "sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
@@ -587,6 +601,8 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
             bsdf.inputs["Base Color"].default_value = (*[float(c) for c in colour], 1.0)
     elif spec["role"] == "textured":
         # NASA's own texture as the base colour (a printed label, a flag), with a flat metalness and roughness.
+        if spec.get("paint_out"):
+            src_img = painted_out(src_img, spec["paint_out"])
         base = nt.nodes.new("ShaderNodeTexImage")
         base.image = src_img
         links.new(base.outputs["Color"], bsdf.inputs["Base Color"])
@@ -787,6 +803,11 @@ def main() -> None:
     craft.data.validate(verbose=False, clean_customdata=False)
     for ob in [o for o in bpy.context.scene.objects if o is not craft]:
         bpy.data.objects.remove(ob, do_unlink=True)
+    if recipe.get("drop_animations"):
+        # An animation action on the joined mesh would turn the whole craft when a viewer evaluates frame zero.
+        craft.animation_data_clear()
+        for act in list(bpy.data.actions):
+            bpy.data.actions.remove(act)
     if recipe.get("strip_unused_layers"):
         # Vertex colour layers and UV sets past the first, which no material here reads, would ride into every glb.
         for layer in list(craft.data.color_attributes):

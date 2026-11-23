@@ -127,6 +127,9 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
     assert FACTS["models"]["mgs"]["scaleFrom"].get("trueTo") == "part"
     # nor do MAVEN's wings at its dish's scale (AUDIT-B's read of hangar-30)
     assert FACTS["models"]["maven"]["scaleFrom"].get("trueTo") == "part"
+    # Perseverance's mast lies stowed on its deck in NASA's model, below NASA's 2.2 m height: scaled from its wheels
+    assert FACTS["models"]["perseverance"]["scaleFrom"].get("trueTo") == "part"
+    assert FACTS["models"]["perseverance"]["scaleFrom"].get("quotedCm") == 52.5
 
 
 def _gltf(path: Path) -> dict:
@@ -147,6 +150,9 @@ def test_levels_fall_in_triangles_and_need_no_decoder_or_transform() -> None:
             assert not set(gltf.get("extensionsRequired", [])) - {"EXT_texture_webp"}
             for node in gltf["nodes"]:
                 assert not {"matrix", "rotation", "scale", "translation"} & set(node), (name, level)
+            if CRAFTS[name].get("drop_animations"):
+                assert "animations" not in gltf, (name, level)
+    assert CRAFTS["perseverance"].get("drop_animations") is True
 
 
 def test_the_true_size_is_metres_of_a_real_craft() -> None:
@@ -163,7 +169,7 @@ def test_a_picker_rendered_from_the_build_has_a_clear_background_and_says_why() 
 
     record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
     rendered = [m for m in FACTS["models"] if CRAFTS[m]["source"].get("picker_render_reason")]
-    assert "newhorizons" in rendered  # NASA's render of it is a small picture on white
+    assert "newhorizons" in rendered and "perseverance" in rendered
     for m in rendered:
         with Image.open(HANGAR_DIR / m / f"{m}_picker.webp") as im:
             assert im.mode == "RGBA" and im.getpixel((0, 0))[3] == 0, m
@@ -217,7 +223,7 @@ def test_the_frame_and_the_evidence_class() -> None:
 @pytest.mark.parametrize("name", sorted(CRAFTS))
 def test_every_photo_texture_with_a_nasa_mark_has_it_painted_out(name: str) -> None:
     # Recorded per recipe: NASA's insignia and logotype are not public domain (NASA's media guidelines)
-    for material in CRAFTS[name].get("materials", {}).values():
+    for material in [*CRAFTS[name].get("materials", {}).values(), *CRAFTS[name].get("material_rules", [])]:
         for box in material.get("paint_out", []):
             x0, y0, x1, y1 = box["box"]
             assert 0 <= x0 < x1 and 0 <= y0 < y1 and box["what"]
@@ -237,7 +243,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
-    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity"}
+    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance"}
     for e in FACTS["entries"]:
         if e["travel"] is not None:
             assert e["travel"]["speedKmS"] > 0
