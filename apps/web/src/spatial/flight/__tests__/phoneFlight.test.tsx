@@ -138,7 +138,8 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     click(q('[data-testid="craft-picker"] > button'));
     const sheet = q('[data-testid="craft-picker-panel"]') as HTMLElement;
     expect(sheet.style.position).toBe('fixed');
-    expect([sheet.style.left, sheet.style.right, sheet.style.bottom, sheet.style.borderRadius]).toEqual(['12px', '12px', '30px', '28px']);
+    // .ask-bar.is-phone spans y = 772..816 (top 772, height 44) on 844 px height, so bottom: 28 covers it with 0 px peeking
+    expect([sheet.style.left, sheet.style.right, sheet.style.bottom, sheet.style.borderRadius]).toEqual(['12px', '12px', '28px', '28px']);
     expect(Number(sheet.style.zIndex)).toBeGreaterThan(30);
     expect(sheet.parentElement).toBe(document.body);
     const rows = all('[role="option"]');

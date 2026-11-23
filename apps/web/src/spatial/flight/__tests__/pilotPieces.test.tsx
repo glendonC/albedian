@@ -38,7 +38,23 @@ describe('CraftPicker (D26 item 3, D35)', () => {
     expect([...container.querySelectorAll('[role="group"]')].map((g) => g.getAttribute('aria-label'))).toEqual(['Spacecraft', 'Spacesuits']);
     const list = container.querySelector('[data-testid="craft-picker-list"]') as HTMLElement;
     expect([list.style.maxHeight, list.style.overflowY]).toEqual([`${laptopPickerListMaxHeight(window.innerHeight)}px`, 'auto']);
-    // D35 item 4: every picture on the same black tile
+    // D35 item 4 and hp-top.html: "Your view" shows Phosphor's eye icon on the 44x44 black tile, every craft picture on
+    // the same black tile, and every row places its detail in the right column (44px 1fr auto 18px) with the selected wash
+    const yourTile = rows[0]!.firstElementChild as HTMLElement;
+    expect([yourTile.style.background, yourTile.style.borderRadius]).toEqual(['rgb(0, 0, 0)', '8px']);
+    expect(yourTile.querySelector('svg path')).not.toBeNull();
+    const selectedRow = rows[1] as HTMLElement;
+    expect([selectedRow.style.display, selectedRow.style.gridTemplateColumns, selectedRow.style.borderRadius, selectedRow.style.background]).toEqual([
+      'grid',
+      '44px 1fr auto 18px',
+      '12px',
+      'rgba(244, 243, 239, 0.08)',
+    ]);
+    const detailSpan = selectedRow.children[2] as HTMLElement;
+    expect([detailSpan.textContent, detailSpan.style.fontVariantNumeric]).toEqual(['17.0 km/s', 'tabular-nums']);
+    expect((rows[0] as HTMLElement).style.background).toBe('');
+    const panel = container.querySelector('[data-testid="craft-picker-panel"]') as HTMLElement;
+    expect(panel.style.padding).toBe('8px');
     const img = rows[1]!.querySelector('img') as HTMLImageElement;
     expect([img.getAttribute('src'), img.style.background, img.style.borderRadius, img.style.objectFit]).toEqual(['/models/hangar/voyager/voyager_picker.webp', 'rgb(0, 0, 0)', '8px', 'contain']);
     expect([...container.querySelectorAll('[data-testid="craft-picker-panel"] p')].at(-1)!.textContent).toBe("NASA's own 3D models. Drawn by the app, not measured.");

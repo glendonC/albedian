@@ -13,7 +13,7 @@ import { CRAFT_CHOICES, CRAFT_GROUPS, CRAFT_PICKER_FOOT, YOUR_VIEW_CHOICE, pilot
 /** Phosphor's caret-up (MIT, credited with the app's icons), for the pill's circle. */
 const CARET_UP = 'M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z';
 
-/** Phosphor's eye (MIT), the phone sheet's "Your view" row (D30 item 5, from the design page's own icon). */
+/** Phosphor's eye (MIT), the picker's "Your view" row (D30 item 5 and D35 item 4, from the design page's own icon). */
 const EYE =
   'M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z';
 
@@ -23,15 +23,15 @@ const INK_44 = 'rgba(244, 243, 239, 0.44)';
 const HAIR = 'rgba(244, 243, 239, 0.14)';
 
 /**
- * The approved phone card sheet (D18; D30 items 4 and 5): left 12, right 12, bottom 30, radius 28, #111112, hairline.
- * It covers Back to Moment as the design page draws it, so it is drawn over the ask bar (z-index 30), outside the
+ * The approved phone card sheet (D18; D30 items 4 and 5): left 12, right 12, bottom 28, radius 28, #111112, hairline.
+ * It covers Back to Moment and the 44 px ask bar (top 772..816 on 844 px) cleanly, drawn over z-index 30 outside the
  * reveal's own layer.
  */
 const PHONE_SHEET: React.CSSProperties = {
   position: 'fixed',
   left: 12,
   right: 12,
-  bottom: 30,
+  bottom: 28,
   zIndex: 36,
   boxSizing: 'border-box',
   padding: '14px 14px 12px',
@@ -62,7 +62,7 @@ const Caret: React.FC<{ down?: boolean; sizePx?: number }> = ({ down = false, si
 const OverAskBar: React.FC<{ children: React.ReactNode }> = ({ children }) => (typeof document === 'undefined' ? <>{children}</> : createPortal(children, document.body));
 
 /** D35 items 1 and 3: the kinds' headings, Geist 12 px at ink 44 percent, 14 px above and 6 below, not pressable. */
-const heading = (phone: boolean): React.CSSProperties => ({ margin: phone ? '14px 10px 6px' : '14px 16px 6px', font: '400 12px/1.3 var(--look-font-sans)', color: INK_44 });
+const heading: React.CSSProperties = { margin: '14px 10px 6px', font: '400 12px/1.3 var(--look-font-sans)', color: INK_44 };
 
 /** D35 item 3: the list's last 28 px fading, to show it scrolls. */
 const LIST_FADE = 'linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%)';
@@ -125,22 +125,24 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
   };
   const rowOf = (choice: CraftChoice) => {
     const chosen = choice.id === (craft?.id ?? null);
-    const common = { key: choice.id ?? 'your-view', type: 'button' as const, role: 'option', 'aria-selected': chosen, 'data-craft': choice.id ?? 'none', onClick: () => choose(choice) };
-    // D35 item 4: every picture on the same black tile, 44 by 44, radius 8, drawn whole
+    // D35 item 4: every picture on the same black tile, 44 by 44, radius 8, drawn whole; Your view carries Phosphor's eye
     const tile = choice.pictureUrl ? (
       <img src={choice.pictureUrl} alt="" width={44} height={44} style={{ width: 44, height: 44, flex: '0 0 44px', objectFit: 'contain', borderRadius: 8, background: '#000', display: 'block' }} />
-    ) : phone ? (
-      <span style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', color: INK_66 }} aria-hidden="true">
+    ) : (
+      <span style={{ width: 44, height: 44, flex: '0 0 44px', borderRadius: 8, background: '#000', display: 'grid', placeItems: 'center', color: INK_66 }} aria-hidden="true">
         <svg viewBox="0 0 256 256" width={18} height={18} fill="currentColor" focusable="false">
           <path d={EYE} />
         </svg>
       </span>
-    ) : (
-      <span style={{ width: 44, height: 44, flex: '0 0 44px', borderRadius: 8, background: '#000' }} />
     );
-    return phone ? (
+    return (
       <button
-        {...common}
+        key={choice.id ?? 'your-view'}
+        type="button"
+        role="option"
+        aria-selected={chosen}
+        data-craft={choice.id ?? 'none'}
+        onClick={() => choose(choice)}
         style={{
           all: 'unset',
           boxSizing: 'border-box',
@@ -151,7 +153,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
           width: '100%',
           height: 52,
           padding: '0 10px 0 6px',
-          borderRadius: 14,
+          borderRadius: phone ? 14 : 12,
           fontSize: 15,
           color: INK,
           background: chosen ? 'rgba(244, 243, 239, 0.08)' : undefined,
@@ -165,19 +167,6 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
           {chosen && <LookIcon name="check" />}
         </span>
       </button>
-    ) : (
-      <button {...common} style={{ all: 'unset', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 14, width: '100%', height: 52, padding: '0 16px', cursor: 'pointer' }}>
-        {tile}
-        <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
-          <span style={{ fontSize: 15 }}>{choice.name}</span>
-          {choice.detail && <span style={{ fontSize: 12, color: INK_44 }}>{choice.detail}</span>}
-        </span>
-        {chosen && (
-          <span style={{ width: 18, height: 18, color: INK }} aria-hidden="true">
-            <LookIcon name="check" />
-          </span>
-        )}
-      </button>
     );
   };
   const rows = (
@@ -186,7 +175,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       data-testid="craft-picker-list"
       style={{
         display: 'grid',
-        gap: phone ? 2 : 0,
+        gap: 2,
         alignContent: 'start',
         overflowY: 'auto',
         overscrollBehavior: 'contain',
@@ -199,8 +188,8 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
     >
       {rowOf(YOUR_VIEW_CHOICE)}
       {CRAFT_GROUPS.map((group) => (
-        <div key={group.heading} role="group" aria-label={group.heading} style={{ display: 'grid', gap: phone ? 2 : 0 }}>
-          <p aria-hidden="true" data-testid="craft-picker-heading" style={heading(phone)}>
+        <div key={group.heading} role="group" aria-label={group.heading} style={{ display: 'grid', gap: 2 }}>
+          <p aria-hidden="true" data-testid="craft-picker-heading" style={heading}>
             {group.heading}
           </p>
           {group.choices.map(rowOf)}
@@ -239,12 +228,12 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
             border: `1px solid ${HAIR}`,
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
-            padding: '8px 0',
+            padding: 8,
             color: INK,
           }}
         >
           {rows}
-          <p style={{ margin: '6px 16px 4px', paddingTop: 8, borderTop: `1px solid ${HAIR}`, fontSize: 11, color: INK_44 }}>{CRAFT_PICKER_FOOT}</p>
+          <p style={{ margin: '8px 10px 4px', fontSize: 11, lineHeight: 1.4, color: INK_44 }}>{CRAFT_PICKER_FOOT}</p>
         </div>
       )}
       <button
