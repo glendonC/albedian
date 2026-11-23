@@ -538,3 +538,75 @@ describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/e
     expect(q('.reveal-status.is-unmatched .reveal-status__note')!.nextElementSibling).toBe(download()!);
   });
 });
+
+// restorewhy-warns-1 (UIUX/built-main-76ae.md Drift 2; refusedwrap-1's 24 px precedence): while restoring is shown on
+// the laptop and .reveal-status__warns comes within 24 px of .restore-why, .reveal-status__warns gives way while keeping
+// the heading, actions, and any Predicted tag in view, and returns as soon as there is 24 px of room or restoring ends.
+describe('the no-match warnings list gives way to .restore-why within 24 px on the laptop (restorewhy-warns-1)', () => {
+  const box = (left: number, top: number, right: number, bottom: number) =>
+    ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+
+  it('hides .reveal-status__warns when within 24 px of .restore-why while restoring, keeps lead and tag visible, and restores at 24 px or idle', () => {
+    const baseUnmatched = sample('horizon_predicted_only');
+    const fourWarnings = [
+      'A possible match was found, but the stars held back to check it did not land where it put them, so it was not kept.',
+      "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.",
+      'The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.',
+      'The Sun was about 36 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight.',
+    ];
+    const session = poseSession({ ...baseUnmatched, poseEstimate: undefined, warnings: fourWarnings } as ObservationSolution);
+    const refusedJob = { ...still(2, 'failed'), state: 'rejected', finishedAtUTC: still(2).startedAtUTC } as UploadJob;
+    const stoppedC36: Restoration = {
+      phase: 'stopped',
+      job: refusedJob,
+      sentence: "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.",
+      subline: 'Your photo is unchanged.',
+      canTryAgain: false,
+    };
+
+    const geometry = { warnsBottom: 585, whyLeft: 36, whyRight: 336, whyTop: 521 };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('reveal-status__warns')) return box(36, 301, 336, geometry.warnsBottom);
+      if (this.classList.contains('restore-why')) return box(geometry.whyLeft, geometry.whyTop, geometry.whyRight, 638);
+      return box(0, 0, 0, 0);
+    });
+
+    const warnsShown = () => {
+      const el = q('.reveal-status__warns') as HTMLElement | null;
+      return el !== null && el.style.visibility !== 'hidden';
+    };
+
+    try {
+      // Overlapping (585 vs 521, as on rp-b-06 at 1440x900): warnings give way, while lead and .restore-why stay visible
+      show(stoppedC36, { session });
+      expect(warnsShown()).toBe(false);
+      expect((q('.reveal-status__lead') as HTMLElement).style.visibility).toBe('');
+      expect(q('.restore-why p')!.textContent).toContain('so close to black');
+
+      // Exact 24 px gap (497 + 24 === 521): warnings return
+      geometry.warnsBottom = 497;
+      act(() => window.dispatchEvent(new Event('resize')));
+      expect(warnsShown()).toBe(true);
+
+      // 23 px gap (498 + 24 > 521): warnings give way again
+      geometry.warnsBottom = 498;
+      act(() => window.dispatchEvent(new Event('resize')));
+      expect(warnsShown()).toBe(false);
+
+      // Horizontally disjoint: warnings stay visible
+      geometry.whyLeft = 400;
+      geometry.whyRight = 700;
+      act(() => window.dispatchEvent(new Event('resize')));
+      expect(warnsShown()).toBe(true);
+
+      // Back in the same column, idle (not restoring): warnings stay visible
+      geometry.whyLeft = 36;
+      geometry.whyRight = 336;
+      geometry.warnsBottom = 585;
+      show({ phase: 'idle' }, { session, onRestore: () => {} });
+      expect(warnsShown()).toBe(true);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+});

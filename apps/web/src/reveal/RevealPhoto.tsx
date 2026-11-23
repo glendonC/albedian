@@ -665,6 +665,26 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       columnBox.x1 > legendBox.left;
     if (near !== legendGivesWay) setLegendGivesWay(near);
   });
+  // restorewhy-warns-1 (UIUX/built-main-76ae.md Drift 2; refusedwrap-1's precedence of 22 Nov 20:44): while a laptop
+  // restoration's .restore-why comes within 24 px of the status column's warnings list, .reveal-status__warns (which
+  // carries no EvidenceTag) gives way so the two never paint over each other, and returns once there is room.
+  const warnsRef = useRef<HTMLUListElement>(null);
+  const [warnsGivesWay, setWarnsGivesWay] = useState(false);
+  useLayoutEffect(() => {
+    const warnsBox = warnsRef.current?.getBoundingClientRect();
+    const whyBox = restoring ? revealRoot.current?.querySelector('.restore-why')?.getBoundingClientRect() : undefined;
+    const near =
+      !phone &&
+      restoring &&
+      warnsBox !== undefined &&
+      warnsBox.height > 0 &&
+      whyBox !== undefined &&
+      whyBox.height > 0 &&
+      warnsBox.bottom + LEGEND_CLEAR_PX > whyBox.top &&
+      warnsBox.left < whyBox.right &&
+      warnsBox.right > whyBox.left;
+    if (near !== warnsGivesWay) setWarnsGivesWay(near);
+  });
   // While the Real sky layer is still on screen leaving, its line stays with its Simulated tag (AGENTS.md 1.2): the
   // photo's line comes once the layer has gone. Original pixels takes the layer away at once, and the line with it.
   const lastSkyLine = useRef<React.ReactElement | null>(null);
@@ -809,7 +829,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </>
           )}
           {!aligning && status.warnings.length > 0 && (
-            <ul className="reveal-status__warns">
+            <ul ref={warnsRef} className="reveal-status__warns" style={warnsGivesWay ? { visibility: 'hidden' } : undefined}>
               {status.warnings.map((warning) => (
                 <li key={warning}>
                   <LookIcon name="info" />
