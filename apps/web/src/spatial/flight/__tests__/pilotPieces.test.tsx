@@ -3,6 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CRAFTS } from '../crafts.js';
+import { FlightPills, laptopFlightPillsBottomPx } from '../ConePieces.js';
 import { CraftPicker, PilotTrip, laptopPickerListMaxHeight } from '../PilotPieces.js';
 import { FlightClock, CRAFT_CHOICES } from '../pilotReadout.js';
 
@@ -112,6 +113,133 @@ describe('CraftPicker (D26 item 3, D35)', () => {
       expect(list.style.maxHeight).toBe('259px');
     } finally {
       status.remove();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('steps laptop flight-pills 16 px above .ask-bar when horizontal room is short and re-clamps CraftPicker (UIUX-pilot-READY 04:34)', async () => {
+    // Pure boundary math: 36 + pillsWidthPx + 16 <= askLeftPx stays at 32 px; > askLeftPx steps to (viewH - askTopPx) + 16
+    expect(laptopFlightPillsBottomPx(900, null)).toBe(32);
+    expect(laptopFlightPillsBottomPx(900, { pillsWidthPx: 338, askLeftPx: 390, askTopPx: 820 })).toBe(32);
+    expect(laptopFlightPillsBottomPx(900, { pillsWidthPx: 338.1, askLeftPx: 390, askTopPx: 820 })).toBe(96);
+    expect(laptopFlightPillsBottomPx(768, { pillsWidthPx: 338.4, askLeftPx: 206.4, askTopPx: 688 })).toBe(96);
+
+    const status = document.createElement('div');
+    status.setAttribute('data-testid', 'reveal-status');
+    const askBar = document.createElement('div');
+    askBar.setAttribute('data-testid', 'ask-bar');
+    document.body.append(status, askBar);
+
+    let viewW = 1440;
+    let viewH = 900;
+    let askW = 612;
+    let pillsW = 338;
+    const observed = new Map<Element, Set<() => void>>();
+    const fireResize = (target: Element) => {
+      for (const cb of observed.get(target) ?? []) cb();
+    };
+    const prevRO = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      private cb: () => void;
+      private targets = new Set<Element>();
+      constructor(cb: () => void) {
+        this.cb = cb;
+      }
+      observe(target: Element) {
+        this.targets.add(target);
+        if (!observed.has(target)) observed.set(target, new Set());
+        observed.get(target)!.add(this.cb);
+      }
+      unobserve(target: Element) {
+        this.targets.delete(target);
+        observed.get(target)?.delete(this.cb);
+      }
+      disconnect() {
+        for (const t of this.targets) observed.get(t)?.delete(this.cb);
+        this.targets.clear();
+      }
+    } as unknown as typeof ResizeObserver;
+
+    const box = (left: number, top: number, right: number, bottom: number) =>
+      ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(window, 'innerHeight', 'get').mockImplementation(() => viewH);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') === 'reveal-status') return box(36, 70, 356, 364);
+      if (this.getAttribute('data-testid') === 'ask-bar') return box(viewW / 2 - askW / 2, viewH - 80, viewW / 2 + askW / 2, viewH - 32);
+      if (this.getAttribute('data-testid') === 'flight-pills') {
+        const b = Number.parseFloat(this.style.bottom || '32');
+        return box(36, viewH - b - 36, 36 + pillsW, viewH - b);
+      }
+      if (this.getAttribute('data-testid') === 'craft-picker-panel') {
+        const pills = this.closest('[data-testid="flight-pills"]') as HTMLElement | null;
+        const b = Number.parseFloat(pills?.style.bottom || '32');
+        const panelBottom = viewH - (b + 36 + 10);
+        return box(36, panelBottom - 513, 428, panelBottom);
+      }
+      if (this.getAttribute('data-testid') === 'craft-picker-list') {
+        const pills = this.closest('[data-testid="flight-pills"]') as HTMLElement | null;
+        const b = Number.parseFloat(pills?.style.bottom || '32');
+        const panelBottom = viewH - (b + 36 + 10);
+        return box(36, panelBottom - 505, 428, panelBottom - 35);
+      }
+      return box(0, 0, 0, 0);
+    });
+
+    try {
+      await act(async () =>
+        root.render(
+          createElement(FlightPills, {
+            craftPill: createElement(CraftPicker, { craft: CRAFTS['voyager-1']!, onPick: () => {} }),
+            cone: false,
+            onCone: () => {},
+          }),
+        ),
+      );
+      const pills = container.querySelector('[data-testid="flight-pills"]') as HTMLElement;
+      // 1440x900 with Voyager 1 (36 + 338 + 16 = 390 <= 414): stays at bottom 32 px
+      expect(pills.style.bottom).toBe('32px');
+      expect(pills.style.transition).toBe('');
+
+      // Open CraftPicker at 1440x900 (bottom 32 -> panelBottom = 900 - 78 = 822; 822 - 380 - 43 = 399 px)
+      await act(async () => (container.querySelector('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
+      const list = container.querySelector('[data-testid="craft-picker-list"]') as HTMLElement;
+      expect(list.style.maxHeight).toBe('399px');
+
+      // Long name at 1440x900 (James Webb Space Telescope: pillsW = 442.2 -> 36 + 442.2 + 16 = 494.2 > 414) steps to 96 px
+      // and CraftPicker immediately re-clamps its open list (panelBottom = 900 - 142 = 758; 758 - 380 - 43 = 335 px)
+      pillsW = 442.2;
+      await act(async () => {
+        fireResize(pills);
+      });
+      expect(pills.style.bottom).toBe('96px');
+      expect(list.style.maxHeight).toBe('335px');
+
+      // Back to short name at 1440x900 returns to 32 px, then typing field opens (askW = 822.7 -> askLeft = 308.65) -> 96 px
+      pillsW = 338;
+      await act(async () => {
+        fireResize(pills);
+      });
+      expect(pills.style.bottom).toBe('32px');
+      askW = 822.7;
+      await act(async () => {
+        fireResize(askBar);
+      });
+      expect(pills.style.bottom).toBe('96px');
+
+      // Resize to 1024x768 with normal askW = 612 (askLeft = 206 < 390): stays stepped at 96 px and clamps list to 203 px
+      askW = 612;
+      viewW = 1024;
+      viewH = 768;
+      await act(async () => {
+        window.dispatchEvent(new Event('resize'));
+      });
+      expect(pills.style.bottom).toBe('96px');
+      // panelBottom = 768 - 142 = 626; 626 - 380 - 43 = 203 px
+      expect(list.style.maxHeight).toBe('203px');
+    } finally {
+      globalThis.ResizeObserver = prevRO;
+      status.remove();
+      askBar.remove();
       vi.restoreAllMocks();
     }
   });

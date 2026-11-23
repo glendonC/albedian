@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EvidenceTag, LookIcon } from '../../look/index.js';
 import { CRAFTS, type Craft } from './crafts.js';
@@ -86,11 +86,15 @@ export function laptopPickerListMaxHeight(
   return Math.min(LAPTOP_LIST_MAX_PX, Math.max(LAPTOP_LIST_MIN_PX, Math.floor(raw)));
 }
 
+/** Laptop flight-pills bottom offset (32 px beside .ask-bar, or stepped 16 px above it), so CraftPicker re-measures. */
+export const FlightPillsBottomContext = createContext<number>(32);
+
 export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft | null) => void; phone?: boolean }> = ({ craft, onPick, phone = false }) => {
   const [open, setOpen] = useState(false);
   const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null)) ?? YOUR_VIEW_CHOICE;
   const list = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const pillsBottomPx = useContext(FlightPillsBottomContext);
   const [listMaxPx, setListMaxPx] = useState(() => laptopPickerListMaxHeight(typeof window === 'undefined' ? 900 : window.innerHeight || 900));
   useLayoutEffect(() => {
     if (!open || phone) return undefined;
@@ -111,9 +115,15 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       setListMaxPx((prev) => (prev === next ? prev : next));
     };
     measure();
+    const statusEl = document.querySelector('[data-testid="reveal-status"]');
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro && statusEl) ro.observe(statusEl);
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [open, phone, craft]);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [open, phone, craft, pillsBottomPx]);
   // D35 item 3: the current row is scrolled into view when the panel opens
   useEffect(() => {
     if (!open) return;
