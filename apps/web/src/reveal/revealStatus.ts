@@ -58,6 +58,8 @@ const FIRST_SENTENCE_NOTES: readonly string[] = [
   // C24 (UIUX-starplacewords-READY.md item 1): a predicted star's place caution, on its card; what its stated
   // uncertainty adds stays in the record
   'Placed in the sky for that moment and place, at sea level;',
+  // C31 (UIUX-moonposewords-READY.md): the observed glare's limitation on its card; its lower-bound sentence stays in the record
+  'Measured on the picture: ',
 ];
 
 /**

@@ -189,3 +189,22 @@ describe("starCardFacts: a predicted star's place caution", () => {
     expect(facts.notes.join(' ')).not.toContain('UT1');
   });
 });
+
+// C31 (UIUX-moonposewords-READY.md): StarCard cuts the observed glare's two-sentence limitation to its first sentence
+describe("starCardFacts: C31's observed glare limitation", () => {
+  const SHOWN = 'Measured on the picture: its place, area and width; its core is clipped, so it is at least as bright as measured.';
+  const RECORD = 'Its flux and SNR are lower bounds where its brightest pixels are clipped.';
+  it('cuts C31 to its first sentence on the card while leaving non-matching limitations whole', () => {
+    const glare = {
+      ...acrux,
+      id: 'finding-observed-sun-glare',
+      title: 'Bright glare',
+      subtitle: 'Taken to be the Sun',
+      evidenceClass: 'observed',
+      catalogRef: undefined,
+      inferredDistancePc: undefined,
+      evidence: { ...acrux.evidence, evidenceClass: 'observed', limitations: [`${SHOWN} ${RECORD}`, 'Taken to be the Sun, not confirmed by stars.'] },
+    } as CelestialFinding;
+    expect(starCardFacts(glare).notes).toEqual([SHOWN, 'Taken to be the Sun, not confirmed by stars.']);
+  });
+});

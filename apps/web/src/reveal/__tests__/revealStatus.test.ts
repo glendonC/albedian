@@ -327,3 +327,20 @@ describe("a pose's refusal on screen", () => {
     expect(onScreenWarning(whole)).toBe(whole);
   });
 });
+
+// C31 (UIUX-moonposewords-READY.md, decided by the lead 21 Nov 12:59 and 23 Nov 02:58): the observed glare's limitation
+// shows its first sentence on screen while keeping its flux/SNR lower-bound sentence in the stored record.
+describe("the observed glare's limitation on screen (C31)", () => {
+  const CLIPPED_SCREEN = 'Measured on the picture: its place, area and width; its core is clipped, so it is at least as bright as measured.';
+  const CLIPPED_RECORD = 'Its flux and SNR are lower bounds where its brightest pixels are clipped.';
+  const UNCLIPPED_SCREEN = 'Measured on the picture: its place, area and width; only its core is summed, so it is at least as bright as measured.';
+  const UNCLIPPED_RECORD = 'Its flux and SNR are lower bounds measured over its brightest core.';
+
+  it('cuts both the clipped and unclipped two-sentence forms to their first sentence, and keeps one-sentence forms whole', () => {
+    expect(onScreenWarning(`${CLIPPED_SCREEN} ${CLIPPED_RECORD}`)).toBe(CLIPPED_SCREEN);
+    expect(onScreenWarning(`${UNCLIPPED_SCREEN} ${UNCLIPPED_RECORD}`)).toBe(UNCLIPPED_SCREEN);
+    const oneSentence = 'Measured on the picture: its place, area and width only; its core is clipped, so its brightness is not measured.';
+    expect(onScreenWarning(oneSentence)).toBe(oneSentence);
+    expect(onScreenWarning(CLIPPED_RECORD)).toBe(CLIPPED_RECORD);
+  });
+});
