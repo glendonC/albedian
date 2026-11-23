@@ -332,10 +332,23 @@ public enum SkyOverlayNames {
     /// about its centre, a name's margin at each end, and how far inside the preview's sides a name (with its margins)
     /// stays.
     public static let magnitudeLimit = 3.2
+    public static let markFrameHeightPt = 40.0
+    public static let unnamedMarkFrameWidthPt = 40.0
     static let emPerChar = 0.56
     static let ringRoomPt = 9.0
     static let marginPt = 3.0
     static let sideInsetPt = 2.0
+
+    /// Width of a centred Canvas holding one mark (`EarlyMark` on the wait): compact when unnamed, and when named at
+    /// least twice the preview width and twice a 1 em-per-unit span plus gap, halo and margin, so no name kept by
+    /// `names(_:widthPt:heightPt:)` can ever be clipped by its own Canvas frame.
+    public static func markFrameWidthPt(name: String, named: Bool, previewWidthPt: Double) -> Double {
+        guard named else { return unnamedMarkFrameWidthPt }
+        let oneSide = SkyOverlayStyle.nameGapPt
+            + Double(name.utf16.count) * SkyOverlayStyle.nameSizePt
+            + SkyOverlayStyle.haloWidthPt + marginPt
+        return max(2 * max(previewWidthPt, 0), 2 * oneSide)
+    }
 
     public struct Placed: Equatable, Sendable {
         public let mark: SkyMark

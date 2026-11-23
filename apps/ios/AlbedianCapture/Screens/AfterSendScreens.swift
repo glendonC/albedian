@@ -187,7 +187,9 @@ private struct EarlyMarksLayer: View {
                                          reduceMotion: reduceMotion)
         ZStack(alignment: .topLeading) {
             ForEach(rings, id: \.key) { item in
-                ArrivingMark(delay: delays[item.key] ?? 0) { EarlyMark(mark: item.mark, onLeft: names[item.mark.id]) }
+                ArrivingMark(delay: delays[item.key] ?? 0) {
+                    EarlyMark(mark: item.mark, onLeft: names[item.mark.id], previewWidthPt: width)
+                }
                     .position(item.at)
                     .transition(.asymmetric(insertion: .identity,
                                             removal: .opacity.animation(.motion(MotionStyle.frameOut, reduceMotion: reduceMotion))))
@@ -220,17 +222,18 @@ private struct ArrivingMark<Content: View>: View {
     }
 }
 
-/// One early mark drawn as D20 draws it, centred on its own frame so it can move as one piece.
+/// One early mark drawn as D20 draws it, centred on its own frame so it can move as one piece without clipping long names.
 private struct EarlyMark: View {
     let mark: SkyMark
     let onLeft: Bool?
-    static let side = 260.0
+    let previewWidthPt: Double
 
     var body: some View {
+        let width = SkyOverlayNames.markFrameWidthPt(name: mark.name, named: onLeft != nil, previewWidthPt: previewWidthPt)
         Canvas { context, size in
             PlacedSkyOverlay.draw(mark, at: CGPoint(x: size.width / 2, y: size.height / 2), onLeft: onLeft, named: onLeft != nil, in: context)
         }
-        .frame(width: CGFloat(Self.side), height: 40)
+        .frame(width: CGFloat(width), height: CGFloat(SkyOverlayNames.markFrameHeightPt))
     }
 }
 

@@ -291,6 +291,29 @@ final class SkyOverlayTests: XCTestCase {
         XCTAssertEqual(names([rigel, at(star("Saiph", mag: 2.09), 150, 260)]), ["star-rigel": false, "star-saiph": false])
     }
 
+    func testACentredMarkFrameHoldsLongSouthernBayerNamesWithoutClippingAndStaysCompactWhenUnnamed() {
+        // Gamma Trianguli Australis (25 chars) at x = 335 on a 393 pt preview goes left and is kept by D20; the old 260 pt
+        // EarlyMark frame extended only 130 pt from the ring centre and clipped the leading "G"
+        let gammaTrA = star("Gamma Trianguli Australis", mag: 2.88, catalogSourceId: "HIP 74946")
+        let kept = names([at(gammaTrA, 335, 220)], width: 393, height: 524)
+        XCTAssertEqual(kept, ["star-gamma trianguli australis": true])
+
+        let namedWidth = SkyOverlayNames.markFrameWidthPt(name: gammaTrA.name, named: true, previewWidthPt: 393)
+        // Half-width from ring centre covers the whole preview width (393 pt) and 1 em per UTF-16 unit + gap + halo + margin
+        XCTAssertEqual(namedWidth, 786.0, accuracy: 1e-9)
+        XCTAssertGreaterThanOrEqual(namedWidth / 2, 12.0 + 25.0 * 11.0 + 3.0 + 3.0)
+
+        // When a long title's generous 1 em span exceeds the preview width, the character span governs
+        let veryLong = String(repeating: "W", count: 32)
+        let expectedSide = 12.0 + 32.0 * 11.0 + 3.0 + 3.0
+        XCTAssertEqual(SkyOverlayNames.markFrameWidthPt(name: veryLong, named: true, previewWidthPt: 320), 2 * expectedSide, accuracy: 1e-9)
+        XCTAssertEqual(SkyOverlayNames.markFrameWidthPt(name: "Vega", named: true, previewWidthPt: -10), 2 * (12.0 + 4.0 * 11.0 + 3.0 + 3.0), accuracy: 1e-9)
+
+        // Unnamed rings take the compact 40 pt square frame
+        XCTAssertEqual(SkyOverlayNames.markFrameWidthPt(name: gammaTrA.name, named: false, previewWidthPt: 393), 40.0, accuracy: 1e-9)
+        XCTAssertEqual(SkyOverlayNames.markFrameHeightPt, 40.0, accuracy: 1e-9)
+    }
+
     func testTheReaderKeepsEachStarsMagnitudeAndCatalogIdAndNoneForABody() throws {
         let marks = try XCTUnwrap(SkyContextReader.marks(base()))
         let vegaRow = try XCTUnwrap(base()["stars"]?.arrayValue?.first { $0["id"]?.stringValue == "star-vega" })
