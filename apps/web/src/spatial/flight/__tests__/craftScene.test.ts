@@ -198,6 +198,9 @@ describe('craftFromSearch: the interim choice by page address', () => {
     }
     // The angles kept from the sheet (.cache/uiux/built/elev-1/): Stardust 45, NEAR 15
     expect([STARDUST_ELEVATION_DEG, NEAR_ELEVATION_DEG]).toEqual([45, 15]);
+    // as-2 (the 21 Nov 14:33 ruling), checked live against NASA's render: Apollo-Soyuz from its side, level, the hangar's
+    // up kept
+    expect([CRAFTS['apollo-soyuz']!.modelForward, CRAFTS['apollo-soyuz']!.modelUp]).toEqual([[1, 0, 0], [0, 1, 0]]);
     // hangar-5, the live check of 21 Nov against each picture (the 12:40 ruling): each seen from its front quarter on
     // the left, level, as the hangar's picture camera looks (about 28.8 degrees off its front), the hangar's up kept, so
     // the Viking Lander stands on its legs
@@ -207,7 +210,7 @@ describe('craftFromSearch: the interim choice by page address', () => {
       expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
       expect([fz < 0, (Math.atan2(fx, -fz) * 180) / Math.PI]).toEqual([true, expect.closeTo(28.81, 2)]);
     }
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander']);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
     expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
@@ -350,6 +353,24 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(Math.abs(tubeEnd.xPx - centre.xPx)).toBeLessThan(0.15 * (centre.yPx - tubeEnd.yPx));
     // The panels' axis (+Y) runs along the line of sight, so it moves far less on screen than the tube
     expect(Math.hypot(panelEnd.xPx - centre.xPx, panelEnd.yPx - centre.yPx)).toBeLessThan(0.35 * (centre.yPx - tubeEnd.yPx));
+  });
+
+  it('lays Apollo-Soyuz at rest along the screen, Apollo\'s engine at the left and Soyuz at the right, as NASA\'s render does (as-2)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 1440, 900)!;
+    const scene = craftSceneOf(camera, CRAFTS['apollo-soyuz']!, [0, 0, 0], 4, undefined, undefined, 2.5)!;
+    const at = (m: Vec3) => {
+      const w = apply(scene.modelMatrix, m);
+      const c = apply(scene.clipMatrix, [w[0], w[1], w[2]]);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 1440, yPx: ((1 - c[1] / c[3]) / 2) * 900 };
+    };
+    const centre = at([0, 0, 0]);
+    const ahead = at([0, 0, 2.5]);
+    const above = at([0, 2.5, 0]);
+    // The line of flight (+Z, Soyuz ahead) runs to the screen's right, level; the hangar's up (the panels) runs up
+    expect(ahead.xPx - centre.xPx).toBeGreaterThan(100);
+    expect(Math.abs(ahead.yPx - centre.yPx)).toBeLessThan(0.15 * (ahead.xPx - centre.xPx));
+    expect(centre.yPx - above.yPx).toBeGreaterThan(100);
   });
 
   it('stands Spitzer at rest with its tube up the screen, as its picture does (hangar-2b)', () => {

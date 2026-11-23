@@ -113,6 +113,9 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   // the hangar's up: the lander stands on its legs, its only pose
   deepimpact: { forward: FRONT_QUARTER, up: [0, 1, 0] },
   viking: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  // as-2 (the 21 Nov 14:33 ruling), checked live on 22 Nov against NASA's render: the docked pair from its side, level,
+  // Apollo's engine at the left and Soyuz at the right (+Z, its line of flight, along the screen's right), panels up
+  apollosoyuz: { forward: [1, 0, 0], up: [0, 1, 0] },
 };
 
 /**
