@@ -200,45 +200,73 @@ export function revealMarks(
     const room = symbol === null ? MARK_ROOM_PX : DEEP_SKY_ROOM_PX;
     return { id: finding.id, box: { x0: position.xPx - room, x1: position.xPx + room, y0: position.yPx - room, y1: position.yPx + room } };
   });
-  const marks: RevealMark[] = placed.map(({ finding, kind, position, symbol }) => {
-    const picked = finding.id === pickedId;
-    // A deep-sky object's name is placed after the stars' (below); picked, it takes the picked look as any prediction
-    if (symbol !== null && !picked) {
-      return { finding, kind, xPx: position.xPx, yPx: position.yPx, name: null, nameOnLeft: false, picked, uncertaintyPx: null, deepSky: symbol };
-    }
-    const magnitude = finding.catalogRef?.apparentMagnitude;
-    // The picked star keeps its name; a star with no name keeps its mark and no label, its card naming it (INTERIM:
-    // .lead/uiux/UIUX-unnamed-QUESTION.md)
-    const wanted =
-      (picked && (kind !== 'catalog' || namedStar(finding))) ||
-      (kind === 'catalog'
-        ? namedStar(finding) && magnitude !== undefined && magnitude < spec.limit
-        : predictedNamed.has(finding.id));
-    let name: string | null = wanted ? finding.title : null;
-    let nameOnLeft = false;
-    if (name !== null) {
-      const runsInto = (box: Box) => rooms.some((room) => room.id !== finding.id && overlap(box, room.box)) || clear.some((place) => overlap(box, place));
-      // To the right, unless that crosses the photo's right edge
-      nameOnLeft = nameBox(position.xPx, position.yPx, name, picked, false, spec).x1 - NAME_MARGIN_PX > right;
-      // The picked star keeps its name where its place gives it; any other name gives way to a mark
-      if (!picked && runsInto(nameBox(position.xPx, position.yPx, name, false, nameOnLeft, spec))) {
-        const other = nameBox(position.xPx, position.yPx, name, false, !nameOnLeft, spec);
-        if (runsInto(other) || other.x1 > right || other.x0 < left) name = null;
-        else nameOnLeft = !nameOnLeft;
+  const marks: RevealMark[] = placed.map(({ finding, kind, position, symbol }) => ({
+    finding,
+    kind,
+    xPx: position.xPx,
+    yPx: position.yPx,
+    name: null,
+    nameOnLeft: false,
+    picked: finding.id === pickedId,
+    uncertaintyPx: kind === 'predicted' && symbol === null ? (position.ringPx ?? null) : null,
+    deepSky: symbol,
+  }));
+
+  // Star, Moon and planet names (D20; UIUX-solvewords-READY.md item 4a): picked first, then Moon and planets without
+  // apparentMagnitude ahead of stars (as alignPose.ts brightestFirst orders them), else ascending apparentMagnitude,
+  // each placed nameBox added to taken so fainter names flip side or yield instead of colliding.
+  const taken: Box[] = [];
+  const nameOrder = placed
+    .map(({ finding, kind, symbol }, index) => {
+      const picked = finding.id === pickedId;
+      // A deep-sky object's name is placed after the stars' (below); picked, it takes the picked look as any prediction
+      if (symbol !== null && !picked) return null;
+      const magnitude = finding.catalogRef?.apparentMagnitude;
+      // The picked star keeps its name; a star with no name keeps its mark and no label, its card naming it (INTERIM:
+      // .lead/uiux/UIUX-unnamed-QUESTION.md)
+      const wanted =
+        (picked && (kind !== 'catalog' || namedStar(finding))) ||
+        (kind === 'catalog' ? namedStar(finding) && magnitude !== undefined && magnitude < spec.limit : predictedNamed.has(finding.id));
+      if (!wanted) return null;
+      const solarBody =
+        magnitude === undefined &&
+        (finding.catalogRef === undefined
+          ? finding.evidenceClass === 'predicted'
+          : finding.catalogRef.objectType === 'moon' || finding.catalogRef.objectType === 'planet');
+      return { index, picked, solarBody, magnitude };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    .sort((a, b) => {
+      if (a.picked !== b.picked) return a.picked ? -1 : 1;
+      if (a.solarBody !== b.solarBody) return a.solarBody ? -1 : 1;
+      const ma = a.magnitude ?? Number.POSITIVE_INFINITY;
+      const mb = b.magnitude ?? Number.POSITIVE_INFINITY;
+      return ma === mb ? a.index - b.index : ma - mb;
+    });
+  for (const { index, picked } of nameOrder) {
+    const { finding, position } = placed[index]!;
+    const candidate = finding.title;
+    const runsInto = (box: Box) =>
+      rooms.some((room) => room.id !== finding.id && overlap(box, room.box)) ||
+      taken.some((other) => overlap(box, other)) ||
+      clear.some((place) => overlap(box, place));
+    // To the right, unless that crosses the photo's right edge
+    let nameOnLeft = nameBox(position.xPx, position.yPx, candidate, picked, false, spec).x1 - NAME_MARGIN_PX > right;
+    let chosen: Box | null = nameBox(position.xPx, position.yPx, candidate, picked, nameOnLeft, spec);
+    // The picked star keeps its name where its place gives it; any other name gives way to a mark, control or earlier name
+    if (!picked && runsInto(chosen)) {
+      const other = nameBox(position.xPx, position.yPx, candidate, false, !nameOnLeft, spec);
+      if (runsInto(other) || other.x1 > right || other.x0 < left) chosen = null;
+      else {
+        nameOnLeft = !nameOnLeft;
+        chosen = other;
       }
     }
-    return {
-      finding,
-      kind,
-      xPx: position.xPx,
-      yPx: position.yPx,
-      name,
-      nameOnLeft: name !== null && nameOnLeft,
-      picked,
-      uncertaintyPx: kind === 'predicted' && symbol === null ? (position.ringPx ?? null) : null,
-      deepSky: symbol,
-    };
-  });
+    if (chosen !== null) {
+      taken.push(chosen);
+      marks[index] = { ...marks[index]!, name: candidate, nameOnLeft };
+    }
+  }
 
   // Deep-sky names (D23), brightest first: a common name only, 6 px beside its symbol, right or else left, kept only
   // when it stays inside the photo and runs into no star mark, star name, other symbol or other name
@@ -248,7 +276,6 @@ export function revealMarks(
     const room = symbol === null ? DEEP_SKY_STAR_ROOM_PX : DEEP_SKY_ROOM_PX;
     return { id: finding.id, box: { x0: position.xPx - room, x1: position.xPx + room, y0: position.yPx - room, y1: position.yPx + room } };
   });
-  const taken: Box[] = marks.flatMap((mark) => (mark.name === null ? [] : [nameBox(mark.xPx, mark.yPx, mark.name, mark.picked, mark.nameOnLeft, spec)]));
   const order = placed
     .map((entry, index) => ({ index, magnitude: entry.magnitude }))
     .filter(({ index }) => marks[index]!.deepSky !== null && !marks[index]!.picked)

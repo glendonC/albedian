@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { pixelToWorldWCS } from '@albedian/camera-rig';
 import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { NAME_MAGNITUDE_LIMIT, revealMarks } from '../revealMarks.js';
@@ -111,5 +112,82 @@ describe("a name does not run into another mark", () => {
 
   it('measures against the other marks only, never against its own', () => {
     expect(names(sessionOf([at('Alone', 400, 200, 1.2)])).Alone).toBe('right');
+  });
+});
+
+// namebox-1 (UIUX-solvewords-READY.md item 4a, D20): non-picked Moon, planet and star names are placed brightest first
+// (picked first; Moon and planets without apparentMagnitude ahead of stars, else ascending apparentMagnitude) and each
+// placed nameBox joins taken so fainter names flip side or yield instead of colliding.
+describe('a name yields to a brighter object or picked name (namebox-1, D20)', () => {
+  it('places the brighter star name first even when the fainter star comes earlier in findings, flipping or dropping the fainter name', () => {
+    // At x 400, y 200 and y 208 (same x, 12 screen px apart vertically): neither mark's 14 px room (x 586.75..614.75)
+    // touches either right-side nameBox (x >= 616.75), while their right-side nameBoxes overlap vertically by 4.9 px
+    const denebola = at('Denebola', 400, 200, 2.14);
+    const regulus = at('Regulus', 400, 208, 1.36);
+    const flipped = sessionOf([denebola, regulus]);
+    expect(names(flipped)).toEqual({ Denebola: 'left', Regulus: 'right' });
+    expect(revealMarks(flipped, VIEW.w, VIEW.h).map((m) => m.finding.title)).toEqual(['Denebola', 'Regulus']);
+
+    // With a mark blocking Denebola's left side too, Denebola yields (null) while Regulus keeps right
+    const blockedLeft = sessionOf([denebola, regulus, at('Blocker', 370, 200, 6)]);
+    expect(names(blockedLeft)).toEqual({ Denebola: null, Regulus: 'right', Blocker: null });
+  });
+
+  it('places Moon and planets without apparentMagnitude ahead of stars, including negative-magnitude stars, on a pose estimate', () => {
+    const poseBase = sample('pose_moon_level_head');
+    const moonTemplate = poseBase.findings.find((f) => f.id === 'finding-predicted-moon')!;
+    const starTemplate = poseBase.findings.find((f) => f.evidenceClass === 'predicted' && f.catalogRef?.objectType === 'star')!;
+    const nominalWcs = poseBase.wcs!;
+    const upper = pixelToWorldWCS(400, 200, nominalWcs)!;
+    const lower = pixelToWorldWCS(400, 208, nominalWcs)!;
+
+    const denebolaPred: CelestialFinding = {
+      ...starTemplate,
+      id: 'finding-predicted-hip-57632',
+      title: 'Denebola',
+      skyPosition: { ...starTemplate.skyPosition!, raDeg: upper.raDeg, decDeg: upper.decDeg },
+      catalogRef: { ...starTemplate.catalogRef!, commonName: 'Denebola', catalogSourceId: 'HIP 57632', objectType: 'star', apparentMagnitude: 2.14 },
+    };
+    const siriusPred: CelestialFinding = {
+      ...denebolaPred,
+      id: 'finding-predicted-hip-32349',
+      title: 'Sirius',
+      catalogRef: { ...denebolaPred.catalogRef!, commonName: 'Sirius', catalogSourceId: 'HIP 32349', objectType: 'star', apparentMagnitude: -1.46 },
+    };
+    const moonPred: CelestialFinding = {
+      ...moonTemplate,
+      title: 'Moon (Predicted Ephemeris)',
+      skyPosition: { ...moonTemplate.skyPosition!, raDeg: lower.raDeg, decDeg: lower.decDeg },
+      catalogRef: undefined,
+    };
+    const planetNoMag: CelestialFinding = {
+      ...starTemplate,
+      id: 'finding-predicted-jupiter',
+      title: 'Jupiter',
+      skyPosition: { ...moonTemplate.skyPosition!, raDeg: lower.raDeg, decDeg: lower.decDeg },
+      catalogRef: { ...starTemplate.catalogRef!, commonName: 'Jupiter', catalogSourceId: 'JPL 599', objectType: 'planet', apparentMagnitude: undefined },
+    };
+
+    const basePoseSession = poseSession(poseBase);
+    const withPoseFindings = (findings: CelestialFinding[]): ObservationSession => ({
+      ...basePoseSession,
+      observationSolution: { ...basePoseSession.observationSolution!, findings } as ObservationSolution,
+    });
+
+    const withMoon = withPoseFindings([denebolaPred, moonPred]);
+    const moonMarks = Object.fromEntries(revealMarks(withMoon, VIEW.w, VIEW.h).map((m) => [m.finding.title, m.name === null ? null : m.nameOnLeft ? 'left' : 'right']));
+    expect(moonMarks['Moon (Predicted Ephemeris)']).toBe('right');
+    expect(moonMarks['Denebola']).toBe('left');
+
+    const withPlanetAndSirius = withPoseFindings([siriusPred, planetNoMag]);
+    const planetMarks = Object.fromEntries(revealMarks(withPlanetAndSirius, VIEW.w, VIEW.h).map((m) => [m.finding.title, m.name === null ? null : m.nameOnLeft ? 'left' : 'right']));
+    expect(planetMarks['Jupiter']).toBe('right');
+    expect(planetMarks['Sirius']).toBe('left');
+  });
+
+  it('places the picked finding first and adds its nameBox to taken so even a brighter neighbour flips away from it', () => {
+    const vega = at('Vega', 400, 200, 0.03);
+    const pickedFaint = at('Subtle', 400, 208, 4.8);
+    expect(names(sessionOf([vega, pickedFaint], pickedFaint.id))).toEqual({ Vega: 'left', Subtle: 'right' });
   });
 });
