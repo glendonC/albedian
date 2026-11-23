@@ -442,6 +442,14 @@ describe("the phone's counts are a control too", () => {
     }
   });
 
+  // d38tag-2 (the 16:19 record: "The keep-clear rule holds: no ring or name under the block"; the lead's yes 22:20)
+  it("keeps every ring and name clear of the phone restoration's tag block and stop block, each by what it holds", () => {
+    for (const selector of ['.restore-phone-lead', '.restore-phone-why']) {
+      expect(REVEAL_KEEP_CLEAR).toContain(selector);
+      expect(KEEP_CLEAR_BLOCKS).toContain(selector);
+    }
+  });
+
   // AUDIT-C's owed mutants (22 Nov 03:55): either entry dropped from KEEP_CLEAR_BLOCKS survived, as the screens' tests
   // stub a block's own box with nothing laid out inside it. Without the entry the phone's aligning block (inset 0) and
   // its refused block (970 px tall) are kept clear whole and hide every ring and name (FIELD's walk-0621)
