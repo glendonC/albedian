@@ -288,6 +288,26 @@ describe('D16 phone clip reveal across calibrated, estimate, no-match, refused-a
     const block = refused.querySelector('.align-refused__block')!;
     expect([...block.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'reveal-status__lead', 'align-refused__kept']);
     expect([...refused.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Line it up again', 'Show predicted sky', 'Restore']);
+
+    // Cascaded padding on refused phone clip stays 0 (height 970px), never inflated to 1782px by .is-clip padding
+    const cascaded = (el: Element): Record<string, string> => {
+      const matched: Array<{ spec: number; order: number; prop: string; val: string }> = [];
+      let order = 0;
+      postcss.parse(css).walkRules((rule) => {
+        if (rule.parent?.type !== 'root') return;
+        for (const sel of rule.selectors) {
+          if (!el.matches(sel)) continue;
+          const classes = (sel.match(/\.[A-Za-z0-9_-]+/g) ?? []).length;
+          rule.walkDecls((d) => {
+            matched.push({ spec: classes, order: ++order, prop: d.prop, val: d.value.replace(/\s+/g, ' ') });
+          });
+        }
+      });
+      matched.sort((a, b) => a.spec - b.spec || a.order - b.order);
+      return Object.fromEntries(matched.map((m) => [m.prop, m.val]));
+    };
+    expect(cascaded(refused)).toMatchObject({ height: '970px', padding: '0' });
+    expect(cascaded(noMatchStatus)).toMatchObject({ padding: '772px 24px 40px' });
   });
 
   it('voice answer on a phone clip: anchors at y 638 without a tag row, or 16 px above .reveal-phone-estimate while keeping its tag in view (item B)', () => {
@@ -338,7 +358,7 @@ describe('D16 phone clip reveal across calibrated, estimate, no-match, refused-a
     const d19 = declarationsOf('.reveal-answer.is-phone::before');
     expect(declarationsOf('.reveal-phone-estimate.is-clip')).toEqual({ bottom: 'calc(100% - 638px)' });
     expect(declarationsOf('.reveal-phone-estimate.is-clip::before')).toEqual(d19);
-    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-clip')).toEqual({ padding: '772px 24px 40px' });
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-clip:not(.is-refused)')).toEqual({ padding: '772px 24px 40px' });
     expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-clip .reveal-phone-lead')).toEqual({
       position: 'absolute',
       left: '24px',
