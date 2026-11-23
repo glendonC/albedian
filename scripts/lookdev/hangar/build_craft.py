@@ -214,6 +214,16 @@ CHANGES = {
         "corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures "
         "re-encoded as WebP."
     ),
+    # lod0 for a helicopter scaled from its rotors tip to tip, two printed labels painted out ("changes": "ingenuity")
+    "lod0_ingenuity": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; "
+        "NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no "
+        "metalness, the cameras' photo texture given metalness, roughness and surface relief from its own colours "
+        "with two small printed labels painted over in the colour around them, NASA's own colour, metalness and "
+        "roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made "
+        "again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
@@ -422,6 +432,11 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
         # NASA's own physically based material, kept as NASA made it (gold foil with its own normal map).
         return source_mat
     src_img = next((n.image for n in source_mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image), None)
+    if spec.get("image"):
+        # a material with several images (colour, roughness, normal): the recipe names the colour image NASA drew
+        src_img = next((n.image for n in source_mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image and n.image.name == spec["image"]), None)
+        if src_img is None:
+            raise SystemExit(f"{name}: the source material has no image {spec['image']}")
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -867,6 +882,20 @@ def main() -> None:
                 raise SystemExit("the recipe's material has fewer loose parts than its pads")
             extent = mean_plan_distance(pads)
             centre = Vector(np.mean(np.array(pads), axis=0).tolist())
+            scale = sf["metres"] / extent
+            co = None
+        elif sf.get("span_across"):
+            # the largest distance between two vertices of the material seen along an axis of the import frame: a
+            # rotor's blades tip to tip across its mast, whatever angle each blade stands at
+            from scripts.lookdev.hangar.geometry import max_plan_distance
+
+            mat_index = {i for i, m in enumerate(me.materials) if m and m.name == sf["material"]}
+            vidx = sorted({v for p in me.polygons if p.material_index in mat_index for v in p.vertices})
+            if len(vidx) < 2:
+                raise SystemExit("the recipe's span material has no faces")
+            pc = np.array([me.vertices[i].co[:] for i in vidx])
+            extent = max_plan_distance([tuple(v) for v in pc], up="xyz".index(sf["span_across"]))
+            centre = Vector(((pc.max(0) + pc.min(0)) / 2).tolist())
             scale = sf["metres"] / extent
             co = None
         elif sf["material"] is None:

@@ -1975,6 +1975,64 @@
         "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high.",
         "trueTo": "part"
       }
+    },
+    "ingenuity": {
+      "title": "Ingenuity",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "ingenuity/ingenuity_lod0.glb",
+          "bytes": 590268,
+          "triangles": 9054,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "ingenuity/ingenuity_lod1.glb",
+          "bytes": 415304,
+          "triangles": 4527,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "ingenuity/ingenuity_lod2.glb",
+          "bytes": 181188,
+          "triangles": 1627,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "ingenuity/ingenuity_picker.webp",
+          "bytes": 4096,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.548,
+          -0.367,
+          -0.488
+        ],
+        "max": [
+          0.548,
+          0.189,
+          0.488
+        ]
+      },
+      "bodyRadiusM": 0.6,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "blades",
+        "metres": 1.2,
+        "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+        "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip",
+        "partSpanAcross": "z"
+      }
     }
   },
   "entries": [
@@ -3357,6 +3415,44 @@
           "value": "2018-10-30",
           "page": "https://science.nasa.gov/mission/kepler/in-depth/",
           "quote": "On Oct. 30, 2018, after nine years in deep space collecting data, NASA announced that Kepler had run out of fuel."
+        }
+      ]
+    },
+    {
+      "id": "ingenuity",
+      "name": "Ingenuity",
+      "model": "ingenuity",
+      "travel": null,
+      "facts": [
+        {
+          "key": "landedOnMars",
+          "value": "2021-02-18",
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+          "quote": "Feb. 18, 2021, Jezero Crater, Mars"
+        },
+        {
+          "key": "firstFlight",
+          "value": "2021-04-19",
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+          "quote": "On April 19, 2021, NASA's Ingenuity Mars Helicopter made history when it completed the first powered, controlled flight on the Red Planet."
+        },
+        {
+          "key": "lastFlight",
+          "value": "2024-01-18",
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+          "quote": "It flew for the last time on Jan. 18, 2024."
+        },
+        {
+          "key": "massKg",
+          "value": 1.8,
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+          "quote": "3.97 pounds (1.8 kilograms)"
+        },
+        {
+          "key": "rotorSpanM",
+          "value": 1.2,
+          "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+          "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip"
         }
       ]
     }

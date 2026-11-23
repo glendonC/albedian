@@ -107,6 +107,8 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert sf.get("partBand") == CRAFTS[name]["scale_from"].get("band")
             # a size measured between footpads says how many
             assert sf.get("partPads") == CRAFTS[name]["scale_from"].get("pads")
+            # a size measured tip to tip across an axis says which axis
+            assert sf.get("partSpanAcross") == CRAFTS[name]["scale_from"].get("span_across")
             # a model true to its scale part only says so, and none of its entries states a span, unless the span is
             # the very dimension it is scaled from (the whole model's width, part null)
             assert (sf.get("trueTo") == "part") is (CRAFTS[name]["scale_from"].get("true_to") == "part")
@@ -185,6 +187,28 @@ def test_footpad_spacing_is_the_mean_distance_between_pads_seen_from_above() -> 
         mean_plan_distance([(0, 0, 0)])
 
 
+def test_a_rotor_span_is_the_largest_distance_across_its_mast() -> None:
+    from math import cos, radians, sin
+
+    from scripts.lookdev.hangar.geometry import max_plan_distance
+
+    # two coaxial two-blade rotors of 1.2 m on a mast along X, at different heights and blade angles, each blade a
+    # strip of points from the hub to its tip: tip to tip is 1.2 whatever the angles, and the heights do not count
+    pts = []
+    for height, angle in ((0.0, 20.0), (0.3, 115.0)):
+        for k in range(-30, 31):
+            r = 0.6 * k / 30
+            pts.append((height, r * cos(radians(angle)), r * sin(radians(angle))))
+    assert abs(max_plan_distance(pts, up=0) - 1.2) < 1e-9
+    # seen along another axis the same points measure something else (here the rotors' spacing plays in)
+    assert max_plan_distance(pts, up=2) != pytest.approx(1.2)
+    # a square's farthest pair is its diagonal, from the hull's corners alone
+    square = [(x, y, 0.0) for x in (0.0, 0.5, 1.0) for y in (0.0, 0.5, 1.0)]
+    assert abs(max_plan_distance(square) - 2**0.5) < 1e-9
+    with pytest.raises(ValueError):
+        max_plan_distance([(0.0, 1.0, 2.0), (5.0, 1.0, 2.0)], up=0)
+
+
 def test_the_frame_and_the_evidence_class() -> None:
     assert FACTS["evidenceClass"] == "simulated"
     assert FACTS["frame"] == {"forward": "+Z", "up": "+Y", "unit": "metre", "origin": "the centre of the part the scale is taken from"}
@@ -213,7 +237,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
-    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler"}
+    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity"}
     for e in FACTS["entries"]:
         if e["travel"] is not None:
             assert e["travel"]["speedKmS"] > 0

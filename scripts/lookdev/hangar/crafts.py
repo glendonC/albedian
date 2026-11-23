@@ -1631,6 +1631,66 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 2.6,
         "changes": "kepler",
     },
+    "ingenuity": {
+        "title": "Ingenuity",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-ingenuity-mars-helicopter",
+            "title": "Ingenuity Mars Helicopter, NASA 3D Resources",
+            "folder": "Ingenuity Mars Helicopter",
+            "file": "Ingenuity Mars Helicopter.glb",
+            "bytes": 2_019_408,
+            "sha256": "9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5",
+            "picture": "Ingenuity Mars Helicopter.png",
+            "picture_bytes": 562_286,
+            "picture_sha256": "65559a8dc72111c73c854cc41c09d953548771070fc2b3931e4e70d407e913dc",
+            "local": "ingenuity",
+        },
+        "drop_objects": [],
+        # The mast stands along +Z in the import frame, the solar panel on top facing +Z; the cameras sit on the
+        # fuselage's +X face. A helicopter has no front NASA names: flown with its cameras forward, mast up.
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # The two coaxial rotors measured tip to tip across the mast (the blades' largest distance seen along Z,
+        # whatever angle each blade stands at): 1.2085 units against NASA's "approximately 1.2 meters" tip to tip.
+        "scale_from": {
+            "material": "blades",
+            "span_across": "z",
+            "metres": 1.2,
+            "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/",
+            "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip",
+        },
+        # NASA's blade and solar panel texture (the blades' carbon fibre, the cells) and the fuselage's carbon fibre
+        # weave kept as the base colour with one roughness and no metalness; where the UVs fall in the blade texture
+        # there is no mark (its JPL logo, NASA insignia and US flag lie outside them). The cameras' photo texture,
+        # fully used, holds two small printed labels (a maker's name and model number, a part number), painted over
+        # in the colour around them. The metal parts keep NASA's own colour, metalness and roughness.
+        "materials": {
+            "blades": {"role": "textured", "image": "blade", "metallic": 0.0, "roughness": 0.45},
+            "chopper_sp": {"role": "textured", "image": "blade", "metallic": 0.0, "roughness": 0.25},
+            "carbon fiber": {"role": "textured", "image": "CarbonFiber_albedo2", "metallic": 0.0, "roughness": 0.45},
+            "binoculars": {
+                "role": "photo_atlas",
+                "image": "cameras_diff",
+                "paint_out": [
+                    {"box": (172, 285, 224, 310), "what": "a camera maker's name and model number"},
+                    {"box": (33, 195, 76, 300), "what": "a printed part number"},
+                ],
+            },
+            "aluminum": {"role": "pbr", "base": (0.965, 0.965, 0.965), "metallic": 1.0, "roughness": 0.277},
+            "foil_silver": {"role": "pbr", "base": (1.0, 1.0, 1.0), "metallic": 1.0, "roughness": 0.3},
+            "gold": {"role": "pbr", "base": (1.0, 0.631, 0.051), "metallic": 1.0, "roughness": 0.5},
+            "grey_brushed": {"role": "pbr", "base": (0.607, 0.607, 0.607), "metallic": 1.0, "roughness": 0.945},
+            "gunmetal": {"role": "pbr", "base": (0.301, 0.283, 0.283), "metallic": 1.0, "roughness": 0.35},
+            "gunmetal_dark": {"role": "pbr", "base": (0.083, 0.078, 0.078), "metallic": 1.0, "roughness": 0.55},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # Half the rotors' span.
+        "body_radius_m": 0.6,
+        "changes": "ingenuity",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2192,6 +2252,21 @@ HANGAR: list[dict] = [
             {"key": "heightM", "value": 4.7, "page": "https://www.jpl.nasa.gov/news/press_kits/Kepler-presskit-2-19-smfile.pdf", "quote": "Dimensions: The overall size is about 2.7 meters (nine feet) in diameter and 4.7 meters (15.3 feet) high."},
             {"key": "mirrorDiameterM", "value": 1.4, "page": "https://science.nasa.gov/mission/kepler/", "quote": "The diameter of the telescope’s mirror was 4 feet, 7 inches (1.4 meters), one of the largest mirrors beyond Earth orbit."},
             {"key": "missionEnd", "value": "2018-10-30", "page": "https://science.nasa.gov/mission/kepler/in-depth/", "quote": "On Oct. 30, 2018, after nine years in deep space collecting data, NASA announced that Kepler had run out of fuel."},
+        ],
+    },
+    {
+        # Ingenuity rode to Mars under Perseverance and flew in its thin air: no speed between stars. Every fact is the
+        # mission page's (its Tech Specs rows, its Landed field, its two flight dates).
+        "id": "ingenuity",
+        "name": "Ingenuity",
+        "model": "ingenuity",
+        "travel": None,
+        "facts": [
+            {"key": "landedOnMars", "value": "2021-02-18", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "Feb. 18, 2021, Jezero Crater, Mars"},
+            {"key": "firstFlight", "value": "2021-04-19", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "On April 19, 2021, NASA's Ingenuity Mars Helicopter made history when it completed the first powered, controlled flight on the Red Planet."},
+            {"key": "lastFlight", "value": "2024-01-18", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "It flew for the last time on Jan. 18, 2024."},
+            {"key": "massKg", "value": 1.8, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "3.97 pounds (1.8 kilograms)"},
+            {"key": "rotorSpanM", "value": 1.2, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/", "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip"},
         ],
     },
 ]

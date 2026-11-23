@@ -656,7 +656,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "957cb94c99bdf127f210813b9e5d7fe91add62213b3b02e7a60bd27df23c5c32",
+      "sha256": "545bc7951722d429ac4ea718e2751f7a504a8854e20403977b61adcd3fd59859",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -785,6 +785,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Interstellar%20Boundary%20Explorer%20%28IBEX%29/Interstellar%20Boundary%20Explorer%20%28IBEX%29.png (627844 bytes, SHA-256 04d8c93ff8d444d4085a2471f97f0c3a1bf44da6ad2f94543989b5aad51ca570)."
+    },
+    {
+      "path": "hangar/ingenuity/ingenuity_lod0.glb",
+      "sha256": "2308cf557d9e99ccde556f93909aa25ce6f6eb27e59c93d0362a65ed398ff07e",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no metalness, the cameras' photo texture given metalness, roughness and surface relief from its own colours with two small printed labels painted over in the colour around them, NASA's own colour, metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ingenuity/ingenuity_lod1.glb",
+      "sha256": "35555a4aa1f7338dda53d8d11c5e58f40416472aaff8e94afd5bf5a03badb814",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ingenuity/ingenuity_lod2.glb",
+      "sha256": "86df2ebba69f52d8323b5f8290b30ff9faf8a53d28cb044b2783245573188cc6",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ingenuity/ingenuity_picker.webp",
+      "sha256": "14a0603510a59a9a9e7d834bfdaa7f882a462da139105eab70fcae80c772d91f",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.png (562286 bytes, SHA-256 65559a8dc72111c73c854cc41c09d953548771070fc2b3931e4e70d407e913dc)."
     },
     {
       "path": "hangar/iss/iss_lod0.glb",

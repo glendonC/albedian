@@ -148,6 +148,9 @@ def build_facts(models: list[str]) -> dict:
         if sf.get("pads"):
             # the size is the mean spacing, seen from above, of that many lowest loose parts of the material (footpads)
             scale_from["partPads"] = sf["pads"]
+        if sf.get("span_across"):
+            # the size is the material's largest extent seen along that axis of NASA's import frame (rotors tip to tip)
+            scale_from["partSpanAcross"] = sf["span_across"]
         if sf.get("quoted_cm") is not None:
             scale_from["quotedCm"] = sf["quoted_cm"]
         if sf.get("quoted_ft") is not None:
