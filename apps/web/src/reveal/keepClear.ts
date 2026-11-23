@@ -12,6 +12,7 @@ export const REVEAL_KEEP_CLEAR = [
   '.reveal-nav .sound-control',
   '.ask-bar',
   '.reveal-phone-top button[aria-label="Close"]',
+  '.reveal-phone-top .look-views',
   // On the phone the counts block is the reveal's block of words (UIUX-keepclear-READY.md, its last section), and the
   // estimate's block holds it (UIUX-tagphone-READY.md item A)
   '[data-testid="reveal-phone-estimate"]',
@@ -58,6 +59,19 @@ export function blockBoxOf(block: Element): Box[] {
 
 const sameBoxes = (a: readonly Box[], b: readonly Box[]) =>
   a.length === b.length && a.every((box, i) => box.x0 === b[i]!.x0 && box.x1 === b[i]!.x1 && box.y0 === b[i]!.y0 && box.y1 === b[i]!.y1);
+
+/**
+ * How far the phone reveal's scrolling container has scrolled (D38 item 1, D36 item 5): read from the container's own
+ * scrollTop when mounted, else from --phone-scroll when set on the document root. Zero at rest or off the phone.
+ */
+export function phoneRevealScrollPx(): number {
+  if (typeof document === 'undefined') return 0;
+  const scroller = document.querySelector<HTMLElement>('.reveal-photo.is-phone.is-scroll');
+  if (scroller) return Math.max(0, scroller.scrollTop);
+  if (!document.documentElement.hasAttribute('data-phone-scroll')) return 0;
+  const raw = parseFloat(document.documentElement.style.getPropertyValue('--phone-scroll'));
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
 
 /**
  * The boxes of the places to keep clear of, measured after each render while marks are drawn (the column's height

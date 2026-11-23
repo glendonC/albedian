@@ -2,10 +2,12 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pixelToWorldWCS } from '@albedian/camera-rig';
 import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample, POSE } from '../../components/__tests__/poseSessions.js';
 import { ALIGN_RING_PX, placeMarks } from '../AlignLayer.js';
 import type { AlignPose } from '../alignPose.js';
+import { parseDeepSkyTable } from '../deepSky.js';
 import type { EarlyPose } from '../earlyPose.js';
 import { KEEP_CLEAR_BLOCKS, REVEAL_KEEP_CLEAR, useKeepClear } from '../keepClear.js';
 import { lockOnPlan, rememberWorkingClear } from '../lockOn.js';
@@ -474,6 +476,213 @@ describe("the phone's counts are a control too", () => {
       expect(JSON.parse(container.querySelector('output')!.getAttribute('data-boxes')!), testid).toEqual([{ x0: 24, x1: 366, y0: 654, y1: 690 }]);
       act(() => root.render(createElement('div')));
       block.remove();
+      vi.restoreAllMocks();
+    }
+  });
+});
+
+// phonescroll-keepclear-1 (UIUX/built-main-bedf.md Drift 2): .reveal-phone-top .look-views joins REVEAL_KEEP_CLEAR and
+// phone scroll (scrollTop / --phone-scroll) shifts viewport keep-clear boxes into the scrolling reveal's coordinate space
+// so scrolling to Restore never paints rings or star names across Close, Real sky and 3D (top 60..104).
+describe('phone reveal scroll keeps rings and names clear of Close and the view pills (phonescroll-keepclear-1)', () => {
+  it('keeps clear of the phone view pills whole, not as a status block', () => {
+    expect(REVEAL_KEEP_CLEAR).toContain('.reveal-phone-top .look-views');
+    expect(KEEP_CLEAR_BLOCKS).not.toContain('.reveal-phone-top .look-views');
+  });
+
+  it('shifts viewport clear boxes by scrollTopPx or --phone-scroll for phone revealMarks, hiding rings and names scrolled under top 60..104', () => {
+    const base = poseSession(sample('plate_calibrated'));
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    // In a 960x540 photo shown at 390x844 (scale 390/960 = 0.40625, topPx = (844 - 219.375)/2 = 312.31):
+    // adjust sourceAsset to portrait 390x844 so photo pixel === unscrolled container pixel!
+    const portrait: ObservationSession = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, width: 390, height: 844 },
+      observationSolution: {
+        ...base.observationSolution!,
+        findings: [
+          {
+            ...template,
+            id: 'finding-under-views',
+            title: 'Acrux',
+            sourceDetection: { ...template.sourceDetection!, xPx: 220, yPx: 175 },
+            catalogRef: { ...template.catalogRef!, commonName: 'Acrux', catalogSourceId: 'HIP 60718', apparentMagnitude: 0.77 },
+          },
+          {
+            ...template,
+            id: 'finding-name-hits-views',
+            title: 'Hadar',
+            // Mark at x 110, y 175 clears .look-views (x 140..370), while its phone nameBox (x 123..157) crosses x 140..370 when scrolled by 92!
+            sourceDetection: { ...template.sourceDetection!, xPx: 110, yPx: 175 },
+            catalogRef: { ...template.catalogRef!, commonName: 'Hadar', catalogSourceId: 'HIP 68702', apparentMagnitude: 0.61 },
+          },
+          {
+            ...template,
+            id: 'finding-safe-below',
+            title: 'Mimosa',
+            sourceDetection: { ...template.sourceDetection!, xPx: 220, yPx: 320 },
+            catalogRef: { ...template.catalogRef!, commonName: 'Mimosa', catalogSourceId: 'HIP 62434', apparentMagnitude: 1.25 },
+          },
+        ],
+      } as ObservationSession['observationSolution'],
+    };
+    const topViews = { x0: 140, x1: 370, y0: 60, y1: 104 };
+
+    // At rest (scroll 0): y 175 is well below 60..104, so all three marks and their right-side names show
+    const atRest = revealMarks(portrait, 390, 844, { phone: true, clear: [topViews] });
+    expect(atRest.map((m) => [m.finding.title, m.name, m.nameOnLeft])).toEqual([
+      ['Acrux', 'Acrux', false],
+      ['Hadar', 'Hadar', false],
+      ['Mimosa', 'Mimosa', false],
+    ]);
+
+    // Scrolled 92 px via scrollTopPx: y 175 sits at viewport y 83 (inside 60..104), so Acrux's mark hides and Hadar's name flips left
+    const scrolled = revealMarks(portrait, 390, 844, { phone: true, clear: [topViews], scrollTopPx: 92 });
+    expect(scrolled.map((m) => [m.finding.title, m.name, m.nameOnLeft])).toEqual([
+      ['Hadar', 'Hadar', true],
+      ['Mimosa', 'Mimosa', false],
+    ]);
+
+    // Picked star still keeps its mark when scrolled under top controls (D33)
+    const pickedScrolled = revealMarks({ ...portrait, selectedFindingId: 'finding-under-views' }, 390, 844, { phone: true, clear: [topViews], scrollTopPx: 92 });
+    expect(pickedScrolled.some((m) => m.finding.id === 'finding-under-views')).toBe(true);
+
+    // Deep-sky names (such as "Pearl Cluster") also flip or yield when phone scroll brings them into .look-views
+    const wcs = base.observationSolution!.wcs!;
+    // Base 960x540 at 390x844 has topPx 312.31, scale 0.40625: u = 290 -> xPx ~118; v = 55 -> yPx ~335; with scrollTopPx 250,
+    // topViews y 60..104 shifts to 310..354, overlapping Pearl Cluster's right-side nameBox (x ~128..208 vs x 140..370) while clearing its symbol at x ~118
+    const pearlSky = pixelToWorldWCS(290, 55, wcs);
+    const table = parseDeepSkyTable({
+      format: 'albedian.deep-sky-catalog',
+      formatVersion: 1,
+      release: 'OpenNGC v20260501',
+      columns: ['name', 'type', 'raDeg', 'decDeg', 'constellation', 'bMag', 'vMag', 'commonNames'],
+      rows: [['NGC3766', 'OCl', pearlSky.raDeg, pearlSky.decDeg, 'Cen', 5.3, 5.3, ['Pearl Cluster']]],
+    })!;
+    const withPearl: ObservationSession = {
+      ...base,
+      observationSolution: {
+        ...base.observationSolution!,
+        findings: [
+          {
+            ...template,
+            id: 'finding-openngc-NGC3766',
+            title: 'Pearl Cluster',
+            evidenceClass: 'predicted',
+            sourceDetection: undefined,
+            inferredDistancePc: undefined,
+            skyPosition: { ...template.skyPosition!, raDeg: pearlSky.raDeg, decDeg: pearlSky.decDeg },
+            catalogRef: {
+              id: 'openngc-NGC3766',
+              provider: 'OpenNGC',
+              releaseVersion: 'OpenNGC v20260501',
+              catalogSourceId: 'NGC3766',
+              commonName: 'Pearl Cluster',
+              constellation: 'Cen',
+              objectType: 'deep_sky',
+              coordinateEpoch: 'J2000.0',
+              raDeg: pearlSky.raDeg,
+              decDeg: pearlSky.decDeg,
+              apparentMagnitude: 5.3,
+            },
+          } as CelestialFinding,
+        ],
+      } as ObservationSolution,
+    };
+    expect(revealMarks(withPearl, 390, 844, { phone: true, deepSky: table, clear: [topViews] })[0]!.nameOnLeft).toBe(false);
+    expect(revealMarks(withPearl, 390, 844, { phone: true, deepSky: table, clear: [topViews], scrollTopPx: 250 })[0]!.nameOnLeft).toBe(true);
+
+    // Off the phone, --phone-scroll is ignored; on the phone, :root[data-phone-scroll] --phone-scroll is read when no scroller is mounted
+    document.documentElement.dataset.phoneScroll = '';
+    document.documentElement.style.setProperty('--phone-scroll', '92px');
+    try {
+      expect(revealMarks(portrait, 390, 844, { phone: true, clear: [topViews] }).map((m) => m.finding.title)).toEqual(['Hadar', 'Mimosa']);
+      expect(revealMarks(portrait, 390, 844, { phone: false, clear: [topViews] }).map((m) => m.finding.title)).toEqual(['Acrux', 'Hadar', 'Mimosa']);
+    } finally {
+      delete document.documentElement.dataset.phoneScroll;
+      document.documentElement.style.removeProperty('--phone-scroll');
+    }
+  });
+
+  it('hides marks scrolled under Close and .look-views in RevealPhoto at phone width and restores them when scrolled back', () => {
+    const topBar = document.createElement('div');
+    topBar.className = 'reveal-phone-top';
+    topBar.innerHTML = '<button type="button" aria-label="Close"></button><div class="look-views"></div>';
+    document.body.appendChild(topBar);
+
+    const base = poseSession(sample('plate_calibrated'));
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    const session: ObservationSession = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, width: 390, height: 844 },
+      observationSolution: {
+        ...base.observationSolution!,
+        findings: [
+          {
+            ...template,
+            id: 'finding-under-close',
+            title: 'Rigel',
+            sourceDetection: { ...template.sourceDetection!, xPx: 42, yPx: 175 },
+            catalogRef: { ...template.catalogRef!, commonName: 'Rigel', catalogSourceId: 'HIP 24436', apparentMagnitude: 0.13 },
+          },
+          {
+            ...template,
+            id: 'finding-under-views',
+            title: 'Acrux',
+            sourceDetection: { ...template.sourceDetection!, xPx: 240, yPx: 175 },
+            catalogRef: { ...template.catalogRef!, commonName: 'Acrux', catalogSourceId: 'HIP 60718', apparentMagnitude: 0.77 },
+          },
+          {
+            ...template,
+            id: 'finding-mid-photo',
+            title: 'Mimosa',
+            sourceDetection: { ...template.sourceDetection!, xPx: 200, yPx: 360 },
+            catalogRef: { ...template.catalogRef!, commonName: 'Mimosa', catalogSourceId: 'HIP 62434', apparentMagnitude: 1.25 },
+          },
+        ],
+      } as ObservationSession['observationSolution'],
+    };
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.matches('.reveal-phone-top button[aria-label="Close"]')) return rectOf({ left: 20, top: 60, right: 64, bottom: 104 });
+      if (this.matches('.reveal-phone-top .look-views')) return rectOf({ left: 140, top: 60, right: 370, bottom: 104 });
+      return rectOf(NONE);
+    });
+
+    try {
+      act(() =>
+        root.render(
+          createElement(RevealPhoto, {
+            session,
+            phone: true,
+            restoration: { phase: 'idle' },
+            onRestore: () => {},
+            onSelectFinding: () => {},
+            onHome: () => {},
+            viewportWidthPx: 390,
+            viewportHeightPx: 844,
+          })
+        )
+      );
+      const scroller = container.querySelector<HTMLElement>('.reveal-photo.is-phone.is-scroll')!;
+      expect(scroller).not.toBeNull();
+      const shownIds = () => [...container.querySelectorAll('[data-testid^="reveal-mark-"]')].map((el) => el.getAttribute('data-testid')!.slice('reveal-mark-'.length));
+
+      expect(shownIds()).toEqual(['finding-under-close', 'finding-under-views', 'finding-mid-photo']);
+
+      Object.defineProperty(scroller, 'scrollTop', { value: 92, writable: true, configurable: true });
+      act(() => {
+        scroller.dispatchEvent(new Event('scroll'));
+      });
+      expect(shownIds()).toEqual(['finding-mid-photo']);
+
+      scroller.scrollTop = 0;
+      act(() => {
+        scroller.dispatchEvent(new Event('scroll'));
+      });
+      expect(shownIds()).toEqual(['finding-under-close', 'finding-under-views', 'finding-mid-photo']);
+    } finally {
+      topBar.remove();
       vi.restoreAllMocks();
     }
   });
