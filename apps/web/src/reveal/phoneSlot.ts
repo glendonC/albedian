@@ -27,12 +27,21 @@ const ENDS_FADE_PX = 40;
 
 /**
  * The slot written as the crop the photo stage and every mark already read (zoom about the fitted photo's centre, pan
- * as fractions of its size): the photo covers the slot, centred on it, as small as covering allows.
+ * as fractions of its size): a photo covers the slot, centred on it, as small as covering allows; a clip fits inside
+ * the slot without cropping, centred at (viewportWidthPx / 2, 378) (D16, UIUX-clipphone-READY.md section 1) [verified].
  */
-export function phoneSlotCrop(shownWidthPx: number, shownHeightPx: number, viewportWidthPx: number, viewportHeightPx: number): PhotoCrop {
+export function phoneSlotCrop(
+  shownWidthPx: number,
+  shownHeightPx: number,
+  viewportWidthPx: number,
+  viewportHeightPx: number,
+  mediaKind?: 'image' | 'video'
+): PhotoCrop {
   const fitted = fitSourceToViewport(shownWidthPx, shownHeightPx, viewportWidthPx, viewportHeightPx);
-  const scale = Math.max(viewportWidthPx / Math.max(1, shownWidthPx), PHONE_SLOT.heightPx / Math.max(1, shownHeightPx));
-  const width = Math.max(1, shownWidthPx) * scale;
+  const w = Math.max(1, shownWidthPx);
+  const h = Math.max(1, shownHeightPx);
+  const scale = mediaKind === 'video' ? Math.min(viewportWidthPx / w, PHONE_SLOT.heightPx / h) : Math.max(viewportWidthPx / w, PHONE_SLOT.heightPx / h);
+  const width = w * scale;
   const centreX = viewportWidthPx / 2;
   const centreY = PHONE_SLOT.topPx + PHONE_SLOT.heightPx / 2;
   return {

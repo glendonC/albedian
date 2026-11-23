@@ -841,7 +841,7 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(q('[data-testid="clip-player"]')).toBeNull();
   });
 
-  it('shows no player for a photo, no shade for a tall clip, and none on a phone', () => {
+  it('shows no player for a photo and no shade for a tall clip on the laptop', () => {
     open(storedPhoto());
     expect(q('[data-testid="clip-player"]')).toBeNull();
     expect(q('.clip-shade')).toBeNull();
@@ -854,11 +854,85 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(q('.clip-shade')).toBeNull();
     // A tall clip stands in the photo's column, with its corners, as a photo does
     expect(q('svg.photo-corners')).not.toBeNull();
+  });
+
+  it('frames a clip inside the phone slot without fade or shade and shows D16 at phone width except under a card, aligning, or sky views', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+
+    // Phone working screen on a clip: fitted inside 390x520 centred at y 378, with no endsMask
+    const baseClip = clip();
+    renderViewport(baseClip, { uploadedMediaUrl: 'blob:clip', arrival: arrival({ widthPx: 1920, heightPx: 1080 }) });
+    const workVideo = q(`${STAGE} video`) as HTMLVideoElement;
+    expect(parseFloat(workVideo.style.left)).toBeCloseTo(0, 4);
+    expect(parseFloat(workVideo.style.width)).toBeCloseTo(390, 4);
+    expect(parseFloat(workVideo.style.height)).toBeCloseTo(219.375, 4);
+    expect(parseFloat(workVideo.style.top)).toBeCloseTo(378 - 219.375 / 2, 4);
+    expect(workVideo.style.maskImage || workVideo.style.getPropertyValue('-webkit-mask-image')).toBe('');
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+
+    // Phone reveal on "Your clip": D16 player at phone width, no endsMask, no .clip-shade, no corners, "Your clip" pill
     act(() => root.unmount());
     root = createRoot(container);
-    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
-    open(clip());
+    open(baseClip);
+    const revVideo = q(`${STAGE} video`) as HTMLVideoElement;
+    expect(parseFloat(revVideo.style.top)).toBeCloseTo(268.3125, 4);
+    expect(parseFloat(revVideo.style.height)).toBeCloseTo(219.375, 4);
+    expect(revVideo.style.maskImage || revVideo.style.getPropertyValue('-webkit-mask-image')).toBe('');
+    expect(q('.clip-shade')).toBeNull();
+    expect(q('svg.photo-corners')).toBeNull();
+    expect([...q('.reveal-phone-top')!.querySelectorAll('[role="group"] button')].map((b) => b.textContent)).toEqual(['Your clip', 'Real sky', '3D']);
+    const player = q('[data-testid="clip-player"]')!;
+    expect(player.className).toBe('clip-player is-phone');
+    expect(player.querySelector('button.look-icon')!.className).toContain('look-size-phone');
+
+    // Picked star's card sheet hides the phone player
+    const starId = baseClip.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!.id;
+    renderViewport({ ...baseClip, selectedFindingId: starId } as ObservationSession);
+    expect(q('[data-testid="star-card"]')).not.toBeNull();
     expect(q('[data-testid="clip-player"]')).toBeNull();
+
+    // Real sky hides the player and draws viewfinder corners on the clip's fitted slot rect
+    renderViewport({ ...baseClip, spatialView: { ...baseClip.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+    expect([...container.querySelectorAll('svg.photo-corners path')].map((p) => p.getAttribute('d'))).toEqual(
+      cornerPaths({ leftPx: 0, topPx: 268.3125, widthPx: 390, heightPx: 219.375 })
+    );
+
+    // 3D flight and D33 predicted sky hide the player
+    const inFlight = thereFrom({ ...baseClip, selectedFindingId: starId } as ObservationSession);
+    renderViewport(inFlight);
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+    const onPredSky = {
+      ...baseClip,
+      observationSolution: { ...PREDICTED_ONLY, poseEstimate: undefined },
+      spatialView: { ...baseClip.spatialView, mode: 'registered_sky' },
+    } as ObservationSession;
+    renderViewport(onPredSky);
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+
+    // Line it up yourself on a no-match clip hides the player while aligning, and Close cancels aligning
+    const unmatchedClip = {
+      ...baseClip,
+      sourceAsset: {
+        ...baseClip.sourceAsset!,
+        capturedAtUTC: '2031-05-02T05:00:00Z',
+        observerLocation: { latDeg: 35, lonDeg: -116 },
+        cameraMetadata: { focalLength35mmMm: 26 },
+      },
+      observationSolution: { ...PREDICTED_ONLY, poseEstimate: undefined, findings: POSE.findings },
+    } as ObservationSession;
+    renderViewport(unmatchedClip, { onSolveFromHere: noop });
+    expect(q('[data-testid="clip-player"]')).not.toBeNull();
+    const alignBtn = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Line it up yourself') as HTMLButtonElement;
+    act(() => alignBtn.click());
+    expect(q('.align-phone')).not.toBeNull();
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+    act(() => (q('.reveal-phone-top button[aria-label="Close"]') as HTMLButtonElement).click());
+    expect(q('.align-phone')).toBeNull();
+    expect(q('[data-testid="clip-player"]')).not.toBeNull();
+    delete document.documentElement.dataset.phoneScroll;
   });
 
   it('draws the approved card for the picked star, and not the old card', () => {

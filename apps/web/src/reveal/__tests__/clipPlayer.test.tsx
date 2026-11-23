@@ -222,4 +222,23 @@ describe("the clip player's rules are the design lane's page", () => {
     });
     expect(declarationsOf('.clip-player__line:focus-visible')).toEqual({ outline: 'var(--look-focus-width) solid var(--look-ink)', 'outline-offset': 'var(--look-focus-offset)' });
   });
+
+  it('places D16 at phone width at top 676 with 24 px gutters, 44 px height, 18 px icon, and scroll translation', () => {
+    show({ phone: true });
+    expect(q('.clip-player')!.className).toBe('clip-player is-phone');
+    expect(q('.clip-player button.look-icon')!.className).toContain('look-size-phone');
+    expect(declarationsOf('.clip-player.is-phone')).toEqual({
+      left: '24px',
+      right: '24px',
+      top: '676px',
+      bottom: 'auto',
+      width: 'auto',
+      transform: 'none',
+    });
+    expect(declarationsOf('.clip-player.is-phone .look-icon')).toEqual({ '--look-ic': '18px' });
+    expect(declarationsOf('.clip-player.is-phone .clip-player__line')).toEqual({ height: '44px' });
+    expect(declarationsOf(':root[data-phone-scroll] .clip-player.is-phone')).toEqual({
+      translate: '0 calc(-1 * var(--phone-scroll, 0px))',
+    });
+  });
 });

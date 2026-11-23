@@ -1115,6 +1115,29 @@
   white-space: nowrap;
 }
 
+/* D16 at phone width (UIUX-clipphone-READY.md section 2; cp-pause.html:124): 24 px from the sides, top 676, 44 px high,
+   moving with the video and Ask out loud when the screen scrolls [verified] */
+.clip-player.is-phone {
+  left: 24px;
+  right: 24px;
+  top: 676px;
+  bottom: auto;
+  width: auto;
+  transform: none;
+}
+
+.clip-player.is-phone .look-icon {
+  --look-ic: 18px;
+}
+
+.clip-player.is-phone .clip-player__line {
+  height: 44px;
+}
+
+:root[data-phone-scroll] .clip-player.is-phone {
+  translate: 0 calc(-1 * var(--phone-scroll, 0px));
+}
+
 /* A clip wider than the photo column: its sides shaded as Real sky's are (INTERIM: UIUX-clip-QUESTION.md) */
 .clip-shade {
   position: fixed;

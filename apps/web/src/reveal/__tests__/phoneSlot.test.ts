@@ -38,6 +38,38 @@ describe('phoneSlotCrop: the photo covering the slot', () => {
       SEED
     );
   });
+
+  it('fits a clip inside the 390 by 520 slot without cropping, centred at y 378 (D16, UIUX-clipphone-READY.md section 1)', () => {
+    const wide = sourcePhotoDisplayRect(1920, 1080, 390, 844, phoneSlotCrop(1920, 1080, 390, 844, 'video'));
+    expect(wide.leftPx).toBeCloseTo(0, 6);
+    expect(wide.widthPx).toBeCloseTo(390, 6);
+    expect(wide.heightPx).toBeCloseTo(219.375, 6);
+    expect(wide.topPx).toBeCloseTo(378 - 219.375 / 2, 6);
+
+    const tall = sourcePhotoDisplayRect(1080, 1920, 390, 844, phoneSlotCrop(1080, 1920, 390, 844, 'video'));
+    expect(tall.topPx).toBeCloseTo(118, 6);
+    expect(tall.heightPx).toBeCloseTo(520, 6);
+    expect(tall.widthPx).toBeCloseTo(292.5, 6);
+    expect(tall.leftPx).toBeCloseTo((390 - 292.5) / 2, 6);
+
+    fc.assert(
+      fc.property(fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 320, max: 480 }), fc.integer({ min: 640, max: 960 }), (w, h, viewW, viewH) => {
+        const rect = sourcePhotoDisplayRect(w, h, viewW, viewH, phoneSlotCrop(w, h, viewW, viewH, 'video'));
+        const tol = 1e-6;
+        expect(rect.leftPx).toBeGreaterThanOrEqual(-tol);
+        expect(rect.leftPx + rect.widthPx).toBeLessThanOrEqual(viewW + tol);
+        expect(rect.topPx).toBeGreaterThanOrEqual(PHONE_SLOT.topPx - tol);
+        expect(rect.topPx + rect.heightPx).toBeLessThanOrEqual(PHONE_SLOT.topPx + PHONE_SLOT.heightPx + tol);
+        const fitsWidth = Math.abs(rect.widthPx - viewW) < 1e-5;
+        const fitsHeight = Math.abs(rect.heightPx - PHONE_SLOT.heightPx) < 1e-5;
+        expect(fitsWidth || fitsHeight).toBe(true);
+        expect(rect.widthPx / rect.heightPx).toBeCloseTo(w / h, 5);
+        expect(rect.leftPx + rect.widthPx / 2).toBeCloseTo(viewW / 2, 5);
+        expect(rect.topPx + rect.heightPx / 2).toBeCloseTo(PHONE_SLOT.topPx + PHONE_SLOT.heightPx / 2, 5);
+      }),
+      SEED
+    );
+  });
 });
 
 describe('phoneEndsMask: the slot\'s top and bottom fading, nothing outside it', () => {

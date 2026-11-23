@@ -519,10 +519,12 @@ export const SpatialObservatoryViewport: React.FC<
     if (view === '3d' && pickedFinding && threeDOpens && !flightShown) onRunUtterance(`Take me to ${pickedFinding.title}`, 'pointer');
   };
 
-  // A clip's player over the reveal (INTERIM: UIUX-clip-QUESTION.md): the clip's own element, and where it stops sets the
-  // session's clock through the reducer, so what the reveal draws follows the frame on screen
+  // A clip's player over the reveal (D16, UIUX-clipphone-READY.md section 2): the clip's own element, and where it stops
+  // sets the session's clock through the reducer, so what the reveal draws follows the frame on screen; at phone width
+  // hidden while aligning or while a picked star's card sheet covers the lower screen [verified]
   const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
-  const clipShown = !phone && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
+  const clipOnReveal = !entryStageActive && !arrival && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
+  const clipShown = clipOnReveal && (!phone || (!phoneAligning && pickedFinding === null));
   // The first view pill names the recording's kind, as every result sentence does (C16)
   const firstViewLabel = session.sourceAsset?.mediaKind === 'video' ? 'Your clip' : 'Your photo';
   const seekClip = (sec: number) =>
@@ -549,24 +551,24 @@ export const SpatialObservatoryViewport: React.FC<
       clipVideo.removeEventListener('pause', onPause);
     };
   }, [clipVideo]);
-  // A clip wider than the reveal's photo column is shaded at the sides as Real sky is, so the words beside it stay legible
-  const clipShaded = clipShown && session.sourceAsset !== undefined && (() => {
+  // A clip wider than the reveal's photo column on the laptop is shaded at the sides as Real sky is, so the words beside it stay legible; omitted on a phone clip (D16)
+  const clipShaded = !phone && clipOnReveal && session.sourceAsset !== undefined && (() => {
     const shown = orientedSize(session.sourceAsset!.width, session.sourceAsset!.height, session.sourceAsset!.displayOrientation);
     return shown.widthPx / Math.max(1, shown.heightPx) > CLIP_COLUMN_PX / Math.max(1, windowSize.heightPx);
   })();
 
-  // At phone width the photo covers its slot: written as the crop the stage and every mark read, its ends faded
-  // The working screen at phone width keeps the photo in the reveal's slot (D2, jp-run)
+  // At phone width a photo covers its slot with its ends faded, while a clip fits inside it crisp with no endsMask (D16) [verified]
+  // The working screen at phone width keeps the upload in the reveal's slot (D2, jp-run)
   const phoneWorking = phone && !entryStageActive && arrival !== null;
   const slotted: ObservationSession = (() => {
     const asset = session.sourceAsset;
     if (!(phoneReveal || phoneWorking) || !asset) return session;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
-    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx) } } as ObservationSession;
+    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, asset.mediaKind) } } as ObservationSession;
   })();
   const slotMask = (() => {
     const asset = session.sourceAsset;
-    if (!(phoneReveal || phoneWorking) || !asset) return undefined;
+    if (!(phoneReveal || phoneWorking) || !asset || asset.mediaKind === 'video') return undefined;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
     return phoneEndsMask(sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, slotted.cropTransform));
   })();
@@ -698,7 +700,7 @@ export const SpatialObservatoryViewport: React.FC<
               clipVideo={clipVideo}
               onSolveFromHere={onSolveFromHere}
               alignedFrom={alignedFrom}
-              session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
+              session={clipOnReveal && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
               onAligningChange={setPhoneAligning}
               onPhoneFootChange={setPhoneFoot}
@@ -923,7 +925,7 @@ export const SpatialObservatoryViewport: React.FC<
         />
       )}
       {clipShown && session.sourceAsset && (
-        <ClipPlayer video={clipVideo} durationSec={session.sourceAsset.durationMs / 1000} onSeek={seekClip} />
+        <ClipPlayer video={clipVideo} durationSec={session.sourceAsset.durationMs / 1000} onSeek={seekClip} phone={phone} />
       )}
 
       {/* The phone reveal's top row (reveal, approved, iPhone 1): a 44 pt close circle, home as the laptop's logo, and the views */}

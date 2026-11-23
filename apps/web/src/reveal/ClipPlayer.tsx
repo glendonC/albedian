@@ -26,10 +26,11 @@ const STEP_SEC = 1;
  * holding and moving drags through the clip, the arrows step one second. Where it stops, the session's clock is set
  * through the reducer (onSeek), so what the reveal draws follows the frame on screen.
  */
-export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec: number; onSeek: (sec: number) => void }> = ({
+export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec: number; onSeek: (sec: number) => void; phone?: boolean }> = ({
   video,
   durationSec,
   onSeek,
+  phone = false,
 }) => {
   const [time, setTime] = useState(video?.currentTime ?? 0);
   const [playing, setPlaying] = useState(video ? !video.paused : false);
@@ -78,8 +79,8 @@ export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec:
   const place = `${fraction * 100}%`;
 
   return (
-    <div className="clip-player" data-hud-interactive="true" data-testid="clip-player">
-      <IconButton label={playing ? 'Pause' : 'Play'} icon={playing ? 'pause' : 'play'} onClick={toggle} />
+    <div className={phone ? 'clip-player is-phone' : 'clip-player'} data-hud-interactive="true" data-testid="clip-player">
+      <IconButton label={playing ? 'Pause' : 'Play'} icon={playing ? 'pause' : 'play'} size={phone ? 'phone' : undefined} onClick={toggle} />
       <div
         className="clip-player__line"
         role="slider"
