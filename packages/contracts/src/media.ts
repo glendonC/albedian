@@ -607,6 +607,8 @@ export const FAILURE_SENTENCES = [
   'The server stopped before this job finished.',
   // Review row C20 (restore-8e): a photo whose colour profile cannot be rebuilt
   "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
+  // Review row C36 (nearblack-0, decided by the lead on 2026-11-23): a photo whose darkest quarter sits on black
+  "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.",
 ] as const;
 /** The plain sentences a record's notes may hold [proposed, each from the requirement named in design section 14]. */
 export const NOTES = [

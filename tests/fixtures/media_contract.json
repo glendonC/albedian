@@ -208,7 +208,8 @@
       "The restoration stopped at its time limit.",
       "The restoration stopped on an internal error.",
       "The server stopped before this job finished.",
-      "Your photo's colour profile cannot be carried into a restored copy, so it was not restored."
+      "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
+      "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored."
     ],
     "notes": [
       "The noise could not be measured, so no noise reduction ran and the lift is held by the quantisation bound alone.",
