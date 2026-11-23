@@ -150,4 +150,12 @@ describe('the Predicted tag through the phone restoration (the tag rule)', () =>
     });
     expect(declarationsOf('.restore-phone-why__lead')).toEqual({ display: 'flex', 'flex-direction': 'column', 'align-items': 'flex-start', 'margin-bottom': '4px' });
   });
+
+  // d38tag-2, the 16:19 record's rest: "The photo's darkening follows the block (D19): 82 percent black from 44 px above
+  // the block's top down to it, so the words never sit on bare stars however tall the block grows"
+  it("darkens the photo behind the wait's block and a stop's block as D19 darkens behind the phone answer", () => {
+    const d19 = declarationsOf('.reveal-answer.is-phone::before');
+    expect(declarationsOf('.restore-phone-lead::before, .restore-phone-why::before')).toEqual(d19);
+    expect(d19).toMatchObject({ top: '-44px', bottom: '0', 'z-index': '-1', background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px)' });
+  });
 });
