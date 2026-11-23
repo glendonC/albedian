@@ -301,6 +301,65 @@
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.png (1146299 bytes, SHA-256 7632863af6268eb8c7c7de32fead0d440464b726b41f92a37044a4d8f15eafe8)."
     },
     {
+      "path": "hangar/clementine/clementine_lod0.glb",
+      "sha256": "42ae7d41619e53010e423959922724fe54bae356b9c7aac565a7c69f87d2851d",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft clementine --out apps/web/public/models/hangar/clementine",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and gold foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and a printed part number and two small wiring labels in unused texture space painted over in the colour around them, the silver foil made metal foil, the solar wings keeping their texture with one roughness and no metalness, the top cover, dish and hinges painted white or grey with NASA's baked shading moved to the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Clementine/Clementine.glb (3025380 bytes, SHA-256 b9d7ed6d3da4c19cce5efcfe72ebf16dc51bcf2375312c76083977f1663cd300); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/clementine/clementine_lod1.glb",
+      "sha256": "75a56c37f3841f5861dc23731e3ea561dbc75c030188dd6cc14304bcb7d84109",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft clementine --out apps/web/public/models/hangar/clementine",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Clementine/Clementine.glb (3025380 bytes, SHA-256 b9d7ed6d3da4c19cce5efcfe72ebf16dc51bcf2375312c76083977f1663cd300); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/clementine/clementine_lod2.glb",
+      "sha256": "3e9c39aed2767c196181e4323dbdbbd3832a91728e106b7b19d356276dc0ddc1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft clementine --out apps/web/public/models/hangar/clementine",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Clementine/Clementine.glb (3025380 bytes, SHA-256 b9d7ed6d3da4c19cce5efcfe72ebf16dc51bcf2375312c76083977f1663cd300); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/clementine/clementine_picker.webp",
+      "sha256": "08d0df22c7db8b084976ce1610c0ba54dc30da995d3969ea47357f316156271a",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft clementine --out apps/web/public/models/hangar/clementine",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Clementine/Clementine.png (1852552 bytes, SHA-256 b0c4d25113160f1f735de0b95a65f2046b9e270f92be3a72a0772f358a3c51a0)."
+    },
+    {
       "path": "hangar/dawn/dawn_lod0.glb",
       "sha256": "05c7d940b151ee594c5c40fbd8bdc18efb3c305d842e8fbd7466b3f65099de03",
       "sources": [
@@ -656,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "e38136507ff71bae99aa61729e210d289e6023d2b318ad97e3a1b1f031ffa06d",
+      "sha256": "2b5ad225a68f3728cd17fd3c99555cef057f2b19169a4675f576e582fedd52fb",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

@@ -271,6 +271,17 @@ CHANGES = {
         "covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals "
         "made again, smooth within an angle and sharp beyond it."
     ),
+    # lod0 for photo texture, gold and silver foils, solar wings and three baked parts ("changes": "clementine")
+    "lod0_clementine": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and gold foil kept as the "
+        "base colour, with metalness, roughness and surface relief added from their own colours and shading, and a "
+        "printed part number and two small wiring labels in unused texture space painted over in the colour around "
+        "them, the silver foil made metal foil, the solar wings keeping their texture with one roughness and no "
+        "metalness, the top cover, dish and hinges painted white or grey with NASA's baked shading moved to the "
+        "occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth "
+        "within an angle and sharp beyond it, and the textures re-encoded as WebP."
+    ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
         "with the craft's facts), and textures at most 1024 pixels on a side."

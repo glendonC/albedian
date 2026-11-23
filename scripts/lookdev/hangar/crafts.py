@@ -1808,6 +1808,68 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.6,
         "changes": "perseverance",
     },
+    "clementine": {
+        "title": "Clementine",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-clementine",
+            "title": "Clementine, NASA 3D Resources",
+            "folder": "Clementine",
+            "file": "Clementine.glb",
+            "bytes": 3_025_380,
+            "sha256": "b9d7ed6d3da4c19cce5efcfe72ebf16dc51bcf2375312c76083977f1663cd300",
+            "picture": "Clementine.png",
+            "picture_bytes": 1_852_552,
+            "picture_sha256": "b0c4d25113160f1f735de0b95a65f2046b9e270f92be3a72a0772f358a3c51a0",
+            "local": "clementine",
+        },
+        "drop_objects": [],
+        # The 110-pound delta-V thruster stands at +Z in the import frame and pushes the craft along -Z toward the fixed
+        # high-gain dish at -Z [verified: NSSDCA cleminfo.html and Blender import survey]; the two solar wings reach
+        # along X with their cells facing +Y and the camera apertures on -Y, so +Y is up and the wings stay level.
+        "forward": (0.0, 0.0, -1.0),
+        "up": (0.0, 1.0, 0.0),
+        # NASA's file is drawn in metres (its octagonal top cap 1.1380 units across X and Y, its dish 1.0670 units
+        # across X, and the whole model 2.1796 units along Z from the dish's feed probe to the thruster's lip) [tested:
+        # Blender material_extents]. NSSDCA's Clementine page states "about 2 meters high" and no other size in metres
+        # [verified: nssdc.gsfc.nasa.gov/planetary/cleminfo.html], so the whole model is scaled along Z to 2 m (0.9176 m
+        # per unit) and marked true to that stated height alone.
+        "scale_from": {
+            "material": None,
+            "axis": "z",
+            "metres": 2,
+            "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
+            "true_to": "part",
+            "quote": "The spacecraft consists of an octagonal prism about 2 meters high.",
+        },
+        # NASA's photo texture (wiring panels, equipment plates, brushed thruster collars and nozzle) holds no mark
+        # where the UVs fall [tested: uv_dump/uv_cover]; a printed part and serial number and two small wiring labels in
+        # unused texture space are painted over in the colour around them. Gold foil uses NASA's ramp, silver foil
+        # becomes metal foil, the solar wings keep their cell texture under glass with no metalness, and the top cover,
+        # dish and hinges are painted white or grey with NASA's baked shading moved to the occlusion slot.
+        "materials": {
+            "tex_01": {
+                "role": "photo_atlas",
+                "paint_out": [
+                    {"box": (872, 324, 920, 404), "what": "a printed part and serial number in unused texture space"},
+                    {"box": (32, 154, 44, 195), "what": "a small wiring label in unused texture space"},
+                    {"box": (304, 154, 316, 195), "what": "a small wiring label in unused texture space"},
+                ],
+            },
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+            "foil_white": {"role": "painted", "base": (0.85, 0.85, 0.83), "roughness": 0.55, "occlusion_from_source": True},
+            "AO_dish": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
+            "AO_hinges": {"role": "painted", "base": (0.76, 0.76, 0.76), "roughness": 0.5, "occlusion_from_source": True},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # Half the 2 m height, framing the octagonal body, cameras, dish, thruster and inner wing hinges.
+        "body_radius_m": 1.1,
+        "changes": "clementine",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2406,6 +2468,27 @@ HANGAR: list[dict] = [
             {"key": "wheelDiameterCm", "value": 52.5, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "20.7 inches (52.5 centimeters) in diameter"},
             {"key": "armLengthM", "value": 2.1, "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "7 feet (2.1 meters)"},
             {"key": "power", "value": "MMRTG, about 110 W at launch", "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/", "quote": "About 110 watts at launch, declining a few percent per year"},
+        ],
+    },
+    {
+        # Clementine mapped the Moon for two months in 1994 before lunar gravity sent it into heliocentric orbit, with no
+        # speed relative to the Sun stated by NASA [verified: science.nasa.gov/mission/clementine/]: no speed between
+        # stars. NASA's mission page gives 424 kg for the fueled spacecraft where NSSDCA's mission file gives about
+        # 227 kg dry mass with roughly equal liquid fuel [verified: nssdc.gsfc.nasa.gov/planetary/cleminfo.html]; both
+        # are listed in their own words.
+        "id": "clementine",
+        "name": "Clementine",
+        "model": "clementine",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1994-01-25", "page": "https://science.nasa.gov/mission/clementine/", "quote": "Jan. 25, 1994 / 16:34 UT"},
+            {"key": "lunarOrbit", "value": "1994-02-19", "page": "https://science.nasa.gov/mission/clementine/", "quote": "Feb. 19, 1994: Entered lunar orbit"},
+            {"key": "heliocentricOrbit", "value": "1994-07-20", "page": "https://science.nasa.gov/mission/clementine/", "quote": "Eventually, on July 20, 1994, lunar gravity took control of Clementine and propelled it into a heliocentric orbit."},
+            {"key": "missionEnd", "value": "1994-08-08", "page": "https://science.nasa.gov/mission/clementine/", "quote": "The mission was terminated Aug. 8, 1994, when falling power supply levels no longer allowed clear telemetry exchange."},
+            {"key": "massKg", "value": 424, "page": "https://science.nasa.gov/mission/clementine/", "quote": "935 pounds (424 kilograms)"},
+            {"key": "dryMassKg", "value": 227, "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html", "quote": "The spacecraft dry mass is about 227 kg, with a roughly equal mass for liquid fuel."},
+            {"key": "heightM", "value": 2, "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html", "quote": "The spacecraft consists of an octagonal prism about 2 meters high."},
+            {"key": "power", "value": "GaAs/Ge solar array, 360 W", "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html", "quote": "The power system consists of a gimbaled, single axis, GaAs/Ge solar array providing a total spacecraft power of 360 watts at 30 Vdc, with a specific power of 240 w/kg, based on lightweight construction."},
         ],
     },
 ]

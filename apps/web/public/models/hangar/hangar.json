@@ -2097,6 +2097,64 @@
         "trueTo": "part",
         "quotedCm": 52.5
       }
+    },
+    "clementine": {
+      "title": "Clementine",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "clementine/clementine_lod0.glb",
+          "bytes": 947400,
+          "triangles": 9212,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "clementine/clementine_lod1.glb",
+          "bytes": 744968,
+          "triangles": 4605,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "clementine/clementine_lod2.glb",
+          "bytes": 283224,
+          "triangles": 1656,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "clementine/clementine_picker.webp",
+          "bytes": 4932,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.896,
+          -0.735,
+          -1.0
+        ],
+        "max": [
+          1.896,
+          0.735,
+          1
+        ]
+      },
+      "bodyRadiusM": 1.1,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 2,
+        "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
+        "quote": "The spacecraft consists of an octagonal prism about 2 meters high.",
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -3579,6 +3637,62 @@
           "value": "MMRTG, about 110 W at launch",
           "page": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
           "quote": "About 110 watts at launch, declining a few percent per year"
+        }
+      ]
+    },
+    {
+      "id": "clementine",
+      "name": "Clementine",
+      "model": "clementine",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1994-01-25",
+          "page": "https://science.nasa.gov/mission/clementine/",
+          "quote": "Jan. 25, 1994 / 16:34 UT"
+        },
+        {
+          "key": "lunarOrbit",
+          "value": "1994-02-19",
+          "page": "https://science.nasa.gov/mission/clementine/",
+          "quote": "Feb. 19, 1994: Entered lunar orbit"
+        },
+        {
+          "key": "heliocentricOrbit",
+          "value": "1994-07-20",
+          "page": "https://science.nasa.gov/mission/clementine/",
+          "quote": "Eventually, on July 20, 1994, lunar gravity took control of Clementine and propelled it into a heliocentric orbit."
+        },
+        {
+          "key": "missionEnd",
+          "value": "1994-08-08",
+          "page": "https://science.nasa.gov/mission/clementine/",
+          "quote": "The mission was terminated Aug. 8, 1994, when falling power supply levels no longer allowed clear telemetry exchange."
+        },
+        {
+          "key": "massKg",
+          "value": 424,
+          "page": "https://science.nasa.gov/mission/clementine/",
+          "quote": "935 pounds (424 kilograms)"
+        },
+        {
+          "key": "dryMassKg",
+          "value": 227,
+          "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
+          "quote": "The spacecraft dry mass is about 227 kg, with a roughly equal mass for liquid fuel."
+        },
+        {
+          "key": "heightM",
+          "value": 2,
+          "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
+          "quote": "The spacecraft consists of an octagonal prism about 2 meters high."
+        },
+        {
+          "key": "power",
+          "value": "GaAs/Ge solar array, 360 W",
+          "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
+          "quote": "The power system consists of a gimbaled, single axis, GaAs/Ge solar array providing a total spacecraft power of 360 watts at 30 Vdc, with a specific power of 240 w/kg, based on lightweight construction."
         }
       ]
     }
