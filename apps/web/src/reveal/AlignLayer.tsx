@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { grabPose, pinchPose, projectAltAz, scalePose, skyAt, turnPose, type AlignPose, type AlignTarget } from './alignPose.js';
 import type { PlacedTarget } from './earlyPose.js';
 import type { Box } from './predictedSkyMarks.js';
@@ -76,31 +76,61 @@ export function placeMarks(placed: readonly PlacedTarget[], rect: FrameRect, fon
   return marks;
 }
 
+// The rings and names the aligning layer or the still marks last drew, so the next screen's still marks know which of
+// them it hides at a Solve from here hand-over
+let lastDrawn: readonly AlignMark[] = [];
+
+/**
+ * Of the marks drawn before, those standing where this screen would put them that this screen does not draw: at a
+ * hand-over they leave (MOTION-READY-web.md section six, DECIDED-BY-LEAD 22 Nov 05:52). A mark drawn at another place
+ * (another pose) is no hand-over, and one hidden on both screens is never drawn again.
+ */
+export function leavingMarks(before: readonly AlignMark[], placed: readonly PlacedTarget[], rect: FrameRect, now: readonly AlignMark[]): AlignMark[] {
+  const shown = new Set(now.map((mark) => mark.id));
+  return before.filter((mark) => {
+    if (shown.has(mark.id)) return false;
+    const at = placed.find((target) => target.id === mark.id);
+    return at !== undefined && Math.abs(rect.leftPx + at.u * rect.widthPx - mark.xPx) < 0.5 && Math.abs(rect.topPx + at.v * rect.heightPx - mark.yPx) < 0.5;
+  });
+}
+
 /**
  * The same rings and names, still: the lock-on's early marks (D25), drawn where an early pose puts the predicted sky,
- * with no hands on them.
+ * with no hands on them. At a Solve from here hand-over (`handOver`: the working screen's alignment marks, the refused
+ * screen's kept ones), a ring and its name the screen before drew that this one's keep-clear hides leave on frame out
+ * where they stood, then are drawn no more; everything else stays put.
  */
-export const StillAlignMarks: React.FC<{ rect: FrameRect; placed: readonly PlacedTarget[]; clear?: readonly Box[] }> = ({ rect, placed, clear = [] }) => {
+export const StillAlignMarks: React.FC<{ rect: FrameRect; placed: readonly PlacedTarget[]; clear?: readonly Box[]; handOver?: boolean }> = ({ rect, placed, clear = [], handOver = false }) => {
   const marks = placeMarks(placed, rect, 13, clear);
+  // What the screen before drew, read once as this one comes in
+  const [before] = useState(() => (handOver ? lastDrawn : []));
+  const [left, setLeft] = useState<ReadonlySet<string>>(() => new Set());
+  const leaving = leavingMarks(before, placed, rect, marks).filter((mark) => !left.has(mark.id));
+  useEffect(() => {
+    lastDrawn = marks;
+  });
   return (
     <div className="align-layer is-still" data-testid="early-marks" style={{ left: `${rect.leftPx}px`, top: `${rect.topPx}px`, width: `${rect.widthPx}px`, height: `${rect.heightPx}px` }}>
-      <MarksDrawing marks={marks} rect={rect} />
+      <MarksDrawing marks={marks} rect={rect} leaving={leaving} onLeft={(id) => setLeft((done) => new Set(done).add(id))} />
     </div>
   );
 };
 
-const MarksDrawing: React.FC<{ marks: readonly AlignMark[]; rect: FrameRect }> = ({ marks, rect }) => (
+const MarksDrawing: React.FC<{ marks: readonly AlignMark[]; rect: FrameRect; leaving?: readonly AlignMark[]; onLeft?: (id: string) => void }> = ({ marks, rect, leaving = [], onLeft }) => (
   <>
     <svg className="align-layer__rings" aria-hidden="true" focusable="false">
       {marks.map((mark) => (
         <circle key={mark.id} cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} />
       ))}
+      {leaving.map((mark) => (
+        <circle key={`leaving:${mark.id}`} className="is-leaving" cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} onAnimationEnd={() => onLeft?.(mark.id)} />
+      ))}
     </svg>
-    {marks.map((mark) =>
+    {[...marks.map((mark) => ({ mark, out: false })), ...leaving.map((mark) => ({ mark, out: true }))].map(({ mark, out }) =>
       mark.name === null ? null : (
         <span
-          key={`name:${mark.id}`}
-          className={mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}
+          key={`${out ? 'leaving-name' : 'name'}:${mark.id}`}
+          className={`${mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}${out ? ' is-leaving' : ''}`}
           style={
             mark.nameOnLeft
               ? { right: `${rect.leftPx + rect.widthPx - (mark.xPx - ALIGN_RING_PX - 6)}px`, top: `${mark.yPx - rect.topPx}px` }
@@ -238,6 +268,9 @@ export const AlignLayer: React.FC<{
   };
 
   const marks = alignMarks(targets, pose, rect, phone ? 11 : 13, clear);
+  useEffect(() => {
+    lastDrawn = marks;
+  });
   return (
     <div
       ref={layer}

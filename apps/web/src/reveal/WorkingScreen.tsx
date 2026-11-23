@@ -217,7 +217,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       <button type="button" className="work-word" data-testid="working-home" onClick={() => onHome?.()}>
         <Logo sizePx={21} />
       </button>
-      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} placed={shownEarly.marks} clear={keepClear} />}
+      {shownEarly && photoRect && <StillAlignMarks rect={photoRect} placed={shownEarly.marks} clear={keepClear} handOver={shownEarly.source === 'alignment'} />}
       {shownEarly ? (
         <div className="work-early" data-testid="work-early">
           <p className="work-early__lead">{aligned ? 'Matching near your alignment.' : 'Matching the stars.'}</p>

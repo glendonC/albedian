@@ -920,7 +920,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* Refused after Solve from here (D24 step 4): the rings stay amber and dashed at the kept pose */}
-      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} />}
+      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} handOver />}
       {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
       {earlyKept && <StillAlignMarks rect={frame!} placed={early!.marks} clear={keepClear} />}
 

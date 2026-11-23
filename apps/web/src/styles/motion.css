@@ -404,6 +404,13 @@
   animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
 }
 
+/* The Solve from here hand-overs (MOTION-READY-web.md section six, DECIDED-BY-LEAD 22 Nov 05:52): a ring and its name
+   that the next screen's keep-clear hides leave where they stood on frame out, as a lock-on mark with no place does;
+   under reduced motion the tokens make it the 270 ms dissolve. */
+.align-layer .is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
+}
+
 @keyframes lockon-travel {
   to {
     translate: var(--lock-dx) var(--lock-dy);
