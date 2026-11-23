@@ -1176,6 +1176,7 @@
   position: absolute;
   left: 24px;
   top: 660px;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1191,6 +1192,7 @@
   position: absolute;
   left: 24px;
   top: 714px;
+  margin: 0;
   display: flex;
   gap: 16px;
   align-items: center;

@@ -273,9 +273,9 @@ describe('RevealPhoto at phone width', () => {
 
 describe("the phone reveal's rules are the approved page's", () => {
   it('sets the counts and the names as #rbp-photo does', () => {
-    expect(declarationsOf('.reveal-phone-counts__big')).toEqual({ position: 'absolute', left: '24px', top: '660px', display: 'flex', 'align-items': 'center', gap: '14px' });
+    expect(declarationsOf('.reveal-phone-counts__big')).toEqual({ position: 'absolute', left: '24px', top: '660px', margin: '0', display: 'flex', 'align-items': 'center', gap: '14px' });
     expect(declarationsOf('.reveal-phone-counts__big b')).toEqual({ font: '300 40px / 1 var(--look-font-sans)', 'letter-spacing': '-0.045em', 'font-variant-numeric': 'tabular-nums' });
-    expect(declarationsOf('.reveal-phone-counts__more')).toEqual({ position: 'absolute', left: '24px', top: '714px', display: 'flex', gap: '16px', 'align-items': 'center', font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', 'font-variant-numeric': 'tabular-nums' });
+    expect(declarationsOf('.reveal-phone-counts__more')).toEqual({ position: 'absolute', left: '24px', top: '714px', margin: '0', display: 'flex', gap: '16px', 'align-items': 'center', font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', 'font-variant-numeric': 'tabular-nums' });
     expect(declarationsOf('.reveal-phone-counts__item b')).toEqual({ 'font-weight': '400', 'margin-right': '8px' });
     expect(declarationsOf('.reveal-photo.is-phone .reveal-mark__name')).toEqual({ left: 'calc(50% + 16px)', 'font-size': '11px' });
     expect(declarationsOf('.reveal-photo.is-phone .reveal-mark.is-left .reveal-mark__name')).toEqual({ left: 'auto', right: 'calc(50% + 16px)' });
