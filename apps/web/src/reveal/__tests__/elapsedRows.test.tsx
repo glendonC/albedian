@@ -53,6 +53,16 @@ describe('the time passed on a working row with no total', () => {
     expect(values().at(-2)).toBe('2,080 of 4,160');
   });
 
+  // FIELD's walk-0410, item 4: a still's one frame is nothing to count (D10), so its Measured row times itself
+  it("times a still's Measured row, never Measured 0 of 1", () => {
+    show(arrival([stage('store', 'bytes', BYTES, BYTES), stage('decode', 'frames', 1, 1), stage('detect', 'frames', 0, 1)]));
+    const now = () => container.querySelector('.work-step.is-now .work-step__value')?.textContent;
+    expect(now()).toBe('0 s');
+    act(() => vi.advanceTimersByTime(9_000));
+    expect(now()).toBe('9 s');
+    expect(container.querySelectorAll('.work-step.is-now .work-step__bar b')).toHaveLength(0);
+  });
+
   it("times the restoration's steps the same way", () => {
     const job = { id: 'job_7e6f5a4b3c2d1e0f9a8b7c6d', kind: 'restoration', state: 'running', stages: [stage('decode', 'frames', 1, 1), stage('measure', 'frames', 0, null)] } as unknown as UploadJob;
     act(() => root.render(createElement(RestoreSteps, { job })));

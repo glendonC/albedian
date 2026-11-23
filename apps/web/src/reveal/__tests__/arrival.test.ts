@@ -109,7 +109,22 @@ describe('stageRows: one row per stage, in the pipeline order, with the approved
     expect(values(clip)).toEqual(['2.4 MB', '240', '240', '0 of 364', null]);
     expect(fractions(clip)).toEqual([null, null, null, 0, null]);
     const one = arrival({ job: job('running', [stage('store', 'bytes', 1, 1), stage('decode', 'frames', 1, 1), stage('detect', 'frames', 0, 1)]) });
-    expect(values(one)).toEqual(['0.000001 MB', null, '0 of 1', null, null]);
+    expect(values(one)).toEqual(['0.000001 MB', null, null, null, null]);
+  });
+
+  // FIELD's walk-0410, item 4 (the lead's 21:08 answer): a photo being read showed "Measured 0 of 1" for many seconds.
+  // A still has one frame and nothing to count (D10, as the restoration's rows already have it), so its worked row
+  // carries no count and no bar, and the time passed stands in the count's place (C19, useElapsedRows)
+  it("gives a still's one frame no count on the row being worked, so the time passed stands there", () => {
+    const measuring = arrival({ job: job('running', [STORE, stage('decode', 'frames', 1, 1), stage('detect', 'frames', 0, 1)]) });
+    expect(states(measuring)).toEqual(['done', 'done', 'now', 'next', 'next']);
+    expect(values(measuring)[2]).toBeNull();
+    expect(fractions(measuring)[2]).toBeNull();
+    const opening = arrival({ job: job('running', [STORE, stage('decode', 'frames', 0, 1)]) });
+    expect(values(opening)[1]).toBeNull();
+    expect(fractions(opening)[1]).toBeNull();
+    // A clip's frames are counted as before
+    expect(values(arrival({ job: job('running', [STORE, stage('decode', 'frames', 2, 240)]) }))[1]).toBe('2 of 240');
   });
 
   it("counts a clip's frames on the row being worked the same way, with thousands grouped", () => {

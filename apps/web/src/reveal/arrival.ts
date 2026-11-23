@@ -136,7 +136,9 @@ export function stageRows(arrival: Arrival): StageRow[] {
       fraction,
     });
     if (index === at) {
-      const counted = entry !== null && entry.total !== null && entry.unit !== 'bytes';
+      // A still's one frame is nothing to count (D10, as the restoration's rows have it): its worked row carries no count,
+      // so the time passed stands there (C19; FIELD's walk-0410 saw "Measured 0 of 1" for many seconds)
+      const counted = entry !== null && entry.total !== null && entry.unit !== 'bytes' && !(entry.unit === 'frames' && entry.total === 1);
       return counted
         ? row(stopped ? 'failed' : 'now', `${grouped(entry.done)} of ${grouped(entry.total!)}`, entry.done / entry.total!)
         : row(stopped ? 'failed' : 'now');
