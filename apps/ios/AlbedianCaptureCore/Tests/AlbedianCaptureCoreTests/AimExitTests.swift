@@ -20,6 +20,17 @@ final class AimExitTests: XCTestCase {
         XCTAssertEqual(AimExit.opacity(.rest, hidden: 1), 0)
     }
 
+    /// The lead, 22 Nov 22:17: Hold still and the length word in only once the tag and the source line have gone, at
+    /// the rings' last frame: frame out (0.3 s) 0.15 s after the press, or the 0.27 s dissolve under Reduce Motion.
+    func testHoldStillsWordsWaitUntilTheTagAndTheSourceLineHaveGone() {
+        XCTAssertEqual(AimExit.leftAfterSeconds(reduceMotion: false), 0.45, accuracy: 1e-12)
+        XCTAssertEqual(AimExit.leftAfterSeconds(reduceMotion: true), 0.42, accuracy: 1e-12)
+        XCTAssertEqual(AimExit.leftAfterSeconds(reduceMotion: false),
+                       MotionStyle.captureSequenceDelaySeconds + MotionStyle.frameOut.delaySeconds + MotionStyle.frameOut.seconds,
+                       accuracy: 1e-12, "the aim view's own leaving, as the stage animates it")
+        XCTAssertGreaterThan(AimExit.leftAfterSeconds(reduceMotion: true), MotionStyle.captureSequenceDelaySeconds)
+    }
+
     func testAnOvershootingCurveNeverPushesAnOpacityOutOfRange() {
         XCTAssertEqual(AimExit.opacity(.rings, hidden: 1.08), 0)
         XCTAssertEqual(AimExit.opacity(.rings, hidden: -0.05), 1)

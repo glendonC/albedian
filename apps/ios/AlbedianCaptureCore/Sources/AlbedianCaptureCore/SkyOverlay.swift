@@ -283,6 +283,14 @@ public enum AimExit {
         case .rings, .rest: 1 - min(max(hidden, 0), 1)
         }
     }
+
+    /// The seconds from the press to the aim view's last frame, its rings' and with them the tag's and the source
+    /// line's: frame out 0.15 s after the press, or the dissolve under Reduce Motion. Hold still and the length word in
+    /// only from then, where those stood, so no words lie over the standing tag (the lead, 22 Nov 22:17).
+    public static func leftAfterSeconds(reduceMotion: Bool) -> Double {
+        MotionStyle.captureSequenceDelaySeconds
+            + (reduceMotion ? MotionStyle.reduceMotionSeconds : MotionStyle.frameOut.delaySeconds + MotionStyle.frameOut.seconds)
+    }
 }
 
 extension SkyProjection {

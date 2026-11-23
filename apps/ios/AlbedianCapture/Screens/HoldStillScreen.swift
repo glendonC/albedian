@@ -34,17 +34,19 @@ struct HoldStillScreen: View {
                             .frame(width: 52, height: 52)
                         }
                         .atTop(Arrive.photoTop)
-                    // "Hold still" and the length word in 0.15 s after the press, the length 20 ms after it
+                    // "Hold still" and the length word in where the aim view's Predicted tag and source line stood, once
+                    // those have gone at its rings' last frame, the length 20 ms after (the lead, 22 Nov 22:17)
                     if arrived {
                         Text("Hold still").font(AlbedianFont.regular(15)).tracking(-0.01 * 15).foregroundStyle(Color(ControlStyle.ink))
                             .frame(height: 44).atTop(Arrive.topControls)
-                            .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.captureSequenceDelaySeconds))
+                            .transition(.words(reduceMotion: reduceMotion, after: AimExit.leftAfterSeconds(reduceMotion: reduceMotion)))
                     }
                     if arrived, let seconds = model.exposureSec, let words = NightExposure.lengthWords(seconds) {
                         Text(words).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
                             .foregroundStyle(Color(ControlStyle.inkQuiet))
                             .atTop(Arrive.photoTop + height + 16)
-                            .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.captureSequenceDelaySeconds + MotionStyle.staggerSeconds))
+                            .transition(.words(reduceMotion: reduceMotion,
+                                               after: AimExit.leftAfterSeconds(reduceMotion: reduceMotion) + MotionStyle.staggerSeconds))
                     }
                     ExposureButton(fraction: fraction, action: model.stopExposure).atBottom(Arrive.referenceHeight - 706 - 64)
                 }

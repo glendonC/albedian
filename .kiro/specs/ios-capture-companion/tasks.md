@@ -165,6 +165,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     while the tag and the source line stay at full until the rings' last frame. aimexit-m2 (the simulator strip of
     22 Nov): the stage keeps the aim view live through its leaving and animates its `hidden`, since a removal
     transition froze it with the rings at full; the tag stands from the rings' first frame however they arrive.
+    holdwait-m (the lead, 22 Nov 22:17): Hold still and the length word in only once the tag and the source line
+    have gone at the rings' last frame (0.45 s, or 0.42 s under Reduce Motion), where those stood.
   - _Requirements: REQ-IOS-3.1, 3.2_
 
 - [x] 12. mobile-6: the look from the reference board
