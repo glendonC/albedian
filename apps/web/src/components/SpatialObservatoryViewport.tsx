@@ -365,9 +365,10 @@ export const SpatialObservatoryViewport: React.FC<
 
   // The renderer's camera against its star sphere, for names placed on the sky as it is drawn
   const readSkyPose = useCallback(() => rendererRef.current?.getCameraSkyPose?.() ?? null, []);
-  // The photo's restoration (D10): asked for from Restore on the reveal, followed, compared once done
+  // The upload's restoration (D10, D34): asked for from Restore on the reveal, followed, compared once done
   const { restoration, start: startRestore, cancel: cancelRestore } = useRestoration(session.sourceAsset?.sha256 ?? null, {
     orientation: session.sourceAsset?.displayOrientation,
+    mediaKind: session.sourceAsset?.mediaKind,
   });
 
   // While audio is on, the catalog stars in view sound and the camera turns the listener

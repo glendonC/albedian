@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
+import { FAILURE_SENTENCES, type DisplayOrientation, type UploadJob } from '@albedian/contracts';
 import {
   CANCELED_WORD,
   cancelJob,
@@ -26,8 +26,18 @@ export type Restoration =
 
 const UNTURNED: DisplayOrientation = { quarterTurnsClockwise: 0, mirrored: false };
 
-/** Under a refusal: the photo itself was never touched (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11). */
+/** Under a refusal: the photo or clip itself was never touched (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11; UIUX-clipphone-READY.md). */
 export const UNCHANGED = 'Your photo is unchanged.';
+export const CLIP_UNCHANGED = 'Your clip is unchanged.';
+
+const NOT_RESTORED_ENDING = ', so it was not restored.';
+
+/** Deterministic pre-restoration refusals in FAILURE_SENTENCES (C20 and C36, UIUX-nearblackrestore-READY.md) [verified]. */
+export function preRestorationRefusalsOf(sentences: readonly string[] = FAILURE_SENTENCES): ReadonlySet<string> {
+  return new Set(sentences.filter((sentence) => sentence.endsWith(NOT_RESTORED_ENDING)));
+}
+const PRE_RESTORATION_REFUSALS = preRestorationRefusalsOf();
+export const unchangedSentence = (mediaKind?: 'image' | 'video'): string => (mediaKind === 'video' ? CLIP_UNCHANGED : UNCHANGED);
 
 /**
  * One plain sentence per refusal reason (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11). A reason it does
@@ -54,8 +64,15 @@ export function refusalSentence(reason: string, unconfirmedPoints: number | null
 }
 
 const stopped = (job: UploadJob | null, sentence: string | null): Restoration => ({ phase: 'stopped', job, sentence, subline: null, canTryAgain: true });
+const refused = (job: UploadJob, sentence: string | null, mediaKind?: 'image' | 'video'): Restoration => ({
+  phase: 'stopped',
+  job,
+  sentence,
+  subline: unchangedSentence(mediaKind),
+  canTryAgain: false,
+});
 
-export function restorationOf(job: UploadJob, sha256: string): Restoration {
+export function restorationOf(job: UploadJob, sha256: string, mediaKind?: 'image' | 'video'): Restoration {
   switch (job.state) {
     case 'queued':
     case 'running':
@@ -67,11 +84,14 @@ export function restorationOf(job: UploadJob, sha256: string): Restoration {
     case 'canceled':
       return stopped(job, CANCELED_WORD);
     case 'interrupted':
-    case 'failed':
       return stopped(job, job.error ?? null);
+    case 'failed':
+      return job.error !== undefined && PRE_RESTORATION_REFUSALS.has(job.error)
+        ? refused(job, job.error, mediaKind)
+        : stopped(job, job.error ?? null);
     case 'rejected':
-      // Deterministic: the same photo would be refused the same way, so no Try again and no Restore again
-      return { phase: 'stopped', job, sentence: null, subline: UNCHANGED, canTryAgain: false };
+      // Deterministic: the same upload would be refused the same way, so no Try again and no Restore again
+      return refused(job, null, mediaKind);
   }
 }
 
@@ -80,10 +100,14 @@ export function restorationOf(job: UploadJob, sha256: string): Restoration {
  * follows its job once a second, and \`cancel\` asks the server to stop it. A new photo forgets it all and stops
  * following.
  */
-export function useRestoration(sha256: string | null, options: { pollMs?: number; orientation?: DisplayOrientation } = {}) {
+export function useRestoration(
+  sha256: string | null,
+  options: { pollMs?: number; orientation?: DisplayOrientation; mediaKind?: 'image' | 'video' } = {}
+) {
   const [restoration, setRestoration] = useState<Restoration>({ phase: 'idle' });
   const following = useRef<AbortController | null>(null);
   const pollMs = options.pollMs;
+  const mediaKind = options.mediaKind;
   // How the photo itself is turned: the variant's own record says how it is, and this stands in when it cannot be read
   const fallback = options.orientation ?? UNTURNED;
 
@@ -107,13 +131,13 @@ export function useRestoration(sha256: string | null, options: { pollMs?: number
         if (stop.signal.aborted) return;
         // The compare waits for the variant's turn, so a turned photo is never drawn sideways for a moment
         const shown = (record: UploadJob) => {
-          const view = restorationOf(record, sha256);
+          const view = restorationOf(record, sha256, mediaKind);
           if (!stop.signal.aborted && view.phase !== 'done') setRestoration(view);
         };
         shown(job);
         const ended = job.state === 'queued' || job.state === 'running' ? await followJob(job, shown, { pollMs, signal: stop.signal }) : job;
         if (stop.signal.aborted) return;
-        const view = restorationOf(ended, sha256);
+        const view = restorationOf(ended, sha256, mediaKind);
         if (view.phase === 'done') {
           const orientation = await readVariantOrientation(sha256, ended.variantId!).catch(() => fallback);
           if (!stop.signal.aborted) setRestoration({ ...view, orientation });
@@ -123,13 +147,13 @@ export function useRestoration(sha256: string | null, options: { pollMs?: number
         if (ended.state === 'rejected' && ended.attemptId !== undefined) {
           const refusal = await readRefusal(sha256, ended.attemptId).catch(() => null);
           const sentence = refusal ? refusalSentence(refusal.rejection, refusal.unconfirmedPointCount) : null;
-          if (!stop.signal.aborted && sentence !== null) setRestoration({ phase: 'stopped', job: ended, sentence, subline: UNCHANGED, canTryAgain: false });
+          if (!stop.signal.aborted && sentence !== null) setRestoration(refused(ended, sentence, mediaKind));
         }
       } catch (err) {
         if (!stop.signal.aborted) setRestoration(stopped(null, failureReason(err)));
       }
     })();
-  }, [sha256, pollMs, fallback]);
+  }, [sha256, pollMs, fallback, mediaKind]);
 
   const cancel = useCallback(async () => {
     if (restoration.phase !== 'working') return;

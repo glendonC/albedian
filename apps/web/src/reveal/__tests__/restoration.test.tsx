@@ -4,8 +4,8 @@ import path from 'node:path';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { INTERRUPTED_SENTENCE, type UploadJob } from '@albedian/contracts';
-import { refusalSentence, restorationOf, useRestoration, type Restoration } from '../restoration.js';
+import { FAILURE_SENTENCES, INTERRUPTED_SENTENCE, type UploadJob } from '@albedian/contracts';
+import { CLIP_UNCHANGED, UNCHANGED, preRestorationRefusalsOf, refusalSentence, restorationOf, useRestoration, type Restoration } from '../restoration.js';
 
 // What the restoration shows, from its job's own record (UIUX-restoration-READY.md, D10): the job's steps while it
 // works, the compare once it succeeded, and why it stopped; canceled and interrupted as D2 says (INTERIM).
@@ -36,7 +36,54 @@ describe('restorationOf: a job record to what the screen shows', () => {
     expect(restorationOf(restoration('failed'), sha256)).toMatchObject({ phase: 'stopped', sentence: restoration('failed').error });
     // Refused: its sentence comes from the attempt (read after), the photo unchanged, and no Try again
     expect(restorationOf(restoration('rejected'), sha256)).toMatchObject({ phase: 'stopped', sentence: null, subline: 'Your photo is unchanged.', canTryAgain: false });
+    expect(restorationOf(restoration('rejected'), sha256, 'video')).toMatchObject({ phase: 'stopped', sentence: null, subline: 'Your clip is unchanged.', canTryAgain: false });
     expect(restorationOf(restoration('failed'), sha256)).toMatchObject({ canTryAgain: true, subline: null });
+  });
+
+  it('treats deterministic pre-restoration refusals in FAILURE_SENTENCES ending ", so it was not restored." as refusals, with no Try again', () => {
+    const failed = restoration('failed');
+    const preRefusals = FAILURE_SENTENCES.filter((s) => s.endsWith(', so it was not restored.'));
+    expect(preRefusals.length).toBeGreaterThanOrEqual(1);
+    for (const sentence of preRefusals) {
+      expect(restorationOf({ ...failed, error: sentence }, sha256)).toEqual({
+        phase: 'stopped',
+        job: { ...failed, error: sentence },
+        sentence,
+        subline: 'Your photo is unchanged.',
+        canTryAgain: false,
+      });
+      expect(restorationOf({ ...failed, error: sentence }, sha256, 'video')).toEqual({
+        phase: 'stopped',
+        job: { ...failed, error: sentence },
+        sentence,
+        subline: 'Your clip is unchanged.',
+        canTryAgain: false,
+      });
+    }
+    for (const sentence of FAILURE_SENTENCES.filter((s) => !s.endsWith(', so it was not restored.') && !s.includes('{'))) {
+      expect(restorationOf({ ...failed, error: sentence }, sha256)).toMatchObject({
+        phase: 'stopped',
+        sentence,
+        subline: null,
+        canTryAgain: true,
+      });
+    }
+    // Only sentences in FAILURE_SENTENCES count; an interrupted job never counts even if its error text matches
+    expect(restorationOf({ ...failed, error: 'Not in contract, so it was not restored.' }, sha256)).toMatchObject({
+      phase: 'stopped',
+      subline: null,
+      canTryAgain: true,
+    });
+    expect(restorationOf({ ...restoration('interrupted'), error: preRefusals[0]! }, sha256)).toMatchObject({
+      phase: 'stopped',
+      subline: null,
+      canTryAgain: true,
+    });
+    // C36 (UIUX-nearblackrestore-READY.md) enters the set automatically once nearblack-0 lands in FAILURE_SENTENCES
+    const c36 = "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.";
+    expect(preRestorationRefusalsOf([...FAILURE_SENTENCES, c36]).has(c36)).toBe(true);
+    expect(UNCHANGED).toBe('Your photo is unchanged.');
+    expect(CLIP_UNCHANGED).toBe('Your clip is unchanged.');
   });
 });
 
@@ -60,8 +107,8 @@ describe('useRestoration', () => {
   let container: HTMLDivElement;
   let root: Root;
   let latest: ReturnType<typeof useRestoration>;
-  const Probe = ({ sha }: { sha: string | null }) => {
-    latest = useRestoration(sha, { pollMs: 0 });
+  const Probe = ({ sha, mediaKind }: { sha: string | null; mediaKind?: 'image' | 'video' }) => {
+    latest = useRestoration(sha, { pollMs: 0, mediaKind });
     return null;
   };
   beforeEach(() => {
@@ -151,6 +198,46 @@ describe('useRestoration', () => {
       phase: 'stopped',
       sentence: 'The restoration showed 2 points of light that are not in your photo, so it was not kept.',
       subline: 'Your photo is unchanged.',
+      canTryAgain: false,
+    });
+  });
+
+  it('stops with no Try again and the upload unchanged when a job fails with a pre-restoration refusal, naming a clip on video', async () => {
+    const profileNotCarried = FAILURE_SENTENCES.find((s) => s.endsWith(', so it was not restored.'))!;
+    const preRefused = { ...restoration('failed'), error: profileNotCarried };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => (String(input).endsWith('/restore') ? json(running, 202) : json(preRefused)));
+    act(() => root.render(createElement(Probe, { sha: sha256 })));
+    act(() => latest.start());
+    await until(() => phase() === 'stopped');
+    expect(latest.restoration).toEqual({
+      phase: 'stopped',
+      job: preRefused,
+      sentence: profileNotCarried,
+      subline: 'Your photo is unchanged.',
+      canTryAgain: false,
+    });
+
+    // On a video, both a gate refusal and a pre-restoration refusal say "Your clip is unchanged."
+    const gateRefused = restoration('rejected');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/restore')) return json(gateRefused, 200);
+      if (url.endsWith('/variants')) {
+        return json({
+          variants: [],
+          attempts: [{ id: gateRefused.attemptId, status: 'rejected', rejection: 'frame_times_differ' }],
+        });
+      }
+      return json(gateRefused);
+    });
+    act(() => root.render(createElement(Probe, { sha: 'a'.repeat(64), mediaKind: 'video' })));
+    act(() => latest.start());
+    await until(() => phase() === 'stopped' && latest.restoration.phase === 'stopped' && latest.restoration.sentence !== null);
+    expect(latest.restoration).toEqual({
+      phase: 'stopped',
+      job: gateRefused,
+      sentence: "The restored clip's frame times did not match your clip's, so it was not kept.",
+      subline: 'Your clip is unchanged.',
       canTryAgain: false,
     });
   });

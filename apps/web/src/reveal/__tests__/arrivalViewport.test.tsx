@@ -784,6 +784,41 @@ describe('the viewport shows the approved star card over the photo, above phone 
     }
   });
 
+  it('shows a pre-restoration refusal with no Try again and the photo unchanged, and names a clip on a refused video restoration', async () => {
+    const jobs = (JSON.parse(fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../tests/fixtures/job_contract.json'), 'utf8')) as {
+      valid: Array<Record<string, unknown>>;
+    }).valid;
+    const failed = jobs.find((job) => job.kind === 'restoration' && job.state === 'failed')!;
+    const rejected = jobs.find((job) => job.kind === 'restoration' && job.state === 'rejected')!;
+    const profileNotCarried = "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.";
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ ...failed, error: profileNotCarried }), { status: 200 }));
+    try {
+      open(storedPhoto());
+      act(() => (q('.reveal-status__act button') as HTMLButtonElement).click());
+      for (let i = 0; i < 6; i++) await act(async () => await new Promise((r) => setTimeout(r, 5)));
+      expect([...container.querySelectorAll('.restore-why p')].map((p) => p.textContent)).toEqual([profileNotCarried, 'Your photo is unchanged.']);
+      expect(q('.restore-why button')).toBeNull();
+
+      fetcher.mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.endsWith('/variants')) return new Response(JSON.stringify({ variants: [], attempts: [{ id: rejected.attemptId, status: 'rejected', rejection: 'frame_times_differ' }] }), { status: 200 });
+        return new Response(JSON.stringify(rejected), { status: 200 });
+      });
+      act(() => root.unmount());
+      root = createRoot(container);
+      open(clip());
+      act(() => (q('.reveal-status__act button') as HTMLButtonElement).click());
+      for (let i = 0; i < 8; i++) await act(async () => await new Promise((r) => setTimeout(r, 5)));
+      expect([...container.querySelectorAll('.restore-why p')].map((p) => p.textContent)).toEqual([
+        "The restored clip's frame times did not match your clip's, so it was not kept.",
+        'Your clip is unchanged.',
+      ]);
+      expect(q('.restore-why button')).toBeNull();
+    } finally {
+      fetcher.mockRestore();
+    }
+  });
+
   it('sets the session clock through the reducer where the player stops', () => {
     let current = clip();
     const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
