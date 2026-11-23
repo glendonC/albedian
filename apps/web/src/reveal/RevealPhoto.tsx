@@ -711,7 +711,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
           onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
         />
-      ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
+      ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' ? (
         <PhoneNoMatch
           clip={phoneClip}
           status={status}

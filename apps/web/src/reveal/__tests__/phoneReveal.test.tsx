@@ -230,6 +230,49 @@ describe('the no-match reveal at phone width', () => {
     expect(document.documentElement.dataset.phoneScroll).toBeUndefined();
     expect(document.documentElement.style.getPropertyValue('--phone-scroll')).toBe('');
   });
+
+  it('steps PhoneNoMatch aside while an answer is open on an unmatched phone photo or clip, while keeping PhoneAlignRefused and its Predicted tag mounted', () => {
+    const answer = { heard: 'where is Sirius?', sentence: "Nothing in this clip's data answers that.", answer: null };
+    // Unmatched photo with open answer: PhoneNoMatch steps aside, AnswerPanel shows cleanly
+    act(() => {
+      root.render(createElement(RevealPhoto, { session: unmatched(), onSelectFinding: () => {}, onHome: () => {}, phone: true, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h, answer }));
+    });
+    expect(q('[data-testid="reveal-answer"]')!.className).toBe('reveal-answer is-phone');
+    expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+    expect(q('.reveal-phone-lead')).toBeNull();
+
+    // Unmatched clip with open answer: PhoneNoMatch steps aside too
+    const unmatchedClip = poseSession({ ...sample('horizon_predicted_only') } as ObservationSolution, 'video');
+    act(() => {
+      root.render(createElement(RevealPhoto, { session: unmatchedClip, onSelectFinding: () => {}, onHome: () => {}, phone: true, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h, answer }));
+    });
+    expect(q('[data-testid="reveal-answer"]')!.className).toBe('reveal-answer is-phone');
+    expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+
+    // Closing the answer brings PhoneNoMatch back
+    act(() => {
+      root.render(createElement(RevealPhoto, { session: unmatchedClip, onSelectFinding: () => {}, onHome: () => {}, phone: true, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h, answer: null }));
+    });
+    expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
+
+    // Over a kept refused alignment (PhoneAlignRefused), the Predicted tag stays mounted even when an answer is open
+    const photoSession = unmatched();
+    act(() => {
+      root.render(
+        createElement(RevealPhoto, {
+          session: photoSession,
+          onSelectFinding: () => {},
+          onHome: () => {},
+          phone: true,
+          viewportWidthPx: VIEW.w,
+          viewportHeightPx: VIEW.h,
+          alignedFrom: { sha256: photoSession.sourceAsset!.sha256, pose: { azDeg: 150, altDeg: 30, rollDeg: 0, fovXDeg: 60, aspect: 4 / 3 }, from: { kind: 'brightest', name: 'Fomalhaut' } },
+          answer,
+        })
+      );
+    });
+    expect(q('.reveal-status.is-unmatched.is-phone.is-refused .look-tag[data-evidence-class="predicted"]')).not.toBeNull();
+  });
 });
 
 describe('RevealPhoto at phone width', () => {
