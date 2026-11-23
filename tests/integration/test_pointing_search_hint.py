@@ -271,7 +271,8 @@ def test_the_verified_calibration_wins_over_a_hint_outside_its_uncertainty_with_
     solution = _solve()
     assert solution.status == "calibrated"
     ra, dec = _centre(solution)
-    for off_deg, outside in ((0.0, False), (30.0, True)):
+    # Either side of the 10 deg uncertainty, as AUDIT's pointing-4 note b asks: the warning stands only beyond it
+    for off_deg, outside in ((0.0, False), (9.0, False), (11.0, True), (30.0, True)):
         # The shift is in declination, toward the equator, so it is that far on the sky
         shifted = dec - off_deg if dec > 0.0 else dec + off_deg
         search = ingest_jobs.SearchHint(spec.alt_deg, spec.az_deg, ra, shifted, 10.0, None)
@@ -479,3 +480,65 @@ def test_the_job_tells_the_search_how_the_picture_is_shown(orientation: Any, tur
     # A mirrored or malformed orientation tells nothing: the search keeps its stored-frame prior
     asset = {} if orientation is None else {"displayOrientation": orientation}
     assert ingest_jobs._display_turns(asset) == turns
+
+
+# ---- AUDIT's pointing-4 note a: the triangle radius reaches the plate solver's cut, and the cut holds ----
+
+
+class _PlateReached(Exception):
+    pass
+
+
+@pytest.mark.parametrize("camera_meta", [False, True])
+def test_the_chain_hands_the_plate_solver_the_triangle_radius(monkeypatch: pytest.MonkeyPatch, camera_meta: bool) -> None:
+    """Whichever search runs first, the plate solver is given the triangle radius and the phone solver its own."""
+    import types
+
+    told: dict[str, Any] = {}
+
+    def plate(*args: Any, **kwargs: Any) -> Any:
+        told["plate"] = kwargs.get("hint_radius_deg")
+        raise _PlateReached
+
+    def phone(*args: Any, **kwargs: Any) -> Any:
+        told["phone"] = kwargs.get("hint_radius_deg")
+        return types.SimpleNamespace(status="unresolved")
+
+    monkeypatch.setattr(ingest_jobs, "solve_and_verify_field", plate)
+    monkeypatch.setattr(ingest_jobs, "solve_phone_photo", phone)
+    with pytest.raises(_PlateReached):
+        ingest_jobs._solve_chain_once(
+            np.zeros((10, 10)), [], 10, 10, camera_meta=camera_meta, camera_label=None, fov_hint=None,
+            obs_utc_iso=None, lat_deg=None, lon_deg=None, source_asset_id="src_" + "c" * 16, sha256="c" * 63 + "1",
+            solution_id="sol_radius", on_event=lambda *event: None, hint_ra_deg=10.0, hint_dec_deg=20.0,
+            hint_radius_deg=12.5, triangle_radius_deg=52.5,
+        )
+    assert told["plate"] == 52.5
+    if camera_meta:
+        assert told["phone"] == 12.5
+
+
+def test_the_plate_solver_cuts_its_catalog_at_the_radius_it_is_given() -> None:
+    """The catalog the plate solver names is the stars within the radius of the hint (68 deg when it is given none),
+    read from the identity it states on a frame with too few sources to search."""
+    from services.science.catalog import get_catalog_stars
+    from services.science.solver import solve_and_verify_field
+
+    catalog = get_catalog_stars()
+    ra, dec = 83.8, -5.4  # Orion: bright stars on every side
+
+    def named(radius: float | None) -> str:
+        solution = solve_and_verify_field(
+            [], 100, 100, source_asset_id="src_" + "c" * 16, source_sha256="c" * 63 + "1", solution_id="sol_cut",
+            hint_ra_deg=ra, hint_dec_deg=dec, hint_radius_deg=radius,
+        )
+        return solution.solver.catalog_release
+
+    def within(radius: float) -> int:
+        return sum(angular_separation_deg(s.ra_deg, s.dec_deg, ra, dec) <= radius for s in catalog)
+
+    for radius in (20.0, 45.0):
+        assert within(radius) >= 8
+        assert named(radius).startswith(f"{within(radius)} pinned bright stars"), (radius, named(radius))
+    assert named(None).startswith(f"{within(68.0)} pinned bright stars")
+    assert within(20.0) < within(45.0) < within(68.0)  # each radius cuts a different set
