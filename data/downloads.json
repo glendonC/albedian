@@ -1770,6 +1770,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Clementine: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/tdrs-b/Tracking and Data Relay Satellites (TDRS) (B).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29.glb",
+      "bytes": 975956,
+      "sha256": "ece0a822767ff7f4cde2a2c5cc5042fa4740528bdbb59095a32b049377f70f30",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, TDRS: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/tdrs-b/Tracking and Data Relay Satellites (TDRS) (B).png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29.png",
+      "bytes": 1240171,
+      "sha256": "24c473798b06b7e093051bd125739bb06d4ffc9004c08164cde27593cb68669c",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, TDRS: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

@@ -244,13 +244,20 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
     near_ids = {e["id"] for e in near}
-    assert near_ids <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance", "clementine"}
+    assert near_ids <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance", "clementine", "tdrs"}
     assert "clementine" in near_ids and FACTS["models"]["clementine"]["scaleFrom"] == {
         "part": None,
         "metres": 2,
         "trueTo": "part",
         "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
         "quote": "The spacecraft consists of an octagonal prism about 2 meters high.",
+    }
+    assert "tdrs" in near_ids and FACTS["models"]["tdrs"]["scaleFrom"] == {
+        "part": "tex_02",
+        "metres": 5,
+        "trueTo": "part",
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+        "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,",
     }
     for e in FACTS["entries"]:
         if e["travel"] is not None:

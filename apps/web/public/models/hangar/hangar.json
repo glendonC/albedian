@@ -2155,6 +2155,64 @@
         "quote": "The spacecraft consists of an octagonal prism about 2 meters high.",
         "trueTo": "part"
       }
+    },
+    "tdrs": {
+      "title": "TDRS",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "tdrs/tdrs_lod0.glb",
+          "bytes": 1162444,
+          "triangles": 20010,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "tdrs/tdrs_lod1.glb",
+          "bytes": 659204,
+          "triangles": 10004,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "tdrs/tdrs_lod2.glb",
+          "bytes": 241604,
+          "triangles": 3541,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "tdrs/tdrs_picker.webp",
+          "bytes": 5412,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -10.37,
+          -3.065,
+          -6.44
+        ],
+        "max": [
+          10.381,
+          2.593,
+          6.44
+        ]
+      },
+      "bodyRadiusM": 6.5,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "tex_02",
+        "metres": 5,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+        "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,",
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -3693,6 +3751,62 @@
           "value": "GaAs/Ge solar array, 360 W",
           "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html",
           "quote": "The power system consists of a gimbaled, single axis, GaAs/Ge solar array providing a total spacecraft power of 360 watts at 30 Vdc, with a specific power of 240 w/kg, based on lightweight construction."
+        }
+      ]
+    },
+    {
+      "id": "tdrs",
+      "name": "TDRS",
+      "model": "tdrs",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2002-03-08",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+          "quote": "TDRS 9 (Tracking and Data Relay Satellite 9) is an American geosynchronous communications satellite that was launched by an Atlas 2A rocket from Cape Canaveral AFB at 22:59 UT on 8 March 2002."
+        },
+        {
+          "key": "orbit",
+          "value": "geosynchronous orbit",
+          "page": "https://www.nasa.gov/mission/tracking-and-data-relay-satellites/",
+          "quote": "The Tracking and Data Relay Satellite (TDRS) constellation consists of a number of satellites in geosynchronous orbit distributed over the Atlantic, Pacific, and Indian Oceans."
+        },
+        {
+          "key": "relay",
+          "value": "relays data for Hubble, the ISS and Earth-observing missions",
+          "page": "https://www.nasa.gov/mission/tracking-and-data-relay-satellites/",
+          "quote": "These satellites provide near-continuous information relay services to more than 25 space missions, including the Hubble Space Telescope, the International Space Station, and many of our Earth-observing missions."
+        },
+        {
+          "key": "generation",
+          "value": "second generation (TDRS 8, 9 and 10)",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+          "quote": "These features are common to all three of the second generation TDRSs, 8, 9 and 10."
+        },
+        {
+          "key": "massKg",
+          "value": "1,781",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+          "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 5,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+          "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"
+        },
+        {
+          "key": "solarArraysLengthM",
+          "value": 21,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+          "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"
+        },
+        {
+          "key": "power",
+          "value": "solar arrays, 2.3 kW",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+          "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"
         }
       ]
     }

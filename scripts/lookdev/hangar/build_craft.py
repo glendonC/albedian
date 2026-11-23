@@ -282,6 +282,16 @@ CHANGES = {
         "occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth "
         "within an angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for photo texture, silver foil ramp, black blanket, solar wings and baked dishes ("changes": "tdrs")
+    "lod0_tdrs": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and silver foil kept as "
+        "the base colour, with metalness, roughness and surface relief added from their own colours and shading, the "
+        "black blanket made black, the solar wings keeping their texture with one roughness and no metalness, the two "
+        "steerable dishes painted white with NASA's baked shading moved to the occlusion slot, faces NASA's file keeps "
+        "apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the "
+        "textures re-encoded as WebP."
+    ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
         "with the craft's facts), and textures at most 1024 pixels on a side."

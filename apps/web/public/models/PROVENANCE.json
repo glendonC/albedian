@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "2b5ad225a68f3728cd17fd3c99555cef057f2b19169a4675f576e582fedd52fb",
+      "sha256": "6f60fddff8ba06bb7b1d9c0911794c1925b7a3f794a7916423abd1116768abda",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2024,6 +2024,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.png (748987 bytes, SHA-256 71f48b85a613db2c2c6c270769b11cf14ecc2b00debd41f03038b02cfe97f468)."
+    },
+    {
+      "path": "hangar/tdrs/tdrs_lod0.glb",
+      "sha256": "75ef0aaa97719a7508702859ca7965cfc4956740835db515f2fbf0d0c6163ce6",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft tdrs --out apps/web/public/models/hangar/tdrs",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and silver foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, the black blanket made black, the solar wings keeping their texture with one roughness and no metalness, the two steerable dishes painted white with NASA's baked shading moved to the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29.glb (975956 bytes, SHA-256 ece0a822767ff7f4cde2a2c5cc5042fa4740528bdbb59095a32b049377f70f30); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/tdrs/tdrs_lod1.glb",
+      "sha256": "6fcdfd0250ff790abecd7324ee130cc859921f68eaf3b911570ce6f7d24ca482",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft tdrs --out apps/web/public/models/hangar/tdrs",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29.glb (975956 bytes, SHA-256 ece0a822767ff7f4cde2a2c5cc5042fa4740528bdbb59095a32b049377f70f30); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/tdrs/tdrs_lod2.glb",
+      "sha256": "64f3ab734e2bde10ea515cf2e19912d1d0de7ef593262c31fc7f173724920e81",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft tdrs --out apps/web/public/models/hangar/tdrs",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29.glb (975956 bytes, SHA-256 ece0a822767ff7f4cde2a2c5cc5042fa4740528bdbb59095a32b049377f70f30); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/tdrs/tdrs_picker.webp",
+      "sha256": "0081d877ef31ddb26344f8a65e3655388c8bc50e8455cb0dbe0956607d298632",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft tdrs --out apps/web/public/models/hangar/tdrs",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29/Tracking%20and%20Data%20Relay%20Satellites%20%28TDRS%29%20%28B%29.png (1240171 bytes, SHA-256 24c473798b06b7e093051bd125739bb06d4ffc9004c08164cde27593cb68669c)."
     },
     {
       "path": "hangar/vanallen/vanallen_lod0.glb",

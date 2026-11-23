@@ -1870,6 +1870,59 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.1,
         "changes": "clementine",
     },
+    "tdrs": {
+        "title": "TDRS",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-tdrs-b",
+            "title": "Tracking and Data Relay Satellites (TDRS) (B), NASA 3D Resources",
+            "folder": "Tracking and Data Relay Satellites (TDRS) (B)",
+            "file": "Tracking and Data Relay Satellites (TDRS) (B).glb",
+            "bytes": 975_956,
+            "sha256": "ece0a822767ff7f4cde2a2c5cc5042fa4740528bdbb59095a32b049377f70f30",
+            "picture": "Tracking and Data Relay Satellites (TDRS) (B).png",
+            "picture_bytes": 1_240_171,
+            "picture_sha256": "24c473798b06b7e093051bd125739bb06d4ffc9004c08164cde27593cb68669c",
+            "local": "tdrs-b",
+        },
+        "drop_objects": [],
+        # NASA's (B) file models the Boeing 601 second-generation TDRS (TDRS 8, 9 and 10), complete with both 5 m
+        # steerable single-access mesh dishes (NASA's (C) file omits both dishes into separate files). The Earth-facing
+        # antenna deck (phased array, 2 m dish and both 5 m dishes) points along +Z in the import frame while the two
+        # solar wings span X: flown tangentially along -Y with the antenna deck up (+Z) and the wings level across X
+        # [tested: Blender import survey].
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's file is drawn in metres: each steerable dish's backing surface ("tex_02", both dishes centred on X=0)
+        # measures 5.0890 units across X against NSSDCA 2002-011A's 5 m diameter, and at that scale (0.9825 m/unit) the
+        # solar wings ("shiny_panel", 21.1206 units) span 20.75 m against NSSDCA's "length 21 m" [tested: build log].
+        # Marked true_to "part" so only the 5 m dishes are held to exact size.
+        "scale_from": {
+            "material": "tex_02",
+            "axis": "x",
+            "metres": 5,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
+            "true_to": "part",
+            "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,",
+        },
+        # Zero agency marks, logos or text in any of the three embedded images [tested: uv_dump/uv_cover]. Photo texture
+        # and silver foil ramp take photo_atlas, black_krinkle becomes matte black blanket, shiny_panel keeps the solar
+        # cells under glass with no metalness, and tex_02 paints the two steerable dish surfaces white with NASA's
+        # radial shading moved to the occlusion slot.
+        "materials": {
+            "tex_01": {"role": "photo_atlas"},
+            "foil_silver": {"role": "photo_atlas"},
+            "black_krinkle": {"role": "pbr", "base": (0.03, 0.03, 0.03), "metallic": 0.0, "roughness": 0.6},
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+            "tex_02": {"role": "painted", "base": (0.85, 0.85, 0.85), "roughness": 0.55, "occlusion_from_source": True},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # Frames the bus and both 5 m steerable dishes (12.86 m outer rim to outer rim) inside the 21.5 m wing span.
+        "body_radius_m": 6.5,
+        "changes": "tdrs",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2489,6 +2542,26 @@ HANGAR: list[dict] = [
             {"key": "dryMassKg", "value": 227, "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html", "quote": "The spacecraft dry mass is about 227 kg, with a roughly equal mass for liquid fuel."},
             {"key": "heightM", "value": 2, "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html", "quote": "The spacecraft consists of an octagonal prism about 2 meters high."},
             {"key": "power", "value": "GaAs/Ge solar array, 360 W", "page": "https://nssdc.gsfc.nasa.gov/planetary/cleminfo.html", "quote": "The power system consists of a gimbaled, single axis, GaAs/Ge solar array providing a total spacecraft power of 360 watts at 30 Vdc, with a specific power of 240 w/kg, based on lightweight construction."},
+        ],
+    },
+    {
+        # NASA's Tracking and Data Relay Satellites orbit Earth in geosynchronous orbit: no speed between stars. NASA's
+        # (B) model depicts the second-generation Boeing 601 TDRS (TDRS 8, 9 and 10); dimensions, mass, power and
+        # launch are TDRS 9's from NSSDCA 2002-011A, paired with NASA's TDRS mission page for the constellation's
+        # geosynchronous orbit and relay role [verified: nssdc.gsfc.nasa.gov and www.nasa.gov].
+        "id": "tdrs",
+        "name": "TDRS",
+        "model": "tdrs",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2002-03-08", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "TDRS 9 (Tracking and Data Relay Satellite 9) is an American geosynchronous communications satellite that was launched by an Atlas 2A rocket from Cape Canaveral AFB at 22:59 UT on 8 March 2002."},
+            {"key": "orbit", "value": "geosynchronous orbit", "page": "https://www.nasa.gov/mission/tracking-and-data-relay-satellites/", "quote": "The Tracking and Data Relay Satellite (TDRS) constellation consists of a number of satellites in geosynchronous orbit distributed over the Atlantic, Pacific, and Indian Oceans."},
+            {"key": "relay", "value": "relays data for Hubble, the ISS and Earth-observing missions", "page": "https://www.nasa.gov/mission/tracking-and-data-relay-satellites/", "quote": "These satellites provide near-continuous information relay services to more than 25 space missions, including the Hubble Space Telescope, the International Space Station, and many of our Earth-observing missions."},
+            {"key": "generation", "value": "second generation (TDRS 8, 9 and 10)", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "These features are common to all three of the second generation TDRSs, 8, 9 and 10."},
+            {"key": "massKg", "value": "1,781", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
+            {"key": "dishDiameterM", "value": 5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
+            {"key": "solarArraysLengthM", "value": 21, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
+            {"key": "power", "value": "solar arrays, 2.3 kW", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
         ],
     },
 ]
