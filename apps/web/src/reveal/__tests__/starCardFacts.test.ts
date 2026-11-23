@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CelestialFinding } from '@albedian/contracts';
+import { CelestialFindingSchema, type CelestialFinding } from '@albedian/contracts';
 import { sample } from '../../components/__tests__/poseSessions.js';
 import { starCardFacts } from '../starCardFacts.js';
 
@@ -8,40 +8,44 @@ import { starCardFacts } from '../starCardFacts.js';
 
 const betelgeuse = sample('plate_calibrated').findings.find((f) => f.title === 'Betelgeuse')!;
 // A catalog matched star as the server writes one today (the public sample's Acrux, its numbers rounded here)
-const acrux = {
+const acrux: CelestialFinding = CelestialFindingSchema.parse({
   ...betelgeuse,
-  id: 'finding-acrux',
+  id: 'finding-hip-60718',
   title: 'Acrux',
-  subtitle: 'Alpha1 Crux · HR 4730 · 98.7 pc [94.0-103.9 pc]',
+  subtitle: 'Alpha1 Crucis · HR 4730 · 98.7 pc [94.0-103.9 pc]',
   evidenceClass: 'catalog_matched',
   sourceDetection: { ...betelgeuse.sourceDetection!, snr: 186.717 },
   inferredDistancePc: { lower: 93.98, median: 98.7188, upper: 103.9, method: 'geometric_parallax' },
   catalogRef: {
     ...betelgeuse.catalogRef!,
+    id: 'hip-60718',
     provider: 'Hipparcos',
     releaseVersion: 'Hipparcos 2007',
     catalogSourceId: 'HIP 60718',
     commonName: 'Acrux',
-    bayerDesignation: 'Alpha1 Crux',
+    bayerDesignation: 'Alpha1 Crucis',
     constellation: 'Cru',
+    citation: 'Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.',
   },
   evidence: {
     ...betelgeuse.evidence,
+    catalogReferenceId: 'hip-60718',
     limitations: [
       'Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.',
       "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
     ],
   },
-} as CelestialFinding;
+});
 const withRef = (over: Record<string, unknown>) => ({ ...acrux, catalogRef: { ...acrux.catalogRef!, ...over } }) as CelestialFinding;
 
 describe('starCardFacts: a catalog matched star', () => {
   const facts = starCardFacts(acrux);
 
   it('carries its own evidence class, its name, and its designation with the constellation written in full', () => {
+    expect(CelestialFindingSchema.parse(acrux).subtitle).toBe('Alpha1 Crucis · HR 4730 · 98.7 pc [94.0-103.9 pc]');
     expect(facts.evidenceClass).toBe('catalog_matched');
     expect(facts.title).toBe('Acrux');
-    expect(facts.subLine).toBe('Alpha1 Crux · Crux');
+    expect(facts.subLine).toBe('Alpha1 Crucis · Crux');
   });
 
   it('writes the catalog distance in light years to three figures, as a catalog value', () => {
@@ -74,13 +78,16 @@ describe('starCardFacts: a catalog matched star', () => {
   });
 
   it("writes the sample's own Vega as the approved picture does: 25.0 ly, 427 times", () => {
-    const vega = {
+    const vega = CelestialFindingSchema.parse({
       ...acrux,
+      id: 'finding-hip-91262',
       title: 'Vega',
+      subtitle: 'Alpha Lyrae · 3 Lyr · HR 7001 · 7.7 pc [7.7-7.7 pc]',
       sourceDetection: { ...acrux.sourceDetection!, snr: 426.7 },
       inferredDistancePc: { lower: 7.66, median: 7.68, upper: 7.7, method: 'geometric_parallax' },
-      catalogRef: { ...acrux.catalogRef!, commonName: 'Vega', catalogSourceId: 'HIP 91262', bayerDesignation: 'Alpha Lyrae', constellation: 'Lyr' },
-    } as CelestialFinding;
+      catalogRef: { ...acrux.catalogRef!, id: 'hip-91262', commonName: 'Vega', catalogSourceId: 'HIP 91262', bayerDesignation: 'Alpha Lyrae', constellation: 'Lyr' },
+      evidence: { ...acrux.evidence, catalogReferenceId: 'hip-91262' },
+    });
     const v = starCardFacts(vega);
     expect(v.subLine).toBe('Alpha Lyrae · Lyra');
     expect(v.numbers.map((n) => `${n.value} ${n.unit} ${n.label}`)).toEqual(['25.0 ly away from Earth', '427 × above the noise']);
@@ -127,13 +134,13 @@ describe('starCardFacts: a predicted object (INTERIM: UIUX-predicted-pick-QUESTI
 
 describe('starCardFacts: what a finding does not have is left out', () => {
   it('leaves the designation out of the line under the name when it is the name, and keeps the constellation', () => {
-    expect(starCardFacts({ ...withRef({ commonName: 'HIP 60718' }), title: 'Alpha1 Crux' }).subLine).toBe('Crux');
+    expect(starCardFacts({ ...withRef({ commonName: 'HIP 60718' }), title: 'Alpha1 Crucis' }).subLine).toBe('Crux');
     expect(starCardFacts(withRef({ bayerDesignation: undefined })).subLine).toBe('Crux');
   });
 
   it('writes no line under the name for a constellation it has no full name for, rather than a code', () => {
     expect(starCardFacts(withRef({ bayerDesignation: undefined, constellation: 'Xyz' })).subLine).toBeNull();
-    expect(starCardFacts(withRef({ constellation: 'Xyz' })).subLine).toBe('Alpha1 Crux');
+    expect(starCardFacts(withRef({ constellation: 'Xyz' })).subLine).toBe('Alpha1 Crucis');
   });
 
   it('shows no distance without a catalog distance, and none from an ephemeris distance', () => {
