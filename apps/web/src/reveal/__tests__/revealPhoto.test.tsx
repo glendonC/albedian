@@ -6,7 +6,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObservationSession, ObservationSolution, VoiceQuestionReply } from '@albedian/contracts';
+import type { ObservationSession, ObservationSolution, UploadJob, VoiceQuestionReply } from '@albedian/contracts';
 import { POSE, poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { SIDE_FADE, SourcePhotoStage } from '../../components/SourcePhotoStage.js';
 import { LOOK_ICON_PATHS } from '../../look/index.js';
@@ -15,7 +15,7 @@ import { leaderPath, revealMarks } from '../revealMarks.js';
 import { REAL_SKY_FADE_MS, REVEAL_ARRIVAL_MS, RevealPhoto } from '../RevealPhoto.js';
 import { markArrivalRanks, revealMarks as marksOf } from '../revealMarks.js';
 import { MOTION_TOKENS } from '@albedian/design-system';
-import { linesLeaveMs } from '../../hooks/useLeaving.js';
+import { blockLeaveMs, linesLeaveMs } from '../../hooks/useLeaving.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
 const sky = vi.hoisted(() => ({ drawn: true, readoutTopPx: undefined as number | null | undefined }));
@@ -1305,6 +1305,149 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     show(calibrated(), { realSky: true });
     show(calibrated(), { realSky: false, originalPixels: true });
     expect(momentOf()).toBe('photo');
+  });
+
+  it('keeps the phone Simulated tag and holds back the phone restoration compare while Real sky fades out', () => {
+    const jobs = (JSON.parse(fs.readFileSync(path.resolve(here, '../../../../../tests/fixtures/job_contract.json'), 'utf8')) as { valid: UploadJob[] }).valid;
+    const doneJob = jobs.find((job) => job.kind === 'restoration' && job.state === 'succeeded')!;
+    const workingJob = { ...doneJob, state: 'running', stages: [{ stage: 'decode', unit: 'frames', done: 1, total: 1 }] } as unknown as UploadJob;
+    const doneRestore = { phase: 'done' as const, job: doneJob, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0 as const, mirrored: false } };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants: [], attempts: [] }), { status: 200 }));
+    vi.useFakeTimers();
+    try {
+      const session = calibrated();
+      const phoneProps = { phone: true, viewportWidthPx: 390, viewportHeightPx: 844 };
+
+      // While Real sky is still loading (skyDrawn false), the phone compare stays off
+      sky.drawn = false;
+      show(session, { ...phoneProps, realSky: true, restoration: doneRestore });
+      expect(q('[data-testid="restore-compare"]')).toBeNull();
+      show(session, { ...phoneProps, realSky: false, restoration: doneRestore });
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS));
+      sky.drawn = true;
+
+      // Leaving there (reduced-motion Back to Moment) with a ready restoration: Simulated tag stays through REAL_SKY_FADE_MS
+      show(session, { ...phoneProps, flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, restoration: doneRestore });
+      show(session, { ...phoneProps, restoration: doneRestore });
+      expect(q('[data-testid="real-sky"]')).not.toBeNull();
+      expect(momentOf()).toBe('real-sky');
+      expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+      expect(q('[data-testid="restore-compare"]')).toBeNull();
+      expect(q('.restore-phone-note')).toBeNull();
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS - 1));
+      expect(momentOf()).toBe('real-sky');
+      expect(q('[data-testid="restore-compare"]')).toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="real-sky"]')).toBeNull();
+      expect(momentOf()).toBeNull();
+      expect(q('[data-testid="restore-compare"]')).not.toBeNull();
+
+      // Working and stopped phone restorations also yield the status slot to the Simulated tag while Real sky fades out
+      for (const [restoration, blockSel] of [
+        [{ phase: 'working' as const, job: workingJob }, '.restore-phone-wait'],
+        [{ phase: 'stopped' as const, job: workingJob, sentence: 'Stopped.', subline: null, canTryAgain: true }, '.restore-phone-stopped'],
+      ] as const) {
+        show(session, { ...phoneProps, realSky: true, restoration });
+        expect(momentOf()).toBe('real-sky');
+        expect(q(blockSel)).toBeNull();
+        show(session, { ...phoneProps, realSky: false, restoration });
+        expect(q('[data-testid="real-sky"]')).not.toBeNull();
+        expect(momentOf()).toBe('real-sky');
+        expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+        expect(q(blockSel)).toBeNull();
+        act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS - 1));
+        expect(q(blockSel)).toBeNull();
+        act(() => vi.advanceTimersByTime(1));
+        expect(q('[data-testid="real-sky"]')).toBeNull();
+        expect(momentOf()).toBeNull();
+        expect(q(blockSel)).not.toBeNull();
+      }
+
+      // Calibrated phone photo without restoration or picked star holds back .reveal-phone-counts while Real sky fades out
+      show(session, { ...phoneProps, realSky: true });
+      expect(momentOf()).toBe('real-sky');
+      expect(q('.reveal-phone-counts')).toBeNull();
+      show(session, { ...phoneProps, realSky: false });
+      expect(q('[data-testid="real-sky"]')).not.toBeNull();
+      expect(momentOf()).toBe('real-sky');
+      expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+      expect(q('.reveal-phone-counts')).toBeNull();
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS - 1));
+      expect(q('.reveal-phone-counts')).toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="real-sky"]')).toBeNull();
+      expect(momentOf()).toBeNull();
+      expect(q('.reveal-phone-counts')).not.toBeNull();
+    } finally {
+      sky.drawn = true;
+      vi.useRealTimers();
+    }
+  });
+
+  it('starts the star card leaving on Phase A of Go there and keeps the phone sheet unmounted over Real sky and its fade', () => {
+    const jobs = (JSON.parse(fs.readFileSync(path.resolve(here, '../../../../../tests/fixtures/job_contract.json'), 'utf8')) as { valid: UploadJob[] }).valid;
+    const doneJob = jobs.find((job) => job.kind === 'restoration' && job.state === 'succeeded')!;
+    const doneRestore = { phase: 'done' as const, job: doneJob, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0 as const, mirrored: false } };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants: [], attempts: [] }), { status: 200 }));
+    vi.useFakeTimers();
+    try {
+      const base = calibrated();
+      const rigel = base.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+      const picked = { ...base, selectedFindingId: rigel.id } as ObservationSession;
+      const phaseA = {
+        ...picked,
+        spatialView: { ...picked.spatialView, mode: 'registered_sky' as const, transitionPhase: 'phase_a_photo_to_sky' as const },
+      } as ObservationSession;
+      const atSky = {
+        ...picked,
+        spatialView: { ...picked.spatialView, mode: 'registered_sky' as const, transitionPhase: 'at_source' as const },
+      } as ObservationSession;
+
+      // Laptop: card stays open on static Real sky, and starts leaving at t = 0 of Go there Phase A
+      show(atSky, { realSky: true });
+      expect(q('[data-testid="star-card"]')).not.toBeNull();
+      expect(q('[data-testid="star-card"]')!.classList.contains('is-leaving')).toBe(false);
+      show(phaseA, { realSky: false });
+      expect(q('[data-testid="star-card"]')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(blockLeaveMs(7, MOTION_TOKENS)));
+      expect(q('[data-testid="star-card"]')).toBeNull();
+
+      // Phone: static Real sky keeps the card sheet unmounted so .reveal-status.is-phone at top 660 px is never covered
+      const phoneProps = { phone: true, viewportWidthPx: 390, viewportHeightPx: 844 };
+      show(atSky, { ...phoneProps, realSky: true });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+
+      // Leaving phone Real sky to the photo waits out REAL_SKY_FADE_MS, then opens the card; Phase A starts sliding it down at t = 0
+      show(picked, phoneProps);
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS));
+      expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-phone');
+      show(phaseA, { ...phoneProps, realSky: true });
+      expect(q('[data-testid="star-card"]')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.sheetMs));
+      expect(q('[data-testid="star-card"]')).toBeNull();
+
+      // Phone Back to Moment (normal: there -> return Phase A -> skyLeaving -> photo) with picked star and restoration
+      show(picked, { ...phoneProps, flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, restoration: doneRestore });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      show(phaseA, { ...phoneProps, realSky: true, restoration: doneRestore });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="restore-compare"]')).toBeNull();
+      expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+      show(picked, { ...phoneProps, realSky: false, restoration: doneRestore });
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS - 1));
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="restore-compare"]')).toBeNull();
+      expect(q('[data-testid="reveal-status"] [data-evidence-class="simulated"]')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="real-sky"]')).toBeNull();
+      expect(q('[data-testid="reveal-status"]')).toBeNull();
+      expect(q('[data-testid="restore-compare"]')).not.toBeNull();
+      expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-phone');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

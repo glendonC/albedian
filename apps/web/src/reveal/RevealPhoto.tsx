@@ -395,6 +395,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       : flight;
   const coneGeometry = cone ? coneGeometryOf(session) : null;
   const skyOnScreen = skyShown && skyDrawn && !originalPixels;
+  // Left at once from there (reduced motion), no Real sky line came before the fade: one is shown for it, its tag with it
+  const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly;
+  const skyLineShown = skyOnScreen || skyLeaving;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
   const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
   const marked = lit === undefined ? framed : { ...framed, selectedFindingId: lit };
@@ -472,7 +475,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   });
   const [versions, setVersions] = useState<StoredRestoration[]>([]);
   const phoneCompare =
-    phoneMedia && !there && !skyShown && !originalPixels && !bareFrame && frame !== null && (versions.length > 0 || restoration?.phase === 'done');
+    phoneMedia && !there && !skyShown && !skyLeaving && !originalPixels && !bareFrame && frame !== null && (versions.length > 0 || restoration?.phase === 'done');
   const compareOn = compareShown || phoneCompare;
   // UIUX-restorephone-READY.md, ruled 15:38 and decided by the lead 15:43 on 21 Nov (D15's pictures): over the
   // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
@@ -491,9 +494,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
   const phoneRestoreOffered =
     phoneMedia && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
-  const phoneRestoring = phoneMedia && !there && !skyShown && restoration?.phase === 'working';
+  const phoneRestoring = phoneMedia && !there && !skyShown && !skyLeaving && restoration?.phase === 'working';
   // D38 item 5 (ruled 15:43): stopped, in D37's layout with D21's sentences; only Try again holds the foot (a refusal frees it)
-  const phoneStopped = phoneMedia && !there && !skyShown && !aligning && restoration?.phase === 'stopped';
+  const phoneStopped = phoneMedia && !there && !skyShown && !skyLeaving && !aligning && restoration?.phase === 'stopped';
   // D38's no-match rule: on the phone's no-match screen and its refused alignment, Restore under the screen's own
   // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused, UIUX-clipphone-READY.md section 3)
   const phoneNoMatchRestore =
@@ -607,7 +610,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     if (picked) setHeldStar(picked);
   }, [picked]);
   const cardStar = picked ?? heldStar;
-  const card = useLeaving(!answer && !there && picked !== null, cardLeaveMs);
+  // Go there Phase A starts the card leaving at once, and at phone width the opaque sheet stays out over Real sky and its fade
+  const card = useLeaving(
+    !answer && !there && phase !== 'phase_a_photo_to_sky' && !(phone && (realSky || skyLeaving)) && picked !== null,
+    cardLeaveMs,
+  );
   const leaderMark = !phone && !bareFrame && !earthOnly && picked ? (drawnMarks.find((mark) => mark.picked) ?? null) : null;
   const leaderNow = leaderMark ? { d: leaderPath(leaderMark, viewW), predicted: leaderMark.kind === 'predicted' } : null;
   const [heldLeader, setHeldLeader] = useState(leaderNow);
@@ -694,9 +701,6 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // While the Real sky layer is still on screen leaving, its line stays with its Simulated tag (AGENTS.md 1.2): the
   // photo's line comes once the layer has gone. Original pixels takes the layer away at once, and the line with it.
   const lastSkyLine = useRef<React.ReactElement | null>(null);
-  // Left at once from there (reduced motion), no Real sky line came before the fade: one is shown for it, its tag with it
-  const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly;
-  const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
   // The phone's restoration holds the foot: its compare's sentence and Download (D10 item 5), or its wait's row and Cancel (D38)
   const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring || phoneStopped ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
@@ -1213,7 +1217,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
-      {phone && !phoneClip && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
+      {phone && !phoneClip && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyLineShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>
