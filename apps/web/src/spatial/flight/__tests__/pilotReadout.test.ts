@@ -89,6 +89,11 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('apollo-soyuz', 'orbit', false))).toEqual(['orbit', null, '']);
     expect(rows(withFact('apollo-soyuz', 'orbit', true))).toEqual([null, 'No real travel time: the Apollo and Soyuz spacecraft docked in Earth orbit in 1975.', 'near Earth']);
     expect([CRAFTS['apollo-soyuz']!.name, CRAFT_CHOICES.find((c) => c.id === 'apollo-soyuz')!.detail, none('apollo-soyuz')]).toEqual(['Apollo-Soyuz', 'near Earth', 'No real travel time: the Apollo and Soyuz spacecraft docked in Earth orbit in 1975.']);
+    // The 22 Nov 05:53 ruling (ky-1): Kepler around the Sun, trailing Earth in Spitzer's words, its words waiting for its
+    // orbit in its record, which ASSETS' entry carries (hangar-43, NSSDC)
+    expect(rows(withFact('kepler', 'orbit', false))).toEqual(['orbit', null, '']);
+    expect(rows(withFact('kepler', 'orbit', true))).toEqual([null, 'No real travel time: Kepler orbits the Sun, trailing Earth.', 'around the Sun']);
+    expect([CRAFTS.kepler!.name, CRAFT_CHOICES.find((c) => c.id === 'kepler')!.detail, none('kepler')]).toEqual(['Kepler', 'around the Sun', 'No real travel time: Kepler orbits the Sun, trailing Earth.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
