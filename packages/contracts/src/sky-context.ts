@@ -246,7 +246,8 @@ export const SkyContextStarSchema = z
     id: id(),
     evidenceClass: z.literal('predicted'),
     commonName: name(),
-    bayerDesignation: name(),
+    // Absent for a star the baked designations do not give one (catalog-1-v2); never null
+    bayerDesignation: name().optional(),
     constellation: name(),
     provider: z.enum(['Hipparcos', 'Gaia DR3']),
     releaseVersion: z.enum(['Hipparcos 2007', 'Gaia DR3']),

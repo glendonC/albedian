@@ -175,6 +175,8 @@ MAG_TWO["ephemerides"] = copy.deepcopy(BASE_REPLY["ephemerides"])
 EMPTY = {**copy.deepcopy(BASE_REPLY), "stars": [], "ephemerides": [], "constellationEdges": []}
 # A reply made before the Sun was added (skycontext-3), as an older laptop still answers
 NO_SUN = {key: copy.deepcopy(value) for key, value in BASE_REPLY.items() if key != "sun"}
+# A star without a Bayer designation in the shipped tables omits bayerDesignation rather than inventing one (skycontext-5a)
+NO_BAYER = _apply(BASE_REPLY, [_set(["stars", SULAFAT, "bayerDesignation"], _DROP)])
 BASES: dict[str, tuple[str, Any]] = {"request": ("request", BASE_REQUEST), "reply": ("reply", BASE_REPLY)}
 
 
@@ -194,6 +196,7 @@ def valid_samples() -> list[dict[str, Any]]:
         ("a reply with a magLimit of 2: the fainter stars left out, and their edges, the bodies kept", MAG_TWO),
         ("a reply with no star, no body and no edge", EMPTY),
         ("a reply without the Sun, as one made before the Sun was added", NO_SUN),
+        ("a reply with a star that has no Bayer designation", NO_BAYER),
     ]
     return [{"name": name, "kind": "request", "body": body} for name, body in requests] + [
         {"name": name, "kind": "reply", "body": body} for name, body in replies
@@ -245,6 +248,7 @@ FAULTS: list[tuple[str, str, list[dict[str, Any]], str | None]] = [
     ("the Sun with an azimuth this contract does not carry", "reply", [_set(["sun", "azDeg"], 90.0)], None),
     ("the Sun under its Python name", "reply", [_set(["sun", "altDeg"], _DROP), _set(["sun", "alt_deg"], BASE_REPLY["sun"]["altDeg"])], None),
     ("a null Sun", "reply", [_set(["sun"], None)], None),
+    ("a null Bayer designation", "reply", [_set(_star(VEGA, "bayerDesignation"), None)], None),
     ("a star with no releaseVersion", "reply", [_set(_star(VEGA, "releaseVersion"), _DROP)], None),
     ("a star from another catalog", "reply", [_set(_star(VEGA, "provider"), "Tycho-2")], None),
     ("a star with a body's distance method", "reply", [_set(_star(VEGA, "distancePc", "method"), "ephemeris_au")], None),
@@ -356,6 +360,8 @@ EDGES: list[tuple[str, str, list[dict[str, Any]], list[dict[str, Any]]]] = [
     ("a star's name of 64 units with an astral character", "reply", [_set(_star(VEGA, "commonName"), LONG[:62] + "\U0001f30c")],
      [_set(_star(VEGA, "commonName"), LONG[:63] + "\U0001f30c")]),
     ("an empty name", "reply", [_set(_star(VEGA, "commonName"), "V")], [_set(_star(VEGA, "commonName"), "")]),
+    ("a star's Bayer designation of 64 units", "reply", [_set(_star(VEGA, "bayerDesignation"), LONG)], [_set(_star(VEGA, "bayerDesignation"), LONG + "a")]),
+    ("an empty Bayer designation", "reply", [_set(_star(VEGA, "bayerDesignation"), "A")], [_set(_star(VEGA, "bayerDesignation"), "")]),
     ("a limitation of 1024 units", "reply", [_set(["predictedSkyBrightness", "limitations", 0], "a" * 1024)],
      [_set(["predictedSkyBrightness", "limitations", 0], "a" * 1025)]),
     ("16 limitations", "reply", [_set(["predictedSkyBrightness", "limitations"], ["a limit"] * 16)], [_set(["predictedSkyBrightness", "limitations"], ["a limit"] * 17)]),
@@ -708,9 +714,19 @@ def test_the_phase_name_is_null_by_design_at_a_sectors_edge_and_the_contract_tak
     assert all(item["evidenceClass"] == "predicted" for item in BASE_EDGE["ephemerides"])
 
 
+def test_a_star_without_a_bayer_designation_is_accepted_and_null_is_not() -> None:
+    """skycontext-5a: a star that has no Bayer designation in the shipped tables omits bayerDesignation; null and empty
+    strings stay refused."""
+    assert "bayerDesignation" not in NO_BAYER["stars"][SULAFAT]
+    model = sc.SkyContextReply.model_validate(NO_BAYER)
+    assert model.to_wire_dict() == NO_BAYER
+    assert not accepts("reply", _apply(BASE_REPLY, [_set(["stars", SULAFAT, "bayerDesignation"], None)]))
+    assert not accepts("reply", _apply(BASE_REPLY, [_set(["stars", SULAFAT, "bayerDesignation"], "")]))
+
+
 def test_a_null_anywhere_else_in_a_reply_is_still_refused() -> None:
     for path in (["predictedSkyBrightness", "airmass"], ["predictedSkyBrightness", "target"], ["observerLocation", "latDeg"],
-                 ["stars", 0, "bpRp"], ["filters", "magLimit"]):
+                 ["stars", 0, "bpRp"], ["stars", 0, "bayerDesignation"], ["filters", "magLimit"]):
         assert not accepts("reply", _apply(BASE_REPLY, [_set(path, None)])), path
 
 

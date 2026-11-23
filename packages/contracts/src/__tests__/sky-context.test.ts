@@ -186,6 +186,14 @@ describe('the sky-context contract', () => {
     expect(accepts('reply', { ...BASE_REPLY, sun: null })).toBe(false);
   });
 
+  it('takes a star without bayerDesignation and refuses null or empty bayerDesignation', () => {
+    const withoutBayer = applied(BASE_REPLY, [{ path: ['stars', 0, 'bayerDesignation'], drop: true }]);
+    const read = SkyContextReplySchema.safeParse(withoutBayer);
+    expect(read.success && read.data).toEqual(withoutBayer);
+    expect(accepts('reply', applied(BASE_REPLY, [{ path: ['stars', 0, 'bayerDesignation'], value: null }]))).toBe(false);
+    expect(accepts('reply', applied(BASE_REPLY, [{ path: ['stars', 0, 'bayerDesignation'], value: '' }]))).toBe(false);
+  });
+
   it('holds each list to its stated number', () => {
     const empty = { ...BASE_REPLY, stars: [], ephemerides: [], constellationEdges: [] };
     const star = BASE_REPLY.stars.find((s: Json) => s.id === 'star-vega');

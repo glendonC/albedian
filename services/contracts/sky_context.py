@@ -299,7 +299,8 @@ class SkyContextStar(_Strict):
     id: Id
     evidence_class: Literal["predicted"]
     common_name: Name
-    bayer_designation: Name
+    # Absent for a star the baked designations do not give one (catalog-1-v2); never null
+    bayer_designation: Optional[Name] = None
     constellation: Name
     provider: Literal["Hipparcos", "Gaia DR3"]
     release_version: Literal["Hipparcos 2007", "Gaia DR3"]

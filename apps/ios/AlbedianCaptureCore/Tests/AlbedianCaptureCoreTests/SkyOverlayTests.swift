@@ -56,7 +56,8 @@ final class SkyOverlayTests: XCTestCase {
 
     func testReadsEveryValidReplyOfTheFixtureIntoPredictedMarks() throws {
         let replies = try validReplies()
-        XCTAssertEqual(replies.count, 5)
+        XCTAssertGreaterThanOrEqual(replies.count, 6)
+        XCTAssertTrue(replies.contains { $0.0 == "a reply with a star that has no Bayer designation" })
         for (name, reply) in replies {
             let marks = try XCTUnwrap(SkyContextReader.marks(reply), name)
             let stars = reply["stars"]?.arrayValue ?? []
