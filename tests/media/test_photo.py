@@ -18,6 +18,7 @@ Covers, on synthetic stills written as 16 bit PNGs and decoded as any upload is:
 from __future__ import annotations
 
 import math
+import weakref
 
 import numpy as np
 import pytest
@@ -26,7 +27,7 @@ from hypothesis import strategies as st
 
 from photo_frames import star_field
 from services.contracts import media as contracts
-from services.media import decode, gate, photo, png16, stars
+from services.media import decode, gate, noise, photo, png16, stars
 
 # Reading the PNGs back starts ffmpeg: each test has its own bound (child_bounds.py)
 from child_bounds import bounded  # noqa: E402,F401
@@ -251,6 +252,41 @@ def test_a_restoration_that_keeps_its_searches_stores_what_one_searching_every_t
     assert afresh.context.searches.reused == 0, "the control: nothing was taken from a search"
     assert kept.status == afresh.status and kept.data == afresh.data
     assert kept.gate == afresh.gate and kept.measured == afresh.measured and kept.unconfirmed == afresh.unconfirmed
+
+
+def test_the_gate_runs_with_the_decoded_light_and_every_working_image_let_go(tmp_path, monkeypatch) -> None:
+    # A 24 MP photo's decoded light, working image and dissolved image are 0.58 GB each: the gate needs none of them,
+    # and none is held while it runs
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    still = still_of(scene.codes, tmp_path)
+    held, alive = {}, []
+    real_measure, real_first, real_dissolve, real_check = (noise.measure_noise, gate.smooth_first_scale, gate.dissolve,
+                                                           photo.check_full)
+
+    def measure(linear, *args, **kwargs):
+        held["decoded light"] = weakref.ref(linear)
+        return real_measure(linear, *args, **kwargs)
+
+    def first_scale(working, kept):
+        smoothed = real_first(working, kept)
+        held["working image"] = weakref.ref(smoothed)
+        return smoothed
+
+    def dissolve(*args, **kwargs):
+        dissolved = real_dissolve(*args, **kwargs)
+        held["dissolved image"] = weakref.ref(dissolved.working)
+        return dissolved
+
+    def check(context, stored):
+        alive.append(sorted(name for name, ref in held.items() if ref() is not None))
+        return real_check(context, stored)
+
+    for module, name, stand_in in ((noise, "measure_noise", measure), (gate, "smooth_first_scale", first_scale),
+                                   (gate, "dissolve", dissolve), (photo, "check_full", check)):
+        monkeypatch.setattr(module, name, stand_in)
+    result = photo.restore_still(still)
+    assert result.status == "ready" and set(held) == {"decoded light", "working image", "dissolved image"}
+    assert alive == [[]]
 
 
 def test_a_trial_beside_a_star_on_the_tiles_its_patch_touches_agrees_with_the_whole_gate(honest) -> None:

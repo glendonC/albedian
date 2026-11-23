@@ -140,8 +140,7 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     original_noise = working_noise = None
     if measurement.reason is None:
         measured["noise"] = measurement.table()
-        guide = noise.stabilised(luminance, measurement)
-        working = spatial.edge_avoiding(linear, guide, kept.weight).frame
+        working = spatial.edge_avoiding(linear, noise.stabilised(luminance, measurement), kept.weight).frame
         working = gate.smooth_first_scale(working, kept)
         steps.append({"kind": "spatial_denoise", "version": spatial.STEP_VERSION, "parameters": spatial.parameters() + _settings(
             keptGrowPx=gate.KEPT_GROW_PX, firstScaleLevels=gate.FIRST_SCALE_LEVELS, brightSkyNoises=gate.BRIGHT_SKY_NOISES,
@@ -175,7 +174,11 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
 
     lap("lift")
     searches = gate.Searches()
-    dissolved = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=to_original_codes,
+    # Each whole-image array is let go once nothing after it reads it (a 24 MP photo's is 0.58 GB): the dissolve
+    # takes the working image as its own, so no name here keeps the image a pass replaces
+    handed = [working]
+    del working
+    dissolved = gate.dissolve(handed.pop(), linear=linear, to_stored=to_stored, to_original_codes=to_original_codes,
                               original=original, kept=kept, max_passes=max_passes, searches=searches)
     lap("dissolve")
     steps.append({"kind": "dissolve_unconfirmed", "version": gate.STEP_VERSION, "parameters": [
@@ -189,20 +192,24 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     steps.append({"kind": "lift", "version": tone.STEP_VERSION, "parameters": lift.parameters()})
     steps.append({"kind": "encode", "version": STEP_VERSION, "parameters": _encode_parameters()})
     expected = transfer.encode16(tone.apply_lift(linear, lift.beta))
+    del linear
     # Every kept region stored as the gate computes it: a core the original's, an edge the original blended with the
     # stored sky around it (restore-4f)
     stored = gate.kept_samples(transfer.encode16(tone.apply_lift(dissolved.working, lift.beta)), expected,
                                kept.weight).astype(np.uint16)
+    per_pass = dissolved.per_pass
+    del dissolved
     data = encode.write_still(stored, profile_without_text(still.icc_profile))
+    del stored
     read_back = encode.read_still(data)
     lap("encode")
     context = Context(original, kept, transfer, lift.beta, top, luminance, expected, searches)
     verdict = check_full(context, read_back)
     lap("gate")
-    measured["dissolvedPerPass"] = dissolved.per_pass
+    measured["dissolvedPerPass"] = per_pass
     measured["lift"] = lift.record()
     notes = list(lift.notes)
-    if dissolved.per_pass:
+    if per_pass:
         notes.append(NOTE_DISSOLVED)
     if field.clipped.any():
         notes.append(NOTE_CLIPPED)

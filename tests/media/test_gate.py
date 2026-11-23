@@ -465,6 +465,107 @@ def test_the_search_statistic_leaves_kept_regions_out_and_is_the_gates_statistic
     assert np.array_equal(gate.search_statistic(luma, np.zeros((96, 96))), plain)
 
 
+def smooth_without_stacked(frame: np.ndarray, core: np.ndarray, levels: int) -> np.ndarray:
+    """`gate.smooth_without` as speed-2 computed it, its channels stacked whole: the reference the cascade must equal."""
+    keep = 1.0 - np.asarray(core, dtype=np.float64)
+    current = np.asarray(frame, dtype=np.float64)
+    for level in range(levels):
+        step = 2**level
+        total = noise.b3_smooth(keep, step)
+        weighted = np.stack([noise.b3_smooth(current[..., c] * keep, step) for c in range(current.shape[-1])], axis=-1)
+        enough = total >= gate.FILL_WEIGHT_FLOOR
+        current = np.where(enough[..., None], weighted / np.where(enough, total, 1.0)[..., None], current)
+    return current
+
+
+def kept_samples_whole(stored, expected, weight, code_step: float = 1.0) -> np.ndarray:
+    """`gate.kept_samples` as speed-2 computed it, every blend whole-image: the reference the stored file must equal."""
+    stored = np.asarray(stored, dtype=np.float64)
+    expected = np.asarray(expected, dtype=np.float64)
+    weight = np.asarray(weight, dtype=np.float64)
+    out = np.where((weight >= 1.0)[..., None], expected, stored)
+    edge = (weight > 0) & (weight < 1.0)
+    if edge.any():
+        free = (weight <= 0).astype(np.float64)
+        filled = smooth_without_stacked(np.concatenate([stored, free[..., None]], axis=-1),
+                                        (weight > 0).astype(np.float64), gate.KEPT_EDGE_FILL_LEVELS)
+        reached = filled[..., -1] > 0.5
+        mixed = weight[..., None] * expected + (1.0 - weight[..., None]) * filled[..., :-1]
+        blend = np.clip(np.round(mixed / code_step) * code_step, 0, gate.TOP_CODE16)
+        out = np.where((edge & reached)[..., None], blend, out)
+        out = np.where((edge & ~reached)[..., None], expected, out)
+    return out
+
+
+def kept_scene(height: int = 400, width: int = 500, seed: int = 41) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """A stored file's codes, the original's as stored, and a kept weight of a few stars' footprints (cores 1, edges
+    between), one edge ring so wide that the fill reaches some of its samples from no free sample."""
+    rng = np.random.default_rng(seed)
+    placed = [stars.Star(float(x), float(y), 50.0, int(r)) for x, y, r in
+              zip(rng.uniform(20, width - 20, 12), rng.uniform(20, height - 20, 12), rng.integers(2, 6, 12))]
+    weight = stars.footprint_map((height, width), placed)
+    yy, xx = np.mgrid[0:height, 0:width]
+    ring = np.hypot(xx - width / 2, yy - height / 2)
+    weight = np.maximum(weight, np.where(ring < 12, 1.0, np.where(ring < 40, 0.5, 0.0)))
+    stored = np.round(20000 + 40 * rng.standard_normal((height, width, 3)))
+    expected = np.round(20000 + 300 * rng.standard_normal((height, width, 3)))
+    return stored, expected, weight
+
+
+def traced_peak(call) -> int:
+    """The most bytes `call` holds at once beyond what was held before it, as tracemalloc counts them (numpy reports its
+    buffers to it)."""
+    import tracemalloc
+    started = not tracemalloc.is_tracing()
+    if started:
+        tracemalloc.start()
+    held = tracemalloc.get_traced_memory()[0]
+    tracemalloc.reset_peak()
+    result = call()
+    peak = tracemalloc.get_traced_memory()[1] - held
+    if started:
+        tracemalloc.stop()
+    del result
+    return peak
+
+
+@settings(max_examples=25, deadline=None)
+@given(seed=st.integers(0, 2**16), levels=st.integers(1, 3), channels=st.integers(1, 4))
+def test_the_fill_cascade_computed_channel_by_channel_is_the_stacked_cascade_to_the_bit(seed, levels, channels) -> None:
+    rng = np.random.default_rng(seed)
+    frame = rng.uniform(0, 65535, (37, 53, channels))
+    core = (rng.uniform(size=(37, 53)) < 0.3).astype(np.float64)
+    core[5:20, 5:20] = 1.0  # a block whose middle no tap leaves at any level: those samples keep their own value
+    assert np.array_equal(gate.smooth_without(frame, core, levels), smooth_without_stacked(frame, core, levels))
+
+
+@settings(max_examples=15, deadline=None)
+@given(seed=st.integers(0, 2**16), code_step=st.sampled_from([1.0, 65535 / 255, 65535 / 1023]))
+def test_a_kept_edge_blended_on_its_own_samples_is_the_whole_image_blend_to_the_bit(seed, code_step) -> None:
+    stored, expected, weight = kept_scene(96, 128, seed)
+    reached = smooth_without_stacked((weight <= 0).astype(np.float64)[..., None], (weight > 0).astype(np.float64),
+                                     gate.KEPT_EDGE_FILL_LEVELS)[..., 0] > 0.5
+    edge = (weight > 0) & (weight < 1)
+    assert (edge & reached).any() and (edge & ~reached).any(), "the control: edge samples of both kinds"
+    for codes in (stored, stored.astype(np.uint16)):
+        must = kept_samples_whole(codes, expected.astype(np.uint16), weight, code_step)
+        assert np.array_equal(gate.kept_samples(codes, expected.astype(np.uint16), weight, code_step), must)
+
+
+def test_the_fill_cascade_holds_at_most_four_and_a_half_frames_beyond_its_input() -> None:
+    # The stacked cascade held 5.38 frames here, this one 4.05; the rest is the B3 smoothing's own planes
+    frame = np.random.default_rng(42).uniform(0, 65535, (400, 500, 3))
+    core = np.zeros((400, 500))
+    core[100:140, 200:260] = 1.0
+    assert traced_peak(lambda: gate.smooth_without(frame, core, 2)) <= 4.5 * frame.nbytes
+
+
+def test_kept_samples_holds_at_most_seven_frames_beyond_its_inputs() -> None:
+    # The whole-image blend held 9.43 frames here, the edge-only one 6.09
+    stored, expected, weight = kept_scene()
+    assert traced_peak(lambda: gate.kept_samples(stored, expected, weight)) <= 7 * stored.nbytes
+
+
 def test_a_kept_edge_is_the_original_blended_with_the_stored_sky_and_a_change_in_it_is_a_place() -> None:
     rng = np.random.default_rng(31)
     star = stars.Star(64.0, 64.0, 20.0, 4)

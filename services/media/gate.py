@@ -321,13 +321,17 @@ def kept_samples(stored: np.ndarray, expected: np.ndarray, weight: np.ndarray, c
         # A last channel, 1 on free samples, tells which edge samples the fill reached from free samples: one it did
         # not keeps its own value through every level, so its blend would read itself; it is the original's instead
         free = (weight <= 0).astype(np.float64)
-        filled = smooth_without(np.concatenate([stored, free[..., None]], axis=-1), (weight > 0).astype(np.float64),
-                                KEPT_EDGE_FILL_LEVELS)
+        filled = _smooth_without_in_place(np.concatenate([stored, free[..., None]], axis=-1),
+                                          (weight > 0).astype(np.float64), KEPT_EDGE_FILL_LEVELS)
         reached = filled[..., -1] > 0.5
-        mixed = weight[..., None] * expected + (1.0 - weight[..., None]) * filled[..., :-1]
-        blend = np.clip(np.round(mixed / code_step) * code_step, 0, TOP_CODE16)
-        out = np.where((edge & reached)[..., None], blend, out)
-        out = np.where((edge & ~reached)[..., None], expected, out)
+        # The blend on the edge's own samples only, each as the whole-image blend computes it [tested: the same
+        # values to the bit]: an edge is a few percent of a photo, and the whole-image blend held 9.4 frames to its 6.1
+        blended = edge & reached
+        at = weight[blended][:, None]
+        mixed = at * expected[blended] + (1.0 - at) * filled[blended][:, :-1]
+        out[blended] = np.clip(np.round(mixed / code_step) * code_step, 0, TOP_CODE16)
+        lone = edge & ~reached
+        out[lone] = expected[lone]
     return out
 
 
@@ -808,14 +812,22 @@ def smooth_without(frame: np.ndarray, core: np.ndarray, levels: int) -> np.ndarr
     """The B3 cascade of `levels` levels with every sample under `core` given no weight (each average divided by its
     weights' sum), a sample keeping its own value where every tap lies under `core`: an average of samples with
     positive weights, so it never leaves their range (REQ-RST-5.2), and no star light spreads."""
+    return _smooth_without_in_place(np.array(frame, dtype=np.float64), core, levels)
+
+
+def _smooth_without_in_place(current: np.ndarray, core: np.ndarray, levels: int) -> np.ndarray:
+    """`smooth_without` on `current` (H x W x C, float64), which it overwrites: each level replaces one channel at a
+    time, as a channel's next level reads that channel alone, so the cascade holds one frame and a few planes, not a
+    stack of every channel and their quotient [tested: the same values to the bit as the stacked cascade]."""
     keep = 1.0 - np.asarray(core, dtype=np.float64)
-    current = np.asarray(frame, dtype=np.float64)
     for level in range(levels):
         step = 2**level
         total = noise.b3_smooth(keep, step)
-        weighted = np.stack([noise.b3_smooth(current[..., c] * keep, step) for c in range(current.shape[-1])], axis=-1)
         enough = total >= FILL_WEIGHT_FLOOR
-        current = np.where(enough[..., None], weighted / np.where(enough, total, 1.0)[..., None], current)
+        divisor = np.where(enough, total, 1.0)
+        for c in range(current.shape[-1]):
+            channel = current[..., c]
+            channel[...] = np.where(enough, noise.b3_smooth(channel * keep, step) / divisor, channel)
     return current
 
 
