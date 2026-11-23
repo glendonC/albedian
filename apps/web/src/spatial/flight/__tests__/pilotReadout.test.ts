@@ -94,6 +94,11 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('kepler', 'orbit', false))).toEqual(['orbit', null, '']);
     expect(rows(withFact('kepler', 'orbit', true))).toEqual([null, 'No real travel time: Kepler orbits the Sun, trailing Earth.', 'around the Sun']);
     expect([CRAFTS.kepler!.name, CRAFT_CHOICES.find((c) => c.id === 'kepler')!.detail, none('kepler')]).toEqual(['Kepler', 'around the Sun', 'No real travel time: Kepler orbits the Sun, trailing Earth.']);
+    // The 22 Nov 22:18 ruling (in-1): Ingenuity on Mars as the Viking Lander, its words waiting for its last flight in its
+    // record, which ASSETS' entry carries (hangar-44, NASA's mission page)
+    expect(rows(withFact('ingenuity', 'lastFlight', false))).toEqual(['lastFlight', null, '']);
+    expect(rows(withFact('ingenuity', 'lastFlight', true))).toEqual([null, 'No real travel time: Ingenuity flew on Mars from 2021 to 2024.', 'on Mars']);
+    expect([CRAFTS.ingenuity!.name, CRAFT_CHOICES.find((c) => c.id === 'ingenuity')!.detail, none('ingenuity')]).toEqual(['Ingenuity', 'on Mars', 'No real travel time: Ingenuity flew on Mars from 2021 to 2024.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);

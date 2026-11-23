@@ -63,6 +63,7 @@ export const STARDUST_ELEVATION_DEG = 45;
 export const NEAR_ELEVATION_DEG = 15;
 export const KEPLER_ELEVATION_DEG = 20;
 export const KEPLER_HEADING_DEG = 40;
+export const INGENUITY_ELEVATION_DEG = 15;
 
 /**
  * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
@@ -126,6 +127,11 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
     [0, 0, 1],
     KEPLER_ELEVATION_DEG,
   ),
+  // in-1 (the 22 Nov 22:18 ruling), checked live against NASA's render: on its four legs, the mast and solar panel up
+  // (the hangar's up), the rotors spread, seen a little from above. From the front quarter on the right: the hangar's
+  // FRONT_QUARTER (the left) showed the render's mirror image (the panel sloping up to the right), the right one
+  // matches it (the panel sloping down to the right, the long blade reaching left, one blade hanging below)
+  ingenuity: seenFromAbove([-FRONT_QUARTER[0], 0, FRONT_QUARTER[2]], [0, 1, 0], INGENUITY_ELEVATION_DEG),
 };
 
 /**

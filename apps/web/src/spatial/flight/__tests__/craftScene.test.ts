@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
+import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftFrameRadiusM, craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
@@ -189,6 +189,9 @@ describe('craftFromSearch: the interim choice by page address', () => {
       // ky-2 (the 22 Nov 05:53 ruling), checked live against NASA's render: upright, the aperture (+Z) up, turned about
       // it so the array's side (+Y) lies back and the white panel faces the front right
       kepler: [[Math.sin((KEPLER_HEADING_DEG * Math.PI) / 180), Math.cos((KEPLER_HEADING_DEG * Math.PI) / 180), 0], [0, 0, 1], KEPLER_ELEVATION_DEG],
+      // in-1 (the 22 Nov 22:18 ruling), checked live against NASA's render: on its legs, the hangar's up kept, from the
+      // front quarter on the right (28.8 degrees off its front, the hangar picture camera's angle mirrored)
+      ingenuity: [[-0.55 / Math.hypot(0.55, 1), 0, -1 / Math.hypot(0.55, 1)], [0, 1, 0], INGENUITY_ELEVATION_DEG],
     };
     for (const [id, [f, u, deg]] of Object.entries(fromAbove)) {
       const e = (deg * Math.PI) / 180;
@@ -203,6 +206,8 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect([STARDUST_ELEVATION_DEG, NEAR_ELEVATION_DEG]).toEqual([45, 15]);
     // Kepler's from its sheet (.cache/spatial/rest-ky/)
     expect([KEPLER_HEADING_DEG, KEPLER_ELEVATION_DEG]).toEqual([40, 20]);
+    // Ingenuity's from its sheet (.cache/spatial/rest-in, rest-in-q): 15, the hangar picture camera's "a little above"
+    expect(INGENUITY_ELEVATION_DEG).toBe(15);
     // as-2 (the 21 Nov 14:33 ruling), checked live against NASA's render: Apollo-Soyuz from its side, level, the hangar's
     // up kept
     expect([CRAFTS['apollo-soyuz']!.modelForward, CRAFTS['apollo-soyuz']!.modelUp]).toEqual([[1, 0, 0], [0, 1, 0]]);
@@ -215,7 +220,7 @@ describe('craftFromSearch: the interim choice by page address', () => {
       expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
       expect([fz < 0, (Math.atan2(fx, -fz) * 180) / Math.PI]).toEqual([true, expect.closeTo(28.81, 2)]);
     }
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler']);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
     expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
