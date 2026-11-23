@@ -462,15 +462,16 @@ def to_stored(settings: ClipSettings, light: np.ndarray) -> np.ndarray:
     return clip.stored(clip.to_planes(tone.apply_lift(light, settings.lift.beta)))
 
 
-def dissolve_frame(settings: ClipSettings, prepared: Prepared) -> gate.Dissolved:
+def dissolve_frame(settings: ClipSettings, prepared: Prepared, searches: Optional[gate.Searches] = None) -> gate.Dissolved:
     """The dissolve passes of design section 7 on a prepared frame, in the codes it will be stored with, against its
-    original pixels and its frames together."""
+    original pixels and its frames together. `searches` keeps the run's tile searches (`gate.Searches`)."""
     if _unchanged(prepared):
         return gate.Dissolved(prepared.working, [])
     clip = settings.colour
     return gate.dissolve(prepared.working, linear=prepared.original, to_stored=lambda light: to_stored(settings, light),
                          to_original_codes=lambda light: np.asarray(clip.to_planes(light)[0], dtype=np.float64),
-                         original=prepared.side.confirmer(), kept=prepared.side.kept, luma_of=stored_luma)
+                         original=prepared.side.confirmer(), kept=prepared.side.kept, luma_of=stored_luma,
+                         searches=searches)
 
 
 def finish_frame(settings: ClipSettings, working: np.ndarray, side: OriginalSide) -> tuple[np.ndarray, ...]:
@@ -506,10 +507,13 @@ def restore_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameResult
     frames, first = _run_frames(settings, run, run.frames)
     # The clip index of frames[0]
     origin = run.first - first
+    # The run's tile searches, kept by the exact values each read (`gate.Searches`): a tile whose values repeat, as a
+    # repeated frame's do, is answered from its first search, and one that differs in a bit is searched afresh
+    searches = gate.Searches()
     results = []
     for k in range(run.count):
         prepared = prepare_frame(settings, frames, first + k)
-        dissolved = dissolve_frame(settings, prepared)
+        dissolved = dissolve_frame(settings, prepared, searches)
         side = prepared.side
         own, together = side.found.field, side.found.together
         closure = () if side.window is None else tuple(
@@ -546,9 +550,11 @@ class FrameGate:
     fixed: int
 
 
-def gate_frame(settings: ClipSettings, side: OriginalSide, stored_planes: Sequence[np.ndarray]) -> gate.GateOutcome:
+def gate_frame(settings: ClipSettings, side: OriginalSide, stored_planes: Sequence[np.ndarray],
+               searches: Optional[gate.Searches] = None) -> gate.GateOutcome:
     """Design section 7's gate on one stored frame: its points in the stored Y' codes confirmed on its original pixels
-    or on its frames together, its kept regions what they must be, and every measured star's flux, the lift undone."""
+    or on its frames together, its kept regions what they must be, and every measured star's flux, the lift undone.
+    `searches` keeps the run's tile searches (`gate.Searches`)."""
     clip, beta = settings.colour, settings.lift.beta
     together = side.together
     # The flux is compared with the original lifted and stored as the job stores it, the lift undone (as `expected`
@@ -561,7 +567,7 @@ def gate_frame(settings: ClipSettings, side: OriginalSide, stored_planes: Sequen
                          expected=clip.stored(lifted), original_luminance=as_stored,
                          variant_luminance=tone.undo_lift(clip.to_linear(stored_planes), beta) @ np.asarray(LUMA),
                          luma_of=stored_luma, code_step=clip.stored_step(), together=side.found.together,
-                         together_luminance=None if together is None else together.luminance)
+                         together_luminance=None if together is None else together.luminance, searches=searches)
 
 
 def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
@@ -570,11 +576,16 @@ def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
     frames together and the stars are rebuilt from the original frames alone, by the same rule as the merge's (design
     section 10); a frame's own stars are taken from its record only for the luma they were found on."""
     frames, first = _run_frames(settings, run, [pair[0] for pair in run.frames])
+    # The run's tile searches (`gate.Searches`): a repeated frame's stored tiles are answered from their first search.
+    # The restore pass's own are not handed here: the gate reads the encode back, whose values are not the codes the
+    # passes searched [tested: the probe of 22 Nov, 66 repeats of 1350 searches over both passes, 58 within one run's
+    # process]
+    searches = gate.Searches()
     results = []
     for k in range(run.count):
         item = run.frames[run.before + k]
         side = original_side(settings, frames, first + k, item[2] if len(item) > 2 else None)
-        outcome = gate_frame(settings, side, run.frames[run.before + k][1])
+        outcome = gate_frame(settings, side, run.frames[run.before + k][1], searches)
         own, together = side.found.field, side.found.together
         results.append(FrameGate(run.first + k, outcome, own.found + together.found, own.confirmed + together.confirmed,
                                  together.confirmed, side.found.fixed))
