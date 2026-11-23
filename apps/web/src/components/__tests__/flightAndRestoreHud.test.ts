@@ -501,6 +501,23 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
     const toTarget = container.querySelector<HTMLElement>('[data-testid="flight-target-distance-readout"]');
     // 168.067 pc (156.25 to 181.818) in the synthetic Hipparcos row
     expect(toTarget?.textContent).toContain('548 ly (510 to 593 ly) from Earth');
+
+    // Bailer-Jones geometric prior ('geometric_bailer_jones_edr3', e.g. Eta Lupi at 131.6 pc [125.0-139.0 pc])
+    const bjGeoStar = {
+      ...betelgeuse,
+      title: 'Eta Lupi',
+      inferredDistancePc: { lower: 125.0, median: 131.6, upper: 139.0, method: 'geometric_bailer_jones_edr3' },
+    };
+    const bjGeoSession: ObservationSession = {
+      ...arrived,
+      observationSolution: { ...arrived.observationSolution!, findings: [bjGeoStar] },
+    };
+    await act(async () => {
+      root.render(React.createElement(FlightAndRestoreHud, { session: bjGeoSession, setSession: () => {} }));
+    });
+    expect(container.querySelector<HTMLElement>('[data-testid="flight-target-distance-readout"]')?.textContent).toContain(
+      '429 ly (408 to 453 ly) from Earth'
+    );
   });
 
   it('gives the catalog clause only for a catalog distance, not an ephemeris one or none', async () => {

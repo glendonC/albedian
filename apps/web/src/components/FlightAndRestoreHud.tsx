@@ -13,7 +13,11 @@ export interface FlightAndRestoreHudProps {
 }
 
 /** Distance methods that come from a star catalog (parallax or a Bailer-Jones prior), not an ephemeris. */
-const CATALOG_DISTANCE_METHODS = new Set<string>(['geometric_parallax', 'photogeometric_bailer_jones_edr3']);
+const CATALOG_DISTANCE_METHODS = new Set<string>([
+  'geometric_parallax',
+  'photogeometric_bailer_jones_edr3',
+  'geometric_bailer_jones_edr3',
+]);
 
 const POWERS_OF_TEN_RUNGS = [
   { exp: -3, label: '10^-3 pc' },

@@ -39,15 +39,25 @@ export interface StarCardFacts {
 }
 
 /** Distance methods that come from a star catalog (a parallax or a Bailer-Jones prior), not an ephemeris. */
-const CATALOG_DISTANCE_METHODS: ReadonlySet<string> = new Set(['geometric_parallax', 'photogeometric_bailer_jones_edr3']);
+const CATALOG_DISTANCE_METHODS: ReadonlySet<string> = new Set([
+  'geometric_parallax',
+  'photogeometric_bailer_jones_edr3',
+  'geometric_bailer_jones_edr3',
+]);
 
-/** A constellation's name in full ("Lyra") for its code ("Lyr") or its Latin name ("Lyra"), from the contract's own table. */
-const CONSTELLATION_NAME: ReadonlyMap<string, string> = new Map(
-  DESIGNATION_CONSTELLATIONS.flatMap(([code, name]) => [
+/**
+ * A constellation's name in full ("Lyra") for its code ("Lyr"), its Latin name ("Lyra"), or OpenNGC's Serpens Caput
+ * and Cauda codes ("Se1", "Se2", packages/contracts/src/deep-sky.ts), from the contract's own table.
+ */
+const SERPENS = DESIGNATION_CONSTELLATIONS.find(([code]) => code === 'Ser')![1];
+const CONSTELLATION_NAME: ReadonlyMap<string, string> = new Map([
+  ...DESIGNATION_CONSTELLATIONS.flatMap(([code, name]): [string, string][] => [
     [code, name],
     [name, name],
   ]),
-);
+  ['Se1', SERPENS],
+  ['Se2', SERPENS],
+]);
 
 /**
  * A star with no name, whose title is its catalog number (INTERIM: .lead/uiux/UIUX-unnamed-QUESTION.md, waiting on the

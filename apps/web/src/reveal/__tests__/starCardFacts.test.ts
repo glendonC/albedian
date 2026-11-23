@@ -48,8 +48,72 @@ describe('starCardFacts: a catalog matched star', () => {
     expect(facts.subLine).toBe('Alpha1 Crucis · Crux');
   });
 
-  it('writes the catalog distance in light years to three figures, as a catalog value', () => {
+  it('writes the catalog distance in light years to three figures for inverse parallax and both Bailer-Jones priors', () => {
     expect(facts.numbers[0]).toEqual({ value: '322', unit: 'ly', label: 'away from Earth', evidenceClass: 'catalog_matched' });
+    const etaLupi = CelestialFindingSchema.parse({
+      ...acrux,
+      id: 'finding-gaia-dr3-6010394022995479936',
+      title: 'Eta Lupi',
+      subtitle: 'Eta Lupi · 131.6 pc [125.0-139.0 pc]',
+      inferredDistancePc: { lower: 125.0, median: 131.6, upper: 139.0, method: 'geometric_bailer_jones_edr3' },
+      catalogRef: {
+        ...acrux.catalogRef!,
+        id: 'gaia-dr3-6010394022995479936',
+        provider: 'Gaia DR3',
+        releaseVersion: 'Gaia DR3 (2022)',
+        catalogSourceId: 'Gaia DR3 6010394022995479936',
+        commonName: 'Eta Lupi',
+        bayerDesignation: 'Eta Lupi',
+        constellation: 'Lup',
+        bailerJonesDistancePc: undefined,
+      },
+      evidence: { ...acrux.evidence, catalogReferenceId: 'gaia-dr3-6010394022995479936' },
+    });
+    const bjGeo = starCardFacts(etaLupi);
+    expect(bjGeo.canGoThere).toBe(true);
+    expect(bjGeo.numbers[0]).toEqual({ value: '429', unit: 'ly', label: 'away from Earth', evidenceClass: 'catalog_matched' });
+  });
+
+  it("maps OpenNGC's Serpens Caput (Se1) and Serpens Cauda (Se2) codes to Serpens on deep-sky cards", () => {
+    const m5 = CelestialFindingSchema.parse({
+      ...acrux,
+      id: 'finding-openngc-ngc5904',
+      title: 'NGC 5904',
+      subtitle: 'Globular cluster in Serpens',
+      evidenceClass: 'predicted',
+      sourceDetection: undefined,
+      inferredDistancePc: undefined,
+      cartesianParsecICRS: undefined,
+      catalogRef: {
+        id: 'openngc-ngc5904',
+        provider: 'OpenNGC',
+        releaseVersion: 'OpenNGC 20231210',
+        catalogSourceId: 'NGC5904',
+        commonName: 'NGC 5904',
+        constellation: 'Se1',
+        objectType: 'deep_sky',
+        coordinateEpoch: 'J2000.0',
+        raDeg: 229.6384,
+        decDeg: 2.081,
+        apparentMagnitude: 5.65,
+        citation: 'OpenNGC',
+      },
+      evidence: {
+        id: 'ev-m5',
+        evidenceClass: 'predicted',
+        verificationMethod: 'Catalog centre placed through the verified WCS',
+        limitations: ['Catalog centre only.'],
+        verifiedByIndependentHoldout: false,
+      },
+    });
+    const m16 = CelestialFindingSchema.parse({
+      ...m5,
+      id: 'finding-openngc-ngc6611',
+      title: 'Eagle Nebula',
+      catalogRef: { ...m5.catalogRef!, id: 'openngc-ngc6611', catalogSourceId: 'NGC6611', commonName: 'Eagle Nebula', constellation: 'Se2', apparentMagnitude: 6.0 },
+    });
+    expect(starCardFacts(m5, { type: 'GCl', vMag: 5.65, bMag: null }).subLine).toBe('Globular cluster · Serpens');
+    expect(starCardFacts(m16, { type: 'Cl+N', vMag: 6.0, bMag: null }).subLine).toBe('Star cluster and nebula · Serpens');
   });
 
   it('writes the measured signal to noise as a whole number of times, as an observed value', () => {
