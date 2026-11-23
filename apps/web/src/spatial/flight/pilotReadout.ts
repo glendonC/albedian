@@ -48,6 +48,8 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   ingenuity: 'on Mars',
   // The 23 Nov 03:38 ruling (pv-1): as the Viking Lander's and Ingenuity's
   perseverance: 'on Mars',
+  // The 23 Nov 11:07 ruling (cl-1): as the Apollo Lunar Module's
+  clementine: 'to the Moon',
 };
 
 /**
@@ -56,8 +58,9 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
  * record names Tempel 1 and the Viking Lander's until it names the landing on Mars, each from NASA's mission page. The
  * 21 Nov 14:33 ruling holds Apollo-Soyuz's until its record names the docking in Earth orbit (NASA's project page), and
  * the 22 Nov 05:53 ruling Kepler's until it names its Earth-trailing orbit (NSSDC). The 22 Nov 22:18 ruling holds
- * Ingenuity's until it names its last flight (NASA's mission page), and the 23 Nov 03:38 ruling holds Perseverance's
- * until it names its landing on Mars (NSSDC 2020-052A).
+ * Ingenuity's until it names its last flight (NASA's mission page), the 23 Nov 03:38 ruling holds Perseverance's
+ * until it names its landing on Mars (NSSDC 2020-052A), and the 23 Nov 11:07 ruling holds Clementine's until it names
+ * its lunar orbit (NASA's mission page).
  */
 const NEEDS_FACT: Readonly<Record<CraftId, string>> = {
   ibex: 'orbit',
@@ -67,6 +70,7 @@ const NEEDS_FACT: Readonly<Record<CraftId, string>> = {
   kepler: 'orbit',
   ingenuity: 'lastFlight',
   perseverance: 'landedOnMars',
+  clementine: 'lunarOrbit',
 };
 
 /** The fact this craft's words still wait for in the hangar's record, or none. */
@@ -100,6 +104,7 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   kepler: 'No real travel time: Kepler orbits the Sun, trailing Earth.',
   ingenuity: 'No real travel time: Ingenuity flew on Mars from 2021 to 2024.',
   perseverance: 'No real travel time: Perseverance landed in Jezero Crater on Mars in 2021.',
+  clementine: 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.',
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */

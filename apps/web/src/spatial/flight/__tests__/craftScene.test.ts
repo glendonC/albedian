@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
+import { CLEMENTINE_HEADING_DEG, CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftFrameRadiusM, craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
@@ -220,7 +220,15 @@ describe('craftFromSearch: the interim choice by page address', () => {
       expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
       expect([fz < 0, (Math.atan2(fx, -fz) * 180) / Math.PI]).toEqual([true, expect.closeTo(28.81, 2)]);
     }
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity', 'perseverance']);
+    // cl-1 (the 23 Nov 11:07 ruling), checked live against clementine_picker.webp (.cache/uiux/built/cl-1/zoom.png):
+    // upright with thruster (-Z) up and high-gain dish (+Z) below, solar cell faces (+Y) toward the camera turned 12 deg
+    // about the upright axis (0 deg extra elevation, since yFraction 0.62 already looks ~9 deg down) so the two round
+    // ports sit front-left and the angled sensor housing shows to the right of the thruster cone
+    expect(CLEMENTINE_HEADING_DEG).toBe(12);
+    const clemRad = (CLEMENTINE_HEADING_DEG * Math.PI) / 180;
+    expect(CRAFTS.clementine!.modelUp).toEqual([0, 0, -1]);
+    CRAFTS.clementine!.modelForward.forEach((x, i) => expect(x).toBeCloseTo([-Math.sin(clemRad), -Math.cos(clemRad), 0][i]!, 12));
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity', 'perseverance', 'clementine']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
     expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);

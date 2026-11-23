@@ -64,6 +64,7 @@ export const NEAR_ELEVATION_DEG = 15;
 export const KEPLER_ELEVATION_DEG = 20;
 export const KEPLER_HEADING_DEG = 40;
 export const INGENUITY_ELEVATION_DEG = 15;
+export const CLEMENTINE_HEADING_DEG = 12;
 
 /**
  * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
@@ -136,6 +137,13 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   // upright on its six wheels (+Y up), from the front quarter on the left at 0 deg (as Deep Impact and the Viking Lander:
   // CRAFT_FRAMING yFraction 0.62 already looks ~9 deg down onto the top deck; 15 deg pitched the MMRTG above the UHF antenna)
   perseverance: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  // cl-1 (the 23 Nov 11:07 ruling), checked live against clementine_picker.webp (.cache/uiux/built/cl-1/zoom.png):
+  // upright gold-foil prism with thruster (-Z) up and high-gain dish (+Z) below, solar cell faces (+Y) toward the camera
+  // turned 12 deg (0 deg extra elevation) so the two round ports sit front-left and the sensor housing sits right of the cone
+  clementine: {
+    forward: [-Math.sin((CLEMENTINE_HEADING_DEG * Math.PI) / 180), -Math.cos((CLEMENTINE_HEADING_DEG * Math.PI) / 180), 0],
+    up: [0, 0, -1],
+  },
 };
 
 /**

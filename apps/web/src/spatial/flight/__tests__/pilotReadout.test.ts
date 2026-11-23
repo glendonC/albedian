@@ -104,6 +104,11 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('perseverance', 'landedOnMars', false))).toEqual(['landedOnMars', null, '']);
     expect(rows(withFact('perseverance', 'landedOnMars', true))).toEqual([null, 'No real travel time: Perseverance landed in Jezero Crater on Mars in 2021.', 'on Mars']);
     expect([CRAFTS.perseverance!.name, CRAFT_CHOICES.find((c) => c.id === 'perseverance')!.detail, none('perseverance')]).toEqual(['Perseverance', 'on Mars', 'No real travel time: Perseverance landed in Jezero Crater on Mars in 2021.']);
+    // The 23 Nov 11:07 ruling (cl-1): Clementine to the Moon as the Lunar Module, its words waiting for lunarOrbit in its
+    // record, which ASSETS' entry carries (hangar-46, NASA's mission page)
+    expect(rows(withFact('clementine', 'lunarOrbit', false))).toEqual(['lunarOrbit', null, '']);
+    expect(rows(withFact('clementine', 'lunarOrbit', true))).toEqual([null, 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.', 'to the Moon']);
+    expect([CRAFTS.clementine!.name, CRAFT_CHOICES.find((c) => c.id === 'clementine')!.detail, none('clementine')]).toEqual(['Clementine', 'to the Moon', 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
