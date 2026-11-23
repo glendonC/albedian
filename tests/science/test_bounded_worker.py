@@ -441,3 +441,160 @@ def test_the_watch_never_signals_a_group_the_child_does_not_lead() -> None:
         leader.join(30.0)
         leader.kill()
         leader.join()
+
+
+def _start_grandchild_and_keep_reporting(seconds: float, report: Callable[..., None]) -> None:
+    grandchild = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL)
+    report("grandchild", grandchild.pid, os.getpgid(0))
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        report("tick")
+        time.sleep(0.005)
+
+
+def _caller_of_a_reporting_call(report: Any, stderr_path: Path) -> None:
+    """A stand-in server whose child reports events every 5 ms after starting a grandchild, with stderr on disk."""
+    with stderr_path.open("wb") as err:
+        os.dup2(err.fileno(), 2)
+    worker = BoundedWorker()
+    worker.call(
+        _start_grandchild_and_keep_reporting,
+        (ORPHAN_CALL_S,),
+        timeout_s=2 * ORPHAN_CALL_S,
+        progress_kwarg="report",
+        on_event=lambda *event: report.send(event) if event[:1] == ("grandchild",) else None,
+    )
+
+
+def test_a_child_whose_caller_is_killed_while_reporting_ends_its_group(tmp_path: Path) -> None:
+    """When the caller dies while the child reports events (night-batch step 2), the broken pipe wakes `_serve` before
+    `_watch_parent`'s 0.5 s sleep: `_serve` must still end its own group before leaving (platform-or2, REQ-JOB-3.8)."""
+    stderr_path = tmp_path / "stderr.log"
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    caller = context.Process(target=_caller_of_a_reporting_call, args=(send, stderr_path))
+    caller.start()
+    send.close()
+    pgid = grandchild = None
+    try:
+        assert receive.poll(60.0), "the stand-in server's reporting call never started"
+        _, grandchild, pgid = receive.recv()
+        os.kill(caller.pid, signal.SIGKILL)
+        caller.join(30.0)
+        assert _wait_until(lambda: _group_is_gone(pgid), ORPHAN_BOUND_S), (
+            "the reporting child's group runs on past its caller"
+        )
+        assert _wait_until(lambda: _pid_is_gone(grandchild), ORPHAN_BOUND_S)
+    finally:
+        caller.kill()
+        caller.join()
+        if pgid is not None and pgid != os.getpgid(0) and not _group_is_gone(pgid):
+            os.killpg(pgid, signal.SIGKILL)
+
+
+def test_a_broken_caller_pipe_writes_nothing_to_stderr(tmp_path: Path) -> None:
+    """A caller killed mid-report closes the pipe under `conn.send`: the child must leave silently, never writing a
+    Python traceback with file paths to the server log (platform-or2, REQ-JOB-9.1)."""
+    stderr_path = tmp_path / "stderr.log"
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    caller = context.Process(target=_caller_of_a_reporting_call, args=(send, stderr_path))
+    caller.start()
+    send.close()
+    pgid = grandchild = None
+    try:
+        assert receive.poll(60.0), "the stand-in server's reporting call never started"
+        _, grandchild, pgid = receive.recv()
+        os.kill(caller.pid, signal.SIGKILL)
+        caller.join(30.0)
+        assert _wait_until(lambda: _pid_is_gone(pgid), ORPHAN_BOUND_S), "the reporting child did not exit"
+        assert stderr_path.read_text(encoding="utf-8", errors="replace") == ""
+    finally:
+        caller.kill()
+        caller.join()
+        if pgid is not None and pgid != os.getpgid(0) and not _group_is_gone(pgid):
+            os.killpg(pgid, signal.SIGKILL)
+
+
+def _caller_that_idles_after_starting_a_grandchild(report: Any) -> None:
+    """A stand-in server whose child left a grandchild running and now waits in `conn.recv()` for its next call."""
+    worker = BoundedWorker()
+    grandchild = worker.call(_start_grandchild_and_return, timeout_s=ORPHAN_CALL_S)
+    report.send(("idle", grandchild, worker.pid))
+    time.sleep(2 * ORPHAN_CALL_S)
+
+
+def test_an_idle_child_whose_caller_is_killed_ends_every_process_it_started() -> None:
+    """When the caller dies while the child waits in `conn.recv()`, EOF wakes `_serve` before `_watch_parent`: `_serve`
+    must still end its own group before leaving (platform-or2, REQ-JOB-3.8)."""
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    caller = context.Process(target=_caller_that_idles_after_starting_a_grandchild, args=(send,))
+    caller.start()
+    send.close()
+    pgid = grandchild = None
+    try:
+        assert receive.poll(60.0), "the stand-in server's idle worker never answered"
+        _, grandchild, pgid = receive.recv()
+        os.kill(caller.pid, signal.SIGKILL)
+        caller.join(30.0)
+        assert _wait_until(lambda: _group_is_gone(pgid), ORPHAN_BOUND_S), (
+            "the idle child's group runs on past its caller"
+        )
+        assert _wait_until(lambda: _pid_is_gone(grandchild), ORPHAN_BOUND_S)
+    finally:
+        caller.kill()
+        caller.join()
+        if pgid is not None and pgid != os.getpgid(0) and not _group_is_gone(pgid):
+            os.killpg(pgid, signal.SIGKILL)
+
+
+def _serve_without_leading_group(conn: Any, caller_pid: int, stderr_path: Path) -> None:
+    from unittest.mock import patch
+    from services.science import bounded_worker
+
+    with stderr_path.open("wb") as err:
+        os.dup2(err.fileno(), 2)
+    with patch.object(os, "setpgid", lambda *_a: None):
+        bounded_worker._serve(conn, caller_pid)
+
+
+def _leader_closing_member_pipes(report: Any, tmp_dir: Path) -> None:
+    """In its own group, close the pipe on a reporting member and an idle member that share this group."""
+    os.setpgid(0, 0)
+    ctx = multiprocessing.get_context("spawn")
+    outcomes: list[tuple[str, int | None, str]] = []
+    for label, send_call in (("reporting", True), ("idle", False)):
+        err_file = tmp_dir / f"{label}.err"
+        parent_conn, child_conn = ctx.Pipe(duplex=True)
+        member = ctx.Process(target=_serve_without_leading_group, args=(child_conn, os.getpid(), err_file))
+        member.start()
+        child_conn.close()
+        assert parent_conn.poll(30.0) and parent_conn.recv()[0] == "group"
+        if send_call:
+            parent_conn.send((_count_to, (50,), {}, "report"))
+            assert parent_conn.poll(30.0) and parent_conn.recv()[0] == "event"
+        parent_conn.close()
+        member.join(ORPHAN_BOUND_S)
+        if member.exitcode is None:
+            member.kill()
+            member.join()
+        outcomes.append((label, member.exitcode, err_file.read_text(encoding="utf-8", errors="replace")))
+    report.send(outcomes)
+
+
+def test_serve_leaves_cleanly_on_a_closed_pipe_and_never_signals_another_group(tmp_path: Path) -> None:
+    """A member sharing another's group exits 0 with empty stderr on both BrokenPipeError and EOFError, leaving its
+    group leader alive (platform-or2, REQ-JOB-3.8, REQ-JOB-9.1)."""
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    leader = context.Process(target=_leader_closing_member_pipes, args=(send, tmp_path))
+    leader.start()
+    send.close()
+    try:
+        assert receive.poll(ORPHAN_BOUND_S + 30.0), "the group's leader was stopped when its member's pipe closed"
+        assert receive.recv() == [("reporting", 0, ""), ("idle", 0, "")]
+    finally:
+        leader.join(30.0)
+        leader.kill()
+        leader.join()

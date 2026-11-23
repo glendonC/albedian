@@ -272,6 +272,11 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   pid, the caller has gone and the system has adopted the child, so the child sends SIGKILL to the group it leads,
   or, sharing its caller's group, ends alone. Before it, a child whose server was killed mid-call ran its call to
   its end with no bound [tested on 21 Nov: alive 30 s after its parent's SIGKILL, gone within 1 s with the watch].
+- When the pipe to the caller closes (`EOFError` or `OSError` in `_serve`, as when uvicorn is killed while a call
+  reports events or while the child waits between calls, found in `night-batch` step 2), `_serve` catches the closed
+  pipe silently (no traceback or file path in the server log, REQ-JOB-9.1) and ends the group it leads in its
+  `finally` block before returning, so no subprocess escapes before `_watch_parent`'s next 0.5 s poll (REQ-JOB-3.8,
+  platform-or2) [tested].
 
 ### 3.4 The solve kind (`services/ingest/jobs.py`)
 - `solve_upload(ctx) -> KindResult`: today's body of `run_solve_job` from decode to `complete_sky` (:509-623), moved

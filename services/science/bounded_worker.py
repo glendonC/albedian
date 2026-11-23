@@ -53,38 +53,46 @@ class WorkerFailed(Exception):
         self.detail = detail
 
 
+def _kill_own_group() -> None:
+    """When this child leads its own process group, kill that whole group; never signal another's."""
+    if os.getpgid(0) == os.getpid():
+        os.killpg(0, signal.SIGKILL)
+
+
 def _watch_parent(caller_pid: int) -> None:
     """Return only to end the child: once its parent is no longer `caller_pid`, the caller has gone and the system has
     adopted the child, so it ends the group it leads, itself and every process it started; a child that does not lead
     its group shares its caller's, so it ends alone, never signalling that group (REQ-JOB-3.8)."""
     while os.getppid() == caller_pid:
         time.sleep(PARENT_POLL_SEC)
-    if os.getpgid(0) == os.getpid():
-        os.killpg(0, signal.SIGKILL)
+    _kill_own_group()
     os._exit(1)
 
 
 def _serve(conn: Connection, caller_pid: int) -> None:
     """The child's loop: lead a new process group and say so, watch the caller whose pid it was given, then run each
-    call it is sent and send back its events, then its result or its error."""
+    call it is sent and send back its events, then its result or its error. When the pipe to the caller closes, leave
+    silently and end the group first (REQ-JOB-3.8, REQ-JOB-9.1)."""
     os.setpgid(0, 0)
     threading.Thread(target=_watch_parent, args=(caller_pid,), name="albedian-caller-watch", daemon=True).start()
-    conn.send(("group", os.getpgid(0)))
-    while True:
-        try:
+    try:
+        conn.send(("group", os.getpgid(0)))
+        while True:
             target, args, kwargs, progress_kwarg = conn.recv()
-        except (EOFError, OSError):
-            return
-        if progress_kwarg is not None:
-            kwargs = {**kwargs, progress_kwarg: lambda *event: conn.send(("event", event))}
-        try:
-            reply: tuple[str, Any] = ("result", target(*args, **kwargs))
-        except Exception as exc:  # reported to the caller, which decides what it means
-            reply = ("error", (type(exc).__name__, str(exc)))
-        try:
-            conn.send(reply)
-        except Exception as exc:  # a result that cannot be pickled is reported, not lost
-            conn.send(("error", (type(exc).__name__, str(exc))))
+            if progress_kwarg is not None:
+                kwargs = {**kwargs, progress_kwarg: lambda *event: conn.send(("event", event))}
+            try:
+                reply: tuple[str, Any] = ("result", target(*args, **kwargs))
+            except Exception as exc:  # reported to the caller, which decides what it means
+                reply = ("error", (type(exc).__name__, str(exc)))
+            try:
+                conn.send(reply)
+            except Exception as exc:  # a result that cannot be pickled is reported, not lost
+                conn.send(("error", (type(exc).__name__, str(exc))))
+    except (EOFError, OSError):
+        return
+    finally:
+        _kill_own_group()
 
 
 def _signal_group(pgid: Optional[int], child_pid: Optional[int], sig: int) -> None:
