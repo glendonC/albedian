@@ -85,7 +85,8 @@ def _unresolved_with(detections: list[SourceDetection], moment: str = POSE_MOMEN
 def _served(solution: Any) -> list[tuple[float, float]]:
     return sorted(
         (round(f.source_detection.x_px, 6), round(f.source_detection.y_px, 6))
-        for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None
+        for f in solution.findings
+        if f.evidence_class == "observed" and f.source_detection is not None and f.id != ps.OBSERVED_GLARE_ID
     )
 
 
@@ -131,7 +132,7 @@ def test_a_detection_of_another_frame_on_the_cores_place_is_kept() -> None:
     )
     solution = ps.complete_sky(_unresolved_with([same, other]), _asset(), frames=_frames(frame))
     assert solution.pose_estimate is not None and solution.pose_estimate.method == "sun_horizon"
-    served = [f.source_detection for f in solution.findings if f.evidence_class == "observed"]
+    served = [f.source_detection for f in solution.findings if f.evidence_class == "observed" and f.id != ps.OBSERVED_GLARE_ID]
     assert [d.frame_time_sec for d in served] == [1.0]
 
 
@@ -284,3 +285,71 @@ def test_a_daytime_recording_with_no_readable_frame_says_so() -> None:
 
     solution = ps.complete_sky(_unresolved(), _asset(), frames=lambda: [])
     assert solution.status == "predicted_only" and NO_FRAMES in solution.warnings
+
+
+def test_a_sun_pose_serves_the_observed_glare_with_c31_clipped_words() -> None:
+    from services.contracts.astronomy import parse_observation_solution  # noqa: PLC0415
+
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    solution = ps.complete_sky(_unresolved(), _asset(), frames=_frames(frame))
+    (glare,) = [f for f in solution.findings if f.id == "finding-observed-glare"]
+    assert glare.evidence_class == "observed"
+    assert glare.title == "Bright glare" and "Sun" not in glare.title
+    assert glare.subtitle == "Taken to be the Sun"
+    assert glare.ra_deg is None and glare.dec_deg is None and glare.catalog_star is None
+    assert glare.verified_by_holdout is False
+    assert glare.limitations == (
+        "Measured on the picture: its place, area and width; its core is clipped, so it is at least as bright as "
+        "measured. Its flux and SNR are lower bounds where its brightest pixels are clipped.",
+    )
+    det = glare.source_detection
+    assert det is not None
+    assert (det.x_px, det.y_px, det.flux, det.snr, det.fwhm_px, det.centroid_uncertainty_px) == (
+        pose.spot.x_px, pose.spot.y_px, pose.spot.flux, pose.spot.snr, pose.spot.fwhm_px,
+        pose.spot.centroid_uncertainty_px,
+    )
+    assert det.asset_id == ASSET_ID and det.frame_time_sec == 0.0
+    assert det.saturated is True and det.saturated_area_px == pose.core.clipped_area_px > 0
+    parse_observation_solution(solution.to_contract_dict())
+    # Refused Sun pose serves no observed glare finding
+    wrong_clock = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg + 4.0)
+    refused = ps.complete_sky(_unresolved(), _asset(), frames=_frames(wrong_clock))
+    assert not any(f.id == "finding-observed-glare" for f in refused.findings)
+
+
+def test_an_unclipped_sun_pose_serves_the_observed_glare_with_the_unclipped_c31_words() -> None:
+    from services.contracts.astronomy import parse_observation_solution  # noqa: PLC0415
+
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = np.minimum(_level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg), 246.0)
+    # Single-pixel water glitter at 255 does not make the Sun's own unclipped core say clipped
+    frame[H - 20, 100] = 255.0
+    solution = ps.complete_sky(_unresolved(), _asset(), frames=_frames(frame))
+    (glare,) = [f for f in solution.findings if f.id == "finding-observed-glare"]
+    assert glare.title == "Bright glare" and glare.subtitle == "Taken to be the Sun"
+    assert glare.limitations == (
+        "Measured on the picture: its place, area and width; only its core is summed, so it is at least as bright as "
+        "measured. Its flux and SNR are lower bounds measured over its brightest core.",
+    )
+    assert glare.source_detection is not None
+    assert glare.source_detection.saturated is False and glare.source_detection.saturated_area_px == 0
+    parse_observation_solution(solution.to_contract_dict())
+
+
+def test_on_a_clip_the_observed_glare_carries_the_posed_frames_place_and_time() -> None:
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    stack = np.roll(frame, 40, axis=1)
+    pose = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(pose, sp.SunPose), pose
+    solution = ps.complete_sky(
+        _unresolved(), {**_asset(), "mediaKind": "video"}, frames=lambda: [(2.0, frame)], stack=lambda: stack,
+    )
+    (glare,) = [f for f in solution.findings if f.id == "finding-observed-glare"]
+    assert glare.source_detection is not None
+    assert glare.source_detection.frame_time_sec == 2.0
+    assert (glare.source_detection.x_px, glare.source_detection.y_px) == (pose.spot.x_px, pose.spot.y_px)
+

@@ -77,10 +77,12 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
 
 - [x] 6. sky-6: the Sun as the beacon in daytime photos (REQ-SKY-4.3)
   - After a real daytime photo with the Sun and a skyline exists to test on.
-  - As built (2026-11-19, sky-6a to 6d): services/science/sun_pose.py (the Sun's place, its glare's core, the day
-    skyline below it, a clock check against the Sun's height through the file's 35 mm lens, the Sun plus horizon
-    pose through pose_estimate's fit) and complete_sky by day, after the record pose, before and instead of the Moon
-    poses, only with a 35 mm focal length; the design lane's C23 words. Measured on two public daytime photos
-    (.lead/kiro/reports/SCIENCE-INGEST/sky-6-research.md): one lined up within its bound, one refused by the clock
-    check. Deferred: the glare as an observed finding (the lead's answer of 17:37; the contract needs a flux).
+  - As built (sky-6a to 6d and sky-6 (a)): services/science/sun_pose.py (the Sun's place, its glare's core, whether
+    the core's own peak is clipped, the day skyline below it, a clock check against the Sun's height through the file's
+    35 mm lens, the Sun plus horizon pose through pose_estimate's fit, and the glare measured in the sky above the
+    skyline) and complete_sky by day, after the record pose, before and instead of the Moon poses, only with a 35 mm
+    focal length; the design lane's Sun-pose and glare words (`finding-observed-glare`: Bright glare / Taken to be the
+    Sun, clipped or core-only lower-bound limitation). Measured on two public daytime photos
+    (.lead/kiro/reports/SCIENCE-INGEST/sky-6-research.md, sun-glare.md): one lined up within its bound with its
+    observed glare finding, one refused by the clock check.
   - _Requirements: REQ-SKY-4.3_

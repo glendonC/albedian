@@ -20,6 +20,7 @@ import numpy as np
 from scipy import ndimage
 
 from services.science.catalog import require_place
+from services.science.detector import _effective_sigma
 from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides
 from services.science.catalog import icrs_to_frame_altaz
 from services.science.pose_estimate import (
@@ -46,6 +47,8 @@ SUN_RADIUS_KM = 695_700.0
 SUN_CORE_CODES = 10.0
 # [proposed] A core smaller than this many pixels across is a speck (glitter, a star of light), never the Sun
 MIN_SUN_CORE_DIAMETER_PX = 6.0
+# The 8-bit full scale of the gray frame `find_sun_core` reads [verified: services/science/detector.py FULL_SCALES]
+SUN_CLIPPED_LUMA = 255.0
 
 # sky-6b, the day skyline [proposed, measured on two public photos: sky-6-research.md]. The columns a sixth of the
 # frame's width either side of the Sun's; each row's median over them, smoothed by a Gaussian of this many rows
@@ -104,12 +107,15 @@ def sun_bloom_reason(focal_35mm_mm: float) -> str:
 
 @dataclass(frozen=True)
 class SunCore:
-    """The Sun's core in a frame: the centroid of its brightest region in pixels, its area and equivalent diameter."""
+    """The Sun's core in a frame: the centroid of its brightest region in pixels, its area and equivalent diameter,
+    and whether its own brightest pixels reach the 8-bit clip (with how many do)."""
 
     x_px: float
     y_px: float
     area_px: int
     diameter_px: float
+    clipped: bool = False
+    clipped_area_px: int = 0
 
 
 def topocentric_sun(moment: str, lat: float, lon: float) -> TopocentricMoon:
@@ -130,11 +136,8 @@ def topocentric_sun(moment: str, lat: float, lon: float) -> TopocentricMoon:
     )
 
 
-def find_sun_core(luma: np.ndarray, *, max_diameter_px: float) -> SunCore | Refusal:
-    """The Sun's core in one gray frame (0 to 255): the largest 8-connected region within SUN_CORE_CODES of the
-    frame's brightest code, its centroid unweighted (the core is clipped or nearly so, so its shape, not its light,
-    places it). Refused (no_sun) when that region is under MIN_SUN_CORE_DIAMETER_PX across, (sun_bloom) when it is
-    wider than `max_diameter_px`, and (sun_edge) when it touches the frame's edge."""
+def _find_core_region(luma: np.ndarray, *, max_diameter_px: float) -> tuple[SunCore, np.ndarray] | Refusal:
+    """`find_sun_core` together with the core's boolean mask in `luma`."""
     luma = np.asarray(luma, dtype=np.float64)
     top = float(np.max(luma))
     mask = luma >= top - SUN_CORE_CODES
@@ -149,11 +152,31 @@ def find_sun_core(luma: np.ndarray, *, max_diameter_px: float) -> SunCore | Refu
         return Refusal("no_sun", NO_SUN)
     if diameter > max_diameter_px:
         return Refusal("sun_bloom", SUN_BLOOM)
-    rows, cols = np.nonzero(labels == largest)
+    core_mask = labels == largest
+    rows, cols = np.nonzero(core_mask)
     height, width = luma.shape
     if rows.min() == 0 or cols.min() == 0 or rows.max() == height - 1 or cols.max() == width - 1:
         return Refusal("sun_edge", SUN_EDGE)
-    return SunCore(x_px=float(cols.mean()), y_px=float(rows.mean()), area_px=area, diameter_px=diameter)
+    at_clip = luma[core_mask] >= SUN_CLIPPED_LUMA * (1.0 - 1e-9)
+    clipped = bool(np.any(at_clip))
+    core = SunCore(
+        x_px=float(cols.mean()),
+        y_px=float(rows.mean()),
+        area_px=area,
+        diameter_px=diameter,
+        clipped=clipped,
+        clipped_area_px=int(np.sum(at_clip)) if clipped else 0,
+    )
+    return core, core_mask
+
+
+def find_sun_core(luma: np.ndarray, *, max_diameter_px: float) -> SunCore | Refusal:
+    """The Sun's core in one gray frame (0 to 255): the largest 8-connected region within SUN_CORE_CODES of the
+    frame's brightest code, its centroid unweighted (the core is clipped or nearly so, so its shape, not its light,
+    places it). Refused (no_sun) when that region is under MIN_SUN_CORE_DIAMETER_PX across, (sun_bloom) when it is
+    wider than `max_diameter_px`, and (sun_edge) when it touches the frame's edge."""
+    found = _find_core_region(luma, max_diameter_px=max_diameter_px)
+    return found if isinstance(found, Refusal) else found[0]
 
 
 def clock_check(measured_height_deg: float, predicted_alt_deg: float, *, tolerance_deg: float) -> Refusal | None:
@@ -220,9 +243,10 @@ def find_day_skyline(luma: np.ndarray, core: SunCore) -> Skyline | Refusal:
 @dataclass(frozen=True)
 class SunPose:
     """A pose lined up from the Sun and a skyline: the nominal WCS, its pose estimate, the Sun's core and the skyline
-    (in the upright frame), the Sun it was lined up to, the Sun's measured height above the skyline, and the core as
-    the fit read it (`spot`: its centre in stored pixels, where the solve's detections are measured, and its radius,
-    half its equivalent diameter; no flux, SNR or width, which a clipped core does not give)."""
+    (in the upright frame), the Sun it was lined up to, the Sun's measured height above the skyline, and the glare
+    spot measured in stored pixels (`spot`: its centre in stored pixels, its area and equivalent width as FWHM, its
+    background-subtracted sum over the core and its level over the sky's noise as lower bounds, and SUN_CORE_OFFSET_DEG
+    in nominal pixels as its centroid uncertainty)."""
 
     wcs: WCSModel
     estimate: PoseEstimate
@@ -271,6 +295,46 @@ def _fit_spot(core: SunCore, turns: int, up_width: int, up_height: int) -> MoonB
     )
 
 
+def _glare_spot(
+    upright: np.ndarray,
+    core: SunCore,
+    core_mask: np.ndarray,
+    skyline: Skyline,
+    turns: int,
+    scale_deg_per_px: float,
+) -> MoonBlob | Refusal:
+    """The Sun's glare measured in the sky above the skyline (sky-6 (a)): the core's position in stored pixels, its
+    background-subtracted sum above the sky's median as flux (a lower bound), its brightest level over the sky's
+    row-detrended noise as SNR (a lower bound), its equivalent diameter as FWHM, and SUN_CORE_OFFSET_DEG at the
+    nominal WCS scale as centroid uncertainty. Refused (no_sun) when the core does not stand above the sky's median."""
+    up_h, up_w = upright.shape
+    sky_end = max(1, int(math.floor(skyline.row - skyline.half_width_px)))
+    sky_rows = upright[:sky_end]
+    sky_mask = ~core_mask[:sky_end]
+    background = float(np.median(sky_rows[sky_mask]))
+    core_pixels = upright[core_mask]
+    level = float(np.max(core_pixels)) - background
+    flux = float(np.clip(core_pixels - background, 0.0, None).sum())
+    if not (level > 0.0 and flux > 0.0):
+        return Refusal("no_sun", NO_SUN)
+    masked = np.where(sky_mask, sky_rows, np.nan)
+    row_mad = 1.4826 * float(np.nanmedian(np.abs(masked - np.nanmedian(masked, axis=1, keepdims=True))))
+    snr = level / _effective_sigma(row_mad, upright)
+    x, y = to_stored(core.x_px, core.y_px, turns, up_w, up_h)
+    return MoonBlob(
+        x_px=x,
+        y_px=y,
+        area_px=core.area_px,
+        equivalent_diameter_px=core.diameter_px,
+        radius_px=core.diameter_px / 2.0,
+        flux=flux,
+        snr=snr,
+        fwhm_px=core.diameter_px,
+        centroid_uncertainty_px=SUN_CORE_OFFSET_DEG / scale_deg_per_px,
+        peak_to_total_ratio=level / flux,
+    )
+
+
 def sun_horizon_pose(
     luma: np.ndarray,
     *,
@@ -299,9 +363,10 @@ def sun_horizon_pose(
     upright = np.rot90(luma, -turns)
     up_h, up_w = upright.shape
     focal_px = _focal_px(up_w, up_h, focal_35mm_mm)
-    core = find_sun_core(upright, max_diameter_px=_max_core_diameter_px(focal_px, sun))
-    if isinstance(core, Refusal):
-        return Refusal("sun_bloom", sun_bloom_reason(float(focal_35mm_mm))) if core.kind == "sun_bloom" else core
+    found_core = _find_core_region(upright, max_diameter_px=_max_core_diameter_px(focal_px, sun))
+    if isinstance(found_core, Refusal):
+        return Refusal("sun_bloom", sun_bloom_reason(float(focal_35mm_mm))) if found_core.kind == "sun_bloom" else found_core
+    core, core_mask = found_core
     skyline = find_day_skyline(upright, core)
     if isinstance(skyline, Refusal):
         return skyline
@@ -310,7 +375,7 @@ def sun_horizon_pose(
     clock = clock_check(measured, sun.alt_deg, tolerance_deg=CLOCK_TOLERANCE_DEG)
     if clock is not None:
         return clock
-    spot = _fit_spot(core, turns, up_w, up_h)
+    fit_spot = _fit_spot(core, turns, up_w, up_h)
     rows = (skyline.row - skyline.half_width_px, skyline.row, skyline.row + skyline.half_width_px)
     swept: list[WCSModel] = []
     fovs: list[float] = []
@@ -318,7 +383,7 @@ def sun_horizon_pose(
     for skyline_alt in SKYLINE_ALTS_DEG:
         for row in rows:
             wcs = fit_horizon_pose(
-                sun, spot, width=width, height=height, skyline_alt_deg=skyline_alt, skyline_row=row, turns=turns,
+                sun, fit_spot, width=width, height=height, skyline_alt_deg=skyline_alt, skyline_row=row, turns=turns,
                 moment=moment, lat=lat, lon=lon,
             )
             if isinstance(wcs, Refusal):
@@ -328,6 +393,9 @@ def sun_horizon_pose(
             if skyline_alt == SKYLINE_ALTS_DEG[1] and row == skyline.row:
                 nominal = wcs
     assert nominal is not None
+    spot = _glare_spot(upright, core, core_mask, skyline, turns, nominal.scale_deg_per_px)
+    if isinstance(spot, Refusal):
+        return spot
     frame = pose_frame(sun, lat, lon, moment)
     centre_alt, centre_az = icrs_to_frame_altaz(frame, nominal.crval_ra_deg, nominal.crval_dec_deg)
     term = frame_term_arcsec(sun, swept, fovs, lat, lon, moment)

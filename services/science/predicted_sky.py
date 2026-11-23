@@ -742,8 +742,21 @@ SUN_POSE_SOLVER = SolverIdentity(
         "two and the camera's clock checked against the Sun's height"
     ),
 )
-# C23 (.lead/uiux/UIUX-sunwords-READY.md, decided 2026-11-19 17:08)
+# C23 (.lead/uiux/UIUX-sunwords-READY.md, decided 2026-11-19 17:08), C31 (.lead/uiux/UIUX-moonposewords-READY.md,
+# decided 2026-11-21 12:59) when the glare's peak is clipped, and the parallel unclipped clause
+# (.lead/kiro/inbox/done/UIUX-solvewords-c31-READY.md, decided 2026-11-23 02:58) when not
 SUN_LINED_UP_LIMITATION = "Placed in the frame only from the Sun and the skyline: predicted, not checked against stars."
+OBSERVED_GLARE_ID = "finding-observed-glare"
+OBSERVED_GLARE_TITLE = "Bright glare"
+OBSERVED_GLARE_SUBTITLE = "Taken to be the Sun"
+GLARE_CLIPPED_LIMITATION = (
+    "Measured on the picture: its place, area and width; its core is clipped, so it is at least as bright as "
+    "measured. Its flux and SNR are lower bounds where its brightest pixels are clipped."
+)
+GLARE_UNCLIPPED_LIMITATION = (
+    "Measured on the picture: its place, area and width; only its core is summed, so it is at least as bright as "
+    "measured. Its flux and SNR are lower bounds measured over its brightest core."
+)
 INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"
 OUTSIDE_THE_FRAME = " · Outside the frame"
 LINED_UP_LIMITATION = (
@@ -1147,17 +1160,15 @@ def _sun_lined_up(
     solution: ObservationSolution, asset: Mapping[str, Any], pose: SunPose, frame_time_sec: float, moment: str,
     lat: float, lon: float, lent: LentMoment | None, stack: Callable[[], np.ndarray] | None = None,
 ) -> ObservationSolution:
-    """The approximate solution of a Sun pose (sky-6d): the nominal WCS and its pose estimate, the detector's
-    pixel-only findings as measured minus those on the Sun's core in the pixels they were measured on, and the
-    predicted sky for the frame's moment, each saying whether the nominal WCS puts it inside the frame. The glare is
-    named in the pose's assumptions only, not as an observed finding (the lead's answer of 17:37 on 19 Nov: a clipped
-    core gives no honest flux, SNR or width); so a detection on the core, which is the glare measured as a point
-    (AUDIT's sweep of 21 Nov, finding one: on the public lake photo one at the core's centre with an SNR of 0.4 and a
-    width near 200 px), is dropped as the Moon pose drops the detections on its spot (`_lined_up`). A detection of the
-    pose's own frame is judged by the pose's core; one of `stack` (a clip's stack of its first frames, which the
-    solve's detections were measured on while the pose lined up a spread frame) by the stack's own core, found by the
-    pose's own test (`sun_core_spot`), and kept as measured where the stack shows none (AUDIT's sun-core verdict,
-    note a)."""
+    """The approximate solution of a Sun pose (sky-6d, sky-6 (a)): the nominal WCS and its pose estimate, the
+    detector's pixel-only findings as measured minus those on the Sun's core in the pixels they were measured on, the
+    observed glare finding (`finding-observed-glare`: Bright glare / Taken to be the Sun, never called the Sun as
+    observed, with its C31 lower-bound limitation), and the predicted sky for the frame's moment, each saying whether
+    the nominal WCS puts it inside the frame. Point detections on the core are dropped so the glare is listed once
+    (AUDIT's sweep of 21 Nov, finding one): a detection of the pose's own frame is judged by the pose's core; one of
+    `stack` (a clip's stack of its first frames, which the solve's detections were measured on while the pose lined up
+    a spread frame) by the stack's own core, found by the pose's own test (`sun_core_spot`), and kept as measured
+    where the stack shows none (AUDIT's sun-core verdict, note a)."""
     spot = pose.spot
 
     def on(f: CelestialFindingRecord, core: Any) -> bool:
@@ -1176,6 +1187,33 @@ def _sun_lined_up(
         f for f, of_pose in zip(observed, same)
         if not (on(f, spot) if of_pose else (in_stack is not None and on(f, in_stack)))
     ]
+    glare = CelestialFindingRecord(
+        id=OBSERVED_GLARE_ID,
+        observation_solution_id=solution.id,
+        evidence_class="observed",
+        title=OBSERVED_GLARE_TITLE,
+        subtitle=OBSERVED_GLARE_SUBTITLE,
+        source_detection=SourceDetection(
+            x_px=spot.x_px,
+            y_px=spot.y_px,
+            flux=spot.flux,
+            snr=spot.snr,
+            fwhm_px=spot.fwhm_px,
+            centroid_uncertainty_px=spot.centroid_uncertainty_px,
+            asset_id=solution.source_asset_id,
+            frame_time_sec=frame_time_sec,
+            peak_to_total_ratio=spot.peak_to_total_ratio,
+            saturated=pose.core.clipped,
+            saturated_area_px=pose.core.clipped_area_px,
+        ),
+        verification_method=(
+            "Measured in the frame's pixels: the frame's brightest region passed the Sun core test and was taken to be "
+            "the Sun; nothing was matched to a catalog and no held-out check was made"
+        ),
+        verified_by_holdout=False,
+        limitations=(GLARE_CLIPPED_LIMITATION if pose.core.clipped else GLARE_UNCLIPPED_LIMITATION,),
+        source_sha256=solution.source_sha256,
+    )
     time_sec = _worked_out_time_sec(asset)
     predicted = _placed(
         predicted_sky_findings(
@@ -1217,7 +1255,7 @@ def _sun_lined_up(
         observed_at_utc=moment,
         observer_lat=lat,
         observer_lon=lon,
-        findings=[*kept, *predicted],
+        findings=[*kept, glare, *predicted],
         warnings=[
             *solution.warnings,
             lined_up,

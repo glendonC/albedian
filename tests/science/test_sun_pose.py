@@ -287,3 +287,115 @@ def test_the_sun_pose_s_estimate_words_are_c23_s() -> None:
         "The camera's clock is taken to be right: the Sun's height on the picture agreed with its height at the recorded time, through the file's 24 mm lens.",
         "The lens is taken to be a plain one with no distortion, centred on the frame.",
     )
+
+
+# sky-6 (a): the Sun's core measured in the sky above the skyline, clipped or unclipped
+
+
+def test_the_sun_core_records_whether_its_own_peak_is_clipped() -> None:
+    clipped = sp.find_sun_core(_day(300.0, 250.0, 120.0), max_diameter_px=500.0)
+    assert isinstance(clipped, sp.SunCore)
+    assert clipped.clipped is True and clipped.clipped_area_px > 0
+    unclipped = sp.find_sun_core(_day(300.0, 250.0, 120.0) * (240.0 / 255.0), max_diameter_px=500.0)
+    assert isinstance(unclipped, sp.SunCore)
+    assert unclipped.clipped is False and unclipped.clipped_area_px == 0
+    # Svalbard's case: single-pixel glitter specks on the water reach 255 while the Sun's own core peaks below 255
+    glitter_frame = np.minimum(_day(300.0, 250.0, 120.0, specks=0), 248.0)
+    glitter_frame[900, 100] = 255.0
+    glitter_frame[920, 400] = 255.0
+    svalbard_like = sp.find_sun_core(glitter_frame, max_diameter_px=500.0)
+    assert isinstance(svalbard_like, sp.SunCore)
+    assert svalbard_like.clipped is False and svalbard_like.clipped_area_px == 0
+
+
+@pytest.mark.parametrize("turns", [0, 1, 2, 3])
+def test_the_pose_measures_the_glare_in_the_sky_above_the_skyline(turns: int) -> None:
+    from scipy import ndimage  # noqa: PLC0415
+    from services.science.detector import _effective_sigma  # noqa: PLC0415
+
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    upright = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg)
+    # Dark water covering the lower part of the frame: ground or water below the skyline is not sky background or noise
+    horizon = int(round((H - 1) / 2.0 + (math.hypot(W, H) / 2.0 / (math.hypot(36.0, 24.0) / 2.0 / FOCAL35)) * math.tan(math.radians(sun.alt_deg - 15.0))))
+    upright[horizon + 20 :] = 15.0
+    stored = np.rot90(upright, turns)
+    pose = sp.sun_horizon_pose(
+        stored, moment=POSE_MOMENT, lat=LAT, lon=LON,
+        orientation={"quarterTurnsClockwise": turns, "mirrored": False}, focal_35mm_mm=FOCAL35,
+    )
+    assert isinstance(pose, sp.SunPose), pose
+    labels, _ = ndimage.label(upright >= float(np.max(upright)) - sp.SUN_CORE_CODES, structure=np.ones((3, 3), dtype=bool))
+    sizes = np.bincount(labels.ravel())[1:]
+    core_mask = labels == (int(np.argmax(sizes)) + 1)
+    sky_end = int(math.floor(pose.skyline.row - pose.skyline.half_width_px))
+    sky_rows = upright[:sky_end]
+    sky_mask = ~core_mask[:sky_end]
+    bg = float(np.median(sky_rows[sky_mask]))
+    masked = np.where(sky_mask, sky_rows, np.nan)
+    row_mad = 1.4826 * float(np.nanmedian(np.abs(masked - np.nanmedian(masked, axis=1, keepdims=True))))
+    noise = _effective_sigma(row_mad, upright)
+    peak = float(np.max(upright[core_mask]))
+    expected_flux = float(np.clip(upright[core_mask] - bg, 0.0, None).sum())
+    spot = pose.spot
+    assert spot.flux == pytest.approx(expected_flux)
+    assert spot.snr == pytest.approx((peak - bg) / noise)
+    assert spot.fwhm_px == pytest.approx(pose.core.diameter_px)
+    assert spot.centroid_uncertainty_px == pytest.approx(sp.SUN_CORE_OFFSET_DEG / pose.wcs.scale_deg_per_px)
+    assert spot.peak_to_total_ratio == pytest.approx((peak - bg) / expected_flux)
+
+
+def test_the_sun_glare_spot_holds_contract_bounds_across_twenty_seeds() -> None:
+    from hypothesis import given, settings, strategies as st  # noqa: PLC0415
+    from services.science.wcs_models import SourceDetection  # noqa: PLC0415
+
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+
+    @settings(max_examples=6, deadline=None)
+    @given(
+        pitch_offset=st.floats(10.0, 20.0, allow_nan=False, allow_infinity=False),
+        bloom=st.floats(18.0, 48.0, allow_nan=False, allow_infinity=False),
+        clipped=st.booleans(),
+        unclipped_scale=st.floats(0.88, 0.97, allow_nan=False, allow_infinity=False),
+        turns=st.integers(0, 3),
+    )
+    def prop(pitch_offset: float, bloom: float, clipped: bool, unclipped_scale: float, turns: int) -> None:
+        scale = 1.0 if clipped else unclipped_scale
+        upright = _level_camera_frame(sun.alt_deg - pitch_offset, sun.alt_deg, bloom=bloom) * scale
+        stored = np.rot90(upright, turns)
+        pose = sp.sun_horizon_pose(
+            stored, moment=POSE_MOMENT, lat=LAT, lon=LON,
+            orientation={"quarterTurnsClockwise": turns, "mirrored": False}, focal_35mm_mm=FOCAL35,
+        )
+        assert isinstance(pose, sp.SunPose), pose
+        spot = pose.spot
+        det = SourceDetection(
+            x_px=spot.x_px, y_px=spot.y_px, flux=spot.flux, snr=spot.snr, fwhm_px=spot.fwhm_px,
+            centroid_uncertainty_px=spot.centroid_uncertainty_px, asset_id="src_seed",
+            peak_to_total_ratio=spot.peak_to_total_ratio,
+            saturated=pose.core.clipped, saturated_area_px=pose.core.clipped_area_px,
+        )
+        assert det.flux > 0.0 and det.snr > 0.0 and det.fwhm_px >= sp.MIN_SUN_CORE_DIAMETER_PX
+        assert pose.core.clipped is clipped
+
+    prop()
+
+
+def test_a_core_no_brighter_than_the_sky_median_is_refused() -> None:
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    frame = _level_camera_frame(sun.alt_deg - 15.0, sun.alt_deg, bloom=24.0)
+    horizon = int(round((H - 1) / 2.0 + (math.hypot(W, H) / 2.0 / (math.hypot(36.0, 24.0) / 2.0 / FOCAL35)) * math.tan(math.radians(sun.alt_deg - 15.0))))
+    # Disconnected 4 x 4 clipped blocks separated by 1 px gridlines fill over half the sky without joining the core
+    grid = np.full((horizon - 40, W - 4), 200.0)
+    for r in range(2, grid.shape[0] - 4, 5):
+        for c in range(2, grid.shape[1] - 4, 5):
+            grid[r : r + 4, c : c + 4] = 255.0
+    cx = int(round((W - 1) / 2.0))
+    sun_row = int(round((H - 1) / 2.0 - (math.hypot(W, H) / 2.0 / (math.hypot(36.0, 24.0) / 2.0 / FOCAL35)) * math.tan(math.radians(15.0))))
+    grid[sun_row - 20 : sun_row + 20, cx - 20 : cx + 20] = 200.0
+    yy, xx = np.mgrid[0 : horizon - 40, 2 : W - 2]
+    grid[np.hypot(xx - cx, yy - sun_row) <= 12.0] = 255.0
+    frame[: horizon - 40, 2 : W - 2] = grid
+    refused = sp.sun_horizon_pose(frame, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(refused, Refusal) and refused.kind == "no_sun"
+
+
