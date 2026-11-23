@@ -222,8 +222,13 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
       if (r.selector === '.align-phone__tag') r.walkDecls((d) => void (rule[d.prop] = d.value));
     });
     expect(rule).toEqual({ position: 'absolute', left: '24px', top: '614px', display: 'flex' });
-    // No entrance: the block is not a reveal status column, and nothing in the motion record animates it
-    expect(motionCss.includes('align-phone')).toBe(false);
+    // No entrance: the block is not a reveal status column, and nothing in the motion record animates it as it comes; only
+    // its copy leaving at Solve from here has rules (MOTION-READY-web.md section six, DECIDED-BY-LEAD 22 Nov 23:36)
+    const naming: string[] = [];
+    postcss.parse(motionCss).walkRules((r) => {
+      if (r.selector.includes('align-phone')) naming.push(r.selector);
+    });
+    expect(naming.filter((selector) => !selector.startsWith('.align-phone.is-leaving '))).toEqual([]);
   });
 
   it('gives that column no entrance, arriving or not, and keeps its words out when it leaves', () => {

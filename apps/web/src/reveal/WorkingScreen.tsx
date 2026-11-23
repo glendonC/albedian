@@ -5,6 +5,7 @@ import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { useElapsedRows } from './elapsedRows.js';
 import { StillAlignMarks } from './AlignLayer.js';
+import { PhoneAligningBlock } from './PhoneAligning.js';
 import { useKeepClear, WORKING_KEEP_CLEAR } from './keepClear.js';
 import { rememberWorkingClear } from './lockOn.js';
 import { EARLY_SOURCE_WORDS, type EarlyPose, type PlacedTarget } from './earlyPose.js';
@@ -48,6 +49,8 @@ const ROW_CLASS: Readonly<Record<StageRow['state'], string>> = {
   failed: 'work-step is-failed',
 };
 
+/** No frame: the phone's leaving rings stand in the frame they were drawn in, which the still marks remember. */
+const NO_FRAME = { leftPx: 0, topPx: 0, widthPx: 0, heightPx: 0 };
 /** A bar's width from its real fraction, to a thousandth of a percent. */
 const barWidth = (fraction: number) => `${Number((fraction * 100).toFixed(3))}%`;
 
@@ -121,6 +124,11 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
     const stopped = failure ? (rows.find((row) => row.state === 'failed') ?? null) : null;
     return (
       <div className="work-screen is-phone" data-testid="working-screen" data-hud-interactive="true">
+        {/* Solve from here on the phone (MOTION-READY-web.md section six, DECIDED-BY-LEAD 22 Nov 23:36): this screen draws
+            no rings, so the aligning layer's rings and names leave where they stood, the aligning block beside them */}
+        {shownEarly?.source === 'alignment' && (
+          <StillAlignMarks rect={photoRect ?? NO_FRAME} placed={shownEarly.marks} handOver drawn={false} phone whileLeaving={<PhoneAligningBlock leaving />} />
+        )}
         <div className="work-phone-top">
           <IconButton label="Close" icon="x" size="phone" onClick={() => onHome?.()} />
         </div>

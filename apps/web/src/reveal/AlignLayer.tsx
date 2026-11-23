@@ -78,7 +78,7 @@ export function placeMarks(placed: readonly PlacedTarget[], rect: FrameRect, fon
 
 // The rings and names the aligning layer or the still marks last drew, so the next screen's still marks know which of
 // them it hides at a Solve from here hand-over
-let lastDrawn: readonly AlignMark[] = [];
+let lastDrawn: { marks: readonly AlignMark[]; rect: FrameRect } | null = null;
 
 /**
  * Of the marks drawn before, those standing where this screen would put them that this screen does not draw: at a
@@ -98,49 +98,84 @@ export function leavingMarks(before: readonly AlignMark[], placed: readonly Plac
  * The same rings and names, still: the lock-on's early marks (D25), drawn where an early pose puts the predicted sky,
  * with no hands on them. At a Solve from here hand-over (`handOver`: the working screen's alignment marks, the refused
  * screen's kept ones), a ring and its name the screen before drew that this one's keep-clear hides leave on frame out
- * where they stood, then are drawn no more; everything else stays put.
+ * where they stood, then are drawn no more; everything else stays put. On the phone (section six, DECIDED-BY-LEAD
+ * 22 Nov 23:36) the working screen draws none of its own (`drawn` false): every ring and name the aligning layer drew
+ * leaves where it stood, in the frame it stood in, with `whileLeaving` (the aligning block, leaving) beside them until
+ * their last frame; and at the refused end (`arriving`) the rings the screen before did not draw come in as the
+ * reveal's marks do, brightest first.
  */
-export const StillAlignMarks: React.FC<{ rect: FrameRect; placed: readonly PlacedTarget[]; clear?: readonly Box[]; handOver?: boolean }> = ({ rect, placed, clear = [], handOver = false }) => {
-  const marks = placeMarks(placed, rect, 13, clear);
+export const StillAlignMarks: React.FC<{
+  rect: FrameRect;
+  placed: readonly PlacedTarget[];
+  clear?: readonly Box[];
+  handOver?: boolean;
+  drawn?: boolean;
+  arriving?: boolean;
+  phone?: boolean;
+  whileLeaving?: React.ReactNode;
+}> = ({ rect, placed, clear = [], handOver = false, drawn = true, arriving = false, phone = false, whileLeaving = null }) => {
   // What the screen before drew, read once as this one comes in
-  const [before] = useState(() => (handOver ? lastDrawn : []));
+  const [before] = useState(() => (handOver ? lastDrawn : null));
+  const frame = drawn || before === null ? rect : before.rect;
+  const marks = drawn ? placeMarks(placed, frame, phone ? 11 : 13, clear) : [];
   const [left, setLeft] = useState<ReadonlySet<string>>(() => new Set());
-  const leaving = leavingMarks(before, placed, rect, marks).filter((mark) => !left.has(mark.id));
+  const ids = new Set(placed.map((target) => target.id));
+  const gone = before === null ? [] : drawn ? leavingMarks(before.marks, placed, frame, marks) : before.marks.filter((mark) => ids.has(mark.id));
+  const leaving = gone.filter((mark) => !left.has(mark.id));
+  const drawnBefore = new Set((before?.marks ?? []).map((mark) => mark.id));
+  const coming = arriving && before !== null ? marks.filter((mark) => !drawnBefore.has(mark.id)).map((mark) => mark.id) : [];
   useEffect(() => {
-    lastDrawn = marks;
+    lastDrawn = { marks, rect: frame };
   });
+  const style: React.CSSProperties & Record<string, string> = { left: `${frame.leftPx}px`, top: `${frame.topPx}px`, width: `${frame.widthPx}px`, height: `${frame.heightPx}px` };
+  if (coming.length > 0) style['--mark-n'] = String(coming.length);
   return (
-    <div className="align-layer is-still" data-testid="early-marks" style={{ left: `${rect.leftPx}px`, top: `${rect.topPx}px`, width: `${rect.widthPx}px`, height: `${rect.heightPx}px` }}>
-      <MarksDrawing marks={marks} rect={rect} leaving={leaving} onLeft={(id) => setLeft((done) => new Set(done).add(id))} />
-    </div>
+    <>
+      {leaving.length > 0 && whileLeaving}
+      <div className={phone ? 'align-layer is-still is-phone' : 'align-layer is-still'} data-testid="early-marks" style={style}>
+        <MarksDrawing marks={marks} rect={frame} leaving={leaving} onLeft={(id) => setLeft((done) => new Set(done).add(id))} coming={coming} />
+      </div>
+    </>
   );
 };
 
-const MarksDrawing: React.FC<{ marks: readonly AlignMark[]; rect: FrameRect; leaving?: readonly AlignMark[]; onLeft?: (id: string) => void }> = ({ marks, rect, leaving = [], onLeft }) => (
+const MarksDrawing: React.FC<{ marks: readonly AlignMark[]; rect: FrameRect; leaving?: readonly AlignMark[]; onLeft?: (id: string) => void; coming?: readonly string[] }> = ({
+  marks,
+  rect,
+  leaving = [],
+  onLeft,
+  coming = [],
+}) => (
   <>
     <svg className="align-layer__rings" aria-hidden="true" focusable="false">
-      {marks.map((mark) => (
-        <circle key={mark.id} cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} />
-      ))}
+      {marks.map((mark) => {
+        const rank = coming.indexOf(mark.id);
+        return rank < 0 ? (
+          <circle key={mark.id} cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} />
+        ) : (
+          <circle key={mark.id} className="is-arriving" style={{ ['--mark-i' as string]: String(rank) }} cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} />
+        );
+      })}
       {leaving.map((mark) => (
         <circle key={`leaving:${mark.id}`} className="is-leaving" cx={mark.xPx - rect.leftPx} cy={mark.yPx - rect.topPx} r={ALIGN_RING_PX} onAnimationEnd={() => onLeft?.(mark.id)} />
       ))}
     </svg>
-    {[...marks.map((mark) => ({ mark, out: false })), ...leaving.map((mark) => ({ mark, out: true }))].map(({ mark, out }) =>
-      mark.name === null ? null : (
+    {[...marks.map((mark) => ({ mark, out: false })), ...leaving.map((mark) => ({ mark, out: true }))].map(({ mark, out }) => {
+      if (mark.name === null) return null;
+      const rank = out ? -1 : coming.indexOf(mark.id);
+      const place: React.CSSProperties = mark.nameOnLeft
+        ? { right: `${rect.leftPx + rect.widthPx - (mark.xPx - ALIGN_RING_PX - 6)}px`, top: `${mark.yPx - rect.topPx}px` }
+        : { left: `${mark.xPx - rect.leftPx + ALIGN_RING_PX + 6}px`, top: `${mark.yPx - rect.topPx}px` };
+      return (
         <span
           key={`${out ? 'leaving-name' : 'name'}:${mark.id}`}
-          className={`${mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}${out ? ' is-leaving' : ''}`}
-          style={
-            mark.nameOnLeft
-              ? { right: `${rect.leftPx + rect.widthPx - (mark.xPx - ALIGN_RING_PX - 6)}px`, top: `${mark.yPx - rect.topPx}px` }
-              : { left: `${mark.xPx - rect.leftPx + ALIGN_RING_PX + 6}px`, top: `${mark.yPx - rect.topPx}px` }
-          }
+          className={`${mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}${out ? ' is-leaving' : ''}${rank >= 0 ? ' is-arriving' : ''}`}
+          style={rank >= 0 ? { ...place, ['--mark-i' as string]: String(rank) } : place}
         >
           {mark.name}
         </span>
-      )
-    )}
+      );
+    })}
   </>
 );
 
@@ -269,7 +304,7 @@ export const AlignLayer: React.FC<{
 
   const marks = alignMarks(targets, pose, rect, phone ? 11 : 13, clear);
   useEffect(() => {
-    lastDrawn = marks;
+    lastDrawn = { marks, rect };
   });
   return (
     <div

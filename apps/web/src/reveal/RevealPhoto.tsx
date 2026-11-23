@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { alignReadout, alignStartWords, alignTargets, personAlignmentOf, placedAtPose, startPose, type AlignedFrom, type AlignPose, type AlignStart } from './alignPose.js';
 import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
+import { PhoneAligningBlock } from './PhoneAligning.js';
 import { EARLY_SOURCE_WORDS, earlyPoseOf, type EarlyPose, type PlacedTarget } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
 import type { ObservationSolution, PersonAlignment } from '@albedian/contracts';
@@ -662,19 +663,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring || phoneStopped ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
-        <div className="align-phone" data-testid="reveal-status" role="status">
-          {/* UIUX-tagphone-READY.md item C: the person's rings carry the Predicted tag, at full from their first frame */}
-          <span className="align-phone__tag">
-            <EvidenceTag evidenceClass="predicted" />
-          </span>
-          <p className="align-phone__lead">Drag the stars onto the dots you see.</p>
-          <p className="align-phone__help">Drag to move. Turn or pinch with two fingers.</p>
-          {onSolveFromHere && (
-            <div className="align-phone__solve">
-              <MainAction label="Solve from here" size="phone" onClick={() => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from)} />
-            </div>
-          )}
-        </div>
+        // UIUX-tagphone-READY.md item C: the person's rings carry the Predicted tag, at full from their first frame
+        <PhoneAligningBlock onSolve={onSolveFromHere ? () => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from) : undefined} />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' && keptRefused ? (
         <PhoneAlignRefused
           onAgain={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })}
@@ -932,7 +922,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* Refused after Solve from here (D24 step 4): the rings stay amber and dashed at the kept pose */}
-      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} handOver />}
+      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} handOver arriving={phone} phone={phone} />}
       {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
       {earlyKept && <StillAlignMarks rect={frame!} placed={early!.marks} clear={keepClear} />}
 

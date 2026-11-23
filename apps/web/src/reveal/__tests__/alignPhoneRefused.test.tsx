@@ -85,8 +85,8 @@ describe('D24 refused at phone width', () => {
     // Restore under Show predicted sky, as alp-refused draws it, now that the phone restores (D38)
     expect([...status.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Line it up again', 'Show predicted sky', 'Restore']);
     for (const b of status.querySelectorAll('button')) expect(b.className).toContain('look-size-phone');
-    // The kept rings stay drawn over the photo, amber and dashed, and the no-match screen's own actions are not offered
-    expect(q('[data-testid="early-marks"]')!.className).toBe('align-layer is-still');
+    // The kept rings stay drawn over the photo at the phone's 11 px size, amber and dashed, and the no-match screen's own actions are not offered
+    expect(q('[data-testid="early-marks"]')!.className).toBe('align-layer is-still is-phone');
     expect(button('Line it up yourself')).toBeUndefined();
   });
 
