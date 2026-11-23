@@ -58,15 +58,14 @@ export function createPanoramaOffsetTexture(registration: PanoramaRegistration):
 }
 
 /**
- * The all-sky dome of the landing scenes as a background node, ported from `skyMat` in
- * SparkPortalRenderer.ts (restoration on, which is what the landing draws), and
- * sampled by view direction so it lines up with the catalog stars (see sky/skyRegistration.ts):
- * the ESO panorama through its fitted rotation and offset table. Screen-space u derivatives are
- * wrapped at the seam so the panorama keeps full mip detail across it.
+ * The all-sky dome of the landing scenes as a background node, ported from the sky dome shader in
+ * webgl/skyDomeAndCinemaShader.ts and sampled by view direction so it lines up with the catalog
+ * stars (see sky/skyRegistration.ts): the ESO panorama through its fitted rotation and offset
+ * table. Screen-space u derivatives are wrapped at the seam so the panorama keeps full mip detail
+ * across it.
  *
  * Content: the ESO Milky Way panorama, black-level clipped, contrast curved and tinted for
- * display; no new structure is synthesized. Not ported: the WebGL dome's unrestored sensor veil,
- * which nothing switches on.
+ * display; no new structure is synthesized.
  */
 export function createSkyBackgroundNode(
   milkyWay: Texture,

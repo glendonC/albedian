@@ -15,7 +15,6 @@ export interface SkyDomeUniforms {
   uPanoramaOffsets: { value: THREE.Texture | null };
   uPanoramaGeometry: { value: THREE.Vector3 };
   uPanoramaOffsetDecode: { value: THREE.Vector2 };
-  uRestoration: { value: number };
   uTime: { value: number };
 }
 
@@ -36,7 +35,6 @@ export function createSkyDomeUniforms(): SkyDomeUniforms {
     uPanoramaGeometry: { value: new THREE.Vector3(1, 1, 0) },
     // Offset table codes per texel and bias
     uPanoramaOffsetDecode: { value: new THREE.Vector2(1, 0) },
-    uRestoration: { value: 1.0 },
     uTime: { value: 0.0 },
   };
 }
@@ -132,7 +130,6 @@ export function createGlobalPhotorealisticSkyDomeMesh(
       uniform sampler2D uPanoramaOffsets;
       uniform vec3 uPanoramaGeometry;
       uniform vec2 uPanoramaOffsetDecode;
-      uniform float uRestoration;
       uniform float uTime;
       varying vec3 vSkyDir;
 
@@ -171,9 +168,7 @@ export function createGlobalPhotorealisticSkyDomeMesh(
         vec3 galacticBulge = pow(cleanMw, vec3(${grade.power})) * vec3(${grade.tint}) * ${grade.gain};
         vec3 deepSpaceBase = vec3(${grade.base});
         vec3 opticalSky = deepSpaceBase + galacticBulge;
-
-        vec3 rawSensorVeil = vec3(0.010, 0.015, 0.030);
-        gl_FragColor = vec4(mix(rawSensorVeil, opticalSky, uRestoration), 1.0);
+        gl_FragColor = vec4(opticalSky, 1.0);
       }
     `,
   });

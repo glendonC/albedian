@@ -475,7 +475,6 @@ export class SparkPortalRenderer {
     this.onRegimeChange?.(regime);
   }
 
-  public setSkyRestorationActive(active: boolean): void { this.skyDomeUniforms.uRestoration.value = active ? 1.0 : 0.0; }
   public holdClock(seconds: number | null): void { this.heldClockSec = seconds; }
   public showSkyView(): void { if (this.activeRegime !== 'earth_capture' || this.flightState) this.jumpToRegime('earth_capture'); }
 
