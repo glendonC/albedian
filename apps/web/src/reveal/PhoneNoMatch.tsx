@@ -7,16 +7,27 @@ import type { RevealStatus } from './revealStatus.js';
  * photo, Show predicted sky centred where Ask out loud sits when a predicted sky can open, and under it the warnings in
  * one list, reached by scrolling the whole screen; the photo moves up with it (the lead's answer 23:50, INTERIM).
  */
-export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: () => void; onAlign?: () => void; onRestore?: () => void }> = ({
+export const PhoneNoMatch: React.FC<{
+  status: RevealStatus;
+  onShowPredictedSky: () => void;
+  onAlign?: () => void;
+  onRestore?: () => void;
+  clip?: boolean;
+}> = ({
   status,
   onShowPredictedSky,
   onAlign,
   onRestore,
+  clip = false,
 }) => {
   const { screen, onScroll } = usePhoneScroll();
   return (
     <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
-      <div className="reveal-status is-unmatched is-phone" data-testid="reveal-status" role="status">
+      <div
+        className={clip ? 'reveal-status is-unmatched is-phone is-clip' : 'reveal-status is-unmatched is-phone'}
+        data-testid="reveal-status"
+        role="status"
+      >
         <div className="reveal-phone-lead">
           {status.lines.map((line) => (
             <p key={line} className="reveal-status__lead">
@@ -79,14 +90,32 @@ function usePhoneScroll() {
  * 646, "Your alignment is kept, drawn as predicted." at 704, "Line it up again" centred at 772 where Solve from here
  * was, then Show predicted sky and Restore under it, reached by scrolling. The kept rings are drawn over the photo.
  */
-export const PhoneAlignRefused: React.FC<{ onAgain: () => void; onShowPredictedSky?: () => void; onRestore?: () => void }> = ({ onAgain, onShowPredictedSky, onRestore }) => {
+export const PhoneAlignRefused: React.FC<{
+  onAgain: () => void;
+  onShowPredictedSky?: () => void;
+  onRestore?: () => void;
+  clip?: boolean;
+}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false }) => {
   const { screen, onScroll } = usePhoneScroll();
+  const words = (
+    <>
+      <EvidenceTag evidenceClass="predicted" />
+      <p className="reveal-status__lead">No stars matched near your alignment.</p>
+      <p className="align-refused__kept">Your alignment is kept, drawn as predicted.</p>
+    </>
+  );
   return (
     <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
-      <div className="reveal-status is-unmatched is-phone is-refused has-predicted" data-testid="reveal-status" role="status">
-        <EvidenceTag evidenceClass="predicted" />
-        <p className="reveal-status__lead">No stars matched near your alignment.</p>
-        <p className="align-refused__kept">Your alignment is kept, drawn as predicted.</p>
+      <div
+        className={
+          clip
+            ? 'reveal-status is-unmatched is-phone is-refused is-clip has-predicted'
+            : 'reveal-status is-unmatched is-phone is-refused has-predicted'
+        }
+        data-testid="reveal-status"
+        role="status"
+      >
+        {clip ? <div className="align-refused__block">{words}</div> : words}
         <div className="reveal-phone-go">
           <MainAction label="Line it up again" size="phone" onClick={() => onAgain()} />
         </div>

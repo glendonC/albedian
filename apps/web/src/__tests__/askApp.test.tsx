@@ -448,35 +448,70 @@ describe('asking about the photo on the laptop reveal', () => {
   });
 
   it('keeps a refusal given where the reveal is not shown from showing when the reveal comes back', async () => {
-    // A phone's window over a sky lined up by an estimate, where the old bar asks until the phone's unit for it; then a
-    // laptop's, where the reveal shows
-    let phone = true;
-    const listeners: Array<() => void> = [];
+    // Over D33's predicted sky (same photoKey, revealOn false) and over ?view=observatory before an upload opens
+    // (VoiceCommandHud, revealShown false), a refused command is not stored to appear when the reveal comes back
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
-      get matches() {
-        return phone && query.includes('max-width: 720px');
-      },
-      addEventListener: (_: string, listener: () => void) => listeners.push(listener),
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: () => {},
       removeEventListener: () => {},
     });
-    const unmatched = { ...samples['horizon_approximate']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    const noMatch = { ...samples['horizon_predicted_only']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
     try {
-      await openAppAt(`/?upload=${sha256}`, { solution: () => json(unmatched) });
-      await waitUntil(() => expect(q('[data-testid="voice-command-hud"]')).not.toBeNull());
-      await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
-      const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Take me to Zorblax');
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      });
-      await act(async () => (input.form as HTMLFormElement).requestSubmit());
+      await openAppAt(`/?upload=${sha256}`, { solution: () => json(noMatch) });
+      await waitUntil(() => expect(q('[data-testid="reveal-status"]')).not.toBeNull());
+      const showSkyBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Show predicted sky')!;
+      await act(async () => showSkyBtn.click());
+      await waitUntil(() => expect(q('[data-testid="predicted-sky"]')).not.toBeNull());
+      expect(q('[data-testid="reveal-photo"]')).toBeNull();
+      await typeAndSend('Take me to Zorblax');
       await settle();
-      phone = false;
-      await act(async () => listeners.forEach((listener) => listener()));
-      await waitUntil(() => expect(q('[data-testid="ask-bar"]')).not.toBeNull());
+      const backBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Back to Moment')!;
+      await act(async () => backBtn.click());
+      await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
       await settle();
-      expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
       expect(q(ANSWER)).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    let resolveReceipt!: (res: Response) => void;
+    const deferredReceipt = new Promise<Response>((resolve) => {
+      resolveReceipt = resolve;
+    });
+    await openAppAt(`/?upload=${sha256}&view=observatory`, { receipt: () => deferredReceipt });
+    await waitUntil(() => expect(q('[data-testid="voice-command-hud"]')).not.toBeNull());
+    await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
+    const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Take me to Zorblax');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => (input.form as HTMLFormElement).requestSubmit());
+    await settle();
+    await act(async () => resolveReceipt(json(receipt)));
+    await waitUntil(() => expect(q('[data-testid="ask-bar"]')).not.toBeNull());
+    await settle();
+    expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
+    expect(q(ANSWER)).toBeNull();
+  });
+
+  it('opens the phone reveal with Ask out loud over a pose-estimated sky too (d16phone-2)', async () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query.includes('max-width: 720px'),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const estimated = { ...samples['horizon_approximate']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    try {
+      await openAppAt(`/?upload=${sha256}`, { solution: () => json(estimated) });
+      await waitUntil(() => expect(q('[data-testid="reveal-phone-estimate"]')).not.toBeNull());
+      expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar is-phone');
+      expect(q('[data-testid="voice-command-hud"]')).toBeNull();
+      await typeAndSend('How far away is Rigel?');
+      await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+      expect(q(ANSWER)!.className).toBe('reveal-answer is-phone');
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }

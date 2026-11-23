@@ -31,7 +31,7 @@ import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
-import { phoneSlotRect } from './phoneSlot.js';
+import { PHONE_SLOT, phoneSlotRect } from './phoneSlot.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
@@ -453,7 +453,20 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // D10 item 5 at phone width (the lead's 13:17 answer, D38 item 4): a photo that already has a ready restoration shows
   // the compare in the slot, the fixed sentence under it and Download where Ask out loud sits. A clip's waits for
   // D16's phone player, which is not built
-  const phonePhoto = phone && session.sourceAsset !== undefined && session.sourceAsset.mediaKind !== 'video';
+  const phoneClip = phone && session.sourceAsset?.mediaKind === 'video';
+  const phoneMedia = phone && session.sourceAsset !== undefined;
+  const estimateRef = useRef<HTMLDivElement>(null);
+  const [clipAnswerFootPx, setClipAnswerFootPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!(phoneClip && Boolean(answer) && !there && !skyShown)) {
+      if (clipAnswerFootPx !== null) setClipAnswerFootPx(null);
+      return;
+    }
+    const estBox = estimateRef.current?.getBoundingClientRect();
+    const nextFoot = estBox && estBox.height > 0 ? viewH - estBox.top + 16 : viewH - (PHONE_SLOT.topPx + PHONE_SLOT.heightPx);
+    if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
+  });
+  const phonePhoto = phoneMedia && !phoneClip;
   const [versions, setVersions] = useState<StoredRestoration[]>([]);
   const phoneCompare = phonePhoto && !there && !skyShown && !originalPixels && !bareFrame && frame !== null && versions.length > 0;
   const compareOn = compareShown || phoneCompare;
@@ -461,18 +474,18 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
   // compare is not on screen, so no predicted layer stands without its tag
   const drawnMarks = compareOn ? marks.filter((mark) => mark.kind !== 'predicted') : marks;
-  // D38 (UIUX-restorephone-READY.md, decided by the lead 13:32): on a matched phone photo, Restore 16 px under Ask out
-  // loud, reached by scrolling the whole screen under the fixed top bar; while it works, D2's phone row in the counts'
-  // place and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
+  // D38 (UIUX-restorephone-READY.md, decided by the lead 13:32): on a matched phone photo or clip, Restore 16 px under
+  // Ask out loud, reached by scrolling the whole screen under the fixed top bar; while it works, D2's phone row in the
+  // counts' place and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
   const phoneRestoreOffered =
-    phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
+    phoneMedia && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
   const phoneRestoring = phonePhoto && !there && !skyShown && restoration?.phase === 'working';
   // D38 item 5 (ruled 15:43): stopped, in D37's layout with D21's sentences; only Try again holds the foot (a refusal frees it)
   const phoneStopped = phonePhoto && !there && !skyShown && restoration?.phase === 'stopped';
   // D38's no-match rule: on the phone's no-match screen and its refused alignment, Restore under the screen's own
-  // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused)
+  // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused, UIUX-clipphone-READY.md section 3)
   const phoneNoMatchRestore =
-    phonePhoto && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && status.kind === 'unmatched';
+    phoneMedia && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && status.kind === 'unmatched';
   // The phone's foot taken by the restoration (its compare's Download, or its wait's Cancel): Ask out loud gives way
   const phoneFoot = phoneCompare || phoneRestoring || (phoneStopped && restoration?.phase === 'stopped' && restoration.canTryAgain);
   useEffect(() => {
@@ -667,12 +680,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <PhoneAligningBlock onSolve={onSolveFromHere ? () => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from) : undefined} />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' && keptRefused ? (
         <PhoneAlignRefused
+          clip={phoneClip}
           onAgain={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })}
           onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
           onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
         />
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch
+          clip={phoneClip}
           status={status}
           onShowPredictedSky={() => onShowPredictedSky?.()}
           onAlign={alignOffered ? () => setAligning(alignStart) : undefined}
@@ -995,7 +1010,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {statusLine}
       {outgoingLine}
 
-      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} footPx={answerFootPx} />}
+      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} footPx={answerFootPx ?? clipAnswerFootPx} />}
 
       {(!answer || phone) && shownFlight && !cone && (
         <section
@@ -1082,16 +1097,19 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
       {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
-      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !skyShown && status.kind === 'estimate' && (
-        // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out
-        // loud, growing upward: the Predicted tag at full from the rings' first frame, the pose's first sentence (what the
-        // sky rests on), then the counts row as built. With a star picked the counts go and the card sheet rises over the
-        // block (item D): drawn before the card, so the sheet paints over it, the tag stays drawn until the sheet covers
-        // it, and the counts keep their room so the tag does not move (the card's own tag: motion.css)
-        <div className="reveal-phone-estimate" data-testid="reveal-phone-estimate">
+      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && (!answer || phoneClip) && !skyShown && status.kind === 'estimate' && (
+        // The estimate at phone width (UIUX-tagphone-READY.md item A; UIUX-clipphone-READY.md section 3): one block
+        // anchored by its foot 16 px above Ask out loud (or at y 638 above D16's player on a clip, staying in view under
+        // an open answer by item B), growing upward: the Predicted tag at full from the rings' first frame, the pose's
+        // first sentence, and on a photo the counts row. With a star picked the card sheet rises over the block (item D)
+        <div
+          ref={estimateRef}
+          className={phoneClip ? 'reveal-phone-estimate is-clip' : 'reveal-phone-estimate'}
+          data-testid="reveal-phone-estimate"
+        >
           <EvidenceTag evidenceClass="predicted" />
           <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
-          {counts.length > 0 && <PhoneCounts counts={counts} hidden={picked !== null} />}
+          {!phoneClip && counts.length > 0 && <PhoneCounts counts={counts} hidden={picked !== null} />}
         </div>
       )}
       {/* D38 at phone width: while the restoration works, its lead (item A's tag) over the step and Cancel; once it stops,
@@ -1151,7 +1169,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
-      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
+      {phone && !phoneClip && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>

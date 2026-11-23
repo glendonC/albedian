@@ -9,12 +9,13 @@ import { revealStatus } from './revealStatus.js';
 export const PHONE_SLOT = { topPx: 118, heightPx: 520 };
 
 /**
- * Whether the phone's reveal shows (on a phone): for now over a photo with a verified solve; the no-match reveal, Real
- * sky and the there screen on the phone keep the old pieces until their own units.
+ * Whether the phone's reveal shows (on a phone): over a photo or clip with a verified solve or a frame-gated pose
+ * estimate (D16, UIUX-clipphone-READY.md section 3; UIUX-tagphone-READY.md item A) [verified].
  */
 export function isPhoneRevealShown(session: ObservationSession): boolean {
-  const solution = session.observationSolution;
-  return isSourcePhotoShown(session) && solution !== undefined && solution.status === 'calibrated' && hasVerifiedWcs(solution);
+  if (!isSourcePhotoShown(session) || session.observationSolution === undefined) return false;
+  const kind = revealStatus(session).kind;
+  return kind === 'calibrated' || kind === 'estimate';
 }
 
 /** Whether the phone's no-match reveal shows (on a phone): over the photo when the solve matched no star. */

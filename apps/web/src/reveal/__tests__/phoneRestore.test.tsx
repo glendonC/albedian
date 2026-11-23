@@ -128,7 +128,7 @@ describe('Restore on a matched phone reveal (D38 item 1)', () => {
     expect(q('[data-testid="reveal-photo"]')!.className).not.toContain('is-scroll');
   });
 
-  it('is not offered with no way to restore, while one is ready or running, over Real sky, a picked star, an answer, or on a clip', async () => {
+  it('is not offered with no way to restore, while one is ready or running, over Real sky, a picked star, or an answer, and is offered on a clip too (d16phone-2)', async () => {
     await showPhone({ onRestore: undefined });
     expect(button('Restore')).toBeUndefined();
     await showPhone({ restoration: { phase: 'asking' } });
@@ -141,8 +141,8 @@ describe('Restore on a matched phone reveal (D38 item 1)', () => {
     await showPhone({ answer: { heard: 'restore it', sentence: 'Ask again.', answer: null } });
     expect(button('Restore')).toBeUndefined();
     await showPhone({ session: slotted(poseSession(sample('plate_calibrated'), 'video')) });
-    expect(button('Restore')).toBeUndefined();
-    expect(q('[data-testid="reveal-photo"]')!.className).not.toContain('is-scroll');
+    expect(button('Restore')).not.toBeUndefined();
+    expect(q('[data-testid="reveal-photo"]')!.className).toContain('is-scroll');
   });
 
   it('gives way to the compare once a restoration is ready', async () => {

@@ -2262,3 +2262,76 @@
 :root[data-phone-scroll] .align-layer.is-still {
   translate: 0 calc(-1 * var(--phone-scroll, 0px));
 }
+
+/* D16 at phone width across estimate, no-match and refused-alignment clips (UIUX-clipphone-READY.md section 3):
+   nothing sits behind or collides with the player and its time chip (y 651 to 720); words stand above y 638 with D19's
+   44 px 82 percent black fade, and the actions begin at y 772 */
+.reveal-phone-estimate.is-clip {
+  bottom: calc(100% - 638px);
+}
+.reveal-phone-estimate.is-clip::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  top: -44px;
+  bottom: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
+  pointer-events: none;
+}
+.reveal-status.is-unmatched.is-phone.is-clip {
+  padding: 772px 24px 40px;
+}
+.reveal-status.is-unmatched.is-phone.is-clip .reveal-phone-lead {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 638px;
+  transform: translateY(-100%);
+  min-height: 0;
+}
+.reveal-status.is-unmatched.is-phone.is-clip .reveal-phone-lead::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  top: -44px;
+  bottom: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
+  pointer-events: none;
+}
+.reveal-phone-lead + .reveal-phone-go--restore {
+  margin-top: 0;
+}
+.align-refused__block {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 638px;
+  transform: translateY(-100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.align-refused__block::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  top: -44px;
+  bottom: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
+  pointer-events: none;
+}
+.align-refused__block > .look-tag {
+  margin: 0 0 12px;
+}
+.align-refused__block > .reveal-status__lead {
+  margin: 0 0 8px;
+}
+.align-refused__block > .align-refused__kept {
+  margin: 0;
+}

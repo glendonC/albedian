@@ -194,12 +194,34 @@ export const SpatialObservatoryViewport: React.FC<
   const skyOver = realSkyShown || flightShown;
   // D33: the sky Show predicted sky opens, in place of the old panel (UIUX-predsky-READY.md), at phone width too
   const predictedSkyShown = !flightShown && isPredictedSkyShown(session);
-  // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
-  // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
-  // pieces until their own units
+  const [entryStageActive, setEntryStageActive] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return new URLSearchParams(window.location.search).get('view') !== 'observatory';
+  });
+  const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
+  const [clipPlaying, setClipPlaying] = useState(false);
+  useEffect(() => {
+    if (!clipVideo) {
+      setClipPlaying(false);
+      return undefined;
+    }
+    const onPlay = () => setClipPlaying(true);
+    const onPause = () => setClipPlaying(false);
+    clipVideo.addEventListener('play', onPlay);
+    clipVideo.addEventListener('pause', onPause);
+    setClipPlaying(!clipVideo.paused);
+    return () => {
+      clipVideo.removeEventListener('play', onPlay);
+      clipVideo.removeEventListener('pause', onPause);
+    };
+  }, [clipVideo]);
+  const clipActive = !entryStageActive && !arrival && !skyOver && session.sourceAsset?.mediaKind === 'video' && isSourcePhotoShown(session);
+  const liveSession = clipActive && clipPlaying ? ({ ...session, isPlaying: true } as ObservationSession) : session;
+  // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), over a verified or pose-estimated photo or clip;
+  // while a clip plays, liveSession marks it playing so frame-gated marks step aside cleanly (D16, P-SKY-9) [verified]
   // The phone's no-match reveal (no-match, approved, iPhone), with no ask button: its one main button takes that place
-  const phoneNoMatch = phone && isPhoneNoMatchShown(session);
-  const phoneReveal = phone && (isPhoneRevealShown(session) || realSkyShown || flightShown || phoneNoMatch);
+  const phoneNoMatch = phone && isPhoneNoMatchShown(liveSession);
+  const phoneReveal = phone && (isPhoneRevealShown(liveSession) || realSkyShown || flightShown || phoneNoMatch);
   const revealShown = (!phone && (isSourcePhotoShown(session) || skyOver)) || phoneReveal;
   // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
   // only while that card is open
@@ -226,10 +248,6 @@ export const SpatialObservatoryViewport: React.FC<
   // While the phone's restoration holds the foot (its compare's Download, D10 item 5, or its wait's Cancel, D38), Ask out loud gives way
   const [phoneFoot, setPhoneFoot] = useState(false);
   const [cancelAligningToken, setCancelAligningToken] = useState(0);
-  const [entryStageActive, setEntryStageActive] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    return new URLSearchParams(window.location.search).get('view') !== 'observatory';
-  });
 
   // Markers are hidden when the browser turned the photo differently from its orientation tag
   const [photoFrameMismatch, setPhotoFrameMismatch] = useState(false);
@@ -522,7 +540,6 @@ export const SpatialObservatoryViewport: React.FC<
   // A clip's player over the reveal (D16, UIUX-clipphone-READY.md section 2): the clip's own element, and where it stops
   // sets the session's clock through the reducer, so what the reveal draws follows the frame on screen; at phone width
   // hidden while aligning or while a picked star's card sheet covers the lower screen [verified]
-  const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
   const clipOnReveal = !entryStageActive && !arrival && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
   const clipShown = clipOnReveal && (!phone || (!phoneAligning && pickedFinding === null));
   // The first view pill names the recording's kind, as every result sentence does (C16)
@@ -532,25 +549,6 @@ export const SpatialObservatoryViewport: React.FC<
       dispatchAlbedianAction(cur, { type: 'media.seek', requestId: `ui-clip-seek-${cur.viewRevision}`, expectedViewRevision: cur.viewRevision, sourceTimeSec: sec, preserveAudioSync: true })
         .session
     );
-  // While the clip element plays, the reveal is drawn as for a playing clip, so marks lined up for one frame (P-SKY-9:
-  // on a clip only while it is not playing) never stand over other frames; the session's own playback, which drives
-  // the audio bus, is left alone
-  const [clipPlaying, setClipPlaying] = useState(false);
-  useEffect(() => {
-    if (!clipVideo) {
-      setClipPlaying(false);
-      return undefined;
-    }
-    const onPlay = () => setClipPlaying(true);
-    const onPause = () => setClipPlaying(false);
-    clipVideo.addEventListener('play', onPlay);
-    clipVideo.addEventListener('pause', onPause);
-    setClipPlaying(!clipVideo.paused);
-    return () => {
-      clipVideo.removeEventListener('play', onPlay);
-      clipVideo.removeEventListener('pause', onPause);
-    };
-  }, [clipVideo]);
   // A clip wider than the reveal's photo column on the laptop is shaded at the sides as Real sky is, so the words beside it stay legible; omitted on a phone clip (D16)
   const clipShaded = !phone && clipOnReveal && session.sourceAsset !== undefined && (() => {
     const shown = orientedSize(session.sourceAsset!.width, session.sourceAsset!.height, session.sourceAsset!.displayOrientation);
