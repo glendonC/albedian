@@ -141,6 +141,30 @@ def test_a_stars_position_is_the_unrefracted_topocentric_one(whole: dict[str, An
         assert (star["altDeg"], star["azDeg"]) == pytest.approx((float(alt), float(az)), abs=1e-9)
 
 
+def test_a_stars_cartesian_parsec_icrs_matches_its_propagated_direction_across_the_ephemeris_span() -> None:
+    """skycontext-5c: every returned star's cartesianParsecICRS lies along its propagated (raDeg, decDeg) at
+    distancePc.median across the full 1800 to 2050 span, moving with proper motion rather than staying frozen at its
+    catalog reference epoch."""
+    client = TestClient(app)
+    replies = {
+        utc: _post({"observedAtUTC": utc, "latDeg": -45.0, "lonDeg": -140.0, "aboveHorizonOnly": False}, client).json()
+        for utc in ("1800-01-01T00:00:00Z", "2050-12-31T23:59:59Z")
+    }
+    for utc, reply in replies.items():
+        assert len(reply["stars"]) == sc.SKY_CONTEXT_STARS_MAX, utc
+        for star in reply["stars"]:
+            ra = math.radians(star["raDeg"])
+            dec = math.radians(star["decDeg"])
+            d = star["distancePc"]["median"]
+            want = [d * math.cos(dec) * math.cos(ra), d * math.cos(dec) * math.sin(ra), d * math.sin(dec)]
+            assert star["cartesianParsecICRS"] == pytest.approx(want, abs=1e-11), (utc, star["catalogSourceId"])
+
+    rigil_1800 = next(s for s in replies["1800-01-01T00:00:00Z"]["stars"] if s["catalogSourceId"] == "HIP 71683")
+    rigil_2050 = next(s for s in replies["2050-12-31T23:59:59Z"]["stars"] if s["catalogSourceId"] == "HIP 71683")
+    assert math.dist(rigil_1800["cartesianParsecICRS"], rigil_2050["cartesianParsecICRS"]) > 0.005
+
+
+
 def test_southern_skies_carry_bright_stars_across_crux_centaurus_carina_eridanus_grus_pavo_and_tucana() -> None:
     """skycontext-5b: POST /api/science/sky-context serves the shipped tile catalog across the deep south, including
     all 30 mag <= 3.2 stars in Crux, Centaurus, Carina, Eridanus, Grus, Pavo and Tucana, and stars without a Bayer
