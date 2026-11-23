@@ -132,6 +132,10 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   // FRONT_QUARTER (the left) showed the render's mirror image (the panel sloping up to the right), the right one
   // matches it (the panel sloping down to the right, the long blade reaching left, one blade hanging below)
   ingenuity: seenFromAbove([-FRONT_QUARTER[0], 0, FRONT_QUARTER[2]], [0, 1, 0], INGENUITY_ELEVATION_DEG),
+  // pv-1 (the 23 Nov 03:38 ruling), checked live against perseverance_picker.webp (.cache/uiux/built/pv-1/zoom.png):
+  // upright on its six wheels (+Y up), from the front quarter on the left at 0 deg (as Deep Impact and the Viking Lander:
+  // CRAFT_FRAMING yFraction 0.62 already looks ~9 deg down onto the top deck; 15 deg pitched the MMRTG above the UHF antenna)
+  perseverance: { forward: FRONT_QUARTER, up: [0, 1, 0] },
 };
 
 /**

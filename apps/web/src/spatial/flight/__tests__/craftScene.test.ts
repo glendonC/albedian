@@ -211,16 +211,16 @@ describe('craftFromSearch: the interim choice by page address', () => {
     // as-2 (the 21 Nov 14:33 ruling), checked live against NASA's render: Apollo-Soyuz from its side, level, the hangar's
     // up kept
     expect([CRAFTS['apollo-soyuz']!.modelForward, CRAFTS['apollo-soyuz']!.modelUp]).toEqual([[1, 0, 0], [0, 1, 0]]);
-    // hangar-5, the live check of 21 Nov against each picture (the 12:40 ruling): each seen from its front quarter on
-    // the left, level, as the hangar's picture camera looks (about 28.8 degrees off its front), the hangar's up kept, so
-    // the Viking Lander stands on its legs
-    for (const id of ['deep-impact', 'viking-lander']) {
+    // hangar-5 and pv-1, checked live against each render_picker picture (12:40 and 23 Nov 03:38 rulings; .cache/uiux/built/pv-1/zoom.png):
+    // seen from the front quarter on the left, level (0 deg, since CRAFT_FRAMING yFraction 0.62 already looks ~9 deg down),
+    // the hangar's up (+Y) kept so the Viking Lander stands on its legs and Perseverance stands upright on its six wheels
+    for (const id of ['deep-impact', 'viking-lander', 'perseverance']) {
       const [fx, fy, fz] = CRAFTS[id]!.modelForward;
       expect(CRAFTS[id]!.modelUp).toEqual([0, 1, 0]);
       expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
       expect([fz < 0, (Math.atan2(fx, -fz) * 180) / Math.PI]).toEqual([true, expect.closeTo(28.81, 2)]);
     }
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity']);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity', 'perseverance']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
     expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
