@@ -440,3 +440,104 @@ def test_the_graph_records_the_gates_settings_with_the_values_that_made_the_vari
             parameter = by_step[kind][name]
             assert parameter["value"] == value, (kind, name)
             assert parameter["origin"] == "default" and parameter["basis"] == "Proposed in design section 7."
+
+
+def _banded_still(tmp_path, name: str, bands: list[tuple[int, tuple[int, int, int]]], *, bits: int = 8) -> decode.DecodedStill:
+    """A 192 x 192 still whose upper rows hold constant bands `(rows, (r, g, b))` in 8-bit scale (scaled to 16 bits
+    when `bits == 16`) and whose remaining rows hold a noisy rising sky so `measure_noise` builds a full table while
+    `darkest_quarter_blocks` falls inside the upper bands."""
+    import io
+    from PIL import Image
+
+    rng = np.random.default_rng(71)
+    size = 192
+    scale = 257 if bits == 16 else 1
+    top = 65535 if bits == 16 else 255
+    yy = np.linspace(0.0, 1.0, size)[:, None]
+    base_code = 48.0 + 96.0 * yy
+    noisy = np.clip(
+        np.round((base_code[..., None] + rng.normal(0.0, 3.5, (size, size, 3))) * scale),
+        0,
+        top,
+    ).astype(np.uint16 if bits == 16 else np.uint8)
+    row = 0
+    for count, rgb8 in bands:
+        noisy[row:row + count, :] = np.array([c * scale for c in rgb8], dtype=noisy.dtype)
+        row += count
+    path = tmp_path / name
+    if bits == 16:
+        path.write_bytes(png16.write_png16(noisy, None))
+    else:
+        buf = io.BytesIO()
+        Image.fromarray(noisy, "RGB").save(buf, format="PNG")
+        path.write_bytes(buf.getvalue())
+    return decode.decode_still(path)
+
+
+@pytest.mark.parametrize("bits", [8, 16])
+def test_a_near_black_still_whose_darkest_quarter_sits_on_code_zero_raises_its_own_refusal(
+        tmp_path, monkeypatch, bits: int) -> None:
+    # Review row C36 [decided 2026-11-23, UIUX-nearblackrestore-READY.md]: refused before spatial restoration runs
+    from services.media import spatial
+
+    still = _banded_still(tmp_path, f"nearblack_{bits}.png", [(64, (0, 0, 0))], bits=bits)
+    calls = []
+    real_edge = spatial.edge_avoiding
+    monkeypatch.setattr(spatial, "edge_avoiding", lambda *args, **kwargs: calls.append(1) or real_edge(*args, **kwargs))
+    with pytest.raises(photo.PhotoRefusal) as caught:
+        photo.restore_still(still)
+    assert caught.value.sentence == photo.NEAR_BLACK_CLIP
+    assert caught.value.sentence == (
+        "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored."
+    )
+    assert calls == []
+
+
+def test_a_dark_still_with_measurable_noise_near_black_still_restores(tmp_path) -> None:
+    # A dark sky right above code 0 where samples clip at 0 yet fewer than a quarter of the darkest-quarter flat
+    # blocks are wholly flat: `before > 0`, so the still is not refused and restores cleanly
+    scene = star_field(33, size=192, count=8, sky=0.0004, noise_sigma=0.00035, bits=8, peaks=(0.02, 0.2))
+    assert int(scene.codes.min()) == 0 and float(np.mean(scene.codes == 0)) > 0.1
+    import io
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.fromarray(scene.codes, "RGB").save(buf, format="PNG")
+    path = tmp_path / "dark_noisy.png"
+    path.write_bytes(buf.getvalue())
+    result = photo.restore_still(decode.decode_still(path))
+    assert result.status == "ready" and result.data is not None
+
+
+def test_a_zero_dark_level_noise_not_on_the_black_clip_or_another_noise_fault_stays_photo_error(
+        tmp_path, monkeypatch) -> None:
+    # Flat darkest quarter at dark grey (24, 24, 24), saturated red (40, 0, 0), or a narrow black border (16 rows at 0)
+    # ramped into flat grey (48 rows at 24): none has a sky sitting on the black clip, so each stays PhotoError
+    ramp = [(16, (0, 0, 0)), *[(1, (round(24 * (r + 1) / 16),) * 3) for r in range(16)], (48, (24, 24, 24))]
+    for name, bands in (
+        ("flat_grey.png", [(64, (24, 24, 24))]),
+        ("flat_red.png", [(64, (40, 0, 0))]),
+        ("border_grey.png", ramp),
+    ):
+        still = _banded_still(tmp_path, name, bands, bits=8)
+        with pytest.raises(photo.PhotoError):
+            photo.restore_still(still)
+    # Empty darkest-quarter blocks (`before` is NaN) and post-spatial `after` NaN on a dark sky also stay PhotoError
+    scene = star_field(33, size=192, count=8, sky=0.0004, noise_sigma=0.00035, bits=16, peaks=(0.02, 0.2))
+    dark_still = still_of(scene.codes, tmp_path)
+    empty_blocks = np.zeros((192 // 8) * (192 // 8), dtype=bool)
+    assert photo._blocks_on_black_clip(dark_still.samples, empty_blocks) is False
+    monkeypatch.setattr(noise, "darkest_quarter_blocks", lambda luma, fp, cl: empty_blocks)
+    with pytest.raises(photo.PhotoError):
+        photo.restore_still(dark_still)
+    monkeypatch.undo()
+    real_fine = noise.fine_noise
+    calls = []
+
+    def nan_after(plane, blocks):
+        calls.append(1)
+        return real_fine(plane, blocks) if len(calls) == 1 else float("nan")
+
+    monkeypatch.setattr(noise, "fine_noise", nan_after)
+    with pytest.raises(photo.PhotoError):
+        photo.restore_still(dark_still)

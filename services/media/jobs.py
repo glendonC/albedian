@@ -241,6 +241,8 @@ def restoration_in_child(store_root: str, folder: str, original: str, sha256: st
     progress("measure", "frames", 0, 1)
     try:
         result = photo.restore_still(still, request.get("exposureEv"))
+    except photo.PhotoRefusal as refusal:
+        return failed(refusal.sentence)
     except photo.PhotoError:
         return failed(decode.INTERNAL_ERROR)
     for stage in ("measure", "restore", "encode"):

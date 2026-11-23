@@ -832,3 +832,48 @@ def test_a_clips_bound_is_a_base_and_seconds_for_each_megapixel_of_every_frame_o
     assert media_jobs.clip_frame_count({"durationMs": 500.0}) == 31
     assert media_jobs.subject("a" * 64, None) is None
 
+
+def _banded_png8(top_rgb: tuple[int, int, int]) -> bytes:
+    rng = np.random.default_rng(71)
+    size = 192
+    yy = np.linspace(0.0, 1.0, size)[:, None]
+    codes = np.clip(np.round(48.0 + 96.0 * yy[..., None] + rng.normal(0.0, 3.5, (size, size, 3))), 0, 255).astype(np.uint8)
+    codes[:64, :] = np.array(top_rgb, dtype=np.uint8)
+    buf = io.BytesIO()
+    Image.fromarray(codes, "RGB").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_a_near_black_still_ends_its_job_failed_with_c36_after_decode_and_other_photo_errors_stay_internal(
+        client, tmp_path) -> None:
+    from services.media import photo
+
+    sha = upload(client, _banded_png8((0, 0, 0)))
+    started = client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"})
+    assert started.status_code == 202, started.text
+    job = finished(client, started.json())
+    UploadJob.model_validate(job)
+    expected = "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored."
+    assert (job["state"], job["error"]) == ("failed", expected), job
+    assert photo.NEAR_BLACK_CLIP == expected
+    stages = {stage["stage"]: (stage["done"], stage["total"]) for stage in job["stages"]}
+    assert stages["decode"] == (1, 1) and stages["measure"] == (0, 1)
+    folder = folder_of(client, sha)
+    assert not (folder / "variants").exists()
+    listed = client.get(f"/api/media/{sha}/variants").json()
+    assert listed["variants"] == [] and len(listed["attempts"]) == 1
+    attempt = listed["attempts"][0]
+    contracts.ProcessingAttempt.model_validate(attempt)
+    assert (attempt["status"], attempt["failureReason"]) == ("failed", photo.NEAR_BLACK_CLIP)
+
+    # A still whose darkest quarter is flat above black (code 24, not clipped at 0) keeps the internal-error sentence
+    grey_bytes = _banded_png8((24, 24, 24))
+    grey_sha = hashlib.sha256(grey_bytes).hexdigest()
+    grey_folder = tmp_path / "grey_store" / grey_sha[:2] / grey_sha
+    grey_folder.mkdir(parents=True)
+    grey_original = grey_folder / "original.png"
+    grey_original.write_bytes(grey_bytes)
+    out = media_jobs.restoration_in_child(str(tmp_path / "grey_store"), str(grey_folder), str(grey_original),
+                                          grey_sha, JOB_ID, {"kind": "restoration"}, None, no_progress)
+    assert (out["status"], out["failureReason"]) == ("failed", decode.INTERNAL_ERROR), out
+

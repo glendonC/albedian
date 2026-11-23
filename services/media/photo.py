@@ -43,6 +43,14 @@ class PhotoError(Exception):
     """A still the path cannot restore honestly: the job stores its internal-error sentence."""
 
 
+class PhotoRefusal(Exception):
+    """A still this path refuses before restoring, with a fixed sentence of the contract (`FAILURE_SENTENCES`)."""
+
+    def __init__(self, sentence: str) -> None:
+        super().__init__(sentence)
+        self.sentence = sentence
+
+
 @dataclass(frozen=True)
 class Context:
     """What checking a stored file against the original needs."""
@@ -106,6 +114,22 @@ def _encode_parameters() -> list[dict]:
             _parameter("zlibLevel", png16.ZLIB_LEVEL, basis="Proposed in design section 8.")]
 
 
+def _blocks_on_black_clip(codes: np.ndarray, blocks: np.ndarray) -> bool:
+    """Whether the chosen flat blocks of the darkest quarter sit on the black clip (code 0): at least the noise
+    estimator's own 25th-percentile share (`noise.ENERGY_PERCENTILE`) of them lie wholly on code 0 across every
+    channel, and the median code across all samples of the chosen blocks is 0 [proposed: zero extra constants;
+    reuses `noise.BLOCK_PX` and `noise.ENERGY_PERCENTILE`; tested on `rp-b-06` and synthetic controls]."""
+    chosen_mask = np.asarray(blocks, dtype=bool)
+    if not chosen_mask.any():
+        return False
+    rows, columns = codes.shape[0] // noise.BLOCK_PX, codes.shape[1] // noise.BLOCK_PX
+    cut = codes[: rows * noise.BLOCK_PX, : columns * noise.BLOCK_PX]
+    grid = cut.reshape(rows, noise.BLOCK_PX, columns, noise.BLOCK_PX, codes.shape[2]).swapaxes(1, 2)
+    chosen = grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX, codes.shape[2])[chosen_mask]
+    block_peak = chosen.max(axis=(1, 2, 3))
+    return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) == 0 and np.median(chosen) == 0)
+
+
 def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = None, *,
                   max_passes: int = gate.MAX_PASSES) -> StillRestoration:
     seconds: dict = {}
@@ -139,6 +163,12 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     working = linear
     original_noise = working_noise = None
     if measurement.reason is None:
+        blocks = noise.darkest_quarter_blocks(luminance, kept.weight, field.clipped)
+        before = noise.fine_noise(luminance, blocks)
+        if not (math.isfinite(before) and before > 0):
+            if math.isfinite(before) and _blocks_on_black_clip(codes, blocks):
+                raise PhotoRefusal(NEAR_BLACK_CLIP)
+            raise PhotoError("the noise at the dark level could not be measured on both images")
         measured["noise"] = measurement.table()
         working = spatial.edge_avoiding(linear, noise.stabilised(luminance, measurement), kept.weight).frame
         working = gate.smooth_first_scale(working, kept)
@@ -146,14 +176,11 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
             keptGrowPx=gate.KEPT_GROW_PX, firstScaleLevels=gate.FIRST_SCALE_LEVELS, brightSkyNoises=gate.BRIGHT_SKY_NOISES,
             brightHaloNoises=gate.BRIGHT_HALO_NOISES, brightLevels=gate.BRIGHT_LEVELS,
             brightBackgroundPercentile=gate.BACKGROUND_PERCENTILE, brightBackgroundPx=gate.BACKGROUND_PX)})
-        blocks = noise.darkest_quarter_blocks(luminance, kept.weight, field.clipped)
-        before = noise.fine_noise(luminance, blocks)
         after = noise.fine_noise(working @ np.asarray(stars.LUMA_WEIGHTS), blocks)
         original_noise = measurement.luma_fine_sigma_at(tone.dark_level(luminance))
         working_noise = after
         # Both noises are numbers, or the noise bound would drop in silence (restore-3-v2 report, items 3 and 4)
-        if not (math.isfinite(before) and before > 0 and math.isfinite(after) and math.isfinite(original_noise)
-                and original_noise > 0):
+        if not (math.isfinite(after) and math.isfinite(original_noise) and original_noise > 0):
             raise PhotoError("the noise at the dark level could not be measured on both images")
         measured["fineNoiseLeft"] = after / before
         lap("spatial")
@@ -416,6 +443,9 @@ import struct  # noqa: E402
 PROFILE_DESCRIPTION = "Colour profile of the original"
 # A restoration's refusal of a photo whose profile the rebuild cannot carry (review row C20, decided 2026-11-19)
 PROFILE_NOT_CARRIED = "Your photo's colour profile cannot be carried into a restored copy, so it was not restored."
+# A restoration's refusal of a near-black photo whose darkest quarter sits on the black clip so its dark-level noise
+# cannot be measured [decided 2026-11-23 by the lead: review row C36, UIUX-nearblackrestore-READY.md]
+NEAR_BLACK_CLIP = "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored."
 PROFILE_TEXT = "Text removed by Albedian"
 # The header's bytes, the tag count after them [tested: Little CMS's sRGB and Apple's Display P3 read whole so]
 _ICC_HEADER = 128
