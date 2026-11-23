@@ -606,11 +606,19 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // tag at full and, on an estimate, the pose's first sentence (UIUX-tagphone-READY.md item A). A picked star's card
   // sheet rises over it: the lead stays drawn until the sheet covers it, and the card's own tag stands in for it at full
   // (item D; the card's rules in motion.css)
+  // tagalign-1 (FIELD's walk, DECIDED-BY-LEAD 21:08 on 22 Nov): over a refused line-up the kept alignment's rings stay
+  // drawn through the restoration as their own layer, so the lead stands for them too, the alignment's own source line
+  // in the pose sentence's place
+  const keptRingsDrawn = keptRefused !== null && frame !== null;
   const phoneRestoreLead =
-    (phoneRestoring || phoneStopped) && !answer && marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted') ? (
+    (phoneRestoring || phoneStopped) && !answer && ((marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn) ? (
       <>
         <EvidenceTag evidenceClass="predicted" />
-        {status.kind === 'estimate' && <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>}
+        {status.kind === 'estimate' ? (
+          <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
+        ) : keptRingsDrawn ? (
+          <p className="reveal-phone-estimate__source">{EARLY_SOURCE_WORDS.alignment}</p>
+        ) : null}
       </>
     ) : null;
   // Released, they come back on the words-in time, all together, not one by one as they first arrived
