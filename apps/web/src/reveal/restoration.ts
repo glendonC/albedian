@@ -43,13 +43,14 @@ export const unchangedSentence = (mediaKind?: 'image' | 'video'): string => (med
  * One plain sentence per refusal reason (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11). A reason it does
  * not know, or a count of points it lacks, gives none: a reason code is never shown as words.
  */
-export function refusalSentence(reason: string, unconfirmedPoints: number | null): string | null {
+export function refusalSentence(reason: string, unconfirmedPoints: number | null, mediaKind?: 'image' | 'video'): string | null {
+  const noun = mediaKind === 'video' ? 'clip' : 'photo';
   switch (reason) {
     case 'unconfirmed_points':
       if (unconfirmedPoints === null) return null;
       return unconfirmedPoints === 1
-        ? 'The restoration showed 1 point of light that is not in your photo, so it was not kept.'
-        : `The restoration showed ${unconfirmedPoints} points of light that are not in your photo, so it was not kept.`;
+        ? `The restoration showed 1 point of light that is not in your ${noun}, so it was not kept.`
+        : `The restoration showed ${unconfirmedPoints} points of light that are not in your ${noun}, so it was not kept.`;
     case 'star_flux_changed':
       return 'The restoration changed how bright a star is, so it was not kept.';
     case 'frame_times_differ':
@@ -57,7 +58,7 @@ export function refusalSentence(reason: string, unconfirmedPoints: number | null
     case 'audio_differs':
       return "The restored clip's sound did not match your clip's, so it was not kept.";
     case 'copy_differs':
-      return "The copy did not match your photo's pixels exactly, so it was not kept.";
+      return `The copy did not match your ${noun}'s pixels exactly, so it was not kept.`;
     default:
       return null;
   }
@@ -146,7 +147,7 @@ export function useRestoration(
         setRestoration(view);
         if (ended.state === 'rejected' && ended.attemptId !== undefined) {
           const refusal = await readRefusal(sha256, ended.attemptId).catch(() => null);
-          const sentence = refusal ? refusalSentence(refusal.rejection, refusal.unconfirmedPointCount) : null;
+          const sentence = refusal ? refusalSentence(refusal.rejection, refusal.unconfirmedPointCount, mediaKind) : null;
           if (!stop.signal.aborted && sentence !== null) setRestoration(refused(ended, sentence, mediaKind));
         }
       } catch (err) {

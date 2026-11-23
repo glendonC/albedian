@@ -88,18 +88,25 @@ describe('restorationOf: a job record to what the screen shows', () => {
 });
 
 describe('refusalSentence: one plain sentence per refusal reason (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11)', () => {
-  it('words each reason, counting the points of light from the gate, one point singular', () => {
+  it('words each reason, counting the points of light from the gate, one point singular, naming a clip on video', () => {
     expect(refusalSentence('unconfirmed_points', 3)).toBe('The restoration showed 3 points of light that are not in your photo, so it was not kept.');
     expect(refusalSentence('unconfirmed_points', 1)).toBe('The restoration showed 1 point of light that is not in your photo, so it was not kept.');
+    expect(refusalSentence('unconfirmed_points', 3, 'image')).toBe('The restoration showed 3 points of light that are not in your photo, so it was not kept.');
+    expect(refusalSentence('unconfirmed_points', 3, 'video')).toBe('The restoration showed 3 points of light that are not in your clip, so it was not kept.');
+    expect(refusalSentence('unconfirmed_points', 1, 'video')).toBe('The restoration showed 1 point of light that is not in your clip, so it was not kept.');
     expect(refusalSentence('star_flux_changed', null)).toBe('The restoration changed how bright a star is, so it was not kept.');
+    expect(refusalSentence('star_flux_changed', null, 'video')).toBe('The restoration changed how bright a star is, so it was not kept.');
     expect(refusalSentence('frame_times_differ', null)).toBe("The restored clip's frame times did not match your clip's, so it was not kept.");
     expect(refusalSentence('audio_differs', null)).toBe("The restored clip's sound did not match your clip's, so it was not kept.");
     expect(refusalSentence('copy_differs', null)).toBe("The copy did not match your photo's pixels exactly, so it was not kept.");
+    expect(refusalSentence('copy_differs', null, 'image')).toBe("The copy did not match your photo's pixels exactly, so it was not kept.");
+    expect(refusalSentence('copy_differs', null, 'video')).toBe("The copy did not match your clip's pixels exactly, so it was not kept.");
   });
 
   it('never shows a reason code as words: a reason it does not know, or a count it lacks, gives no sentence', () => {
     expect(refusalSentence('something_new', null)).toBeNull();
     expect(refusalSentence('unconfirmed_points', null)).toBeNull();
+    expect(refusalSentence('unconfirmed_points', null, 'video')).toBeNull();
   });
 });
 
@@ -237,6 +244,51 @@ describe('useRestoration', () => {
       phase: 'stopped',
       job: gateRefused,
       sentence: "The restored clip's frame times did not match your clip's, so it was not kept.",
+      subline: 'Your clip is unchanged.',
+      canTryAgain: false,
+    });
+
+    // On a video, unconfirmed_points and copy_differs also say "your clip" / "your clip's"
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/restore')) return json(gateRefused, 200);
+      if (url.endsWith('/variants')) {
+        return json({
+          variants: [],
+          attempts: [{ id: gateRefused.attemptId, status: 'rejected', rejection: 'unconfirmed_points', gate: { unconfirmedPointCount: 2, passed: false } }],
+        });
+      }
+      return json(gateRefused);
+    });
+    act(() => root.render(createElement(Probe, { sha: 'b'.repeat(64), mediaKind: 'video' })));
+    act(() => latest.start());
+    await until(() => phase() === 'stopped' && latest.restoration.phase === 'stopped' && latest.restoration.sentence !== null);
+    expect(latest.restoration).toEqual({
+      phase: 'stopped',
+      job: gateRefused,
+      sentence: 'The restoration showed 2 points of light that are not in your clip, so it was not kept.',
+      subline: 'Your clip is unchanged.',
+      canTryAgain: false,
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/restore')) return json(gateRefused, 200);
+      if (url.endsWith('/variants')) {
+        return json({
+          variants: [],
+          attempts: [{ id: gateRefused.attemptId, status: 'rejected', rejection: 'copy_differs' }],
+        });
+      }
+      return json(gateRefused);
+    });
+    act(() => root.render(createElement(Probe, { sha: 'c'.repeat(64), mediaKind: 'video' })));
+    act(() => latest.start());
+    await until(() => phase() === 'stopped' && latest.restoration.phase === 'stopped' && latest.restoration.sentence !== null);
+    expect(latest.restoration).toEqual({
+      phase: 'stopped',
+      job: gateRefused,
+      sentence: "The copy did not match your clip's pixels exactly, so it was not kept.",
       subline: 'Your clip is unchanged.',
       canTryAgain: false,
     });
