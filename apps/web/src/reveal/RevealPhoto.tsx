@@ -43,6 +43,9 @@ export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.words
 /** The arrival that locks on (D25): the travel, the matched marks' colour at rest, then the words as after the marks. */
 export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colourMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
 
+/** How near the status column may come to In this photo before the legend gives way (refusedwrap-1, decided 20:44 on 22 Nov). */
+const LEGEND_CLEAR_PX = 24;
+
 /**
  * Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs; an answer
  * takes their place (ask, approved, iPhone; #p-answer). In the estimate's block (tag place A) the same row, in its flow;
@@ -112,7 +115,7 @@ const FLIGHT_LINES = {
 import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { threeFigures, type FlightReadout } from './flightView.js';
 import { evidenceCounts, firstSentenceOf, revealStatus } from './revealStatus.js';
-import { useKeepClear } from './keepClear.js';
+import { blockBoxOf, useKeepClear } from './keepClear.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -616,6 +619,28 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const marksClass = marksLayer.leaving ? 'reveal-marks is-leaving' : marksBack ? 'reveal-marks is-back' : 'reveal-marks';
   // At Go there, In this photo leaves: its rows last first, then its title (the motion record)
   const legend = useLeaving(!phone && !there && counts.length > 0, linesLeaveMs(counts.length + 1, leaveMotion));
+  // refusedwrap-1 (DECIDED-BY-LEAD 20:44 on 22 Nov; UIUX records it beside UIUX-keepclear-READY.md): in a short laptop
+  // window, while the status column's measured box comes within 24 px of In this photo, the legend is not drawn, and it
+  // is back as soon as there is room, by the keep-clear rule's own precedence. Only while the column itself carries the
+  // drawn rings' tag and source line (the refused alignment, or a refusal after an early pose) and every drawn mark is
+  // predicted, so every drawn mark keeps its tag in view.
+  const legendRef = useRef<HTMLDivElement>(null);
+  const [legendGivesWay, setLegendGivesWay] = useState(false);
+  const legendMayGiveWay = !phone && status.kind === 'unmatched' && (keptRefused !== null || earlyKept) && drawnMarks.every((mark) => mark.kind === 'predicted');
+  useLayoutEffect(() => {
+    const legendBox = legendRef.current?.getBoundingClientRect();
+    const column = legendRef.current?.closest('[data-testid="reveal-photo"]')?.querySelector('[data-testid="reveal-status"]');
+    const columnBox = column ? blockBoxOf(column)[0] : undefined;
+    const near =
+      legendMayGiveWay &&
+      legendBox !== undefined &&
+      legendBox.height > 0 &&
+      columnBox !== undefined &&
+      columnBox.y1 + LEGEND_CLEAR_PX > legendBox.top &&
+      columnBox.x0 < legendBox.right &&
+      columnBox.x1 > legendBox.left;
+    if (near !== legendGivesWay) setLegendGivesWay(near);
+  });
   // While the Real sky layer is still on screen leaving, its line stays with its Simulated tag (AGENTS.md 1.2): the
   // photo's line comes once the layer has gone. Original pixels takes the layer away at once, and the line with it.
   const lastSkyLine = useRef<React.ReactElement | null>(null);
@@ -1126,7 +1151,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {!phone && !restoring && legend.mounted && counts.length > 0 && (
-        <div className={legend.leaving ? 'reveal-legend is-leaving' : 'reveal-legend'} data-testid="reveal-legend" style={{ '--legend-n': counts.length } as React.CSSProperties}>
+        <div
+          ref={legendRef}
+          className={legend.leaving ? 'reveal-legend is-leaving' : 'reveal-legend'}
+          data-testid="reveal-legend"
+          style={{ '--legend-n': counts.length, ...(legendGivesWay ? { visibility: 'hidden' } : {}) } as React.CSSProperties}
+        >
           {/* A clip names its kind, as "your clip" does (INTERIM: UIUX-clip-QUESTION.md, a new word for the owner) */}
           <p className="reveal-legend__title">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</p>
           {counts.map((row, i) => (

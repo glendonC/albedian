@@ -465,6 +465,47 @@ describe('after Solve from here', () => {
     expect(status.querySelector('.look-tag')).toBeNull();
   });
 
+  // refusedwrap-1, DECIDED-BY-LEAD 20:44 on 22 Nov (MOTION's live read at 1024 by 768: the last reason ran into In this
+  // photo): while the column's measured box comes within 24 px of In this photo, the legend is not drawn, and it is back
+  // as soon as there is room; only while the column itself carries the drawn rings' tag and source line, so every drawn
+  // mark keeps its tag in view
+  it('lets In this photo give way to the refused column in a short window, and only where the column carries the tag', () => {
+    const geometry = { columnFoot: 640, legendTop: 630 };
+    const box = (left: number, top: number, right: number, bottom: number) =>
+      ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      // The column measured by what it holds: each of its lines within 70 to its foot; the legend bottom left
+      if (this.parentElement?.getAttribute('data-testid') === 'reveal-status') return box(36, 70, 336, geometry.columnFoot);
+      if (this.getAttribute('data-testid') === 'reveal-legend') return box(36, geometry.legendTop, 240, geometry.legendTop + 102);
+      return box(0, 0, 0, 0);
+    });
+    const legendShown = () => (q('[data-testid="reveal-legend"]') as HTMLElement).style.visibility !== 'hidden';
+    try {
+      const session = unmatched();
+      show(session, { alignedFrom: keptOf(session), viewportWidthPx: 1024, viewportHeightPx: 768 });
+      // The refused column leads with the Predicted tag and names its rings' source: the legend gives way
+      expect(q('.reveal-status .look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
+      expect(q('.align-refused__kept')!.textContent).toBe('Your alignment is kept, drawn as predicted.');
+      expect(legendShown()).toBe(false);
+      // 24 px clear of the column's foot: back
+      geometry.legendTop = 640 + 24;
+      show(session, { alignedFrom: keptOf(session), viewportWidthPx: 1024, viewportHeightPx: 900 });
+      expect(legendShown()).toBe(true);
+      // One pixel nearer: gone again
+      geometry.legendTop = 640 + 23;
+      show(session, { alignedFrom: keptOf(session), viewportWidthPx: 1024, viewportHeightPx: 899 });
+      expect(legendShown()).toBe(false);
+      // A column with no tag (C15's refusal, no rings drawn) never sends the legend away, however near
+      act(() => root.unmount());
+      root = createRoot(container);
+      show(session, { alignedFrom: { ...keptOf(session), refusal: 'Your photo does not say when it was taken, so its sky cannot be lined up by hand.' }, viewportWidthPx: 1024, viewportHeightPx: 768 });
+      expect(q('.reveal-status .look-tag')).toBeNull();
+      expect(legendShown()).toBe(true);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it('Line it up again reopens aligning at the kept pose', () => {
     const session = unmatched();
     show(session, { alignedFrom: keptOf(session) });
