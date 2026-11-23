@@ -151,7 +151,9 @@ describe('stageRows: one row per stage, in the pipeline order, with the approved
     // still short while a later stage runs
     const later = arrival({ job: job('running', [STORE, stage('decode', 'frames', 1, 1), stage('detect', 'frames', 1, 1), stage('solve', 'candidates', 29, 364), stage('verify', 'steps', 0, 1)]) });
     expect(states(later)).toEqual(['done', 'done', 'done', 'done', 'now']);
-    expect(values(later)).toEqual(['2.4 MB', null, null, '29 of 364', '0 of 1']);
+    // Checking's single step is nothing to count either (checkcount-1, the lead's yes of 23:4x): no count, so C19's seconds
+    expect(values(later)).toEqual(['2.4 MB', null, null, '29 of 364', null]);
+    expect(fractions(later)[4]).toBeNull();
   });
 
   it('takes the bytes of the Saved row from the job once it has them, else from the receipt', () => {
