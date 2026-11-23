@@ -116,9 +116,25 @@ def noise_floor(statistic: str = STATISTIC, threshold: float = VARIANT_THRESHOLD
     return SENSITIVITY_PEAK_CODES * response_per_code(statistic) / (threshold * margin)
 
 
+# Rows read at once when weighting 16 bit RGB codes into luma, so a 24 MP still is not promoted whole to float64 first
+# [proposed: 64 rows of a 6000 px still are under 10 MB, and matrix multiplication by LUMA_WEIGHTS matches
+# stars.luma_codes to the bit; tested in test_gate]
+STORED_LUMA_ROWS = 64
+
+
 def stored_luma(codes16: np.ndarray) -> np.ndarray:
     """The stored file's luma on the scale of 255, weighted as the detector weights RGB."""
-    return stars.luma_codes(np.asarray(codes16, dtype=np.float64) / CODES_PER_8_BIT)
+    codes = np.asarray(codes16)
+    if codes.ndim == 2:
+        return np.asarray(codes, dtype=np.float64) / CODES_PER_8_BIT
+    height, width = codes.shape[:2]
+    weights = np.asarray(stars.LUMA_WEIGHTS, dtype=np.float64)
+    out = np.empty((height, width), dtype=np.float64)
+    for r0 in range(0, height, STORED_LUMA_ROWS):
+        r1 = min(height, r0 + STORED_LUMA_ROWS)
+        block = np.asarray(codes[r0:r1, :, :3], dtype=np.float64) / CODES_PER_8_BIT
+        out[r0:r1] = block @ weights
+    return out
 
 
 def _search_tile(part: np.ndarray, threshold: float, floor: float) -> tuple[tuple[float, float, float], ...]:
@@ -280,15 +296,14 @@ def unchanged(points: list[stars.Point], variant: np.ndarray, expected: np.ndarr
     `ignore` holds (a kept region's, which `kept_changed` checks against what they must be: a kept edge is not the
     original's samples, so a point beside one would never count as the original's, restore-4f). Both are in 16 bit
     stored codes."""
-    variant = np.asarray(variant, dtype=np.float64)
-    expected = np.asarray(expected, dtype=np.float64)
     height, width = variant.shape[:2]
     found = []
     for point in points:
         x, y = int(round(point.x_px)), int(round(point.y_px))
         rows = slice(max(0, y - UNCHANGED_RADIUS_PX), min(height, y + UNCHANGED_RADIUS_PX + 1))
         columns = slice(max(0, x - UNCHANGED_RADIUS_PX), min(width, x + UNCHANGED_RADIUS_PX + 1))
-        here = np.abs(variant[rows, columns] - expected[rows, columns])
+        here = np.abs(np.asarray(variant[rows, columns], dtype=np.float64)
+                      - np.asarray(expected[rows, columns], dtype=np.float64))
         if ignore is not None:
             here = here[~np.asarray(ignore[rows, columns], dtype=bool)]
         found.append(bool(here.size > 0 and np.all(here <= UNCHANGED_TOLERANCE_CODES16)))
@@ -312,26 +327,36 @@ def kept_samples(stored: np.ndarray, expected: np.ndarray, weight: np.ndarray, c
     from the stored file read back as the job did before storing it. The blend is rounded to the stored file's own
     code step (`code_step` 16 bit codes: 1 for a still's 16 bit PNG; for a clip's Y' on the 16 bit scale, 65535 over
     its largest code, so an 8 bit clip's edge is a code its file can hold, restore-7)."""
-    stored = np.asarray(stored, dtype=np.float64)
-    expected = np.asarray(expected, dtype=np.float64)
+    stored_arr = np.asarray(stored)
+    expected_arr = np.asarray(expected)
     weight = np.asarray(weight, dtype=np.float64)
-    out = np.where((weight >= 1.0)[..., None], expected, stored)
+    core = weight >= 1.0
     edge = (weight > 0) & (weight < 1.0)
     if edge.any():
         # A last channel, 1 on free samples, tells which edge samples the fill reached from free samples: one it did
-        # not keeps its own value through every level, so its blend would read itself; it is the original's instead
-        free = (weight <= 0).astype(np.float64)
-        filled = _smooth_without_in_place(np.concatenate([stored, free[..., None]], axis=-1),
-                                          (weight > 0).astype(np.float64), KEPT_EDGE_FILL_LEVELS)
-        reached = filled[..., -1] > 0.5
-        # The blend on the edge's own samples only, each as the whole-image blend computes it [tested: the same
-        # values to the bit]: an edge is a few percent of a photo, and the whole-image blend held 9.4 frames to its 6.1
+        # not keeps its own value through every level, so its blend would read itself; it is the original's instead.
+        # Smoothing the 4-channel stack first and letting it go before allocating `out`, without expanding a uint16
+        # `expected` whole, keeps every sample identical to the bit while cutting the peak from 8.1 to 4.8 float frames
+        # [tested: test_gate]
+        channels = stored_arr.shape[-1]
+        stack = np.empty((*stored_arr.shape[:-1], channels + 1), dtype=np.float64)
+        stack[..., :channels] = stored_arr
+        stack[..., channels] = weight <= 0
+        _smooth_without_in_place(stack, (weight > 0).astype(np.float64), KEPT_EDGE_FILL_LEVELS)
+        reached = stack[..., -1] > 0.5
         blended = edge & reached
-        at = weight[blended][:, None]
-        mixed = at * expected[blended] + (1.0 - at) * filled[blended][:, :-1]
-        out[blended] = np.clip(np.round(mixed / code_step) * code_step, 0, TOP_CODE16)
         lone = edge & ~reached
-        out[lone] = expected[lone]
+        del edge, reached
+        at = weight[blended][:, None]
+        mixed = at * np.asarray(expected_arr[blended], dtype=np.float64) + (1.0 - at) * stack[blended][:, :channels]
+        del stack, at
+        out = np.array(stored_arr, dtype=np.float64, copy=True)
+        out[core] = expected_arr[core]
+        out[blended] = np.clip(np.round(mixed / code_step) * code_step, 0, TOP_CODE16)
+        out[lone] = expected_arr[lone]
+        return out
+    out = np.array(stored_arr, dtype=np.float64, copy=True)
+    out[core] = expected_arr[core]
     return out
 
 
@@ -843,7 +868,11 @@ FIRST_SCALE_LEVELS = 3
 
 def smooth_first_scale(working: np.ndarray, kept: Kept) -> np.ndarray:
     core = kept.core.astype(np.float64)
-    return core[..., None] * working + (1.0 - core[..., None]) * smooth_without(working, core, FIRST_SCALE_LEVELS)
+    rest = 1.0 - core
+    smoothed = smooth_without(working, core, FIRST_SCALE_LEVELS)
+    for c in range(smoothed.shape[-1]):
+        smoothed[..., c] = core * working[..., c] + rest * smoothed[..., c]
+    return smoothed
 
 
 # =============================================================================================
@@ -897,7 +926,8 @@ class Dissolved:
 
 
 def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_codes, original: Original, kept: Kept,
-             max_passes: int = MAX_PASSES, luma_of=None, searches: Searches | None = None) -> Dissolved:
+             max_passes: int = MAX_PASSES, luma_of=None, searches: Searches | None = None,
+             expected: np.ndarray | None = None) -> Dissolved:
     """At most `max_passes` passes: the working image's points, in the stored codes (`to_stored`: linear light to
     the 16 bit codes as they will be stored; `luma_of` reads their luma on the scale of 255, `stored_luma` unless
     given), that the original does not confirm are replaced inside their discs by the fill,
@@ -907,8 +937,9 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
     already found there, every one confirmed. The tile searches go into `searches`, for the gate (`Searches`)."""
     per_pass = []
     core = kept.core
-    left_out = kept.left_out.astype(np.float64)
-    expected = to_stored(linear)
+    left_out = kept.left_out
+    if expected is None:
+        expected = to_stored(linear)
     read_luma = stored_luma if luma_of is None else luma_of
     expected_luma = read_luma(expected)
     near_core = ndimage.distance_transform_edt(~core) <= NEAR_CORE_PX if core.any() else np.zeros(core.shape, dtype=bool)
@@ -924,9 +955,11 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
                                   kept=kept, searches=searches)
         at_gate, _ = variant_points(luma, kept.field.clipped, threshold=VARIANT_THRESHOLD_SNR, only_tiles=dirty,
                                     kept=kept, searches=searches)
-        points = stars._merged(lower + at_gate + raised_places(luma, expected_luma, kept.left_out, kept.field.clipped,
+        points = stars._merged(lower + at_gate + raised_places(luma, expected_luma, left_out, kept.field.clipped,
                                                                only_tiles=dirty))
-        ok = confirmed(points, original, stored, expected, kept.left_out)
+        del luma
+        ok = confirmed(points, original, stored, expected, left_out)
+        del stored
         unconfirmed = [p for p, good in zip(points, ok) if not good]
         if not unconfirmed:
             break
@@ -938,21 +971,35 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
             radius = stars._radius(measured.residual, measured.sigma, point.x_px - tile.x0, point.y_px - tile.y0)
             placed.append(stars.Star(point.x_px, point.y_px, point.snr,
                                      max(radius, DISSOLVE_MIN_RADIUS_PX) + DISSOLVE_GROW_PX * index))
+        del luma
         smoothed = [p for p in placed if not near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
         kept_back = [p for p in placed if near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
         # The fill and the discs give a kept region's edge no weight, as its core: a fill that took the edge's light
         # in kept a point 3.2 px from a lit region's core, in a bay the region wraps round, through three passes on
-        # rp-b-03 [tested: restore-4e]
+        # rp-b-03 [tested: restore-4e]. Blending channel by channel into the fresh `fill` array avoids holding three
+        # temporary whole frames alongside `working` and `fill`, without mutating a caller's `working` [tested:
+        # test_gate]
         fill = smooth_without(working, left_out, DISSOLVE_FILL_LEVELS)
-        weight = (disc_map(luma.shape, smoothed) * (1.0 - left_out))[..., None]
-        working = weight * fill + (1.0 - weight) * working
-        changed = weight[..., 0] > 0
+        disc = disc_map(core.shape, smoothed)
+        disc *= 1.0 - left_out.astype(np.float64)
+        rest = 1.0 - disc
+        for c in range(fill.shape[-1]):
+            fill[..., c] = disc * fill[..., c] + rest * working[..., c]
+        working = fill
+        del fill, rest
+        changed = disc > 0
+        del disc
         if kept_back:
-            back = (disc_map(luma.shape, kept_back, edge=0) * (1.0 - core))[..., None]
-            working = back * linear + (1.0 - back) * working
-            changed |= back[..., 0] > 0
+            back = disc_map(core.shape, kept_back, edge=0)
+            back *= 1.0 - core.astype(np.float64)
+            rest = 1.0 - back
+            for c in range(working.shape[-1]):
+                working[..., c] = back * linear[..., c] + rest * working[..., c]
+            changed |= back > 0
+            del back, rest
         per_pass.append(len(unconfirmed))
         dirty = {i for i, tile in enumerate(grid) if changed[tile.y0:tile.y1, tile.x0:tile.x1].any()}
+        del changed
     return Dissolved(working, per_pass)
 
 

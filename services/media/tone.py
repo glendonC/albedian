@@ -71,14 +71,28 @@ def curve(x: np.ndarray, beta: float) -> np.ndarray:
     x = np.asarray(x, dtype=np.float64)
     if math.isinf(beta):
         return x.copy()
-    return np.arcsinh(x / beta) / math.asinh(1 / beta)
+    if x.ndim == 0:
+        return np.arcsinh(x / beta) / math.asinh(1 / beta)
+    # One output buffer written in place: a 24 MP frame's lift holds 0.58 GB rather than 1.74 GB, with every sample
+    # identical to the bit [tested: test_tone]
+    out = np.empty(x.shape, dtype=np.float64)
+    np.divide(x, beta, out=out)
+    np.arcsinh(out, out=out)
+    np.divide(out, math.asinh(1 / beta), out=out)
+    return out
 
 
 def inverse(y: np.ndarray, beta: float) -> np.ndarray:
     y = np.asarray(y, dtype=np.float64)
     if math.isinf(beta):
         return y.copy()
-    return beta * np.sinh(y * math.asinh(1 / beta))
+    if y.ndim == 0:
+        return beta * np.sinh(y * math.asinh(1 / beta))
+    out = np.empty(y.shape, dtype=np.float64)
+    np.multiply(y, math.asinh(1 / beta), out=out)
+    np.sinh(out, out=out)
+    np.multiply(beta, out, out=out)
+    return out
 
 
 def slope(x: np.ndarray, beta: float) -> np.ndarray:

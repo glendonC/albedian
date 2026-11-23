@@ -80,14 +80,21 @@ class StillTransfer:
         black or peak reads as 0 or 1."""
         light = _rgb(light)
         steps = np.linspace(0.0, 1.0, CODE_STEPS + 1)
-        return np.stack([np.interp(light[..., c], self.at_codes[c], steps) for c in range(3)], axis=-1)
+        out = np.empty(light.shape, dtype=np.float64)
+        for c in range(3):
+            out[..., c] = np.interp(light[..., c], self.at_codes[c], steps)
+        return out
 
     def encode16(self, light: np.ndarray) -> np.ndarray:
         """Each sample's 16 bit code, its curve's exact encode rounded: the number of half steps whose light lies
         below it; a light exactly at a half step takes the lower code."""
         light = _rgb(light)
-        return np.stack([np.searchsorted(self.at_halves[c], light[..., c], side="left") for c in range(3)],
-                        axis=-1).astype(np.uint16)
+        # Filled channel by channel directly into uint16 so three int64 planes are never held together [tested:
+        # test_encode]
+        out = np.empty(light.shape, dtype=np.uint16)
+        for c in range(3):
+            out[..., c] = np.searchsorted(self.at_halves[c], light[..., c], side="left")
+        return out
 
     def luma_decode(self, code: np.ndarray) -> np.ndarray:
         """The lift's decode: the green curve."""

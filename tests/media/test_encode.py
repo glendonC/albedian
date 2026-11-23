@@ -242,3 +242,41 @@ def test_the_lift_slope_is_the_slope_of_the_code_step_that_holds_the_light() -> 
     middle = 20000 / 65535
     after = int(np.argmax((table[:-1] >= middle) & (np.diff(table) > 0)))
     assert held.luma_encode_slope(np.array([middle]))[0] == pytest.approx((1 / 65535) / (table[after + 1] - table[after]), rel=1e-12)
+
+
+@pytest.mark.parametrize(("name", "profile"), TRANSFERS, ids=IDS)
+@settings(max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture], print_blob=False)
+@given(seed=st.integers(0, 2**16))
+def test_the_channel_by_channel_encodes_match_the_stacked_encodes_to_the_bit(
+        name: str, profile: bytes | None, seed: int) -> None:
+    rng = np.random.default_rng(seed)
+    light = rng.uniform(-0.05, 1.1, (17, 23, 3))
+    light_before = light.copy()
+    transfer = encode.StillTransfer.of(name, profile)
+    steps = np.linspace(0.0, 1.0, encode.CODE_STEPS + 1)
+    must_encode = np.stack([np.interp(light[..., c], transfer.at_codes[c], steps) for c in range(3)], axis=-1)
+    must_encode16 = np.stack(
+        [np.searchsorted(transfer.at_halves[c], light[..., c], side="left") for c in range(3)], axis=-1
+    ).astype(np.uint16)
+    assert np.array_equal(transfer.encode(light), must_encode)
+    assert np.array_equal(transfer.encode16(light), must_encode16)
+    assert np.array_equal(light, light_before)
+
+
+def test_sixteen_bit_encode_holds_at_most_one_and_a_quarter_float_frames_beyond_its_input() -> None:
+    # Stacking three int64 planes before casting held 2.00 float64 frames here; filling a uint16 frame channel by
+    # channel holds 0.92
+    import tracemalloc
+    light = np.random.default_rng(46).uniform(0.0, 0.5, (300, 400, 3))
+    transfer = encode.StillTransfer.of("srgb", None)
+    started = not tracemalloc.is_tracing()
+    if started:
+        tracemalloc.start()
+    held = tracemalloc.get_traced_memory()[0]
+    tracemalloc.reset_peak()
+    out = transfer.encode16(light)
+    peak = tracemalloc.get_traced_memory()[1] - held
+    if started:
+        tracemalloc.stop()
+    del out
+    assert peak <= 1.25 * light.nbytes

@@ -210,3 +210,82 @@ def test_a_footprint_above_one_is_taken_as_one() -> None:
     footprint[8:14, 8:14] = 1.5
     out = spatial.edge_avoiding(frame, rng.normal(0, 1, (24, 24)), footprint).frame
     assert np.array_equal(out[8:14, 8:14], frame[8:14, 8:14])
+
+
+def edge_avoiding_whole(frame, guide, footprint, *, levels=spatial.LEVELS, range_sigmas=spatial.RANGE_SIGMAS):
+    """`spatial.edge_avoiding` as mem-1 computed it, every channel in whole-frame arrays: the reference the cascade
+    must equal to the bit."""
+    original = np.asarray(frame, dtype=np.float64)
+    weight_map = np.clip(np.asarray(footprint, dtype=np.float64), 0.0, 1.0)
+    keep = 1.0 - weight_map
+    height, width = weight_map.shape
+    current = original
+    level_guide = np.asarray(guide, dtype=np.float64)
+    widths = []
+    for level in range(levels):
+        step = 2**level
+        level_guide = noise.b3_smooth(level_guide, step)
+        noise_width = spatial._lag_noise(level_guide, step)
+        widths.append(noise_width)
+        reach = 2 * step
+        guide_padded = spatial._pad(level_guide, reach)
+        keep_padded = spatial._pad(keep, reach)
+        current_padded = spatial._pad(current, reach)
+        total = np.zeros((height, width))
+        weighted = np.zeros_like(current)
+        difference = np.empty((height, width))
+        term = np.empty_like(current)
+        for a, tap_a in enumerate(noise.B3_TAPS):
+            for b, tap_b in enumerate(noise.B3_TAPS):
+                rows = slice(a * step, a * step + height)
+                columns = slice(b * step, b * step + width)
+                np.subtract(guide_padded[rows, columns], level_guide, out=difference)
+                weight = spatial._range_weight(difference, range_sigmas * noise_width)
+                weight *= tap_a * tap_b
+                weight *= keep_padded[rows, columns]
+                total += weight
+                np.multiply(weight[..., None], current_padded[rows, columns], out=term)
+                weighted += term
+        enough = total >= spatial.WEIGHT_FLOOR
+        smooth = np.where(enough[..., None], weighted / np.where(enough, total, 1.0)[..., None], current)
+        current = weight_map[..., None] * original + keep[..., None] * smooth
+    return current, tuple(widths)
+
+
+@settings(max_examples=20, deadline=None)
+@given(seed=st.integers(0, 2**16), levels=st.integers(1, 3), channels=st.integers(1, 3), flat=st.booleans())
+def test_the_cascade_channel_by_channel_is_the_whole_frame_cascade_to_the_bit(seed, levels, channels, flat) -> None:
+    rng = np.random.default_rng(seed)
+    frame = rng.uniform(0.0, 0.2, (41, 57, channels))
+    frame_before = frame.copy()
+    guide = np.full((41, 57), 3.0) if flat else frame.mean(axis=-1) * 40 + rng.normal(0, 0.3, (41, 57))
+    guide_before = guide.copy()
+    footprint = np.clip(rng.uniform(-0.5, 1.5, (41, 57)), 0, 1) * (rng.uniform(size=(41, 57)) < 0.3)
+    footprint[10:25, 10:25] = 1.0  # a block whose middle no tap leaves: those samples keep their own value
+    footprint_before = footprint.copy()
+    result = spatial.edge_avoiding(frame, guide, footprint, levels=levels)
+    frame_must, widths_must = edge_avoiding_whole(frame, guide, footprint, levels=levels)
+    assert np.array_equal(frame, frame_before)
+    assert np.array_equal(guide, guide_before) and np.array_equal(footprint, footprint_before)
+    assert np.array_equal(result.frame, frame_must) and result.widths == widths_must
+
+
+def test_the_cascade_holds_at_most_six_and_a_half_frames_beyond_its_input() -> None:
+    # The whole-frame cascade held 9.56 frames here, this one 5.83; the rest is its padded frame, its sums and planes
+    import tracemalloc
+    rng = np.random.default_rng(43)
+    frame = rng.uniform(0.0, 0.2, (300, 400, 3))
+    guide = frame.mean(axis=-1) * 40
+    footprint = np.zeros((300, 400))
+    footprint[100:130, 200:240] = 1.0
+    started = not tracemalloc.is_tracing()
+    if started:
+        tracemalloc.start()
+    held = tracemalloc.get_traced_memory()[0]
+    tracemalloc.reset_peak()
+    result = spatial.edge_avoiding(frame, guide, footprint)
+    peak = tracemalloc.get_traced_memory()[1] - held
+    if started:
+        tracemalloc.stop()
+    del result
+    assert peak <= 6.5 * frame.nbytes

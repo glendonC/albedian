@@ -191,22 +191,27 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     original = gate.Original.of(field)
 
     def to_stored(light: np.ndarray) -> np.ndarray:
-        # The 16 bit codes exactly as they will be stored: the detector reads codes on a grid of steps otherwise than
-        # unrounded ones, and half a 16 bit code made a point of SNR 18.9 on photo 1 that no pass saw unrounded
-        # [tested: .lanetools/restore-4/rounding.py]
-        return transfer.encode16(tone.apply_lift(light, lift.beta)).astype(np.float64)
+        # The 16 bit codes exactly as they will be stored, kept as uint16 (0.145 GB on a 24 MP photo rather than
+        # 0.58 GB float64): the detector reads codes on a grid of steps otherwise than unrounded ones, and half a
+        # 16 bit code made a point of SNR 18.9 on photo 1 that no pass saw unrounded [tested: .lanetools/restore-4/rounding.py]
+        return transfer.encode16(tone.apply_lift(light, lift.beta))
 
     def to_original_codes(light: np.ndarray) -> np.ndarray:
-        return transfer.encode(light) * top
+        out = transfer.encode(light)
+        out *= top
+        return out
 
     lap("lift")
+    expected = to_stored(linear)
     searches = gate.Searches()
     # Each whole-image array is let go once nothing after it reads it (a 24 MP photo's is 0.58 GB): the dissolve
     # takes the working image as its own, so no name here keeps the image a pass replaces
     handed = [working]
     del working
     dissolved = gate.dissolve(handed.pop(), linear=linear, to_stored=to_stored, to_original_codes=to_original_codes,
-                              original=original, kept=kept, max_passes=max_passes, searches=searches)
+                              original=original, kept=kept, max_passes=max_passes, searches=searches,
+                              expected=expected)
+    del linear
     lap("dissolve")
     steps.append({"kind": "dissolve_unconfirmed", "version": gate.STEP_VERSION, "parameters": [
         _parameter("maxPasses", max_passes), _parameter("variantThresholdSnr", gate.DISSOLVE_THRESHOLD_SNR),
@@ -218,14 +223,14 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
         unchangedToleranceCodes=gate.UNCHANGED_TOLERANCE_CODES16)})
     steps.append({"kind": "lift", "version": tone.STEP_VERSION, "parameters": lift.parameters()})
     steps.append({"kind": "encode", "version": STEP_VERSION, "parameters": _encode_parameters()})
-    expected = transfer.encode16(tone.apply_lift(linear, lift.beta))
-    del linear
+    per_pass = dissolved.per_pass
+    lifted = tone.apply_lift(dissolved.working, lift.beta)
+    del dissolved
+    stored = transfer.encode16(lifted)
+    del lifted
     # Every kept region stored as the gate computes it: a core the original's, an edge the original blended with the
     # stored sky around it (restore-4f)
-    stored = gate.kept_samples(transfer.encode16(tone.apply_lift(dissolved.working, lift.beta)), expected,
-                               kept.weight).astype(np.uint16)
-    per_pass = dissolved.per_pass
-    del dissolved
+    stored = gate.kept_samples(stored, expected, kept.weight).astype(np.uint16)
     data = encode.write_still(stored, profile_without_text(still.icc_profile))
     del stored
     read_back = encode.read_still(data)

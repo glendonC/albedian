@@ -363,3 +363,38 @@ def test_zero_dark_level_and_zero_original_noise_never_produce_nan_or_bypass_bou
 
     # 4. _weakest_break fails closed (math.inf, never BETA_LOW) if ratios return NaN
     assert tone._weakest_break(lambda betas: np.full(np.shape(betas), math.nan), 4.0) == math.inf
+
+
+@settings(max_examples=20, deadline=None)
+@given(seed=st.integers(0, 2**16), beta=st.one_of(st.just(math.inf), st.floats(1e-4, 50.0)),
+       ndim=st.sampled_from([0, 1, 3]))
+def test_the_curve_and_its_inverse_match_their_whole_array_formulas_to_the_bit(seed: int, beta: float, ndim: int) -> None:
+    rng = np.random.default_rng(seed)
+    shape = () if ndim == 0 else ((29,) if ndim == 1 else (11, 13, 3))
+    x = np.array(rng.uniform(-0.05, 1.2)) if ndim == 0 else rng.uniform(-0.05, 1.2, shape)
+    x_before = x.copy()
+    must_curve = x.copy() if math.isinf(beta) else np.arcsinh(x / beta) / math.asinh(1 / beta)
+    must_inverse = x.copy() if math.isinf(beta) else beta * np.sinh(x * math.asinh(1 / beta))
+    got_curve = tone.curve(x, beta)
+    got_inverse = tone.inverse(x, beta)
+    assert np.array_equal(x, x_before)
+    assert np.array_equal(got_curve, must_curve)
+    assert np.array_equal(got_inverse, must_inverse)
+
+
+def test_applying_and_undoing_the_lift_hold_at_most_one_and_a_quarter_frames_beyond_their_input() -> None:
+    # Whole-array expressions allocated two temporary frames (2.00 frames); writing in place into one output holds 1.00
+    import tracemalloc
+    frame = np.random.default_rng(45).uniform(0.0, 0.5, (300, 400, 3))
+    for op in (lambda: tone.apply_lift(frame, 0.05), lambda: tone.undo_lift(frame, 0.05)):
+        started = not tracemalloc.is_tracing()
+        if started:
+            tracemalloc.start()
+        held = tracemalloc.get_traced_memory()[0]
+        tracemalloc.reset_peak()
+        out = op()
+        peak = tracemalloc.get_traced_memory()[1] - held
+        if started:
+            tracemalloc.stop()
+        del out
+        assert peak <= 1.25 * frame.nbytes

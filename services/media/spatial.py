@@ -68,6 +68,7 @@ def edge_avoiding(frame: np.ndarray, guide: np.ndarray, footprint: np.ndarray, *
     weight_map = np.clip(np.asarray(footprint, dtype=np.float64), 0.0, 1.0)
     keep = 1.0 - weight_map
     height, width = weight_map.shape
+    channels = original.shape[-1]
     current = original
     level_guide = np.asarray(guide, dtype=np.float64)
     widths = []
@@ -80,10 +81,15 @@ def edge_avoiding(frame: np.ndarray, guide: np.ndarray, footprint: np.ndarray, *
         guide_padded = _pad(level_guide, reach)
         keep_padded = _pad(keep, reach)
         current_padded = _pad(current, reach)
+        # On levels past the first `current` is the previous level's `weighted`, whose interior `current_padded` now
+        # holds verbatim: letting `current` go before allocating `weighted`, and taking each tap's product and blend
+        # channel by channel, keeps every sample's arithmetic identical to the bit while holding three frames at once
+        # rather than five [tested: test_spatial's whole-frame reference]
+        del current
         total = np.zeros((height, width))
-        weighted = np.zeros_like(current)
+        weighted = np.zeros((height, width, channels))
         difference = np.empty((height, width))
-        term = np.empty_like(current)
+        term = np.empty((height, width))
         for a, tap_a in enumerate(B3_TAPS):
             for b, tap_b in enumerate(B3_TAPS):
                 rows = slice(a * step, a * step + height)
@@ -93,11 +99,18 @@ def edge_avoiding(frame: np.ndarray, guide: np.ndarray, footprint: np.ndarray, *
                 weight *= tap_a * tap_b
                 weight *= keep_padded[rows, columns]
                 total += weight
-                np.multiply(weight[..., None], current_padded[rows, columns], out=term)
-                weighted += term
+                for c in range(channels):
+                    np.multiply(weight, current_padded[rows, columns, c], out=term)
+                    weighted[..., c] += term
+        del guide_padded, keep_padded, difference, term
         enough = total >= WEIGHT_FLOOR
-        smooth = np.where(enough[..., None], weighted / np.where(enough, total, 1.0)[..., None], current)
-        current = weight_map[..., None] * original + keep[..., None] * smooth
+        divisor = np.where(enough, total, 1.0)
+        centre = current_padded[reach:reach + height, reach:reach + width]
+        for c in range(channels):
+            smooth = np.where(enough, weighted[..., c] / divisor, centre[..., c])
+            weighted[..., c] = weight_map * original[..., c] + keep * smooth
+        del centre, current_padded, total, enough, divisor
+        current = weighted
     return SpatialResult(current, tuple(widths))
 
 

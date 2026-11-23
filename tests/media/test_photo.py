@@ -289,6 +289,40 @@ def test_the_gate_runs_with_the_decoded_light_and_every_working_image_let_go(tmp
     assert alive == [[]]
 
 
+def test_kept_samples_runs_with_decoded_and_dissolved_light_let_go_and_dissolve_reads_uint16_codes(
+        tmp_path, monkeypatch) -> None:
+    # In encode, kept_samples runs after both linear and dissolved.working have been let go, and dissolve's to_stored
+    # hands back uint16 codes (0.145 GB on a 24 MP photo rather than 0.58 GB float64), with expected encoded once
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    still = still_of(scene.codes, tmp_path)
+    held, alive_at_kept, stored_dtypes, expected_given = {}, [], [], []
+    real_measure, real_dissolve, real_kept = noise.measure_noise, gate.dissolve, gate.kept_samples
+
+    def measure(linear, *args, **kwargs):
+        held["decoded light"] = weakref.ref(linear)
+        return real_measure(linear, *args, **kwargs)
+
+    def dissolve(working, *args, **kwargs):
+        to_stored = kwargs["to_stored"]
+        stored_dtypes.append(to_stored(working[:2, :2]).dtype)
+        expected_given.append(kwargs.get("expected") is not None and kwargs["expected"].dtype == np.uint16)
+        dissolved = real_dissolve(working, *args, **kwargs)
+        held["dissolved image"] = weakref.ref(dissolved.working)
+        return dissolved
+
+    def kept_samples(*args, **kwargs):
+        alive_at_kept.append(sorted(name for name, ref in held.items() if ref() is not None))
+        return real_kept(*args, **kwargs)
+
+    monkeypatch.setattr(noise, "measure_noise", measure)
+    monkeypatch.setattr(gate, "dissolve", dissolve)
+    monkeypatch.setattr(gate, "kept_samples", kept_samples)
+    result = photo.restore_still(still)
+    assert result.status == "ready"
+    assert stored_dtypes == [np.dtype(np.uint16)] and expected_given == [True]
+    assert alive_at_kept == [[], []]
+
+
 def test_a_trial_beside_a_star_on_the_tiles_its_patch_touches_agrees_with_the_whole_gate(honest) -> None:
     trials = photo.Trials(honest)
     peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT

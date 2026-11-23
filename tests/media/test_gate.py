@@ -561,9 +561,183 @@ def test_the_fill_cascade_holds_at_most_four_and_a_half_frames_beyond_its_input(
 
 
 def test_kept_samples_holds_at_most_seven_frames_beyond_its_inputs() -> None:
-    # The whole-image blend held 9.43 frames here, the edge-only one 6.09
+    # The whole-image blend held 9.43 frames here, the edge-only one 6.09, and stack-first 4.81
     stored, expected, weight = kept_scene()
     assert traced_peak(lambda: gate.kept_samples(stored, expected, weight)) <= 7 * stored.nbytes
+
+
+def dissolve_whole(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_codes, original: gate.Original,
+                   kept: gate.Kept, max_passes: int = gate.MAX_PASSES, luma_of=None) -> gate.Dissolved:
+    """`gate.dissolve` as mem-1 computed it, with whole-frame float64 blends and stored codes: the reference `dissolve`
+    must equal to the bit."""
+    per_pass = []
+    core = kept.core
+    left_out = kept.left_out.astype(np.float64)
+    expected = np.asarray(to_stored(linear), dtype=np.float64)
+    read_luma = (lambda c: stars.luma_codes(np.asarray(c, dtype=np.float64) / gate.CODES_PER_8_BIT)) if luma_of is None else luma_of
+    expected_luma = read_luma(expected)
+    near_core = ndimage.distance_transform_edt(~core) <= gate.NEAR_CORE_PX if core.any() else np.zeros(core.shape, dtype=bool)
+    grid = stars.tiles(*core.shape)
+    dirty: set[int] | None = None
+    for index in range(max_passes):
+        stored = np.asarray(to_stored(working), dtype=np.float64)
+        luma = read_luma(stored)
+        lower, _ = gate.variant_points(luma, kept.field.clipped, threshold=gate.DISSOLVE_THRESHOLD_SNR, only_tiles=dirty,
+                                       kept=kept)
+        at_gate, _ = gate.variant_points(luma, kept.field.clipped, threshold=gate.VARIANT_THRESHOLD_SNR, only_tiles=dirty,
+                                         kept=kept)
+        points = stars._merged(lower + at_gate + gate.raised_places(luma, expected_luma, kept.left_out, kept.field.clipped,
+                                                                    only_tiles=dirty))
+        ok = gate.confirmed(points, original, stored, expected, kept.left_out)
+        unconfirmed = [p for p, good in zip(points, ok) if not good]
+        if not unconfirmed:
+            break
+        luma = stars.luma_codes(to_original_codes(working))
+        placed = []
+        for point in unconfirmed:
+            tile = grid[point.tile]
+            measured = stars.tile_noise(luma[tile.y0:tile.y1, tile.x0:tile.x1])
+            radius = stars._radius(measured.residual, measured.sigma, point.x_px - tile.x0, point.y_px - tile.y0)
+            placed.append(stars.Star(point.x_px, point.y_px, point.snr,
+                                     max(radius, gate.DISSOLVE_MIN_RADIUS_PX) + gate.DISSOLVE_GROW_PX * index))
+        smoothed = [p for p in placed if not near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
+        kept_back = [p for p in placed if near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
+        fill = gate.smooth_without(working, left_out, gate.DISSOLVE_FILL_LEVELS)
+        weight = (gate.disc_map(luma.shape, smoothed) * (1.0 - left_out))[..., None]
+        working = weight * fill + (1.0 - weight) * working
+        changed = weight[..., 0] > 0
+        if kept_back:
+            back = (gate.disc_map(luma.shape, kept_back, edge=0) * (1.0 - core))[..., None]
+            working = back * linear + (1.0 - back) * working
+            changed |= back[..., 0] > 0
+        per_pass.append(len(unconfirmed))
+        dirty = {i for i, tile in enumerate(grid) if changed[tile.y0:tile.y1, tile.x0:tile.x1].any()}
+    return gate.Dissolved(working, per_pass)
+
+
+@settings(max_examples=20, deadline=None)
+@given(seed=st.integers(0, 2**16), height=st.integers(5, 150), width=st.integers(5, 90),
+       plane_only=st.booleans(), as_float=st.booleans())
+def test_stored_luma_row_by_row_is_the_whole_frame_luma_to_the_bit(
+        seed: int, height: int, width: int, plane_only: bool, as_float: bool) -> None:
+    rng = np.random.default_rng(seed)
+    shape = (height, width) if plane_only else (height, width, 3)
+    raw = rng.integers(0, 65536, shape, dtype=np.uint16)
+    codes = raw.astype(np.float64) if as_float else raw
+    before = codes.copy()
+    must = stars.luma_codes(np.asarray(codes, dtype=np.float64) / gate.CODES_PER_8_BIT)
+    got = gate.stored_luma(codes)
+    assert np.array_equal(codes, before)
+    assert np.array_equal(got, must)
+
+
+@settings(max_examples=20, deadline=None)
+@given(seed=st.integers(0, 2**16), channels=st.integers(1, 3))
+def test_the_first_scale_smoothed_channel_by_channel_is_the_whole_frame_blend_to_the_bit(
+        seed: int, channels: int) -> None:
+    rng = np.random.default_rng(seed)
+    working = rng.uniform(0.0, 0.2, (43, 59, channels))
+    working_before = working.copy()
+    weight = np.clip(rng.uniform(-0.5, 1.5, (43, 59)), 0.0, 1.0)
+    weight[10:25, 12:28] = 1.0
+    kept = gate.Kept(stars.StarField((), weight, np.zeros((43, 59), bool), 0, 0, 0), weight)
+    core = kept.core.astype(np.float64)
+    must = core[..., None] * working + (1.0 - core[..., None]) * gate.smooth_without(working, core, gate.FIRST_SCALE_LEVELS)
+    got = gate.smooth_first_scale(working, kept)
+    assert np.array_equal(working, working_before)
+    assert np.array_equal(got, must)
+
+
+@settings(max_examples=20, deadline=None)
+@given(seed=st.integers(0, 2**16), max_passes=st.integers(1, 3), uint16_stored=st.booleans(),
+       given_expected=st.booleans())
+def test_dissolve_channel_by_channel_is_the_whole_frame_dissolve_to_the_bit(
+        seed: int, max_passes: int, uint16_stored: bool, given_expected: bool) -> None:
+    rng = np.random.default_rng(seed)
+    linear = 0.01 + 0.00002 * rng.standard_normal((128, 128, 3))
+    weight = np.zeros((128, 128))
+    weight[48:68, 48:68] = 1.0
+    working = linear.copy()
+    for px, py in ((70.0, 58.0), (24.0, 28.0)):
+        working = working + gaussian((128, 128), px, py, 0.02)[..., None]
+    linear_before, working_before = linear.copy(), working.copy()
+    field = stars.StarField((), weight, np.zeros((128, 128), bool), 0, 0, 0)
+    kept = gate.Kept(field, weight)
+    original = gate.Original(np.zeros((0, 2)))
+    to_stored_u16 = lambda light: np.clip(np.round(np.clip(light, 0.0, 1.0) * 65535.0), 0, 65535).astype(np.uint16)
+    to_stored = to_stored_u16 if uint16_stored else (lambda light: to_stored_u16(light).astype(np.float64))
+    to_codes = lambda light: np.clip(light, 0.0, 1.0) * 255.0
+    must = dissolve_whole(working, linear=linear, to_stored=to_stored, to_original_codes=to_codes,
+                          original=original, kept=kept, max_passes=max_passes)
+    extra = {"expected": to_stored(linear)} if given_expected else {}
+    got = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=to_codes,
+                        original=original, kept=kept, max_passes=max_passes, **extra)
+    assert np.array_equal(linear, linear_before) and np.array_equal(working, working_before)
+    assert got.per_pass == must.per_pass and got.per_pass
+    assert np.array_equal(got.working, must.working)
+
+
+def test_unchanged_slices_only_the_windows_around_its_points() -> None:
+    # Converting whole uint16 frames up front held 2.00 float64 frames here; slicing each 3 x 3 first holds under 0.01
+    rng = np.random.default_rng(47)
+    expected = rng.integers(0, 65536, (300, 400, 3), dtype=np.uint16)
+    variant = expected.copy()
+    variant[120, 180, 1] ^= 7
+    points = [stars.Point(60.0, 80.0, 9.0, 0), stars.Point(180.0, 120.0, 9.0, 0)]
+    float_frame_bytes = 300 * 400 * 3 * 8
+    assert gate.unchanged(points, variant, expected) == [True, False]
+    assert traced_peak(lambda: gate.unchanged(points, variant, expected)) <= 0.05 * float_frame_bytes
+
+
+def test_stored_luma_holds_at_most_85_percent_of_a_float_frame_beyond_a_uint16_still() -> None:
+    # Promoting the whole uint16 frame to float64 first held 1.33 float64 frames here; row blocks hold 0.55
+    codes = np.random.default_rng(48).integers(0, 65536, (600, 500, 3), dtype=np.uint16)
+    float_frame_bytes = 600 * 500 * 3 * 8
+    assert traced_peak(lambda: gate.stored_luma(codes)) <= 0.85 * float_frame_bytes
+
+
+def test_the_first_scale_smoothing_holds_at_most_five_point_one_frames_beyond_its_input() -> None:
+    # Evaluating the whole-frame blend around smooth_without held 5.72 frames here; blending into smoothed channel by
+    # channel holds 4.72
+    working = np.random.default_rng(49).uniform(0.0, 0.2, (400, 500, 3))
+    weight = np.zeros((400, 500))
+    weight[100:140, 200:260] = 1.0
+    kept = gate.Kept(stars.StarField((), weight, np.zeros((400, 500), bool), 0, 0, 0), weight)
+    assert traced_peak(lambda: gate.smooth_first_scale(working, kept)) <= 5.1 * working.nbytes
+
+
+def test_kept_samples_on_uint16_codes_holds_at_most_five_and_a_half_float_frames() -> None:
+    # Promoting stored and expected to whole float64 frames alongside out and the 4-channel stack held 8.10 float64
+    # frames here; smoothing the stack first and freeing it before allocating out holds 4.81
+    stored_f, expected_f, weight = kept_scene()
+    stored_u16, expected_u16 = stored_f.astype(np.uint16), expected_f.astype(np.uint16)
+    assert traced_peak(lambda: gate.kept_samples(stored_u16, expected_u16, weight)) <= 5.5 * stored_f.nbytes
+
+
+def test_dissolve_holds_at_most_seven_frames_beyond_its_inputs() -> None:
+    # Whole-frame float64 stored codes and blends held 9.95 frames here across three passes; uint16 stored codes let go
+    # after confirmation and channel-by-channel blends hold 5.83
+    from services.media import encode, tone
+
+    rng = np.random.default_rng(44)
+    linear = 0.01 + 0.00002 * rng.standard_normal((400, 500, 3))
+    working = linear.copy()
+    for px, py in ((262.0, 120.0), (80.0, 90.0), (380.0, 310.0)):
+        working = working + gaussian((400, 500), px, py, 0.02)[..., None]
+    weight = np.zeros((400, 500))
+    weight[100:140, 200:260] = 1.0
+    kept = gate.Kept(stars.StarField((), weight, np.zeros((400, 500), bool), 0, 0, 0), weight)
+    transfer = encode.StillTransfer.of("srgb", None)
+    to_stored = lambda light: transfer.encode16(tone.apply_lift(light, 0.05))
+
+    def to_codes(light: np.ndarray) -> np.ndarray:
+        out = transfer.encode(light)
+        out *= 255.0
+        return out
+
+    peak = traced_peak(lambda: gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=to_codes,
+                                             original=gate.Original(np.zeros((0, 2))), kept=kept))
+    assert peak <= 7 * working.nbytes
 
 
 def test_a_kept_edge_is_the_original_blended_with_the_stored_sky_and_a_change_in_it_is_a_place() -> None:
