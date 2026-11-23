@@ -512,6 +512,8 @@ describe('asking about the photo on the laptop reveal', () => {
       await typeAndSend('How far away is Rigel?');
       await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
       expect(q(ANSWER)!.className).toBe('reveal-answer is-phone');
+      expect(q('[data-testid="reveal-phone-estimate"]')).not.toBeNull();
+      expect(q('[data-testid="reveal-phone-estimate"] .reveal-phone-counts')).toBeNull();
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }

@@ -108,6 +108,40 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
     });
   });
 
+  it("item B on a pose-estimated phone photo: an open answer keeps the Predicted tag and pose sentence in view, hides PhoneCounts, and anchors 16 px above .reveal-phone-estimate", () => {
+    const origBcr = HTMLElement.prototype.getBoundingClientRect;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') === 'reveal-phone-estimate') {
+        return { left: 24, top: 688, right: 366, bottom: 756, width: 342, height: 68, x: 24, y: 688, toJSON: () => ({}) } as DOMRect;
+      }
+      return origBcr.call(this);
+    });
+    try {
+      act(() =>
+        root.render(
+          createElement(RevealPhoto, {
+            session: poseSession(POSE),
+            onSelectFinding: () => {},
+            onHome: () => {},
+            viewportWidthPx: 390,
+            viewportHeightPx: 844,
+            phone: true,
+            answer: { heard: 'Take me to Zorblax', sentence: 'Nothing named Zorblax is in the sky.', answer: null },
+          })
+        )
+      );
+      expect(container.querySelectorAll('button.reveal-mark.is-predicted').length).toBeGreaterThan(0);
+      const block = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(block).not.toBeNull();
+      expect(block.className).toBe('reveal-phone-estimate');
+      expect([...block.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'reveal-phone-estimate__source']);
+      expect(block.querySelector('.reveal-phone-counts')).toBeNull();
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 688 + 16}px`);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   // UIUX-tagphone-READY.md item D (decided 13:08 on 21 Nov; Reduce Motion ruled 14:40): where the phone card sheet covers
   // item A's block, the covered tag stays drawn until the sheet covers it, and the card's own Predicted tag stands in for
   // it at full from the sheet's first frame to its last; with a star picked the counts go (item A)

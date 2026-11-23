@@ -457,12 +457,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const estimateRef = useRef<HTMLDivElement>(null);
   const [clipAnswerFootPx, setClipAnswerFootPx] = useState<number | null>(null);
   useLayoutEffect(() => {
-    if (!(phoneClip && Boolean(answer) && !there && !skyShown)) {
+    if (!(phone && Boolean(answer) && !there && !skyShown)) {
       if (clipAnswerFootPx !== null) setClipAnswerFootPx(null);
       return;
     }
     const estBox = estimateRef.current?.getBoundingClientRect();
-    const nextFoot = estBox && estBox.height > 0 ? viewH - estBox.top + 16 : viewH - (PHONE_SLOT.topPx + PHONE_SLOT.heightPx);
+    const nextFoot =
+      estBox && estBox.height > 0
+        ? viewH - estBox.top + 16
+        : phoneClip
+          ? viewH - (PHONE_SLOT.topPx + PHONE_SLOT.heightPx)
+          : null;
     if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
   });
   const [versions, setVersions] = useState<StoredRestoration[]>([]);
@@ -1118,11 +1123,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
       {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
-      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && (!answer || phoneClip) && !skyShown && status.kind === 'estimate' && (
-        // The estimate at phone width (UIUX-tagphone-READY.md item A; UIUX-clipphone-READY.md section 3): one block
-        // anchored by its foot 16 px above Ask out loud (or at y 638 above D16's player on a clip, staying in view under
-        // an open answer by item B), growing upward: the Predicted tag at full from the rings' first frame, the pose's
-        // first sentence, and on a photo the counts row. With a star picked the card sheet rises over the block (item D)
+      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !skyShown && status.kind === 'estimate' && (
+        // The estimate at phone width (UIUX-tagphone-READY.md items A and B; UIUX-clipphone-READY.md section 3): one
+        // block anchored by its foot 16 px above Ask out loud (or at y 638 above D16's player on a clip), staying in
+        // view under an open answer with its counts hidden: the Predicted tag at full from the rings' first frame, the
+        // pose's first sentence, and on a photo without an answer the counts row. With a star picked the card rises (item D)
         <div
           ref={estimateRef}
           className={phoneClip ? 'reveal-phone-estimate is-clip' : 'reveal-phone-estimate'}
@@ -1130,7 +1135,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         >
           <EvidenceTag evidenceClass="predicted" />
           <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
-          {!phoneClip && counts.length > 0 && <PhoneCounts counts={counts} hidden={picked !== null} />}
+          {!answer && !phoneClip && counts.length > 0 && <PhoneCounts counts={counts} hidden={picked !== null} />}
         </div>
       )}
       {/* D38 at phone width: while the restoration works, its lead (item A's tag) over the step and Cancel; once it stops,
