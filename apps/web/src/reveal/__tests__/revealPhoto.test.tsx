@@ -708,6 +708,40 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     }
   });
 
+  it("keeps Your photo's view's Simulated tag row and first sentence under an open phone answer, 16 px below the answer, without overwriting the flight readout's top", () => {
+    const { session } = rigelPicked();
+    const flying = { ...session, spatialView: { ...session.spatialView, mode: 'catalog_3d' }, machines: { ...session.machines, navigation: 'space' } } as ObservationSession;
+    const box = (left: number, top: number, right: number, bottom: number) =>
+      ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+    (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('flight-readout__tagrow')) return box(24, 640, 366, 676);
+      if (this.getAttribute('data-testid') === 'cone-readout') return box(24, 595, 366, 780);
+      if (this.classList.contains('flight-readout')) return this.querySelector('h1') ? box(24, 560, 366, 800) : box(24, 640, 366, 696);
+      return box(0, 0, 0, 0);
+    });
+    try {
+      const flight = { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 };
+      show(flying, { flight, phone: true, viewportWidthPx: 390, viewportHeightPx: 844 });
+      expect(sky.readoutTopPx).toBe(560);
+      // Enter cone view without an answer, then open an answer in cone view, then return to flight with answer still open
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
+      show(flying, { flight, phone: true, viewportWidthPx: 390, viewportHeightPx: 844, answer });
+      const coneReadout = q('[data-testid="cone-readout"]')!;
+      expect(coneReadout.querySelector('.flight-readout__tagrow .look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+      expect(coneReadout.querySelector('.flight-readout__note')!.textContent).toBe('Drawn or computed by the app; not measured in the source recording.');
+      expect(coneReadout.querySelector('[data-testid="cone-title"]')).toBeNull();
+      expect(coneReadout.querySelector('.flight-readout__stats')).toBeNull();
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe('220px');
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
+      expect(sky.readoutTopPx).toBe(560);
+    } finally {
+      vi.restoreAllMocks();
+      sky.readoutTopPx = undefined;
+      delete (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
+  });
+
   it('keeps the whole phone readout, and the answer where it was, when no answer is open', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true, viewportWidthPx: 390, viewportHeightPx: 844 });
@@ -722,14 +756,28 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="reveal-status"]')!.textContent).toContain('Milky Way: ESO/S. Brunier');
   });
 
-  it('keeps the photo\'s own status there while the sky is not drawn, the readout staying (the verdict on unit-realsky-1)', () => {
+  it('shows the flight\'s Simulated status, craft source line and return disclosure before the panorama has drawn, leaving out only the Milky Way line', () => {
     sky.drawn = false;
     try {
       const { session } = rigelPicked();
       show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
-      expect(q('[data-testid="reveal-status"] .look-tag')).toBeNull();
-      expect(q('[data-testid="reveal-status"]')!.textContent).not.toContain('Drawn or computed by the app');
-      expect(q(READOUT)).not.toBeNull();
+      const status = q('[data-testid="reveal-status"]')!;
+      expect(status.getAttribute('data-moment')).toBe('there');
+      expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+      const lines = () => [...q('[data-testid="reveal-status"]')!.querySelectorAll('.reveal-status__line')].map((p) => p.textContent);
+      expect(lines()).toEqual([
+        'Drawn or computed by the app; not measured in the source recording.',
+        'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
+        'Rings: the stars your photo matched.',
+      ]);
+      act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
+      act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
+      expect(lines().at(-1)).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+      // Back to Moment while the panorama has not drawn: the readout leaves, while the status column keeps Simulated
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, returning: true });
+      expect(q(READOUT)!.classList.contains('is-leaving')).toBe(true);
+      expect(q('[data-testid="reveal-status"]')!.getAttribute('data-moment')).toBe('there');
+      expect(q('[data-testid="reveal-status"] .look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
     } finally {
       sky.drawn = true;
     }

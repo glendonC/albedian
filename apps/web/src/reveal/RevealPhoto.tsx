@@ -369,7 +369,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     const answerOverReadout = phone && Boolean(answer);
     const box = readoutRef.current?.getBoundingClientRect();
     const top = box && box.height > 0 ? box.top : null;
-    if (!answerOverReadout && top !== readoutTopPx) setReadoutTopPx(top);
+    if (!cone && !answerOverReadout && top !== readoutTopPx) setReadoutTopPx(top);
     const row = answerOverReadout ? readoutRef.current?.querySelector('.flight-readout__tagrow')?.getBoundingClientRect() : undefined;
     const foot = row && row.height > 0 ? viewH - row.top + 16 : null;
     if (foot !== answerFootPx) setAnswerFootPx(foot);
@@ -678,9 +678,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onAlign={alignOffered ? () => setAligning(alignStart) : undefined}
           onRestore={phoneNoMatchRestore ? () => onRestore?.() : undefined}
         />
-      ) : phone && (!skyLineShown || there) ? null : there && (skyOnScreen || earthOnly || Boolean(answer)) ? (
-        // The flight's column once its panorama has drawn, or in the cone view or while steering; and whenever an answer
-        // hides the readout, so its Simulated tag stays in view (AUDIT-C's tag sweep, break 3, laptop half)
+      ) : phone && (!skyLineShown || there) ? null : there ? (
+        // The flight's column from the flight's first frame (3D stars, rings and any craft draw before the panorama
+        // finishes loading, and through a Back to Moment return); the Milky Way line waits for skyOnScreen below
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {cone ? (
@@ -1080,7 +1080,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onClose={() => setDetails(false)}
         />
       )}
-      {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} phone={phone} hidden={phone && details} onDetails={() => setDetails(true)} />}
+      {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
       {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md item A): one block anchored by its foot 16 px above Ask out

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from 'react';
+import { act, createElement, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
@@ -79,7 +79,7 @@ function rigelThere(): ObservationSession {
   return { ...session, selectedFindingId: rigel.id } as ObservationSession;
 }
 
-function showPhone(more: { phoneSteering?: boolean; onPhoneSteer?: () => void; onEndPhoneSteer?: () => void } = {}) {
+function showPhone(more: Partial<ComponentProps<typeof RevealPhoto>> = {}) {
   act(() => {
     root.render(
       createElement(RevealPhoto, {
@@ -309,6 +309,24 @@ describe('Your photo\'s view at phone width (D30 item 7)', () => {
       '3 stars have no measured distance, so they stay where they appear from Earth.',
     ]);
     expect((q('[data-testid="cone-readout"]') as HTMLElement).style.visibility).toBe('hidden');
+  });
+
+  it("keeps the Simulated tag row, details sheet and first sentence in Your photo's view while an answer is open, hiding the title, stats and nearest line (item B)", () => {
+    const answer = {
+      heard: 'How far away is it?',
+      sentence: 'Rigel is about 860 light years away.',
+      answer: null,
+    } as const;
+    showPhone({ answer });
+    click(q('[data-testid="cone-pill"]'));
+    const readout = q('[data-testid="cone-readout"]')!;
+    expect(readout.querySelector('.flight-readout__tagrow .look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(readout.querySelector('.flight-readout__note')!.textContent).toBe('Drawn or computed by the app; not measured in the source recording.');
+    expect(readout.querySelector('[data-testid="cone-title"]')).toBeNull();
+    expect(readout.querySelector('.flight-readout__stats')).toBeNull();
+    expect(readout.querySelectorAll('p')).toHaveLength(1);
+    click(q('[data-testid="cone-readout"] [data-testid="details-circle"]'));
+    expect(q('[data-testid="details-sheet"]')).not.toBeNull();
   });
 });
 

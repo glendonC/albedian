@@ -35,39 +35,54 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
   </div>
 );
 
-export const ConeReadout: React.FC<{ geometry: ConeGeometry; phone?: boolean; hidden?: boolean; onDetails?: () => void }> = ({ geometry, phone = false, hidden = false, onDetails }) => {
+export interface ConeReadoutProps {
+  geometry: ConeGeometry;
+  phone?: boolean;
+  answerOpen?: boolean;
+  hidden?: boolean;
+  onDetails?: () => void;
+}
+
+export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(function ConeReadout(
+  { geometry, phone = false, answerOpen = false, hidden = false, onDetails },
+  ref,
+) {
   const r = coneReadout(geometry);
   if (phone) {
-    // D30 item 7: in the flight readout's place: the tag and the circle, the first sentence, the view's name at 15 px,
-    // D28's two numbers and its nearest line at 13 px; the rest of D28's lines behind the circle
+    // D30 item 7, with UIUX-tagphone-READY.md item B when an answer is open: in the flight readout's place, the tag and
+    // the circle, then the first sentence; the view's name, two numbers and nearest line hide while an answer is open
     return (
-      <section className="flight-readout is-phone" data-testid="cone-readout" aria-label="Your photo's view" style={hidden ? { visibility: 'hidden' } : undefined}>
+      <section ref={ref} className="flight-readout is-phone" data-testid="cone-readout" aria-label="Your photo's view" style={hidden ? { visibility: 'hidden' } : undefined}>
         <PhoneTagRow open={false} onToggle={() => onDetails?.()} />
         <p className="flight-readout__note">{CONE_LINES.spec}</p>
-        <p data-testid="cone-title" style={{ margin: '0 0 10px', fontSize: 15, color: INK }}>
-          Your photo&apos;s view
-        </p>
-        <div className="flight-readout__stats">
-          <div className="flight-readout__stat">
-            <b>{r.inside}</b>
-            <span>of your stars inside</span>
-          </div>
-          {r.farthestLy !== null && (
-            <div className="flight-readout__stat">
-              <b>
-                {r.farthestLy}
-                <small>ly</small>
-              </b>
-              <span>to the farthest</span>
+        {!answerOpen && (
+          <>
+            <p data-testid="cone-title" style={{ margin: '0 0 10px', fontSize: 15, color: INK }}>
+              Your photo&apos;s view
+            </p>
+            <div className="flight-readout__stats">
+              <div className="flight-readout__stat">
+                <b>{r.inside}</b>
+                <span>of your stars inside</span>
+              </div>
+              {r.farthestLy !== null && (
+                <div className="flight-readout__stat">
+                  <b>
+                    {r.farthestLy}
+                    <small>ly</small>
+                  </b>
+                  <span>to the farthest</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {r.nearestLine && <p style={{ margin: '12px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>{r.nearestLine}</p>}
+            {r.nearestLine && <p style={{ margin: '12px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>{r.nearestLine}</p>}
+          </>
+        )}
       </section>
     );
   }
   return (
-    <section className="flight-readout" data-testid="cone-readout" aria-label="Your photo's view">
+    <section ref={ref} className="flight-readout" data-testid="cone-readout" aria-label="Your photo's view">
       <EvidenceTag evidenceClass="simulated" />
       <h1 style={{ fontSize: 52 }}>Your photo&apos;s view</h1>
       <div className="flight-readout__stats">
@@ -88,4 +103,4 @@ export const ConeReadout: React.FC<{ geometry: ConeGeometry; phone?: boolean; hi
       {r.nearestLine && <p style={{ margin: '16px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>{r.nearestLine}</p>}
     </section>
   );
-};
+});
