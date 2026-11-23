@@ -77,21 +77,31 @@ describe('starCardFacts: a catalog matched star', () => {
     ]);
   });
 
-  it("writes the sample's own Vega as the approved picture does: 25.0 ly, 427 times", () => {
+  it("writes the sample's own Vega as the approved picture does: 25.0 ly, 427 times, keeping full Latin constellation names on pinned stars", () => {
     const vega = CelestialFindingSchema.parse({
       ...acrux,
-      id: 'finding-hip-91262',
+      id: 'finding-star-vega',
       title: 'Vega',
       subtitle: 'Alpha Lyrae · 3 Lyr · HR 7001 · 7.7 pc [7.7-7.7 pc]',
       sourceDetection: { ...acrux.sourceDetection!, snr: 426.7 },
       inferredDistancePc: { lower: 7.66, median: 7.68, upper: 7.7, method: 'geometric_parallax' },
-      catalogRef: { ...acrux.catalogRef!, id: 'hip-91262', commonName: 'Vega', catalogSourceId: 'HIP 91262', bayerDesignation: 'Alpha Lyrae', constellation: 'Lyr' },
-      evidence: { ...acrux.evidence, catalogReferenceId: 'hip-91262' },
+      catalogRef: {
+        ...acrux.catalogRef!,
+        id: 'star-vega',
+        commonName: 'Vega',
+        catalogSourceId: 'HIP 91262',
+        bayerDesignation: 'Alpha Lyrae',
+        flamsteedNumber: 3,
+        constellation: 'Lyra',
+      },
+      evidence: { ...acrux.evidence, catalogReferenceId: 'star-vega' },
     });
     const v = starCardFacts(vega);
     expect(v.subLine).toBe('Alpha Lyrae · Lyra');
     expect(v.numbers.map((n) => `${n.value} ${n.unit} ${n.label}`)).toEqual(['25.0 ly away from Earth', '427 × above the noise']);
     expect(v.sourceLine).toBe('Hipparcos 2007 · HIP 91262');
+    expect(starCardFacts(betelgeuse).subLine).toBe('Alpha Orionis · Orion');
+    expect(starCardFacts(withRef({ bayerDesignation: undefined, constellation: 'Canis Major' })).subLine).toBe('Canis Major');
   });
 });
 
