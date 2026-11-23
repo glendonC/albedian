@@ -35,7 +35,10 @@ pictures under `.cache/restore-review/<unit>/`.
     removed field is read anywhere; `pnpm typecheck` and `pnpm verify:contracts` pass. Nothing produces a record
     yet.
   - _Requirements: REQ-RST-10.1 to 10.4_
-  - Landed on `main` as `e9cdd008`.
+  - Landed on `main` as `e9cdd008`, with follow-ups `2900bfcc`, `4ab96b38` and `4fcdca53` (wire number and
+    `GraphParameter` normalization), `673a680b` (clip registration and point-scale merge fields), `9eac2f19` (restore-4c
+    star-gate settings), `95a365f4` (profile conversion disclosure, untagged assumption and C20 refusal), `7e12ffd7`
+    (any finite `medianFluxRatio`) and `52617e5d` (nearblack-0 C36 refusal sentence).
 
 - [x] 2a. restore-2a: colour, the still decode, the 16 bit PNG, the variant store and the display copy as plain
   functions (REQ-RST-1.2, 1.3, 1.5, 1.6, REQ-RST-2.1 to 2.4, REQ-RST-3.1 to 3.6; P-RST-1, 3, 4, 5, 6) [decided
@@ -54,7 +57,8 @@ pictures under `.cache/restore-review/<unit>/`.
     decoded original and is stored with modes 0400 and 0700 without overwriting; a changed sample fails
     verification; the original's hash and mode are untouched.
   - _Requirements: REQ-RST-1.2, 1.3, 1.5, 1.6, 2.1 to 2.4, 3.1 to 3.6_
-  - Landed on `main` as `ee2436c5`.
+  - Landed on `main` as `ee2436c5`, with guarded tool caller `cf61b11c` and guard-stop `cfab9aca`, and revision-named
+    `PIPELINE_VERSION` `7e45528b`.
 
 - [x] 2b. restore-2b: the job and the routes (REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, REQ-RST-8; P-RST-18, 19)
   - New: `services/media/jobs.py` (registers the kinds `display_copy` and `restoration` on the upload job runner,
@@ -71,6 +75,8 @@ pictures under `.cache/restore-review/<unit>/`.
     variant]. A clip gets no display copy in this spec [open].
   - Done when: a HEIC upload gets a PNG the browser draws, listed and served by its hash.
   - _Requirements: REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, 8.1 to 8.8, 8.10_
+  - Landed on `main` as `d9134b6b`, with platform-8 (`e035fd6c`, rejected attempts stored and served as `rejected`)
+    and platform-9 (`88637c7b`, square-megapixel still bound and child time-limit sentence).
 
 - [x] 3. restore-3: the photo path as pure functions (REQ-RST-4, REQ-RST-5, REQ-RST-6.1, 6.2, REQ-RST-8.9; P-RST-2,
   7, 8, 9, 10, 12)
@@ -90,7 +96,10 @@ pictures under `.cache/restore-review/<unit>/`.
   - Done when: the properties hold; the constants test of REQ-RST-4.7 passes; the noise table matches a known
     synthetic noise within 20 percent; no output sample leaves the range of its inputs.
   - _Requirements: REQ-RST-4.1 to 4.8, 5.1 to 5.4, 6.1, 6.2, 8.9_
-  - Landed on `main` as `0145388b`, with restore-3b as `1ce89d58`.
+  - Landed on `main` as `0145388b`, with restore-3b as `1ce89d58`, chroma-1 coarse-scale chroma smoothing as `03ce4480`
+    (`services/media/chroma.py`) and `stars.py`'s docstring update as `721c1d47` after realsky-3 (`cff00b12`).
+  - [ ] quantised-noise (built off `main`, awaiting landing): wire `stars.matched_noise` and `stars.tile_noise` to
+    `detector.matched_filter_noise` (`cff00b12`) and the detector's quantised-sky grid path (`5b1d12e9`).
 
 - [x] 4. restore-4: the integrity gate, and photos restored end to end (REQ-RST-6, REQ-RST-12; P-RST-11, 13)
   - New: `services/media/gate.py` (the variant's points, confirmation, the dissolve passes, flux),
@@ -116,22 +125,29 @@ pictures under `.cache/restore-review/<unit>/`.
     ends `rejected` with its count and no file, in every trial on every real photo; a `rejected` attempt is stored
     and never listed as a variant.
   - _Requirements: REQ-RST-6.1 to 6.9, 6.12, 6.13, 12.1, 12.3, 12.4_
-  - Built [decided 2026-11-18 by the lead: rulings on restore-4's measurements]: `services/media/gate.py`,
-    `services/media/encode.py`, `services/media/photo.py` (the photo path in the job's order), `scripts/restore_review.py`;
-    the gate as design section 7 now says. Kind `restoration` is wired in `jobs.py` by restore-2b, since `jobs.py`
-    comes with the runner. Its new settings get names in the media contract first, as restore-4c.
-  - restore-4e [decided 2026-11-19 by the lead: AUDIT-B's findings A and B on restore-4]: a star painted 3 to 12 px
-    from one of the original's stars is refused in every trial on every real photo, because the point search leaves
-    kept regions out and every sample of a kept core must be the original's as stored (design section 7); a test
-    holds the flux tolerance at 3 sigma_F from both sides. Before restore-2b serves anything.
-  - restore-4f [decided 2026-11-19 by the lead: AUDIT-B's finding C on restore-4e, model B of the trials]: a single
-    sample or a cluster of up to 3 x 3 standing the stated sensitivity over both its surroundings and the original's
-    own samples is refused in every trial on every real photo; kept edges are stored as the gate computes them, so
-    every kept sample is checked exactly (design section 7). Before any person sees a restoration.
-  - restore-4g-docs [decided 2026-11-19 by the lead]: P-RST-11's text states what the gate refuses and its open
-    limit, raised samples with partners on both rings, with AUDIT-B's numbers from the restore-4f v2 re-read.
-  - [x] restore-4g: the gate hardened against that pattern (groups read against a ring round the group, by its
-    farthest residual), its trials and its smaller open limit added to P-RST-11.
+  - Built [decided 2026-11-18 by the lead: rulings on restore-4's measurements, landed on `main` as `304abca1`]:
+    `services/media/gate.py`, `services/media/encode.py`, `services/media/photo.py` (the photo path in the job's order),
+    `scripts/restore_review.py`; the gate as design section 7 now says. Kind `restoration` is wired in `jobs.py` by
+    restore-2b (`d9134b6b`), since `jobs.py` comes with the runner. Its new settings get names in the media contract
+    first, as restore-4c (`9eac2f19`, recorded in the graph's steps by `438cb62f`).
+  - [x] restore-4e (`ca2d3c09`) [decided 2026-11-19 by the lead: AUDIT-B's findings A and B on restore-4]: a star
+    painted 3 to 12 px from one of the original's stars is refused in every trial on every real photo, because the point
+    search leaves kept regions out and every sample of a kept core must be the original's as stored (design section 7);
+    a test holds the flux tolerance at 3 sigma_F from both sides. Before restore-2b serves anything.
+  - [x] restore-4f (`2cf14fb6`) [decided 2026-11-19 by the lead: AUDIT-B's finding C on restore-4e, model B of the
+    trials]: a single sample or a cluster of up to 3 x 3 standing the stated sensitivity over both its surroundings and
+    the original's own samples is refused in every trial on every real photo; kept edges are stored as the gate computes
+    them, so every kept sample is checked exactly (design section 7). Before any person sees a restoration.
+  - [x] restore-4g-docs (`780affa4`) [decided 2026-11-19 by the lead]: P-RST-11's text states what the gate refuses and
+    its open limit, raised samples with partners on both rings, with AUDIT-B's numbers from the restore-4f v2 re-read.
+  - [x] restore-4g (`c2efebb4`): the gate hardened against that pattern (groups read against a ring round the group, by
+    its farthest residual), its trials and its smaller open limit added to P-RST-11; `80c29046` keeps the flux check
+    when no measured star keeps a positive ratio. Answer-preserving speed and memory follow-ups on `main`: `71581c61`,
+    speed-2 (`be50795f`), restore-7s2 (`0431a53c`) and mem-1 (`d6f45fab`).
+  - [ ] nearblack-1 (built off `main`, awaiting landing): refuse a near-black photo whose faintest sky noise is cut off
+    at zero in C36's words (`52617e5d`).
+  - [ ] mem-23 (built off `main`, awaiting landing): hold the spatial cascade and gate searches within bounded memory on
+    large stills.
 
 - [x] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with
@@ -146,7 +162,8 @@ pictures under `.cache/restore-review/<unit>/`.
     original's packet hash and times; peak memory does not grow with the clip's length; all eight display
     orientations read back.
   - _Requirements: REQ-RST-3.7, 7.5, 7.6, 7.7, 7.9, 7.10_
-  - Landed on `main` as `be094f02`.
+  - Landed on `main` as `be094f02`, with restore-5b as `e19ea242` (last-frame duration seeded and recorded; design notes
+    `98c0521f` and `ecaaaa57`).
 
 - [x] 6. restore-6: registration and the temporal step (REQ-RST-7.1 to 7.4, 7.8, REQ-RST-6.10, 6.11; P-RST-14, 22)
   - New: `services/media/temporal.py`; tests under `tests/media/`. Needs the noise table of restore-3.
@@ -159,7 +176,8 @@ pictures under `.cache/restore-review/<unit>/`.
     on real data" with the measured reason.
   - Done when: a point drawn only into the neighbours never appears in a frame; a neighbour that disagrees gets
     a weight under one tenth; a frame whose neighbours fail registration equals its single-frame result.
-  - Done 2026-11-18 [tested: `tests/media/test_temporal.py`]: the merge adds a test of each neighbour's difference at
+  - Done 2026-11-18 (`aa862661`, with contract and graph-step follow-ups `673a680b` and `cf6d5023` and design notes
+    `98c0521f`) [tested: `tests/media/test_temporal.py`]: the merge adds a test of each neighbour's difference at
     the scale of a point, since the pairwise weight alone let a point drawn into every neighbour show. Unsolved on
     real data: on all three of the owner's clips more than half of the luma's fine detail is exactly zero, so the
     noise is not measured and no merge runs, and a whole-frame shift misses the closure bound (restore-6 report).
@@ -196,16 +214,19 @@ pictures under `.cache/restore-review/<unit>/`.
     at].
   - Done when: a clip ends `ready` or `rejected` with stored counts inside its bound; a clip recorded at black
     ends with its plain note and a lift held by the quantisation bound.
-  - As built [decided 2026-11-19 by the lead]:
+  - As built [decided 2026-11-19 by the lead; landed on `main` as `585ce1a3` (`frame_pool.py`), `0570b9b1`
+    (`clip_frames.py`) and `756ec666` (end-to-end clip job and gate), with answer-preserving speed follow-ups
+    restore-7s (`292202a6`) and restore-searches (`380a8676`)]:
     - The gated clip is stored without loss (x264 crf 0), so the variant is the file the gate ran on, and the
       gate's exact rules hold on it. On the owner's lifted clips, crf 16 moved samples by up to 40 codes of 255.
     - `variants.py` names a variant's file by its type and takes a clip's finished file by path. `router.py` starts
       a clip's restoration and serves the file by its type.
-    - A rejected restoration's job ends `rejected` while its attempt is kept (platform-8 on main, which restore-7
-      had found too: a rejected clip ended `failed`); a succeeded one's results are its file, by its type, and records.
-    - Rebased on restore-4f v2: each clip frame's kept regions are stored as `gate.kept_samples` computes them, the
-      edge's blend rounded to the clip's own Y' code step (257 sixteen bit codes at 8 bits), so the 8 bit file holds
-      what the gate computes; without it 4f's exact edge check refused every honest clip (tested both ways).
+    - A rejected restoration's job ends `rejected` while its attempt is kept (platform-8 `e035fd6c` on main, which
+      restore-7 had found too: a rejected clip ended `failed`); a succeeded one's results are its file, by its type,
+      and records.
+    - Rebased on restore-4f v2 (`2cf14fb6`): each clip frame's kept regions are stored as `gate.kept_samples` computes
+      them, the edge's blend rounded to the clip's own Y' code step (257 sixteen bit codes at 8 bits), so the 8 bit file
+      holds what the gate computes; without it 4f's exact edge check refused every honest clip (tested both ways).
   - _Requirements: REQ-RST-6.10, 6.11, 7.1 to 7.10, 8.1 to 8.5, 8.9, 12.2 to 12.4_
 
 - [x] 8. restore-8: export and the manifest (REQ-RST-9; P-RST-21)
@@ -216,20 +237,20 @@ pictures under `.cache/restore-review/<unit>/`.
     upload planted with all four.
   - Done when: the exported bytes hash to the manifest's variant hash; the manifest parses in both languages and
     holds no title, time, place or path; a rejected attempt has nothing to export.
-  - Done 2026-11-19 for stills [tested: `tests/media/test_export.py`]: `GET .../variants/{variantId}/export` answers
+  - Done 2026-11-19 for stills (`936ae329`) [tested: `tests/media/test_export.py`]: `GET .../variants/{variantId}/export` answers
     one zip stored without compression, `<variantId>.zip`, holding `<variantId>.png` byte for byte and
     `<variantId>.png.json`, the manifest, as review row D22 decided (`.lead/uiux/UIUX-export-READY.md`; section 12's
     two `albedian-` attachments are replaced by it); `GET .../manifest` answers the same sidecar. The manifest names
     the newest solution id the job store names. A synthetic upload planted with a file name, a capture time, a place,
     a camera make, tEXt, iTXt, tIME and eXIf chunks and text in every kind of ICC text tag exports none of them;
-    restore-8b builds the profile anew from its colour data alone (a fresh header, fixed text in the description
+    restore-8b (`1f9272a7`) builds the profile anew from its colour data alone (a fresh header, fixed text in the description
     and copyright, each colour tag at its defined length), in a restoration and in a display copy (REQ-RST-9.4,
-    decided 2026-11-19; `tests/media/test_profile_text.py`). restore-8d makes each stored still's record name the
+    decided 2026-11-19; `tests/media/test_profile_text.py`). restore-8d (`9e48edc3`) makes each stored still's record name the
     profile its own file holds and keeps only the tags of the profile's own space with D50 as its illuminant;
-    restore-8e leaves a damaged optional tag out alone, converts a display copy through a profile the rebuild cannot
+    restore-8e (`7db3f0a6`, `95a365f4`, `2ddf7b3a`) leaves a damaged optional tag out alone, converts a display copy through a profile the rebuild cannot
     carry or keeps its samples untagged with the assumption recorded, and refuses the restoration in review row C20's
-    words (`tests/media/test_stored_colour.py`). restore-8c writes zip64 past 2 GiB, as Python's zipfile
-    does, so a long clip fits. Done 2026-11-19 for clips by restore-8c's second half [tested:
+    words (`tests/media/test_stored_colour.py`). restore-8c (`e11757bd`, `809ed064`) writes zip64 past 2 GiB, as Python's zipfile
+    does, so a long clip fits. Done 2026-11-19 for clips by restore-8c's second half (`bbe20cb7`) [tested:
     `tests/media/test_export.py`]: a restored QuickTime or MP4 clip exports as `<variantId>.mov` or `.mp4`, the file
     restore-7 stored losslessly, byte for byte, with `<variantId>.mov.json` or `.mp4.json`; a record naming a type
     with no export row is refused as a record (500).
@@ -248,11 +269,11 @@ pictures under `.cache/restore-review/<unit>/`.
     reason it describes something that no longer exists.
   - Done when: each row of `design.md` section 15 is cut or made real, and a search for the removed names finds
     none.
-  - As built: both scripts removed rather than rewritten, since `scripts/restore_review.py` is the job's caller for
+  - As built (`66bd1cf8`): both scripts removed rather than rewritten, since `scripts/restore_review.py` is the job's caller for
     a person's review; `models.py` keeps only `compute_file_sha256` (discovery's). The search for the removed names
     is a kept test, `tests/media/test_old_runtime_removed.py`, with the old route answering 404 and its old body
-    refused by the unrouted body limit. `services/media/stars.py`'s docstring still names the old runtime: it is a
-    producer file, so its fix waits for the next unit that changes it [decided 2026-11-19: the digest chain].
+    refused by the unrouted body limit. `services/media/stars.py`'s docstring was updated in `721c1d47` once the
+    digest chain allowed it [verified].
   - _Requirements: REQ-RST-11.1 to 11.3_
 
 ## Open, not scheduled
