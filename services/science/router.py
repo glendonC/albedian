@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import replace
+from functools import lru_cache
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -18,19 +19,21 @@ from services.contracts.media import MEDIA_ID_PATTERNS
 from services.contracts import sky_context
 from services.contracts.wire import MAX_SAFE_INTEGER, wire_int
 from services.science.catalog import (
-    ALL_SKY_CATALOG_STARS,
     CONSTELLATION_EDGES,
     _iso_to_julian_date,
     catalog_cartesian_pc,
     compute_light_travel_time_description,
-    icrs_to_altaz,
+    icrs_to_altaz_batch,
+    propagate_directions_batch,
 )
+from services.science.catalog_model import CatalogStar
 from services.science.ephemeris import (
     DEFAULT_BODIES,
     EphemerisOutOfRange,
     compute_solar_system_ephemerides,
     require_ephemeris_range,
 )
+from services.science.phone_photo_solver import _get_tile_index
 from services.science.stellar_parameters import gaia_stellar_parameters
 from services.science.detector import noise_limit_warnings
 from services.science.radiometry import compute_lunar_phase_and_illumination, predict_sky_brightness
@@ -404,6 +407,35 @@ def _light_travel(distance_pc: float) -> dict[str, Any]:
     return {key: words[key] for key in _LIGHT_TRAVEL_KEYS}
 
 
+@lru_cache(maxsize=1)
+def _sky_context_tile_pool() -> tuple[np.ndarray, tuple[CatalogStar, ...], float]:
+    """The brightest SKY_CONTEXT_STARS_MAX tile rows (L0 and L1, ordered by approximate V) that carry a valid distance
+    and finite proper motion within the contract's bounds [tested]. Covers all 71 pinned constellation-edge stars and
+    the southern bright stars alike."""
+    index = _get_tile_index()
+    data = index.data
+    chosen_rows: list[int] = []
+    chosen_stars: list[CatalogStar] = []
+    for row in range(len(data["v_mag"])):
+        st = index.to_catalog_star(row, float(data["ra0"][row]), float(data["dec0"][row]), index.epoch_jyear)
+        if st is None or st.pm_ra_mas_yr is None or st.pm_dec_mas_yr is None:
+            continue
+        if (
+            abs(st.pm_ra_mas_yr) > sky_context.SKY_CONTEXT_PROPER_MOTION_MAX
+            or abs(st.pm_dec_mas_yr) > sky_context.SKY_CONTEXT_PROPER_MOTION_MAX
+        ):
+            continue
+        if st.bp_rp is not None and not (sky_context.SKY_CONTEXT_BP_RP_MIN <= st.bp_rp <= sky_context.SKY_CONTEXT_BP_RP_MAX):
+            continue
+        if st.rv_km_s is not None and abs(st.rv_km_s) > sky_context.SKY_CONTEXT_RADIAL_VELOCITY_MAX:
+            continue
+        chosen_rows.append(row)
+        chosen_stars.append(st)
+        if len(chosen_stars) == sky_context.SKY_CONTEXT_STARS_MAX:
+            break
+    return np.asarray(chosen_rows, dtype=np.int64), tuple(chosen_stars), index.epoch_jyear
+
+
 def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, Any]:
     """The bright stars, the solar system bodies, the constellation figures' edges and the sky brightness predicted
     for a time and place, every item `predicted`, built to services/contracts/sky_context.py and checked against it
@@ -417,25 +449,37 @@ def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, An
             return False
         return mag is None or req.mag_limit is None or mag <= req.mag_limit
 
+    rows, pool_stars, epoch_jyear = _sky_context_tile_pool()
+    data = _get_tile_index().data
+    years = (2000.0 + (_iso_to_julian_date(obs_utc_iso) - 2451545.0) / 365.25) - epoch_jyear
+    ra_arr, dec_arr = propagate_directions_batch(
+        data["ra0"][rows], data["dec0"][rows], data["pm_ra"][rows], data["pm_dec"][rows], data["rv"][rows],
+        data["med_pc"][rows], years,
+    )
+    alt_arr, az_arr = icrs_to_altaz_batch(ra_arr, dec_arr, lat_deg, lon_deg, obs_utc_iso)
+
     stars_out: list[dict[str, Any]] = []
-    for st in ALL_SKY_CATALOG_STARS:
-        alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, lat_deg, lon_deg, obs_utc_iso)
-        if not kept(float(alt_deg), float(st.mag)):
+    for k, st in enumerate(pool_stars):
+        alt_deg, az_deg = float(alt_arr[k]), float(az_arr[k])
+        if not kept(alt_deg, float(st.mag)):
             continue
-        cx, cy, cz = catalog_cartesian_pc(st)
+        ra_deg = float(ra_arr[k]) % 360.0
+        if ra_deg >= 360.0:
+            ra_deg = 0.0
+        dec_deg = float(dec_arr[k])
+        cx, cy, cz = catalog_cartesian_pc(replace(st, ra_deg=ra_deg, dec_deg=dec_deg))
         star_entry: dict[str, Any] = {
             "id": st.id,
             "evidenceClass": "predicted",
             "commonName": st.common_name,
-            "bayerDesignation": st.bayer_designation,
             "constellation": st.constellation,
             "provider": st.provider,
             "releaseVersion": st.release_version,
             "catalogSourceId": st.catalog_source_id,
-            "raDeg": float(st.ra_deg),
-            "decDeg": float(st.dec_deg),
-            "altDeg": float(alt_deg),
-            "azDeg": float(az_deg),
+            "raDeg": ra_deg,
+            "decDeg": dec_deg,
+            "altDeg": alt_deg,
+            "azDeg": az_deg,
             "aboveHorizon": bool(alt_deg >= 0.0),
             "mag": float(st.mag),
             "properMotionRaMasYr": float(st.pm_ra_mas_yr),
@@ -449,6 +493,8 @@ def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, An
             "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
             "lightTravel": _light_travel(st.median_pc),
         }
+        if st.bayer_designation is not None:
+            star_entry["bayerDesignation"] = st.bayer_designation
         if st.bp_rp is not None:
             star_entry["bpRp"] = float(st.bp_rp)
         if st.rv_km_s is not None:

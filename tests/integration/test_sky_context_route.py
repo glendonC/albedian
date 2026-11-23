@@ -24,7 +24,14 @@ from fastapi.testclient import TestClient
 
 from services.api import app
 from services.contracts import sky_context as sc
-from services.science.catalog import ALL_SKY_CATALOG_STARS, CONSTELLATION_EDGES, icrs_to_altaz
+from services.science.catalog import (
+    ALL_SKY_CATALOG_STARS,
+    CONSTELLATION_EDGES,
+    _iso_to_julian_date,
+    icrs_to_altaz,
+    propagate_directions_batch,
+)
+from services.science.phone_photo_solver import _get_tile_index
 
 ROUTE = "/api/science/sky-context"
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "sky_context_contract.json"
@@ -80,7 +87,10 @@ def test_the_reply_is_the_contracts(whole: dict[str, Any]) -> None:
     assert whole["observedAtUTC"] == REQUEST["observedAtUTC"]
     assert whole["observerLocation"] == {"latDeg": REQUEST["latDeg"], "lonDeg": REQUEST["lonDeg"]}
     assert (len(whole["stars"]), len(whole["ephemerides"]), len(whole["constellationEdges"])) == (
-        len(ALL_SKY_CATALOG_STARS), 6, len(CONSTELLATION_EDGES))
+        sc.SKY_CONTEXT_STARS_MAX, 6, len(CONSTELLATION_EDGES))
+    # Every pinned star remains in the 512-star tile pool, alongside the southern bright stars
+    held = {star["id"] for star in whole["stars"]}
+    assert {star.id for star in ALL_SKY_CATALOG_STARS} <= held
 
 
 def test_every_item_is_predicted_and_no_key_is_snake_case(whole: dict[str, Any]) -> None:
@@ -91,11 +101,10 @@ def test_every_item_is_predicted_and_no_key_is_snake_case(whole: dict[str, Any])
     assert not [key for key in _keys(whole) if "_" in key]
 
 
-def test_its_rows_are_the_contract_fixtures_base_rows(whole: dict[str, Any]) -> None:
-    stars = {star["id"]: star for star in whole["stars"]}
+def test_its_ephemeris_brightness_sun_and_tile_star_rows_are_exact(whole: dict[str, Any]) -> None:
+    import numpy as np
+
     bodies = {body["name"]: body for body in whole["ephemerides"]}
-    for star in BASE["reply"]["stars"]:
-        assert _differences(stars[star["id"]], star) == [], star["id"]
     for body in BASE["reply"]["ephemerides"]:
         assert _differences(bodies[body["name"]], body) == [], body["name"]
     assert _differences(whole["predictedSkyBrightness"], BASE["reply"]["predictedSkyBrightness"]) == []
@@ -103,12 +112,69 @@ def test_its_rows_are_the_contract_fixtures_base_rows(whole: dict[str, Any]) -> 
     held = {star["id"] for star in BASE["reply"]["stars"]}
     assert [e for e in whole["constellationEdges"] if {e["fromStarId"], e["toStarId"]} <= held] == BASE["reply"]["constellationEdges"]
 
+    # Every star in the reply comes from its shipped tile row propagated to observedAtUTC
+    idx = _get_tile_index()
+    data = idx.data
+    row_by_source = {
+        (f"HIP {int(sid)}" if bool(hip) else f"Gaia DR3 {int(sid)}"): r
+        for r, (hip, sid) in enumerate(zip(data["hip"], data["sid"]))
+    }
+    years = (2000.0 + (_iso_to_julian_date(REQUEST["observedAtUTC"]) - 2451545.0) / 365.25) - idx.epoch_jyear
+    for star in whole["stars"][:40]:
+        r = row_by_source[star["catalogSourceId"]]
+        tile_star = idx.to_catalog_star(r, float(data["ra0"][r]), float(data["dec0"][r]), idx.epoch_jyear)
+        assert tile_star is not None
+        ra, dec = propagate_directions_batch(
+            np.array([data["ra0"][r]]), np.array([data["dec0"][r]]),
+            np.array([data["pm_ra"][r]]), np.array([data["pm_dec"][r]]),
+            np.array([data["rv"][r]]), np.array([data["med_pc"][r]]), years,
+        )
+        assert star["raDeg"] == pytest.approx(float(ra[0]) % 360.0, abs=1e-9)
+        assert star["decDeg"] == pytest.approx(float(dec[0]), abs=1e-9)
+        assert star["commonName"] == tile_star.common_name
+        assert star.get("bayerDesignation") == tile_star.bayer_designation
+
 
 def test_a_stars_position_is_the_unrefracted_topocentric_one(whole: dict[str, Any]) -> None:
-    for row, star in zip(ALL_SKY_CATALOG_STARS, whole["stars"]):
-        alt, az = icrs_to_altaz(row.ra_deg, row.dec_deg, REQUEST["latDeg"], REQUEST["lonDeg"], REQUEST["observedAtUTC"])
-        assert (star["altDeg"], star["azDeg"]) == (float(alt), float(az))
-        assert star["releaseVersion"] == row.release_version
+    for star in whole["stars"]:
+        alt, az = icrs_to_altaz(star["raDeg"], star["decDeg"], REQUEST["latDeg"], REQUEST["lonDeg"], REQUEST["observedAtUTC"])
+        assert (star["altDeg"], star["azDeg"]) == pytest.approx((float(alt), float(az)), abs=1e-9)
+
+
+def test_southern_skies_carry_bright_stars_across_crux_centaurus_carina_eridanus_grus_pavo_and_tucana() -> None:
+    """skycontext-5b: POST /api/science/sky-context serves the shipped tile catalog across the deep south, including
+    all 30 mag <= 3.2 stars in Crux, Centaurus, Carina, Eridanus, Grus, Pavo and Tucana, and stars without a Bayer
+    designation omit bayerDesignation cleanly."""
+    client = TestClient(app)
+    bright_all_sky = _post({**REQUEST, "magLimit": 3.2}, client).json()["stars"]
+    assert len(bright_all_sky) == 210
+    south_30 = [s for s in bright_all_sky if s["decDeg"] < -30.0]
+    assert len(south_30) >= 64
+    names = {s["commonName"] for s in bright_all_sky}
+    for must_have in (
+        "Acrux", "Mimosa", "Gacrux", "Imai", "Ginan",
+        "Rigil Kentaurus", "Hadar", "Toliman", "Menkent",
+        "Canopus", "Miaplacidus", "Avior", "Aspidiske",
+        "Achernar", "Cursa", "Zaurak",
+        "Alnair", "Tiaki", "Aldhanab",
+        "Peacock", "Antares", "Shaula", "Atria", "Ankaa", "Arcturus", "Spica", "Regulus",
+    ):
+        assert must_have in names, must_have
+    # Aldhanab (Gaia DR3 row with no HIP link) omits bayerDesignation; Alpha Tucanae carries its Bayer designation
+    aldhanab = next(s for s in bright_all_sky if s["commonName"] == "Aldhanab")
+    assert "bayerDesignation" not in aldhanab
+    alpha_tuc = next(s for s in bright_all_sky if s["catalogSourceId"] == "HIP 110130")
+    assert alpha_tuc["bayerDesignation"] == "Alpha Tucanae" and alpha_tuc["commonName"] == "HIP 110130"
+
+    # Synthetic open-ocean South Pacific nights at -35 deg and -45 deg
+    for lat in (-35.0, -45.0):
+        south_up = _post(
+            {"observedAtUTC": "2031-03-21T12:00:00Z", "latDeg": lat, "lonDeg": -140.0, "aboveHorizonOnly": True, "magLimit": 3.2},
+            client,
+        ).json()
+        assert south_up["sun"]["band"] == "night"
+        assert len(south_up["stars"]) >= 110
+        assert sum(1 for s in south_up["stars"] if s["decDeg"] < -30.0) >= 60
 
 
 @pytest.mark.parametrize("request_", [REQUEST, OTHER], ids=["fixture moment", "another moment"])
@@ -127,8 +193,7 @@ def test_above_horizon_only_leaves_out_what_is_below_and_its_edges(request_: dic
     assert _post({**request_, "aboveHorizonOnly": False}, client).json() == every
 
 
-# 0.03 is Vega's own mag: a star at the limit is kept
-@pytest.mark.parametrize("limit", [-1.5, 0.03, 0.5, 2.0, 30.0])
+@pytest.mark.parametrize("limit", [-1.5, 0.5, 2.0, 3.2, 30.0])
 def test_a_mag_limit_leaves_out_the_fainter_stars_and_keeps_every_body(limit: float) -> None:
     client = TestClient(app)
     every = _post(REQUEST, client).json()
@@ -136,10 +201,16 @@ def test_a_mag_limit_leaves_out_the_fainter_stars_and_keeps_every_body(limit: fl
     assert kept["filters"] == {"magLimit": limit, "aboveHorizonOnly": False}
     assert [s["id"] for s in kept["stars"]] == [s["id"] for s in every["stars"] if s["mag"] <= limit]
     assert kept["ephemerides"] == every["ephemerides"]
-    if limit == 0.03:
-        assert "star-vega" in [s["id"] for s in kept["stars"]]
     held = {s["id"] for s in kept["stars"]}
     assert kept["constellationEdges"] == [e for e in every["constellationEdges"] if {e["fromStarId"], e["toStarId"]} <= held]
+
+
+def test_a_star_at_its_exact_mag_limit_is_kept(whole: dict[str, Any]) -> None:
+    vega_mag = next(s["mag"] for s in whole["stars"] if s["id"] == "star-vega")
+    at_vega = _post({**REQUEST, "magLimit": vega_mag}).json()
+    assert "star-vega" in {s["id"] for s in at_vega["stars"]}
+    below_vega = _post({**REQUEST, "magLimit": math.nextafter(vega_mag, -math.inf)}).json()
+    assert "star-vega" not in {s["id"] for s in below_vega["stars"]}
 
 
 def test_both_filters_together_keep_what_both_keep() -> None:
@@ -307,3 +378,41 @@ def test_through_one_sunrise_the_suns_bands_run_in_order() -> None:
             seen.append(sun["band"])
     assert seen == order, seen
     assert altitudes == sorted(altitudes)
+
+
+def test_tile_pool_skips_rows_missing_proper_motion_or_outside_contract_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every guard of _sky_context_tile_pool drops an ineligible row before the reply reaches the contract validator."""
+    from dataclasses import replace as dc_replace
+    import numpy as np
+    from services.science import router as sci_router
+
+    real_idx = _get_tile_index()
+    base_star = real_idx.to_catalog_star(0, float(real_idx.data["ra0"][0]), float(real_idx.data["dec0"][0]), real_idx.epoch_jyear)
+    assert base_star is not None
+    variants = [
+        None,
+        dc_replace(base_star, id="hip-900001", pm_ra_mas_yr=None),
+        dc_replace(base_star, id="hip-900002", pm_dec_mas_yr=None),
+        dc_replace(base_star, id="hip-900003", pm_ra_mas_yr=sc.SKY_CONTEXT_PROPER_MOTION_MAX + 1.0),
+        dc_replace(base_star, id="hip-900004", pm_dec_mas_yr=-(sc.SKY_CONTEXT_PROPER_MOTION_MAX + 1.0)),
+        dc_replace(base_star, id="hip-900005", bp_rp=sc.SKY_CONTEXT_BP_RP_MIN - 0.1),
+        dc_replace(base_star, id="hip-900006", bp_rp=sc.SKY_CONTEXT_BP_RP_MAX + 0.1),
+        dc_replace(base_star, id="hip-900007", rv_km_s=sc.SKY_CONTEXT_RADIAL_VELOCITY_MAX + 1.0),
+        dc_replace(base_star, id="hip-900008"),
+    ]
+
+    class StandInIndex:
+        epoch_jyear = real_idx.epoch_jyear
+        data = {k: np.repeat(real_idx.data[k][:1], len(variants)) for k in real_idx.data}
+
+        def to_catalog_star(self, row: int, ra: float, dec: float, epoch: float) -> Any:
+            return variants[row]
+
+    sci_router._sky_context_tile_pool.cache_clear()
+    try:
+        monkeypatch.setattr(sci_router, "_get_tile_index", lambda: StandInIndex())
+        rows, stars, _ = sci_router._sky_context_tile_pool()
+        assert list(rows) == [len(variants) - 1]
+        assert [s.id for s in stars] == ["hip-900008"]
+    finally:
+        sci_router._sky_context_tile_pool.cache_clear()

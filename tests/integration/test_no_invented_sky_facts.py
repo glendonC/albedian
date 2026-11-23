@@ -68,7 +68,7 @@ def test_no_output_lists_hand_typed_objects_or_canned_notes() -> None:
 
 def test_a_hipparcos_only_star_carries_no_stellar_values() -> None:
     hipparcos = [star for star in _sky_context()["stars"] if star["provider"] == "Hipparcos"]
-    assert len(hipparcos) == 59
+    assert len(hipparcos) == 216
     assert all("astrophysics" not in star for star in hipparcos)
 
 
