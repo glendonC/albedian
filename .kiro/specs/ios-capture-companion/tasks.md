@@ -21,9 +21,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     any log or error. P3: the stored bytes and SHA-256 equal the uploaded ones, with a record and without.
   - Split in three. pointing-2a, the route's reply contract (`packages/contracts/src/pointing-reply.ts`,
     `services/contracts/pointing_reply.py`, the shared fixture `tests/fixtures/pointing_reply_contract.json`), landed
-    as `61fa49b2` (audits: FAIL, then PASS on the second version). pointing-2a2 adds the refusal for a record sent
-    once a solve job exists. pointing-2b: the two routes (201 for a record stored now, 200 for the same bytes again),
-    the record's exact bytes in `services/ingest/store_pointing.py`, its `BODY_LIMITS` row, and
+    as `61fa49b2` (audits: FAIL, then PASS on the second version). pointing-2a2 (`cbb32954`) adds the refusal for a
+    record sent once a solve job exists. pointing-2b (`f5472c89`): the two routes (201 for a record stored now, 200 for
+    the same bytes again), the record's exact bytes in `services/ingest/store_pointing.py`, its `BODY_LIMITS` row, and
     `tests/integration/test_pointing_route.py`.
   - _Requirements: REQ-IOS-1.1, REQ-IOS-4.1, REQ-IOS-6.1_
 
@@ -31,21 +31,28 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - `device_attitude` in `PoseEstimateSchema` with `beacon` and `beaconCentroidUncertaintyDeg` tied to the beacon
     methods; `ObservationSolutionSchema.pointingHint`; the `pointing_record` metadata container and the receipt
     rule for a place or time from the record. Both languages, fixtures, PBT both sides, as sky-1 did.
-  - As decided on 2026-11-18: no metadata container and no receipt change; the solution's `pointingHint` says where
-    its time and place came from (`timeFrom`, `placeFrom`). The web's phrase for a `device_attitude` pose
+  - As decided on 2026-11-18 (`5c8d35e7`): no metadata container and no receipt change; the solution's `pointingHint`
+    says where its time and place came from (`timeFrom`, `placeFrom`). The web's phrase for a `device_attitude` pose
     (`apps/web/src/services/skyLayerWords.ts`) is worded by UIUX and landed by WEB-UX in the same batch.
-  - pointing-3b (2026-11-19): `usedAs` gains `moment`, said exactly when the solution's time or place came from the
-    record, so a record with a place and no heading can still say it lent the photo its time and place.
+  - pointing-3b (2026-11-19, `ea538f98`): `usedAs` gains `moment`, said exactly when the solution's time or place came
+    from the record, so a record with a place and no heading can still say it lent the photo its time and place.
     v2: the hinted centre and its uncertainty are given exactly when the hint was a search hint or the pose, and
     the verified centre's offset from it exactly on a calibrated solution whose hint gives one.
-  - pointing-moment (2026-11-19): the solve reads the stored record at its start (`services/ingest/jobs.py`); where
-    the file holds no recorded time it takes the record's, where it holds no place the record's allowed place, for
+  - pointing-moment (2026-11-19, `613848a7`): the solve reads the stored record at its start (`services/ingest/jobs.py`);
+    where the file holds no recorded time it takes the record's, where it holds no place the record's allowed place, for
     the searches and the predicted sky, and the hint says `moment` with `timeFrom` and `placeFrom`; the record
     lends nothing when the solution would still have no place; a record that is not this photo's is not used, with
     one warning. Tests: `tests/integration/test_pointing_moment.py`.
-  - pointing-moment v2 (2026-11-19, after the read): each predicted item names the phone's pointing record for a
+  - pointing-moment v2 (2026-11-19, in `613848a7`): each predicted item names the phone's pointing record for a
     lent time or place (`services/science/predicted_sky.py`), one warning says so, and the record place's stated
-    accuracy, full or reduced, joins every stated uncertainty (its words [proposed] for the design lane).
+    accuracy, full or reduced, joins every stated uncertainty; c13-words (`aa392e92`) puts those warnings and item
+    limitations in the design lane's plain words, including a lent time beside the file's own place with no bound where
+    the place states no accuracy.
+  - moment-blind (`6ac273c2`) and blind-words (`bbc3b916`): when the searches at a lent moment do not calibrate,
+    `_solve_chain` runs the whole-sky blind search once more so a lent moment never costs a photo the solve it gets
+    alone (verified across all sixty public photos in `.lead/kiro/reports/SCIENCE-INGEST/moment-blind-60.md`), and
+    warns in the design lane's plain words (`BLIND_LENT_WORDS`) that the stars alone lined the photo up while what is
+    predicted is drawn for what the phone recorded.
   - _Requirements: REQ-IOS-2.2, REQ-IOS-6.2_
 
 - [x] 4. pointing-4: the record as a search hint (REQ-IOS-2.1, 2.2; P1, P2)
@@ -53,20 +60,23 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     cut radius from that uncertainty and the frame's half diagonal; a centre hint and the record's field of view for
     the phone-photo solver; `_solve_chain` passes both; the WCS wins over the hint, with a warning.
   - Waits for the device checks of mobile-1 (the axes, the quaternion direction) and mobile-2 (the timebase).
-  - As built (2026-11-19): to the documented conventions, each device check [open] until mobile-1's recorded values
-    are compared (`services/science/record_hint.py`, `tests/science/test_record_hint.py`,
-    `tests/integration/test_pointing_search_hint.py`). v2 (AUDIT's read of 12:58): when the hinted searches do not
+  - As built (2026-11-19, `72e8dcf3`): to the documented conventions, each device check [open] until mobile-1's
+    recorded values are compared (`services/science/record_hint.py`, `tests/science/test_record_hint.py`,
+    `tests/integration/test_pointing_search_hint.py`). v2 (`df019603`): when the hinted searches do not
     calibrate, the chain runs once more without the hint under the same bound, so the verified WCS wins over a hint
-    outside its uncertainty, with the warning (REQ-IOS-2.2).
+    outside its uncertainty, with the warning (REQ-IOS-2.2). turned-cut (`6c5bf366`) searches a photo stored turned
+    upright in the picture as shown in the phone solver's first pass; p4-notes (`258837ee`) pins in
+    `test_pointing_search_hint.py` that the triangle solver cuts its catalog at `triangle_radius_deg` and that
+    `HINT_OUTSIDE` fires just past `uncertainty_deg` and not inside it.
   - _Requirements: REQ-IOS-2.1, 2.2, 2.3_
 
 - [x] 5. pointing-5: a pose from the record when stars do not solve (design component 6)
   - `complete_sky` with a stored record: an `approximate` solution with a `device_attitude` pose swept over the
     heading accuracy, field of view, zoom and roll, widened by the motion window; no sensor pose without a heading.
-  - As built (2026-11-19): before any Moon pose (the lead's answer of 12:20), 21 swept WCS (the heading and the tilt
-    at once to four corners, the roll either way, the record's field of view at its zoom 5 percent either way
-    [proposed]); no pose for the front camera, a mirrored frame, a stored frame of another size than the record's
-    photo, or no field of view; the stored axes of a back-camera photo [open] until mobile-2's check
+  - As built (2026-11-19, `aa62de24`, words `ceaee030`): before any Moon pose (the lead's answer of 12:20), 21 swept
+    WCS (the heading and the tilt at once to four corners, the roll either way, the record's field of view at its zoom
+    5 percent either way [proposed]); no pose for the front camera, a mirrored frame, a stored frame of another size
+    than the record's photo, or no field of view; the stored axes of a back-camera photo [open] until mobile-2's check
     (`services/science/record_hint.py`, `services/science/predicted_sky.py`, `tests/science/test_record_pose.py`).
     Unsolved on real data: no photo with a pointing record is stored yet.
   - _Requirements: REQ-IOS-2.3; spec `predicted-sky-for-every-upload` REQ-SKY-3 to 6_

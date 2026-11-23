@@ -16,7 +16,9 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
   - The Sun in `services/science/ephemeris.py`; `services/science/predicted_sky.py`; the call in
     `services/ingest/jobs.py`; `docs/science/PREDICTED_SKY.md`.
   - Landed as `eeab4d15` (PASS). Real case: the owner's head-worn clip ends `predicted_only` with 65 predicted
-    findings.
+    findings. Follow-ups on `main`: star-words (`e6620395`, predicted and matched stars' place and brightness cautions
+    in the design lane's plain words) and c25-words (`0adebe95`, the near-black count warning in two plain sentences,
+    and both count warnings opening with `"This clip's sky"` on a clip).
   - _Requirements: REQ-SKY-1.1 to 1.7, REQ-SKY-2.1 to 2.4, REQ-SKY-7_
 
 - [x] 3. sky-3: lined up by taking a bright spot to be the Moon, with a camera profile and a level head (REQ-SKY-3;
@@ -69,20 +71,23 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
     [inference] (verdict `sky-3b.md`, left alone (3)); bring the two into line. Done in sky-4: both say [inference].
   - sky-4 itself landed as `b98f55cf` (REQ-SKY-4.1, 4.2, 4.4: `horizon_pose_solution` in
     `services/science/predicted_sky.py`, `solve_horizon_and_beacon_pose` in `services/media/discovery.py`, the
-    topocentric Moon in `services/science/pose_estimate.py`). The separate small unit for REQ-SKY-5.4 is sky-5.4:
-    `ObservationSolutionSchema` (`packages/contracts/src/astronomy.ts`), the parser
+    topocentric Moon in `services/science/pose_estimate.py`). The separate small unit for REQ-SKY-5.4 is sky-5.4
+    (`f53e900a`): `ObservationSolutionSchema` (`packages/contracts/src/astronomy.ts`), the parser
     (`services/contracts/astronomy.py`) and `ObservationSolution` (`services/science/wcs_models.py`) refuse an
     `approximate` solution without a `poseEstimate`.
   - _Requirements: REQ-SKY-4.1, 4.2, 4.4, 5.4_
 
 - [x] 6. sky-6: the Sun as the beacon in daytime photos (REQ-SKY-4.3)
   - After a real daytime photo with the Sun and a skyline exists to test on.
-  - As built (sky-6a to 6d and sky-6 (a)): services/science/sun_pose.py (the Sun's place, its glare's core, whether
-    the core's own peak is clipped, the day skyline below it, a clock check against the Sun's height through the file's
-    35 mm lens, the Sun plus horizon pose through pose_estimate's fit, and the glare measured in the sky above the
-    skyline) and complete_sky by day, after the record pose, before and instead of the Moon poses, only with a 35 mm
-    focal length; the design lane's Sun-pose and glare words (`finding-observed-glare`: Bright glare / Taken to be the
-    Sun, clipped or core-only lower-bound limitation). Measured on two public daytime photos
+  - As built (`c2bb7908`, `0ac4aa16`, `45ab45b2`, `fc8835f9`, sky-6a to 6d, and `sun-glare` for sky-6 (a)):
+    services/science/sun_pose.py (the Sun's place, its glare's core, whether the core's own peak is clipped, the day
+    skyline below it, a clock check against the Sun's height through the file's 35 mm lens, the Sun plus horizon pose
+    through pose_estimate's fit, and the glare measured in the sky above the skyline) and complete_sky by day, after
+    the record pose, before and instead of the Moon poses, only with a 35 mm focal length; the design lane's Sun-pose
+    and glare words (`finding-observed-glare`: Bright glare / Taken to be the Sun, clipped or core-only lower-bound
+    limitation; first-sentence screen cut `dd8f609e`). sun-core (`80b226bf`) drops same-frame detections inside the
+    Sun's core beside a Sun pose, and stack-core (`8cbca812`) judges a clip's stacked detections by the Sun's core in
+    the stack itself (`sun_core_spot`). Measured on two public daytime photos
     (.lead/kiro/reports/SCIENCE-INGEST/sky-6-research.md, sun-glare.md): one lined up within its bound with its
     observed glare finding, one refused by the clock check.
   - _Requirements: REQ-SKY-4.3_
