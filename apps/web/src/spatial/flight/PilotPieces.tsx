@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EvidenceTag, LookIcon } from '../../look/index.js';
 import { CRAFTS, type Craft } from './crafts.js';
@@ -67,10 +67,53 @@ const heading = (phone: boolean): React.CSSProperties => ({ margin: phone ? '14p
 /** D35 item 3: the list's last 28 px fading, to show it scrolls. */
 const LIST_FADE = 'linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%)';
 
+const LAPTOP_LIST_MAX_PX = 470;
+const LAPTOP_LIST_MIN_PX = 96;
+const LAPTOP_STATUS_CLEAR_PX = 16;
+const LAPTOP_VIEWPORT_RESERVE_PX = 480;
+
+/**
+ * D35 item 3 and the tag rule: on the laptop the picker's list is at most 470 px tall and shrinks so the panel's top
+ * clears [data-testid="reveal-status"] by at least 16 px (or reserves 480 px for the status and foot when unmeasured).
+ */
+export function laptopPickerListMaxHeight(
+  viewportHeightPx: number,
+  measured?: { panelBottomPx: number; panelChromePx: number; statusBottomPx: number } | null,
+): number {
+  const raw = measured
+    ? measured.panelBottomPx - (measured.statusBottomPx + LAPTOP_STATUS_CLEAR_PX) - measured.panelChromePx
+    : viewportHeightPx - LAPTOP_VIEWPORT_RESERVE_PX;
+  return Math.min(LAPTOP_LIST_MAX_PX, Math.max(LAPTOP_LIST_MIN_PX, Math.floor(raw)));
+}
+
 export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft | null) => void; phone?: boolean }> = ({ craft, onPick, phone = false }) => {
   const [open, setOpen] = useState(false);
   const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null)) ?? YOUR_VIEW_CHOICE;
   const list = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [listMaxPx, setListMaxPx] = useState(() => laptopPickerListMaxHeight(typeof window === 'undefined' ? 900 : window.innerHeight || 900));
+  useLayoutEffect(() => {
+    if (!open || phone) return undefined;
+    const measure = () => {
+      const panelRect = panel.current?.getBoundingClientRect();
+      const listRect = list.current?.getBoundingClientRect();
+      const statusRect = document.querySelector('[data-testid="reveal-status"]')?.getBoundingClientRect();
+      const viewH = typeof window === 'undefined' ? 900 : window.innerHeight || 900;
+      const measured =
+        panelRect && listRect && statusRect && panelRect.height > 0 && listRect.height >= 0 && statusRect.height > 0
+          ? {
+              panelBottomPx: panelRect.bottom,
+              panelChromePx: Math.max(0, panelRect.height - listRect.height),
+              statusBottomPx: statusRect.bottom,
+            }
+          : null;
+      const next = laptopPickerListMaxHeight(viewH, measured);
+      setListMaxPx((prev) => (prev === next ? prev : next));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [open, phone, craft]);
   // D35 item 3: the current row is scrolled into view when the panel opens
   useEffect(() => {
     if (!open) return;
@@ -148,8 +191,8 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
         overflowY: 'auto',
         overscrollBehavior: 'contain',
         minHeight: 0,
-        // D35 item 3: at most 470 px of list on the laptop; on the phone the sheet runs from top 150 to its foot
-        ...(phone ? { flex: '1 1 auto' } : { maxHeight: 470 }),
+        // D35 item 3: at most 470 px of list on the laptop, clamped below reveal-status; on the phone from top 150 to its foot
+        ...(phone ? { flex: '1 1 auto' } : { maxHeight: listMaxPx }),
         maskImage: LIST_FADE,
         WebkitMaskImage: LIST_FADE,
       }}
@@ -182,6 +225,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       )}
       {open && !phone && (
         <div
+          ref={panel}
           role="listbox"
           aria-label="Craft"
           data-testid="craft-picker-panel"
