@@ -16,7 +16,10 @@ Nothing stops a child but its caller, so a caller killed mid-call (a server's cr
 the call running on with no bound [tested: in platform-or's probe for the night batch, a child whose caller was
 killed with SIGKILL mid-call still ran 30 s later]. The child therefore watches its caller: once its parent is no
 longer the caller whose pid it was given (the system has adopted it), it ends its own group, and so every process it
-started (REQ-JOB-3.8).
+started (REQ-JOB-3.8). Before starting its first `spawn` child, the worker appends a warning filter on
+`multiprocessing.resource_tracker` to `PYTHONWARNINGS`, so when a killed child's process pool leaves POSIX semaphores
+for the resource tracker to unlink at shutdown, the tracker still unlinks them without writing its stdlib file path to
+the server log (REQ-JOB-9.1).
 """
 
 from __future__ import annotations
@@ -34,6 +37,23 @@ STOP_GRACE_SEC = 2.0
 POLL_SEC = 0.25
 # How often a child looks for its caller (REQ-JOB-3.8)
 PARENT_POLL_SEC = 0.5
+# Keeps resource_tracker's semaphore unlink silent when a child's pool is killed (REQ-JOB-9.1)
+RESOURCE_TRACKER_WARNING_FILTER = "ignore::UserWarning:multiprocessing.resource_tracker"
+
+
+def _quiet_resource_tracker() -> None:
+    """Append `RESOURCE_TRACKER_WARNING_FILTER` to `PYTHONWARNINGS` once, preserving earlier entries (REQ-JOB-9.1).
+
+    Python's resource tracker inherits `PYTHONWARNINGS` when the first `spawn` child starts and runs its semaphore
+    unlink loop regardless of warning filters; placing this filter last gives it highest priority in `warnings`.
+    """
+    entries = [item.strip() for item in os.environ.get("PYTHONWARNINGS", "").split(",") if item.strip()]
+    if RESOURCE_TRACKER_WARNING_FILTER not in entries:
+        entries.append(RESOURCE_TRACKER_WARNING_FILTER)
+        os.environ["PYTHONWARNINGS"] = ",".join(entries)
+
+
+_quiet_resource_tracker()
 
 
 class WorkerTimeout(Exception):
@@ -130,6 +150,7 @@ class BoundedWorker:
         if self._process is not None and self._conn is not None and self._process.is_alive():
             return self._process, self._conn
         self.close()
+        _quiet_resource_tracker()
         parent_conn, child_conn = self._context.Pipe(duplex=True)
         process = self._context.Process(target=_serve, args=(child_conn, os.getpid()), daemon=True)
         process.start()

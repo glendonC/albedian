@@ -93,6 +93,13 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
     0.5 s poll could kill the child's group (`design.md` 3.3); tests in `tests/science/test_bounded_worker.py`.
   - _Requirements: REQ-JOB-3.8, REQ-JOB-9.1_
 
+- [x] 10. platform-or3: guarded server-thread solve decodes and quiet resource-tracker cleanup (REQ-JOB-3.8, REQ-JOB-9.1)
+  - Found in `media-kill-audit`: server-thread `ffmpeg` and `ffprobe` calls in `services/ingest/jobs.py` ran outside
+    `BoundedWorker` and `guarded_call` so `SIGKILL` to uvicorn mid-decode left them running, and killing a child's
+    spawn pool caused `multiprocessing.resource_tracker` to log a `UserWarning` naming its stdlib file path while
+    unlinking semaphores (`design.md` 3.3, 3.4); tests in `tests/science/test_bounded_worker.py`.
+  - _Requirements: REQ-JOB-3.8, REQ-JOB-9.1_
+
 ## Not units of this lane
 - The web follows jobs (`apps/web/src/services/apiClient.ts`, the two calls of `design.md` 3.9), by the web's own
   lane, after task 5 [decided 2026-11-11].

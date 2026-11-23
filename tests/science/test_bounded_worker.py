@@ -598,3 +598,220 @@ def test_serve_leaves_cleanly_on_a_closed_pipe_and_never_signals_another_group(t
         leader.join(30.0)
         leader.kill()
         leader.join()
+
+
+# ---- platform-or3: resource_tracker warning suppression (Gap A) and guarded ingest decode calls (Gap B) ----
+
+DECODE_GUARD_BOUND_S = 10.0
+
+
+def _start_spawn_pool_then_sleep(seconds: float, report: Callable[..., None]) -> None:
+    from concurrent.futures import ProcessPoolExecutor
+
+    current = multiprocessing.current_process()
+    if current.daemon:
+        current.daemon = False
+    with ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        pool_worker = pool.submit(os.getpid).result(timeout=30.0)
+        report("pool", pool_worker, os.getpgid(0))
+        time.sleep(seconds)
+
+
+def _run_stand_in_pool_server(info_path: Path) -> None:
+    from multiprocessing import resource_tracker
+
+    os.environ["PYTHONWARNINGS"] = "default"
+    worker = BoundedWorker()
+
+    def record_ready(_tag: str, pool_worker: int, pgid: int) -> None:
+        tracker_pid = resource_tracker._resource_tracker._pid
+        tmp = info_path.with_suffix(".tmp")
+        tmp.write_text(f"{pool_worker} {pgid} {tracker_pid}", encoding="utf-8")
+        tmp.replace(info_path)
+
+    worker.call(
+        _start_spawn_pool_then_sleep,
+        (ORPHAN_CALL_S,),
+        timeout_s=2 * ORPHAN_CALL_S,
+        progress_kwarg="report",
+        on_event=record_ready,
+    )
+
+
+def test_a_killed_caller_whose_child_ran_a_spawn_pool_writes_no_resource_tracker_warning(tmp_path: Path) -> None:
+    """When a top-level server and its `BoundedWorker` child running a spawn pool are killed,
+    `multiprocessing.resource_tracker` unlinks the pool's semaphores without writing its stdlib file path to stderr
+    (platform-or3, REQ-JOB-9.1)."""
+    import sys
+
+    repo_root = Path(__file__).resolve().parents[2]
+    info_path = tmp_path / "ready.txt"
+    stderr_path = tmp_path / "stderr.log"
+    script = tmp_path / "stand_in_server.py"
+    script.write_text(
+        "from pathlib import Path\n"
+        "import sys\n"
+        "from tests.science.test_bounded_worker import _run_stand_in_pool_server\n"
+        "if __name__ == '__main__':\n"
+        "    _run_stand_in_pool_server(Path(sys.argv[1]))\n",
+        encoding="utf-8",
+    )
+    env = {**os.environ, "PYTHONWARNINGS": "default", "PYTHONPATH": str(repo_root)}
+    pgid = pool_worker = tracker_pid = None
+    with stderr_path.open("wb") as err_file:
+        caller = subprocess.Popen([sys.executable, str(script), str(info_path)], stdout=subprocess.DEVNULL, stderr=err_file, env=env)
+    try:
+        assert _wait_until(info_path.is_file, 60.0), "the stand-in server's pool call never started"
+        raw_pool, raw_pgid, raw_tracker = info_path.read_text(encoding="utf-8").split()
+        pool_worker, pgid = int(raw_pool), int(raw_pgid)
+        tracker_pid = int(raw_tracker)
+        os.kill(caller.pid, signal.SIGKILL)
+        caller.wait(timeout=30.0)
+        assert _wait_until(lambda: _group_is_gone(pgid), ORPHAN_BOUND_S), "the pool child's group runs on"
+        assert _wait_until(lambda: _pid_is_gone(pool_worker), ORPHAN_BOUND_S)
+        assert _wait_until(lambda: _pid_is_gone(tracker_pid), ORPHAN_BOUND_S)
+        assert stderr_path.read_text(encoding="utf-8", errors="replace") == ""
+    finally:
+        caller.kill()
+        caller.wait()
+        if pgid is not None and pgid != os.getpgid(0) and not _group_is_gone(pgid):
+            os.killpg(pgid, signal.SIGKILL)
+
+
+def test_quiet_resource_tracker_appends_its_filter_once_and_keeps_existing_entries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.science import bounded_worker
+
+    monkeypatch.delenv("PYTHONWARNINGS", raising=False)
+    bounded_worker._quiet_resource_tracker()
+    assert os.environ["PYTHONWARNINGS"] == bounded_worker.RESOURCE_TRACKER_WARNING_FILTER
+    monkeypatch.setenv("PYTHONWARNINGS", "default, once::DeprecationWarning ")
+    bounded_worker._quiet_resource_tracker()
+    bounded_worker._quiet_resource_tracker()
+    assert os.environ["PYTHONWARNINGS"] == (
+        f"default,once::DeprecationWarning,{bounded_worker.RESOURCE_TRACKER_WARNING_FILTER}"
+    )
+
+
+def _write_fake_decode_tools(bin_dir: Path, marker: Path, *, quick_ffprobe: bool) -> None:
+    import sys
+
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    sleeper = (
+        f"#!{sys.executable} -I\n"
+        "import os, pathlib, time\n"
+        f"pathlib.Path({str(marker)!r}).write_text(f'{{os.getpid()}} {{os.getpgrp()}}')\n"
+        f"time.sleep({ORPHAN_CALL_S})\n"
+    )
+    quick = (
+        f"#!{sys.executable} -I\n"
+        "import sys\n"
+        'sys.stdout.write(\'{"streams":[{"time_base":"1/30"}],"format":{"start_time":"0"},'
+        '"packets":[{"pts":0,"flags":"K__"}]}\')\n'
+    )
+    for name, body in (("ffmpeg", sleeper), ("ffprobe", quick if quick_ffprobe else sleeper)):
+        tool = bin_dir / name
+        tool.write_text(body, encoding="utf-8")
+        tool.chmod(0o755)
+
+
+def _server_running_ingest_decode(site: str, tmp_dir: Path) -> None:
+    from services.ingest import jobs as ingest_jobs
+
+    os.setpgid(0, 0)
+    bin_dir = tmp_dir / "bin"
+    os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+    dummy = tmp_dir / "input.bin"
+    dummy.write_bytes(b"\0" * 64)
+    if site == "video_decode":
+        ingest_jobs._decode_with_ffmpeg(dummy, 64, 64, 1)
+    elif site == "heif_probe":
+        ingest_jobs._heif_tile_grid(dummy, 64, 64)
+    elif site == "heif_tiles":
+        grid = {
+            "coded_width": 64,
+            "coded_height": 64,
+            "horizontal_offset": 0,
+            "vertical_offset": 0,
+            "subcomponents": [{"stream_index": 0, "tile_horizontal_offset": 0, "tile_vertical_offset": 0}],
+        }
+        ingest_jobs._decode_heif_tile_grid(dummy, grid, 64, 64)
+    elif site == "spread_probe":
+        ingest_jobs._frame_timestamps(dummy, time.monotonic() + 60.0)
+    elif site == "spread_decode":
+        ingest_jobs._decode_spread_frames(dummy, {"width": 64, "height": 64})
+
+
+@pytest.mark.parametrize("site", ["video_decode", "heif_probe", "heif_tiles", "spread_probe", "spread_decode"])
+def test_a_killed_server_running_an_ingest_decode_leaves_no_tool_running(tmp_path: Path, site: str) -> None:
+    """Every server-thread ffmpeg or ffprobe call in `services/ingest/jobs.py` runs under `guarded_call`, so killing
+    the server mid-decode ends the tool's group at once (platform-or3, REQ-JOB-3.8)."""
+    marker = tmp_path / "tool.pid"
+    _write_fake_decode_tools(tmp_path / "bin", marker, quick_ffprobe=(site == "spread_decode"))
+    context = multiprocessing.get_context("spawn")
+    server = context.Process(target=_server_running_ingest_decode, args=(site, tmp_path))
+    server.start()
+    tool_pid = tool_pgid = None
+    try:
+        assert _wait_until(marker.is_file, 30.0), f"{site} never started its decode tool"
+        assert _wait_until(lambda: len(marker.read_text(encoding="utf-8").split()) == 2, 5.0)
+        tool_pid, tool_pgid = (int(v) for v in marker.read_text(encoding="utf-8").split())
+        os.kill(server.pid, signal.SIGKILL)
+        server.join(30.0)
+        assert _wait_until(lambda: _pid_is_gone(tool_pid), DECODE_GUARD_BOUND_S), (
+            f"{site}'s decode tool runs on past its server"
+        )
+    finally:
+        server.kill()
+        server.join()
+        if tool_pgid is not None and tool_pgid != os.getpgid(0) and not _group_is_gone(tool_pgid):
+            try:
+                os.killpg(tool_pgid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        if tool_pid is not None and not _pid_is_gone(tool_pid):
+            try:
+                os.kill(tool_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def test_run_decoder_maps_guarded_call_ends_to_completed_process_timeout_missing_and_internal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.ingest import jobs as ingest_jobs
+    from services.media import guarded_call
+
+    def stub(end: guarded_call.End, stdout: bytes = b"", stderr: bytes = b"") -> None:
+        monkeypatch.setattr(
+            guarded_call, "run", lambda command, *, bound_sec: guarded_call.Finished(end, stdout, stderr)
+        )
+
+    stub(guarded_call.Exited(0), b"pgm", b"info")
+    ok = ingest_jobs._run_decoder(["ffmpeg", "-version"], timeout=15.0)
+    assert (ok.args, ok.returncode, ok.stdout, ok.stderr) == (["ffmpeg", "-version"], 0, b"pgm", b"info")
+
+    stub(guarded_call.Exited(2), b"", b"bad")
+    failed = ingest_jobs._run_decoder(["ffprobe"], timeout=15.0)
+    assert (failed.returncode, failed.stderr) == (2, b"bad")
+
+    stub(guarded_call.BoundPassed(guarded_call.Bound.CALL, 12.5))
+    with pytest.raises(subprocess.TimeoutExpired) as timed_out:
+        ingest_jobs._run_decoder(["ffmpeg"], timeout=12.5)
+    assert timed_out.value.timeout == 12.5
+
+    stub(guarded_call.NotStarted(guarded_call.NotStartedCause.NOT_FOUND))
+    with pytest.raises(FileNotFoundError):
+        ingest_jobs._run_decoder(["ffmpeg"], timeout=15.0)
+
+    for unexpected in (
+        guarded_call.NotStarted(guarded_call.NotStartedCause.NOT_RUNNABLE),
+        guarded_call.Signalled(9),
+        guarded_call.GuardNotStarted(),
+        guarded_call.Cut(by_caller=False),
+    ):
+        stub(unexpected)
+        with pytest.raises(ingest_jobs.SolveJobError) as refused:
+            ingest_jobs._run_decoder(["ffmpeg"], timeout=15.0)
+        assert str(refused.value) == ingest_jobs.UNEXPECTED_ERROR_REASON

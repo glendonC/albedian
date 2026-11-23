@@ -277,6 +277,10 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   pipe silently (no traceback or file path in the server log, REQ-JOB-9.1) and ends the group it leads in its
   `finally` block before returning, so no subprocess escapes before `_watch_parent`'s next 0.5 s poll (REQ-JOB-3.8,
   platform-or2) [tested].
+- Before starting its first `spawn` child, `BoundedWorker` appends `ignore::UserWarning:multiprocessing.resource_tracker`
+  to `PYTHONWARNINGS` (preserving earlier entries), so when a killed child's process pool (`FramePool` or
+  `ProcessPoolExecutor`) leaves POSIX semaphores for Python's resource tracker to unlink at shutdown, the tracker still
+  unlinks them without writing its stdlib file path to the server log (REQ-JOB-9.1, platform-or3) [tested].
 
 ### 3.4 The solve kind (`services/ingest/jobs.py`)
 - `solve_upload(ctx) -> KindResult`: today's body of `run_solve_job` from decode to `complete_sky` (:509-623), moved
@@ -327,6 +331,11 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   each written solution whole, every finding in order with its texts and numbers (floats within a stated tolerance);
   its place, moment and predicted sky compared with what the case sent; each stamp as the read of the test's own
   clock that made it.
+
+- As built in platform-or3 [tested]: every server-thread `ffmpeg` and `ffprobe` decode or packet-probe call in
+  `services/ingest/jobs.py` (`_decode_with_ffmpeg`, `_heif_tile_grid`, `_decode_heif_tile_grid`, `_frame_timestamps`
+  and `_decode_spread_frames`) runs through `_run_decoder` under `services/media/guarded_call.py` (`child_guard.py`),
+  so killing the server mid-decode closes the guard's watched pipe and ends the decoder's group at once (REQ-JOB-3.8).
 
 ### 3.5 The producer and stale solves (unit 10i) [decided 2026-11-11]
 - Each kind declares `producer = {name, revision}`: `albedian.solve_chain` with revision 1 in `jobs.py`, and the

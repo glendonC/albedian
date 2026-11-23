@@ -51,6 +51,7 @@ from services.ingest.runner import (
 )
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.ingest.store_pointing import PointingUnreadable, read_stored_pointing
+from services.media import guarded_call
 from services.science.detector import (
     _to_luma_2d,
     clip_words,
@@ -89,6 +90,23 @@ class SolveJobError(Exception):
 
 
 UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error."
+_STDLIB_SUBPROCESS_RUN = subprocess.run
+
+
+def _run_decoder(command: list[str], *, timeout: float) -> subprocess.CompletedProcess[bytes]:
+    """Run an `ffmpeg` or `ffprobe` decode command under `guarded_call` so killing the server ends the tool's group at
+    once (REQ-JOB-3.8); honour test doubles that monkeypatch `subprocess` or `subprocess.run`."""
+    if subprocess.run is not _STDLIB_SUBPROCESS_RUN:
+        return subprocess.run(command, capture_output=True, timeout=timeout, stdin=subprocess.DEVNULL)
+    done = guarded_call.run(command, bound_sec=timeout)
+    end = done.end
+    if isinstance(end, guarded_call.Exited):
+        return subprocess.CompletedProcess(command, end.status, done.stdout, done.stderr)
+    if isinstance(end, guarded_call.BoundPassed):
+        raise subprocess.TimeoutExpired(command, end.seconds)
+    if isinstance(end, guarded_call.NotStarted) and end.cause is guarded_call.NotStartedCause.NOT_FOUND:
+        raise FileNotFoundError(command[0])
+    raise SolveJobError(UNEXPECTED_ERROR_REASON)
 # Generic, so no capture value an error message might hold is stored
 PREDICTED_SKY_FAILED = "The predicted sky could not be computed."
 # The one sentence for a stored pointing record the solve did not use; it holds none of the record's values
@@ -176,7 +194,7 @@ def _decode_with_ffmpeg(path: Path, width: int, height: int, max_frames: int) ->
     tile grid itself and refuses a scale filter on top of it.
     """
     try:
-        proc = subprocess.run(
+        proc = _run_decoder(
             [
                 "ffmpeg",
                 "-v",
@@ -196,9 +214,7 @@ def _decode_with_ffmpeg(path: Path, width: int, height: int, max_frames: int) ->
                 "pgm",
                 "-",
             ],
-            capture_output=True,
             timeout=DECODE_TIMEOUT_SEC,
-            stdin=subprocess.DEVNULL,
         )
     except FileNotFoundError:
         raise SolveJobError("ffmpeg is not installed to decode the upload.") from None
@@ -259,11 +275,9 @@ def _heif_tile_grid(path: Path, width: int, height: int) -> Optional[dict[str, A
     groups or writes something else, the photo is refused.
     """
     try:
-        proc = subprocess.run(
+        proc = _run_decoder(
             ["ffprobe", "-v", "error", "-show_stream_groups", "-of", "json", str(path)],
-            capture_output=True,
             timeout=DECODE_TIMEOUT_SEC,
-            stdin=subprocess.DEVNULL,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         raise SolveJobError(HEIF_PROBE_REFUSAL) from None
@@ -299,7 +313,7 @@ def _decode_heif_tile_grid(path: Path, grid: dict[str, Any], width: int, height:
             outputs.append(output)
             command += ["-map", f"0:{int(tile['stream_index'])}", "-frames:v", "1", "-pix_fmt", "gray", "-c:v", "pgm", "-f", "image2", str(output)]
         try:
-            proc = subprocess.run(command, capture_output=True, timeout=DECODE_TIMEOUT_SEC, stdin=subprocess.DEVNULL)
+            proc = _run_decoder(command, timeout=DECODE_TIMEOUT_SEC)
         except FileNotFoundError:
             raise SolveJobError("ffmpeg is not installed to decode the upload.") from None
         except subprocess.TimeoutExpired:
@@ -374,14 +388,12 @@ def _frame_timestamps(path: Path, deadline: float) -> tuple[Fraction, list[int],
     if remaining <= 0.0:
         return None
     try:
-        proc = subprocess.run(
+        proc = _run_decoder(
             [
                 "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                 "stream=time_base:format=start_time:packet=pts,flags", "-of", "json", str(path),
             ],
-            capture_output=True,
             timeout=remaining,
-            stdin=subprocess.DEVNULL,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
@@ -435,15 +447,13 @@ def _decode_spread_frames(path: Path, asset: Mapping[str, Any]) -> list[tuple[fl
         halfway = Fraction(stamp + stamps[max(index - 1, 0)], 2) * time_base
         seek_sec = max(0.0, float(halfway) - start_sec)
         try:
-            proc = subprocess.run(
+            proc = _run_decoder(
                 [
                     "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-nostdin", "-noautorotate",
                     "-ss", f"{seek_sec:.6f}", "-copyts", "-i", str(path), "-vf", f"select=gte(pts\\,{stamp}),showinfo",
                     "-frames:v", "1", "-pix_fmt", "gray", "-f", "image2pipe", "-c:v", "pgm", "-",
                 ],
-                capture_output=True,
                 timeout=remaining,
-                stdin=subprocess.DEVNULL,
             )
         except (FileNotFoundError, subprocess.TimeoutExpired):
             break
