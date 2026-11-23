@@ -61,6 +61,8 @@ interface HangarFile {
  */
 export const STARDUST_ELEVATION_DEG = 45;
 export const NEAR_ELEVATION_DEG = 15;
+export const KEPLER_ELEVATION_DEG = 20;
+export const KEPLER_HEADING_DEG = 40;
 
 /**
  * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
@@ -116,6 +118,14 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   // as-2 (the 21 Nov 14:33 ruling), checked live on 22 Nov against NASA's render: the docked pair from its side, level,
   // Apollo's engine at the left and Soyuz at the right (+Z, its line of flight, along the screen's right), panels up
   apollosoyuz: { forward: [1, 0, 0], up: [0, 1, 0] },
+  // ky-2 (the 22 Nov 05:53 ruling), checked live against its picture: upright, the aperture (+Z) up the screen, its
+  // solar array's side (+Y) away from the camera as Spitzer's shield, turned about the aperture's axis so the white
+  // panel faces the front right as in NASA's render, and seen a little from above
+  kepler: seenFromAbove(
+    [Math.sin((KEPLER_HEADING_DEG * Math.PI) / 180), Math.cos((KEPLER_HEADING_DEG * Math.PI) / 180), 0],
+    [0, 0, 1],
+    KEPLER_ELEVATION_DEG,
+  ),
 };
 
 /**
