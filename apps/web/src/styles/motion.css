@@ -265,11 +265,20 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 2) both;
 }
 
-/* There, after Go there: Back to Moment (the ask bar's only main button, there and only there) arrives once the
-   camera is still, after both halves of the flight. It mounts with the there screen, as the second half begins
-   (isFlightShown), so the camera is still one half later. */
+/* There, after Go there: Back to Moment arrives once the camera is still, after both halves of the flight. It mounts
+   with the there screen, as the second half begins (isFlightShown), so the camera is still one half later. */
 .ask-bar > .look-main {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both;
+}
+
+/* On the predicted sky (D33) there is no camera flight: Back to Moment words in at the standard words-in delay, and on
+   the phone, where the bar itself mounts for Back to Moment alone, the bar takes that delay without doubling on the button */
+.predsky ~ .ask-bar > .look-main {
+  animation-delay: var(--look-mo-delay-words-in);
+}
+
+.predsky.is-phone ~ .ask-bar:not(.is-leaving) > .look-main {
+  animation: none;
 }
 
 /* The typing field words in as it opens, in the ask button's place (the buttons go as it comes: the place holds one);
@@ -388,6 +397,10 @@
 
 .ask-bar {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both;
+}
+
+.predsky.is-phone ~ .ask-bar {
+  animation-delay: var(--look-mo-delay-words-in);
 }
 
 /* The lock-on (D25; MOTION-READY-web.md section 6, decided by the lead 07:51): once the check passed, every early mark

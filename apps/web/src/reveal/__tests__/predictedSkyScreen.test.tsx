@@ -340,6 +340,87 @@ describe("the predicted sky's disclosure from its first frame (the lead's rule, 
     });
     expect(rules).toEqual({ animation: 'none' });
   });
+
+  it('words Back to Moment in at the words-in delay on laptop and phone instead of waiting a camera flight half or mark span', () => {
+    // Laptop DOM: .predsky precedes .ask-bar > .look-main as an earlier sibling
+    renderViewport(predictedSky());
+    const laptopScreen = q('[data-testid="predicted-sky"]')!;
+    const laptopBar = q('[data-testid="ask-bar"]')!;
+    const laptopBack = q('.ask-bar > .look-main')!;
+    expect(laptopBack.textContent).toBe('Back to Moment');
+    expect(laptopScreen.parentElement).toBe(laptopBar.parentElement);
+    expect(laptopBack.matches('.predsky ~ .ask-bar > .look-main')).toBe(true);
+    expect(laptopBack.matches('.predsky.is-phone ~ .ask-bar:not(.is-leaving) > .look-main')).toBe(false);
+
+    // Phone DOM: .predsky.is-phone precedes .ask-bar.is-phone > .look-main
+    act(() => root.unmount());
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    try {
+      renderViewport(predictedSky());
+      const phoneBar = q('[data-testid="ask-bar"]')!;
+      const phoneBack = q('.ask-bar > .look-main')!;
+      expect(phoneBar.matches('.predsky.is-phone ~ .ask-bar')).toBe(true);
+      expect(phoneBack.matches('.predsky.is-phone ~ .ask-bar:not(.is-leaving) > .look-main')).toBe(true);
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+
+    // Calibrated flight (There): no .predsky is in the tree, so Back to Moment keeps its camera-half delay
+    act(() => root.unmount());
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const base = createSyntheticCalibratedSession();
+    const star = base.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    const thereSession = {
+      ...base,
+      selectedFindingId: star.id,
+      machines: { ...base.machines, navigation: 'space', exploration: 'space_3d' },
+      spatialView: { ...base.spatialView, mode: 'catalog_3d', transitionPhase: 'at_space' },
+    } as ObservationSession;
+    (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    const ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    try {
+      renderViewport(thereSession);
+      const flightBack = q('.ask-bar > .look-main')!;
+      expect(flightBack.textContent).toBe('Back to Moment');
+      expect(flightBack.matches('.predsky ~ .ask-bar > .look-main')).toBe(false);
+    } finally {
+      ctxSpy.mockRestore();
+      delete (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
+
+    // Cascade and order in motion.css
+    const motion = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
+    const seen: Array<{ sel: string; decls: Record<string, string> }> = [];
+    postcss.parse(motion).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const decls: Record<string, string> = {};
+      rule.walkDecls((d) => {
+        decls[d.prop] = d.value.replace(/\s+/g, ' ');
+      });
+      for (const part of rule.selectors) seen.push({ sel: part.replace(/\s+/g, ' ').trim(), decls });
+    });
+    const idx = (sel: string) => seen.findIndex((r) => r.sel === sel);
+    const declsOf = (sel: string) => seen.filter((r) => r.sel === sel).map((r) => r.decls);
+
+    expect(idx('.ask-bar > .look-main')).toBeGreaterThanOrEqual(0);
+    expect(idx('.predsky ~ .ask-bar > .look-main')).toBeGreaterThan(idx('.ask-bar > .look-main'));
+    expect(idx('.ask-bar.is-leaving > .look-main')).toBeGreaterThan(idx('.predsky ~ .ask-bar > .look-main'));
+    expect(declsOf('.predsky ~ .ask-bar > .look-main')).toEqual([{ 'animation-delay': 'var(--look-mo-delay-words-in)' }]);
+
+    expect(idx('.ask-bar')).toBeGreaterThanOrEqual(0);
+    expect(idx('.predsky.is-phone ~ .ask-bar')).toBeGreaterThan(idx('.ask-bar'));
+    expect(declsOf('.predsky.is-phone ~ .ask-bar')).toEqual([{ 'animation-delay': 'var(--look-mo-delay-words-in)' }]);
+
+    expect(idx('.predsky.is-phone ~ .ask-bar:not(.is-leaving) > .look-main')).toBeGreaterThan(idx('.predsky ~ .ask-bar > .look-main'));
+    expect(declsOf('.predsky.is-phone ~ .ask-bar:not(.is-leaving) > .look-main')).toEqual([{ animation: 'none' }]);
+  });
 });
 
 describe("the predicted sky's rules are the record's", () => {
