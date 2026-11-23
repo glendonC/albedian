@@ -468,3 +468,36 @@ def test_every_answer_that_names_the_recording_names_it_by_its_own_noun(noun: st
     finding = next(f for f in faint["findings"] if f["id"] == "finding-obs-12")
     short, _ = answers._sentence("brightness", bright["statements"], "P" * contract.ANSWER_SENTENCE_MAX_UTF16, finding, noun=noun)
     assert short == f"It stands 1 time above the {noun}'s noise."
+
+
+# ---- voice-constellation-1: spoken full Latin constellation names over stored 3-letter and Serpens codes ----
+
+
+def test_every_iau_code_serpens_half_and_latin_name_is_spoken_as_its_full_latin_name() -> None:
+    from services.contracts.designation_tables import DESIGNATION_CONSTELLATIONS
+
+    cases = [
+        *[(abbr, latin) for abbr, latin, _genitive in DESIGNATION_CONSTELLATIONS],
+        *[(latin, latin) for _abbr, latin, _genitive in DESIGNATION_CONSTELLATIONS],
+        ("Se1", "Serpens"),
+        ("Se2", "Serpens"),
+    ]
+    for stored, latin in cases:
+        matched = with_finding(RIGEL, ["catalogRef", "constellation"], stored)
+        answer = ask("what constellation is it in", RIGEL, matched)
+        assert answer["sentence"] == f"Rigel is in {latin}.", (stored, answer)
+        assert [s["value"]["text"] for s in answer["statements"]] == [stored]
+
+        long_name = with_finding(RIGEL, ["catalogRef", "commonName"], "S" * 80, matched)
+        short = ask("what constellation is it in", RIGEL, long_name)
+        assert short["sentence"] == f"It is in {latin}.", (stored, short)
+        assert [s["value"]["text"] for s in short["statements"]] == [stored]
+
+    horizon = SOLUTIONS["horizon_approximate"]
+    nunki = ask("what constellation is it in", "finding-predicted-hip-92855", horizon)
+    assert nunki["sentence"] == "Predicted, not measured: Nunki is in Sagittarius."
+    assert [s["value"]["text"] for s in nunki["statements"]] == ["Sgr"]
+
+    too_long_constellation = with_finding(RIGEL, ["catalogRef", "constellation"], "C" * 90)
+    fallback = ask("what constellation is it in", RIGEL, too_long_constellation)
+    assert fallback["sentence"] == "Its constellation is in the catalog."

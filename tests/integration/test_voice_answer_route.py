@@ -358,3 +358,25 @@ def test_a_stored_clip_is_answered_as_a_clip(tmp_path: Path, client: TestClient)
     assert answer["sentence"] == "This clip's sky has not been worked out, so nothing in it can be answered."
     _store_solution(clip, "plate_calibrated")
     assert _ask(client, "how far is Vega?")["sentence"] == "No finding in this clip is named Vega."
+
+
+def test_the_route_speaks_full_constellation_names_for_iau_and_serpens_codes_while_stating_stored_codes(
+    client: TestClient, store: IngestStore
+) -> None:
+    import copy
+
+    horizon = _store_solution(store, "horizon_approximate")
+    nunki = _ask(client, "what constellation is it in", "finding-predicted-hip-92855")
+    assert nunki["sentence"] == "Predicted, not measured: Nunki is in Sagittarius."
+    _values(nunki, horizon)
+
+    for code, common in (("Cru", "Acrux"), ("Se1", "Messier 5"), ("Se2", "Eagle Nebula")):
+        sky = {**copy.deepcopy(SOLUTIONS["plate_calibrated"]), "sourceSha256": SHA, "sourceAssetId": f"src_{SHA[:16]}"}
+        finding = next(f for f in sky["findings"] if f["id"] == "finding-star-rigel")
+        finding["catalogRef"]["commonName"] = common
+        finding["catalogRef"]["constellation"] = code
+        (store.folder(SHA) / "solution.json").write_text(json.dumps(sky), encoding="utf-8")
+        answer = _ask(client, "what constellation is it in", "finding-star-rigel")
+        expected_constellation = "Crux" if code == "Cru" else "Serpens"
+        assert answer["sentence"] == f"{common} is in {expected_constellation}."
+        _values(answer, sky)

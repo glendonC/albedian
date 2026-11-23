@@ -22,6 +22,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from services.contracts import voice as contract
+from services.contracts.designation_tables import DESIGNATION_CONSTELLATIONS
 from services.contracts.voice import lower_case
 from services.science import radiometry
 from services.voice import intent
@@ -116,6 +117,19 @@ SENTENCE_TOO_LONG = "That value is too long to say in one sentence."
 # The recording's own noun in every sentence that names it: "clip" for a video, "photo" for a still (C34, ruled 21 Nov
 # 14:40 in .lead/uiux/UIUX-voiceyet2-READY.md; "clip" is the decided noun of C14, C16, C25 and D33)
 NOUNS = ("photo", "clip")
+# Every 3-letter IAU code and OpenNGC's two Serpens halves ("Se1" Serpens Caput, "Se2" Serpens Cauda) mapped to the
+# constellation's full Latin name for spoken sentences; a stored full Latin name stays as it is
+CONSTELLATION_NAMES: dict[str, str] = {
+    **{abbr: latin for abbr, latin, _genitive in DESIGNATION_CONSTELLATIONS},
+    "Se1": "Serpens",
+    "Se2": "Serpens",
+}
+
+
+def constellation_name(stored: str) -> str:
+    """The full Latin constellation name for a stored 3-letter IAU code, OpenNGC's 'Se1'/'Se2' ('Serpens'), or a stored
+    full Latin name."""
+    return CONSTELLATION_NAMES.get(stored, stored)
 
 
 def noun_of(media_kind: str | None) -> str:
@@ -325,8 +339,9 @@ def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: d
         return fitted(["spectral_type"], f"{name} is of spectral type {by['spectral_type']['text']}.",
                       "Its spectral type is in the catalog.")
     if kind == "constellation":
-        return fitted(["constellation"], f"{name} is in {by['constellation']['text']}.",
-                      f"It is in {by['constellation']['text']}.", "Its constellation is in the catalog.")
+        where = constellation_name(by["constellation"]["text"])
+        return fitted(["constellation"], f"{name} is in {where}.",
+                      f"It is in {where}.", "Its constellation is in the catalog.")
     if kind == "sky_position":
         if "altitude" in by and "azimuth" in by:
             up, around = f"{number('altitude'):.1f}", f"{number('azimuth'):.1f}"
