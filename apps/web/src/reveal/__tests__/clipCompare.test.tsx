@@ -72,7 +72,7 @@ describe('the restored clip compared (D34)', () => {
   it("sets the clip's labels 18 px down at the window's middle band", () => {
     const rules: Record<string, Record<string, string>> = {};
     postcss.parse(css).walkRules((rule) => {
-      if (!rule.selector.startsWith('.restore-compare.is-clip')) return;
+      if (!rule.selector.startsWith('.restore-compare.is-clip ')) return;
       rules[rule.selector.replace(/\s+/g, ' ')] = Object.fromEntries((rule.nodes ?? []).map((d) => [(d as postcss.Declaration).prop, (d as postcss.Declaration).value]));
     });
     expect(rules).toEqual({

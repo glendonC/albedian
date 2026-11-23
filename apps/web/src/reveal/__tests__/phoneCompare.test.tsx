@@ -168,13 +168,12 @@ describe('a ready restoration at phone width (D10 item 5)', () => {
     expect(q('[data-testid="restore-compare"]')).toBeNull();
   });
 
-  it("keeps a clip's phone compare for D16's phone player: no compare and no read on a clip", async () => {
+  it("reads a clip's ready restorations and renders D34's phone clip compare (d34phone-1)", async () => {
     const fetched = answer([NEWER]);
     const clip = slotted(poseSession(sample('plate_calibrated'), 'video'));
     await showPhone({ session: clip });
-    expect(q('[data-testid="restore-compare"]')).toBeNull();
-    expect(fetched.mock.calls.map(([url]) => String(url)).filter((url) => url.endsWith('/variants'))).toEqual([]);
-    expect(clip.sourceAsset!.mediaKind).toBe('video');
+    expect(q('[data-testid="restore-compare"]')!.className).toBe('restore-compare is-clip is-phone');
+    expect(fetched.mock.calls.map(([url]) => String(url)).filter((url) => url.endsWith('/variants')).length).toBeGreaterThan(0);
   });
 
   it('leaves the foot to a picked star, whose card covers it', async () => {

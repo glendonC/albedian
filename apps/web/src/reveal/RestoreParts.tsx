@@ -273,7 +273,8 @@ export const RestoreCompare: React.FC<{
     ...(fade ? { maskImage: fade, WebkitMaskImage: fade } : {}),
   } as React.CSSProperties;
   const style = { ...boxStyle, '--split': `${split}%` } as React.CSSProperties;
-  const modifiers = `${clip ? ' is-clip' : ''}${slot ? ' is-phone' : ''}`;
+  const compareClasses = ['restore-compare', clip && 'is-clip', slot && 'is-phone', drag && 'is-drag'].filter(Boolean).join(' ');
+  const labelHostClasses = ['restore-compare is-labels', clip && 'is-clip', slot && 'is-phone'].filter(Boolean).join(' ');
   const labels = (
     <>
       <SecondAction part="restore-compare__label is-left" label="Original" onClick={label(100)} />
@@ -283,7 +284,7 @@ export const RestoreCompare: React.FC<{
   return (
     <div
       ref={box}
-      className={`restore-compare${modifiers}${drag ? ' is-drag' : ''}`}
+      className={compareClasses}
       data-testid="restore-compare"
       data-hud-interactive="true"
       style={style}
@@ -342,7 +343,7 @@ export const RestoreCompare: React.FC<{
       {labelHost === null
         ? labels
         : createPortal(
-            <div className={`restore-compare is-labels ${clip ? 'is-clip ' : ''}${slot ? 'is-phone' : ''}`.trim()} data-hud-interactive="true" style={boxStyle}>
+            <div className={labelHostClasses} data-hud-interactive="true" style={boxStyle}>
               {labels}
             </div>,
             labelHost
@@ -352,12 +353,13 @@ export const RestoreCompare: React.FC<{
 };
 
 /**
- * D10 item 5 at phone width (UIUX-restoration-READY.md; rsp-cmp): under the compare the fixed sentence of REQ-RST-9.3,
- * verbatim, with the info icon, and Download compact where Ask out loud sits, saving the restoration shown.
+ * D10 item 5 and D34 at phone width (UIUX-restoration-READY.md; rsp-cmp; crp-cmp): under the compare (or at top 604 px
+ * above D16's player on a clip) the fixed sentence of REQ-RST-9.3, verbatim, with the info icon, and Download compact
+ * where Ask out loud sits, saving the restoration shown.
  */
-export const RestorePhoneFoot: React.FC<{ onDownload: () => void }> = ({ onDownload }) => (
+export const RestorePhoneFoot: React.FC<{ onDownload: () => void; clip?: boolean }> = ({ onDownload, clip = false }) => (
   <>
-    <p className="restore-phone-note">
+    <p className={clip ? 'restore-phone-note is-clip' : 'restore-phone-note'}>
       <LookIcon name="info" />
       <span>{DISCLOSURES.restoration}</span>
     </p>
@@ -368,12 +370,16 @@ export const RestorePhoneFoot: React.FC<{ onDownload: () => void }> = ({ onDownl
 );
 
 /**
- * D38 item 2 at phone width (UIUX-restorephone-READY.md, decided by the lead 13:32): while the restoration works, D2's
- * phone row in the counts' place with the step the job is on in D10's words (a still has nothing to count, so the
- * time passed stands in the count's place, C19, and no bar), or "Queued" and the jobs ahead; Cancel where Ask out loud
- * sat, held pressed from the press (or the record's cancel time) until the job stops, as on the laptop.
+ * D38 items 2 and 3 at phone width (UIUX-restorephone-READY.md, UIUX-clipphone-READY.md section 4; rp-clip): while the
+ * restoration works, D2's phone row in the counts' place (or at top 590 px above D16's player on a clip) with the step
+ * the job is on in D10's words, or "Queued" and the jobs ahead; Cancel where Ask out loud sat, held pressed from the
+ * press (or the record's cancel time) until the job stops, as on the laptop.
  */
-export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promise<unknown> | void }> = ({ job, onCancel }) => {
+export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promise<unknown> | void; clip?: boolean }> = ({
+  job,
+  onCancel,
+  clip = false,
+}) => {
   const rows = useElapsedRows(restorationRows(job), job.id);
   const now = rows.find((row) => row.state === 'now') ?? null;
   const [asked, setAsked] = useState(false);
@@ -391,7 +397,7 @@ export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promis
   };
   const ahead = job.queueAhead ?? 0;
   return (
-    <div className="restore-phone-wait">
+    <div className={clip ? 'restore-phone-wait is-clip' : 'restore-phone-wait'}>
       {job.state === 'queued' ? (
         <div className="work-phone-row">
           <b>
@@ -418,11 +424,10 @@ export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promis
 };
 
 /**
- * D38 item 5 with the ruling of 15:43 on 21 Nov (UIUX-restorephone-READY.md, last section): a stopped restoration at
- * phone width in D37's layout with D21's sentences: the sentence (and under a refusal "Your photo is unchanged.") in one
- * block rising from 14 px above the row over the photo's darkened lower edge, the step it stopped at with A1's x in
- * D2's row at 668, and Try again alone at 772 when the same work may start again; a refusal has no button, so Ask out
- * loud comes back there.
+ * D38 item 5 with the rulings of 15:43, 16:19 and UIUX-clipphone-READY.md section 4: a stopped restoration at phone
+ * width in D37's layout with D21's sentences: the sentence (and under a refusal "Your photo is unchanged." or "Your
+ * clip is unchanged.") in one block rising from 14 px above the row (at 668 on a photo, 590 on a clip), the step it
+ * stopped at with A1's x in D2's row, and Try again alone at 772 when the same work may start again.
  */
 export const RestorePhoneStopped: React.FC<{
   job: UploadJob | null;
@@ -432,11 +437,12 @@ export const RestorePhoneStopped: React.FC<{
   onTryAgain: () => void;
   /** At the block's head, while predicted marks stay drawn: their tag (and an estimate's pose sentence), item A's. */
   lead?: React.ReactNode;
-}> = ({ job, sentence, subline, canTryAgain, onTryAgain, lead = null }) => {
+  clip?: boolean;
+}> = ({ job, sentence, subline, canTryAgain, onTryAgain, lead = null, clip = false }) => {
   const stopped = job ? (restorationRows(job).find((row) => row.state === 'failed') ?? null) : null;
   return (
-    <div className="restore-phone-stopped">
-      <span className="work-phone-fade" aria-hidden="true" />
+    <div className={clip ? 'restore-phone-stopped is-clip' : 'restore-phone-stopped'}>
+      {!clip && <span className="work-phone-fade" aria-hidden="true" />}
       <div className="restore-phone-why" role="alert">
         {lead !== null && <div className="restore-phone-why__lead">{lead}</div>}
         {sentence !== null && <p className="restore-phone-why__s">{sentence}</p>}

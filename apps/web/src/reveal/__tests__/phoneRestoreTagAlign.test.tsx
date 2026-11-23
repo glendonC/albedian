@@ -103,14 +103,37 @@ describe('the Predicted tag over a refused line-up\'s kept rings through a phone
     expect(lead.compareDocumentPosition(q('.restore-phone-wait .work-phone-row')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("heads a refusal's own block with them, the reason and the photo unchanged under", async () => {
-    await showPhone({ restoration: { phase: 'stopped', job: REFUSED, sentence: REASON, subline: UNCHANGED, canTryAgain: false } });
+  it("heads a refusal's own block with them, the reason and the photo unchanged under, and brings Line it up again back at 772 with or without predictedSky", async () => {
+    await showPhone({ onSolveFromHere: () => {}, restoration: { phase: 'stopped', job: REFUSED, sentence: REASON, subline: UNCHANGED, canTryAgain: false } });
     expect(q('[data-testid="early-marks"]')).not.toBeNull();
     const why = q('.restore-phone-why')!;
     const lead = why.querySelector('.restore-phone-why__lead')!;
     expect(why.firstElementChild).toBe(lead);
     expect(leadOf(lead)).toEqual([TAG, ['reveal-phone-estimate__source', EARLY_SOURCE_WORDS.alignment]]);
     expect([...why.querySelectorAll(':scope > p')].map((p) => p.textContent)).toEqual([REASON, 'Your photo is unchanged.']);
+    const again = q('.restore-phone-go button') as HTMLButtonElement;
+    expect(again.textContent).toBe('Line it up again');
+    expect(again.className).toContain('look-main');
+    expect(again.className).toContain('look-size-phone');
+
+    // Also on a record-lent photo whose file has no capture time or place (!status.predictedSky)
+    const bare = unmatched();
+    const withoutTimeOrPlace = {
+      ...bare,
+      sourceAsset: { ...bare.sourceAsset!, capturedAtUTC: undefined, observerLocation: undefined },
+      observationSolution: { ...bare.observationSolution!, status: 'failed', poseEstimate: undefined },
+    } as unknown as ObservationSession;
+    await showPhone({
+      session: withoutTimeOrPlace,
+      alignedFrom: { sha256: withoutTimeOrPlace.sourceAsset!.sha256, pose: KEPT, from: { kind: 'brightest', name: 'Fomalhaut' } },
+      onSolveFromHere: () => {},
+      restoration: { phase: 'stopped', job: REFUSED, sentence: REASON, subline: UNCHANGED, canTryAgain: false },
+    });
+    const bareAgain = q('.restore-phone-go button') as HTMLButtonElement;
+    expect(bareAgain.textContent).toBe('Line it up again');
+    act(() => bareAgain.click());
+    expect(q('.restore-phone-stopped')).toBeNull();
+    expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Solve from here')).toBe(true);
   });
 
   it('draws no source line of the alignment without its kept rings', async () => {

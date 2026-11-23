@@ -132,12 +132,12 @@ describe('a stopped restoration at phone width (D38 item 5)', () => {
     expect(q('.restore-phone-why p')!.textContent).toBe(FAILURE);
   });
 
-  it('shows nothing of it over Real sky or on a clip', async () => {
+  it('shows nothing of it over Real sky, and renders .restore-phone-stopped.is-clip on a clip (d34phone-1)', async () => {
     const stopped = { phase: 'stopped', job: FAILED, sentence: FAILURE, subline: null, canTryAgain: true };
     await showPhone({ restoration: stopped, realSky: true });
     expect(q('.restore-phone-stopped')).toBeNull();
     await showPhone({ restoration: stopped, session: slotted(poseSession(sample('plate_calibrated'), 'video')) });
-    expect(q('.restore-phone-stopped')).toBeNull();
+    expect(q('.restore-phone-stopped')!.className).toBe('restore-phone-stopped is-clip');
   });
 
   it("sets the block as D37's, its two lines 10 px apart as the laptop's refusal", () => {

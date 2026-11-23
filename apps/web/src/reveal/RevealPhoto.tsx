@@ -450,9 +450,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const restoring = overPhoto && (restoration?.phase === 'working' || restoration?.phase === 'stopped');
   // Original pixels shows the photo bare, the compare too (D15)
   const compareShown = overPhoto && restoration?.phase === 'done' && !originalPixels;
-  // D10 item 5 at phone width (the lead's 13:17 answer, D38 item 4): a photo that already has a ready restoration shows
-  // the compare in the slot, the fixed sentence under it and Download where Ask out loud sits. A clip's waits for
-  // D16's phone player, which is not built
+  // D10 item 5 and D34 at phone width (UIUX-clipphone-READY.md section 4): a photo or clip that already has a ready
+  // restoration (or has just finished one) shows the compare in the slot, the fixed sentence, and Download at 772
   const phoneClip = phone && session.sourceAsset?.mediaKind === 'video';
   const phoneMedia = phone && session.sourceAsset !== undefined;
   const estimateRef = useRef<HTMLDivElement>(null);
@@ -466,22 +465,30 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     const nextFoot = estBox && estBox.height > 0 ? viewH - estBox.top + 16 : viewH - (PHONE_SLOT.topPx + PHONE_SLOT.heightPx);
     if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
   });
-  const phonePhoto = phoneMedia && !phoneClip;
   const [versions, setVersions] = useState<StoredRestoration[]>([]);
-  const phoneCompare = phonePhoto && !there && !skyShown && !originalPixels && !bareFrame && frame !== null && versions.length > 0;
+  const phoneCompare =
+    phoneMedia && !there && !skyShown && !originalPixels && !bareFrame && frame !== null && (versions.length > 0 || restoration?.phase === 'done');
   const compareOn = compareShown || phoneCompare;
   // UIUX-restorephone-READY.md, ruled 15:38 and decided by the lead 15:43 on 21 Nov (D15's pictures): over the
   // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
   // compare is not on screen, so no predicted layer stands without its tag
   const drawnMarks = compareOn ? marks.filter((mark) => mark.kind !== 'predicted') : marks;
-  // D38 (UIUX-restorephone-READY.md, decided by the lead 13:32): on a matched phone photo or clip, Restore 16 px under
-  // Ask out loud, reached by scrolling the whole screen under the fixed top bar; while it works, D2's phone row in the
-  // counts' place and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
+  // Line it up yourself (D24), on the laptop's no-match reveal and at phone width alike, over the photo or clip itself
+  const alignStart = useMemo(() => startPose(session), [session]);
+  const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
+  const [aligningState, setAligning] = useState<{ pose: AlignPose; from: AlignStart } | null>(null);
+  const alignAllowed = !there && !skyShown && !compareOn && status.kind === 'unmatched' && frame !== null && !bareFrame;
+  const kept = alignedFrom && session.sourceAsset && alignedFrom.sha256 === session.sourceAsset.sha256 ? alignedFrom : null;
+  const aligning = alignAllowed ? aligningState : null;
+  const keptRefused = kept && kept.refusal === undefined && alignAllowed && !aligning ? kept : null;
+  // D38 (UIUX-restorephone-READY.md, UIUX-clipphone-READY.md section 4): on a matched phone photo or clip, Restore 16 px
+  // under Ask out loud, reached by scrolling the whole screen under the fixed top bar; while it works, D2's phone row
+  // and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
   const phoneRestoreOffered =
     phoneMedia && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
-  const phoneRestoring = phonePhoto && !there && !skyShown && restoration?.phase === 'working';
+  const phoneRestoring = phoneMedia && !there && !skyShown && restoration?.phase === 'working';
   // D38 item 5 (ruled 15:43): stopped, in D37's layout with D21's sentences; only Try again holds the foot (a refusal frees it)
-  const phoneStopped = phonePhoto && !there && !skyShown && restoration?.phase === 'stopped';
+  const phoneStopped = phoneMedia && !there && !skyShown && !aligning && restoration?.phase === 'stopped';
   // D38's no-match rule: on the phone's no-match screen and its refused alignment, Restore under the screen's own
   // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused, UIUX-clipphone-READY.md section 3)
   const phoneNoMatchRestore =
@@ -517,17 +524,6 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     if (!compareShown) setCompareZoomed(false);
   }, [compareShown]);
-  // Line it up yourself (D24), on the laptop's no-match reveal over the photo: from the start the file gives, until
-  // Cancel or Esc, which keep nothing
-  const alignStart = useMemo(() => startPose(session), [session]);
-  const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
-  const [aligningState, setAligning] = useState<{ pose: AlignPose; from: AlignStart } | null>(null);
-  // On the laptop and at phone width alike (alp-align), over the photo itself
-  const alignAllowed = !there && !skyShown && !compareOn && status.kind === 'unmatched' && frame !== null && !bareFrame;
-  // The alignment the last Solve from here was sent from, for this upload only
-  const kept = alignedFrom && session.sourceAsset && alignedFrom.sha256 === session.sourceAsset.sha256 ? alignedFrom : null;
-  const aligning = alignAllowed ? aligningState : null;
-  const keptRefused = kept && kept.refusal === undefined && alignAllowed && !aligning ? kept : null;
   // C15 (UIUX-alignwords-READY.md, ruled 17:46): refused outright for an upload with no capture time or place, the
   // route's sentence in the refusal line's place, the marks gone, only Restore (it needs neither). No Try again
   const keptRefusal = kept?.refusal !== undefined && !phone && status.kind === 'unmatched' && !aligning && !compareShown ? kept.refusal : null;
@@ -558,14 +554,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const asset = session.sourceAsset;
   // Download (D10, D22), 18 px under the fixed sentence on a ready restoration: the export route's one zip, handed to the
   // browser's own download
-  // D36: the photo's ready restorations, read once its restoration is done; the compare shows the newest, or the row
-  // pressed until the compare is left; Download saves the one shown
+  // D36: the photo's or clip's ready restorations, read once its restoration is done; the compare shows the newest, or
+  // the row pressed until the compare is left; Download saves the one shown
   const doneVariant = restoration?.phase === 'done' ? restoration.job.variantId : undefined;
   const [pickedVersion, setPickedVersion] = useState<string | null>(null);
   useEffect(() => {
     setVersions([]);
-    // On the phone a photo's stored restorations are read at once (D10 item 5 there)
-    if ((doneVariant === undefined && !phonePhoto) || !asset) return undefined;
+    // On the phone a photo's or clip's stored restorations are read at once (D10 item 5, D34)
+    if ((doneVariant === undefined && !phoneMedia) || !asset) return undefined;
     let live = true;
     readRestorations(asset.sha256)
       .then((list) => {
@@ -575,12 +571,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     return () => {
       live = false;
     };
-  }, [doneVariant, phonePhoto, asset?.sha256]);
+  }, [doneVariant, phoneMedia, asset?.sha256]);
   useEffect(() => {
     if (!compareOn) setPickedVersion(null);
   }, [compareOn]);
   const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
+  const phoneCompareSrc =
+    shownVersion && asset ? variantFileUrl(asset.sha256, shownVersion.id) : restoration?.phase === 'done' ? restoration.variantUrl : null;
+  const phoneCompareOrientation =
+    shownVersion ? shownVersion.orientation : restoration?.phase === 'done' ? restoration.orientation : undefined;
   const ready = compareShown && restoration?.phase === 'done' ? shownVersionId : undefined;
   const versionsList =
     ready !== undefined && versions.length >= 2 ? <RestoreVersions versions={versions} shownId={ready} onShow={setPickedVersion} /> : null;
@@ -939,15 +939,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {/* The phone's compare (D10 item 5) in the slot, the pictures where the stage draws the photo; no zoom is drawn
-          for the phone, and the marks stay over it (D15) */}
-      {phoneCompare && frame && asset && shownVersion && (
+      {/* The phone's compare (D10 item 5, D34) in the slot, the pictures where the stage draws the photo or clip; no zoom
+          is drawn for the phone, and only matched marks stay over it (D15) */}
+      {phoneCompare && frame && asset && phoneCompareSrc !== null && (
         <RestoreCompare
           rect={frame}
           slot={phoneSlotRect(frame, viewW)}
-          src={variantFileUrl(asset.sha256, shownVersion.id)}
+          src={phoneCompareSrc}
           originalSrc={asset.uri}
-          orientation={shownVersion.orientation}
+          orientation={phoneCompareOrientation}
+          clipParent={asset.mediaKind === 'video' ? clipVideo : undefined}
           labelHost={compareLabelHost}
         />
       )}
@@ -1135,8 +1136,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* D38 at phone width: while the restoration works, its lead (item A's tag) over the step and Cancel; once it stops,
           the stop's own block. Drawn before the card, so a picked star's sheet rises over them, the lead's tag drawn
           until the sheet covers it (item D), as the sheet covers Ask out loud */}
-      {phoneRestoring && phoneRestoreLead !== null && <div className="restore-phone-lead">{phoneRestoreLead}</div>}
-      {phoneRestoring && restoration?.phase === 'working' && <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} />}
+      {phoneRestoring && phoneRestoreLead !== null && (
+        <div className={phoneClip ? 'restore-phone-lead is-clip' : 'restore-phone-lead'}>{phoneRestoreLead}</div>
+      )}
+      {phoneRestoring && restoration?.phase === 'working' && (
+        <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} clip={phoneClip} />
+      )}
       {phoneStopped && restoration?.phase === 'stopped' && (
         <RestorePhoneStopped
           job={restoration.job}
@@ -1145,14 +1150,18 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           canTryAgain={restoration.canTryAgain}
           onTryAgain={() => onRestore?.()}
           lead={phoneRestoreLead}
+          clip={phoneClip}
         />
       )}
-      {/* After a refusal on a phone no-match photo, the no-match screen's own main action comes back at 772, as Ask out
-          loud comes back on the reveal (DECIDED-BY-LEAD 05:02 on 22 Nov, on UIUX's proposal); the stop's sentence and
-          "Your photo is unchanged." stand above it */}
-      {phoneStopped && restoration?.phase === 'stopped' && !restoration.canTryAgain && status.kind === 'unmatched' && status.predictedSky && (
+      {/* After a refusal on a phone no-match photo or clip, the screen's own main action comes back at 772 (Show predicted
+          sky, or Line it up again over a kept refused alignment: DECIDED-BY-LEAD 05:02, UIUX-clipphone-READY.md section 4) */}
+      {phoneStopped && restoration?.phase === 'stopped' && !restoration.canTryAgain && status.kind === 'unmatched' && (keptRefused !== null || status.predictedSky) && (
         <div className="restore-phone-go">
-          <MainAction label="Show predicted sky" size="phone" onClick={() => onShowPredictedSky?.()} />
+          {keptRefused !== null ? (
+            <MainAction label="Line it up again" size="phone" onClick={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })} />
+          ) : (
+            <MainAction label="Show predicted sky" size="phone" onClick={() => onShowPredictedSky?.()} />
+          )}
         </div>
       )}
 
@@ -1170,10 +1179,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {/* The phone's compare: the fixed sentence in the counts' place and Download in Ask out loud's (D10 item 5); a
+      {/* The phone's compare: the fixed sentence in the counts' place and Download in Ask out loud's (D10 item 5, D34); a
           picked star's card covers the foot, as it covers Ask out loud */}
-      {phoneCompare && !answer && !picked && asset && shownVersion && (
-        <RestorePhoneFoot onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersion.id))} />
+      {phoneCompare && !answer && !picked && asset && shownVersionId !== undefined && (
+        <RestorePhoneFoot clip={phoneClip} onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersionId))} />
       )}
       {/* D36 item 5: the list under Download, reached by scrolling, its rows 44 px */}
       {phoneVersionsShown && shownVersion && (

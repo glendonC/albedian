@@ -1592,6 +1592,12 @@
   object-fit: fill;
   max-width: none;
 }
+.restore-compare__pic video {
+  position: absolute;
+  display: block;
+  object-fit: fill;
+  max-width: none;
+}
 .restore-compare__line {
   position: absolute;
   top: 0;
@@ -2336,4 +2342,46 @@
 }
 .align-refused__block > .align-refused__kept {
   margin: 0;
+}
+
+/* D34 and D38 at phone width on a clip (UIUX-clipphone-READY.md section 4; crp-cmp, rp-clip): the wait and stopped rows
+   at top 590 px above D16's player (with any Predicted lead 14 px above at y 576), the compare's 24 px labels 10 px
+   inside the clip's top corners, and the disclosure sentence at top 604 px with D19's 44 px 82 percent black fade */
+.restore-phone-wait.is-clip .work-phone-row {
+  top: 590px;
+}
+.restore-phone-lead.is-clip {
+  bottom: calc(100% - 576px);
+}
+.restore-compare.is-clip.is-phone .restore-compare__label {
+  top: 10px;
+  --look-h: 24px;
+  --look-fs: 12px;
+  padding: 0 12px;
+}
+.restore-compare.is-clip.is-phone .restore-compare__label.is-left {
+  left: 10px;
+}
+.restore-compare.is-clip.is-phone .restore-compare__label.is-right {
+  right: 10px;
+}
+.restore-phone-note.is-clip {
+  top: 604px;
+}
+.restore-phone-note.is-clip::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  top: -44px;
+  bottom: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
+  pointer-events: none;
+}
+.restore-phone-stopped.is-clip .work-phone-row.is-stopped {
+  top: 590px;
+}
+.restore-phone-stopped.is-clip .restore-phone-why {
+  bottom: calc(100% - 576px);
 }
