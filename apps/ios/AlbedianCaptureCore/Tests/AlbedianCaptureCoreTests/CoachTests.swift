@@ -107,9 +107,13 @@ final class CoachTests: XCTestCase {
         XCTAssertNil(CoachSteadiness.focalPx(longSidePx: 0, longSideFovDeg: 60))
     }
 
-    private func motion(_ sec: Double, rateZ: Double) -> MotionSample {
+    private func motion(_ sec: Double, rate: PointingRecord.Vector3) -> MotionSample {
         MotionSample(bootClockSec: sec, referenceFrame: .xTrueNorthZVertical, quaternion: .init(x: 0.2, y: -0.4, z: 0.4, w: 0.8),
-                     gravityG: .init(x: 0, y: -0.6, z: -0.8), rotationRateRadPerSec: .init(x: 0, y: 0, z: rateZ))
+                     gravityG: .init(x: 0, y: -0.6, z: -0.8), rotationRateRadPerSec: rate)
+    }
+
+    private func motion(_ sec: Double, rateZ: Double) -> MotionSample {
+        motion(sec, rate: .init(x: 0, y: 0, z: rateZ))
     }
 
     /// The wrapper the app calls judges at the newest sample (AUDIT-B, coach-0-1-2 verdict): a still phone that starts to
@@ -122,6 +126,79 @@ final class CoachTests: XCTestCase {
         XCTAssertFalse(CoachSteadiness.moving([], exposureSec: 1, focalPx: 1000))
         XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.002)], exposureSec: nil, focalPx: 1000))
         XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.002)], exposureSec: 1, focalPx: nil))
+    }
+
+    /// Each input of `CoachSteadiness.moving(_:exposureSec:focalPx:)` drives the smear, the half-second window and the
+    /// one-pixel limit hold through the wrapper, and a non-finite sample is skipped without hiding a real smear.
+    func testTheMovingWrapperCarriesExposureFocalLengthAndSkipsBadSamples() {
+        let diagonal = motion(11, rate: .init(x: 0.0006, y: 0.0008, z: 0)) // 0.001 rad/s
+        XCTAssertFalse(CoachSteadiness.moving([diagonal], exposureSec: 0.5, focalPx: 800), "0.4 px")
+        XCTAssertTrue(CoachSteadiness.moving([diagonal], exposureSec: 2.0, focalPx: 800), "1.6 px: exposureSec used")
+        XCTAssertFalse(CoachSteadiness.moving([diagonal], exposureSec: 0.8, focalPx: 500), "0.4 px")
+        XCTAssertTrue(CoachSteadiness.moving([diagonal], exposureSec: 0.8, focalPx: 2000), "1.6 px: focalPx used")
+        XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.001)], exposureSec: 1, focalPx: 1000), "exact 1 px limit")
+        XCTAssertTrue(CoachSteadiness.moving([motion(11, rateZ: 0.001001)], exposureSec: 1, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([motion(10.5, rateZ: 0.002), motion(11.0, rateZ: 0.0005)], exposureSec: 1, focalPx: 1000),
+                       "exact half-second edge has left the window")
+        XCTAssertTrue(CoachSteadiness.moving([motion(10.501, rateZ: 0.002), motion(11.0, rateZ: 0.0005)], exposureSec: 1, focalPx: 1000))
+        XCTAssertTrue(CoachSteadiness.moving([motion(10.8, rateZ: 0.002), motion(10.9, rateZ: .nan), motion(11.0, rateZ: 0.0005)],
+                                             exposureSec: 1, focalPx: 1000), "a non-finite sample does not clear earlier smears")
+        XCTAssertFalse(CoachSteadiness.moving([motion(10.9, rateZ: .infinity), motion(11.0, rateZ: 0.0005)], exposureSec: 1, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.002)], exposureSec: 0, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.002)], exposureSec: 1, focalPx: 0))
+    }
+
+    private final class CoachMotionStandIn: DeviceMotionSource, @unchecked Sendable {
+        let availableFrames: Set<AttitudeFrame> = [.xTrueNorthZVertical]
+        var deliver: (@Sendable (DeviceMotionEvent) -> Void)?
+        func start(frame: AttitudeFrame, intervalSec: Double, deliver: @escaping @Sendable (DeviceMotionEvent) -> Void) {
+            self.deliver = deliver
+        }
+        func stop() {}
+    }
+
+    private final class CoachPlaceStandIn: PlaceAndHeadingSource, @unchecked Sendable {
+        func start(headingOrientation: HeadingOrientation, deliver: @escaping @Sendable (PlaceEvent) -> Void) {}
+        func updateHeadingOrientation(_ headingOrientation: HeadingOrientation) {}
+        func stop() {}
+    }
+
+    /// The app's own path (`CompanionModel.coachLines`, AUDIT-B coach-0-1-2 finding): `SensorRecorder.recentMotion`
+    /// hands the last half second of delivered motion to `CoachSteadiness.moving` and `Coach.lines`.
+    @MainActor
+    func testTheAppPathFromRecorderRecentMotionToTheSteadinessLine() throws {
+        let source = CoachMotionStandIn()
+        let recorder = try XCTUnwrap(SensorRecorder(motion: source, place: CoachPlaceStandIn()))
+        XCTAssertEqual(recorder.recentMotion(seconds: CoachSteadiness.windowSec), [])
+        _ = recorder.start(interface: .portrait)
+        let send = try XCTUnwrap(source.deliver)
+        func event(_ sec: Double, rateZ: Double) -> DeviceMotionEvent {
+            DeviceMotionEvent(timestampSec: sec, frame: .xTrueNorthZVertical, quaternion: .init(x: 0, y: 0, z: 0, w: 1),
+                              gravityG: .init(x: 0, y: 0, z: -1), rotationRateRadPerSec: .init(x: 0, y: 0, z: rateZ))
+        }
+        send(event(10.0, rateZ: 0.0002))
+        XCTAssertFalse(CoachSteadiness.moving(recorder.recentMotion(seconds: CoachSteadiness.windowSec), exposureSec: 0.8, focalPx: 1500))
+        // Still sample at 10.0, moving sample at 11.0 (0.002 * 0.8 * 1500 = 2.4 px): recentMotion keeps only (10.5, 11.0]
+        send(event(11.0, rateZ: 0.002))
+        XCTAssertEqual(recorder.recentMotion(seconds: CoachSteadiness.windowSec).map(\.bootClockSec), [11.0])
+        let movingAt11 = CoachSteadiness.moving(recorder.recentMotion(seconds: CoachSteadiness.windowSec), exposureSec: 0.8, focalPx: 1500)
+        XCTAssertTrue(movingAt11)
+        XCTAssertEqual(Coach.lines(compassAsked: false, conditions: nil, moving: movingAt11), [.steadiness])
+        // Still at 11.49: 11.0 is still inside the half-second window
+        send(event(11.49, rateZ: 0.0002))
+        XCTAssertEqual(recorder.recentMotion(seconds: CoachSteadiness.windowSec).map(\.bootClockSec), [11.0, 11.49])
+        XCTAssertTrue(CoachSteadiness.moving(recorder.recentMotion(seconds: CoachSteadiness.windowSec), exposureSec: 0.8, focalPx: 1500))
+        // Still at 11.5: 11.0 is exactly 0.5 s behind the newest, so it leaves recentMotion and steadiness clears
+        send(event(11.5, rateZ: 0.0002))
+        XCTAssertEqual(recorder.recentMotion(seconds: CoachSteadiness.windowSec).map(\.bootClockSec), [11.49, 11.5])
+        let settledAt115 = CoachSteadiness.moving(recorder.recentMotion(seconds: CoachSteadiness.windowSec), exposureSec: 0.8, focalPx: 1500)
+        XCTAssertFalse(settledAt115)
+        XCTAssertEqual(Coach.lines(compassAsked: false, conditions: nil, moving: settledAt115), [])
+        // Guarded windows return empty
+        XCTAssertEqual(recorder.recentMotion(seconds: .infinity), [])
+        XCTAssertEqual(recorder.recentMotion(seconds: .nan), [])
+        XCTAssertEqual(recorder.recentMotion(seconds: 0), [])
+        XCTAssertEqual(recorder.recentMotion(seconds: -0.5), [])
     }
 
     func testTheLineShowsAtOnceAndHidesOnlyAfterHalfASecondBelowOnePixel() {
