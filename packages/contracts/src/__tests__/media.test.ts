@@ -1129,4 +1129,60 @@ describe("an integer row's whole float is that integer on both sides, and the tw
       },
     );
   });
+
+  it('places smooth_chroma between spatial_denoise and dissolve_unconfirmed and validates its parameters and counts', () => {
+    const kinds = [...contracts.GRAPH_STEP_KINDS];
+    expect(kinds).toContain('smooth_chroma');
+    expect(kinds.indexOf('smooth_chroma')).toBe(kinds.indexOf('spatial_denoise') + 1);
+    expect(kinds.indexOf('dissolve_unconfirmed')).toBe(kinds.indexOf('smooth_chroma') + 1);
+    const basis = 'Proposed in design section 5.';
+    const chromaStep = {
+      kind: 'smooth_chroma',
+      version: '1.0.0',
+      parameters: [
+        { name: 'levels', value: 6, origin: 'default', basis },
+        { name: 'sigmaScale', value: 2.0, origin: 'default', basis },
+        { name: 'aboveSkySigmas', value: 3.0, origin: 'default', basis },
+        { name: 'aboveSkyGrowPx', value: 2, origin: 'default', basis },
+        { name: 'skyLevels', value: 4, origin: 'default', basis },
+        { name: 'carryLevels', value: 4, origin: 'default', basis },
+      ],
+    };
+    expect(GraphStepSchema.safeParse(chromaStep).success).toBe(true);
+    const graphBase = structuredClone((VALID.ProcessingGraph as Rec[])[1]!);
+    const steps = graphBase.steps as Rec[];
+    const dissolveIdx = steps.findIndex((s) => s.kind === 'dissolve_unconfirmed');
+    const ordered = { ...graphBase, steps: [...steps.slice(0, dissolveIdx), chromaStep, ...steps.slice(dissolveIdx)] };
+    expect(contracts.ProcessingGraphSchema.safeParse(ordered).success).toBe(true);
+    const afterDissolve = {
+      ...graphBase,
+      steps: [...steps.slice(0, dissolveIdx + 1), chromaStep, ...steps.slice(dissolveIdx + 1)],
+    };
+    const refusedOrder = contracts.ProcessingGraphSchema.safeParse(afterDissolve);
+    expect(refusedOrder.success).toBe(false);
+    if (!refusedOrder.success) {
+      expect(refusedOrder.error.issues.map((i) => i.message)).toContain('steps run once each, in pipeline order');
+    }
+
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 10_000_000 }), fc.integer({ min: 0, max: 10_000_000 }), (held, clamped) => {
+        const measured = {
+          ...structuredClone((VALID.RestorationMeasurements as Rec[])[0]!),
+          chroma: { heldSamples: held, clampedSamples: clamped },
+        };
+        const ok = contracts.RestorationMeasurementsSchema.safeParse(measured);
+        expect(ok.success).toBe(true);
+        const unmeasured = {
+          ...structuredClone((VALID.RestorationMeasurements as Rec[])[3]!),
+          chroma: { heldSamples: held, clampedSamples: clamped },
+        };
+        const bad = contracts.RestorationMeasurementsSchema.safeParse(unmeasured);
+        expect(bad.success).toBe(false);
+        if (!bad.success) {
+          expect(bad.error.issues.map((i) => i.message)).toContain('chroma counts require a measured noise table');
+        }
+      }),
+      { seed: SEED, numRuns: 25 },
+    );
+  });
 });

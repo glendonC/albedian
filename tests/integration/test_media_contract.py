@@ -984,6 +984,9 @@ INTEGER_ROW_EDGES = [
     ("bitDepth", "8.0", True), ("bitDepth", "16.0", True), ("bitDepth", "7.0", False), ("bitDepth", "17.0", False),
     ("maxPasses", "0.0", True), ("maxPasses", "3.0", True), ("maxPasses", "-0.0", True), ("maxPasses", "4.0", False),
     ("tilePx", "16.0", True), ("tilePx", "4096.0", True), ("tilePx", "1e3", True), ("tilePx", "4097.0", False),
+    ("aboveSkyGrowPx", "0.0", True), ("aboveSkyGrowPx", "64.0", True), ("aboveSkyGrowPx", "-1.0", False), ("aboveSkyGrowPx", "65.0", False),
+    ("skyLevels", "1.0", True), ("skyLevels", "8.0", True), ("skyLevels", "0.0", False), ("skyLevels", "9.0", False),
+    ("carryLevels", "1.0", True), ("carryLevels", "8.0", True), ("carryLevels", "0.0", False), ("carryLevels", "9.0", False),
     ("maxPasses", "2.5", False), ("maxPasses", "true", False), ("maxPasses", "false", False), ("maxPasses", '"three"', False),
 ]  # fmt: skip
 NUMBER_ROW_EDGES = [
@@ -991,6 +994,7 @@ NUMBER_ROW_EDGES = [
     ("exposureEv", "-0", True), ("exposureEv", "-0.0", True), ("exposureEv", "2", True), ("exposureEv", "2.0", True),
     ("confirmThresholdSnr", "0", True), ("confirmThresholdSnr", "100", True),
     ("confirmThresholdSnr", "-0.0001", False), ("confirmThresholdSnr", "101", False),
+    ("aboveSkySigmas", "0", True), ("aboveSkySigmas", "3.0", True), ("aboveSkySigmas", "-0.0001", False), ("aboveSkySigmas", "101", False),
     ("exposureEv", "true", False), ("exposureEv", "false", False),
     ("exposureEv", "1" + "0" * 400, False), ("exposureEv", "1e400", False),
 ]  # fmt: skip
@@ -1236,3 +1240,42 @@ def test_property_number_row_normalizes_to_float_and_round_trips_through_wire_js
     assert type(reparsed.value) is float
     assert math.isclose(reparsed.value, float(value), rel_tol=0.0, abs_tol=0.0)
     assert reparsed.to_wire_json() == written
+
+
+@settings(max_examples=25, deadline=None)
+@given(held=st.integers(0, 10**7), clamped=st.integers(0, 10**7))
+def test_smooth_chroma_sits_between_spatial_and_dissolve_and_validates_its_parameters_and_counts(
+    held: int, clamped: int
+) -> None:
+    kinds = list(media.GRAPH_STEP_KINDS)
+    assert "smooth_chroma" in kinds
+    assert kinds.index("smooth_chroma") == kinds.index("spatial_denoise") + 1
+    assert kinds.index("dissolve_unconfirmed") == kinds.index("smooth_chroma") + 1
+    basis = "Proposed in design section 5."
+    step = {
+        "kind": "smooth_chroma",
+        "version": "1.0.0",
+        "parameters": [
+            {"name": "levels", "value": 6, "origin": "default", "basis": basis},
+            {"name": "sigmaScale", "value": 2.0, "origin": "default", "basis": basis},
+            {"name": "aboveSkySigmas", "value": 3.0, "origin": "default", "basis": basis},
+            {"name": "aboveSkyGrowPx", "value": 2, "origin": "default", "basis": basis},
+            {"name": "skyLevels", "value": 4, "origin": "default", "basis": basis},
+            {"name": "carryLevels", "value": 4, "origin": "default", "basis": basis},
+        ],
+    }
+    media.GraphStep.model_validate(step)
+    graph_base = copy.deepcopy(VALID["ProcessingGraph"][1])
+    spatial_idx = next(i for i, s in enumerate(graph_base["steps"]) if s["kind"] == "spatial_denoise")
+    dissolve_idx = next(i for i, s in enumerate(graph_base["steps"]) if s["kind"] == "dissolve_unconfirmed")
+    ordered = {**graph_base, "steps": [*graph_base["steps"][:dissolve_idx], step, *graph_base["steps"][dissolve_idx:]]}
+    media.ProcessingGraph.model_validate(ordered)
+    after_dissolve = {**graph_base, "steps": [*graph_base["steps"][:dissolve_idx + 1], step, *graph_base["steps"][dissolve_idx + 1:]]}
+    assert spatial_idx < dissolve_idx
+    assert media.M_PIPELINE_ORDER in "; ".join(messages(media.ProcessingGraph, after_dissolve))
+
+    measured = {**copy.deepcopy(VALID["RestorationMeasurements"][0]), "chroma": {"heldSamples": held, "clampedSamples": clamped}}
+    parsed = media.RestorationMeasurements.model_validate(measured)
+    assert parsed.chroma is not None and (parsed.chroma.held_samples, parsed.chroma.clamped_samples) == (held, clamped)
+    unmeasured = {**copy.deepcopy(VALID["RestorationMeasurements"][3]), "chroma": {"heldSamples": held, "clampedSamples": clamped}}
+    assert "chroma counts require a measured noise table" in "; ".join(messages(media.RestorationMeasurements, unmeasured))

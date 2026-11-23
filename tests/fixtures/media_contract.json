@@ -32,6 +32,7 @@
       "register",
       "temporal_merge",
       "spatial_denoise",
+      "smooth_chroma",
       "dissolve_unconfirmed",
       "lift",
       "encode",
@@ -836,7 +837,8 @@
       {
         "name": "levels",
         "steps": [
-          "spatial_denoise"
+          "spatial_denoise",
+          "smooth_chroma"
         ],
         "type": "integer",
         "min": 1,
@@ -846,12 +848,53 @@
       {
         "name": "sigmaScale",
         "steps": [
-          "spatial_denoise"
+          "spatial_denoise",
+          "smooth_chroma"
         ],
         "type": "number",
         "min": 0,
         "max": 100,
         "unit": "noise sigmas"
+      },
+      {
+        "name": "aboveSkySigmas",
+        "steps": [
+          "smooth_chroma"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 100,
+        "unit": "noise sigmas"
+      },
+      {
+        "name": "aboveSkyGrowPx",
+        "steps": [
+          "smooth_chroma"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 64,
+        "unit": "px"
+      },
+      {
+        "name": "skyLevels",
+        "steps": [
+          "smooth_chroma"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 8,
+        "unit": "B3 levels"
+      },
+      {
+        "name": "carryLevels",
+        "steps": [
+          "smooth_chroma"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 8,
+        "unit": "B3 levels"
       },
       {
         "name": "keptGrowPx",
@@ -1142,6 +1185,7 @@
     "points confirmed on frames together need frames with neighbours",
     "a note is one of the fixed notes",
     "the noise is measured or the reason it is not, never both",
+    "chroma counts require a measured noise table",
     "a failure reason is one of the fixed sentences",
     "fields do not fit a ready attempt",
     "fields do not fit a rejected attempt",
@@ -1179,6 +1223,7 @@
     "byteSize": "byte_size",
     "chromaSiting": "chroma_siting",
     "chromaSubsampling": "chroma_subsampling",
+    "clampedSamples": "clamped_samples",
     "clippedPointsLeftOut": "clipped_points_left_out",
     "confirmThresholdSnr": "confirm_threshold_snr",
     "cpuMs": "cpu_ms",
@@ -1203,6 +1248,7 @@
     "framesWithUnconfirmed": "frames_with_unconfirmed",
     "gainAtBlack": "gain_at_black",
     "graphId": "graph_id",
+    "heldSamples": "held_samples",
     "iccProfileSha256": "icc_profile_sha256",
     "jobId": "job_id",
     "matchRadiusPx": "match_radius_px",
@@ -1317,7 +1363,7 @@
       "__proto__"
     ],
     "value": "/Users/me/Pictures/IMG_0001.MOV",
-    "records": 2170
+    "records": 2355
   },
   "valid": {
     "RestoreRequest": [
@@ -1380,6 +1426,30 @@
         "value": "hlg",
         "origin": "default",
         "basis": "Verified at its source in design section 1."
+      },
+      {
+        "name": "aboveSkySigmas",
+        "value": 3.0,
+        "origin": "default",
+        "basis": "Proposed in design section 5."
+      },
+      {
+        "name": "aboveSkyGrowPx",
+        "value": 2,
+        "origin": "default",
+        "basis": "Proposed in design section 5."
+      },
+      {
+        "name": "skyLevels",
+        "value": 4,
+        "origin": "default",
+        "basis": "Proposed in design section 5."
+      },
+      {
+        "name": "carryLevels",
+        "value": 4,
+        "origin": "default",
+        "basis": "Proposed in design section 5."
       }
     ],
     "GraphStep": [
@@ -1494,6 +1564,48 @@
             "value": "medium",
             "origin": "default",
             "basis": "Proposed in design section 10."
+          }
+        ]
+      },
+      {
+        "kind": "smooth_chroma",
+        "version": "1.0.0",
+        "parameters": [
+          {
+            "name": "levels",
+            "value": 6,
+            "origin": "default",
+            "basis": "Proposed in design section 5."
+          },
+          {
+            "name": "sigmaScale",
+            "value": 2.0,
+            "origin": "default",
+            "basis": "Proposed in design section 5."
+          },
+          {
+            "name": "aboveSkySigmas",
+            "value": 3.0,
+            "origin": "default",
+            "basis": "Proposed in design section 5."
+          },
+          {
+            "name": "aboveSkyGrowPx",
+            "value": 2,
+            "origin": "default",
+            "basis": "Proposed in design section 5."
+          },
+          {
+            "name": "skyLevels",
+            "value": 4,
+            "origin": "default",
+            "basis": "Proposed in design section 5."
+          },
+          {
+            "name": "carryLevels",
+            "value": 4,
+            "origin": "default",
+            "basis": "Proposed in design section 5."
           }
         ]
       }
@@ -1986,6 +2098,155 @@
             ]
           }
         ]
+      },
+      {
+        "id": "graph_e53eca5b4c210585",
+        "sourceSha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+        "kind": "restoration",
+        "pipelineVersion": "1.0.0",
+        "request": {
+          "kind": "restoration"
+        },
+        "steps": [
+          {
+            "kind": "decode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "transfer",
+                "value": "icc_parametric",
+                "origin": "measured",
+                "basis": "Read from the file's ICC profile."
+              }
+            ]
+          },
+          {
+            "kind": "find_stars",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "confirmThresholdSnr",
+                "value": 4.75,
+                "origin": "default",
+                "basis": "The detector's own floor."
+              },
+              {
+                "name": "tilePx",
+                "value": 256,
+                "origin": "default",
+                "basis": "Proposed in design section 3."
+              }
+            ]
+          },
+          {
+            "kind": "measure_noise",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "bins",
+                "value": 12,
+                "origin": "default",
+                "basis": "Proposed in design section 4."
+              }
+            ]
+          },
+          {
+            "kind": "spatial_denoise",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "sigmaScale",
+                "value": 1.0,
+                "origin": "measured",
+                "basis": "Measured on this file's noise table."
+              }
+            ]
+          },
+          {
+            "kind": "smooth_chroma",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "levels",
+                "value": 6,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "sigmaScale",
+                "value": 2.0,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "aboveSkySigmas",
+                "value": 3.0,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "aboveSkyGrowPx",
+                "value": 2,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "skyLevels",
+                "value": 4,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "carryLevels",
+                "value": 4,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              }
+            ]
+          },
+          {
+            "kind": "dissolve_unconfirmed",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "maxPasses",
+                "value": 3,
+                "origin": "default",
+                "basis": "Required by REQ-RST-6.3."
+              }
+            ]
+          },
+          {
+            "kind": "lift",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "gainAtBlack",
+                "value": 4.2,
+                "origin": "measured",
+                "basis": "Solved for this file from its median and its measured bounds."
+              }
+            ]
+          },
+          {
+            "kind": "encode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "container",
+                "value": "png",
+                "origin": "default",
+                "basis": "Decided by the lead in design section 8."
+              },
+              {
+                "name": "bitDepth",
+                "value": 16,
+                "origin": "default",
+                "basis": "Decided by the lead in design section 8."
+              }
+            ]
+          }
+        ]
       }
     ],
     "ColourDescription": [
@@ -2451,6 +2712,74 @@
         "notes": [
           "The clip was recorded almost at black: there was no noise to measure, and the lift is held by the quantisation bound."
         ]
+      },
+      {
+        "colour": {
+          "model": "rgb",
+          "bitDepth": 8,
+          "range": "full",
+          "matrix": "identity",
+          "transfer": "icc_parametric",
+          "primaries": "icc",
+          "chromaSubsampling": "444",
+          "iccProfileSha256": "3506e755d7d1b808dd351b2ca07bb62a1ddb0e48ad21be8ea5c31d3e231dce37",
+          "assumptions": []
+        },
+        "noise": {
+          "intensities": [
+            0.002,
+            0.01,
+            0.05,
+            0.2
+          ],
+          "sigma": {
+            "r": [
+              0.0011,
+              0.0019,
+              0.0042,
+              0.0081
+            ],
+            "g": [
+              0.0009,
+              0.0016,
+              0.0037,
+              0.0075
+            ],
+            "b": [
+              0.0014,
+              0.0023,
+              0.0049,
+              0.0092
+            ]
+          },
+          "blockCounts": [
+            41,
+            63,
+            120,
+            30
+          ]
+        },
+        "fineNoiseLeft": 0.42,
+        "stars": {
+          "found": 40,
+          "confirmed": 37
+        },
+        "dissolvedPerPass": [
+          3,
+          0
+        ],
+        "lift": {
+          "gainAtBlack": 4.2,
+          "decidedBy": "noise_bound"
+        },
+        "peakMemoryBytes": 734003200,
+        "notes": [
+          "Points the original does not confirm were dissolved before the gate."
+        ],
+        "chroma": {
+          "heldSamples": 15199,
+          "clampedSamples": 345
+        }
       }
     ],
     "ProcessingAttempt": [
@@ -7892,6 +8221,232 @@
       },
       "reason": "a noise table and the reason it is missing",
       "message": "the noise is measured or the reason it is not, never both"
+    },
+    {
+      "schema": "RestorationMeasurements",
+      "sample": {
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 8,
+          "range": "full",
+          "matrix": "bt601",
+          "transfer": "srgb",
+          "primaries": "p3_d65",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": [
+            {
+              "field": "chromaSiting",
+              "assumed": "left",
+              "reason": "The file does not state its chroma siting, so left is assumed, the common default of H.264 and HEVC."
+            }
+          ]
+        },
+        "notes": [],
+        "chroma": {
+          "heldSamples": 10,
+          "clampedSamples": 0
+        }
+      },
+      "reason": "chroma counts with no noise table",
+      "message": "chroma counts require a measured noise table"
+    },
+    {
+      "schema": "RestorationMeasurements",
+      "sample": {
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 8,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "noiseNotMeasured": "fine_detail_mostly_zero",
+        "stars": {
+          "found": 0,
+          "confirmed": 0
+        },
+        "lift": {
+          "gainAtBlack": 1.6,
+          "decidedBy": "quantisation_bound"
+        },
+        "clip": {
+          "frameCount": 180,
+          "framesWithNeighbours": 0,
+          "medianClosureErrorPx": 0.13,
+          "exactRepeatShare": 0.96,
+          "pointsConfirmedOnFramesTogether": 0,
+          "pointsFixedToSensor": 0,
+          "streamsNotCopied": 0
+        },
+        "notes": [
+          "The clip was recorded almost at black: there was no noise to measure, and the lift is held by the quantisation bound."
+        ],
+        "chroma": {
+          "heldSamples": 0,
+          "clampedSamples": 0
+        }
+      },
+      "reason": "chroma counts when noise could not be measured",
+      "message": "chroma counts require a measured noise table"
+    },
+    {
+      "schema": "ProcessingGraph",
+      "sample": {
+        "id": "graph_9fe713304b9d00ed",
+        "sourceSha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+        "kind": "restoration",
+        "pipelineVersion": "1.0.0",
+        "request": {
+          "kind": "restoration"
+        },
+        "steps": [
+          {
+            "kind": "decode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "transfer",
+                "value": "icc_parametric",
+                "origin": "measured",
+                "basis": "Read from the file's ICC profile."
+              }
+            ]
+          },
+          {
+            "kind": "find_stars",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "confirmThresholdSnr",
+                "value": 4.75,
+                "origin": "default",
+                "basis": "The detector's own floor."
+              },
+              {
+                "name": "tilePx",
+                "value": 256,
+                "origin": "default",
+                "basis": "Proposed in design section 3."
+              }
+            ]
+          },
+          {
+            "kind": "measure_noise",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "bins",
+                "value": 12,
+                "origin": "default",
+                "basis": "Proposed in design section 4."
+              }
+            ]
+          },
+          {
+            "kind": "spatial_denoise",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "sigmaScale",
+                "value": 1.0,
+                "origin": "measured",
+                "basis": "Measured on this file's noise table."
+              }
+            ]
+          },
+          {
+            "kind": "dissolve_unconfirmed",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "maxPasses",
+                "value": 3,
+                "origin": "default",
+                "basis": "Required by REQ-RST-6.3."
+              }
+            ]
+          },
+          {
+            "kind": "smooth_chroma",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "levels",
+                "value": 6,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "sigmaScale",
+                "value": 2.0,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "aboveSkySigmas",
+                "value": 3.0,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "aboveSkyGrowPx",
+                "value": 2,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "skyLevels",
+                "value": 4,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              },
+              {
+                "name": "carryLevels",
+                "value": 4,
+                "origin": "default",
+                "basis": "Proposed in design section 5."
+              }
+            ]
+          },
+          {
+            "kind": "lift",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "gainAtBlack",
+                "value": 4.2,
+                "origin": "measured",
+                "basis": "Solved for this file from its median and its measured bounds."
+              }
+            ]
+          },
+          {
+            "kind": "encode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "container",
+                "value": "png",
+                "origin": "default",
+                "basis": "Decided by the lead in design section 8."
+              },
+              {
+                "name": "bitDepth",
+                "value": 16,
+                "origin": "default",
+                "basis": "Decided by the lead in design section 8."
+              }
+            ]
+          }
+        ]
+      },
+      "reason": "chroma smoothing after the dissolve passes",
+      "message": "steps run once each, in pipeline order"
     },
     {
       "schema": "RestorationMeasurements",
@@ -19911,6 +20466,152 @@
         ]
       },
       "reason": "dissolvedPerPass.0 of -1, past its bound",
+      "message": null
+    },
+    {
+      "schema": "RestorationMeasurements",
+      "sample": {
+        "colour": {
+          "model": "rgb",
+          "bitDepth": 8,
+          "range": "full",
+          "matrix": "identity",
+          "transfer": "icc_parametric",
+          "primaries": "icc",
+          "chromaSubsampling": "444",
+          "iccProfileSha256": "3506e755d7d1b808dd351b2ca07bb62a1ddb0e48ad21be8ea5c31d3e231dce37",
+          "assumptions": []
+        },
+        "noise": {
+          "intensities": [
+            0.002,
+            0.01,
+            0.05,
+            0.2
+          ],
+          "sigma": {
+            "r": [
+              0.0011,
+              0.0019,
+              0.0042,
+              0.0081
+            ],
+            "g": [
+              0.0009,
+              0.0016,
+              0.0037,
+              0.0075
+            ],
+            "b": [
+              0.0014,
+              0.0023,
+              0.0049,
+              0.0092
+            ]
+          },
+          "blockCounts": [
+            41,
+            63,
+            120,
+            30
+          ]
+        },
+        "fineNoiseLeft": 0.42,
+        "stars": {
+          "found": 40,
+          "confirmed": 37
+        },
+        "dissolvedPerPass": [
+          3,
+          0
+        ],
+        "lift": {
+          "gainAtBlack": 4.2,
+          "decidedBy": "noise_bound"
+        },
+        "peakMemoryBytes": 734003200,
+        "notes": [
+          "Points the original does not confirm were dissolved before the gate."
+        ],
+        "chroma": {
+          "heldSamples": -1,
+          "clampedSamples": 345
+        }
+      },
+      "reason": "chroma.heldSamples of -1, past its bound",
+      "message": null
+    },
+    {
+      "schema": "RestorationMeasurements",
+      "sample": {
+        "colour": {
+          "model": "rgb",
+          "bitDepth": 8,
+          "range": "full",
+          "matrix": "identity",
+          "transfer": "icc_parametric",
+          "primaries": "icc",
+          "chromaSubsampling": "444",
+          "iccProfileSha256": "3506e755d7d1b808dd351b2ca07bb62a1ddb0e48ad21be8ea5c31d3e231dce37",
+          "assumptions": []
+        },
+        "noise": {
+          "intensities": [
+            0.002,
+            0.01,
+            0.05,
+            0.2
+          ],
+          "sigma": {
+            "r": [
+              0.0011,
+              0.0019,
+              0.0042,
+              0.0081
+            ],
+            "g": [
+              0.0009,
+              0.0016,
+              0.0037,
+              0.0075
+            ],
+            "b": [
+              0.0014,
+              0.0023,
+              0.0049,
+              0.0092
+            ]
+          },
+          "blockCounts": [
+            41,
+            63,
+            120,
+            30
+          ]
+        },
+        "fineNoiseLeft": 0.42,
+        "stars": {
+          "found": 40,
+          "confirmed": 37
+        },
+        "dissolvedPerPass": [
+          3,
+          0
+        ],
+        "lift": {
+          "gainAtBlack": 4.2,
+          "decidedBy": "noise_bound"
+        },
+        "peakMemoryBytes": 734003200,
+        "notes": [
+          "Points the original does not confirm were dissolved before the gate."
+        ],
+        "chroma": {
+          "heldSamples": 15199,
+          "clampedSamples": -1
+        }
+      },
+      "reason": "chroma.clampedSamples of -1, past its bound",
       "message": null
     },
     {

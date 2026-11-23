@@ -55,7 +55,7 @@ PARAMETER_ORIGINS = ("measured", "requested", "default")
 # Pipeline order: a graph lists its steps in this order, each at most once
 GRAPH_STEP_KINDS = (
     "decode", "convert_colour", "find_stars", "measure_noise", "register", "temporal_merge", "spatial_denoise",
-    "dissolve_unconfirmed", "lift", "encode", "copy_audio",
+    "smooth_chroma", "dissolve_unconfirmed", "lift", "encode", "copy_audio",
 )
 # Each id as the code that mints it writes it (design section 9; services/ingest/router.py for src_, REQ-JOB-5.8 for sol_)
 MEDIA_ID_PATTERNS = {
@@ -200,8 +200,12 @@ STEP_PARAMETERS = (
     _number("toleranceFactor", ("temporal_merge",), 0, 100, "noise variances"),
     _number("disagreementZ", ("temporal_merge",), 0, 100, "noises of the difference's matched response"),
     _number("disagreementReachPx", ("temporal_merge",), 0, 64, "px"),
-    _integer("levels", ("spatial_denoise",), 1, 8, "wavelet levels"),
-    _number("sigmaScale", ("spatial_denoise",), 0, 100, "noise sigmas"),
+    _integer("levels", ("spatial_denoise", "smooth_chroma"), 1, 8, "wavelet levels"),
+    _number("sigmaScale", ("spatial_denoise", "smooth_chroma"), 0, 100, "noise sigmas"),
+    _number("aboveSkySigmas", ("smooth_chroma",), 0, 100, "noise sigmas"),
+    _integer("aboveSkyGrowPx", ("smooth_chroma",), 0, 64, "px"),
+    _integer("skyLevels", ("smooth_chroma",), 1, 8, "B3 levels"),
+    _integer("carryLevels", ("smooth_chroma",), 1, 8, "B3 levels"),
     _integer("keptGrowPx", ("spatial_denoise",), 0, 64, "px"),
     _integer("firstScaleLevels", ("spatial_denoise",), 0, 8, "B3 levels"),
     _number("brightSkyNoises", ("spatial_denoise",), 0, 1000, "sky noises"),
@@ -446,6 +450,7 @@ M_CLIP_NEIGHBOURS = "frames with neighbours are frames of the clip"
 M_FRAMES_TOGETHER = "points confirmed on frames together need frames with neighbours"
 M_NOTE = "a note is one of the fixed notes"
 M_MEASURED_NOISE = "the noise is measured or the reason it is not, never both"
+M_CHROMA_NOISE = "chroma counts require a measured noise table"
 M_FAILURE_SENTENCE = "a failure reason is one of the fixed sentences"
 M_READY_PASSED = "a ready attempt passed its gate"
 M_REFUSED_IS_REJECTED = "an attempt the gate refused is rejected, never failed"
@@ -482,7 +487,7 @@ REFINEMENT_MESSAGES = (
     M_PROFILE, M_ASSUMED_ONCE, M_ASSUMED_VALUE, M_ASSUMPTION_REASON, M_NOISE_COLUMNS, M_NOISE_INCREASING,
     M_GATE_PASSED, M_GATE_POINTS, M_GATE_FRAMES, M_GATE_ANY_FRAME, M_GATE_FRAME_POINTS, M_GATE_STARS,
     M_GATE_FLUX_GIVEN, M_GATE_WORST, M_STARS_CONFIRMED, M_NO_LIFT, M_CLIP_NEIGHBOURS, M_FRAMES_TOGETHER, M_NOTE,
-    M_MEASURED_NOISE, M_FAILURE_SENTENCE, *(_attempt_fit(s) for s in ATTEMPT_STATUSES), M_READY_PASSED,
+    M_MEASURED_NOISE, M_CHROMA_NOISE, M_FAILURE_SENTENCE, *(_attempt_fit(s) for s in ATTEMPT_STATUSES), M_READY_PASSED,
     M_REFUSED_IS_REJECTED, M_GATE_REJECTION, M_REJECTION_NAMED, M_NO_GATE_BEFORE, M_GATE_STARS_FOUND,
     M_ATTEMPT_TIMES, M_DISCLOSURE, M_SOURCE_ASSET, M_STILL, M_CLIP_TIMES, M_DISPLAY_COPY_STILL, M_VARIANT_URI,
     M_VARIANT_COLOUR, M_MANIFEST_SOURCE, M_MANIFEST_IDS, M_MANIFEST_READY, M_MANIFEST_DISCLOSURE, M_MANIFEST_GATE,
@@ -873,6 +878,11 @@ class ClipMeasurements(_Record):
         return self
 
 
+class ChromaMeasurements(_Record):
+    held_samples: Count
+    clamped_samples: Count
+
+
 class RestorationMeasurements(_Record):
     colour: ColourDescription
     noise: Optional[NoiseTable] = None
@@ -880,6 +890,7 @@ class RestorationMeasurements(_Record):
     # The fine noise after over before, in the darkest quarter
     fine_noise_left: Optional[NonNegative] = None
     stars: Optional[StarCounts] = None
+    chroma: Optional[ChromaMeasurements] = None
     dissolved_per_pass: Optional[Annotated[list[Count], Field(max_length=3)]] = None
     lift: Optional[Lift] = None
     clip: Optional[ClipMeasurements] = None
@@ -888,7 +899,12 @@ class RestorationMeasurements(_Record):
 
     @model_validator(mode="after")
     def _noise_or_why_not(self) -> "RestorationMeasurements":
-        _refuse([M_MEASURED_NOISE] if self.noise is not None and self.noise_not_measured is not None else [])
+        failures = []
+        if self.noise is not None and self.noise_not_measured is not None:
+            failures.append(M_MEASURED_NOISE)
+        if self.chroma is not None and self.noise is None:
+            failures.append(M_CHROMA_NOISE)
+        _refuse(failures)
         return self
 
 
@@ -1152,6 +1168,10 @@ def build_media_samples() -> dict[str, Any]:
         # A whole number written as a float is that integer on both sides
         _parameter("tilePx", 256.0, "default", "Proposed in design section 3."),
         _parameter("transfer", "hlg", "default", "Verified at its source in design section 1."),
+        _parameter("aboveSkySigmas", 3.0, "default", "Proposed in design section 5."),
+        _parameter("aboveSkyGrowPx", 2, "default", "Proposed in design section 5."),
+        _parameter("skyLevels", 4, "default", "Proposed in design section 5."),
+        _parameter("carryLevels", 4, "default", "Proposed in design section 5."),
     ]
     decode_heic = _step("decode", parameters[0], _parameter("transfer", "srgb", "measured", TAGS), parameters[1])
     encode_png8 = _step(
@@ -1163,6 +1183,15 @@ def build_media_samples() -> dict[str, Any]:
     find_stars = _step("find_stars", parameters[3], _parameter("tilePx", 256, "default", "Proposed in design section 3."))
     measure_noise = _step("measure_noise", _parameter("bins", 12, "default", "Proposed in design section 4."))
     spatial = _step("spatial_denoise", _parameter("sigmaScale", 1.0, "measured", "Measured on this file's noise table."))
+    chroma_step = _step(
+        "smooth_chroma",
+        _parameter("levels", 6, "default", "Proposed in design section 5."),
+        _parameter("sigmaScale", 2.0, "default", "Proposed in design section 5."),
+        parameters[8],
+        parameters[9],
+        parameters[10],
+        parameters[11],
+    )
     dissolve = _step("dissolve_unconfirmed", parameters[4])
     solved = "Solved for this file from its median and its measured bounds."
     lift_still = _step("lift", _parameter("gainAtBlack", 4.2, "measured", solved))
@@ -1202,6 +1231,10 @@ def build_media_samples() -> dict[str, Any]:
                    "pipelineVersion": "1.0.0", "request": requests[1],
                    "steps": [decode_clip, find_stars, measure_noise, _step("lift", _parameter("gainAtBlack", 1.6, "measured", solved)),
                              encode_h264, copy_audio]}
+    graph_still_chroma = {"id": _id("graph", "still restoration with chroma"), "sourceSha256": still_sha, "kind": "restoration",
+                          "pipelineVersion": "1.0.0", "request": requests[1],
+                          "steps": [_step("decode", _parameter("transfer", "icc_parametric", "measured", "Read from the file's ICC profile.")),
+                                    find_stars, measure_noise, spatial, chroma_step, dissolve, lift_still, encode_png16]}
 
     colour_heic = {"model": "ycbcr", "bitDepth": 8, "range": "full", "matrix": "bt601", "transfer": "srgb",
                    "primaries": "p3_d65", "chromaSubsampling": "420", "chromaSiting": "left",
@@ -1336,13 +1369,14 @@ def build_media_samples() -> dict[str, Any]:
     valid = {
         "RestoreRequest": requests,
         "GraphParameter": parameters,
-        "GraphStep": [decode_heic, encode_png8, find_stars, lift_clip, copy_audio, encode_h264],
-        "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black, graph_converted],
+        "GraphStep": [decode_heic, encode_png8, find_stars, lift_clip, copy_audio, encode_h264, chroma_step],
+        "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black, graph_converted, graph_still_chroma],
         "ColourDescription": [colour_heic, colour_png8, colour_jpeg, colour_png16, colour_clip],
         "NoiseTable": [noise_still, noise_clip],
         "IntegrityGateResult": [gate_passed, gate_unconfirmed, gate_flux, gate_no_stars, gate_clip, gate_written_as_floats,
                                 gate_black, gate_at_tolerance],
-        "RestorationMeasurements": [measured_still, measured_display, measured_clip, measured_black],
+        "RestorationMeasurements": [measured_still, measured_display, measured_clip, measured_black,
+                                    {**measured_still, "chroma": {"heldSamples": 15199, "clampedSamples": 345}}],
         "ProcessingAttempt": attempts,
         "MediaVariant": variants,
         "ExportManifest": manifests,
@@ -1592,6 +1626,12 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
 
     bad("RestorationMeasurements", {**measured, "noiseNotMeasured": "too_few_flat_blocks"}, "a noise table and the reason it is missing",
         M_MEASURED_NOISE)
+    bad("RestorationMeasurements", {**valid["RestorationMeasurements"][1], "chroma": {"heldSamples": 10, "clampedSamples": 0}},
+        "chroma counts with no noise table", M_CHROMA_NOISE)
+    bad("RestorationMeasurements", {**valid["RestorationMeasurements"][3], "chroma": {"heldSamples": 0, "clampedSamples": 0}},
+        "chroma counts when noise could not be measured", M_CHROMA_NOISE)
+    bad("ProcessingGraph", edit(graph_still, ["steps"], [*steps[:5], valid["GraphStep"][6], *steps[5:]]),
+        "chroma smoothing after the dissolve passes", M_PIPELINE_ORDER)
     bad("RestorationMeasurements", edit(measured, ["stars", "confirmed"], 41), "more stars confirmed than found", M_STARS_CONFIRMED)
     bad("RestorationMeasurements", edit(measured, ["lift"], {"gainAtBlack": 2, "decidedBy": "none"}), "no lift with a gain of two", M_NO_LIFT)
     bad("RestorationMeasurements", edit(measured, ["lift", "gainAtBlack"], 0.5), "a lift that darkens")
@@ -1785,6 +1825,8 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
         ("RestorationMeasurements", measured_clip, ["clip", "exactRepeatShare"], 1.01),
         ("RestorationMeasurements", measured_clip, ["clip", "pointsFixedToSensor"], -1),
         ("RestorationMeasurements", measured, ["dissolvedPerPass", 0], -1),
+        ("RestorationMeasurements", valid["RestorationMeasurements"][4], ["chroma", "heldSamples"], -1),
+        ("RestorationMeasurements", valid["RestorationMeasurements"][4], ["chroma", "clampedSamples"], -1),
         ("ProcessingAttempt", ready, ["cpuMs"], -1),
     ]
     bad("MediaVariant", edit(clip_variant, ["audioStreams", 0, "index"], 0.5), "an audio stream index of 0.5")

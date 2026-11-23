@@ -85,6 +85,90 @@
    "python": null
   },
   {
+   "name": "aboveSkyGrowPx 0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkyGrowPx\",\"value\":0.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"aboveSkyGrowPx\",\"value\":0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "aboveSkyGrowPx 64.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkyGrowPx\",\"value\":64.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"aboveSkyGrowPx\",\"value\":64,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "aboveSkyGrowPx -1.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkyGrowPx\",\"value\":-1.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "aboveSkyGrowPx 65.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkyGrowPx\",\"value\":65.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "skyLevels 1.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"skyLevels\",\"value\":1.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"skyLevels\",\"value\":1,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "skyLevels 8.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"skyLevels\",\"value\":8.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"skyLevels\",\"value\":8,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "skyLevels 0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"skyLevels\",\"value\":0.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "skyLevels 9.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"skyLevels\",\"value\":9.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "carryLevels 1.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"carryLevels\",\"value\":1.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"carryLevels\",\"value\":1,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "carryLevels 8.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"carryLevels\",\"value\":8.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"carryLevels\",\"value\":8,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "carryLevels 0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"carryLevels\",\"value\":0.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "carryLevels 9.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"carryLevels\",\"value\":9.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
    "name": "maxPasses 2.5",
    "schema": "GraphParameter",
    "text": "{\"name\":\"maxPasses\",\"value\":2.5,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
@@ -193,6 +277,34 @@
    "name": "edge confirmThresholdSnr 101",
    "schema": "GraphParameter",
    "text": "{\"name\":\"confirmThresholdSnr\",\"value\":101,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge aboveSkySigmas 0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkySigmas\",\"value\":0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"aboveSkySigmas\",\"value\":0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "edge aboveSkySigmas 3.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkySigmas\",\"value\":3.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": true,
+   "python": "{\"name\":\"aboveSkySigmas\",\"value\":3,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}"
+  },
+  {
+   "name": "edge aboveSkySigmas -0.0001",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkySigmas\",\"value\":-0.0001,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge aboveSkySigmas 101",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"aboveSkySigmas\",\"value\":101,\"origin\":\"default\",\"basis\":\"Proposed in design section 5.\"}",
    "taken": false,
    "python": null
   },

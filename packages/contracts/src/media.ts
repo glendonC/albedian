@@ -348,6 +348,7 @@ export const GRAPH_STEP_KINDS = [
   'register',
   'temporal_merge',
   'spatial_denoise',
+  'smooth_chroma',
   'dissolve_unconfirmed',
   'lift',
   'encode',
@@ -506,8 +507,12 @@ export const STEP_PARAMETERS: readonly StepParameter[] = [
   number('toleranceFactor', ['temporal_merge'], 0, 100, 'noise variances'),
   number('disagreementZ', ['temporal_merge'], 0, 100, "noises of the difference's matched response"),
   number('disagreementReachPx', ['temporal_merge'], 0, 64, 'px'),
-  integer('levels', ['spatial_denoise'], 1, 8, 'wavelet levels'),
-  number('sigmaScale', ['spatial_denoise'], 0, 100, 'noise sigmas'),
+  integer('levels', ['spatial_denoise', 'smooth_chroma'], 1, 8, 'wavelet levels'),
+  number('sigmaScale', ['spatial_denoise', 'smooth_chroma'], 0, 100, 'noise sigmas'),
+  number('aboveSkySigmas', ['smooth_chroma'], 0, 100, 'noise sigmas'),
+  integer('aboveSkyGrowPx', ['smooth_chroma'], 0, 64, 'px'),
+  integer('skyLevels', ['smooth_chroma'], 1, 8, 'B3 levels'),
+  integer('carryLevels', ['smooth_chroma'], 1, 8, 'B3 levels'),
   integer('keptGrowPx', ['spatial_denoise'], 0, 64, 'px'),
   integer('firstScaleLevels', ['spatial_denoise'], 0, 8, 'B3 levels'),
   number('brightSkyNoises', ['spatial_denoise'], 0, 1000, 'sky noises'),
@@ -751,6 +756,7 @@ const M = {
   framesTogether: 'points confirmed on frames together need frames with neighbours',
   note: 'a note is one of the fixed notes',
   measuredNoise: 'the noise is measured or the reason it is not, never both',
+  chromaNoise: 'chroma counts require a measured noise table',
   failureSentence: 'a failure reason is one of the fixed sentences',
   readyPassed: 'a ready attempt passed its gate',
   refusedIsRejected: 'an attempt the gate refused is rejected, never failed',
@@ -1002,6 +1008,9 @@ export const IntegrityGateResultSchema = z
   });
 export type IntegrityGateResult = z.infer<typeof IntegrityGateResultSchema>;
 
+export const ChromaMeasurementsSchema = z.object({ heldSamples: count(), clampedSamples: count() }).strict();
+export type ChromaMeasurements = z.infer<typeof ChromaMeasurementsSchema>;
+
 export const RestorationMeasurementsSchema = z
   .object({
     colour: ColourDescriptionSchema,
@@ -1014,6 +1023,7 @@ export const RestorationMeasurementsSchema = z
       .strict()
       .refine((stars) => stars.confirmed <= stars.found, { message: M.starsConfirmed, path: ['confirmed'] })
       .optional(),
+    chroma: ChromaMeasurementsSchema.optional(),
     dissolvedPerPass: z.array(count()).max(3).optional(),
     lift: z
       .object({ gainAtBlack: wireNumber().min(1), decidedBy: z.enum(LIFT_DECIDED_BY) })
@@ -1044,9 +1054,10 @@ export const RestorationMeasurementsSchema = z
     notes: z.array(z.string().refine((note) => (NOTES as readonly string[]).includes(note), { message: M.note })).max(8),
   })
   .strict()
-  .refine((measured) => measured.noise === undefined || measured.noiseNotMeasured === undefined, {
-    message: M.measuredNoise,
-    path: ['noiseNotMeasured'],
+  .superRefine((measured, ctx) => {
+    const issue = issuer(ctx);
+    if (measured.noise !== undefined && measured.noiseNotMeasured !== undefined) issue(['noiseNotMeasured'], M.measuredNoise);
+    if (measured.chroma !== undefined && measured.noise === undefined) issue(['chroma'], M.chromaNoise);
   });
 export type RestorationMeasurements = z.infer<typeof RestorationMeasurementsSchema>;
 
