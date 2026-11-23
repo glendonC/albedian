@@ -46,14 +46,15 @@ export function panoramaGradeWords(grade: Readonly<PanoramaGrade> = PANORAMA_GRA
 }
 
 /**
- * The Milky Way row's line for the 3D view [proposed]: the placement said once, every step of the grade, and then
- * every step either renderer applies to the whole finished frame (frameFinishingWords, from the post options and
- * the WebGL composer), said once to be the frame's and not this photograph's alone.
+ * The Milky Way row's line for the 3D view and the predicted sky (DECIDED-BY-LEAD 23 Nov, UIUX-predsky-READY.md): the
+ * placement said once, every step of the grade, and then every step either renderer applies to the whole finished
+ * frame (frameFinishingWords, from the post options and the WebGL composer), said once to be the frame's and not this
+ * photograph's alone.
  */
 export function milkyWay3dChanges(grade: Readonly<PanoramaGrade> = PANORAMA_GRADE, frame: readonly string[] = frameFinishingWords()): string {
   const w = panoramaGradeWords(grade);
   return (
-    'In the 3D view it is placed on the sky through its registration, turned and moved a few pixels to meet the ' +
+    'In the 3D view and the predicted sky it is placed on the sky through its registration, turned and moved a few pixels to meet the ' +
     `catalog stars, then ${w.blackLevel}, ${w.power}, ${w.tint}, ${w.gain} and ${w.base}; then the whole finished ` +
     `frame, not this photograph alone, is ${saidAsList(frame)}.`
   );

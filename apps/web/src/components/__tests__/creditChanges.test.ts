@@ -58,7 +58,7 @@ const OPTICS = 'given the camera optics (colour fringes toward the edges, a hori
 const TONE_MAP = 'tone-mapped (ACES at exposure 1.12 in the WebGL renderer, AgX at exposure 3 in the WebGPU renderer)';
 const WEBGL_TONE_MAP = 'tone-mapped (ACES at exposure 1.12)';
 const SKY =
-  'In the 3D view it is placed on the sky through its registration, turned and moved a few pixels to meet the catalog ' +
+  'In the 3D view and the predicted sky it is placed on the sky through its registration, turned and moved a few pixels to meet the catalog ' +
   'stars, then darkened by a black level of 0.042, raised to the power 1.52, tinted warm (1.22, 1.04, 0.9 in red, green ' +
   'and blue), brightened 1.32 times and laid over a deep blue base (0.002, 0.003, 0.008); then the whole finished frame, ' +
   `not this photograph alone, is bloomed, ${OPTICS}, ${TONE_MAP} and smoothed along its high-contrast edges (FXAA ` +
@@ -74,7 +74,7 @@ const REAL_SKY =
   'beside the photo, up to 74 percent black (78 on a phone).';
 
 describe('the Milky Way row states every change the app makes to the panorama, by kind', () => {
-  it('says each change, where it is made: the home, the 3D view, the copy the WebGPU renderer draws, and Real sky', () => {
+  it('says each change, where it is made: the home, the 3D view and the predicted sky, the copy the WebGPU renderer draws, and Real sky', () => {
     expect(CHANGES.eso0932a?.()).toEqual([HOME, SKY, COPY, REAL_SKY]);
     expect(realSkyChanges()).toBe(REAL_SKY);
     // Worded from the layer's own numbers
