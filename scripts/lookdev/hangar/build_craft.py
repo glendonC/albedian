@@ -308,6 +308,19 @@ CHANGES = {
         "the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth "
         "within an angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for a Mars lander whose calibration target agency logos and skirt label are painted out ("insight")
+    "lod0_insight": (
+        "Rebuilt from NASA's model, not copied: a helper empty removed, the parts joined into one mesh, vertex colour "
+        "layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA "
+        "states; NASA's deck, solar panel, thermal cover, cable and camera calibration target photo textures kept as "
+        "the base colour, with metalness, roughness and surface relief added from their own colours and shading, and "
+        "the NASA insignia, DLR logo and CNES logo on the calibration target and a small printed label on a solar panel "
+        "skirt painted over in the colour around them while the eleven national flags stay; the silver foil made metal "
+        "foil, NASA's shaded maps for the deck brackets, under-deck enclosure, landing legs, robotic arm, seismometer "
+        "shield and heat probe kept as the base colour with one roughness and no metalness, NASA's flat colours kept "
+        "for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an "
+        "angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+    ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
         "with the craft's facts), and textures at most 1024 pixels on a side."
@@ -315,6 +328,19 @@ CHANGES = {
     "lod2": (
         "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept "
         "is listed with the craft's facts), and textures at most 512 pixels on a side."
+    ),
+    # lod1 and lod2 of a craft decimated part by part ("decimate_by_part")
+    "lod1_by_part": (
+        "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse "
+        "decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of "
+        "each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that "
+        "almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+    ),
+    "lod2_by_part": (
+        "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse "
+        "decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of "
+        "each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that "
+        "almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
     ),
     "picker": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP.",
     "picker_render": (
@@ -350,7 +376,19 @@ MASK_EDGE = 512  # a kept alpha mask's largest edge
 PICKER_SAMPLES = 32  # Cycles samples for a rendered picker picture
 PAINT_OUT_BAND_PX = 3  # the band around a painted-out box whose median colour fills it
 MIN_MATERIAL_TRIS = 24  # per-material decimation floor so flat panel primitives never collapse to nothing
-
+PART_FLOOR_TRIS = {"lod0": 24, "lod1": 12, "lod2": 8}  # per-part decimation floor, each loose part keeps this many
+BULKY_FROM_M = 0.1  # a loose part whose smallest bounding-box side is this or more counts as bulky (a dome, a tank)
+DECIMATE_PASSES = 2  # per-part collapse passes at most
+PASS_SLACK = 1.25  # a part within this factor of its target needs no further pass
+SHAPE_KEEP = 0.9  # a decimated part keeps at least this share of each side of its box
+SHAPE_SLACK_M = 0.005  # less a few millimetres, so a thin part's thickness can settle
+HIDDEN_CONES_DEG = (15.0, 35.0, 55.0, 72.0, 85.0)  # cones around a face's normal its visibility rays are cast on
+HIDDEN_AZIMUTHS = 12  # rays on each cone
+HIDDEN_RAY_OFFSET_M = 0.0001  # a ray starts this far in front of the face
+HIDDEN_RAY_REACH_M = 100.0  # a ray that meets nothing within this reach has left the craft
+# A face counts as hidden when this share of its rays meet the craft: the inner wall of InSight's shield sees out only
+# through the thin gap under its rim, so a few grazing rays escape from faces no camera outside can see.
+HIDDEN_BLOCKED_SHARE = 0.9
 
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -728,15 +766,16 @@ def remake_normals(obj: bpy.types.Object, smooth_deg: float, weighted: bool) -> 
         bpy.ops.object.modifier_apply(modifier=mod.name)
 
 
-def drop_small_parts(obj: bpy.types.Object, metres: float) -> int:
-    """Remove each loose part whose bounding box is under `metres` across: at a far level it covers under a pixel."""
+def drop_small_parts(obj: bpy.types.Object, metres: float, keep_each_material: bool = False) -> int:
+    """Remove each loose part whose bounding box is under `metres` across: at a far level it covers under a pixel. With
+    `keep_each_material`, the largest part holding each material stays whatever its size, so no material leaves the
+    level (InSight's AO_01 and AO_03 maps are drawn only on parts under 0.2 m)."""
     import bmesh
 
     bm = bmesh.new()
     bm.from_mesh(obj.data)
     seen: set[int] = set()
-    doomed = []
-    removed = 0
+    parts: list[tuple[list, float, set[int]]] = []
     for start in bm.verts:
         if start.index in seen:
             continue
@@ -751,7 +790,20 @@ def drop_small_parts(obj: bpy.types.Object, metres: float) -> int:
                     part.append(o)
             i += 1
         co = np.array([v.co for v in part])
-        if np.linalg.norm(co.max(0) - co.min(0)) < metres:
+        mats = {f.material_index for v in part for f in v.link_faces} if keep_each_material else set()
+        parts.append((part, float(np.linalg.norm(co.max(0) - co.min(0))), mats))
+    keep: set[int] = set()
+    if keep_each_material:
+        largest: dict[int, int] = {}
+        for k, (_, size, mats) in enumerate(parts):
+            for m in mats:
+                if m not in largest or size > parts[largest[m]][1]:
+                    largest[m] = k
+        keep = set(largest.values())
+    doomed = []
+    removed = 0
+    for k, (part, size, _) in enumerate(parts):
+        if size < metres and k not in keep:
             doomed.extend(part)
             removed += 1
     bmesh.ops.delete(bm, geom=doomed, context="VERTS")
@@ -814,6 +866,161 @@ def decimate_by_material(obj: bpy.types.Object, ratio: float, smooth_deg: float 
         if obj.data.has_custom_normals:
             bpy.ops.mesh.customdata_custom_splitnormals_clear()
         bpy.ops.object.shade_smooth_by_angle(angle=math.radians(smooth_deg))
+
+
+def _ray_directions(n: "Vector") -> list:
+    """The normal and HIDDEN_AZIMUTHS directions on each cone of HIDDEN_CONES_DEG around it."""
+    t = n.orthogonal().normalized()
+    b = n.cross(t)
+    out = [n]
+    for i, cone in enumerate(HIDDEN_CONES_DEG):
+        c, s = math.cos(math.radians(cone)), math.sin(math.radians(cone))
+        for k in range(HIDDEN_AZIMUTHS):
+            a = 2 * math.pi * (k + 0.5 * (i % 2)) / HIDDEN_AZIMUTHS
+            out.append((n * c + (t * math.cos(a) + b * math.sin(a)) * s).normalized())
+    return out
+
+
+def hidden_bulky_faces(obj: bpy.types.Object) -> list[int]:
+    """Indices of the faces of bulky loose parts (smallest side BULKY_FROM_M or more) whose rays from their front side
+    meet the craft at least HIDDEN_BLOCKED_SHARE of the time, every part an occluder: the inner wall of a double-walled
+    shell, as InSight's wind and thermal shield, which pokes through the outer wall once both are decimated."""
+    import bmesh
+    from mathutils.bvhtree import BVHTree
+
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    bm.verts.ensure_lookup_table()
+    tree = BVHTree.FromBMesh(bm)
+    bulky = np.zeros(len(bm.verts), dtype=bool)
+    part_of = np.full(len(bm.verts), -1, dtype=np.int64)
+    n_parts = 0
+    for start in bm.verts:
+        if part_of[start.index] >= 0:
+            continue
+        part = [start]
+        part_of[start.index] = n_parts
+        i = 0
+        while i < len(part):
+            for e in part[i].link_edges:
+                o = e.other_vert(part[i])
+                if part_of[o.index] < 0:
+                    part_of[o.index] = n_parts
+                    part.append(o)
+            i += 1
+        co = np.array([v.co for v in part])
+        if (co.max(0) - co.min(0)).min() >= BULKY_FROM_M:
+            bulky[[v.index for v in part]] = True
+        n_parts += 1
+    hidden: dict[int, list[int]] = {}
+    faces: dict[int, int] = {}
+    for f in bm.faces:
+        k = int(part_of[f.verts[0].index])
+        faces[k] = faces.get(k, 0) + 1
+        n = f.normal
+        if not bulky[f.verts[0].index] or n.length < 0.5:
+            continue
+        o = f.calc_center_median() + n * HIDDEN_RAY_OFFSET_M
+        rays = _ray_directions(n)
+        blocked = sum(tree.ray_cast(o, d, HIDDEN_RAY_REACH_M)[0] is not None for d in rays)
+        if blocked >= HIDDEN_BLOCKED_SHARE * len(rays):
+            hidden.setdefault(k, []).append(f.index)
+    bm.free()
+    # Only inner faces: a part hidden whole (a seismometer inside its shield) stays, so every part keeps a place.
+    return sorted(i for k, idx in hidden.items() if len(idx) < faces[k] for i in idx)
+
+
+def _box_sides(me: bpy.types.Mesh) -> np.ndarray:
+    co = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    return co.max(axis=0) - co.min(axis=0) if len(co) else np.zeros(3)
+
+
+def drop_faces(obj: bpy.types.Object, indices: list[int]) -> None:
+    import bmesh
+
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.faces[i] for i in indices], context="FACES")
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+
+
+def decimate_by_part(
+    obj: bpy.types.Object,
+    ratio: float,
+    floor_tris: int,
+    small_m: float | None,
+    smooth_deg: float | None,
+    tris_per_m: float = 0.0,
+) -> int:
+    """Collapse-decimate each loose part on its own, keeping at least `floor_tris` triangles of it (or all it has), after
+    leaving out the parts under `small_m` metres across, measured before any decimation: a strut, a footpad or a deck
+    instrument keeps its shape at every level instead of collapsing to a sliver under one ratio for the whole mesh. A
+    bulky part (its smallest side `BULKY_FROM_M` or more, as a dome or a tank) also keeps `tris_per_m` triangles per metre
+    of its middle side, so it stays round. Returns how many parts were left out."""
+    removed = drop_small_parts(obj, small_m, keep_each_material=True) if small_m else 0
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.separate(type="LOOSE")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    parts = sorted(bpy.context.selected_objects, key=lambda o: o.name)
+    for part in parts:
+        tris = sum(len(p.vertices) - 2 for p in part.data.polygons)
+        if tris == 0:
+            continue
+        target = max(ratio * tris, min(tris, floor_tris))
+        co = np.empty(len(part.data.vertices) * 3)
+        part.data.vertices.foreach_get("co", co)
+        sides = co.reshape(-1, 3).max(axis=0) - co.reshape(-1, 3).min(axis=0)
+        ordered = np.sort(sides)
+        if ordered[0] >= BULKY_FROM_M:
+            target = max(target, min(tris, tris_per_m * float(ordered[1])))
+        # Blender's collapse often stops well short of the share asked on a small part, so a part left over its target
+        # is asked once more from where it stopped. A part whose box shrinks on any side by more than SHAPE_KEEP allows
+        # (InSight's 0.37 m mast came out 0.28 m tall at 5 triangles) is made again from its own faces with twice the
+        # triangles, until it keeps its size or keeps every triangle it had.
+        source = part.data.copy() if target < tris else None
+        while source is not None:
+            for _ in range(DECIMATE_PASSES):
+                now = sum(len(p.vertices) - 2 for p in part.data.polygons)
+                if now <= PASS_SLACK * target:
+                    break
+                dec = part.modifiers.new("lod", "DECIMATE")
+                dec.decimate_type = "COLLAPSE"
+                dec.ratio = target / now
+                dec.use_collapse_triangulate = True
+                with bpy.context.temp_override(object=part, active_object=part):
+                    bpy.ops.object.modifier_apply(modifier=dec.name)
+            if target >= tris or np.all(_box_sides(part.data) >= SHAPE_KEEP * sides - SHAPE_SLACK_M):
+                break
+            done = part.data
+            part.data = source.copy()
+            bpy.data.meshes.remove(done)
+            target = min(tris, 2 * target)
+        if source is not None:
+            bpy.data.meshes.remove(source)
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in parts:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.join()
+    obj.data.validate(verbose=False, clean_customdata=False)
+    if smooth_deg:
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        if obj.data.has_custom_normals:
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(smooth_deg))
+    return removed
 
 
 def render_picker(obj: bpy.types.Object, path: Path) -> None:
@@ -1126,19 +1333,35 @@ def main() -> None:
 
     # Levels of detail.
     tris0 = sum(len(p.vertices) - 2 for p in me.polygons)
+    hidden = hidden_bulky_faces(craft) if recipe.get("drop_hidden_faces") else []
+    if hidden:
+        print(f"HANGAR {args.craft} hidden faces of bulky parts {len(hidden)} of {len(craft.data.polygons)}")
     for level, ratio in recipe.get("lod_ratio", LOD_RATIO).items():
         ratio = 1.0 if args.full else ratio
         obj = craft.copy()
         obj.data = craft.data.copy()
         obj.name = f"{args.craft}_{level}"
         bpy.context.scene.collection.objects.link(obj)
+        if hidden and level in recipe["drop_hidden_faces"]:
+            drop_faces(obj, hidden)
         for slot in obj.material_slots:
             mat = slot.material.copy()
             for node in mat.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image is not None:
                     node.image = resized(node.image, {**TEXTURE_EDGE, **recipe.get("texture_edge", {})}[level], level)
             slot.material = mat
-        if ratio < 1.0:
+        small = recipe.get("drop_parts_under_m", {}).get(level)
+        if recipe.get("decimate_by_part"):
+            floor_tris = {**PART_FLOOR_TRIS, **recipe.get("part_floor_tris", {})}[level]
+            per_m = recipe.get("part_tris_per_m", {}).get(level, 0.0)
+            smooth = recipe.get("level_smooth_deg", {}).get(level, recipe.get("smooth_deg"))
+            removed = decimate_by_part(obj, ratio, floor_tris, small, smooth, per_m)
+            print(
+                f"HANGAR {args.craft} {level} parts under {small} m removed {removed}, each part kept {floor_tris} "
+                f"triangles or more, bulky parts {per_m} per metre, smooth within {smooth} degrees"
+            )
+            small = None
+        elif ratio < 1.0:
             if recipe.get("decimate_by_material"):
                 decimate_by_material(obj, ratio, recipe.get("smooth_deg"))
             else:
@@ -1149,7 +1372,6 @@ def main() -> None:
                 bpy.context.view_layer.objects.active = obj
                 bpy.ops.object.modifier_apply(modifier=dec.name)
                 obj.data.validate(verbose=False, clean_customdata=False)
-        small = recipe.get("drop_parts_under_m", {}).get(level)
         if small:
             removed = drop_small_parts(obj, small)
             print(f"HANGAR {args.craft} {level} parts under {small} m removed {removed}")

@@ -176,6 +176,13 @@ def build_facts(models: list[str]) -> dict:
     }
 
 
+def _level_changes(model: str, level: str) -> str:
+    """The key of build_craft.py's CHANGES sentence for one level of one model."""
+    if level == "lod0":
+        return f"lod0_{CRAFTS[model]['changes']}"
+    return f"{level}_by_part" if CRAFTS[model].get("decimate_by_part") else level
+
+
 def _quoted(name: str) -> str:
     return name.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
 
@@ -221,7 +228,7 @@ def build_record(models: list[str]) -> dict:
                     "path": f"hangar/{m}/{m}_{level}.glb",
                     "sha256": sha256_file(HANGAR_DIR / m / f"{m}_{level}.glb"),
                     "sources": [MODELS_SOURCE, PAGES_SOURCE],
-                    "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[f"lod0_{CRAFTS[m]['changes']}" if level == "lod0" else level]},
+                    "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[_level_changes(m, level)]},
                     "note": model_note,
                 }
             )

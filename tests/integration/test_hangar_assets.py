@@ -190,12 +190,74 @@ def test_decimation_never_lets_a_boom_or_truss_starve_primary_primitives_in_lod2
             share0 = tris0 / tot0
             share2 = p2.get(mat, 0) / tot2
             assert share2 - share0 <= 0.5, (name, mat, round(share0, 3), round(share2, 3))
-        if CRAFTS[name].get("decimate_by_material"):
+        if CRAFTS[name].get("decimate_by_material") or CRAFTS[name].get("decimate_by_part"):
             assert set(p1) == set(p0) and all(v > 0 for v in p1.values()), (name, p1)
             assert set(p2) == set(p0) and all(v > 0 for v in p2.values()), (name, p2)
             for axis, (s0, s2) in enumerate(zip(_glb_spans(g0), _glb_spans(g2))):
                 assert s2 >= 0.95 * s0, (name, axis, s0, s2)
     assert CRAFTS["odyssey"].get("decimate_by_material") is True
+
+
+def _glb_parts(path: Path) -> tuple[list[tuple[np.ndarray, np.ndarray]], np.ndarray]:
+    """Each loose part of a level (triangles joined by shared corners, corners at one place to 0.1 mm being one) as its
+    bounding box, and every corner the level draws."""
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    data = path.read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20 : 20 + length])
+    blob = data[20 + length + 8 :]
+    kinds = {5123: np.uint16, 5125: np.uint32, 5126: np.float32}
+
+    def read(i: int, width: int) -> np.ndarray:
+        acc = gltf["accessors"][i]
+        view = gltf["bufferViews"][acc["bufferView"]]
+        assert view.get("byteStride", 0) in (0, width * np.dtype(kinds[acc["componentType"]]).itemsize)
+        offset = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+        return np.frombuffer(blob, kinds[acc["componentType"]], acc["count"] * width, offset).reshape(-1, width)
+
+    pos, tri, base = [], [], 0
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            p = read(prim["attributes"]["POSITION"], 3).astype(np.float64)
+            tri.append(read(prim["indices"], 1).reshape(-1, 3).astype(np.int64) + base)
+            pos.append(p)
+            base += len(p)
+    points = np.concatenate(pos)
+    _, corner = np.unique(np.round(points / 1e-4).astype(np.int64), axis=0, return_inverse=True)
+    t = corner.reshape(-1)[np.concatenate(tri)]
+    n = int(t.max()) + 1
+    edges = np.concatenate([t[:, [0, 1]], t[:, [1, 2]]])
+    graph = coo_matrix((np.ones(len(edges)), (edges[:, 0], edges[:, 1])), shape=(n, n))
+    _, label = connected_components(graph, directed=False)
+    place = np.zeros((n, 3))
+    place[corner.reshape(-1)] = points
+    used = np.unique(t)
+    boxes = [(place[used[label[used] == k]].min(0), place[used[label[used] == k]].max(0)) for k in np.unique(label[used])]
+    return boxes, place[used]
+
+
+def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> None:
+    # One collapse ratio over InSight's ~1,900 loose parts shredded its deck and left two legs without struts or
+    # footpads in lod1 and lod2 (53 lod0 parts of 3 cm and over gone from lod1, 79 of 6.5 cm and over from lod2, the
+    # largest 27 cm): a craft decimated part by part leaves out only the parts under its level's size, measured before
+    # decimation, and every larger lod0 part still has corners in its place (its box grown by 1 cm) at every level.
+    by_part = [name for name in FACTS["models"] if CRAFTS[name].get("decimate_by_part")]
+    assert "insight" in by_part
+    for name in by_part:
+        # the provenance sentence of a by-part level says hidden inner faces of bulky parts are left out
+        assert CRAFTS[name].get("drop_hidden_faces") == ["lod1", "lod2"], name
+        boxes0, _ = _glb_parts(HANGAR_DIR / FACTS["models"][name]["files"]["lod0"]["path"])
+        for level in ("lod1", "lod2"):
+            under = CRAFTS[name].get("drop_parts_under_m", {}).get(level, 0.0)
+            _, points = _glb_parts(HANGAR_DIR / FACTS["models"][name]["files"][level]["path"])
+            gone = [
+                (round(float(np.linalg.norm(hi - lo)), 3), [round(float(x), 2) for x in (lo + hi) / 2])
+                for lo, hi in boxes0
+                if np.linalg.norm(hi - lo) >= under and not np.all((points >= lo - 0.01) & (points <= hi + 0.01), axis=1).any()
+            ]
+            assert not gone, (name, level, len(gone), sorted(gone, reverse=True)[:5])
 
 
 def test_the_true_size_is_metres_of_a_real_craft() -> None:
@@ -212,7 +274,7 @@ def test_a_picker_rendered_from_the_build_has_a_clear_background_and_says_why() 
 
     record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
     rendered = [m for m in FACTS["models"] if CRAFTS[m]["source"].get("picker_render_reason")]
-    assert "newhorizons" in rendered and "perseverance" in rendered
+    assert "newhorizons" in rendered and "perseverance" in rendered and "insight" in rendered
     for m in rendered:
         with Image.open(HANGAR_DIR / m / f"{m}_picker.webp") as im:
             assert im.mode == "RGBA" and im.getpixel((0, 0))[3] == 0, m
@@ -441,7 +503,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
     near_ids = {e["id"] for e in near}
-    assert near_ids <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance", "clementine", "tdrs", "mars-odyssey"}
+    assert near_ids <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance", "clementine", "tdrs", "mars-odyssey", "insight"}
     assert "clementine" in near_ids and FACTS["models"]["clementine"]["scaleFrom"] == {
         "part": None,
         "metres": 2,
@@ -463,6 +525,13 @@ def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
         "trueTo": "part",
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
         "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters.",
+    }
+    assert "insight" in near_ids and FACTS["models"]["insight"]["scaleFrom"] == {
+        "part": None,
+        "metres": 6,
+        "trueTo": "part",
+        "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+        "quote": '19 feet 8 inches (6 meters) with solar panels deployed ("wingspan")',
     }
     for e in FACTS["entries"]:
         if e["travel"] is not None:

@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "8fd26fb9433a0419127b524cfaff68cf9313bfad549ce5db07cb145a300f5916",
+      "sha256": "c44917c48e6abb0a917b90985e26969b10fd8bf640a9efcceaf155e2f703f3a2",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -903,6 +903,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.png (562286 bytes, SHA-256 65559a8dc72111c73c854cc41c09d953548771070fc2b3931e4e70d407e913dc)."
+    },
+    {
+      "path": "hangar/insight/insight_lod0.glb",
+      "sha256": "2b346fd337683a103a327af9b0e241f62a07e7344e5fcb1433cd1a3709418ae3",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
+        "changes": "Rebuilt from NASA's model, not copied: a helper empty removed, the parts joined into one mesh, vertex colour layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's deck, solar panel, thermal cover, cable and camera calibration target photo textures kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA insignia, DLR logo and CNES logo on the calibration target and a small printed label on a solar panel skirt painted over in the colour around them while the eleven national flags stay; the silver foil made metal foil, NASA's shaded maps for the deck brackets, under-deck enclosure, landing legs, robotic arm, seismometer shield and heat probe kept as the base colour with one roughness and no metalness, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb (3948936 bytes, SHA-256 4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/insight/insight_lod1.glb",
+      "sha256": "2f4f316ae5130566f8d84581427dc1246b5a562607e8c4d48169b3ed49006967",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb (3948936 bytes, SHA-256 4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/insight/insight_lod2.glb",
+      "sha256": "8f6e4a1c47977eb1daa35c6c65a1020616a9f2ece0d5a8a8ca5bb7d42024c4b1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb (3948936 bytes, SHA-256 4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/insight/insight_picker.webp",
+      "sha256": "51f87e4585040bb38698de35644e712fd2fec4f73dcf5ccb4f177d85cd9ad667",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
+        "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
+      },
+      "note": "Rendered from this folder's lod0 build of https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb."
     },
     {
       "path": "hangar/iss/iss_lod0.glb",

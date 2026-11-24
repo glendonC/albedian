@@ -2051,6 +2051,116 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 2.8,
         "changes": "odyssey",
     },
+    "insight": {
+        "title": "InSight",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-insight-cruise-lander-panels-deployed",
+            "title": "InSight Cruise Lander (panels deployed), NASA 3D Resources",
+            "folder": "InSight Cruise Lander (panels deployed)",
+            "file": "InSight Cruise Lander (panels deployed).glb",
+            "bytes": 3_948_936,
+            "sha256": "4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8",
+            "picture": "InSight Cruise Lander (panels deployed).png",
+            "picture_bytes": 1_349_532,
+            "picture_sha256": "b5b588097efdaf0d076bbe5a65e591062e73734ae158ffb7245c0f810cc64035",
+            # NASA's own render shows the NASA insignia, DLR logo and CNES logo on the camera calibration target, which
+            # the rebuild covers: the picker picture is rendered from the build instead.
+            "picker_render_reason": "insignia",
+            "local": "insight",
+        },
+        "drop_objects": [],
+        "strip_unused_layers": True,
+        # The lander stands on its three footpads along +Z in the import frame while its two deployed decagonal solar
+        # arrays span X; the instrument workspace (SEIS, WTS, HP3, stowed robotic arm and ICC fisheye camera) faces -Y
+        # [tested: Blender import survey]. A stationary lander has no flight front: shown workspace forward (-Y -> +Z)
+        # with +Z up (+Y).
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's file is drawn in metres: end to end across the two deployed solar arrays measures 6.1354 units along X
+        # against NASA's 6 m deployed length (0.9779 m per unit), putting the platform deck at 1.57 m across against
+        # NASA's 1.56 m, each decagonal solar panel at 2.19 m across against NASA's 2.2 m, and the deck top 107.2 cm
+        # above the footpads against NSSDCA's "approximately 108 cm" [tested: build log]. Marked true_to "part" so only
+        # the 6 m deployed width is held to exact size.
+        "scale_from": {
+            "material": None,
+            "axis": "x",
+            "metres": 6,
+            "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+            "true_to": "part",
+            "quote": '19 feet 8 inches (6 meters) with solar panels deployed ("wingspan")',
+        },
+        # Every embedded texture surveyed with uv_dump and uv_cover [tested]: on the camera calibration target in
+        # InSIGHT_tex_02, the NASA insignia, DLR logo and CNES logo are painted over in the black background around
+        # them while all eleven national flags (ten across the top row plus the US flag) and the five calibration
+        # circles stay intact; in InSIGHT_tex_01, a small printed rectangular label on a solar panel skirt is painted
+        # over in the dark skirt colour around it. Duplicate material slots created by constant-white COLOR_0 attributes
+        # share one rebuilt material per NASA map.
+        "materials": {
+            "InSIGHT_foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "InSIGHT_AO_01": {"role": "textured", "metallic": 0.0, "roughness": 0.5},
+            "InSIGHT_AO_02": {"role": "textured", "metallic": 0.0, "roughness": 0.5},
+            "InSIGHT_AO_03": {"role": "textured", "metallic": 0.0, "roughness": 0.5},
+            "InSIGHT_AO_04": {"role": "textured", "metallic": 0.0, "roughness": 0.5},
+            "InSIGHT_AO_05": {"role": "textured", "metallic": 0.0, "roughness": 0.5},
+            "InSIGHT_AO_06": {"role": "textured", "metallic": 0.0, "roughness": 0.45},
+            "InSIGHT_AO_07": {"role": "textured", "metallic": 0.0, "roughness": 0.5},
+        },
+        "material_rules": [
+            {
+                "match": ["insight_tex_01"],
+                "role": "photo_atlas",
+                "image": "InSIGHT_tex_01",
+                "paint_out": [
+                    {
+                        "box": (58, 600, 100, 626),
+                        "fill_from": (58, 578, 100, 596),
+                        "what": "a small printed label on a solar panel skirt",
+                    },
+                ],
+            },
+            {
+                "match": ["insight_tex_02"],
+                "role": "photo_atlas",
+                "image": "InSIGHT_tex_02",
+                "paint_out": [
+                    {
+                        "box": (148, 309, 205, 357),
+                        "fill_from": (118, 312, 145, 350),
+                        "what": "the NASA insignia on the camera calibration target",
+                    },
+                    {
+                        "box": (219, 309, 277, 356),
+                        "fill_from": (206, 312, 218, 350),
+                        "what": "the DLR logo on the camera calibration target",
+                    },
+                    {
+                        "box": (304, 308, 353, 356),
+                        "fill_from": (355, 312, 376, 350),
+                        "what": "the CNES logo on the camera calibration target",
+                    },
+                ],
+            },
+            {"match": ["insight_ao_08"], "role": "textured", "image": "InSIGHT_AO_08", "metallic": 0.0, "roughness": 0.5},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "decimate_by_part": True,
+        "lod_ratio": {"lod0": 0.12, "lod1": 0.02, "lod2": 0.006},
+        "part_floor_tris": {"lod0": 14, "lod1": 8, "lod2": 6},
+        "part_tris_per_m": {"lod0": 600, "lod1": 300, "lod2": 100},
+        "level_smooth_deg": {"lod1": 55.0, "lod2": 75.0},
+        # The wind and thermal shield is double-walled in NASA's model, a white outer wall over a dark inner one, and
+        # the inner wall pokes through once both are decimated: the far levels leave out the faces of bulky parts whose
+        # rays from their front side nearly all meet the craft [tested: .lanetools/shell_faces.py and hidden_faces.py].
+        "drop_hidden_faces": ["lod1", "lod2"],
+        "drop_parts_under_m": {"lod1": 0.07, "lod2": 0.2},
+        "texture_edge": {"lod0": 768, "lod1": 384, "lod2": 128},
+        # Frames the 1.56 m platform deck, stowed instruments, legs and inner solar array hinges inside the 6 m width.
+        "body_radius_m": 1.8,
+        "changes": "insight",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2710,6 +2820,30 @@ HANGAR: list[dict] = [
             {"key": "body", "value": "box-shaped, 2.2 by 1.7 by 2.6 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters."},
             {"key": "boomLengthM", "value": 6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "Above the equipment module, connected by struts, is the science deck, holding the star cameras, high energy neutron detector, UHF antenna, the THEMIS instrument and a deployable 6 meter boom holding the gamma sensor head for the GRS."},
             {"key": "power", "value": "gallium arsenide solar cells and a 16 amp-hr nickel hydrogen battery", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "Power is provided by the gallium arsenide solar cells in the solar panel and a 16 amp-hr nickel hydrogen battery."},
+        ],
+    },
+    {
+        # InSight operated on the surface of Mars in Elysium Planitia: no speed between stars. NASA's Lander Tech Specs
+        # table on science.nasa.gov/mission/insight/spacecraft/ supplies the deployed length, deck diameter, deck height
+        # range, robotic arm length, landed mass and solar panel diameter, paired with NASA's mission page and NSSDCA
+        # 2018-042A for launch, Mars touchdown, landing site, last transmission (15 December 2022) and end-of-mission
+        # declaration (21 December 2022) [verified: science.nasa.gov and nssdc.gsfc.nasa.gov].
+        "id": "insight",
+        "name": "InSight",
+        "model": "insight",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2018-05-05", "page": "https://science.nasa.gov/mission/insight/", "quote": "Launched: May 5, 2018 (4:05 a.m. PT/7:05 a.m. ET)"},
+            {"key": "landedOnMars", "value": "2018-11-26", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A", "quote": "After a half-year Type 1 cruise to Mars, InSight landed in the western Elysium Planitia region on 26 November 2018 at 19:52:59 UT."},
+            {"key": "landingSite", "value": "Elysium Planitia, Mars", "page": "https://science.nasa.gov/mission/insight/", "quote": "Landing Site: Elysium Planitia, Mars"},
+            {"key": "lastContact", "value": "2022-12-15", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A", "quote": "The last transmission from InSight was received on 15 December 2022."},
+            {"key": "missionEnd", "value": "2022-12-21", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A", "quote": "After two failed attempts to communicate with the lander, the mission was declared over, presumably due to the inability of the solar cell batteries to maintain enough power to run the spacecraft, on 21 December 2022."},
+            {"key": "massKg", "value": 360, "page": "https://science.nasa.gov/mission/insight/spacecraft/", "quote": "794 pounds (360 kilograms)"},
+            {"key": "deployedLengthM", "value": 6, "page": "https://science.nasa.gov/mission/insight/spacecraft/", "quote": '19 feet 8 inches (6 meters) with solar panels deployed ("wingspan")'},
+            {"key": "deckDiameterM", "value": 1.56, "page": "https://science.nasa.gov/mission/insight/spacecraft/", "quote": "5 feet 1 inch (1.56 meters) (lander deck diameter)"},
+            {"key": "deckHeightCm", "value": "83 to 108", "page": "https://science.nasa.gov/mission/insight/spacecraft/", "quote": "33 to 43 inches (83 to 108 centimeters)"},
+            {"key": "armLengthM", "value": 1.8, "page": "https://science.nasa.gov/mission/insight/spacecraft/", "quote": "5 feet 9 inches (1.8 meters)"},
+            {"key": "power", "value": "two solar panels, about 2.2 m each in diameter", "page": "https://science.nasa.gov/mission/insight/spacecraft/", "quote": "Two solar panels, about 7 feet (2.2 meters) each in diameter"},
         ],
     },
 ]

@@ -2276,6 +2276,64 @@
         },
         "trueTo": "part"
       }
+    },
+    "insight": {
+      "title": "InSight",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "insight/insight_lod0.glb",
+          "bytes": 3869168,
+          "triangles": 40110,
+          "textureEdgeMax": 768,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "insight/insight_lod1.glb",
+          "bytes": 1432912,
+          "triangles": 14798,
+          "textureEdgeMax": 384,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "insight/insight_lod2.glb",
+          "bytes": 543348,
+          "triangles": 6767,
+          "textureEdgeMax": 128,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "insight/insight_picker.webp",
+          "bytes": 2510,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -3.0,
+          -0.775,
+          -1.355
+        ],
+        "max": [
+          3.0,
+          0.774,
+          1.356
+        ]
+      },
+      "bodyRadiusM": 1.8,
+      "lodTriangleShare": {
+        "lod0": 0.12,
+        "lod1": 0.02,
+        "lod2": 0.006
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 6,
+        "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+        "quote": "19 feet 8 inches (6 meters) with solar panels deployed (\"wingspan\")",
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -3932,6 +3990,80 @@
           "value": "gallium arsenide solar cells and a 16 amp-hr nickel hydrogen battery",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
           "quote": "Power is provided by the gallium arsenide solar cells in the solar panel and a 16 amp-hr nickel hydrogen battery."
+        }
+      ]
+    },
+    {
+      "id": "insight",
+      "name": "InSight",
+      "model": "insight",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2018-05-05",
+          "page": "https://science.nasa.gov/mission/insight/",
+          "quote": "Launched: May 5, 2018 (4:05 a.m. PT/7:05 a.m. ET)"
+        },
+        {
+          "key": "landedOnMars",
+          "value": "2018-11-26",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A",
+          "quote": "After a half-year Type 1 cruise to Mars, InSight landed in the western Elysium Planitia region on 26 November 2018 at 19:52:59 UT."
+        },
+        {
+          "key": "landingSite",
+          "value": "Elysium Planitia, Mars",
+          "page": "https://science.nasa.gov/mission/insight/",
+          "quote": "Landing Site: Elysium Planitia, Mars"
+        },
+        {
+          "key": "lastContact",
+          "value": "2022-12-15",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A",
+          "quote": "The last transmission from InSight was received on 15 December 2022."
+        },
+        {
+          "key": "missionEnd",
+          "value": "2022-12-21",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A",
+          "quote": "After two failed attempts to communicate with the lander, the mission was declared over, presumably due to the inability of the solar cell batteries to maintain enough power to run the spacecraft, on 21 December 2022."
+        },
+        {
+          "key": "massKg",
+          "value": 360,
+          "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+          "quote": "794 pounds (360 kilograms)"
+        },
+        {
+          "key": "deployedLengthM",
+          "value": 6,
+          "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+          "quote": "19 feet 8 inches (6 meters) with solar panels deployed (\"wingspan\")"
+        },
+        {
+          "key": "deckDiameterM",
+          "value": 1.56,
+          "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+          "quote": "5 feet 1 inch (1.56 meters) (lander deck diameter)"
+        },
+        {
+          "key": "deckHeightCm",
+          "value": "83 to 108",
+          "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+          "quote": "33 to 43 inches (83 to 108 centimeters)"
+        },
+        {
+          "key": "armLengthM",
+          "value": 1.8,
+          "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+          "quote": "5 feet 9 inches (1.8 meters)"
+        },
+        {
+          "key": "power",
+          "value": "two solar panels, about 2.2 m each in diameter",
+          "page": "https://science.nasa.gov/mission/insight/spacecraft/",
+          "quote": "Two solar panels, about 7 feet (2.2 meters) each in diameter"
         }
       ]
     }
