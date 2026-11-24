@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
-import { resolveMotionTokens } from '@albedian/design-system';
+import { getMarkerVisualSpec, resolveMotionTokens } from '@albedian/design-system';
 import { EvidenceTag, IconButton, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
 import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
@@ -121,6 +121,9 @@ export const PredictedSkyScreen: React.FC<{
             type="button"
             key={`name:${mark.id}`}
             className={mark.nameOnLeft ? 'align-layer__name predsky-name is-left' : 'align-layer__name predsky-name'}
+            // Heard as the reveal's marks are: the name, its evidence class and whether it is picked
+            aria-label={getMarkerVisualSpec({ evidenceClass: 'predicted', title: mark.name, isSelected: mark.id === picked?.id, isFocused: false, isHovered: false }).ariaDescription}
+            aria-pressed={mark.id === picked?.id}
             onClick={() => onSelect?.(mark.id)}
             style={mark.nameOnLeft ? { right: `${size.widthPx - (mark.xPx - mark.r - 4)}px`, top: `${mark.yPx}px` } : { left: `${mark.xPx + mark.r + 4}px`, top: `${mark.yPx}px` }}
           >

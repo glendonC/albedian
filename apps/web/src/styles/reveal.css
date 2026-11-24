@@ -2123,6 +2123,11 @@
   pointer-events: auto;
   cursor: pointer;
 }
+/* Focused from the keyboard, a name is ringed as every button is (UIUX-buttons-READY.md: 2 px ink, 2 px offset) */
+.predsky .predsky-name:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
 
 /* D33: D14's card in the predicted sky stands on D26's dark panel (ruled 17:05), 20 px inside it, in the card's own
    place, so the stars do not show through its notes; the reveal's card is unchanged */

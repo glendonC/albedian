@@ -76,6 +76,7 @@ const postcss = (await import('postcss')).default;
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+const tokens = fs.readFileSync(path.resolve(here, '../../styles/look-tokens.css'), 'utf8');
 let container: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
@@ -313,6 +314,31 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     expect([...sheet.querySelector('.reveal-card__top')!.children].map((el) => el.matches('.look-tag'))).toEqual([true, false]);
   });
 
+  it("says each name's evidence class and whether it is picked, in the words the reveal's marks use, so a screen reader hears what the tag shows", async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const { getMarkerVisualSpec } = await import('@albedian/design-system');
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const star = { ...template, id: 'finding-predicted-star-a', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star] } } as ObservationSession;
+    const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
+    const spoken = (isSelected: boolean) => getMarkerVisualSpec({ evidenceClass: 'predicted', title: 'Alpha', isSelected, isFocused: false, isHovered: false }).ariaDescription;
+    const render = (selected: string | null) =>
+      act(() => root.render(createElement(PredictedSkyScreen, { session: { ...session, selectedFindingId: selected }, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop })));
+    const alpha = () => [...container.querySelectorAll<HTMLButtonElement>('.predsky button.predsky-name')].find((b) => b.textContent === 'Alpha')!;
+    render(null);
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    expect(spoken(false)).not.toBe('Alpha');
+    expect(alpha().getAttribute('aria-label')).toBe(spoken(false));
+    expect(alpha().getAttribute('aria-pressed')).toBe('false');
+    render('finding-predicted-star-a');
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    expect(alpha().getAttribute('aria-label')).toBe(spoken(true));
+    expect(alpha().getAttribute('aria-pressed')).toBe('true');
+    // The name a person sees stays the start of what is heard (WCAG 2.5.3, label in name)
+    expect(alpha().getAttribute('aria-label')!.startsWith('Alpha')).toBe(true);
+  });
+
   it('passes the matching OpenNGC deep-sky row to StarCard when a predicted deep-sky object is picked, and asks for no table without one', async () => {
     const { CelestialFindingSchema } = await import('@albedian/contracts');
     const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
@@ -532,6 +558,15 @@ describe("the predicted sky's rules are the record's", () => {
     expect(rules, selector).toBe(1);
     return found;
   }
+  it("rings a focused name as every button is (UIUX-buttons-READY.md: a 2 px ink outline, 2 px offset)", () => {
+    expect(declarationsOf('.predsky .predsky-name:focus-visible')).toEqual({
+      outline: 'var(--look-focus-width) solid var(--look-ink)',
+      'outline-offset': 'var(--look-focus-offset)',
+    });
+    expect(tokens).toMatch(/--look-focus-width:\s*2px;/);
+    expect(tokens).toMatch(/--look-focus-offset:\s*2px;/);
+  });
+
   it("lies over the sky's canvas, as the reveal does, taking no pointer but its own controls", () => {
     expect(declarationsOf('.predsky')).toEqual({ position: 'fixed', inset: '0', 'z-index': '30', 'pointer-events': 'none' });
     expect(declarationsOf('.reveal-photo')['z-index']).toBe('30');
