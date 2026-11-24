@@ -300,3 +300,191 @@ def test_every_numeric_constant_of_the_chroma_step_names_its_source() -> None:
     constants = numeric_constants(chroma)
     assert constants
     assert [f"{line} {name}" for name, line, comment in constants if not any(m in comment for m in SOURCE_MARKERS)] == []
+
+
+def smooth_chroma_whole_reference(
+    frame: np.ndarray,
+    guide: np.ndarray,
+    footprint: np.ndarray,
+    *,
+    levels: int = chroma.LEVELS,
+    luma_weights: tuple[float, float, float] = chroma.LUMA,
+) -> chroma.ChromaResult:
+    """The whole-frame reference implementation of `restore-chroma-1`, against which the channel-by-channel cascade is
+    checked to the bit."""
+    from services.media.noise import B3_TAPS, b3_smooth
+    from services.media.spatial import _lag_noise, _pad, _range_weight
+
+    frame = np.asarray(frame, dtype=np.float64)
+    height, width = frame.shape[:2]
+    luminance = frame @ np.asarray(luma_weights)
+    held = np.maximum(np.clip(np.asarray(footprint, dtype=np.float64), 0.0, 1.0), chroma.above_sky(guide).astype(np.float64))
+    keep = 1.0 - held
+    original = np.concatenate([frame, luminance[..., None]], axis=-1)
+    current = original
+    level_guide = np.asarray(guide, dtype=np.float64)
+    for level in range(levels):
+        step = 2**level
+        level_guide = b3_smooth(level_guide, step)
+        guide_width = chroma.RANGE_SIGMAS * _lag_noise(level_guide, step)
+        light = current[..., 3]
+        lit_state = light > chroma.LIGHT_FLOOR
+        colour = np.where(lit_state[..., None], current[..., :3] / np.where(lit_state, light, 1.0)[..., None], 0.0)
+        colour_width = chroma.RANGE_SIGMAS * float(np.sqrt(sum(_lag_noise(colour[..., c], step) ** 2 for c in range(3))))
+        reach = 2 * step
+        guide_padded, keep_padded = _pad(level_guide, reach), _pad(keep, reach)
+        colour_padded, current_padded = _pad(colour, reach), _pad(current, reach)
+        total = np.zeros((height, width))
+        summed = np.zeros_like(current)
+        for a, tap_a in enumerate(B3_TAPS):
+            for b, tap_b in enumerate(B3_TAPS):
+                rows, columns = slice(a * step, a * step + height), slice(b * step, b * step + width)
+                weight = _range_weight(guide_padded[rows, columns] - level_guide, guide_width)
+                apart = np.sqrt(((colour_padded[rows, columns] - colour) ** 2).sum(axis=-1))
+                weight *= _range_weight(apart, colour_width)
+                weight *= tap_a * tap_b
+                weight *= keep_padded[rows, columns]
+                total += weight
+                summed += weight[..., None] * current_padded[rows, columns]
+        smooth = summed + (1.0 - total)[..., None] * current
+        current = held[..., None] * original + keep[..., None] * smooth
+    lit = current[..., 3] > chroma.LIGHT_FLOOR
+    coloured = np.where(lit[..., None], luminance[..., None] * current[..., :3] / np.where(lit, current[..., 3], 1.0)[..., None], frame)
+    correction = coloured - frame
+    weighted = correction * keep[..., None]
+    weight_c = keep.copy()
+    for level in range(chroma.CARRY_LEVELS):
+        step = 2**level
+        weighted = np.stack([b3_smooth(weighted[..., c], step) for c in range(3)], axis=-1)
+        weight_c = b3_smooth(weight_c, step)
+    reached = weight_c > chroma.CARRY_FLOOR
+    carried = np.where(reached[..., None], weighted / np.where(reached, weight_c, 1.0)[..., None], 0.0)
+    coloured = frame + keep[..., None] * correction + held[..., None] * carried
+    size = 2 * chroma.support_px(levels) + 1
+    source, whole = keep > 0.0, held >= 1.0
+    low = np.stack(
+        [
+            np.where(
+                whole,
+                ndimage.minimum_filter(frame[..., c], size=size, mode="mirror"),
+                np.minimum(ndimage.minimum_filter(np.where(source, frame[..., c], np.inf), size=size, mode="mirror"), frame[..., c]),
+            )
+            for c in range(3)
+        ],
+        axis=-1,
+    )
+    high = np.stack(
+        [
+            np.where(
+                whole,
+                ndimage.maximum_filter(frame[..., c], size=size, mode="mirror"),
+                np.maximum(ndimage.maximum_filter(np.where(source, frame[..., c], -np.inf), size=size, mode="mirror"), frame[..., c]),
+            )
+            for c in range(3)
+        ],
+        axis=-1,
+    )
+    out = np.clip(coloured, low, high)
+    clamped_map = (out != coloured).any(axis=-1)
+    return chroma.ChromaResult(out, int((held >= 1.0).sum()), int(clamped_map.sum()), clamped_map)
+
+
+@settings(max_examples=25, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(
+    seed=st.integers(0, 2**31 - 1),
+    height=st.integers(9, 44),
+    width=st.integers(9, 44),
+    levels=st.integers(1, 4),
+    flat_guide=st.booleans(),
+    footprint_mode=st.sampled_from(["empty", "full", "fractional"]),
+)
+@example(seed=1, height=9, width=9, levels=4, flat_guide=False, footprint_mode="fractional")
+@example(seed=2, height=12, width=15, levels=2, flat_guide=True, footprint_mode="empty")
+def test_the_channel_by_channel_step_matches_the_whole_frame_reference_to_the_bit(
+    seed: int, height: int, width: int, levels: int, flat_guide: bool, footprint_mode: str
+) -> None:
+    rng = np.random.default_rng(seed)
+    frame = rng.uniform(0.0, 0.06, (height, width, 3))
+    if seed % 7 == 0:
+        frame *= 0.0
+    elif seed % 7 == 1:
+        frame[0, 0] = [-0.0, 0.0, -0.0]
+    elif seed % 7 == 2:
+        # Sub-floor positive light (0 < Y <= LIGHT_FLOOR) next to lit samples must still read as zero colour
+        frame[1:4, 1:4] = [1e-13, 0.0, 0.0]
+    guide = np.full((height, width), 2.5) if flat_guide else rng.normal(0.0, 3.0, (height, width))
+    if footprint_mode == "empty":
+        footprint = np.zeros((height, width))
+    elif footprint_mode == "full":
+        footprint = np.ones((height, width))
+    else:
+        footprint = np.clip(rng.uniform(-0.3, 1.3, (height, width)), 0.0, 1.0) * (rng.uniform(size=(height, width)) < 0.35)
+    frame_before, guide_before, footprint_before = frame.copy(), guide.copy(), footprint.copy()
+    result = chroma.smooth_chroma(frame, guide, footprint, levels=levels)
+    must = smooth_chroma_whole_reference(frame, guide, footprint, levels=levels)
+    assert np.array_equal(frame.view(np.uint64), frame_before.view(np.uint64))
+    assert np.array_equal(guide.view(np.uint64), guide_before.view(np.uint64))
+    assert np.array_equal(footprint.view(np.uint64), footprint_before.view(np.uint64))
+    assert np.array_equal(result.frame.view(np.uint64), must.frame.view(np.uint64))
+    assert result.kept == must.kept and result.clamped == must.clamped
+    assert np.array_equal(result.clamped_map, must.clamped_map)
+
+
+def test_smooth_chroma_holds_at_most_six_and_three_quarter_frames_beyond_its_input() -> None:
+    # The whole-frame implementation held 22.78 frames here, this one 6.34; the rest is its 4-channel state, sums and 2D planes
+    import tracemalloc
+
+    rng = np.random.default_rng(43)
+    frame = rng.uniform(0.01, 0.08, (300, 400, 3))
+    guide = guide_of(frame)
+    footprint = np.zeros((300, 400))
+    footprint[100:130, 200:240] = 1.0
+    started = not tracemalloc.is_tracing()
+    if started:
+        tracemalloc.start()
+    held = tracemalloc.get_traced_memory()[0]
+    tracemalloc.reset_peak()
+    result = chroma.smooth_chroma(frame, guide, footprint)
+    peak = tracemalloc.get_traced_memory()[1] - held
+    if started:
+        tracemalloc.stop()
+    del result
+    assert peak <= 6.75 * frame.nbytes
+
+
+def test_bounds_holds_at_most_three_and_a_half_frames_beyond_its_input() -> None:
+    import tracemalloc
+
+    rng = np.random.default_rng(44)
+    frame = rng.uniform(0.01, 0.08, (300, 400, 3))
+    source = np.ones((300, 400), dtype=bool)
+    source[100:130, 200:240] = False
+    whole = ~source
+    started = not tracemalloc.is_tracing()
+    if started:
+        tracemalloc.start()
+    held = tracemalloc.get_traced_memory()[0]
+    tracemalloc.reset_peak()
+    bounds = chroma._bounds(frame, source, whole, levels=chroma.LEVELS)
+    peak = tracemalloc.get_traced_memory()[1] - held
+    if started:
+        tracemalloc.stop()
+    del bounds
+    assert peak <= 3.5 * frame.nbytes
+
+
+def test_reflected_shifts_match_padded_slices_across_single_and_multi_fold_borders() -> None:
+    from services.media.spatial import _pad
+
+    for height, width, step in ((1, 3, 2), (2, 2, 2), (5, 7, 4), (11, 13, 2)):
+        plane = np.arange(height * width, dtype=np.float64).reshape(height, width) + 0.25
+        reach = 2 * step
+        padded = _pad(plane, reach)
+        r_idx = chroma._reflect_indices(height, reach)
+        c_idx = chroma._reflect_indices(width, reach)
+        out = np.empty_like(plane)
+        for a in range(5):
+            for b in range(5):
+                r0, c0 = a * step, b * step
+                chroma._load_shifted(plane, r_idx, c_idx, r0, c0, out)
+                assert np.array_equal(out, padded[r0 : r0 + height, c0 : c0 + width])
