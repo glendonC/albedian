@@ -14,6 +14,7 @@ import {
   UploadJobSchema,
   DisplayOrientationSchema,
   MediaVariantSchema,
+  type MediaVariant,
   type PersonAlignment,
   type DisplayOrientation,
 } from '@albedian/contracts';
@@ -646,6 +647,8 @@ export interface StoredRestoration {
   createdAtUTC: string;
   byteSize: number;
   orientation: DisplayOrientation;
+  /** The variant as the route lists it, which the session holds while it is shown (voice-restore-one). */
+  variant?: MediaVariant;
 }
 
 /**
@@ -661,7 +664,7 @@ export async function readRestorations(sha256: string): Promise<StoredRestoratio
       const parsed = MediaVariantSchema.safeParse(raw);
       if (!parsed.success || parsed.data.kind !== 'restoration' || parsed.data.sourceSha256 !== sha256) return [];
       const v = parsed.data;
-      return [{ id: v.id, createdAtUTC: v.createdAtUTC, byteSize: v.byteSize, orientation: v.displayOrientation ?? { quarterTurnsClockwise: 0, mirrored: false } }];
+      return [{ id: v.id, createdAtUTC: v.createdAtUTC, byteSize: v.byteSize, orientation: v.displayOrientation ?? { quarterTurnsClockwise: 0, mirrored: false }, variant: v }];
     })
     .sort((a, b) => Date.parse(b.createdAtUTC) - Date.parse(a.createdAtUTC) || (a.id < b.id ? 1 : -1));
 }

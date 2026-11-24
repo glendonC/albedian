@@ -62,6 +62,7 @@ import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import { liveClipSec, useClipPlayback, withClipClock } from '../reveal/clipPlayback.js';
+import { withShownRestoration } from '../reveal/shownRestoration.js';
 import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
 
@@ -203,6 +204,8 @@ export const SpatialObservatoryViewport: React.FC<
     return new URLSearchParams(window.location.search).get('view') !== 'observatory';
   });
   const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
+  // voice-restore-one: the restored version the screen put in the session last, so it is swapped or taken out alone
+  const shownRestorationId = useRef<string | null>(null);
   const [clipPlaying, setClipPlaying] = useState(false);
   useEffect(() => {
     if (!clipVideo) {
@@ -724,6 +727,16 @@ export const SpatialObservatoryViewport: React.FC<
               session={clipOnReveal && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
               onAligningChange={setPhoneAligning}
+              // voice-restore-one: the session holds the restored version on screen, so voice finds it
+              onShownRestoration={(variant) => {
+                // Only a change reaches the session: the one put in before is swapped or taken out, the session's own
+                // variants stay
+                const before = shownRestorationId.current;
+                const now = variant?.id ?? null;
+                if (now === before) return;
+                shownRestorationId.current = now;
+                setSession((cur) => withShownRestoration(cur, variant, before));
+              }}
               onPhoneFootChange={setPhoneFoot}
               cancelAligningToken={cancelAligningToken}
               onSelectFinding={onSelectFinding}

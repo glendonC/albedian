@@ -4,7 +4,7 @@ import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
 import { PhoneAligningBlock } from './PhoneAligning.js';
 import { EARLY_SOURCE_WORDS, earlyPoseOf, type EarlyPose, type PlacedTarget } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
-import type { ObservationSolution, PersonAlignment } from '@albedian/contracts';
+import type { MediaVariant, ObservationSolution, PersonAlignment } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { readRestorations, saveFromServer, variantExportUrl, variantFileUrl, type StoredRestoration } from '../services/apiClient.js';
@@ -146,6 +146,8 @@ export interface RevealPhotoProps {
   onCancelRestore?: () => Promise<unknown> | void;
   /** Told whenever Line it up yourself (D24) starts or ends, so the phone's close circle (the viewport's) can cancel it. */
   onAligningChange?: (active: boolean) => void;
+  /** Told the restored version the compare shows, or null, so the session holds what is on screen (voice-restore-one). */
+  onShownRestoration?: (variant: MediaVariant | null) => void;
   /**
    * Told whenever the phone's restoration takes or frees the foot (its compare's Download, or its wait's Cancel), so
    * Ask out loud gives way to it.
@@ -319,6 +321,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onRestore,
   onCancelRestore,
   onAligningChange,
+  onShownRestoration,
   onPhoneFootChange,
   cancelAligningToken = 0,
   onSolveFromHere,
@@ -636,6 +639,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   }, [asset?.sha256]);
   const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
+  // voice-restore-one: the restored version on screen, for the session, so "make the sky clearer" finds what is shown
+  const shownRestoration = compareOn ? (shownVersion?.variant ?? null) : null;
+  const tellShown = useRef(onShownRestoration);
+  tellShown.current = onShownRestoration;
+  useEffect(() => {
+    tellShown.current?.(shownRestoration);
+  }, [shownRestoration?.id ?? null]);
   const phoneCompareSrc =
     shownVersion && asset ? variantFileUrl(asset.sha256, shownVersion.id) : restoration?.phase === 'done' ? restoration.variantUrl : null;
   const phoneCompareOrientation =
