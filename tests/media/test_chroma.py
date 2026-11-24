@@ -505,3 +505,42 @@ def test_the_chroma_step_parameters_validate_under_the_contract_step_schema() ->
         "skyLevels": chroma.SKY_LEVELS,
         "carryLevels": chroma.CARRY_LEVELS,
     }
+
+
+def test_monochrome_frames_keep_three_equal_channels_and_luminance_across_light_floor_and_saturation() -> None:
+    rng = np.random.default_rng(303)
+    height, width = 96, 128
+    plane = np.clip(0.008 + rng.normal(0.0, 0.0008, (height, width)), 0.0, 1.0)
+    plane[0:8, 0:8] = 0.0
+    plane[8:16, 0:8] = 5e-13
+    plane[16:24, 0:8] = chroma.LIGHT_FLOOR
+    plane[24:32, 0:8] = 2e-12
+    plane[40:45, 40:45] = 1.0
+    frame = np.repeat(plane[..., None], 3, axis=-1)
+    guide = plane / 0.0008
+    footprint = np.zeros((height, width))
+    footprint[60:66, 60:66] = 1.0
+    result = chroma.smooth_chroma(frame, guide, footprint)
+    must = smooth_chroma_whole_reference(frame, guide, footprint)
+    assert np.all(np.isfinite(result.frame))
+    assert np.array_equal(result.frame[..., 0].view(np.uint64), result.frame[..., 1].view(np.uint64))
+    assert np.array_equal(result.frame[..., 0].view(np.uint64), result.frame[..., 2].view(np.uint64))
+    assert np.array_equal(result.frame.view(np.uint64), must.frame.view(np.uint64))
+    assert result.kept == must.kept and result.clamped == must.clamped
+    assert np.allclose(result.frame @ LUMA, frame @ LUMA, rtol=0, atol=1e-15)
+
+
+def test_boundary_sides_around_min_side_px_match_the_whole_frame_reference_to_the_bit() -> None:
+    # At LEVELS = 6 (reach 64 px at the coarsest step), height 64 exercises the multi-fold fallback and height 65 the
+    # single-fold edge r_stop == -1 in _load_shifted
+    for height, width in ((64, 63), (64, 64), (65, 97)):
+        rng = np.random.default_rng(height * 1000 + width)
+        frame = np.clip(0.01 + rng.normal(0.0, 0.0015, (height, width, 3)), 0.0, 1.0)
+        guide = (frame @ LUMA) / 0.0015
+        footprint = np.zeros((height, width))
+        footprint[12:18, 14:20] = 1.0
+        result = chroma.smooth_chroma(frame, guide, footprint)
+        must = smooth_chroma_whole_reference(frame, guide, footprint)
+        assert np.all(np.isfinite(result.frame))
+        assert np.array_equal(result.frame.view(np.uint64), must.frame.view(np.uint64))
+        assert result.kept == must.kept and result.clamped == must.clamped

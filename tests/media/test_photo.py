@@ -635,3 +635,100 @@ def test_smooth_chroma_runs_before_dissolve_with_counts_and_is_skipped_when_nois
     assert "noiseNotMeasured" in unmeasured.measured and "chroma" not in unmeasured.measured
     assert "smooth_chroma" not in [s["kind"] for s in unmeasured.steps]
     contracts.RestorationMeasurements.model_validate(unmeasured.measured)
+
+
+def test_monochrome_sixteen_bit_png_and_tiff_stills_keep_equal_channels_through_restoration(tmp_path) -> None:
+    from PIL import Image
+    from services.media import encode
+
+    rng = np.random.default_rng(101)
+    height, width = 160, 192
+    yy, xx = np.mgrid[0:height, 0:width].astype(np.float64)
+    plane = 0.008 + 0.004 * (yy / height) + rng.normal(0.0, 0.0006, (height, width))
+    for sx, sy, pk in ((40.2, 50.7, 0.08), (120.4, 90.1, 0.25)):
+        plane += pk * np.exp(-((xx - sx) ** 2 + (yy - sy) ** 2) / (2 * 1.3**2))
+    codes16_plane = encode.StillTransfer.of("srgb", None).encode16(np.repeat(np.clip(plane, 0.0, 1.0)[..., None], 3, axis=-1))[..., 0]
+    for name, fmt in (("grey16.png", "PNG"), ("grey16.tiff", "TIFF")):
+        path = tmp_path / name
+        Image.fromarray(codes16_plane).save(path, format=fmt)
+        res = photo.restore_still(decode.decode_still(path))
+        assert res.status == "ready"
+        assert "chroma" in res.measured
+        assert np.array_equal(res.stored[..., 0], res.stored[..., 1])
+        assert np.array_equal(res.stored[..., 0], res.stored[..., 2])
+        contracts.RestorationMeasurements.model_validate(res.measured)
+        contracts.IntegrityGateResult.model_validate(res.gate)
+
+
+def test_boundary_dimensions_around_min_side_px_skip_or_run_chroma_smoothing_cleanly(tmp_path) -> None:
+    from services.media import encode
+
+    transfer = encode.StillTransfer.of("srgb", None)
+    cases = (
+        (64, 63, "frame_too_small", False),
+        (63, 64, "frame_too_small", False),
+        (64, 64, "too_few_flat_blocks", False),
+        (65, 97, "too_few_flat_blocks", False),
+        (64, 240, None, True),
+        (65, 305, None, True),
+    )
+    for height, width, expected_reason, runs_chroma in cases:
+        rng = np.random.default_rng(height * 1000 + width)
+        yy = np.linspace(0.0, 1.0, height)[:, None]
+        linear = np.clip(0.004 + 0.02 * yy[..., None] + rng.normal(0.0, 0.0012, (height, width, 3)), 0.0, 1.0)
+        sub = tmp_path / f"dim_{height}x{width}"
+        sub.mkdir()
+        res = photo.restore_still(still_of(transfer.encode16(linear), sub))
+        assert res.status == "ready"
+        assert res.measured.get("noiseNotMeasured") == expected_reason
+        assert ("chroma" in res.measured) is runs_chroma
+        assert ("smooth_chroma" in [s["kind"] for s in res.steps]) is runs_chroma
+        contracts.RestorationMeasurements.model_validate(res.measured)
+        contracts.IntegrityGateResult.model_validate(res.gate)
+
+
+def test_sixteen_bit_hdr_png_and_tiff_stills_with_saturated_star_cores_preserve_peaks_and_record_clipped_note(
+        honest, tmp_path) -> None:
+    import subprocess
+    from services.media import encode
+
+    assert photo.NOTE_CLIPPED not in honest.measured["notes"]
+    rng = np.random.default_rng(202)
+    size = 192
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float64)
+    sky = np.clip(0.0008 + 0.0004 * (yy / size)[..., None] + rng.normal(0.0, 0.00018, (size, size, 3)), 0.0, 1.0)
+    hdr = sky.copy()
+    for sx, sy, amp, col in (
+        (48.0, 48.0, 8.0, [1.0, 0.95, 0.9]),
+        (144.0, 56.0, 3.5, [1.0, 0.3, 0.1]),
+        (104.3, 108.7, 0.04, [1.0, 0.8, 0.6]),
+        (140.2, 138.6, 0.025, [0.7, 0.85, 1.0]),
+    ):
+        hdr += (amp * np.exp(-((xx - sx) ** 2 + (yy - sy) ** 2) / (2 * 1.8**2)))[..., None] * np.array(col)
+    codes16 = encode.StillTransfer.of("srgb", None).encode16(np.clip(hdr, 0.0, 1.0))
+    saturated = codes16 == 65535
+    assert int(saturated.sum()) > 20 and not bool(saturated.all())
+
+    png_path = tmp_path / "hdr16.png"
+    png_path.write_bytes(png16.write_png16(codes16, None))
+    tiff_le = tmp_path / "hdr16_le.tiff"
+    tiff_be = tmp_path / "hdr16_be.tiff"
+    for pix_fmt, out_path in (("rgb48le", tiff_le), ("rgb48be", tiff_be)):
+        subprocess.run(
+            ["ffmpeg", "-y", "-hide_banner", "-v", "error", "-i", str(png_path), "-pix_fmt", pix_fmt, str(out_path)],
+            check=True,
+            stdin=subprocess.DEVNULL,
+        )
+
+    peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
+    for path in (png_path, tiff_le, tiff_be):
+        res = photo.restore_still(decode.decode_still(path))
+        assert res.status == "ready"
+        assert np.all(res.stored[saturated] == 65535)
+        assert photo.NOTE_CLIPPED in res.measured["notes"]
+        places = photo.painted_places(res, 6)
+        assert places
+        trials = photo.Trials(res)
+        assert all(trials.refused(x, y, peak16)[0] for x, y in places)
+        contracts.RestorationMeasurements.model_validate(res.measured)
+        contracts.IntegrityGateResult.model_validate(res.gate)
