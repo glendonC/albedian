@@ -74,20 +74,9 @@ export function createCinemaOpticsPass(uniforms: CinemaOpticsUniforms): ShaderPa
         float bCh = texture2D(tDiffuse, vUv - caOffset).b;
         vec3 baseCol = vec3(rCh, gCh, bCh);
 
-        vec3 anamorphicAccum = vec3(0.0);
-        for (int i = -4; i <= 4; i++) {
-          if (i == 0) continue;
-          float offset = float(i) * 0.018;
-          vec3 samp = texture2D(tDiffuse, vUv + vec2(offset, 0.0)).rgb;
-          float lum = dot(samp, vec3(0.299, 0.587, 0.114));
-          float brightMask = smoothstep(0.76, 1.35, lum);
-          float weight = exp(-abs(float(i)) * 0.55);
-          anamorphicAccum += samp * brightMask * weight;
-        }
-        vec3 anamorphicTint = anamorphicAccum * vec3(0.32, 0.58, 1.0) * 0.085;
-
+        // No streak: eight samples at fixed offsets drew each bright star as a row of blue dots (streak-ghosts-one)
         float vignette = smoothstep(0.92, 0.18, r2);
-        vec3 finalCol = (baseCol + anamorphicTint) * mix(0.76, 1.0, vignette);
+        vec3 finalCol = baseCol * mix(0.76, 1.0, vignette);
         gl_FragColor = vec4(finalCol, 1.0);
       }
     `,

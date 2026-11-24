@@ -46,7 +46,7 @@ export function buildCosmosPostChain(
   }
   if (options.cinemaOptics) {
     composed = cinemaOptics(composed, optics);
-    stages.push('cinema optics(CA, anamorphic streak, vignette)');
+    stages.push('cinema optics(CA, vignette)');
   }
 
   // Explicit output transform so display-space AA runs after tone mapping, as FXAA/SMAA expect

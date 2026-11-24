@@ -28,7 +28,7 @@ export const FRAME_STEP_WORDS: { readonly [K in FrameSwitch]: (value: Switches[K
   aa: (mode) => (mode === 'none' ? null : `smoothed along its high-contrast edges (${mode.toUpperCase()} anti-aliasing)`),
   bloom: (on) => (on ? 'bloomed' : null),
   cinemaOptics: (on) =>
-    on ? 'given the camera optics (colour fringes toward the edges, a horizontal streak from bright light and a vignette)' : null,
+    on ? 'given the camera optics (colour fringes toward the edges and a vignette)' : null,
 };
 
 /** The steps in the chains' order; tone mapping is no switch, as both renderers always tone-map. */

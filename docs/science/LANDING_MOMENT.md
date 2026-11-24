@@ -101,7 +101,7 @@ data URL [tested].
   cloud composite is not the weather of 2025-03-07; both limits are stated in the Earth layer's
   disclosure.
 - **Sky resolution** [open]: removing resolved point stars from `eso_milkyway_diffuse_6k.webp` and drawing catalog stars to G 12 eliminates magnified star blocks, while the diffuse Milky Way background itself spans 2.49 px per texel at 1080p [tested] and 4.99 px per texel at 2160p [computed].
-- **The anamorphic streak**: replacing copies of bright pixels at fixed offsets with one
-  continuous horizontal Gaussian carrying the same energy adds less than one
-  code value per pixel along a star's streak at 1080p, so the landing shows no streak [tested]; a
-  visible line would need about ten times the energy [inference], a look choice.
+- **The anamorphic streak**: cut from both renderers (streak-ghosts-one, 24 November). The copies of
+  bright pixels at fixed offsets drew each bright star as a row of dots, and the continuous horizontal
+  Gaussian that replaced them in WebGPU added less than one code value per pixel at 1080p [tested];
+  no reference read live draws a streak, so the camera optics are the colour fringes and the vignette.

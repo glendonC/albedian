@@ -54,7 +54,7 @@ const sourceFiles = (dir: string): string[] =>
   });
 
 const HOME = homeBackdropChanges();
-const OPTICS = 'given the camera optics (colour fringes toward the edges, a horizontal streak from bright light and a vignette)';
+const OPTICS = 'given the camera optics (colour fringes toward the edges and a vignette)';
 const TONE_MAP = 'tone-mapped (ACES at exposure 1.12 in the WebGL renderer, AgX at exposure 3 in the WebGPU renderer)';
 const WEBGL_TONE_MAP = 'tone-mapped (ACES at exposure 1.12)';
 const SKY =
@@ -133,12 +133,13 @@ describe('the Milky Way row states every change the app makes to the panorama, b
     const spark = read('src/spatial/SparkPortalRenderer.ts');
     for (const part of ['new UnrealBloomPass(', 'createCinemaOpticsPass(', 'new OutputPass()', 'THREE.ACESFilmicToneMapping']) expect(spark, part).toContain(part);
     const optics = read('src/spatial/webgl/skyDomeAndCinemaShader.ts');
-    for (const part of ['vec2 caOffset = centered * r2 * caStrength;', 'vec3 anamorphicTint', 'float vignette = smoothstep(0.92, 0.18, r2);']) expect(optics, part).toContain(part);
+    for (const part of ['vec2 caOffset = centered * r2 * caStrength;', 'float vignette = smoothstep(0.92, 0.18, r2);', 'vec3 finalCol = baseCol * mix(0.76, 1.0, vignette);']) expect(optics, part).toContain(part);
     const chain = read('src/spatial/webgpu/postChain.ts');
     expect(chain).toContain('stages.push(`bloom(');
-    expect(chain).toContain("stages.push('cinema optics(CA, anamorphic streak, vignette)');");
+    expect(chain).toContain("stages.push('cinema optics(CA, vignette)');");
     expect(read('src/spatial/webgpu/WebGpuHost.ts')).toContain('renderer.toneMapping = AgXToneMapping;');
-    for (const phrase of ['bloomed', 'colour fringes toward the edges', 'a horizontal streak from bright light', 'a vignette', 'tone-mapped']) expect(SKY, phrase).toContain(phrase);
+    for (const phrase of ['bloomed', 'colour fringes toward the edges', 'a vignette', 'tone-mapped']) expect(SKY, phrase).toContain(phrase);
+    expect(SKY).not.toMatch(/streak/);
     // Placement, said once plainly: both renderers sample through the registration
     expect(read('src/spatial/webgl/skyDomeAndCinemaShader.ts')).toContain('uSceneToPanorama.value.set(...sceneToPanoramaRows(registration))');
     expect(read('src/spatial/webgpu/cislunar/skyBackground.ts')).toContain('sceneToPanoramaRows(registration)');

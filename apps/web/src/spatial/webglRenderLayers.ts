@@ -82,7 +82,7 @@ const WEBGL_CAMERA_OPTICS: RenderLayer = {
   kind: 'camera_optics',
   title: 'Camera optics',
   evidenceClass: 'simulated',
-  disclosure: 'Modeled lens glare, chromatic aberration, anamorphic streaks and vignette, then ACES tone mapping.',
+  disclosure: 'Modeled lens glare, chromatic aberration and vignette, then ACES tone mapping.',
   sources: [],
 };
 
