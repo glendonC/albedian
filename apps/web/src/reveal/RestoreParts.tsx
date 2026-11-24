@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useElapsedRows } from './elapsedRows.js';
-import { followParent } from './clipSync.js';
+import { followParent, onFrameAtParent } from './clipSync.js';
 import { DISCLOSURES, type DisplayOrientation, type UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
@@ -115,6 +115,51 @@ function turnedPicture(rect: PhotoRect, orientation: DisplayOrientation): React.
     : { width: `${w}px`, height: `${h}px`, left: '0px', top: '0px', transform: turn };
 }
 
+type ClipShown = { src: string; orientation: DisplayOrientation };
+
+const sameOrientation = (a: DisplayOrientation, b: DisplayOrientation) =>
+  a.quarterTurnsClockwise === b.quarterTurnsClockwise && a.mirrored === b.mirrored;
+
+/**
+ * One restored clip of D34's compare: muted, on the stage original's clock (clipSync.ts). On a version switch
+ * (clipswap-1, DECIDED-BY-LEAD 12:40 on 24 Nov) the incoming copy is drawn transparent beside the outgoing one, decoding
+ * on the same clock, and says once when it has a frame at the player's time.
+ */
+const RestoredClip: React.FC<{
+  parent: HTMLVideoElement | null | undefined;
+  src: string;
+  style: React.CSSProperties;
+  incoming?: boolean;
+  onFrame?: () => void;
+}> = ({ parent, src, style, incoming = false, onFrame }) => {
+  const own = useRef<HTMLVideoElement>(null);
+  const frame = useRef(onFrame);
+  frame.current = onFrame;
+  useEffect(() => {
+    const child = own.current;
+    if (!parent || !child) return undefined;
+    const stopFollow = followParent(parent, child);
+    const syncReady = () => {
+      if (child.playbackRate !== parent.playbackRate) child.playbackRate = parent.playbackRate;
+      if (child.loop !== parent.loop) child.loop = parent.loop;
+      if (!child.seeking && Math.abs(child.currentTime - parent.currentTime) > 0) child.currentTime = parent.currentTime;
+      if (!parent.paused && child.paused) void Promise.resolve(child.play()).catch(() => {});
+    };
+    syncReady();
+    child.addEventListener('loadedmetadata', syncReady);
+    return () => {
+      child.removeEventListener('loadedmetadata', syncReady);
+      stopFollow();
+    };
+  }, [parent]);
+  useEffect(() => {
+    const child = own.current;
+    if (!incoming || !parent || !child) return undefined;
+    return onFrameAtParent(parent, child, () => frame.current?.());
+  }, [incoming, parent]);
+  return <video ref={own} src={src} muted playsInline preload="auto" aria-hidden="true" style={incoming ? { ...style, opacity: 0 } : style} />;
+};
+
 /** The next frame after the one painted, so the line is first drawn at the right edge and then glides. */
 function afterPaint(callback: () => void): () => void {
   let cancelled = false;
@@ -185,24 +230,16 @@ export const RestoreCompare: React.FC<{
 }> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot, labelHost = null }) => {
   const clip = clipParent !== undefined;
   const boxRect = slot ?? rect;
-  const restoredClip = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const child = restoredClip.current;
-    if (!clip || !clipParent || !child) return undefined;
-    const stopFollow = followParent(clipParent, child);
-    const syncReady = () => {
-      if (child.playbackRate !== clipParent.playbackRate) child.playbackRate = clipParent.playbackRate;
-      if (child.loop !== clipParent.loop) child.loop = clipParent.loop;
-      if (Math.abs(child.currentTime - clipParent.currentTime) > 0) child.currentTime = clipParent.currentTime;
-      if (!clipParent.paused && child.paused) void Promise.resolve(child.play()).catch(() => {});
-    };
-    syncReady();
-    child.addEventListener('loadedmetadata', syncReady);
-    return () => {
-      child.removeEventListener('loadedmetadata', syncReady);
-      stopFollow();
-    };
-  }, [clip, clipParent, src]);
+  // clipswap-1: on a playing or paused clip's version switch the restored clip drawn stays drawn until the one switched
+  // to has a frame at the player's time, then they swap in one frame, so "Restored" never stands over the unrestored
+  // original; a press back to the drawn version drops the incoming copy, a press to a third replaces it
+  const [lastClip, setLastClip] = useState<ClipShown>({ src, orientation });
+  const [held, setHeld] = useState<ClipShown | null>(null);
+  if (lastClip.src !== src || !sameOrientation(lastClip.orientation, orientation)) {
+    setLastClip({ src, orientation });
+    if (lastClip.src !== src) setHeld((h) => (!clip || !clipParent ? null : h === null ? lastClip : h.src === src ? null : h));
+  }
+  const holding = clip && clipParent ? held : null;
   const box = useRef<HTMLDivElement>(null);
   const down = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [split, setSplit] = useState(100);
@@ -364,7 +401,17 @@ export const RestoreCompare: React.FC<{
       <div className="restore-compare__pic">
         <div className="restore-compare__layer" style={layer}>
           {clip ? (
-            <video ref={restoredClip} src={src} muted playsInline preload="auto" aria-hidden="true" style={turnedPicture(rect, orientation)} />
+            <>
+              {holding && <RestoredClip key={holding.src} parent={clipParent} src={holding.src} style={turnedPicture(rect, holding.orientation)} />}
+              <RestoredClip
+                key={src}
+                parent={clipParent}
+                src={src}
+                style={turnedPicture(rect, orientation)}
+                incoming={holding !== null}
+                onFrame={() => setHeld(null)}
+              />
+            </>
           ) : (
             <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
           )}
