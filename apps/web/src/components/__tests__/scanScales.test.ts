@@ -247,6 +247,7 @@ describe('pixel crop of the photo', () => {
 describe('distance method names', () => {
   it('names each contract method for people and keeps an unknown one as it is', () => {
     expect(distanceMethodLabel('photogeometric_bailer_jones_edr3')).toEqual({ name: 'Bailer-Jones 2021 photogeometric', range: '16th to 84th percentile' });
+    expect(distanceMethodLabel('geometric_bailer_jones_edr3')).toEqual({ name: 'Bailer-Jones 2021 geometric', range: '16th to 84th percentile' });
     expect(distanceMethodLabel('geometric_parallax')).toEqual({ name: 'Inverse parallax', range: 'range from the parallax error' });
     expect(distanceMethodLabel('ephemeris_au')).toEqual({ name: 'Ephemeris', range: "range from the model's error bounds" });
     expect(distanceMethodLabel('something_new')).toEqual({ name: 'something_new', range: 'range as given' });

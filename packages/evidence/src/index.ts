@@ -271,6 +271,8 @@ function describeDistanceSpread(halfSpanPc: number, method: string): string {
   switch (method) {
     case 'photogeometric_bailer_jones_edr3':
       return `${spread}: half the 16th to 84th percentile range of the Bailer-Jones et al. (2021) photogeometric distance`;
+    case 'geometric_bailer_jones_edr3':
+      return `${spread}: half the 16th to 84th percentile range of the Bailer-Jones et al. (2021) geometric distance`;
     case 'geometric_parallax':
       return `${spread}: half the range from the parallax error`;
     case 'ephemeris_au':

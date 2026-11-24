@@ -714,6 +714,12 @@ describe('@albedian/evidence: licence and source strings', () => {
   it("describes a distance's spread by the method that gave its bounds, with no percentage for an unknown method", () => {
     const spread = (method: string) =>
       formatDistanceWithUncertainty({ lower: 240.0, median: 264.5, upper: 290.0, method }).uncertaintyText;
+    expect(spread('photogeometric_bailer_jones_edr3')).toBe(
+      '±25.0 pc: half the 16th to 84th percentile range of the Bailer-Jones et al. (2021) photogeometric distance'
+    );
+    expect(spread('geometric_bailer_jones_edr3')).toBe(
+      '±25.0 pc: half the 16th to 84th percentile range of the Bailer-Jones et al. (2021) geometric distance'
+    );
     expect(spread('geometric_parallax')).toBe('±25.0 pc: half the range from the parallax error');
     expect(spread('ephemeris_au')).toBe("±25.0 pc: half the range of the model's error bounds");
     expect(spread('stellar_model')).toBe('±25.0 pc: half the range of the bounds as given, method stellar_model');

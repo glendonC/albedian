@@ -164,6 +164,8 @@ export function distanceMethodLabel(method: string): { name: string; range: stri
   switch (method) {
     case 'photogeometric_bailer_jones_edr3':
       return { name: 'Bailer-Jones 2021 photogeometric', range: '16th to 84th percentile' };
+    case 'geometric_bailer_jones_edr3':
+      return { name: 'Bailer-Jones 2021 geometric', range: '16th to 84th percentile' };
     case 'geometric_parallax':
       return { name: 'Inverse parallax', range: 'range from the parallax error' };
     case 'ephemeris_au':
