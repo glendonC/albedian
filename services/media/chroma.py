@@ -349,3 +349,16 @@ def smooth_chroma(frame: np.ndarray, guide: np.ndarray, footprint: np.ndarray, *
         coloured[..., c] = clipped_c
         del clipped_c
     return ChromaResult(coloured, kept_count, int(clamped_map.sum()), clamped_map)
+
+
+def parameters() -> list[dict]:
+    """The `smooth_chroma` step's parameters, as the graph records them."""
+    basis = "Proposed in design section 5."
+    return [
+        {"name": "levels", "value": LEVELS, "origin": "default", "basis": basis},
+        {"name": "sigmaScale", "value": RANGE_SIGMAS, "origin": "default", "basis": basis},
+        {"name": "aboveSkySigmas", "value": ABOVE_SKY_SIGMAS, "origin": "default", "basis": basis},
+        {"name": "aboveSkyGrowPx", "value": ABOVE_SKY_GROW_PX, "origin": "default", "basis": basis},
+        {"name": "skyLevels", "value": SKY_LEVELS, "origin": "default", "basis": basis},
+        {"name": "carryLevels", "value": CARRY_LEVELS, "origin": "default", "basis": basis},
+    ]

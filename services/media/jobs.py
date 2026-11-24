@@ -45,6 +45,7 @@ MEDIA_PRODUCER_FILES = (
     "services/media/stars.py",
     "services/media/noise.py",
     "services/media/spatial.py",
+    "services/media/chroma.py",
     "services/media/tone.py",
     "services/science/detector.py",
     # A clip's result also comes from these (restore-7)
@@ -61,8 +62,8 @@ MEDIA_PRODUCER_FILES = (
 # samples hiding each other on their rings read as a group against a ring round the group (restore-4g); 6, the flux
 # check kept when no measured star keeps a positive flux ratio (the flux gate unit); 7, a tile's matched noise from
 # the detector's single-tile noise map floored at its pixel and rounding noise, and its background and pixel sigma from
-# the detector's grid path (quantised-noise)
-MEDIA_PRODUCER = Producer("albedian.restore", 7, MEDIA_PRODUCER_FILES)
+# the detector's grid path (quantised-noise); 8, coarse-scale chroma smoothing before dissolve on stills (smooth-chroma-1)
+MEDIA_PRODUCER = Producer("albedian.restore", 8, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a

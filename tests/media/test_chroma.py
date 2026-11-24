@@ -488,3 +488,20 @@ def test_reflected_shifts_match_padded_slices_across_single_and_multi_fold_borde
                 r0, c0 = a * step, b * step
                 chroma._load_shifted(plane, r_idx, c_idx, r0, c0, out)
                 assert np.array_equal(out, padded[r0 : r0 + height, c0 : c0 + width])
+
+
+def test_the_chroma_step_parameters_validate_under_the_contract_step_schema() -> None:
+    from services.contracts import media as contracts
+
+    params = chroma.parameters()
+    step = {"kind": "smooth_chroma", "version": chroma.STEP_VERSION, "parameters": params}
+    contracts.GraphStep.model_validate(step)
+    by_name = {p["name"]: p["value"] for p in params}
+    assert by_name == {
+        "levels": chroma.LEVELS,
+        "sigmaScale": chroma.RANGE_SIGMAS,
+        "aboveSkySigmas": chroma.ABOVE_SKY_SIGMAS,
+        "aboveSkyGrowPx": chroma.ABOVE_SKY_GROW_PX,
+        "skyLevels": chroma.SKY_LEVELS,
+        "carryLevels": chroma.CARRY_LEVELS,
+    }

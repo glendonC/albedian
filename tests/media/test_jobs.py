@@ -995,3 +995,20 @@ def test_a_near_black_still_ends_its_job_failed_with_c36_after_decode_and_other_
                                           grey_sha, JOB_ID, {"kind": "restoration"}, None, no_progress)
     assert (out["status"], out["failureReason"]) == ("failed", decode.INTERNAL_ERROR), out
 
+
+def test_the_restore_producer_lists_chroma_at_revision_eight_and_stores_chroma_counts_on_stills(client) -> None:
+    from services.media import variants
+
+    assert "services/media/chroma.py" in media_jobs.MEDIA_PRODUCER.files
+    assert media_jobs.MEDIA_PRODUCER.revision >= 8
+    assert variants.PIPELINE_VERSION == f"1.{media_jobs.MEDIA_PRODUCER.revision}.0"
+    scene = star_field(11, size=192, count=10, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    sha = upload(client, png16.write_png16(scene.codes.astype(np.uint16), None))
+    job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"}).json())
+    assert job["state"] == "succeeded", job
+    record = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()
+    kinds = [s["kind"] for s in record["graph"]["steps"]]
+    assert kinds.index("smooth_chroma") == kinds.index("spatial_denoise") + 1
+    assert kinds.index("dissolve_unconfirmed") == kinds.index("smooth_chroma") + 1
+    assert set(record["attempt"]["measured"]["chroma"]) == {"heldSamples", "clampedSamples"}
+

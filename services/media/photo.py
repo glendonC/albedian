@@ -3,9 +3,10 @@ REQ-RST-6, REQ-RST-4.3 to 4.6) [decided 2026-11-12 by the lead: the photo path i
 and the job of restore-2b calls it].
 
 decode -> stars and kept regions -> noise table -> edge-avoiding filter and the first scale smoothed outside the kept
-cores -> lift solved -> dissolve passes -> lift applied and encoded at 16 bits -> the gate on the stored file read
-back. A `ready` result carries the stored bytes; a `rejected` one carries none: its file is never written, served or
-listed. Pure: reads no file but what the decoded still holds, writes none, and draws nothing by chance.
+cores -> coarse-scale chroma smoothing -> lift solved -> dissolve passes -> lift applied and encoded at 16 bits -> the
+gate on the stored file read back. A `ready` result carries the stored bytes; a `rejected` one carries none: its file is
+never written, served or listed. Pure: reads no file but what the decoded still holds, writes none, and draws nothing by
+chance.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Optional
 import numpy as np
 from scipy import ndimage
 
-from services.media import decode, encode, gate, noise, png16, spatial, stars, tone
+from services.media import chroma, decode, encode, gate, noise, png16, spatial, stars, tone
 
 STEP_VERSION = "1.0.0"
 NOTE_DISSOLVED = "Points the original does not confirm were dissolved before the gate."
@@ -176,6 +177,18 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
             keptGrowPx=gate.KEPT_GROW_PX, firstScaleLevels=gate.FIRST_SCALE_LEVELS, brightSkyNoises=gate.BRIGHT_SKY_NOISES,
             brightHaloNoises=gate.BRIGHT_HALO_NOISES, brightLevels=gate.BRIGHT_LEVELS,
             brightBackgroundPercentile=gate.BACKGROUND_PERCENTILE, brightBackgroundPx=gate.BACKGROUND_PX)})
+        lap("spatial")
+        # Smooth sky colour blotches strictly before dissolve: placed after dissolve, nonlinear lifted luma shifts and
+        # clamped samples bypass dissolve and drop gate tile reuse to zero [tested: chroma-measure report]
+        chroma_guide = noise.stabilised(working @ np.asarray(stars.LUMA_WEIGHTS), measurement)
+        handed_chroma = [working]
+        del working
+        chroma_result = chroma.smooth_chroma(handed_chroma.pop(), chroma_guide, field.footprint)
+        del chroma_guide
+        working = chroma_result.frame
+        measured["chroma"] = {"heldSamples": chroma_result.kept, "clampedSamples": chroma_result.clamped}
+        del chroma_result
+        steps.append({"kind": "smooth_chroma", "version": chroma.STEP_VERSION, "parameters": chroma.parameters()})
         after = noise.fine_noise(working @ np.asarray(stars.LUMA_WEIGHTS), blocks)
         original_noise = measurement.luma_fine_sigma_at(tone.dark_level(luminance))
         working_noise = after
@@ -183,7 +196,7 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
         if not (math.isfinite(after) and math.isfinite(original_noise) and original_noise > 0):
             raise PhotoError("the noise at the dark level could not be measured on both images")
         measured["fineNoiseLeft"] = after / before
-        lap("spatial")
+        lap("chroma")
     else:
         measured["noiseNotMeasured"] = measurement.reason
     lift = tone.solve_lift(luminance, encode_slope=transfer.luma_encode_slope, decode=transfer.luma_decode,

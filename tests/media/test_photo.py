@@ -57,13 +57,25 @@ def test_an_honest_restoration_ends_ready_with_the_file_the_gate_ran_on(honest: 
 
 def test_the_graph_names_its_steps_in_the_jobs_order_each_parameter_with_its_origin(honest) -> None:
     kinds = [step["kind"] for step in honest.steps]
-    assert kinds == ["decode", "find_stars", "measure_noise", "spatial_denoise", "dissolve_unconfirmed", "lift", "encode"]
+    assert kinds == [
+        "decode",
+        "find_stars",
+        "measure_noise",
+        "spatial_denoise",
+        "smooth_chroma",
+        "dissolve_unconfirmed",
+        "lift",
+        "encode",
+    ]
     for step in honest.steps:
         contracts.GraphStep.model_validate(step)
     by_step = {step["kind"]: {p["name"]: p["value"] for p in step["parameters"]} for step in honest.steps}
     assert by_step["find_stars"]["statistic"] == gate.STARS_STATISTIC
+    assert by_step["smooth_chroma"]["levels"] == 6
     assert by_step["dissolve_unconfirmed"]["statistic"] == gate.STATISTIC
     assert by_step["encode"]["bitDepth"] == 16
+    assert set(honest.measured["chroma"]) == {"heldSamples", "clampedSamples"}
+    assert honest.measured["chroma"]["heldSamples"] > honest.measured["chroma"]["clampedSamples"] >= 0
 
 
 def painted(stored: np.ndarray, x: float, y: float, peak16: float) -> np.ndarray:
@@ -575,3 +587,51 @@ def test_a_zero_dark_level_noise_not_on_the_black_clip_or_another_noise_fault_st
     monkeypatch.setattr(noise, "fine_noise", nan_after)
     with pytest.raises(photo.PhotoError):
         photo.restore_still(dark_still)
+
+
+def test_smooth_chroma_runs_before_dissolve_with_counts_and_is_skipped_when_noise_is_unmeasured(
+        tmp_path, monkeypatch) -> None:
+    from services.media import chroma, encode, tone
+    from test_chroma import blotched_sky, scale_spread
+
+    # 1. Blotched linear sky encoded at 16 bits: smooth_chroma runs strictly before dissolve, reduces coarse sky chroma
+    # spread, records heldSamples and clampedSamples, and frees its input before the gate runs
+    linear = np.clip(blotched_sky(17, size=192, blotch=0.05, scale_px=16.0), 0.0, 1.0)
+    tr = encode.StillTransfer.of("srgb", None)
+    still = still_of(tr.encode16(linear), tmp_path)
+    order: list[str] = []
+    seen_counts: list[tuple[int, int]] = []
+    real_chroma, real_dissolve = chroma.smooth_chroma, gate.dissolve
+
+    def tracked_chroma(*args, **kwargs):
+        order.append("smooth_chroma")
+        res = real_chroma(*args, **kwargs)
+        seen_counts.append((res.kept, res.clamped))
+        return res
+
+    def tracked_dissolve(*args, **kwargs):
+        order.append("dissolve")
+        return real_dissolve(*args, **kwargs)
+
+    monkeypatch.setattr(chroma, "smooth_chroma", tracked_chroma)
+    monkeypatch.setattr(gate, "dissolve", tracked_dissolve)
+    result = photo.restore_still(still)
+    assert result.status == "ready"
+    assert order == ["smooth_chroma", "dissolve"]
+    contracts.RestorationMeasurements.model_validate(result.measured)
+    assert result.measured["chroma"] == {"heldSamples": seen_counts[0][0], "clampedSamples": seen_counts[0][1]}
+    var_linear = tone.undo_lift(tr.decode(result.stored / encode.CODE_STEPS), result.context.beta)
+    luma_weights = np.asarray(stars.LUMA_WEIGHTS)
+    before_by = linear[..., 2] / (linear @ luma_weights)
+    after_by = var_linear[..., 2] / (var_linear @ luma_weights)
+    assert scale_spread(after_by, 4) < 0.65 * scale_spread(before_by, 4)
+
+    # 2. Quantised / flat still where measure_noise refuses: smooth_chroma does not run and measured omits chroma
+    monkeypatch.undo()
+    flat_dir = tmp_path / "flat"
+    flat_dir.mkdir()
+    flat_still = still_of(np.full((128, 128, 3), 5140, dtype=np.uint16), flat_dir)
+    unmeasured = photo.restore_still(flat_still)
+    assert "noiseNotMeasured" in unmeasured.measured and "chroma" not in unmeasured.measured
+    assert "smooth_chroma" not in [s["kind"] for s in unmeasured.steps]
+    contracts.RestorationMeasurements.model_validate(unmeasured.measured)
