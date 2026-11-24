@@ -174,6 +174,14 @@
   animation: look-mo-sheet-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
 }
 
+.reveal-card.is-sky {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
+.reveal-card.is-sky.is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * 6) both;
+}
+
 /* On the predicted sky at phone width the sheet covers the status block and its Predicted tag: the card's own tag stands
    in for it at full from the sheet's first frame to its last, riding the sheet up and down, so one tag is always in
    view (UIUX-tagphone-READY.md item D, DECIDED 21 Nov). The close beside it keeps the top row's times; the card's

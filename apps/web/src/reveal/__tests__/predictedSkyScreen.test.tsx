@@ -563,6 +563,377 @@ describe("the predicted sky's rules are the record's", () => {
     expect(declarationsOf('.predsky-status__sky')).toEqual({ margin: '8px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
     expect(declarationsOf('.predsky-status__lead')).toEqual({ margin: '14px 0 0', font: '300 24px / 1.2 var(--look-font-sans)', 'letter-spacing': '-0.03em', color: 'var(--look-ink)' });
     expect(declarationsOf('.predsky-status__note')).toEqual({ margin: '12px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
-    expect(declarationsOf('.predsky-status__facts')).toEqual({ 'margin-top': '14px', 'padding-top': '12px', 'border-top': '1px solid var(--look-hair)', 'font-size': '12px', 'line-height': '1.6', 'font-variant-numeric': 'tabular-nums', color: 'var(--look-ink-3)' });
+      expect(declarationsOf('.predsky-status__facts')).toEqual({ 'margin-top': '14px', 'padding-top': '12px', 'border-top': '1px solid var(--look-hair)', 'font-size': '12px', 'line-height': '1.6', 'font-variant-numeric': 'tabular-nums', color: 'var(--look-ink-3)' });
+  });
+
+  it('stacks the phone predicted sky above AskBar while StarCard stands and steps .predsky-status 16 px above the sheet with D19 fade', () => {
+    expect(declarationsOf('.predsky.is-phone:has(.reveal-card)')).toEqual({ 'z-index': '31' });
+    expect(declarationsOf('.predsky.is-phone:has(.reveal-card.is-leaving) ~ .ask-bar')).toEqual({ display: 'none' });
+    expect(declarationsOf('.predsky.is-phone .predsky-status.is-above-card')).toEqual({
+      bottom: 'calc(100% - 453px)',
+      animation: 'none',
+    });
+    expect(declarationsOf('.predsky.is-phone .predsky-status.is-above-card::before')).toEqual({
+      content: "''",
+      position: 'absolute',
+      left: '-24px',
+      right: '-24px',
+      top: '-44px',
+      bottom: '0',
+      'z-index': '-1',
+      background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px)',
+      'pointer-events': 'none',
+    });
+  });
+});
+
+describe('predsky-card-motion-1: StarCard and leader leave timing, phone status above card, and phone AskBar', () => {
+  it('keeps laptop StarCard and predicted-sky-leader leaving for 420 ms (270 ms reduced) and swaps stars at once without leaving', async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const makeStar = (id: string, decDeg: number, commonName: string) =>
+      ({
+        ...template,
+        id,
+        title: commonName,
+        skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 },
+        catalogRef: { id, provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: 0.5 },
+      }) as unknown as typeof template;
+    const session = {
+      ...base,
+      observationSolution: {
+        ...base.observationSolution!,
+        findings: [makeStar('finding-predicted-star-a', -80, 'Alpha'), makeStar('finding-predicted-star-b', -86, 'Beta')],
+      },
+    } as ObservationSession;
+    let pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
+
+    vi.useFakeTimers();
+    try {
+      const render = (selectedFindingId: string | null, phone = false) =>
+        act(() => {
+          root.render(
+            createElement(PredictedSkyScreen, {
+              session: { ...session, selectedFindingId },
+              onHome: noop,
+              skyPose: () => pose,
+              phone,
+              onSelect: noop,
+              onCloseCard: noop,
+              onGoThere: noop,
+            }),
+          );
+        });
+
+      render('finding-predicted-star-a');
+      act(() => {
+        vi.advanceTimersByTime(20);
+      });
+      expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-sky');
+      expect(q('[data-testid="star-card"] .reveal-card__name')!.textContent).toBe('Alpha');
+      expect(q('.predsky-status')!.className).toBe('reveal-status predsky-status');
+      expect([...q('.predsky-status')!.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual([
+        'predicted',
+        'simulated',
+      ]);
+      const alphaD = q('[data-testid="predicted-sky-leader"] path')!.getAttribute('d');
+      expect(alphaD).toBeTruthy();
+
+      // At phone width, no leader line is rendered even when resizing to phone mid-leave with a held leader path
+      render(null, false);
+      expect(q('[data-testid="predicted-sky-leader"]')!.getAttribute('class')).toBe('reveal-leader is-predicted is-leaving');
+      render(null, true);
+      expect(q('[data-testid="predicted-sky-leader"]')).toBeNull();
+      render('finding-predicted-star-a', false);
+
+      // Switching directly to another predicted star swaps at once without entering is-leaving
+      render('finding-predicted-star-b');
+      expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-sky');
+      expect(q('[data-testid="star-card"] .reveal-card__name')!.textContent).toBe('Beta');
+      const betaD = q('[data-testid="predicted-sky-leader"] path')!.getAttribute('d');
+      expect(betaD).toBeTruthy();
+      expect(betaD).not.toBe(alphaD);
+
+      // Closing holds both StarCard and leader mounted in is-leaving through 419 ms, then unmounts at 420 ms
+      render(null);
+      expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-sky is-leaving');
+      expect(q('[data-testid="star-card"]')!.hasAttribute('inert')).toBe(true);
+      expect(q('[data-testid="star-card"] .reveal-card__name')!.textContent).toBe('Beta');
+      expect(q('[data-testid="predicted-sky-leader"]')!.getAttribute('class')).toBe('reveal-leader is-predicted is-leaving');
+      expect(q('[data-testid="predicted-sky-leader"] path')!.getAttribute('d')).toBe(betaD);
+
+      act(() => {
+        vi.advanceTimersByTime(419);
+      });
+      expect(q('[data-testid="star-card"]')).not.toBeNull();
+      expect(q('[data-testid="predicted-sky-leader"]')).not.toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="predicted-sky-leader"]')).toBeNull();
+
+      // If the camera turns a picked star off-screen before Close, heldLeader clears so no ghost leader lingers on Close
+      render('finding-predicted-star-a');
+      expect(q('[data-testid="predicted-sky-leader"]')).not.toBeNull();
+      pose = { ...pose, cameraWorldQuaternion: [1, 0, 0, 0] };
+      act(() => {
+        vi.advanceTimersByTime(450);
+      });
+      expect(q('[data-testid="predicted-sky-leader"]')).toBeNull();
+      render(null);
+      expect(q('[data-testid="predicted-sky-leader"]')).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(420);
+      });
+      pose = { ...pose, cameraWorldQuaternion: [0, 0, 0, 1] };
+      act(() => {
+        vi.advanceTimersByTime(20);
+      });
+
+      // Reduced motion: 270 ms dissolve for both card and leader
+      (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+        matches: query.includes('prefers-reduced-motion: reduce'),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      });
+      render('finding-predicted-star-a');
+      render(null);
+      act(() => {
+        vi.advanceTimersByTime(269);
+      });
+      expect(q('[data-testid="star-card"]')).not.toBeNull();
+      expect(q('[data-testid="predicted-sky-leader"]')).not.toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="predicted-sky-leader"]')).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+      vi.useRealTimers();
+    }
+
+    const motion = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
+    const motionRule = (sel: string) => {
+      const out: Record<string, string> = {};
+      postcss.parse(motion).walkRules((rule) => {
+        if (rule.parent?.type === 'root' && rule.selector.replace(/\s+/g, ' ') === sel) {
+          rule.walkDecls((d) => {
+            out[d.prop] = d.value.replace(/\s+/g, ' ');
+          });
+        }
+      });
+      return out;
+    };
+    expect(motionRule('.reveal-card.is-sky')).toEqual({
+      animation: 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both',
+    });
+    expect(motionRule('.reveal-card.is-sky.is-leaving')).toEqual({
+      animation: 'look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * 6) both',
+    });
+  });
+
+  it('steps phone .predsky-status 16 px above open and leaving phone StarCard with Simulated and ESO line only, then restores full status', async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const base = predictedSky();
+    const star = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const words = predictedSkyWords(base);
+
+    vi.useFakeTimers();
+    try {
+      const renderPhone = (selectedFindingId: string | null) =>
+        act(() => {
+          root.render(
+            createElement(PredictedSkyScreen, {
+              session: { ...base, selectedFindingId },
+              onHome: noop,
+              phone: true,
+              onSelect: noop,
+              onCloseCard: noop,
+              onGoThere: noop,
+            }),
+          );
+        });
+
+      renderPhone(null);
+      expect(q('.predsky-status')!.className).toBe('reveal-status predsky-status');
+      expect([...container.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual([
+        'predicted',
+        'simulated',
+      ]);
+
+      renderPhone(star.id);
+      const aboveStatus = q('.predsky-status')!;
+      expect(aboveStatus.className).toBe('reveal-status predsky-status is-above-card');
+      expect([...aboveStatus.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__sky']);
+      expect([...aboveStatus.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual([
+        'predicted',
+        'simulated',
+      ]);
+      expect(aboveStatus.querySelector('.predsky-status__sky')!.textContent).toBe(words.milkyWay);
+      expect(q('.reveal-card.is-phone .reveal-card__top > .look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
+
+      // Closing holds the phone sheet and is-above-card through 499 ms (sheetMs = 500 ms), then restores full status at 500 ms
+      renderPhone(null);
+      act(() => {
+        vi.advanceTimersByTime(499);
+      });
+      expect(q('.reveal-card.is-phone.is-leaving')).not.toBeNull();
+      expect(q('.predsky-status')!.className).toBe('reveal-status predsky-status is-above-card');
+      expect([...q('.predsky-status')!.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__sky']);
+      expect([...q('.predsky-status')!.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual([
+        'predicted',
+        'simulated',
+      ]);
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('.predsky-status')!.className).toBe('reveal-status predsky-status');
+      expect([...container.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual([
+        'predicted',
+        'simulated',
+      ]);
+      expect(q('.predsky-status__lead')!.textContent).toBe(words.heading);
+      expect(q('.predsky-status__facts')).not.toBeNull();
+
+      // Reduced motion on phone: 270 ms sheet dissolve
+      (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+        matches: query.includes('prefers-reduced-motion: reduce'),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      });
+      renderPhone(star.id);
+      renderPhone(null);
+      act(() => {
+        vi.advanceTimersByTime(269);
+      });
+      expect(q('.reveal-card.is-phone.is-leaving')).not.toBeNull();
+      expect(q('.predsky-status')!.className).toBe('reveal-status predsky-status is-above-card');
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('.predsky-status')!.className).toBe('reveal-status predsky-status');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+      vi.useRealTimers();
+    }
+  });
+
+  it('hides phone AskBar while a predicted StarCard is open on PredictedSkyScreen, keeping laptop AskBar and restoring phone AskBar on close', () => {
+    const base = predictedSky();
+    const star = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+
+    // Laptop keeps AskBar mounted alongside the right-column sky StarCard
+    renderViewport({ ...base, selectedFindingId: star.id }, { selectedFinding: star });
+    expect(q('[data-testid="star-card"]')).not.toBeNull();
+    expect(q('[data-testid="ask-bar"]')).not.toBeNull();
+
+    act(() => root.unmount());
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query.includes('max-width: 720px'),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    try {
+      // A leftover observed selection on the unmatched recording opens no sky StarCard, so Back to Moment stays in reach
+      const observed = {
+        ...star,
+        id: 'finding-observed-glare',
+        evidenceClass: 'observed' as const,
+        evidence: { ...star.evidence, evidenceClass: 'observed' as const },
+      };
+      const withObserved = {
+        ...base,
+        selectedFindingId: observed.id,
+        observationSolution: { ...base.observationSolution!, findings: [...base.observationSolution!.findings, observed] },
+      } as ObservationSession;
+      renderViewport(withObserved, { selectedFinding: observed });
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="ask-bar"]')).not.toBeNull();
+
+      renderViewport({ ...base, selectedFindingId: star.id }, { selectedFinding: star });
+      expect(q('.predsky.is-phone .reveal-card.is-phone')).not.toBeNull();
+      expect(q('[data-testid="ask-bar"]')).toBeNull();
+
+      renderViewport({ ...base, selectedFindingId: null }, { selectedFinding: null });
+      expect(q('[data-testid="ask-bar"]')).not.toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
+  it('clears unpicked marks under the phone sheet settled box (469..814 px) even when frame-0 sheet-in translateY puts getBoundingClientRect off-screen', async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    // At 390x844 with identity pose and fov 60 deg, dec -80 projects above y=469 (~y=273) and dec -90 projects at screen centre (y=422);
+    // dec -72 with ra 270 (+Y down in camera space: look -Z, +Y up -> dec -68 at ra 270 projects into y > 469). Let's read predictedSkyMarks first!
+    const { predictedSkyMarks } = await import('../predictedSkyMarks.js');
+    const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: 390 / 844, limitingMagnitude: 6 };
+    const makeStar = (id: string, raDeg: number, decDeg: number, commonName: string) =>
+      ({
+        ...template,
+        id,
+        title: commonName,
+        skyPosition: { raDeg, decDeg, uncertaintyArcsec: 1 },
+        catalogRef: { id, provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: 0.5 },
+      }) as unknown as typeof template;
+    const upper = makeStar('finding-predicted-upper', 90, -75, 'UpperStar');
+    const lower = makeStar('finding-predicted-lower', 270, -70, 'LowerStar');
+    const session = {
+      ...base,
+      selectedFindingId: upper.id,
+      observationSolution: { ...base.observationSolution!, findings: [upper, lower] },
+    } as ObservationSession;
+    const rawMarks = predictedSkyMarks(session.observationSolution, pose, 390, 844, 11);
+    const lowerMark = rawMarks.find((m) => m.id === lower.id)!;
+    expect(lowerMark.yPx).toBeGreaterThan(469);
+    expect(lowerMark.yPx).toBeLessThan(814);
+
+    const prevW = window.innerWidth;
+    const prevH = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+    const origOffsetLeft = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetLeft');
+    const origOffsetTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetTop');
+    const origOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+    const origOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+    Object.defineProperty(HTMLElement.prototype, 'offsetLeft', { configurable: true, get() { return (this as HTMLElement).classList.contains('reveal-card') ? 12 : 0; } });
+    Object.defineProperty(HTMLElement.prototype, 'offsetTop', { configurable: true, get() { return (this as HTMLElement).classList.contains('reveal-card') ? 469 : 0; } });
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get() { return (this as HTMLElement).classList.contains('reveal-card') ? 366 : 0; } });
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get() { return (this as HTMLElement).classList.contains('reveal-card') ? 345 : 0; } });
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if ((this as HTMLElement).classList?.contains('reveal-card')) {
+        // Frame 0 of look-mo-sheet-in: translateY pushes getBoundingClientRect below y = 844
+        return { left: 12, right: 378, top: 844, bottom: 1189, width: 366, height: 345, x: 12, y: 844, toJSON: () => ({}) } as DOMRect;
+      }
+      return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    try {
+      act(() => {
+        root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose, phone: true }));
+      });
+      // LowerStar falls inside 469..814 px so it is cleared under the settled sheet even while getBoundingClientRect is at y=844
+      expect([...container.querySelectorAll('.predsky-name')].map((b) => b.textContent)).toEqual(['UpperStar']);
+    } finally {
+      rectSpy.mockRestore();
+      if (origOffsetLeft) Object.defineProperty(HTMLElement.prototype, 'offsetLeft', origOffsetLeft);
+      if (origOffsetTop) Object.defineProperty(HTMLElement.prototype, 'offsetTop', origOffsetTop);
+      if (origOffsetWidth) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', origOffsetWidth);
+      if (origOffsetHeight) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', origOffsetHeight);
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: prevW });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: prevH });
+    }
   });
 });

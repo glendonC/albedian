@@ -788,7 +788,7 @@ export const SpatialObservatoryViewport: React.FC<
           {/* On the phone the picked star's card covers the foot, Ask out loud's place, as #p-pick draws it */}
           {/* Nor over Real sky on the phone, as #p-real draws it; nor while the phone's restoration holds the foot, whose
               Download (D10 item 5) or Cancel (D38) stands there */}
-          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch || phoneFoot) ? null : revealShown || predictedSkyShown ? (
+          {(revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch || phoneFoot)) || (predictedSkyShown && phone && pickedFinding?.evidenceClass === 'predicted') ? null : revealShown || predictedSkyShown ? (
             <AskBar
               canListen={canListen}
               listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}
