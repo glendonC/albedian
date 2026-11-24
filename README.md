@@ -3,28 +3,30 @@
 **See (Beyond) the Night Sky.**  
 *Start from your photograph, not an anonymous universe.*
 
-Albedian is an observation-centered media restoration and 3D spatial astronomy instrument built for **Kiroween 2026** (*Frankenstein* category). It aims to turn a noisy night-sky photograph or video from Earth into a scientifically calibrated 3D portal: restoring only the stars your camera recorded, identifying them against star catalogs once a plate solution passes verification, and letting any curious explorer fly from their real earthly horizon to the worlds behind those points of light.
+Albedian is an observation-centered media restoration and 3D astronomy app built for **Kiroween 2026** (*Frankenstein* category). You upload a night photo or clip from Earth. It finds the points of light your camera recorded, names them from Gaia DR3 and Hipparcos only once a plate solution passes a check on stars held back from the fit, restores the picture without painting in a star, and flies you out to the stars it matched. How Kiro was used to build it is in [`docs/KIRO.md`](docs/KIRO.md).
 
 ---
 
 ## Why Albedian Exists (Problem & Cited Research)
 
 1. **Disappearing Access to the Night Sky:** Over **80% of humanity** (~83% globally, and >99% of the U.S. and Europe) lives under light-polluted skies, and **more than one-third cannot see the Milky Way** ([Falchi et al., 2016, *Science Advances*](https://pmc.ncbi.nlm.nih.gov/articles/PMC4928945/)). Global citizen-science observations from 2011 to 2022 showed naked-eye star visibility declining at a rate equivalent to **~9.6% annual sky-brightness growth** ([Kyba et al., 2023, *Science*](https://pubmed.ncbi.nlm.nih.gov/36656932/)).
-2. **Photon-Limited Consumer Cameras:** Small apertures on phones and wearables suffer from Poisson photon shot noise, read noise, and Mie atmospheric glare at night ([Hasinoff et al., 2016, *ACM TOG / SIGGRAPH Asia*](http://graphics.stanford.edu/papers/hdrp/hasinoff-hdrplus-sigasia16.pdf); [Liba et al., 2019](https://arxiv.org/html/1910.11336)). Conventional denoisers often erase faint stars, whereas Albedian uses detection-preserving temporal burst restoration. It does not yet report the SNR gain for each capture or offer a `Hold Original` control [open].
+2. **Photon-Limited Consumer Cameras:** Small apertures on phones and wearables suffer from Poisson photon shot noise, read noise, and Mie atmospheric glare at night ([Hasinoff et al., 2016, *ACM TOG / SIGGRAPH Asia*](http://graphics.stanford.edu/papers/hdrp/hasinoff-hdrplus-sigasia16.pdf); [Liba et al., 2019](https://arxiv.org/html/1910.11336)). Conventional denoisers often erase faint stars. Albedian restores a clip with a temporal step in which each frame is helped only by registered neighbouring frames, and what they carry that the frame contradicts is kept out (`services/media/temporal.py`), and a photo one frame at a time; a wipe compares Original and Restored. It does not yet report the SNR gain for each capture [open].
 3. **The Comprehension & Experience Chasm:** Recognizing a flat 2D dot on a sky map does not produce comprehension of 3D cosmic scale, reference-frame transitions, or light-travel time ([Plummer, 2014](https://eric.ed.gov/?id=EJ1029625); [Plummer et al., 2022, *JRST*](https://onlinelibrary.wiley.com/doi/10.1002/tea.21754); [Schneps et al., 2014](https://dl.acm.org/doi/10.5555/2753872.2753884); [Rajpaul et al., 2018](https://physics.aps.org/articles/v11/93)). Existing tools either paste synthetic 2D labels onto a screen (*Sky Guide*, *Stellarium*) or trap catalog data inside sterile, government-portal database UIs (*NASA Eyes*, *WWT*) disconnected from your own photograph and horizon.
 
 ## Intended Audience (ICP)
 
-- **Primary ICP: The Curious Everyday Explorer:** Anyone who looks up at the night sky, snaps a photo, and wants to experience and understand what is actually out there, without needing a telescope or an astrophysics degree. Albedian pairs measured and catalog data with human-understandable readouts such as light-travel time and the historical era when that light set out.
-- **Secondary ICPs: Night-Sky Creators & Science Communicators:** Photographers and educators who turn real night-sky captures into provenance-backed, shareable 3D journeys from recorded camera pixels to planetary surfaces.
+- **Primary ICP: The Curious Everyday Explorer:** Anyone who looks up at the night sky, snaps a photo, and wants to experience and understand what is actually out there, without needing a telescope or an astrophysics degree. Albedian pairs measured and catalog data with human-understandable readouts such as how many light years a star is from Earth.
+- **Secondary ICPs: Night-Sky Creators & Science Communicators:** Photographers and educators who restore real night-sky captures and download each restored photo or clip with its provenance record.
 
-## The Five-Regime Spatial Journey (`@sparkjsdev/spark` + WebGL2 Ray-Marching)
+## What It Does Today
 
-1. **`01 · Night Sky` (`earth_capture`):** Restores the user's real recording, locks WCS coordinates only after held-out star verification passes, and grounds the sky above a 3D ray-marched local horizon, with a northern or southern landscape picked by the observer's hemisphere.
-2. **`02 · Cislunar Orbit` (`cislunar`, `1.28 light-sec`):** Transitions into Earth-Moon orbital space with Rayleigh/Mie atmospheric limb scattering and NASA LRO laser-altimetry lunar relief.
-3. **`03 · Nearby Stars` (`solar_neighborhood`, `4.37 to 548 ly`):** Shows a modelled star, not Betelgeuse's measured surface and not at its size or distance, with `@sparkjsdev/spark` 3D Gaussian splats on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), placed around it for composition.
-4. **`04 · Deep Space` (`deep_sky`, `26,670 ly`):** Shows a modelled black hole: an approximate Schwarzschild bending of light around a hand-set disk, over ESO's photograph of the nearby Lupus 3 cloud, not Sgr A*'s data.
-5. **`05 · World Surface` (`planetary_surface`):** Lands on procedurally generated, illustrative worlds (analytical-derivative GPU ray-marching after [Inigo Quilez](https://iquilezles.org/articles/morenoise/)): Shackleton Crater on the Moon, an imagined canyon on Proxima Centauri b, Titan's hydrocarbon seas beneath Saturn's rings, and a fictional relativistic tidal ocean world. `Return to My Photo [Esc]` reversibly restores the exact source recording. See [`docs/product/PRODUCT_THESIS.md`](docs/product/PRODUCT_THESIS.md) for full citations and epistemic boundaries.
+1. **Your photo.** Upload a night photo or clip; the upload is stored by its SHA-256 and never changed. The reveal marks what it found with four tags, each a word and a shape: *Observed*, *Catalog matched*, *Predicted* and *Simulated* (`packages/design-system/src/look.ts`). Tap a star for its card: its name, its distance from Earth in light years, how far above the noise it was measured and the catalog row it was matched to (`apps/web/src/reveal/StarCard.tsx`). Deep-sky objects from OpenNGC are marked too (`apps/web/src/reveal/deepSky.ts`).
+2. **Predicted sky.** When the stars do not solve and the file carries its time and place, Show predicted sky draws the sky that was above it then, labelled *Predicted* (`apps/web/src/reveal/PredictedSkyScreen.tsx`, [`docs/science/PREDICTED_SKY.md`](docs/science/PREDICTED_SKY.md)).
+3. **Restore.** Restore makes a restored copy of a photo or a clip, a wipe compares Original and Restored, and Download gives a zip of the restored file with its provenance record (`apps/web/src/reveal/RestoreParts.tsx`, `services/media/router.py`).
+4. **Real sky.** For a photo whose solution passed the check, Real sky shows it inside ESO's Milky Way panorama (`apps/web/src/reveal/RealSkyLayer.tsx`).
+5. **3D.** Go there on a star's card flies to a *Catalog matched* star that has a catalog distance, among the other stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, all tagged *Simulated*. Your view puts the camera behind NASA's own models of 39 spacecraft and suits (`apps/web/public/models/hangar/`, `apps/web/src/spatial/flight/crafts.ts`); Your photo's view and Fly on your own are beside it. Back to Moment, or Esc, returns to the view you left (`apps/web/src/components/SpatialObservatoryViewport.tsx`).
+6. **Sound.** The Sound control plays an adaptive soundtrack of three pieces that changes with the moment (arriving, travel, a star's card, the reveal); the stars on screen play its data notes and everything else is composed (`apps/web/src/audio/music/soundtrack.ts`, `apps/web/src/audio/music/soundtrackMoment.ts`).
+7. **iPhone companion.** `apps/ios` aims with a predicted overlay, takes the photo exactly as the camera wrote it, records where the phone pointed as a hint, never as evidence, and sends both to the laptop over the local network ([`apps/ios/README.md`](apps/ios/README.md); `pnpm field --lan`).
 
 ---
 
@@ -35,9 +37,9 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
   - `observed`: Measured directly in source pixels (centroid, SNR, flux).
   - `catalog_matched`: Linked to a catalog entry via an independently verified WCS solution with held-out pixel residual metrics.
   - `predicted`: Computed from time, observer location, and ephemerides without claiming pixel-level sensor recovery.
-  - `simulated`: 3D catalog-geometry flight or modeled historical/future epoch views, disclosed explicitly in the UI.
-- **Seamless Continuity (`ObservationSession`):** Four coordinated state machines (`Media`, `Restoration`, `Calibration`, `Navigation`) plus an independent `Voice` state machine share one observation model and reversible `CameraCheckpoint` stack.
-- **Voice as Direct Manipulation:** Spoken and typed utterances (`"Make the sky clearer"`, `"What's that one?"`, `"How far away is it?"`, `"Take me there"`, `"Show me this sky a thousand years ago"`, `"Go back"`) resolve against active pointer/selection context into schema-validated `AlbedianAction` commands.
+  - `simulated`: the 3D catalog-geometry flight and the models drawn in it, disclosed explicitly in the UI.
+- **Seamless Continuity (`ObservationSession`):** Five state machines (`Media`, `Restoration`, `Calibration`, `Navigation` and `Voice`) are fields of one observation session, changed by one reducer (`packages/observation/src/reducer.ts`), with a reversible `CameraCheckpoint` stack.
+- **Voice as Direct Manipulation:** Spoken and typed utterances (`"What's that one?"`, `"How far away is it?"`, `"Take me there"`, `"Go back"`) resolve against active pointer/selection context into schema-validated `AlbedianAction` commands (`packages/contracts/src/data/voice-command-grammar.json`). The optional Claude reading of a sentence is off unless `ALBEDIAN_ENABLE_LIVE_CLAUDE=1` and `ANTHROPIC_API_KEY` are set ([`docs/FIELD_USE.md`](docs/FIELD_USE.md)).
 
 ---
 
@@ -48,19 +50,26 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
   apps/
     web/                    # React + TypeScript + WebGL/Three.js + Web Audio observational shell
       public/catalog/stars/ # Gaia DR3 + Hipparcos 2007 catalog star tiles (docs/science/CATALOG_STAR_TILES.md)
+      public/models/hangar/ # NASA's models of 39 spacecraft and suits, rebuilt for the flight (PROVENANCE.json)
+    ios/                    # Albedian Capture, the iPhone companion (SwiftUI)
+    webgpu-spike/           # The WebGPU renderer spike (docs/architecture/RENDERER_WEBGPU_SPIKE.md)
   services/
+    api.py                  # The FastAPI app the web app talks to
+    ingest/                 # Content-addressed uploads, metadata and probe readers, solve jobs
+    contracts/              # The Pydantic side of the shared contracts
     media/                  # Python Media Experiment Runtime (FFmpeg DAG, probe, audio remux)
     science/                # Python astrometry, WCS solver/verifier, pinned bright-star catalog & analytical ephemerides
     voice/                  # Context-bound intent parser & authoritative typed action validator
   packages/
     contracts/              # Authoritative TypeScript/Zod & JSON schemas for all 14 domain entities
     evidence/               # Epistemic state transitions, uncertainty formatting & guardrails
-    observation/            # 4+1 orthogonal state machines, session reducer & NavigationHistory
+    observation/            # Five state machines in one session reducer & NavigationHistory
     camera-rig/             # WCS pixel<->world math, quaternion SLERP, log-tan-FOV & floating origin
     design-system/          # Albedian observational instrument tokens, marker grammar & motion specs
   research/
     originals/              # Preserved foundational research reports
     experiments/            # Reproducible technical experiment registry & benchmark harnesses
+    benchmarks/             # The simulated phone photo and real photo solver benchmarks
   docs/
     product/                # Product thesis, experience states & UI/UX reference system
     architecture/           # Modular monolith topology, 14 entities, ADRs & licensing
@@ -70,23 +79,31 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
     integration/            # Cross-package and service-to-UI integration tests
   .kiro/
     steering/               # Global and file-matched Kiro steering documents
-    specs/                  # 8 Kiro domain specifications (requirements.md, design.md, tasks.md)
-    hooks/                  # Validated Kiro 1.4.62 workspace hooks (.kiro.hook)
-    agents/                 # Specialized agent role definitions
+    specs/                  # 12 Kiro specifications (requirements.md, design.md, tasks.md)
+    hooks/                  # 5 Kiro agent hooks (.kiro.hook)
+    agents/                 # The albedian-auditor custom agent and the agent role definitions
 ```
 
-What works, what is still missing, the decisions waiting and the long-running jobs to start early are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The roadmap as it stood on 9 November is [`docs/ROADMAP.md`](docs/ROADMAP.md); how Kiro was used is [`docs/KIRO.md`](docs/KIRO.md).
 
 ---
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. What You Need
+Node 22 or later, pnpm 10.7.1 (the `packageManager` in `package.json`), [uv](https://docs.astral.sh/uv/), and ffmpeg with ffprobe on the `PATH` (an ffmpeg older than 7.1 refuses iPhone HEIC photos; JPEG works with any). A browser with WebGL 2.
+
+### 2. Install and Start
 ```bash
 pnpm install
+uv sync
+pnpm field --check
+pnpm field
 ```
 
-### 2. Run Verification & Property-Based Test Suites
+`pnpm field --check` starts nothing and prints one line per need; fix any `MISSING` line first. `pnpm field` starts the API on 127.0.0.1:8000, the web app on http://localhost:5173 and the music sample server; open the web app and press Upload. The music's samples are not in the repository: without them in `.cache/music/sources` the app runs and the music stays silent, and `pnpm field --check` counts them ([`docs/FIELD_USE.md`](docs/FIELD_USE.md)).
+
+### 3. Run Verification & Property-Based Test Suites
 ```bash
 # TypeScript unit + fast-check property-based tests (camera projection, DAG, evidence, navigation, voice, sync)
 pnpm test
@@ -98,7 +115,7 @@ pnpm test:python
 pnpm typecheck
 ```
 
-### 3. Start Backend Service & Web Application
+### 4. Or Start the API and the Web App Yourself
 ```bash
 # Terminal 1: Start the Python Science & Media Runtime API (port 8000)
 uv run uvicorn services.api:app --reload --port 8000
@@ -116,9 +133,9 @@ The API also answers only a `Host` that names this machine: localhost, 127.0.0.1
 ## Scientific Methodology & Limitations
 
 - **Photons cannot be invented:** Low-light restoration operates on recorded signal (`Observed-data processing`) and constrained denoising. Albedian never pastes catalog stars onto dark images and claims they were recovered from camera pixels.
-- **Independent WCS Verification:** A plate-solve candidate is accepted as `calibrated` only when at least 6 held-out detections are inliers and the residuals of every held-out pair, inlier or not, have a median of at most 3.0 px and a 95th percentile of at most 6.0 px. Otherwise, the observation enters `unresolved`, `ambiguous`, or `predicted_only`.
-- **The predicted sky:** An upload with a recorded capture time and place also gets the bright stars, the Sun, the Moon and the planets that were above its horizon at that moment, labelled `predicted` and not placed on the picture; when its stars do not match, it ends `predicted_only` ([docs/science/PREDICTED_SKY.md](docs/science/PREDICTED_SKY.md)).
-- **3D Stellar Distances:** A single photograph encodes angular direction ($\alpha, \delta$), not depth. 3D positions in `Explore` mode derive from a pinned list of 71 bright stars: 59 Hipparcos 2007 rows with geometric parallax distances and 12 Gaia DR3 rows with Bailer-Jones photogeometric distances, each with its uncertainty interval (`median`, `lower`, `upper` pc), under a `Catalog Geometry · Distance Estimates` disclosure. The web sky also draws every Gaia DR3 source brighter than G 12, with Bailer-Jones (2021) distances ([docs/science/CATALOG_STAR_TILES.md](docs/science/CATALOG_STAR_TILES.md)).
+- **Independent WCS Verification:** A plate-solve candidate is accepted as `calibrated` only when at least 6 held-out detections are inliers and the residuals of every held-out pair, inlier or not, have a median of at most 3.0 px and a 95th percentile of at most 6.0 px. An upload's photo goes to the phone photo solver, which holds the 95th percentile of the held-out inliers to 5.5 px and also refuses a solution whose two solving paths disagree by more than 2.5 px or whose held-out matches could be chance (`services/science/phone_photo_solver.py`). Otherwise, the observation enters `unresolved`, `ambiguous`, or `predicted_only`.
+- **The predicted sky:** An upload with a recorded capture time and place also gets the bright stars, the Sun, the Moon and the planets that were above its horizon at that moment, labelled `predicted` and placed on the picture only when a pose estimate lines it up; when its stars do not match, it ends `predicted_only` ([docs/science/PREDICTED_SKY.md](docs/science/PREDICTED_SKY.md)).
+- **3D Stellar Distances:** A single photograph encodes angular direction ($\alpha, \delta$), not depth. 3D positions in `Explore` mode derive from a pinned list of 71 bright stars: 59 Hipparcos 2007 rows with geometric parallax distances and 12 Gaia DR3 rows with Bailer-Jones photogeometric distances, each with its uncertainty interval (`median`, `lower`, `upper` pc), under a `Catalog Geometry · Distance Estimates` disclosure. The web sky also draws the Gaia DR3 sources brighter than G 12 (3,087,666 in the tiles; 155 that repeat a bright Hipparcos star are left out), with Bailer-Jones (2021) distances ([docs/science/CATALOG_STAR_TILES.md](docs/science/CATALOG_STAR_TILES.md)).
 
 ---
 
