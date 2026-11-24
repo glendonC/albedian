@@ -156,7 +156,12 @@ export const FlightCraftLayer: React.FC<{
   framing?: CraftFraming;
   /** At phone width the hangar's far level is drawn. */
   phone?: boolean;
-}> = ({ camera, craft, load, makeRenderer = makeWebGlRenderer, steer = null, framing, phone = false }) => {
+  /**
+   * steer-frame-one: filled with this layer's draw for one steering frame, which the star layer's one frame loop calls
+   * each frame with the camera of that frame (no React render per frame).
+   */
+  drawRef?: React.MutableRefObject<((steer: Steer) => void) | null>;
+}> = ({ camera, craft, load, makeRenderer = makeWebGlRenderer, steer = null, framing, phone = false, drawRef }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<CraftGpu | null>(null);
   const cameraRef = useRef(camera);
@@ -284,6 +289,18 @@ export const FlightCraftLayer: React.FC<{
     g.renderer.setSize(camera.viewportWidthPx, camera.viewportHeightPx, false);
     draw(g);
   }, [camera, steer, framing?.xPx, framing?.yPx, framing?.diameterPx]);
+
+  // The star layer's frame loop draws a steering frame through this
+  useEffect(() => {
+    if (!drawRef) return undefined;
+    drawRef.current = (s) => {
+      const g = gpu.current;
+      if (g && (g.shown || g.leaving)) drawFrame(g, cameraRef.current, s, framingRef.current, canvas.current, outCanvas.current);
+    };
+    return () => {
+      drawRef.current = null;
+    };
+  });
 
   // The outgoing craft's canvas is drawn on its first frame
   useEffect(() => {

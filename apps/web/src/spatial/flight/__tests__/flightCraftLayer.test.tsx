@@ -14,6 +14,7 @@ import { craftFrameRadiusM, craftSceneOf } from '../craftScene.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
 import { CRAFTS } from '../crafts.js';
 import { flightCameraOf } from '../flightFrame.js';
+import { steerStartOf } from '../starView.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -303,6 +304,21 @@ describe('FlightCraftLayer: switching craft (craft-switch-motion-1, MOTION-READY
     expect(reduced.startsWith('.craft-picker__panel.is-leaving {\n    animation-delay: var(--look-mo-stagger);')).toBe(true);
     expect(reduced).toContain('.craft-picker__sheet {\n    animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;');
     expect(reduced).toContain('.craft-picker__sheet.is-leaving {\n    animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;');
+  });
+
+  it('draws a steering frame when the star layer\'s loop asks, through its draw hook (steer-frame-one)', async () => {
+    const { makeRenderer, drawn } = rendererStub();
+    const suit = box(2);
+    const camera = flightCameraOf(there(), 1440, 900)!;
+    const drawRef: { current: ((s: { positionPc: [number, number, number]; rows: ReturnType<typeof steerStartOf>['rows'] }) => void) | null } = { current: null };
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['astronaut-emu']!, load: async () => suit, makeRenderer, drawRef })));
+    const before = drawn.length;
+    const start = steerStartOf(camera);
+    drawRef.current!({ positionPc: start.positionPc as [number, number, number], rows: start.rows });
+    expect(drawn.length).toBe(before + 1);
+    expect(drawn.at(-1)!.children).toEqual([suit]);
+    await act(async () => root.render(createElement('div')));
+    expect(drawRef.current).toBeNull();
   });
 });
 

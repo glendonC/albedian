@@ -15,7 +15,8 @@ import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
 import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
-import { STEER_START_SPEED_PC_S, SteerHands } from './steering.js';
+import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steering.js';
+import { threeFigures } from '../../reveal/flightView.js';
 import { changeSpeed, followRows, steerCamera, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
 
@@ -134,6 +135,23 @@ function tileTints(tile: CatalogStarCoreTile): Float32Array {
 }
 
 const keyOfReference = (r: Vec3) => r.join(',');
+
+/** The camera while the person steers: where it stands and its axes, its speed, and the chase camera's look. */
+type SteerNow = SteerState & { chase: WcsCameraRows };
+
+/** Light years in a parsec, as the readout converts (RevealPhoto.tsx). */
+const LY_PER_PC = 3.261563777;
+
+/** The boxes the rings keep out of (D27 item 1): the disclosure, the readouts, the bar and the pills, as laid out now. */
+function keepOutBoxes(): ScreenBox[] {
+  const boxes: ScreenBox[] = [];
+  if (typeof document === 'undefined') return boxes;
+  for (const id of ['reveal-status', 'flight-readout', 'cone-readout', 'ask-bar', 'flight-pills']) {
+    const r = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+    if (r && r.width > 0) boxes.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+  }
+  return boxes;
+}
 
 /** Uploads (or re-uploads, for a new reference) one tile's stars. */
 function uploadTile(gpu: Gpu, tile: CatalogStarCoreTile, reference: Vec3, existing?: TileGpu): TileGpu | null {
@@ -288,7 +306,14 @@ export const FlightStarsLayer: React.FC<{
   // pilot-1e: the person's own camera, handed over where the flight's stands, turned and moved each frame
   // The person's input turns the craft (steer.rows); the chase camera's look follows it (MOTION k13: 0.25 s, locked
   // under reduced motion), so in a turn the craft leads off the centre
-  const [steer, setSteer] = useState<(SteerState & { chase: WcsCameraRows }) | null>(null);
+  // steer-frame-one (DECIDED-BY-LEAD 15:59): the state React holds is the hand-over's start only; each frame's camera is
+  // held in a ref and drawn by the one frame loop (stars, bloom, rings, craft), the page told only when the readout's
+  // numbers change
+  const [steer, setSteer] = useState<SteerNow | null>(null);
+  const steerNow = useRef<SteerNow | null>(null);
+  const frameDraw = useRef<((s: SteerNow) => void) | null>(null);
+  const craftDraw = useRef<((s: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }) => void) | null>(null);
+  const toldKey = useRef('');
   const [craftSeen, setCraftSeen] = useState(Boolean(craft));
   useEffect(() => {
     if (craft) setCraftSeen(true);
@@ -304,18 +329,23 @@ export const FlightStarsLayer: React.FC<{
     }
     hands.current = new SteerHands(() => reducedRef.current);
     const start = steerStartOf(cameraRef.current);
-    setSteer({ ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows });
+    const first: SteerNow = { ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows };
+    steerNow.current = first;
+    toldKey.current = '';
+    setSteer(first);
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;
       const { input, speedDirection } = hands.current.frame(dt);
-      setSteer((prev) => {
-        if (!prev) return prev;
+      const prev = steerNow.current;
+      if (prev) {
         const next = steerCamera(prev, input, dt);
-        return { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase: followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }) };
-      });
+        const moved: SteerNow = { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase: followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }) };
+        steerNow.current = moved;
+        frameDraw.current?.(moved);
+      }
       raf = window.requestAnimationFrame(tick);
     };
     raf = window.requestAnimationFrame(tick);
@@ -342,17 +372,26 @@ export const FlightStarsLayer: React.FC<{
   }, [flying]);
   const toldSteer = useRef(onSteer);
   toldSteer.current = onSteer;
-  useEffect(() => {
+  // The page hears of the camera only when a number the readout shows would change (its three figures, its speed line)
+  const tell = (s: SteerNow | null) => {
+    if (!s) {
+      toldKey.current = '';
+      toldSteer.current?.(null);
+      return;
+    }
     const ref = cameraRef.current?.referencePc ?? [0, 0, 0];
-    toldSteer.current?.(
-      steer
-        ? {
-            fromEarthPc: Math.hypot(steer.positionPc[0], steer.positionPc[1], steer.positionPc[2]),
-            toStarPc: Math.hypot(steer.positionPc[0] - ref[0], steer.positionPc[1] - ref[1], steer.positionPc[2] - ref[2]),
-            speedPcPerS: steer.speedPcPerS,
-          }
-        : null
-    );
+    const report = {
+      fromEarthPc: Math.hypot(s.positionPc[0], s.positionPc[1], s.positionPc[2]),
+      toStarPc: Math.hypot(s.positionPc[0] - ref[0], s.positionPc[1] - ref[1], s.positionPc[2] - ref[2]),
+      speedPcPerS: s.speedPcPerS,
+    };
+    const key = `${threeFigures(report.toStarPc * LY_PER_PC)}|${threeFigures(report.fromEarthPc * LY_PER_PC)}|${steeringSpeedLine(report.speedPcPerS)}`;
+    if (key === toldKey.current) return;
+    toldKey.current = key;
+    toldSteer.current?.(report);
+  };
+  useEffect(() => {
+    tell(steer);
   }, [steer]);
   // A press on the sky (not a drag) in the flight view; while steering, a drag turns
   const sky = useRef<HTMLDivElement>(null);
@@ -412,6 +451,8 @@ export const FlightStarsLayer: React.FC<{
   viewRef.current = view;
   // The star flown to, found in its own catalog row; its bloom as the camera sees it now (none in the cone view)
   const [arrival, setArrival] = useState<ArrivalStar | null>(null);
+  const arrivalRef = useRef(arrival);
+  arrivalRef.current = arrival;
   const bloom = useMemo(() => (!cone && arrival && view ? arrivalBloomOf(arrival, view) : null), [arrival, view, cone]);
   const bloomRef = useRef(bloom);
   bloomRef.current = bloom;
@@ -511,15 +552,31 @@ export const FlightStarsLayer: React.FC<{
   }, [counts.noDistanceOnScreen]);
 
   // D27 item 1: rings on the matched stars, kept out of the disclosure, the readout and the bar
-  const keepOut: ScreenBox[] = [];
-  if (typeof document !== 'undefined') {
-    for (const id of ['reveal-status', 'flight-readout', 'cone-readout', 'ask-bar', 'flight-pills']) {
-      const r = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
-      if (r && r.width > 0) keepOut.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
-    }
-  }
+  const keepOut = keepOutBoxes();
   const ringRadius = phone ? RING_RADIUS_PX_PHONE : RING_RADIUS_PX;
-  const rings = !cone && view ? flightRings(session, view, keepOut, ringRadius) : [];
+  const rings = !cone && view && !steer ? flightRings(session, view, keepOut, ringRadius) : [];
+  const layerEl = useRef<HTMLDivElement>(null);
+  const steerRings = useRef<SVGSVGElement>(null);
+  // steer-frame-one: each frame while steering, drawn by the loop with no React render: the stars and the bloom, the
+  // rings (set in their own svg), the craft, the layer's distance, and the page's numbers when they change
+  useEffect(() => {
+    frameDraw.current = (s) => {
+      const cam = cameraRef.current;
+      if (!cam) return;
+      const v = starViewOfSteer(cam, { positionPc: s.positionPc, rows: s.chase });
+      const g = gpu.current;
+      const star = arrivalRef.current;
+      if (g && canvas.current && g.tiles.size > 0) drawFrame(g, v, canvas.current, dpr, gainRef.current, star ? arrivalBloomOf(star, v) : null);
+      const svg = steerRings.current;
+      if (svg) svg.innerHTML = flightRings(session, v, keepOutBoxes(), ringRadius).map((r) => `<circle data-finding-id="${r.findingId}" cx="${r.xPx}" cy="${r.yPx}" r="${ringRadius}" fill="none" stroke="${RING_STROKE}" stroke-width="1"></circle>`).join('');
+      craftDraw.current?.({ positionPc: s.positionPc, rows: s.chase, craftRows: s.rows });
+      layerEl.current?.setAttribute('data-from-earth-pc', Math.hypot(s.positionPc[0], s.positionPc[1], s.positionPc[2]).toFixed(4));
+      tell(s);
+    };
+    return () => {
+      frameDraw.current = null;
+    };
+  });
 
   const at = view?.observerPc ?? [0, 0, 0];
   const fromEarthPc = Math.hypot(at[0], at[1], at[2]);
@@ -531,6 +588,7 @@ export const FlightStarsLayer: React.FC<{
   return (
     <>
     <div
+      ref={layerEl}
       className="flight-stars"
       data-testid="flight-stars"
       data-state={state}
@@ -551,8 +609,11 @@ export const FlightStarsLayer: React.FC<{
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
       />
     </div>
+    {!cone && steer && (
+      <svg key="steering" ref={steerRings} className="flight-rings" data-testid="flight-rings" aria-hidden="true" width={viewportWidthPx} height={viewportHeightPx} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }} />
+    )}
     {rings.length > 0 && (
-      <svg className="flight-rings" data-testid="flight-rings" aria-hidden="true" width={viewportWidthPx} height={viewportHeightPx} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
+      <svg key="flight" className="flight-rings" data-testid="flight-rings" aria-hidden="true" width={viewportWidthPx} height={viewportHeightPx} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
         {rings.map((r) => (
           <circle key={r.findingId} data-finding-id={r.findingId} cx={r.xPx} cy={r.yPx} r={ringRadius} fill="none" stroke={RING_STROKE} strokeWidth={1} />
         ))}
@@ -562,7 +623,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} drawRef={craftDraw} />}
     </>
   );
 };
