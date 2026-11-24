@@ -9,6 +9,7 @@ import {
   SKY_PANORAMA_REGISTRATION_FORMAT,
   SKY_PANORAMA_REGISTRATION_URL,
   applyRows,
+  icrsToPanoramaRows,
   loadPanoramaRegistration,
   multiplyRows,
   panoramaUv,
@@ -61,12 +62,13 @@ const mat3Arb: fc.Arbitrary<Mat3Rows> = fc
 const vec3Arb: fc.Arbitrary<Vec3> = fc.tuple(finiteScalar, finiteScalar, finiteScalar);
 
 describe('skyRegistration public module contract', () => {
-  it('exposes the exact 13 runtime exports with zero leaked internal helpers', () => {
+  it('exposes the exact 14 runtime exports with zero leaked internal helpers', () => {
     expect(Object.keys(skyRegistrationModule).sort()).toEqual([
       'ICRS_TO_GALACTIC',
       'SKY_PANORAMA_REGISTRATION_FORMAT',
       'SKY_PANORAMA_REGISTRATION_URL',
       'applyRows',
+      'icrsToPanoramaRows',
       'loadPanoramaRegistration',
       'multiplyRows',
       'panoramaUv',
@@ -136,6 +138,14 @@ describe('skyRegistration row-major 3x3 matrix operations', () => {
       expect(back[1]).toBeCloseTo(basis[1], 14);
       expect(back[2]).toBeCloseTo(basis[2], 14);
     }
+  });
+
+  it('composes icrsToPanoramaRows as galacticToPanorama * ICRS_TO_GALACTIC, the scene rows without the scene turn (craft-light-one)', () => {
+    const custom: Mat3Rows = [0, -1, 0, 0, 0, 1, -1, 0, 0];
+    const reg: PanoramaRegistration = { imageWidth: 400, imageHeight: 200, galacticToPanorama: custom, yOffsetPx: 0, offsetTable: { width: 2, height: 2, scale: 1, bias: 0, codes: new Uint8Array(8) } };
+    expect(icrsToPanoramaRows(reg)).toEqual(multiplyRows(custom, ICRS_TO_GALACTIC));
+    const viaScene = multiplyRows(sceneToPanoramaRows(reg), transposeRows(sceneToIcrsRows()));
+    icrsToPanoramaRows(reg).forEach((v, i) => expect(v).toBeCloseTo(viaScene[i]!, 12));
   });
 
   it('composes sceneToPanoramaRows as galacticToPanorama * (ICRS_TO_GALACTIC * sceneToIcrsRows)', () => {

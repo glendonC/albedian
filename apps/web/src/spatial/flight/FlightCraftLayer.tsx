@@ -8,12 +8,18 @@ import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene.js';
+import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, environmentIntensity, environmentRotationRows, keyLight, meteredExposure, seenSideKeyShare, skyFillRatio, skyIntegralOfPixels, type LightCandidate } from './craftLight.js';
+import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 
 /**
  * pilot-1: a NASA model drawn in the photo's own view during the flight through the stars, a few metres ahead of the
- * camera at the framing point and turned toward the star flown to, lit from the Sun's real direction. Its own canvas
- * sits over the star layer. No words and no movement of its own: it moves only because the flight's camera does.
- * The light's strength is the app's choice so the craft can be seen (the design lane words what is said about it).
+ * camera at the framing point and turned toward the star flown to. Its own canvas sits over the star layer. No words
+ * and no movement of its own: it moves only because the flight's camera does.
+ *
+ * craft-light-one (ruled 15:34 and 16:08 on 24 Nov): lit by the brightest real source where the camera is (beside the
+ * star flown to, that star, in its catalog tint; near Earth, the Sun), its only fill the sky's own light (the starless
+ * glow scaled to the catalog's summed starlight), tone mapped with ACES and exposed for the side the camera sees at
+ * middle grey (craftLight.ts). Nothing lights it that is not there.
  *
  * craft-cache-one (DECIDED-BY-LEAD 15:59): one renderer and one model loader for the whole flight, each parsed model kept
  * by its address so a switch back draws at once, the oldest beyond MODEL_CACHE_SIZE and every one on leaving disposed
@@ -26,6 +32,8 @@ import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene
  */
 
 type CraftState = 'loading' | 'drawn' | 'failed';
+
+const NO_CANDIDATES: readonly LightCandidate[] = [];
 
 /** How many parsed models one flight keeps: the craft shown and the two before it (each up to about 18 MB on a phone). */
 export const MODEL_CACHE_SIZE = 3;
@@ -55,6 +63,9 @@ export interface CraftRenderer {
   render(scene: THREE.Scene, camera: THREE.Camera): void;
   clear(): void;
   dispose(): void;
+  /** Set on three's renderer (ACES and the metered exposure); a stand-in may leave them be. */
+  toneMapping?: THREE.ToneMapping;
+  toneMappingExposure?: number;
 }
 
 const makeWebGlRenderer = (canvas: HTMLCanvasElement): CraftRenderer => new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: true });
@@ -85,7 +96,11 @@ interface CraftGpu {
   scene: THREE.Scene;
   camera: THREE.Camera;
   holder: THREE.Group;
-  sun: THREE.DirectionalLight;
+  key: THREE.DirectionalLight;
+  /** The sky the craft takes its fill from, loading once a flight: its linear light summed over the sphere, or none. */
+  sky: Promise<number | null>;
+  /** That sum once a craft is drawn with it; none until then (no fill). */
+  skyIntegral: number | null;
   /** The model drawn now and the craft it is drawn as, none while the incoming one loads. */
   shown: Shown | null;
   /** The craft framing out after a switch, drawn into its own canvas until its frame-out ends. */
@@ -102,13 +117,81 @@ interface Shown {
 
 type Steer = { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows };
 
+interface CraftSkySource {
+  readonly copy: HTMLCanvasElement;
+  readonly integral: number;
+  readonly rotation: THREE.Matrix4;
+}
+
+/** The decoded sky, once a page: each flight builds its own environment from it but loads and sums it once. */
+let craftSkySource: Promise<CraftSkySource> | null = null;
+
+/**
+ * The glow at the craft sky's size, decoded and shrunk off the main thread (createImageBitmap's resize), so building
+ * the craft's sky costs Go there no 6000 px decode (AUDIT-D, 18:18); a browser without the resize options decodes it
+ * off the main thread at full size and the canvas below shrinks it.
+ */
+export async function smallCraftSky(): Promise<ImageBitmap | HTMLImageElement> {
+  const response = await fetch(CRAFT_SKY_URL);
+  if (!response.ok) throw new Error('craft sky');
+  const blob = await response.blob();
+  try {
+    return await createImageBitmap(blob, { resizeWidth: CRAFT_SKY_SIZE.width, resizeHeight: CRAFT_SKY_SIZE.height, resizeQuality: 'high' });
+  } catch {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return img;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+async function decodeCraftSky(): Promise<CraftSkySource> {
+  const [source, registration] = await Promise.all([smallCraftSky(), loadPanoramaRegistration()]);
+  // The environment and the sum, both from one small copy of the same pixels (a fill needs no detail)
+  const copy = document.createElement('canvas');
+  copy.width = CRAFT_SKY_SIZE.width;
+  copy.height = CRAFT_SKY_SIZE.height;
+  const ctx = copy.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('craft sky');
+  ctx.drawImage(source, 0, 0, copy.width, copy.height);
+  if ('close' in source) source.close();
+  const integral = skyIntegralOfPixels(ctx.getImageData(0, 0, copy.width, copy.height).data, copy.width, copy.height);
+  const r = environmentRotationRows(registration);
+  const rotation = new THREE.Matrix4().set(r[0], r[1], r[2], 0, r[3], r[4], r[5], 0, r[6], r[7], r[8], 0, 0, 0, 0, 1);
+  return { copy, integral, rotation };
+}
+
+/** The sky the craft takes its fill from: the starless glow, turned to where the registration puts it, as a PMREM. */
+async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, alive: () => boolean): Promise<number | null> {
+  craftSkySource ??= decodeCraftSky().catch((error: unknown) => {
+    craftSkySource = null;
+    throw error;
+  });
+  const { copy, integral, rotation } = await craftSkySource;
+  if (!alive()) return null;
+  const tex = new THREE.CanvasTexture(copy);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromEquirectangular(tex).texture;
+  pmrem.dispose();
+  tex.dispose();
+  scene.environmentRotation.setFromRotationMatrix(rotation);
+  return integral;
+}
+
 /**
  * One frame: the outgoing craft, if any, rendered and copied into its own canvas; then the craft shown (or a clear canvas
  * while it loads). True when the craft shown was drawn.
  */
-function drawFrame(gpu: CraftGpu, camera: FlightCamera, steer: Steer | undefined, framing: CraftFraming | undefined, glCanvas: HTMLCanvasElement | null, outCanvas: HTMLCanvasElement | null): boolean {
+function drawFrame(gpu: CraftGpu, camera: FlightCamera, candidates: readonly LightCandidate[], steer: Steer | undefined, framing: CraftFraming | undefined, glCanvas: HTMLCanvasElement | null, outCanvas: HTMLCanvasElement | null): boolean {
   if (gpu.leaving && outCanvas && glCanvas) {
-    if (drawCraft(gpu, gpu.leaving, camera, steer, framing)) {
+    if (drawCraft(gpu, gpu.leaving, camera, candidates, steer, framing)) {
       if (outCanvas.width !== glCanvas.width) outCanvas.width = glCanvas.width;
       if (outCanvas.height !== glCanvas.height) outCanvas.height = glCanvas.height;
       const ctx = outCanvas.getContext('2d');
@@ -121,10 +204,10 @@ function drawFrame(gpu: CraftGpu, camera: FlightCamera, steer: Steer | undefined
     gpu.renderer.clear();
     return false;
   }
-  return drawCraft(gpu, gpu.shown, camera, steer, framing);
+  return drawCraft(gpu, gpu.shown, camera, candidates, steer, framing);
 }
 
-function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, steer?: Steer, framing?: CraftFraming): boolean {
+function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates: readonly LightCandidate[], steer?: Steer, framing?: CraftFraming): boolean {
   const scene = craftSceneOf(camera, shown.craft, shown.cached.centre, shown.cached.radius, steer, framing, shown.frameRadius);
   if (!scene) return false;
   if (gpu.holder.children.length !== 1 || gpu.holder.children[0] !== shown.cached.model) {
@@ -135,11 +218,19 @@ function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, steer?: St
   gpu.holder.matrixWorldNeedsUpdate = true;
   gpu.camera.projectionMatrix.fromArray(scene.clipMatrix);
   gpu.camera.projectionMatrixInverse.copy(gpu.camera.projectionMatrix).invert();
-  // The light shines from the Sun's side onto the craft
+  // The key: the brightest real source where the camera stands, from its true direction, in its catalog tint
+  const at = steer ? steer.positionPc : camera.observerPc;
+  const key = keyLight(at, at, candidates);
+  const toKey: Vec3 = key.direction.every(Number.isFinite) ? [key.direction[0], key.direction[1], key.direction[2]] : scene.toSun;
   const c = new THREE.Vector3(scene.modelMatrix[12], scene.modelMatrix[13], scene.modelMatrix[14]);
-  gpu.sun.position.copy(c).addScaledVector(new THREE.Vector3(...scene.toSun), 10 * shown.cached.radius + 1);
-  gpu.sun.target.position.copy(c);
-  gpu.sun.target.updateMatrixWorld();
+  gpu.key.color.setRGB(key.tint[0], key.tint[1], key.tint[2], THREE.LinearSRGBColorSpace);
+  gpu.key.position.copy(c).addScaledVector(new THREE.Vector3(...toKey), 10 * shown.cached.radius + 1);
+  gpu.key.target.position.copy(c);
+  gpu.key.target.updateMatrixWorld();
+  // The fill: the sky's own light against the key's; the exposure: metered on the side the camera sees
+  const fill = skyFillRatio(key.magnitude);
+  gpu.scene.environmentIntensity = gpu.skyIntegral ? environmentIntensity(fill, gpu.skyIntegral) : 0;
+  gpu.renderer.toneMappingExposure = meteredExposure({ keyOnSeenSide: seenSideKeyShare([c.x, c.y, c.z], toKey), fillRatio: fill });
   gpu.renderer.render(gpu.scene, gpu.camera);
   return true;
 }
@@ -163,7 +254,9 @@ export const FlightCraftLayer: React.FC<{
    * each frame with the camera of that frame (no React render per frame).
    */
   drawRef?: React.MutableRefObject<((steer: Steer) => void) | null>;
-}> = ({ camera, craft, load, makeRenderer = makeWebGlRenderer, steer = null, framing, phone = false, drawRef }) => {
+  /** Stars the key may come from besides the Sun: the star flown to (craftLight.ts lightCandidateOfFinding). */
+  keyCandidates?: readonly LightCandidate[];
+}> = ({ camera, craft, load, makeRenderer = makeWebGlRenderer, steer = null, framing, phone = false, drawRef, keyCandidates = NO_CANDIDATES }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<CraftGpu | null>(null);
   const cameraRef = useRef(camera);
@@ -172,6 +265,8 @@ export const FlightCraftLayer: React.FC<{
   steerRef.current = steer;
   const framingRef = useRef(framing);
   framingRef.current = framing;
+  const candidatesRef = useRef(keyCandidates);
+  candidatesRef.current = keyCandidates;
   const [state, setState] = useState<CraftState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
   // The flight's one loader and its parsed models, by address, oldest first
@@ -185,9 +280,9 @@ export const FlightCraftLayer: React.FC<{
   const [leavingKey, setLeavingKey] = useState<number | null>(null);
   const switches = useRef(0);
   const [entering, setEntering] = useState(0);
-  const draw = (g: CraftGpu) => drawFrame(g, cameraRef.current, steerRef.current ?? undefined, framingRef.current, canvas.current, outCanvas.current);
+  const draw = (g: CraftGpu) => drawFrame(g, cameraRef.current, candidatesRef.current, steerRef.current ?? undefined, framingRef.current, canvas.current, outCanvas.current);
 
-  // One renderer, scene, camera and light for the whole flight; on leaving, every model and the loader go too
+  // One renderer, scene, camera, light and sky for the whole flight; on leaving, every model and the loader go too
   useEffect(() => {
     const el = canvas.current;
     if (!el) return undefined;
@@ -201,17 +296,23 @@ export const FlightCraftLayer: React.FC<{
     renderer.setPixelRatio(dpr);
     renderer.setSize(cameraRef.current.viewportWidthPx, cameraRef.current.viewportHeightPx, false);
     renderer.setClearColor(0x000000, 0);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
     const scene = new THREE.Scene();
     const cam = new THREE.Camera();
     cam.matrixAutoUpdate = false;
     const holder = new THREE.Group();
     holder.matrixAutoUpdate = false;
     scene.add(holder);
-    const sun = new THREE.DirectionalLight(0xffffff, 3);
-    scene.add(sun, sun.target);
-    gpu.current = { renderer, scene, camera: cam, holder, sun, shown: null, leaving: null };
+    const key = new THREE.DirectionalLight(0xffffff, 1);
+    scene.add(key, key.target);
+    // A sky that fails (or a renderer that is not three's) leaves the craft lit by its key alone
+    let alive = true;
+    const sky = renderer instanceof THREE.WebGLRenderer ? loadCraftSky(renderer, scene, () => alive).catch(() => null) : Promise.resolve(null);
+    gpu.current = { renderer, scene, camera: cam, holder, key, sky, skyIntegral: null, shown: null, leaving: null };
     const cache = models.current;
     return () => {
+      alive = false;
+      scene.environment?.dispose();
       gpu.current = null;
       for (const pending of cache.values()) void pending.then(({ model }) => disposeModel(model), () => {});
       cache.clear();
@@ -274,9 +375,11 @@ export const FlightCraftLayer: React.FC<{
     cache.set(url, pending);
     trimCache(g);
     setState('loading');
-    pending.then(
-      (cached) => {
+    // The craft is drawn once both its model and the flight's sky are in
+    Promise.all([pending, g.sky]).then(
+      ([cached, skyIntegral]) => {
         if (!current || gpu.current !== g) return;
+        g.skyIntegral = skyIntegral;
         g.shown = { cached, craft, url, frameRadius: craftFrameRadiusM(craft, cached.size, cached.radius) };
         const drawn = draw(g);
         if (drawn) setEntering((n) => n + 1);
@@ -298,14 +401,14 @@ export const FlightCraftLayer: React.FC<{
     if (!g || (!g.shown && !g.leaving)) return;
     g.renderer.setSize(camera.viewportWidthPx, camera.viewportHeightPx, false);
     draw(g);
-  }, [camera, steer, framing?.xPx, framing?.yPx, framing?.diameterPx]);
+  }, [camera, steer, framing?.xPx, framing?.yPx, framing?.diameterPx, keyCandidates]);
 
   // The star layer's frame loop draws a steering frame through this
   useEffect(() => {
     if (!drawRef) return undefined;
     drawRef.current = (s) => {
       const g = gpu.current;
-      if (g && (g.shown || g.leaving)) drawFrame(g, cameraRef.current, s, framingRef.current, canvas.current, outCanvas.current);
+      if (g && (g.shown || g.leaving)) drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current);
     };
     return () => {
       drawRef.current = null;

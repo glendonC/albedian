@@ -10,6 +10,7 @@ import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf } from './
 import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
 import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, type ArrivalBloom, type ArrivalStar } from './arrival.js';
 import { FlightCraftLayer } from './FlightCraftLayer.js';
+import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
 import { laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
@@ -298,6 +299,12 @@ export const FlightStarsLayer: React.FC<{
   const fullShiftRef = useRef(fullShift);
   fullShiftRef.current = fullShift;
   const geometry = useMemo(() => coneGeometryOf(session), [session.observationSolution, session.sourceAsset]);
+  // craft-light-one: the star flown to, as the craft's key where it is the brightest source
+  const keyCandidates = useMemo((): readonly LightCandidate[] => {
+    const picked = session.observationSolution?.findings.find((f) => f.id === session.selectedFindingId);
+    const candidate = picked ? lightCandidateOfFinding(picked) : null;
+    return candidate ? [candidate] : [];
+  }, [session.observationSolution, session.selectedFindingId]);
   const [orbit, setOrbit] = useState<ConeOrbit>(CONE_ORBIT_START);
   // Each time the cone view opens it starts beside the cone (D28 item 8)
   useEffect(() => {
@@ -623,7 +630,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} drawRef={craftDraw} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={keyCandidates} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} drawRef={craftDraw} />}
     </>
   );
 };

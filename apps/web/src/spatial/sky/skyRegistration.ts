@@ -26,6 +26,7 @@ export {
   applyRows,
   multiplyRows,
   sceneToIcrsRows,
+  icrsToPanoramaRows,
   sceneToPanoramaRows,
   transposeRows,
 } from './registrationModules/matrix3.js';

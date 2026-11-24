@@ -40,3 +40,8 @@ export function sceneToIcrsRows(): Mat3Rows {
 export function sceneToPanoramaRows(registration: PanoramaRegistration): Mat3Rows {
   return multiplyRows(registration.galacticToPanorama, multiplyRows(ICRS_TO_GALACTIC, sceneToIcrsRows()));
 }
+
+/** ICRS axes to the panorama's fitted frame: the registration's rows after ICRS to galactic (no scene turn). */
+export function icrsToPanoramaRows(registration: PanoramaRegistration): Mat3Rows {
+  return multiplyRows(registration.galacticToPanorama, ICRS_TO_GALACTIC);
+}
