@@ -284,17 +284,28 @@ def _blocks_on_black_clip(luma_codes: np.ndarray, blocks: np.ndarray, black_code
     return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) <= black_code and np.median(chosen) <= black_code)
 
 
-def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], exposure_ev: Optional[float] = None) -> ClipSettings:
+def measure_stars(clip: ClipColour, run: frame_pool.Run) -> list[stars.StarField]:
+    """The pool's work for the measure: the stars of each of the run's own frames on its own luma, as `measure_clip`
+    finds them [decided 2026-11-24 by the lead, clipmeasure-pool-one: one after another, the 8 measure frames' stars
+    were 32 of the public clip's 34 s of measure]."""
+    return [stars.find_stars(clip.luma_codes(planes), peak=clip.peak_code()) for planes in run.own()]
+
+
+def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], exposure_ev: Optional[float] = None,
+                 fields: Optional[Sequence[stars.StarField]] = None) -> ClipSettings:
     """The clip's noise table and lift from its measure frames (`sample_indices`), side by side as one mosaic: the
     stars of each frame on its own luma, the table from the flattest blocks, the noise left after the spatial filter at
     the darkest blocks, and the lift solved on the frames' median and its measured bounds. Without a table the lift is
-    held by the quantisation bound alone (REQ-RST-4.3)."""
+    held by the quantisation bound alone (REQ-RST-4.3). `fields` holds each frame's stars as `measure_stars` found them
+    in the job's pool, in the order of `sampled`; without it they are found here, one frame after another."""
+    if fields is not None and len(fields) != len(sampled):
+        raise ClipFramesError("the measure frames and their stars do not match")
     too_small = min(clip.height, clip.width) < noise.MIN_SIDE_PX
     linear, codes, footprints, clipped, found, confirmed = [], [], [], [], 0, 0
-    for planes in sampled:
+    for k, planes in enumerate(sampled):
         light = clip.to_linear(planes)
         luma = clip.luma_codes(planes)
-        field_ = stars.find_stars(luma, peak=clip.peak_code())
+        field_ = fields[k] if fields is not None else stars.find_stars(luma, peak=clip.peak_code())
         found += field_.found
         confirmed += field_.confirmed
         linear.append(light if clip.height < noise.BLOCK_PX else _whole_blocks(light))
@@ -634,5 +645,5 @@ def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
 
 
 __all__ = ["ClipColour", "ClipSettings", "FrameGate", "FrameResult", "OriginalSide", "Prepared", "clip_colour",
-           "dissolve_frame", "finish_frame", "gate_frame", "gate_run", "measure_clip", "original_side", "prepare_frame",
+           "dissolve_frame", "finish_frame", "gate_frame", "gate_run", "measure_clip", "measure_stars", "original_side", "prepare_frame",
            "restore_run", "sample_indices", "stored_luma", "to_stored"]

@@ -210,6 +210,36 @@ def test_a_clip_recorded_at_black_has_no_noise_table_and_a_lift_held_by_the_quan
     assert tone.NOTE_NOISE_NOT_MEASURED in measured.lift.notes
 
 
+def test_the_measure_frames_stars_found_in_the_pool_give_the_settings_found_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    # clipmeasure-pool-one [decided 2026-11-24 by the lead]: the 8 measure frames' stars were 32 of the public clip's
+    # 34 s of measure, one after another in the job's child; found in the pool they must give the same settings
+    clip = clip_frames.clip_colour(video(width=256, height=256))
+    frames = scene_clip(clip, 12, 34, sigma=0.002, moving=True)
+    sampled = [frames[i] for i in clip_frames.sample_indices(len(frames))]
+    alone = clip_frames.measure_clip(clip, sampled)
+    with frame_pool.FramePool(functools.partial(clip_frames.measure_stars, clip), workers=2) as pool:
+        fields = list(pool.map(frame_pool.runs(iter(sampled), run_frames=1, window=0)))
+    assert len(fields) == len(sampled) == 8
+    for planes, got in zip(sampled, fields):
+        want = stars.find_stars(clip.luma_codes(planes), peak=clip.peak_code())
+        assert (got.found, got.confirmed, got.clipped_left_out) == (want.found, want.confirmed, want.clipped_left_out)
+        assert np.array_equal(got.footprint, want.footprint) and np.array_equal(got.clipped, want.clipped)
+    # Given the fields, the measure looks for no star itself
+    real_find = stars.find_stars
+    monkeypatch.setattr(stars, "find_stars", lambda *a, **k: pytest.fail("a star search ran inside the measure"))
+    pooled = clip_frames.measure_clip(clip, sampled, fields=fields)
+    monkeypatch.setattr(stars, "find_stars", real_find)
+    assert pooled.measurement.reason == alone.measurement.reason
+    if alone.measurement.reason is None:
+        assert pooled.measurement.table() == alone.measurement.table()
+    assert pooled.lift.record() == alone.lift.record() and pooled.lift.beta == alone.lift.beta
+    assert (pooled.fine_noise_left, pooled.stars_found, pooled.stars_confirmed, pooled.frames_measured) == (
+        alone.fine_noise_left, alone.stars_found, alone.stars_confirmed, alone.frames_measured)
+    # Fields that do not match the frames one to one are the path's own fault, never a settings made of the wrong stars
+    with pytest.raises(clip_frames.ClipFramesError):
+        clip_frames.measure_clip(clip, sampled, fields=fields[:-1])
+
+
 def test_the_lift_is_solved_once_for_the_clip_from_its_measure_frames() -> None:
     clip = clip_frames.clip_colour(video(width=256, height=256))
     frames = scene_clip(clip, 12, 32, sigma=0.002, moving=True)

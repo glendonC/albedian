@@ -1130,3 +1130,87 @@ def test_a_near_black_clip_ends_its_job_failed_with_c36_on_measured_and_other_cl
         assert list((case_dir / "store" / ".partial").iterdir()) == [] and not (store_folder / "variants").exists()
 
 
+def _noisy_sky_clip_file(path: Path, *, count: int = 10, size: int = 128) -> None:
+    """A noisy dark sky (Y' 30, sigma 4) with three steady stars, limited range, written losslessly."""
+    from fractions import Fraction
+
+    tags = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+    video = clip_io.VideoFormat(size, size, "yuv420p", tags)
+    frames = []
+    for k in range(count):
+        rng = np.random.default_rng(911 + k)
+        y = np.clip(np.round(30.0 + rng.normal(0.0, 4.0, (size, size))), 0, 255).astype(np.uint8)
+        for row, column in ((30, 40), (70, 90), (100, 20)):
+            y[row - 1:row + 2, column - 1:column + 2] = 150
+        frames.append((y, np.full((size // 2, size // 2), 128, np.uint8), np.full((size // 2, size // 2), 128, np.uint8)))
+    with clip_io.ClipEncoder(path, video, time_base=Fraction(1, 600), frame_times=[20 * k for k in range(count)],
+                             container="mov", crf=0) as encoder:
+        for frame in frames:
+            encoder.write(frame)
+        encoder.finish()
+
+
+def test_the_job_finds_its_measure_frames_stars_in_the_pool_and_stores_the_same_bytes(tmp_path, monkeypatch) -> None:
+    # clipmeasure-pool-one [decided 2026-11-24 by the lead]: the measure's stars run in the pool; the stored file, the
+    # gate record and the measured record are those of the measure that found them one frame after another
+    source = tmp_path / "sky.mov"
+    _noisy_sky_clip_file(source)
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    works: list = []
+    pools: list = []
+    real_pool = frame_pool.FramePool
+
+    class Spy(real_pool):
+        def __init__(self, work, *, workers):
+            works.append((getattr(work, "func", work), workers))
+            pools.append(self)
+            super().__init__(work, workers=workers)
+
+        def map(self, source):
+            yield from super().map(source)
+            # The measure pool reports a peak no other part of the job reaches, so the record must have taken it
+            if self is pools[0]:
+                self.worker_peak_bytes = max(self.worker_peak_bytes, 1 << 50)
+
+    def run(name: str) -> tuple[dict, str, dict]:
+        case = tmp_path / name
+        folder = case / "store" / sha[:2] / sha
+        folder.mkdir(parents=True)
+        original = folder / "original.mov"
+        original.write_bytes(source.read_bytes())
+        (case / "store" / ".partial").mkdir()
+        partials = [str(case / "store" / ".partial" / f"{JOB_ID}-enc.mov.part"),
+                    str(case / "store" / ".partial" / f"{JOB_ID}-var.mov.part")]
+        out = media_jobs.clip_restoration_in_child(
+            str(case / "store"), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"}, None,
+            {"mimeType": "video/quicktime", "durationMs": 166.0, "audioStreams": []}, partials, lambda *ev: None,
+            workers=2)
+        assert out["status"] == "ready", out
+        stored = next((folder / "variants").rglob("variant.mov"))
+        records = [json.loads(p.read_text()) for p in folder.rglob("*.json")]
+        attempt = next(r.get("attempt", r) for r in records if "measured" in r.get("attempt", r))
+        peaks.append(attempt["measured"]["peakMemoryBytes"])
+        measured = {k: v for k, v in attempt["measured"].items() if k != "peakMemoryBytes"}
+        return measured, hashlib.sha256(stored.read_bytes()).hexdigest(), attempt["gate"]
+
+    peaks: list = []
+
+    monkeypatch.setattr(frame_pool, "FramePool", Spy)
+    real_measure = clip_frames.measure_clip
+    given: list[bool] = []
+
+    def recording(clip, sampled, exposure_ev=None, fields=None):
+        given.append(fields is not None and len(fields) == len(sampled))
+        return real_measure(clip, sampled, exposure_ev, fields)
+
+    monkeypatch.setattr(clip_frames, "measure_clip", recording)
+    pooled = run("pooled")
+    # The pool's first work is the measure's stars, and the measure is handed one field a frame
+    assert works[0] == (clip_frames.measure_stars, 2), works
+    assert given == [True]
+    # The job's peak memory counts the measure pool's workers too (AUDIT-B's note one)
+    assert peaks[0] >= 1 << 50
+    monkeypatch.setattr(clip_frames, "measure_clip",
+                        lambda clip, sampled, exposure_ev=None, fields=None: real_measure(clip, sampled, exposure_ev))
+    alone = run("alone")
+    assert pooled == alone

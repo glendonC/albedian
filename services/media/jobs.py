@@ -491,9 +491,15 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
                     measure.add()
                 else:
                     break
-    settings = clip_frames.measure_clip(clip, sampled, request.get("exposureEv"))
+    # The measure frames' stars in the pool, as many at once as there are workers (clipmeasure-pool-one) [decided
+    # 2026-11-24 by the lead: one after another they were 32 of the public clip's 34 s of measure]
+    with frame_pool.FramePool(functools.partial(clip_frames.measure_stars, clip),
+                              workers=max(1, min(workers, len(sampled)))) as pool:
+        fields = list(pool.map(frame_pool.runs(iter(sampled), run_frames=1, window=0)))
+        measure_peak = pool.worker_peak_bytes
+    settings = clip_frames.measure_clip(clip, sampled, request.get("exposureEv"), fields)
     measure.add()
-    del sampled
+    del sampled, fields
     # Every frame restored in the pool and encoded in order under a partial name
     turned = clip_io._form(orientation) is not None
     encoded = encoded_path if turned else variant_path
@@ -516,7 +522,7 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
             frames.append(dataclasses.replace(result, planes=()))
         encoder.finish()
         codec = encoder.codec
-        peak = pool.worker_peak_bytes
+        peak = max(pool.worker_peak_bytes, measure_peak)
     stored = clip_io.with_display_orientation(encoded, variant_path, orientation, container=container)
     if turned:
         _remove(encoded)
