@@ -417,27 +417,38 @@ def test_a_finding_no_source_holds_is_not_described() -> None:
 
 # --- space.enter, as the reducer gates it -------------------------------------------------------------------
 
+# The sky states with no worked-out sky, so nothing in it can be flown to: no solution yet, or an unresolved one (the
+# reducer refuses the same, packages/observation/src/reducer.ts)
+NO_SKY_STATES = {"not_requested", "detecting", "solving", "verifying", "unresolved"}
+
+
 @settings(max_examples=200, deadline=None)
 @given(
     sky=st.sampled_from(SKY_STATES),
     finding_id=st.sampled_from(
-        CATALOG_IDS + PREDICTED_IDS + ["finding-obs-3", "finding-observed-moon", "finding-predicted-star-vega"]
+        CATALOG_IDS + PREDICTED_IDS + ["finding-obs-3", "finding-observed-moon", "finding-predicted-star-vega",
+                                       "finding-predicted-sun", "finding-predicted-neptune", "finding-openngc-NGC3766"]
     ),
+    as_viewpoint=st.booleans(),
 )
-@example(sky="approximate", finding_id="finding-star-vega")  # the horizon pose has no catalog-matched star
-@example(sky="predicted_only", finding_id="finding-star-vega")
-@example(sky="calibrated", finding_id="finding-predicted-saturn")
-@example(sky="calibrated", finding_id="finding-star-vega")
-def test_pbt_space_enter_needs_a_calibrated_sky_and_a_catalog_star(sky: str, finding_id: str) -> None:
-    enter = _action("space.enter", findingId=finding_id, distancePolicy="measured_or_estimated")
-    reply = _reply("take me there", {**BARE, "calibrationState": sky}, enter)
-    if sky != "calibrated":
-        assert (reply["status"], reply["reason"]) == ("rejected", "unresolved_sky")
-        assert sky in reply["explanation"]
-    elif finding_id in claude.CATALOG_FINDING_IDS:
-        assert reply["status"] == "proposed"
+@example(sky="predicted_only", finding_id="finding-predicted-star-vega", as_viewpoint=False)  # a predicted star may fly
+@example(sky="approximate", finding_id="finding-star-vega", as_viewpoint=False)
+@example(sky="calibrated", finding_id="finding-predicted-saturn", as_viewpoint=False)
+@example(sky="predicted_only", finding_id="finding-observed-moon", as_viewpoint=True)
+@example(sky="unresolved", finding_id="finding-star-vega", as_viewpoint=False)
+def test_pbt_a_flight_needs_only_a_worked_out_sky_at_the_backend(sky: str, finding_id: str, as_viewpoint: bool) -> None:
+    if as_viewpoint:
+        action = _action("space.viewpoint", targetFindingId=finding_id, units="pc", offsetParsec=[1, 0, 0], trajectory="orbit")
     else:
-        assert (reply["status"], reply["reason"]) == ("rejected", "no_distance_estimate")
+        action = _action("space.enter", findingId=finding_id, distancePolicy="measured_or_estimated")
+    reply = _reply("take me there", {**BARE, "calibrationState": sky}, action)
+    if sky in NO_SKY_STATES and not as_viewpoint:
+        assert (reply["status"], reply["reason"]) == ("rejected", "unresolved_sky")
+        assert "calibrated" not in reply["explanation"]
+    else:
+        # Whether the target is a star with a catalog row and a star catalog's distance, or the Sun, the Moon or a
+        # planet, is the reducer's to judge with the finding, as the app parser leaves it: the backend proposes
+        assert reply["status"] == "proposed", reply
 
 
 # --- Years from the clock, as said, and every epoch refused ---------------------------------------------------

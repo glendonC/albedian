@@ -4889,34 +4889,29 @@
      "target": "finding-predicted-moon"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
-    },
-    {
-     "status": "rejected",
-     "reason": "no_grounded_answer",
-     "explanation": "No tool can answer questions from your data yet."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
      "status": "rejected",
@@ -4935,28 +4930,33 @@
     },
     {
      "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "reason": "no_grounded_answer",
+     "explanation": "No tool can answer questions from your data yet."
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
+    },
+    {
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
      "status": "rejected",
@@ -5147,9 +5147,9 @@
      "target": "finding-predicted-saturn"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-saturn"
     },
     {
      "status": "proposed",
@@ -5683,9 +5683,9 @@
      "target": "finding-predicted-star-rigel"
     },
     {
-     "status": "rejected",
-     "reason": "unresolved_sky",
-     "explanation": "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's calibration state is 'predicted_only'."
+     "status": "proposed",
+     "action": "space.enter",
+     "target": "finding-predicted-star-betelgeuse"
     },
     {
      "status": "proposed",

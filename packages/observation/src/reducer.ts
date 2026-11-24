@@ -2,7 +2,10 @@ import {
   ActionOutcome,
   ActionOutcomeSchema,
   AlbedianAction,
+  CelestialFinding,
+  FlightRefusalKind,
   ObservationSession,
+  flightRefusal,
   refusalSentence,
 } from '@albedian/contracts';
 import {
@@ -70,6 +73,14 @@ function missingFindingExplanation(base: ObservationSession, findingId: string):
   }
   const noun = media === 'video' ? 'clip' : 'photo';
   return `No finding in this ${noun} has that name.`;
+}
+
+/** The recorded refusal of a flight the contract's rule refuses (UIUX-predflight-READY.md item 5): the target by its
+ * plain name (its known name, its catalog name, else its title), or, for the Sun, the Moon or a planet, no name. */
+function flightRefusalExplanation(finding: CelestialFinding, kind: FlightRefusalKind): string {
+  if (kind === 'beyond_solar_system_only') return refusalSentence({ kind });
+  const name = KNOWN_FINDING_NAMES.get(finding.id)?.shown ?? finding.catalogRef?.commonName ?? finding.title;
+  return refusalSentence({ kind, name });
 }
 
 function rejectAction(
@@ -332,10 +343,14 @@ export function dispatchAlbedianAction(
       if (!finding) {
         return rejectAction(session, action.requestId, 'ambiguous_target', missingFindingExplanation(base, action.findingId), ['Select a catalog-matched star first']);
       }
-      const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
-      if (finding.evidenceClass !== 'catalog_matched' || !finding.inferredDistancePc || !distInfo.canEnter3DSpace) {
-        return rejectAction(session, action.requestId, 'no_distance_estimate', `${finding.title} (${finding.evidenceClass}) lacks a verified catalog parallax or Bailer-Jones distance prior required for 3D space navigation.`, ['Select a catalog-matched star with a verified distance interval']);
+      // The flight rule (flight-rule-0): catalog_matched, or predicted with a catalog row, with a star catalog's distance
+      // (both classes hold a sky position, which the two last tests only narrow for the type checker).
+      // The finding is only read: a predicted star flies as the simulated catalog view and stays predicted
+      const refused = flightRefusal(finding);
+      if (refused !== null || !finding.inferredDistancePc || !finding.skyPosition) {
+        return rejectAction(session, action.requestId, 'no_distance_estimate', flightRefusalExplanation(finding, refused ?? 'no_catalog_distance'), ['Select a catalog-matched star with a verified distance interval']);
       }
+      const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
       const nextHistory = pushCheckpointIfDepartingSource(base, `Checkpoint before entering 3D space toward ${finding.title}`);
       const targetCoords = finding.cartesianParsecICRS ?? computeCartesianParsecICRS(finding.skyPosition.raDeg, finding.skyPosition.decDeg, finding.inferredDistancePc.median);
       const status = `Entered 3D Space · ${finding.title} (${distInfo.lightYearText}) · Catalog Geometry · Distance Estimates`;
@@ -373,9 +388,10 @@ export function dispatchAlbedianAction(
       if (!finding) {
         return rejectAction(session, action.requestId, 'ambiguous_target', missingFindingExplanation(base, action.targetFindingId), ['Select a catalog-matched star first']);
       }
-      const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
-      if (finding.evidenceClass !== 'catalog_matched' || !finding.inferredDistancePc || !distInfo.canEnter3DSpace) {
-        return rejectAction(session, action.requestId, 'no_distance_estimate', `${finding.title} lacks a catalog distance estimate for 3D viewpoint displacement.`, ['Select a catalog-matched star with a verified distance estimate']);
+      // The same flight rule as space.enter: the finding is only read
+      const refused = flightRefusal(finding);
+      if (refused !== null || !finding.inferredDistancePc || !finding.skyPosition) {
+        return rejectAction(session, action.requestId, 'no_distance_estimate', flightRefusalExplanation(finding, refused ?? 'no_catalog_distance'), ['Select a catalog-matched star with a verified distance estimate']);
       }
       const nextHistory = pushCheckpointIfDepartingSource(base, `Checkpoint before ${action.trajectory} viewpoint around ${finding.title}`);
       const baseCoords = finding.cartesianParsecICRS ?? computeCartesianParsecICRS(finding.skyPosition.raDeg, finding.skyPosition.decDeg, finding.inferredDistancePc.median);

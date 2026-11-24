@@ -46,7 +46,6 @@ from services.science.catalog import (
 )
 from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides
 from services.voice.claude import (
-    CATALOG_FINDING_IDS,
     PREDICTED_BODY_KEYS,
     PREDICTED_FINDING_IDS,
     epoch_iso,
@@ -961,28 +960,22 @@ def _as_whole(value: Any) -> int | None:
     return None
 
 
-def _space_enter_refusal(action: dict[str, Any], ctx: ActionContext) -> tuple[str, str, list[str]] | None:
+# The calibration states with no worked-out sky: no solution yet, or an unresolved one. The reducer refuses a flight in
+# them in this same sentence (packages/observation/src/reducer.ts, space.enter)
+_NO_SKY_STATES = frozenset({"not_requested", "detecting", "solving", "verifying", "unresolved"})
+_NO_SKY_FLIGHT = "Cannot enter 3D catalog space from an unresolved sky."
+
+
+def _flight_refusal(ctx: ActionContext) -> tuple[str, str, list[str]] | None:
     """Why the reducer would refuse this flight, as far as the backend can tell, or None.
 
-    The reducer flies only to a catalog-matched finding with a distance interval. Only a calibrated sky
-    has catalog-matched findings, and the plate solver names each one after its catalog star.
+    The flight rule (services/contracts/astronomy.py `flight_refusal`) judges the finding, which the backend does not
+    hold: whether it is a star with a catalog row and a star catalog's distance, or the Sun, the Moon or a planet, is
+    the reducer's to say with the finding in hand, as the app parser leaves it (so neither parser refuses what the other
+    proposes). Only a sky with no solution worked out refuses every flight, in the reducer's own sentence.
     """
-    if ctx.calibration_state != "calibrated":
-        return (
-            "unresolved_sky",
-            "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's "
-            f"calibration state is '{ctx.calibration_state}'.",
-            ["Calibrate the sky first"],
-        )
-    finding_id = str(action.get("findingId", ""))
-    if finding_id not in CATALOG_FINDING_IDS:
-        what = "a predicted ephemeris position" if finding_id in PREDICTED_FINDING_IDS else "not a catalog star"
-        return (
-            "no_distance_estimate",
-            f"3D catalog space flies only to a catalog-matched star with a distance interval, and "
-            f"{finding_id} is {what}.",
-            ["Select a catalog-matched star first"],
-        )
+    if ctx.calibration_state in _NO_SKY_STATES:
+        return ("unresolved_sky", _NO_SKY_FLIGHT, ["Calibrate the sky first"])
     return None
 
 
@@ -1183,7 +1176,7 @@ def _check(
 
     refusal = None
     if action_type == "space.enter":
-        refusal = _space_enter_refusal(action, ctx)
+        refusal = _flight_refusal(ctx)
     elif action_type in NOT_IN_THE_APP_YET:
         refusal = (*NOT_IN_THE_APP_YET[action_type], [])
     if refusal is not None:
