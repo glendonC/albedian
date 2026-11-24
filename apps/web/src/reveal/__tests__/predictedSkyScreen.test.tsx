@@ -573,7 +573,13 @@ describe("the predicted sky's rules are the record's", () => {
       bottom: 'calc(100% - 453px)',
       animation: 'none',
     });
-    expect(declarationsOf('.predsky.is-phone .predsky-status.is-above-card::before')).toEqual({
+  });
+
+  // predsky-phone-fade-1 (gap nine, DECIDED-BY-LEAD 24 Nov 12:58, UIUX-predsky-READY.md): at phone width D19's fade
+  // (44 px to 82 percent black) stands behind the readout at rest as well as above a card, as the estimate block has
+  // it, so no star shows through the Predicted tag or the words
+  it("stands D19's fade behind the phone readout at rest and above a card, from one rule", () => {
+    expect(declarationsOf('.predsky.is-phone .predsky-status::before')).toEqual({
       content: "''",
       position: 'absolute',
       left: '-24px',
@@ -584,6 +590,11 @@ describe("the predicted sky's rules are the record's", () => {
       background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px)',
       'pointer-events': 'none',
     });
+    let aboveCardOnly = 0;
+    postcss.parse(css).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.predsky.is-phone .predsky-status.is-above-card::before') aboveCardOnly += 1;
+    });
+    expect(aboveCardOnly).toBe(0);
   });
 });
 

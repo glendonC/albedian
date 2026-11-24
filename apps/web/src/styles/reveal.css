@@ -2130,7 +2130,10 @@
   animation: none;
 }
 
-.predsky.is-phone .predsky-status.is-above-card::before {
+/* predsky-phone-fade-1 (gap nine, DECIDED-BY-LEAD 24 Nov 12:58, UIUX-predsky-READY.md): D19's fade stands behind the
+   phone readout at rest as well as above a card, as the estimate block has it, so no star shows through the
+   Predicted tag or the words; no new look */
+.predsky.is-phone .predsky-status::before {
   content: '';
   position: absolute;
   left: -24px;
