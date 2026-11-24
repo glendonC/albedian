@@ -186,6 +186,10 @@ struct AimScreen: View {
     /// How far the view has gone on its stage, 0 shown to 1 gone (`CaptureStage`), animated while the view stays live
     let hidden: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// largertext-m1: the room the column under the preview needs at most at accessibility sizes, measured once from
+    /// the most it can show (`AimFrame.mostLine`, `.mostCoach`), so the preview's frame never moves with the lines shown
+    @State private var columnRoom = 0.0
 
     var body: some View {
         GeometryReader { geometry in
@@ -231,9 +235,22 @@ struct AimScreen: View {
                     MainButton(title: "Try again", icon: .arrow, action: model.tryCameraAgain).atBottom(Arrive.mainBottomGap)
                         .opacity(AimExit.opacity(.rest, hidden: hidden))
                 } else {
-                    let width = Double(geometry.size.width)
+                    // largertext-m1 (UIUX-iphone-largertext-READY, Aim re-ruled 24 Nov 15:52): at accessibility sizes the
+                    // preview and its rings whole in a smaller 3:4 frame from 118, centred across, as tall as what is left
+                    // above the column; at default sizes the screen's width, as before
+                    let frame = AimFrame.size(screenWidth: Double(geometry.size.width),
+                                              captureButtonTop: Double(geometry.size.height) - (Arrive.referenceHeight - 706 - 64) - 64,
+                                              columnRoom: dynamicTypeSize.isAccessibilitySize ? columnRoom : nil)
+                    let width = frame.width
+                    if dynamicTypeSize.isAccessibilitySize {
+                        AimLinesColumn(line: AimFrame.mostLine, coach: AimFrame.mostCoach, hidden: 0, reduceMotion: true)
+                            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                            .hidden()
+                            .accessibilityHidden(true)
+                            .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { columnRoom = $0 }
+                    }
                     CameraPreview(session: model.camera.session)
-                        .frame(width: geometry.size.width, height: geometry.size.width * 4 / 3).clipped()
+                        .frame(width: width, height: width * 4 / 3).clipped()
                         .atTop(Arrive.photoTop)
                         .opacity(AimExit.opacity(.rest, hidden: hidden))
                     // mobile-5: the overlay over the preview, the "Predicted" tag at top centre and the source line under it,
@@ -255,39 +272,49 @@ struct AimScreen: View {
                                     .opacity(AimExit.opacity(.tag, hidden: hidden))
                                     .transition(.identity)
                             }
-                            // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
-                            // with both and marks drawn, the overlay's sources and the heading accuracy
-                            // MOTION-READY-iphone: a missing-sensor line words in; the source line stands from the rings'
-                            // first frame, no words-in delay or fade from nothing (the 17:38 rule, `AimLine`)
-                            switch aim.shownLine(drawn: placed.map(\.0), headingAccuracyDeg: model.skyHeadingAccuracyDeg) {
-                            case .why(let words)?:
-                                AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
-                                    .opacity(AimExit.opacity(.rest, hidden: hidden))
-                                    .transition(.words(reduceMotion: reduceMotion))
-                            case .source(let words)?:
-                                AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
-                                    .opacity(AimExit.opacity(.sourceLine, hidden: hidden))
-                                    .transition(.identity)
-                            case nil:
-                                EmptyView()
-                            }
-                            // D29, the capture coach: up to two lines 16 pt under the source line (670 on the 390 point
-                            // screen), each one line, centred, 12 pt at ink 66 percent, 1.35 a line, 1 pt apart, its 14 pt
-                            // icon 6 pt before the words; each words in and out as MOTION's record has every line
-                            VStack(spacing: 1) {
-                                ForEach(model.coachLines(), id: \.words) { line in
-                                    HStack(spacing: 6) {
-                                        AlbedianIcon(rawValue: line.icon)?.image(14).accessibilityHidden(true)
-                                        Text(line.words).font(AlbedianFont.regular(12)).tracking(-0.005 * 12).lineLimit(1)
-                                    }
-                                    .frame(height: 12 * 1.35)
-                                    .foregroundStyle(Color(ControlStyle.inkSecondary))
-                                    .transition(.words(reduceMotion: reduceMotion))
+                            // largertext-m1 (UIUX-iphone-largertext-READY, proposal 1, DECIDED-BY-LEAD 24 Nov 12:08): at
+                            // accessibility sizes the line under the preview and the coach lines flow as one column, its
+                            // text held at the first accessibility size so it ends clear of the capture button
+                            if dynamicTypeSize.isAccessibilitySize {
+                                AimLinesColumn(line: aim.shownLine(drawn: placed.map(\.0), headingAccuracyDeg: model.skyHeadingAccuracyDeg),
+                                               coach: model.coachLines(), hidden: hidden, reduceMotion: reduceMotion)
+                                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                                    .atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                            } else {
+                                // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
+                                // with both and marks drawn, the overlay's sources and the heading accuracy
+                                // MOTION-READY-iphone: a missing-sensor line words in; the source line stands from the rings'
+                                // first frame, no words-in delay or fade from nothing (the 17:38 rule, `AimLine`)
+                                switch aim.shownLine(drawn: placed.map(\.0), headingAccuracyDeg: model.skyHeadingAccuracyDeg) {
+                                case .why(let words)?:
+                                    AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                                        .opacity(AimExit.opacity(.rest, hidden: hidden))
+                                        .transition(.words(reduceMotion: reduceMotion))
+                                case .source(let words)?:
+                                    AimLineText(words: words).atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                                        .opacity(AimExit.opacity(.sourceLine, hidden: hidden))
+                                        .transition(.identity)
+                                case nil:
+                                    EmptyView()
                                 }
+                                // D29, the capture coach: up to two lines 16 pt under the source line (670 on the 390 point
+                                // screen), each one line, centred, 12 pt at ink 66 percent, 1.35 a line, 1 pt apart, its 14 pt
+                                // icon 6 pt before the words; each words in and out as MOTION's record has every line
+                                VStack(spacing: 1) {
+                                    ForEach(model.coachLines(), id: \.words) { line in
+                                        HStack(spacing: 6) {
+                                            AlbedianIcon(rawValue: line.icon)?.image(14).accessibilityHidden(true)
+                                            Text(line.words).font(AlbedianFont.regular(12)).tracking(-0.005 * 12).lineLimit(1)
+                                        }
+                                        .frame(height: 12 * 1.35)
+                                        .foregroundStyle(Color(ControlStyle.inkSecondary))
+                                        .transition(.words(reduceMotion: reduceMotion))
+                                    }
+                                }
+                                .frame(maxWidth: .infinity).padding(.horizontal, 24)
+                                .atTop(Arrive.photoTop + width * 4 / 3 + 32)
+                                .opacity(AimExit.opacity(.rest, hidden: hidden))
                             }
-                            .frame(maxWidth: .infinity).padding(.horizontal, 24)
-                            .atTop(Arrive.photoTop + width * 4 / 3 + 32)
-                            .opacity(AimExit.opacity(.rest, hidden: hidden))
                         }
                     }
                     // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's
@@ -300,6 +327,50 @@ struct AimScreen: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// largertext-m1: the line under the aiming preview and the coach's lines at accessibility sizes (UIUX-iphone-largertext-READY,
+/// proposal 1, from Apple's Human Interface Guidelines on Dynamic Type): one column, the line first, then each coach line
+/// 8 pt under the one above, every line centred and wrapping onto as many lines as it needs, none cut, the coach's icon
+/// growing with its words. The same words, looks and motion as at the default sizes. The icon sits on the first line's
+/// letters (its foot a fifth of its height under their baseline) [inference: the record does not say; it reads as the
+/// default row does].
+private struct AimLinesColumn: View {
+    let line: AimLine?
+    let coach: [CoachLine]
+    let hidden: Double
+    let reduceMotion: Bool
+    @ScaledMetric(relativeTo: .body) private var iconSize = 14.0
+
+    var body: some View {
+        VStack(spacing: 8) {
+            switch line {
+            case .why(let words)?:
+                AimLineText(words: words)
+                    .opacity(AimExit.opacity(.rest, hidden: hidden))
+                    .transition(.words(reduceMotion: reduceMotion))
+            case .source(let words)?:
+                AimLineText(words: words)
+                    .opacity(AimExit.opacity(.sourceLine, hidden: hidden))
+                    .transition(.identity)
+            case nil:
+                EmptyView()
+            }
+            ForEach(coach, id: \.words) { coachLine in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    AlbedianIcon(rawValue: coachLine.icon)?.image(iconSize).accessibilityHidden(true)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - $0.height / 5 }
+                    Text(coachLine.words).font(AlbedianFont.regular(12)).tracking(-0.005 * 12)
+                }
+                .foregroundStyle(Color(ControlStyle.inkSecondary))
+                .opacity(AimExit.opacity(.rest, hidden: hidden))
+                .transition(.words(reduceMotion: reduceMotion))
+            }
+        }
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity).padding(.horizontal, 24)
     }
 }
 

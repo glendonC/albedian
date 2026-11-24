@@ -159,7 +159,7 @@ final class CameraUnusableTests: XCTestCase {
         let model = flat(try raw("Screens/CompanionModel.swift"))
         let session = flat(try raw("Sensors/CameraSession.swift"))
         let state = try XCTUnwrap(screens.range(of: "}elseifmodel.aimCamera.showsTryAgain{"), "the camera state stands in place of the preview")
-        let preview = try XCTUnwrap(screens.range(of: "}else{letwidth=Double(geometry.size.width)CameraPreview("), "the preview only after it")
+        let preview = try XCTUnwrap(screens.range(of: "}else{//largertext-m1"), "the preview only after it")
         XCTAssertLessThan(state.lowerBound, preview.lowerBound)
         let branch = String(screens[state.upperBound..<preview.lowerBound])
         XCTAssertTrue(branch.contains("AlbedianIcon.cameraSlash.image(18).accessibilityHidden(true)Text(AimCamera.title).font(AlbedianFont.regular(17))"))
