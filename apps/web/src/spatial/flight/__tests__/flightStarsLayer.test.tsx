@@ -8,6 +8,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
+import { PHONE_CONE_CENTRE_Y_PX } from '../coneView.js';
 import { FLIGHT_LOAD_LIMIT_MAG, flightCameraOf } from '../flightFrame.js';
 import { noDistanceStarsOnScreen } from '../flightRings.js';
 import { starViewOfFlight } from '../starView.js';
@@ -196,5 +197,27 @@ describe('FlightStarsLayer', () => {
     expect(onNoDistanceCount).toHaveBeenLastCalledWith(2);
     expect(layer().getAttribute('data-no-distance-on-screen')).toBe('2');
     expect(noDistanceStarsOnScreen(three(1), starViewOfFlight(camera))).toBe(1);
+  });
+
+  it('recomputes the cone view camera when phone toggles at fixed viewport dimensions', async () => {
+    const { gl, calls } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    let deliver: ((t: CatalogStarCoreTile) => void) | null = null;
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      deliver = onTile;
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const session = there();
+    await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 390, viewportHeightPx: 844, cone: true, phone: false, openTiles })));
+    await act(async () => await Promise.resolve());
+    await act(async () => deliver!(tile(1)));
+    expect(calls.uniform3fv.get('uPix')![1]).toBe(422);
+    const laptopRowX = [...calls.uniform3fv.get('uRowX')!];
+    const laptopRowY = [...calls.uniform3fv.get('uRowY')!];
+    await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 390, viewportHeightPx: 844, cone: true, phone: true, openTiles })));
+    expect(calls.uniform3fv.get('uPix')![1]).toBe(PHONE_CONE_CENTRE_Y_PX);
+    // Phone cone view rolls a quarter turn (y becomes the unrolled x, x becomes -y)
+    expect(calls.uniform3fv.get('uRowY')!).not.toEqual(laptopRowY);
+    expect(calls.uniform3fv.get('uRowX')!).not.toEqual(laptopRowX);
   });
 });

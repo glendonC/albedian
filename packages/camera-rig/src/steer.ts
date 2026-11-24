@@ -87,11 +87,31 @@ export function followRows(camera: WcsCameraRows, craft: WcsCameraRows, dt: numb
   const trace = q(0, 0) + q(1, 1) + q(2, 2);
   const angle = Math.acos(Math.max(-1, Math.min(1, (trace - 1) / 2)));
   if (!(angle > 1e-12)) return craft;
-  const s = 2 * Math.sin(angle);
-  let axis: Vec3 = [(q(2, 1) - q(1, 2)) / s, (q(0, 2) - q(2, 0)) / s, (q(1, 0) - q(0, 1)) / s];
-  const n = Math.hypot(axis[0], axis[1], axis[2]);
-  if (!(n > 1e-9)) return craft;
-  axis = [axis[0] / n, axis[1] / n, axis[2] / n];
+  const skew: Vec3 = [q(2, 1) - q(1, 2), q(0, 2) - q(2, 0), q(1, 0) - q(0, 1)];
+  const skewNorm = Math.hypot(skew[0], skew[1], skew[2]);
+  let axis: Vec3;
+  if (skewNorm > 1e-6) {
+    axis = [skew[0] / skewNorm, skew[1] / skewNorm, skew[2] / skewNorm];
+  } else {
+    // Near 180 degrees Q - Q^T vanishes while Q + I approaches 2 k k^T: take its largest column as the axis
+    const cols: Vec3[] = [
+      [q(0, 0) + 1, q(1, 0), q(2, 0)],
+      [q(0, 1), q(1, 1) + 1, q(2, 1)],
+      [q(0, 2), q(1, 2), q(2, 2) + 1],
+    ];
+    let best = cols[0]!;
+    let bestNorm = Math.hypot(best[0], best[1], best[2]);
+    for (const col of cols.slice(1)) {
+      const cn = Math.hypot(col[0], col[1], col[2]);
+      if (cn > bestNorm) {
+        best = col;
+        bestNorm = cn;
+      }
+    }
+    if (!(bestNorm > 1e-9)) return craft;
+    const sign = skew[0] * best[0] + skew[1] * best[1] + skew[2] * best[2] < 0 ? -1 : 1;
+    axis = [(sign * best[0]) / bestNorm, (sign * best[1]) / bestNorm, (sign * best[2]) / bestNorm];
+  }
   const step = angle * (1 - Math.exp(-Math.max(0, dt) / CHASE_FOLLOW_SECONDS));
   const z = unit(rotateAbout(camera.z, axis, step));
   const h = handedness(camera);

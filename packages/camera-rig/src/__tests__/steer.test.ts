@@ -112,6 +112,26 @@ describe('the chase camera following the craft (MOTION k13, decided 08:12)', () 
   it('locks to the craft at once under reduced motion', () => {
     expect(followRows(level, turned, 0.01, { reduced: true })).toEqual(turned);
   });
+
+  it('turns smoothly from an antipodal 180-degree craft heading instead of snapping in a single frame', () => {
+    const aboutFaceYaw: WcsCameraRows = { x: [-1, 0, 0], y: [0, 1, 0], z: [0, 0, -1] };
+    const aboutFacePitch: WcsCameraRows = { x: [1, 0, 0], y: [0, -1, 0], z: [0, 0, -1] };
+    for (const target of [aboutFaceYaw, aboutFacePitch]) {
+      const zeroDt = followRows(level, target, 0);
+      expect(angle(zeroDt.z, level.z)).toBeLessThan(1e-12);
+      const step = followRows(level, target, 0.1);
+      expect(angle(step.z, target.z)).toBeCloseTo(Math.PI * Math.exp(-0.1 / CHASE_FOLLOW_SECONDS), 6);
+      for (const a of [step.x, step.y, step.z]) expect(Math.abs(norm(a) - 1)).toBeLessThan(1e-9);
+      const x = cross(step.y, step.z);
+      for (let k = 0; k < 3; k++) expect(Math.abs(x[k]! - step.x[k]!)).toBeLessThan(1e-9);
+    }
+    // Left-handed (parity -1) camera at 180 degrees keeps its handedness and exponential rate too
+    const mirroredCam: WcsCameraRows = { x: [-1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+    const mirroredAboutFace: WcsCameraRows = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, -1] };
+    const mStep = followRows(mirroredCam, mirroredAboutFace, 0.1);
+    expect(angle(mStep.z, mirroredAboutFace.z)).toBeCloseTo(Math.PI * Math.exp(-0.1 / CHASE_FOLLOW_SECONDS), 6);
+    expect(Math.sign(dot(cross(mStep.y, mStep.z), mStep.x))).toBe(-1);
+  });
 });
 
 describe('a mirrored photo\'s camera (parity -1: left-handed axes) keeps its handedness', () => {

@@ -1,5 +1,6 @@
 import type { WCSCalibrationModel } from '@albedian/contracts';
 import { DEG_TO_RAD, getTangentBasis, type Vec3 } from './quaternion.js';
+import { distortionFoldRadiusRad } from './wcs.js';
 
 /**
  * The flight through the stars (REQ-SCN-2): every catalog star placed in space from its own catalog distance, or kept
@@ -73,29 +74,6 @@ export function wcsCameraRows(wcs: WCSCalibrationModel): WcsCameraRows {
     y: [s * p * eEast[0] + c * eNorth[0], s * p * eEast[1] + c * eNorth[1], s * p * eEast[2] + c * eNorth[2]],
     z: [e0[0], e0[1], e0[2]],
   };
-}
-
-/**
- * The tangent-plane radius (radians) past which the solve's radial lens model r (1 + k1 r^2 + k2 r^4) turns back on
- * itself, where its derivative 1 + 3 k1 r^2 + 5 k2 r^4 first reaches zero; infinite where it never does. Past it a
- * star would fold back into the frame, so it is not drawn.
- */
-export function distortionFoldRadiusRad(wcs: WCSCalibrationModel): number {
-  const a = 5 * wcs.radialDistortionK2;
-  const b = 3 * wcs.radialDistortionK1;
-  // 1 + b x + a x^2 = 0 with x = r^2 > 0: the smallest positive root
-  const roots: number[] = [];
-  if (Math.abs(a) < 1e-300) {
-    if (b < 0) roots.push(-1 / b);
-  } else {
-    const disc = b * b - 4 * a;
-    if (disc >= 0) {
-      const sq = Math.sqrt(disc);
-      roots.push((-b - sq) / (2 * a), (-b + sq) / (2 * a));
-    }
-  }
-  const positive = roots.filter((x) => x > 0);
-  return positive.length > 0 ? Math.sqrt(Math.min(...positive)) : Number.POSITIVE_INFINITY;
 }
 
 export interface FlightProjection {

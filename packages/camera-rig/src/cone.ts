@@ -1,7 +1,7 @@
 import type { WCSCalibrationModel } from '@albedian/contracts';
 import { raDecToUnitVector, unitVectorToRaDec, type Vec3 } from './quaternion.js';
-import { pixelToWorldWCS, worldToPixelWCS } from './wcs.js';
-import { distortionFoldRadiusRad, wcsCameraRows, type WcsCameraRows } from './flight3d.js';
+import { distortionFoldRadiusRad, pixelToWorldWCS, worldToPixelWCS } from './wcs.js';
+import { wcsCameraRows, type WcsCameraRows } from './flight3d.js';
 
 /**
  * cone-1: the photo's view cone, seen from outside. Its apex is Earth (the Sun's place at parsec scale), its edges run

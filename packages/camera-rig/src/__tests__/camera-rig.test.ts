@@ -9,8 +9,11 @@ import {
 import {
   angularSeparationDeg,
   computeAnchorLockedPhaseAState,
+  distortionFoldRadiusRad,
+  getTangentBasis,
   interpolateLogTanFov,
   lookAtDirectionQuaternion,
+  normalizeQuaternion,
   pixelToWorldWCS,
   projectWorldPointWithCamera,
   propagateCatalogPositionToYear,
@@ -18,10 +21,14 @@ import {
   raDecToUnitVector,
   rebaseFloatingOrigin,
   resolveFindingParsecPosition,
+  rotateVectorByQuaternion,
   slerpQuaternion,
   unitVectorToRaDec,
   worldToPixelWCS,
 } from '../index.js';
+
+const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
+const runsOf = (numRuns: number) => ({ numRuns, ...(SEED !== undefined ? { seed: SEED } : {}) });
 
 /** What a catalog match holds beside its sky position: the detection that was matched and the catalog entry it was
  * matched to (the contract's FINDING_CLASS_EVIDENCE). Typed test data, not read from any frame or catalog release. */
@@ -54,7 +61,7 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(sepArcsec).toBeLessThan(1e-6);
         }
       ),
-      { numRuns: 200 }
+      { ...runsOf(200) }
     );
   });
 
@@ -99,7 +106,118 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(angularErrArcsec).toBeLessThan(1e-3);
         }
       ),
-      { numRuns: 250 }
+      runsOf(250)
+    );
+  });
+
+  it('PBT-CAM-1-FOLD: worldToPixelWCS hides sky points past distortionFoldRadiusRad and pixelToWorldWCS converges inside the fold across [-0.25, 0.25]', () => {
+    // Seeded counterexample where k1 > 0, k2 < 0 puts rDist = 2.3767 > foldRad = 2.0 while rTrue = 1.90 < foldRad
+    const pincushionThenBarrel: WCSCalibrationModel = {
+      projection: 'TAN',
+      crvalRaDeg: 120,
+      crvalDecDeg: -15,
+      crpixX: 2016,
+      crpixY: 1512,
+      scaleDegPerPx: 0.02,
+      rotationDeg: 25,
+      radialDistortionK1: 0.25,
+      radialDistortionK2: -0.05,
+      parity: -1,
+      fovHorizontalDeg: 80,
+      fovVerticalDeg: 60,
+    };
+    expect(distortionFoldRadiusRad(pincushionThenBarrel)).toBeCloseTo(2.0, 12);
+    const { e0, eEast, eNorth } = getTangentBasis(pincushionThenBarrel.crvalRaDeg, pincushionThenBarrel.crvalDecDeg);
+    const rayInside = unitVectorToRaDec([
+      e0[0] + 1.9 * eEast[0],
+      e0[1] + 1.9 * eEast[1],
+      e0[2] + 1.9 * eEast[2],
+    ]);
+    const pxInside = worldToPixelWCS(rayInside.raDeg, rayInside.decDeg, pincushionThenBarrel);
+    expect(pxInside.visible).toBe(true);
+    const recoveredInside = pixelToWorldWCS(pxInside.uPx, pxInside.vPx, pincushionThenBarrel);
+    expect(angularSeparationDeg(rayInside.raDeg, rayInside.decDeg, recoveredInside.raDeg, recoveredInside.decDeg) * 3600).toBeLessThan(1e-3);
+
+    // Barrel model (k1 = -0.2, k2 = 0): foldRad = sqrt(1 / 0.6) = 1.2910 rad; 60 deg off axis (tan 60 = 1.732) is past the fold
+    const barrel: WCSCalibrationModel = {
+      ...pincushionThenBarrel,
+      crvalRaDeg: 0,
+      crvalDecDeg: 0,
+      rotationDeg: 0,
+      parity: 1,
+      radialDistortionK1: -0.2,
+      radialDistortionK2: 0,
+    };
+    const foldBarrel = distortionFoldRadiusRad(barrel);
+    expect(worldToPixelWCS(0, 60, barrel).visible).toBe(false);
+    // A pixel beyond the maximum distorted radius g(foldRad) clamps cleanly to foldRad without oscillating past it
+    const scaleRad = (barrel.scaleDegPerPx * Math.PI) / 180;
+    const clampedSky = pixelToWorldWCS(barrel.crpixX + 0.95 / scaleRad, barrel.crpixY, barrel);
+    const clampedVec = raDecToUnitVector(clampedSky.raDeg, clampedSky.decDeg);
+    const clampedTanR = Math.hypot(clampedVec[1], clampedVec[2]) / clampedVec[0];
+    expect(clampedTanR).toBeCloseTo(foldBarrel, 9);
+
+    // Near-zero k2 with negative k1 (where -b - sqrt(b^2 - 4a) cancels catastrophically in naive quadratic formula)
+    const tinyQuadratic: WCSCalibrationModel = {
+      ...barrel,
+      crpixX: 640,
+      crpixY: 360,
+      scaleDegPerPx: 0.005,
+      radialDistortionK1: -4.767110199413549e-143,
+      radialDistortionK2: 2e-301,
+    };
+    expect(distortionFoldRadiusRad(tinyQuadratic)).toBeCloseTo(1 / Math.sqrt(3 * 4.767110199413549e-143), 10);
+    const tinySky = pixelToWorldWCS(640, 360 + 2.8421709430404014e-14, tinyQuadratic);
+    const tinyReproj = worldToPixelWCS(tinySky.raDeg, tinySky.decDeg, tinyQuadratic);
+    expect(tinyReproj.visible).toBe(true);
+    expect(Math.hypot(tinyReproj.uPx - 640, tinyReproj.vPx - 360)).toBeLessThan(1e-12);
+
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: 359.999, noNaN: true }),
+        fc.double({ min: -85, max: 85, noNaN: true }),
+        fc.double({ min: -180, max: 180, noNaN: true }),
+        fc.double({ min: 0.005, max: 0.04, noNaN: true }),
+        fc.double({ min: -0.25, max: 0.25, noNaN: true }),
+        fc.double({ min: -0.25, max: 0.25, noNaN: true }),
+        fc.constantFrom(1 as const, -1 as const),
+        fc.double({ min: 0, max: 0.99, noNaN: true }),
+        fc.double({ min: -Math.PI, max: Math.PI, noNaN: true }),
+        (crvalRaDeg, crvalDecDeg, rotationDeg, scaleDegPerPx, k1, k2, parity, frac, phi) => {
+          const wcs: WCSCalibrationModel = {
+            projection: 'TAN',
+            crvalRaDeg,
+            crvalDecDeg,
+            crpixX: 1512,
+            crpixY: 2016,
+            scaleDegPerPx,
+            rotationDeg,
+            radialDistortionK1: k1,
+            radialDistortionK2: k2,
+            parity,
+            fovHorizontalDeg: 60,
+            fovVerticalDeg: 80,
+          };
+          const fold = distortionFoldRadiusRad(wcs);
+          const rMax = Math.min(fold, 2.0) * 0.99;
+          const rTrue = frac * rMax;
+          const basis = getTangentBasis(crvalRaDeg, crvalDecDeg);
+          const xi = rTrue * Math.cos(phi);
+          const eta = rTrue * Math.sin(phi);
+          const skyTrue = unitVectorToRaDec([
+            basis.e0[0] + xi * basis.eEast[0] + eta * basis.eNorth[0],
+            basis.e0[1] + xi * basis.eEast[1] + eta * basis.eNorth[1],
+            basis.e0[2] + xi * basis.eEast[2] + eta * basis.eNorth[2],
+          ]);
+          const px = worldToPixelWCS(skyTrue.raDeg, skyTrue.decDeg, wcs);
+          expect(px.visible).toBe(true);
+          const skyRec = pixelToWorldWCS(px.uPx, px.vPx, wcs);
+          expect(angularSeparationDeg(skyTrue.raDeg, skyTrue.decDeg, skyRec.raDeg, skyRec.decDeg) * 3600).toBeLessThan(1e-3);
+          const px2 = worldToPixelWCS(skyRec.raDeg, skyRec.decDeg, wcs);
+          expect(Math.hypot(px2.uPx - px.uPx, px2.vPx - px.vPx)).toBeLessThan(1e-5);
+        }
+      ),
+      runsOf(200)
     );
   });
 
@@ -180,7 +298,7 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(Math.abs(independentProj.ndcY - targetNdcY)).toBeLessThan(1e-12);
         }
       ),
-      { numRuns: 200 }
+      runsOf(200)
     );
   });
 
@@ -204,11 +322,11 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(errPc).toBeLessThan(1e-4);
         }
       ),
-      { numRuns: 250 }
+      runsOf(250)
     );
   });
 
-  it('verifies slerpQuaternion shortest-arc hemisphere flip and log-tan-FOV uniformity', () => {
+  it('verifies slerpQuaternion shortest-arc hemisphere flip, near-identity/orthogonal cases, clamping, and log-tan-FOV bounds', () => {
     const q0: QuaternionTuple = [0, 0, 0, 1];
     // Negated identity represents the exact same 3D orientation
     const q1Negated: QuaternionTuple = [0, 0, 0, -1];
@@ -216,7 +334,44 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
     expect(Math.hypot(mid[0], mid[1], mid[2], mid[3])).toBeCloseTo(1, 12);
     expect(Math.abs(mid[3])).toBeCloseTo(1, 12);
 
-    // Log-tan-half-FOV midpoint satisfies tan(fovMid/2) = sqrt(tan(fov0/2) * tan(fov1/2))
+    // Non-antipodal negative-dot quaternion (dot = -cos(0.4) = -0.921): must flip to shortest 0.8 rad arc, not 2*pi - 0.8
+    const qShortPos: QuaternionTuple = [0, 0, Math.sin(0.4), Math.cos(0.4)];
+    const qShortNeg: QuaternionTuple = [0, 0, -Math.sin(0.4), -Math.cos(0.4)];
+    const probe: [number, number, number] = [1, 0, 0];
+    const rotPos = rotateVectorByQuaternion(probe, slerpQuaternion(q0, qShortPos, 0.5));
+    const rotNeg = rotateVectorByQuaternion(probe, slerpQuaternion(q0, qShortNeg, 0.5));
+    for (let k = 0; k < 3; k++) expect(rotNeg[k]).toBeCloseTo(rotPos[k]!, 12);
+    expect(rotNeg[0]).toBeCloseTo(Math.cos(0.4), 12);
+    expect(rotNeg[1]).toBeCloseTo(Math.sin(0.4), 12);
+
+    // Orthogonal quaternion (dot = 0, a 180-deg 3D turn): midpoint is a 90-deg 3D turn
+    const q180: QuaternionTuple = [0, 0, 1, 0];
+    const mid180 = slerpQuaternion(q0, q180, 0.5);
+    const rot180 = rotateVectorByQuaternion([1, 0, 0], mid180);
+    expect(rot180[0]).toBeCloseTo(0, 12);
+    expect(rot180[1]).toBeCloseTo(1, 12);
+
+    // Sub-epsilon near-identity (dot === 1 in float64 while q1 !== q0): linear fallback avoids 0 / 0 NaN
+    const qTiny = normalizeQuaternion([1e-9, -2e-9, 5e-10, 1]);
+    const midTiny = slerpQuaternion(q0, qTiny, 0.5);
+    expect(midTiny.every(Number.isFinite)).toBe(true);
+    expect(midTiny[0]).toBeCloseTo(0.5e-9, 18);
+
+    // Parameter t clamps outside [0, 1] for both slerpQuaternion and interpolateLogTanFov
+    expect(slerpQuaternion(q0, qShortPos, -2)).toEqual(q0);
+    for (let k = 0; k < 4; k++) expect(slerpQuaternion(q0, qShortPos, 3)[k]).toBeCloseTo(qShortPos[k]!, 12);
+
+    // Collinear upHint near +Y in lookAtDirectionQuaternion stays well-conditioned and orthonormal
+    const nearY: [number, number, number] = [0.045, Math.sqrt(1 - 0.045 * 0.045), 0];
+    const qNearY = lookAtDirectionQuaternion(nearY, nearY);
+    expect(Math.hypot(...qNearY)).toBeCloseTo(1, 12);
+    const fwdNearY = rotateVectorByQuaternion([0, 0, -1], qNearY);
+    for (let k = 0; k < 3; k++) expect(fwdNearY[k]).toBeCloseTo(nearY[k]!, 12);
+    // And with default upHint = [0, 0, 1], a custom upHint = [0, 1, 0] vs [1, 0, 0] differs cleanly:
+    const nearYRight = rotateVectorByQuaternion([1, 0, 0], qNearY);
+    expect(Math.abs(nearYRight[0]! * nearY[0] + nearYRight[1]! * nearY[1] + nearYRight[2]! * nearY[2])).toBeLessThan(1e-12);
+
+    // Log-tan-half-FOV midpoint satisfies tan(fovMid/2) = sqrt(tan(fov0/2) * tan(fov1/2)) and clamps bounds
     const fov0 = 60;
     const fov1 = 20;
     const fovMid = interpolateLogTanFov(fov0, fov1, 0.5);
@@ -224,6 +379,37 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
     const tan1 = Math.tan((fov1 * Math.PI) / 360);
     const tanMid = Math.tan((fovMid * Math.PI) / 360);
     expect(tanMid).toBeCloseTo(Math.sqrt(tan0 * tan1), 12);
+    expect(interpolateLogTanFov(fov0, fov1, -1.5)).toBeCloseTo(fov0, 12);
+    expect(interpolateLogTanFov(fov0, fov1, 2.5)).toBeCloseTo(fov1, 12);
+    const clampedLow = interpolateLogTanFov(0, -10, 0.5);
+    const clampedHigh = interpolateLogTanFov(180, 240, 0.5);
+    expect(Number.isFinite(clampedLow) && clampedLow > 0).toBe(true);
+    expect(Number.isFinite(clampedHigh) && clampedHigh < 180).toBe(true);
+  });
+
+  it('PBT-SLERP-1: slerpQuaternion is sign-invariant on S^3 and moves at constant angular rate', () => {
+    const unitQuatArb = fc
+      .tuple(
+        fc.double({ min: -1, max: 1, noNaN: true }),
+        fc.double({ min: -1, max: 1, noNaN: true }),
+        fc.double({ min: -1, max: 1, noNaN: true }),
+        fc.double({ min: -1, max: 1, noNaN: true })
+      )
+      .filter(([x, y, z, w]) => Math.hypot(x, y, z, w) > 1e-3)
+      .map((q) => normalizeQuaternion(q));
+
+    fc.assert(
+      fc.property(unitQuatArb, unitQuatArb, fc.double({ min: 0, max: 1, noNaN: true }), (qa, qb, t) => {
+        const qbNeg: QuaternionTuple = [-qb[0], -qb[1], -qb[2], -qb[3]];
+        const qt1 = slerpQuaternion(qa, qb, t);
+        const qt2 = slerpQuaternion(qa, qbNeg, t);
+        expect(Math.abs(Math.hypot(...qt1) - 1)).toBeLessThan(1e-12);
+        const v1 = rotateVectorByQuaternion([0.6, -0.8, 0.2], qt1);
+        const v2 = rotateVectorByQuaternion([0.6, -0.8, 0.2], qt2);
+        for (let k = 0; k < 3; k++) expect(Math.abs(v1[k]! - v2[k]!)).toBeLessThan(1e-11);
+      }),
+      runsOf(200)
+    );
   });
 
   it('PBT-COORD-1-SOUTH: raDecToUnitVector / unitVectorToRaDec round-trip at southern circumpolar declinations (decDeg ∈ [-90, -75])', () => {
@@ -244,7 +430,7 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(sepArcsec).toBeLessThan(1e-6);
         }
       ),
-      { numRuns: 200 }
+      runsOf(200)
     );
   });
 
@@ -286,7 +472,7 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(state.anchorDriftPx).toBeLessThan(0.01);
         }
       ),
-      { numRuns: 150 }
+      runsOf(150)
     );
   });
 
@@ -497,7 +683,7 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
           expect(propagateCatalogPositionToYear(noDist, epoch.year)).toBeNull();
         }
       ),
-      { numRuns: 150 }
+      runsOf(150)
     );
   });
 });

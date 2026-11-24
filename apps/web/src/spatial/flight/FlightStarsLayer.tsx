@@ -334,7 +334,7 @@ export const FlightStarsLayer: React.FC<{
   // The camera the stars are drawn through: the photo's own in the flight, the orbit camera in the cone view
   const view = useMemo<StarView | null>(
     () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx, phone) : steer ? starViewOfSteer(camera, { positionPc: steer.positionPc, rows: steer.chase }) : starViewOfFlight(camera)) : null),
-    [camera, cone, orbit, steer, session.observationSolution, viewportWidthPx, viewportHeightPx]
+    [camera, cone, orbit, phone, steer, session.observationSolution, viewportWidthPx, viewportHeightPx]
   );
   const viewRef = useRef(view);
   viewRef.current = view;
