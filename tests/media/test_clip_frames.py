@@ -706,6 +706,38 @@ def test_a_zero_dark_level_noise_not_on_the_black_floor_or_another_noise_fault_s
         clip_frames.measure_clip(clip, noisy)
 
 
+def test_the_black_floor_share_is_the_estimators_quarter_not_the_half() -> None:
+    # AUDIT-B's note one on nearblackclip-1: 22 of 64 chosen blocks wholly at 16 and the other 42 at 16 but for one
+    # sample a code above. The 25th-percentile block peak (np.percentile's linear rule puts it at 15.75 of 63) is 16, so
+    # the blocks sit on the floor; the 50th would be 17. The median sample is 16 either way
+    codes = np.full((64, 64), 16, dtype=np.int64)
+    for block in range(22, 64):
+        row, column = divmod(block, 8)
+        codes[row * 8 + 3, column * 8 + 5] = 17
+    blocks = np.ones(64, dtype=bool)
+    assert float(np.median(codes)) == 16.0
+    assert clip_frames._blocks_on_black_clip(codes, blocks, 16) is True
+    # One block fewer wholly at 16 still holds the quarter (21 of 64); 16 of 64 does not
+    codes[2 * 8 + 3, 5 * 8 + 5] = 17
+    assert clip_frames._blocks_on_black_clip(codes, blocks, 16) is True
+    for block in range(16, 21):
+        row, column = divmod(block, 8)
+        codes[row * 8 + 3, column * 8 + 5] = 17
+    assert clip_frames._blocks_on_black_clip(codes, blocks, 16) is False
+
+
+def test_a_clip_whose_frames_have_a_side_of_exactly_min_side_px_has_its_noise_measured() -> None:
+    # AUDIT-B's note two on nearblackclip-1: noise.measure_noise measures a side of exactly MIN_SIDE_PX (it refuses
+    # only a smaller one), and the clip's own check of each frame agrees
+    assert noise.MIN_SIDE_PX == 64
+    clip = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=64, height=64))
+    rng = np.random.default_rng(97)
+    frames = [clip.to_planes(np.clip(0.02 + rng.normal(0.0, 0.004, (64, 64, 3)), 0.0, 1.0)) for _ in range(8)]
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason != "frame_too_small"
+    assert measured.measurement.reason is None and measured.fine_noise_left is not None
+
+
 @pytest.mark.parametrize("width,height", [(64, 48), (48, 64), (64, 6)])
 def test_a_clip_whose_frames_have_a_side_under_min_side_px_reports_frame_too_small(width: int, height: int) -> None:
     # Even when 8 sampled frames concatenated vertically reach 384 >= 64 rows, each frame is under MIN_SIDE_PX = 64
