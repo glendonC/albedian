@@ -128,6 +128,13 @@ final class AfterSendTests: XCTestCase {
         let phone = SolutionReadout.Pose(method: "device_attitude", maxCenterOffsetDeg: 5.2, beaconCentroidUncertaintyDeg: nil)
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: phone, wcs: true), photo),
                        "Lined up by where your iPhone pointed, within about 6 degrees; not checked against stars.")
+        let sun = SolutionReadout.Pose(method: "sun_horizon", maxCenterOffsetDeg: 1.2, beaconCentroidUncertaintyDeg: 0.3)
+        XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: sun, wcs: true), photo),
+                       "Lined up by taking a bright spot to be the Sun, with the skyline taken to be level, within about 2 degrees; not checked against stars.")
+        // Unknown pose methods never fabricate a Moon or Sun claim (verdicts/mobile-8.md)
+        let unknown = SolutionReadout.Pose(method: "compass_heading", maxCenterOffsetDeg: 4.0, beaconCentroidUncertaintyDeg: nil)
+        XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: unknown, wcs: true), photo),
+                       "Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your photo.")
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, wcs: true), photo),
                        "Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your photo.")
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: pose, wcs: false), photo),

@@ -259,6 +259,16 @@ public struct SolutionReadout: Equatable, Sendable {
 /// (`services/ingest/router.py`, `JobStore.read_solution`); this reading refuses a reply whose shown fields break it,
 /// and draws a catalog match only on a calibrated solution whose WCS passed held-out verification.
 public enum SolutionReader {
+    /// Held-out verification gates (`MIN_HELD_OUT_INLIERS`, `MAX_HELD_OUT_MEDIAN_RESIDUAL_PX` in `astronomy.ts`).
+    static let minHeldOutInliers = 6
+    static let maxHeldOutMedianResidualPx = 3.0
+    /// Beacon pose methods and the beacon each lines up from (`POSE_METHOD_BEACONS` in `astronomy.ts`).
+    static let poseBeacons: [String: String] = [
+        "moon_camera_profile_level_head": "moon",
+        "moon_horizon": "moon",
+        "sun_horizon": "sun",
+    ]
+
     public static func read(_ value: JSONValue, sha256: String) -> Result<SolutionReadout, SolveReadRefusal> {
         func refuse(_ path: String, _ reason: String) -> Result<SolutionReadout, SolveReadRefusal> {
             .failure(SolveReadRefusal(path: path, reason: reason))
@@ -269,47 +279,134 @@ public enum SolutionReader {
         }
         guard PhotoHash.isContractHash(sha256), let named = object["sourceSha256"]?.stringValue, PhotoHash.isContractHash(named),
               named == sha256 else { return refuse("sourceSha256", "does not name the photo sent") }
+        let hasWCS: Bool
+        if let wcsValue = object["wcs"] {
+            guard PoseWCS.read(wcsValue) != nil else { return refuse("wcs", "not a TAN WCS of the contract") }
+            hasWCS = true
+        } else {
+            hasWCS = false
+        }
+        var detectedCount: Int?
+        var matchedCount: Int?
+        var qualityObject: JSONObject?
+        if let qualityValue = object["quality"] {
+            guard status != .pending, let q = qualityValue.objectValue else {
+                return refuse("quality", "quality belongs only to a solution a solver judged")
+            }
+            guard let passed = q["passedIndependentVerification"]?.boolValue,
+                  !passed || status == .calibrated else {
+                return refuse("quality.passedIndependentVerification", "verification passes only on a calibrated solution")
+            }
+            guard let detected = Wire.whole(q["detectedCandidateCount"]), detected >= 0,
+                  let matched = Wire.whole(q["matchedInlierCount"]), matched >= 0,
+                  let pairs = Wire.whole(q["heldOutPairCount"]), pairs >= 0,
+                  let inliers = Wire.whole(q["heldOutInliers"]), inliers >= 0, inliers <= pairs else {
+                return refuse("quality", "quality counts must be whole non-negative numbers with held-out inliers within pairs")
+            }
+            if let medValue = q["medianResidualPx"] {
+                guard let med = medValue.numberValue, med.isFinite, med >= 0 else {
+                    return refuse("quality.medianResidualPx", "not a non-negative finite number")
+                }
+            }
+            detectedCount = detected
+            matchedCount = matched
+            qualityObject = q
+        }
+        let verified: Bool
+        if status == .calibrated {
+            guard hasWCS, let q = qualityObject, q["passedIndependentVerification"]?.boolValue == true,
+                  let inliers = Wire.whole(q["heldOutInliers"]), inliers >= minHeldOutInliers,
+                  let med = q["medianResidualPx"]?.numberValue, med.isFinite, med >= 0, med <= maxHeldOutMedianResidualPx else {
+                return refuse("quality", "a calibrated solution needs a TAN WCS that passed the held-out gate")
+            }
+            verified = true
+        } else {
+            verified = false
+        }
         guard let findings = object["findings"]?.arrayValue else { return refuse("findings", "not a list") }
-        let verified = status == .calibrated && object["quality"]?["passedIndependentVerification"]?.boolValue == true
-            && object["wcs"]?.objectValue != nil
         var counts = Dictionary(uniqueKeysWithValues: EvidenceClass.allCases.map { ($0, 0) })
         var marks: [SolutionReadout.Mark] = []
         for (index, finding) in findings.enumerated() {
             let path = "findings.\(index)"
+            guard finding.objectValue != nil else { return refuse(path, "not an object") }
             guard let name = finding["evidenceClass"]?.stringValue, let evidence = EvidenceClass(rawValue: name) else {
                 return refuse("\(path).evidenceClass", "not an evidence class")
+            }
+            guard let inner = finding["evidence"]?.objectValue, inner["evidenceClass"]?.stringValue == name,
+                  let holdout = inner["verifiedByIndependentHoldout"]?.boolValue,
+                  !holdout || evidence == .catalogMatched else {
+                return refuse("\(path).evidence", "evidence does not match the finding's class")
+            }
+            if let refIdValue = inner["catalogReferenceId"] {
+                guard let refId = Wire.string(refIdValue, units: 1...Int.max),
+                      refId == finding["catalogRef"]?["id"]?.stringValue else {
+                    return refuse("\(path).evidence.catalogReferenceId", "does not name the finding's catalog entry")
+                }
+            }
+            if let magValue = finding["catalogRef"]?["apparentMagnitude"] {
+                guard let m = magValue.numberValue, m.isFinite else {
+                    return refuse("\(path).catalogRef.apparentMagnitude", "not finite")
+                }
+            }
+            if evidence == .observed, finding["catalogRef"] != nil {
+                return refuse("\(path).catalogRef", "an observed finding names no catalog entry")
+            }
+            if (evidence == .predicted || evidence == .simulated), finding["sourceDetection"] != nil {
+                return refuse("\(path).sourceDetection", "a predicted or simulated finding carries no pixel detection")
             }
             counts[evidence, default: 0] += 1
             guard evidence == .catalogMatched else { continue }
             guard verified else { return refuse(path, "a catalog match needs a calibrated solution with a verified WCS") }
             guard let id = Wire.string(finding["id"], units: 1...Int.max), let title = Wire.string(finding["title"], units: 1...Int.max),
                   let x = finding["sourceDetection"]?["xPx"]?.numberValue, let y = finding["sourceDetection"]?["yPx"]?.numberValue,
-                  x.isFinite, y.isFinite, x >= 0, y >= 0 else {
-                return refuse(path, "a catalog match carries its name and the detection it was matched at")
+                  x.isFinite, y.isFinite, x >= 0, y >= 0,
+                  let cref = finding["catalogRef"]?.objectValue,
+                  let crefId = Wire.string(cref["id"], units: 1...Int.max), inner["catalogReferenceId"]?.stringValue == crefId,
+                  let star = Wire.string(cref["catalogSourceId"], units: 1...Int.max),
+                  let pxRes = inner["pixelResidualPx"]?.numberValue, pxRes.isFinite, pxRes >= 0,
+                  let angRes = inner["angularResidualArcsec"]?.numberValue, angRes.isFinite, angRes >= 0 else {
+                return refuse(path, "a catalog match carries its name, detection, catalog entry and residuals")
             }
-            let magnitude = finding["catalogRef"]?["apparentMagnitude"]?.numberValue
-            if let magnitude, !magnitude.isFinite { return refuse("\(path).catalogRef.apparentMagnitude", "not finite") }
-            let star = finding["catalogRef"]?["catalogSourceId"]?.stringValue
+            let magnitude = cref["apparentMagnitude"]?.numberValue
             marks.append(SolutionReadout.Mark(id: id, title: title, xPx: x, yPx: y, apparentMagnitude: magnitude, catalogSourceId: star))
         }
         var pose: SolutionReadout.Pose?
-        if let given = object["poseEstimate"]?.objectValue {
-            guard let method = given["method"]?.stringValue, let offset = given["maxCenterOffsetDeg"]?.numberValue, offset.isFinite, offset >= 0 else {
-                return refuse("poseEstimate", "a pose estimate names its method and how far off it may be")
+        if let poseValue = object["poseEstimate"] {
+            guard status == .approximate, hasWCS, let given = poseValue.objectValue,
+                  let method = given["method"]?.stringValue,
+                  let offset = given["maxCenterOffsetDeg"]?.numberValue, offset.isFinite, offset >= 0 else {
+                return refuse("poseEstimate", "a pose estimate belongs to an approximate solution with a WCS")
             }
-            // A beacon's uncertainty comes with a beacon pose only: the phone's own attitude (pointing-3) takes none
-            let centroid = given["beaconCentroidUncertaintyDeg"]?.numberValue
-            guard (centroid == nil) == (method == "device_attitude"), centroid.map({ $0.isFinite && $0 >= 0 }) ?? true else {
-                return refuse("poseEstimate", "a pose estimate names its method and how far off it may be")
+            let centroid: Double?
+            if method == "device_attitude" {
+                guard given["beacon"] == nil, given["beaconCentroidUncertaintyDeg"] == nil else {
+                    return refuse("poseEstimate", "the phone's attitude names no beacon")
+                }
+                centroid = nil
+            } else if let expectedBeacon = poseBeacons[method] {
+                guard given["beacon"]?.stringValue == expectedBeacon,
+                      let c = given["beaconCentroidUncertaintyDeg"]?.numberValue, c.isFinite, c >= 0 else {
+                    return refuse("poseEstimate", "a beacon pose names its beacon and its uncertainty")
+                }
+                centroid = c
+            } else {
+                return refuse("poseEstimate.method", "not a pose method of the contract")
             }
             pose = SolutionReadout.Pose(method: method, maxCenterOffsetDeg: offset, beaconCentroidUncertaintyDeg: centroid)
+        } else if status == .approximate {
+            return refuse("poseEstimate", "an approximate solution carries a pose estimate")
         }
-        let frameTime = object["frameTimeSec"]?.numberValue ?? 0
-        guard frameTime.isFinite else { return refuse("frameTimeSec", "not finite") }
+        var frameTime = 0.0
+        if let frameTimeValue = object["frameTimeSec"] {
+            guard let ft = frameTimeValue.numberValue, ft.isFinite, ft >= 0 else {
+                return refuse("frameTimeSec", "not a non-negative finite number")
+            }
+            frameTime = ft
+        }
         return .success(SolutionReadout(status: status, counts: counts, marks: marks,
-                                        detectedCandidateCount: Wire.whole(object["quality"]?["detectedCandidateCount"]),
-                                        matchedInlierCount: Wire.whole(object["quality"]?["matchedInlierCount"]),
-                                        pose: pose, hasWCS: object["wcs"]?.objectValue != nil, frameTimeSec: frameTime))
+                                        detectedCandidateCount: detectedCount,
+                                        matchedInlierCount: matchedCount,
+                                        pose: pose, hasWCS: hasWCS, frameTimeSec: frameTime))
     }
 }
 

@@ -60,5 +60,12 @@ final class PoseWCSTests: XCTestCase {
         XCTAssertNil(PoseWCS.read(with("radialDistortionK1", .number(JSONNumber(0.3)!))))
         XCTAssertNil(PoseWCS.read(with("crvalDecDeg", .int(91))))
         XCTAssertNil(PoseWCS.read(with("crpixX", nil)))
+        XCTAssertNil(PoseWCS.read(with("fovHorizontalDeg", .int(0))))
+        XCTAssertNil(PoseWCS.read(with("fovHorizontalDeg", .number(JSONNumber(175.1)!))))
+        XCTAssertNil(PoseWCS.read(with("fovHorizontalDeg", nil)))
+        XCTAssertNil(PoseWCS.read(with("fovVerticalDeg", .int(0))))
+        XCTAssertNil(PoseWCS.read(with("fovVerticalDeg", .number(JSONNumber(175.1)!))))
+        XCTAssertNil(PoseWCS.read(with("fovVerticalDeg", nil)))
+        XCTAssertNotNil(PoseWCS.read(with("fovHorizontalDeg", .int(175))))
     }
 }

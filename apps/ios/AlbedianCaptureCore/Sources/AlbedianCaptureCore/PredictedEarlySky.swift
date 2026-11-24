@@ -76,16 +76,34 @@ public struct PredictedEarlySky: Equatable, Sendable {
     /// The early sky for this upload, or nil: another upload's, not an approximate solution with a pose and a WCS, or a
     /// pose no record words.
     public static func read(_ value: JSONValue, sha256: String) -> PredictedEarlySky? {
-        guard value["status"]?.stringValue == "approximate",
+        guard PhotoHash.isContractHash(sha256),
+              value["sourceSha256"]?.stringValue == sha256,
+              value["status"]?.stringValue == "approximate",
               let method = value["poseEstimate"]?["method"]?.stringValue, let source = sources[method],
               let wcsValue = value["wcs"], let wcs = PoseWCS.read(wcsValue),
               let findings = value["findings"]?.arrayValue else { return nil }
-        if let named = value["sourceSha256"], named.stringValue != sha256 { return nil }
+        for finding in findings {
+            guard let fClass = finding["evidenceClass"]?.stringValue,
+                  fClass == "predicted" || fClass == "observed" else { return nil }
+            if fClass == "predicted" {
+                if finding["sourceDetection"] != nil { return nil }
+                if let evVal = finding["evidence"] {
+                    guard evVal["evidenceClass"]?.stringValue == "predicted",
+                          evVal["verifiedByIndependentHoldout"]?.boolValue != true else { return nil }
+                }
+            }
+        }
         let targets = findings.compactMap { finding -> Target? in
-            guard finding["evidenceClass"]?.stringValue == "predicted", let id = finding["id"]?.stringValue,
-                  let ra = finding["skyPosition"]?["raDeg"]?.numberValue, let dec = finding["skyPosition"]?["decDeg"]?.numberValue else { return nil }
+            guard finding["evidenceClass"]?.stringValue == "predicted",
+                  let id = Wire.string(finding["id"], units: 1...Int.max),
+                  let ra = finding["skyPosition"]?["raDeg"]?.numberValue, ra.isFinite, (0...360).contains(ra),
+                  let dec = finding["skyPosition"]?["decDeg"]?.numberValue, dec.isFinite, (-90...90).contains(dec) else { return nil }
             let kind = finding["catalogRef"]?["objectType"]?.stringValue
-            let magnitude = finding["catalogRef"]?["apparentMagnitude"]?.numberValue
+            var magnitude: Double?
+            if let magValue = finding["catalogRef"]?["apparentMagnitude"] {
+                guard let m = magValue.numberValue, m.isFinite else { return nil }
+                magnitude = m
+            }
             guard kind == "planet" || (kind == "star" && (magnitude.map { $0 <= magnitudeLimit } ?? false)),
                   let at = wcs.pixel(raDeg: ra, decDeg: dec) else { return nil }
             let title = (finding["title"]?.stringValue ?? "").replacingOccurrences(of: " (Predicted Ephemeris)", with: "")

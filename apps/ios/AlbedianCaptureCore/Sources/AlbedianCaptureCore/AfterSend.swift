@@ -138,13 +138,13 @@ public enum OutcomeSentence {
         case .pending:
             return "The sky for your \(kind) has not been worked out yet."
         case .approximate:
-            guard let pose = readout.pose, readout.hasWCS else {
-                return readout.pose == nil
-                    ? "Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your \(kind)."
-                    : "You can open the sky predicted for your \(kind)'s time and place."
+            guard let pose = readout.pose, let taken = poseTaken[pose.method] else {
+                return "Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your \(kind)."
+            }
+            guard readout.hasWCS else {
+                return "You can open the sky predicted for your \(kind)'s time and place."
             }
             let within = Int((pose.maxCenterOffsetDeg + (pose.beaconCentroidUncertaintyDeg ?? 0)).rounded(.up))
-            let taken = poseTaken[pose.method] ?? "taking a bright spot to be the Moon or the Sun"
             return "Lined up by \(taken), within about \(within) \(within == 1 ? "degree" : "degrees"); not checked against stars."
         case .predictedOnly:
             guard let detected = readout.detectedCandidateCount else { return "The points of light could not be matched to stars." }

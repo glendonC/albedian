@@ -216,9 +216,51 @@ final class SolveReadersTests: XCTestCase {
 
     func testTheFixturesNamedFaultsInTheFieldsShownAreRefused() throws {
         let invalid = try XCTUnwrap(try solutions()["invalid"]?.arrayValue)
-        let shown = ["a status the contract does not name", "no status", "64 zeros in place of a hash", "a hash in capitals",
-                     "no findings list", "an evidence class the contract does not name",
-                     "a catalog match in a solution with no WCS", "a catalog match under a WCS that did not pass verification"]
+        let shown = [
+            "a status the contract does not name",
+            "no status",
+            "64 zeros in place of a hash",
+            "a hash in capitals",
+            "no findings list",
+            "an evidence class the contract does not name",
+            "a catalog match in a solution with no WCS",
+            "a catalog match under a WCS that did not pass verification",
+            "one held-out inlier fewer than the gate",
+            "the next number above the gate's median",
+            "passed with no held-out inlier",
+            "a passed verification with no WCS",
+            "a passed verification that paired no held-out star",
+            "a passed verification on a solution whose status is approximate",
+            "a passed verification on a solution whose status is ambiguous",
+            "a passed verification on a solution whose status is unresolved",
+            "a passed verification on a solution whose status is predicted_only",
+            "a pending solution with a solver and a passed quality",
+            "a calibrated solution with no quality",
+            "a pending solution that counted something",
+            "more held-out inliers than held-out pairs",
+            "a residual that is not a number",
+            "quality counts at 2**53, past the largest safe integer",
+            "a null WCS",
+            "an infinite crpixX",
+            "a pixel scale of zero",
+            "a predicted finding that carries a pixel detection",
+            "a simulated finding that carries a pixel detection",
+            "an infinite catalog magnitude",
+            "a pose estimate on a calibrated solution",
+            "a pose estimate on a predicted-only solution",
+            "a pose estimate with no nominal WCS",
+            "an approximate solution that does not say how far its WCS may be off",
+            "a pose from the device attitude that names a beacon",
+            "a pose from the device attitude with a beacon's uncertainty",
+            "a Moon pose that names no beacon",
+            "a Moon pose with no beacon uncertainty",
+            "a Moon method that names the Sun as its beacon",
+            "AUDIT J: a verified solution's observed finding relabelled catalog_matched, its evidence still observed, no catalog entry, no id",
+            "AUDIT J: a catalog match with its catalog entry removed, its evidence still naming the entry",
+            "an observed finding relabelled catalog_matched, its evidence too",
+            "a catalog match relabelled observed, its evidence too: an identification the class does not hold",
+            "a deep-sky prediction relabelled catalog_matched, its evidence too: no detection was matched",
+        ]
         var judged = 0
         for item in invalid {
             guard let reason = item["reason"]?.stringValue, shown.contains(reason) else { continue }
@@ -230,6 +272,102 @@ final class SolveReadersTests: XCTestCase {
             if case .success = SolutionReader.read(sample, sha256: sha) { XCTFail("read: \(reason)") }
         }
         XCTAssertEqual(judged, shown.count)
+    }
+
+    func testACalibratedOrApproximateSolutionEnforcesHeldOutFindingAndPoseBoundaries() throws {
+        let valid = try XCTUnwrap(try solutions()["valid"]?.objectValue)
+        let gateSample = try XCTUnwrap(valid["calibrated_at_the_gate"])
+        let gateSha = try XCTUnwrap(gateSample["sourceSha256"]?.stringValue)
+        XCTAssertNoThrow(try SolutionReader.read(gateSample, sha256: gateSha).get())
+
+        func refused(_ base: JSONValue, sha: String, _ why: String, _ edit: (inout JSONValue) -> Void, line: UInt = #line) {
+            var copy = base
+            edit(&copy)
+            XCTAssertNotEqual(copy, base, "mutation was a no-op: \(why)", line: line)
+            if case .success = SolutionReader.read(copy, sha256: sha) { XCTFail("read: \(why)", line: line) }
+        }
+
+        // Empty-findings calibrated solutions still require passedIndependentVerification, a TAN WCS and the held-out gate
+        refused(gateSample, sha: gateSha, "calibrated without passedIndependentVerification") {
+            $0.set(["quality", "passedIndependentVerification"], .bool(false))
+        }
+        refused(gateSample, sha: gateSha, "calibrated with an empty WCS object") {
+            $0.set(["wcs"], .object(JSONObject()))
+        }
+        refused(gateSample, sha: gateSha, "calibrated with negative medianResidualPx") {
+            $0.set(["quality", "medianResidualPx"], .number(JSONNumber(-0.01)!))
+        }
+        refused(gateSample, sha: gateSha, "calibrated with overflowed infinite medianResidualPx") {
+            if let inf = try? JSONText.read("1e400") { $0.set(["quality", "medianResidualPx"], inf) }
+        }
+        refused(gateSample, sha: gateSha, "negative frameTimeSec") {
+            $0.set(["frameTimeSec"], .number(JSONNumber(-0.1)!))
+        }
+        refused(gateSample, sha: gateSha, "non-number frameTimeSec") {
+            $0.set(["frameTimeSec"], .string("0"))
+        }
+
+        // Finding class invariants on calibrated solutions
+        let calibrated = try XCTUnwrap(valid["calibrated"])
+        let calSha = try XCTUnwrap(calibrated["sourceSha256"]?.stringValue)
+        let sampleRef = try XCTUnwrap(calibrated["findings"]?.arrayValue?.first { $0["catalogRef"] != nil }?["catalogRef"])
+        func editFirst(_ targetClass: String, in doc: inout JSONValue, _ change: (inout JSONValue) -> Void) {
+            var items = doc["findings"]?.arrayValue ?? []
+            if let idx = items.firstIndex(where: { $0["evidenceClass"]?.stringValue == targetClass }) {
+                change(&items[idx])
+            }
+            doc.set(["findings"], .array(items))
+        }
+        refused(calibrated, sha: calSha, "catalog match with mismatched catalogReferenceId") {
+            editFirst("catalog_matched", in: &$0) { $0.set(["evidence", "catalogReferenceId"], .string("cat-other")) }
+        }
+        refused(calibrated, sha: calSha, "catalog match with negative pixelResidualPx") {
+            editFirst("catalog_matched", in: &$0) { $0.set(["evidence", "pixelResidualPx"], .number(JSONNumber(-0.1)!)) }
+        }
+        refused(calibrated, sha: calSha, "catalog match with negative angularResidualArcsec") {
+            editFirst("catalog_matched", in: &$0) { $0.set(["evidence", "angularResidualArcsec"], .number(JSONNumber(-0.1)!)) }
+        }
+        refused(calibrated, sha: calSha, "catalog match with non-number apparentMagnitude") {
+            editFirst("catalog_matched", in: &$0) { $0.set(["catalogRef", "apparentMagnitude"], .string("0.42")) }
+        }
+        refused(calibrated, sha: calSha, "catalog match with empty catalogSourceId") {
+            editFirst("catalog_matched", in: &$0) { $0.set(["catalogRef", "catalogSourceId"], .string("")) }
+        }
+        refused(calibrated, sha: calSha, "observed finding carrying catalogRef") {
+            editFirst("observed", in: &$0) { $0.set(["catalogRef"], sampleRef) }
+        }
+        refused(calibrated, sha: calSha, "finding whose inner evidence names another class") {
+            editFirst("predicted", in: &$0) { $0.set(["evidence", "evidenceClass"], .string("simulated")) }
+        }
+
+        // Pose estimate closed methods, beacon matching, and malformed non-object/non-number values
+        let phone = try XCTUnwrap(valid["approximate_with_device_attitude_pose"])
+        let phoneSha = try XCTUnwrap(phone["sourceSha256"]?.stringValue)
+        refused(phone, sha: phoneSha, "device_attitude with null beaconCentroidUncertaintyDeg") {
+            $0.set(["poseEstimate", "beaconCentroidUncertaintyDeg"], .null)
+        }
+        refused(phone, sha: phoneSha, "device_attitude with string beaconCentroidUncertaintyDeg") {
+            $0.set(["poseEstimate", "beaconCentroidUncertaintyDeg"], .string("0.2"))
+        }
+        refused(phone, sha: phoneSha, "unknown poseEstimate method") {
+            $0.set(["poseEstimate", "method"], .string("compass_heading"))
+        }
+        refused(phone, sha: phoneSha, "null poseEstimate on approximate solution") {
+            $0.set(["poseEstimate"], .null)
+        }
+
+        let beacon = try XCTUnwrap(valid["approximate"])
+        let beaconSha = try XCTUnwrap(beacon["sourceSha256"]?.stringValue)
+        refused(beacon, sha: beaconSha, "unknown beacon poseEstimate method") {
+            $0.set(["poseEstimate", "method"], .string("compass_heading"))
+        }
+        var sunPose = beacon
+        sunPose.set(["poseEstimate", "method"], .string("sun_horizon"))
+        sunPose.set(["poseEstimate", "beacon"], .string("sun"))
+        XCTAssertEqual(try SolutionReader.read(sunPose, sha256: beaconSha).get().pose?.method, "sun_horizon")
+        refused(sunPose, sha: beaconSha, "sun_horizon naming moon beacon") {
+            $0.set(["poseEstimate", "beacon"], .string("moon"))
+        }
     }
 
     func testAMatchOnASolutionThatIsNotCalibratedAndVerifiedIsRefused() throws {

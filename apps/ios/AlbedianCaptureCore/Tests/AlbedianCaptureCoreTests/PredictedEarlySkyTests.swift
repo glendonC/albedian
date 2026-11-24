@@ -113,5 +113,49 @@ final class PredictedEarlySkyTests: XCTestCase {
         var noWCS = value
         noWCS["wcs"] = nil
         XCTAssertNil(PredictedEarlySky.read(noWCS, sha256: sha))
+
+        // Missing or all-zero sourceSha256 is refused instead of tying an untethered sky to the photo
+        var missingSha = value
+        missingSha["sourceSha256"] = nil
+        XCTAssertNil(PredictedEarlySky.read(missingSha, sha256: sha), "missing sourceSha256")
+        let zeros = String(repeating: "0", count: 64)
+        var zeroSha = value
+        zeroSha["sourceSha256"] = .string(JSONString(zeros))
+        XCTAssertNil(PredictedEarlySky.read(zeroSha, sha256: zeros), "64 zeros")
+
+        // A reply claiming catalog_matched or simulated findings, or a predicted finding with pixel detection or holdout, is refused
+        let (baseSky, wcs) = try sky([])
+        for badClass in ["catalog_matched", "simulated", "unknown"] {
+            var bad = baseSky
+            var f = finding("f-bad", title: "Rigel", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "star", mag: 0.13, source: "HIP 24436")
+            f["evidenceClass"] = .string(JSONString(badClass))
+            bad["findings"] = .array([f])
+            XCTAssertNil(PredictedEarlySky.read(bad, sha256: sha), badClass)
+        }
+        var withDet = baseSky
+        var detFinding = finding("f-det", title: "Rigel", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "star", mag: 0.13, source: "HIP 24436")
+        detFinding["sourceDetection"] = .object(JSONObject(["xPx": .int(10), "yPx": .int(10)]))
+        withDet["findings"] = .array([detFinding])
+        XCTAssertNil(PredictedEarlySky.read(withDet, sha256: sha), "predicted finding with sourceDetection")
+
+        var withHoldout = baseSky
+        var holdFinding = finding("f-hold", title: "Rigel", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "star", mag: 0.13, source: "HIP 24436")
+        holdFinding["evidence"] = .object(JSONObject(["evidenceClass": .string("predicted"), "verifiedByIndependentHoldout": .bool(true)]))
+        withHoldout["findings"] = .array([holdFinding])
+        XCTAssertNil(PredictedEarlySky.read(withHoldout, sha256: sha), "predicted finding claiming holdout")
+
+        // Out-of-range sky coordinates, empty ids, and non-finite planet magnitudes are rejected
+        var badTargets = baseSky
+        var badPlanet = finding("f-jup", title: "Jupiter", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "planet", mag: nil, source: "Jupiter")
+        badPlanet["catalogRef"]?["apparentMagnitude"] = .string("bright")
+        badTargets["findings"] = .array([
+            finding("", title: "EmptyId", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "star", mag: 1.0, source: "HIP 1"),
+            finding("f-ra-neg", title: "NegRa", ra: wcs.crvalRaDeg - 360, dec: wcs.crvalDecDeg, type: "star", mag: 1.0, source: "HIP 2"),
+            finding("f-ra-over", title: "OverRa", ra: wcs.crvalRaDeg + 360, dec: wcs.crvalDecDeg, type: "star", mag: 1.0, source: "HIP 3"),
+            finding("f-dec-over", title: "OverDec", ra: wcs.crvalRaDeg, dec: 90.1, type: "star", mag: 1.0, source: "HIP 4"),
+            finding("f-dec-under", title: "UnderDec", ra: wcs.crvalRaDeg, dec: -90.1, type: "star", mag: 1.0, source: "HIP 5"),
+            badPlanet,
+        ])
+        XCTAssertEqual(try XCTUnwrap(PredictedEarlySky.read(badTargets, sha256: sha)).targets, [])
     }
 }

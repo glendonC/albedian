@@ -29,13 +29,15 @@ public struct PoseWCS: Equatable, Sendable {
         self.parity = parity
     }
 
-    /// The contract's bound on each distortion coefficient.
+    /// The contract's bounds on distortion coefficients and field of view (`WCSCalibrationModelSchema`).
     static let distortionMax = 0.25
+    static let fovMax = 175.0
 
     /// The WCS as the contract holds it, or nil: not TAN, a number missing or out of its range, a parity not 1 or -1.
     public static func read(_ value: JSONValue) -> PoseWCS? {
         func number(_ key: String) -> Double? { value[key]?.numberValue.flatMap { $0.isFinite ? $0 : nil } }
-        guard value["projection"]?.stringValue == "TAN",
+        guard value.objectValue != nil,
+              value["projection"]?.stringValue == "TAN",
               let ra = number("crvalRaDeg"), (0...360).contains(ra),
               let dec = number("crvalDecDeg"), (-90...90).contains(dec),
               let x = number("crpixX"), let y = number("crpixY"),
@@ -43,7 +45,9 @@ public struct PoseWCS: Equatable, Sendable {
               let rotation = number("rotationDeg"),
               let k1 = number("radialDistortionK1"), abs(k1) <= distortionMax,
               let k2 = number("radialDistortionK2"), abs(k2) <= distortionMax,
-              let parity = number("parity"), parity == 1 || parity == -1 else { return nil }
+              let parity = number("parity"), parity == 1 || parity == -1,
+              let fovH = number("fovHorizontalDeg"), fovH > 0, fovH <= fovMax,
+              let fovV = number("fovVerticalDeg"), fovV > 0, fovV <= fovMax else { return nil }
         return PoseWCS(crvalRaDeg: ra, crvalDecDeg: dec, crpixX: x, crpixY: y, scaleDegPerPx: scale, rotationDeg: rotation,
                        k1: k1, k2: k2, parity: Int(parity))
     }
