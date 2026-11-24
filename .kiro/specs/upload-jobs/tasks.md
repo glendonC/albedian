@@ -44,6 +44,10 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - _Requirements: REQ-JOB-3.1 to 3.5, REQ-JOB-5.1 to 5.8, REQ-JOB-9_
   - [x] platform-4c (2026-11-18): `newest_solution_id`, which design 3.1 names for the restoration's manifest and
     platform-4 left out.
+  - [x] platform-or4 (2026-11-24): close the post-`publish_variant` crash and non-commit window across `JobStore`,
+    `Runner` and `services/media/router.py` so unnamed `variants/var_<16hex>` and unheld `.partial/variant-<16hex>`
+    folders are swept without following links, retries do not hit `FileExistsError`, and no variant route serves a
+    result that no `succeeded` media job names (REQ-JOB-3.4, 4.5, 5.4, 5.5; P-JOB-3, P-JOB-6).
 
 - [x] 5. platform-5: the runner and its routes (REQ-JOB-1, 2, 3.6, 4, 7; P-JOB-1, 2, 4, 5, 7, 8)
   - `services/ingest/runner.py` (3.2); the solve kind registered (3.4); `wait=false` and the cancel route (3.6);

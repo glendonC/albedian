@@ -192,6 +192,12 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   succeeded solve (a job of the runner's or today's `job.json`) when its solution reads whole and the contract
   takes it, else None; today's `solution.json` with no succeeded job names none, and a solve that runs does not
   hide the last good one. The restoration's export manifest reads it (restoration design section 12).
+- As built in platform-or4 [tested]: `JobStore.succeeded_variant_ids(sha256)` gives the variant ids named by readable
+  `succeeded` media job records of `sha256` (REQ-JOB-5.4). `JobStore.sweep()` removes unnamed `variants/var_<16hex>`
+  folders when no live process holds that graph's media lock (`results_removed`) and removes unheld
+  `.partial/variant-<16hex>` staging folders (`partials_removed`), checking regular variant files with `lstat` so a
+  link or foreign entry is never followed or removed (P-JOB-6). `JobStore.interrupt` and `Runner._finish` likewise
+  remove an uncommitted media variant unless an earlier `succeeded` job already names it (REQ-JOB-5.5).
 
 ### 3.2 The runner (`services/ingest/runner.py`, new)
 - `JobKind` (a frozen dataclass), all the runner knows of a kind:
@@ -584,6 +590,11 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   `ctx.keep`, publishes the variant folder as `variants/<variantId>/` when the attempt is `ready`, and returns
   `succeeded` or `rejected`. Its time bound, sentences and pool are its own; the stop hook (3.3) reaches its pool.
 - Export stays a read of stored files (restoration design section 12), not a job (REQ-JOB-1.6).
+- As built in platform-or4 [tested]: because the media kinds assemble and rename `variants/<variantId>/` inside their
+  child before `Runner._end` writes `succeeded`, all five variant read and export routes in `services/media/router.py`
+  (`list_variants`, `get_variant`, `get_variant_file`, `get_variant_export` and `get_variant_manifest`) check
+  `JobStore.succeeded_variant_ids(sha256)` so an uncommitted variant is never served before commit, across processes
+  before `sweep()`, or when a job record is unreadable (REQ-JOB-5.4).
 
 ## 4. States and transitions
 

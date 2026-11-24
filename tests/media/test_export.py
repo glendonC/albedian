@@ -457,40 +457,76 @@ def renamed_copy(place: Path, target: Path, new_id: str, sha: str) -> None:
 
 def test_a_folder_or_file_reached_through_a_link_or_naming_another_variant_exports_nothing(restored, tmp_path) -> None:
     client, sha, folder, job = restored
-    place, made = folder / "variants" / job["variantId"], []
+    place, made, job_files = folder / "variants" / job["variantId"], [], []
+    jobs = JobStore(IngestStore(client.store_root, max_bytes=200_000_000))
+
+    def mark_succeeded(vid: str, idx: int) -> None:
+        suffix = vid.removeprefix("var_")
+        rec = jobs.write_record({
+            "id": f"job_{sha[:16]}{900 + idx:016x}",
+            "sourceAssetSha256": sha,
+            "kind": "restoration",
+            "state": "succeeded",
+            "createdAtUTC": "2026-11-24T04:00:00Z",
+            "startedAtUTC": "2026-11-24T04:00:00Z",
+            "finishedAtUTC": "2026-11-24T04:00:01Z",
+            "producer": {"name": "albedian.restore", "revision": media_jobs.MEDIA_PRODUCER.revision},
+            "request": REQUEST,
+            "graphId": f"graph_{suffix}",
+            "attemptId": f"att_{suffix}",
+            "variantId": vid,
+            "stages": [],
+        })
+        rec_path = jobs.record_path(rec["id"])
+        assert rec_path is not None
+        job_files.append(rec_path)
+
     try:
-        # A whole copy under its own consistent id exports: the cases below differ from it in one thing each
+        # A whole copy under its own consistent id and a succeeded job record exports: the cases below differ in one thing each
         ours = "var_" + "1" * 16
         renamed_copy(place, folder / "variants" / ours, ours, sha)
         made.append(folder / "variants" / ours)
+        mark_succeeded(ours, 1)
         assert client.get(f"/api/media/{sha}/variants/{ours}/export").status_code == 200
+        # A whole copy under its own consistent id with no succeeded job record: never exported or manifested (REQ-JOB-5.4)
+        unnamed = "var_" + "6" * 16
+        renamed_copy(place, folder / "variants" / unnamed, unnamed, sha)
+        made.append(folder / "variants" / unnamed)
         # The folder is a link to such a copy kept outside the store
         outside, linked = tmp_path / "outside", "var_" + "2" * 16
         renamed_copy(place, outside, linked, sha)
         os.symlink(outside, folder / "variants" / linked)
         made.append(folder / "variants" / linked)
+        mark_succeeded(linked, 2)
         # The folder is real, its file a link to the real variant's file
         file_linked = "var_" + "3" * 16
         renamed_copy(place, folder / "variants" / file_linked, file_linked, sha)
         made.append(folder / "variants" / file_linked)
         (folder / "variants" / file_linked / "variant.png").unlink()
         os.symlink(place / "variant.png", folder / "variants" / file_linked / "variant.png")
+        mark_succeeded(file_linked, 3)
         # A real folder whose graph record is a folder, not a file
         not_a_file = "var_" + "5" * 16
         renamed_copy(place, folder / "variants" / not_a_file, not_a_file, sha)
         made.append(folder / "variants" / not_a_file)
         (folder / "variants" / not_a_file / "graph.json").unlink()
         (folder / "variants" / not_a_file / "graph.json").mkdir()
+        mark_succeeded(not_a_file, 5)
         # A whole copy whose records name the variant it was copied from
         other = "var_" + "4" * 16
         shutil.copytree(place, folder / "variants" / other)
         os.chmod(folder / "variants" / other, 0o700)
         made.append(folder / "variants" / other)
-        for vid, names in ((linked, ("export", "manifest")), (file_linked, ("export",)), (other, ("export", "manifest")),
+        mark_succeeded(other, 4)
+        for vid, names in ((unnamed, ("export", "manifest")), (linked, ("export", "manifest")),
+                           (file_linked, ("export",)), (other, ("export", "manifest")),
                            (not_a_file, ("export", "manifest"))):
             for name in names:
                 assert client.get(f"/api/media/{sha}/variants/{vid}/{name}").status_code == 404, (vid, name)
     finally:
+        for rec_path in job_files:
+            os.chmod(rec_path, 0o600)
+            rec_path.unlink(missing_ok=True)
         for path in made:
             if path.is_symlink():
                 path.unlink()

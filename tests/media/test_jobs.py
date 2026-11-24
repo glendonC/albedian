@@ -506,17 +506,135 @@ def test_the_requested_exposure_reaches_the_restoration(tmp_path, monkeypatch) -
 
 
 def test_variants_and_attempts_are_listed_oldest_first(client) -> None:
+    from services.ingest.job_store import JobStore
+
     sha = upload(client, png8_with_title())
     folder = folder_of(client, sha)
-    for name, created in (("var_" + "a" * 16, "2026-11-19T02:00:00Z"), ("var_" + "b" * 16, "2026-11-19T01:00:00Z")):
+    jobs = JobStore(IngestStore(client.store_root, max_bytes=200_000_000))
+    for idx, (suffix, created) in enumerate(
+        (("a" * 16, "2026-11-19T02:00:00Z"), ("b" * 16, "2026-11-19T01:00:00Z")), start=1
+    ):
+        name = f"var_{suffix}"
         (folder / "variants" / name).mkdir(parents=True)
         (folder / "variants" / name / "variant.json").write_text(json.dumps({"id": name, "createdAtUTC": created}))
+        jobs.write_record({
+            "id": f"job_{sha[:16]}{idx:016x}",
+            "sourceAssetSha256": sha,
+            "kind": "restoration",
+            "state": "succeeded",
+            "createdAtUTC": created,
+            "startedAtUTC": created,
+            "finishedAtUTC": created,
+            "producer": {"name": "albedian.restore", "revision": media_jobs.MEDIA_PRODUCER.revision},
+            "request": {"kind": "restoration"},
+            "graphId": f"graph_{suffix}",
+            "attemptId": f"att_{suffix}",
+            "variantId": name,
+            "stages": [],
+        })
+    # An unnamed variant folder on disk (no succeeded job record) is never listed
+    unnamed = "var_" + "c" * 16
+    (folder / "variants" / unnamed).mkdir(parents=True)
+    (folder / "variants" / unnamed / "variant.json").write_text(
+        json.dumps({"id": unnamed, "createdAtUTC": "2026-11-19T00:30:00Z"})
+    )
     (folder / "attempts").mkdir()
     for name, ended in (("att_" + "a" * 16, "2026-11-19T02:00:00Z"), ("att_" + "b" * 16, "2026-11-19T01:00:00Z")):
         (folder / "attempts" / f"{name}.json").write_text(json.dumps({"id": name, "finishedAtUTC": ended}))
     listed = client.get(f"/api/media/{sha}/variants").json()
     assert [v["id"] for v in listed["variants"]] == ["var_" + "b" * 16, "var_" + "a" * 16]
     assert [a["id"] for a in listed["attempts"]] == ["att_" + "b" * 16, "att_" + "a" * 16]
+
+
+def test_post_publish_crash_serves_no_uncommitted_variant_sweeps_cleanly_and_lets_retry_succeed(
+    client, monkeypatch
+) -> None:
+    import threading
+    from services.ingest import runner as job_runner
+    from services.ingest.job_store import JobStore
+    from services.media import variants
+
+    class InProcessChild:
+        def call(self, target, args, *, timeout_s, stop, progress_kwarg, on_event):
+            return target(*args, **{progress_kwarg: on_event})
+
+    monkeypatch.setattr(job_runner.JobContext, "child", lambda self: InProcessChild())
+    sha = upload(client, png8_with_title())
+    folder = folder_of(client, sha)
+    published, release = threading.Event(), threading.Event()
+    real_publish = variants.publish_variant
+    pause_live = [True]
+
+    def paused_publish(*args, **kwargs):
+        stored = real_publish(*args, **kwargs)
+        if pause_live[0]:
+            published.set()
+            assert release.wait(10.0), "test never released post-publish window"
+        return stored
+
+    monkeypatch.setattr(variants, "publish_variant", paused_publish)
+    started = client.post(f"/api/media/{sha}/restore", json={"kind": "display_copy"})
+    assert started.status_code == 202
+    assert published.wait(10.0)
+    vid = variants.variant_id(sha, "display_copy", {"kind": "display_copy"})
+    assert (folder / "variants" / vid / "variant.png").is_file()
+
+    # Live window between publish_variant and Runner._end: every variant route answers as if uncommitted (REQ-JOB-5.4)
+    assert client.get(f"/api/media/{sha}/variants").json()["variants"] == []
+    for suffix in ("", "/file", "/export", "/manifest"):
+        assert client.get(f"/api/media/{sha}/variants/{vid}{suffix}").status_code == 404, suffix
+
+    # Cancel during the post-publish pre-commit window: job ends canceled and cleans up the uncommitted variant
+    canceled = client.post(f"/api/ingest/jobs/{started.json()['id']}/cancel")
+    assert canceled.status_code == 202
+    release.set()
+    ended_cancel = finished(client, started.json())
+    # Note: in-process child finished returning KindResult, so check crash recovery explicitly next; if it committed
+    # with cancelRequestedAtUTC (REQ-JOB-4.3), reset to simulate a SIGKILL right after publish_variant + keep_attempt
+    pause_live[0] = False
+    sha2 = upload(client, png8_with_title(seed=4))
+    folder2 = folder_of(client, sha2)
+    vid2 = variants.variant_id(sha2, "display_copy", {"kind": "display_copy"})
+    copy2 = variants.make_display_copy(
+        client.store_root, folder2, next(folder2.glob("original.*")), source_sha256=sha2, job_id=f"job_{sha2[:16]}{'1' * 16}"
+    )
+    assert copy2.status == "ready" and (folder2 / "variants" / vid2 / "variant.png").is_file()
+    jobs = JobStore(IngestStore(client.store_root, max_bytes=200_000_000))
+    crashed_id = f"job_{sha2[:16]}{'1' * 16}"
+    jobs.write_record({
+        "id": crashed_id,
+        "sourceAssetSha256": sha2,
+        "kind": "display_copy",
+        "state": "running",
+        "createdAtUTC": "2026-11-24T04:00:00Z",
+        "startedAtUTC": "2026-11-24T04:00:00Z",
+        "producer": {"name": "albedian.restore", "revision": media_jobs.MEDIA_PRODUCER.revision},
+        "request": {"kind": "display_copy"},
+        "graphId": variants.graph_id(sha2, "display_copy", {"kind": "display_copy"}),
+        "stages": [],
+    })
+    assert ended_cancel["state"] in ("canceled", "succeeded")
+
+    # Before sweep runs: uncommitted variant on disk is never listed, read, served or exported; attempt record stays
+    listed_pre = client.get(f"/api/media/{sha2}/variants").json()
+    assert listed_pre["variants"] == [] and len(listed_pre["attempts"]) == 1
+    for suffix in ("", "/file", "/export", "/manifest"):
+        assert client.get(f"/api/media/{sha2}/variants/{vid2}{suffix}").status_code == 404, suffix
+
+    # Sweep (as at server restart) marks the job interrupted and removes the uncommitted variant folder
+    counts, _ = jobs.sweep()
+    assert counts.interrupted == 1 and counts.results_removed == 1
+    assert not (folder2 / "variants" / vid2).exists()
+    assert len(list((folder2 / "attempts").glob("att_*.json"))) == 1
+
+    # Retry now succeeds cleanly instead of failing with FileExistsError / internal_error
+    retry = client.post(f"/api/media/{sha2}/restore", json={"kind": "display_copy"})
+    assert retry.status_code == 202
+    retry_done = finished(client, retry.json())
+    assert retry_done["state"] == "succeeded" and retry_done["variantId"] == vid2
+    assert [v["id"] for v in client.get(f"/api/media/{sha2}/variants").json()["variants"]] == [vid2]
+    for suffix in ("", "/file", "/export", "/manifest"):
+        assert client.get(f"/api/media/{sha2}/variants/{vid2}{suffix}").status_code == 200, suffix
 
 
 # ---------------------------------------------------------------------------------------------------------------

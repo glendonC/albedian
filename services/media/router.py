@@ -61,12 +61,18 @@ def get_media_discover(folders: MediaFolders = Depends(media_folders)) -> dict[s
 # Restoration jobs and their variants (spec restoration-for-every-upload, design sections 9 and 11; restore-2b)
 # =============================================================================================
 
+import hashlib  # noqa: E402
+import os  # noqa: E402
+import stat  # noqa: E402
+import zlib  # noqa: E402
+
 from fastapi import Body  # noqa: E402
 from fastapi import Path as PathParameter  # noqa: E402
-from fastapi.responses import FileResponse, JSONResponse  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse  # noqa: E402
 from pydantic import ValidationError  # noqa: E402
 
 from services.contracts import media as media_contract  # noqa: E402
+from services.ingest.job_store import JobStore  # noqa: E402
 from services.ingest.router import get_ingest_store  # noqa: E402
 from services.ingest.runner import NoUpload, runner_for  # noqa: E402
 from services.ingest.store import IngestStore  # noqa: E402
@@ -79,7 +85,14 @@ NO_VARIANT = "no variant with that id is stored for that file"
 
 
 def _variant_folder(store: IngestStore, sha256: str, variant_id: str) -> Path:
+    if variant_id not in JobStore(store).succeeded_variant_ids(sha256):
+        raise HTTPException(status_code=404, detail=NO_VARIANT)
     folder = store.folder(sha256) / "variants" / variant_id
+    try:
+        if not stat.S_ISDIR(os.lstat(folder).st_mode):
+            raise HTTPException(status_code=404, detail=NO_VARIANT)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
     if not (folder / "variant.json").is_file():
         raise HTTPException(status_code=404, detail=NO_VARIANT)
     return folder
@@ -118,8 +131,13 @@ def list_variants(
     """An upload's stored variants and every finished attempt, oldest first; there is no listing across uploads."""
     if store.read_record(sha256) is None:
         raise HTTPException(status_code=404, detail=NO_UPLOAD)
+    succeeded = JobStore(store).succeeded_variant_ids(sha256)
     folder = store.folder(sha256)
-    stored = [_read(path) for path in sorted((folder / "variants").glob("var_*/variant.json"))]
+    stored = [
+        _read(path)
+        for path in sorted((folder / "variants").glob("var_*/variant.json"))
+        if path.parent.name in succeeded and not path.parent.is_symlink() and not path.is_symlink()
+    ]
     attempts = [_read(path) for path in sorted((folder / "attempts").glob("att_*.json"))]
     stored.sort(key=lambda variant: (variant["createdAtUTC"], variant["id"]))
     attempts.sort(key=lambda attempt: (attempt["finishedAtUTC"], attempt["id"]))
@@ -162,16 +180,6 @@ def get_variant_file(
 # The export and its manifest (design section 12; REQ-RST-9; review row D22; restore-8)
 # =============================================================================================
 
-import hashlib  # noqa: E402
-import os  # noqa: E402
-import stat  # noqa: E402
-import zlib  # noqa: E402
-
-from fastapi.responses import Response, StreamingResponse  # noqa: E402
-
-from services.ingest.job_store import JobStore  # noqa: E402
-from services.media import variants  # noqa: E402
-
 # Built on request from the stored records and the solution id named at that moment, so never kept by a cache
 EXPORT_HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
 VARIANT_RECORDS = ("variant.json", "graph.json", "attempt.json")
@@ -181,8 +189,12 @@ READ_BLOCK = 1 << 20
 
 
 def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[Path, dict[str, Any], dict[str, Any]]:
-    """The variant's folder, its manifest and its variant record. 404 when the folder is missing, is a link, or lacks a
-    record, and when its attempt is not `ready`: a rejected or failed attempt has nothing to export (REQ-RST-9.6)."""
+    """The variant's folder, its manifest and its variant record. 404 when no succeeded job names it, when the folder
+    is missing, is a link, or lacks a record, and when its attempt is not `ready`: a rejected or failed attempt has
+    nothing to export (REQ-JOB-5.4, REQ-RST-9.6)."""
+    jobs = JobStore(store)
+    if variant_id not in jobs.succeeded_variant_ids(sha256):
+        raise HTTPException(status_code=404, detail=NO_VARIANT)
     folder = store.folder(sha256) / "variants" / variant_id
     try:
         if not stat.S_ISDIR(os.lstat(folder).st_mode):
@@ -199,7 +211,7 @@ def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[P
     if variant.get("mimeType") not in variants.EXPORT_EXTENSIONS:
         raise HTTPException(status_code=500, detail=RECORDS_REFUSED)
     try:
-        manifest = variants.export_manifest(variant, graph, attempt, JobStore(store).newest_solution_id(sha256))
+        manifest = variants.export_manifest(variant, graph, attempt, jobs.newest_solution_id(sha256))
     except ValidationError:
         raise HTTPException(status_code=500, detail=RECORDS_REFUSED) from None
     return folder, manifest, variant

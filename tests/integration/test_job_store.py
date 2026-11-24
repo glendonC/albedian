@@ -1982,3 +1982,293 @@ def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
         time.sleep(0.02)
         job = client.get(f"/api/ingest/jobs/{job['id']}").json()
     return started.status_code, job
+
+
+# ---- platform-or4: post-publish_variant crash window, unnamed variants and variant staging (REQ-JOB-5.4, 5.5) ----
+
+
+def _media_record(sha: str, kind: str, state: str, n: int, suffix: str) -> dict[str, Any]:
+    made: dict[str, Any] = {
+        "id": f"job_{sha[:16]}{n:016x}",
+        "sourceAssetSha256": sha,
+        "kind": kind,
+        "state": state,
+        "createdAtUTC": "2030-01-01T04:59:00Z",
+        "request": {"kind": kind},
+        "graphId": f"graph_{suffix}",
+        "stages": [],
+    }
+    if state != "queued":
+        made["startedAtUTC"] = "2030-01-01T04:59:01Z"
+        made["producer"] = {"name": "albedian.restore", "revision": 1}
+    if state in ("succeeded", "rejected", "failed", "canceled", "interrupted"):
+        made["finishedAtUTC"] = "2030-01-01T04:59:02Z"
+    if state == "succeeded":
+        made["variantId"] = f"var_{suffix}"
+        made["attemptId"] = f"att_{suffix}"
+    elif state == "rejected":
+        made["attemptId"] = f"att_{suffix}"
+    elif state == "failed":
+        made["error"] = "The restoration stopped on an internal error."
+    elif state == "canceled" and "startedAtUTC" in made:
+        made["cancelRequestedAtUTC"] = "2030-01-01T04:59:01Z"
+    elif state == "interrupted":
+        made["error"] = INTERRUPTED_SENTENCE
+    UploadJob.model_validate(made)
+    return made
+
+
+def _write_variant_dir(variants_root: Path, variant_id: str, *, media_file: str = "variant.png") -> Path:
+    variants_root.mkdir(mode=0o700, exist_ok=True)
+    target = variants_root / variant_id
+    target.mkdir(mode=0o700)
+    for name, body in (
+        (media_file, b"\x89PNG\r\n\x1a\nvariant"),
+        ("variant.json", json.dumps({"id": variant_id}).encode("utf-8")),
+        ("graph.json", b"{}\n"),
+        ("attempt.json", b"{}\n"),
+    ):
+        (target / name).write_bytes(body)
+        os.chmod(target / name, 0o400)
+    return target
+
+
+def test_succeeded_variant_ids_names_only_readable_succeeded_media_jobs(tree: Any) -> None:
+    _, _, jobs = tree
+    sha = SHAS[0]
+    assert jobs.succeeded_variant_ids(sha) == set()
+    assert jobs.succeeded_variant_ids(SHAS[1]) == set()
+    assert not jobs.upload_folder(SHAS[1]).exists()
+    with pytest.raises(ValueError):
+        jobs.succeeded_variant_ids("not-a-sha256")
+
+    jobs.write_record(record(sha, "solve", "succeeded", 1))
+    for idx, state in enumerate(("queued", "running", "rejected", "failed", "canceled", "interrupted"), start=2):
+        jobs.write_record(_media_record(sha, "restoration", state, idx, f"{idx:016x}"))
+    assert jobs.succeeded_variant_ids(sha) == set()
+
+    copy_ok = _media_record(sha, "display_copy", "succeeded", 20, "1" * 16)
+    rest_ok = _media_record(sha, "restoration", "succeeded", 21, "2" * 16)
+    jobs.write_record(copy_ok)
+    jobs.write_record(rest_ok)
+    assert jobs.succeeded_variant_ids(sha) == {"var_" + "1" * 16, "var_" + "2" * 16}
+
+    rest_path = jobs.record_path(rest_ok["id"])
+    assert rest_path is not None
+    os.chmod(rest_path, 0o600)
+    rest_path.write_text("{corrupt", encoding="utf-8")
+    assert jobs.succeeded_variant_ids(sha) == {"var_" + "1" * 16}
+
+
+def test_sweep_removes_unnamed_variants_and_unheld_variant_staging_while_keeping_named_held_and_decoys(
+    tree: Any,
+) -> None:
+    tmp, uploads, jobs = tree
+    sha = SHAS[0]
+    folder = jobs.upload_folder(sha)
+    outside = tmp / "outside-variants"
+    outside.mkdir()
+    (outside / "kept.png").write_bytes(b"outside")
+    outside_dir = outside / "dir"
+    outside_dir.mkdir()
+    (outside_dir / "variant.png").write_bytes(b"outside-dir")
+
+    holder = JobStore(IngestStore(jobs.root, max_bytes=1000))
+    named_job = _media_record(sha, "display_copy", "succeeded", 1, "1" * 16)
+    crashed_job = _media_record(sha, "restoration", "running", 2, "2" * 16)
+    held_job = _media_record(sha, "restoration", "running", 3, "3" * 16)
+    jobs.write_record(named_job)
+    jobs.write_record(crashed_job)
+    jobs.write_record(held_job)
+    assert holder.try_hold(holder.lock_of(held_job))
+    lock_only = holder.lock_path(sha, "display_copy", "graph_" + "4" * 16)
+    assert holder.try_hold(lock_only)
+
+    variants_dir = folder / "variants"
+    named_dir = _write_variant_dir(variants_dir, "var_" + "1" * 16)
+    crashed_dir = _write_variant_dir(variants_dir, "var_" + "2" * 16, media_file="variant.mov")
+    held_rec_dir = _write_variant_dir(variants_dir, "var_" + "3" * 16)
+    held_lock_dir = _write_variant_dir(variants_dir, "var_" + "4" * 16)
+    orphan_dir = _write_variant_dir(variants_dir, "var_" + "5" * 16, media_file="variant.mp4")
+
+    # Decoys inside variants/: symlinked variant dir, variant dir holding a symlink, foreign file, subdir, aside file
+    link_var = variants_dir / ("var_" + "a" * 16)
+    link_var.symlink_to(outside_dir, target_is_directory=True)
+    with_link = _write_variant_dir(variants_dir, "var_" + "b" * 16)
+    os.chmod(with_link / "variant.png", 0o600)
+    (with_link / "variant.png").unlink()
+    (with_link / "variant.png").symlink_to(outside / "kept.png")
+    with_foreign = _write_variant_dir(variants_dir, "var_" + "c" * 16)
+    (with_foreign / "notes.txt").write_bytes(b"decoy")
+    with_subdir = variants_dir / ("var_" + "d" * 16)
+    with_subdir.mkdir(mode=0o700)
+    (with_subdir / "variant.png").mkdir(mode=0o700)
+    aside_file = variants_dir / ".variant.png.aside"
+    aside_file.write_bytes(b"aside")
+
+    # Staging folders in .partial/: while a media lock is held, live staging is preserved
+    partials = jobs.root / ".partial"
+    partials.mkdir(mode=0o700, exist_ok=True)
+    stage_full = partials / ("variant-" + "aa" * 8)
+    _write_variant_dir(stage_full, "var_" + "9" * 16, media_file="variant.mp4")
+    stage_empty = partials / ("variant-" + "bb" * 8)
+    stage_empty.mkdir(mode=0o700)
+    stage_link = partials / ("variant-" + "cc" * 8)
+    stage_link.symlink_to(outside_dir, target_is_directory=True)
+    stage_foreign_top = partials / ("variant-" + "dd" * 8)
+    stage_foreign_top.mkdir(mode=0o700)
+    (stage_foreign_top / "notes.txt").write_bytes(b"keep")
+    stage_foreign_leaf = partials / ("variant-" + "ee" * 8)
+    bad_assembled = _write_variant_dir(stage_foreign_leaf, "var_" + "8" * 16)
+    (bad_assembled / "extra.txt").write_bytes(b"keep")
+
+    try:
+        counts, _ = jobs.sweep(now=NOW)
+        assert (counts.interrupted, counts.results_removed, counts.partials_removed) == (1, 2, 0)
+        assert named_dir.is_dir() and held_rec_dir.is_dir() and held_lock_dir.is_dir()
+        assert not crashed_dir.exists() and not orphan_dir.exists()
+        assert stage_full.is_dir() and stage_empty.is_dir(), "held media lock keeps live variant staging untouched"
+    finally:
+        holder.release(holder.lock_of(held_job))
+        holder.release(lock_only)
+
+    # Once media locks are released (and held_job finished without succeeding), staging and unheld variants are swept
+    counts2, _ = jobs.sweep(now=NOW)
+    assert (counts2.interrupted, counts2.results_removed, counts2.partials_removed) == (1, 2, 2)
+    assert not held_rec_dir.exists() and not held_lock_dir.exists()
+    assert not stage_full.exists() and not stage_empty.exists()
+    assert named_dir.is_dir()
+    # Every decoy and outside target is untouched
+    assert link_var.is_symlink() and (outside_dir / "variant.png").read_bytes() == b"outside-dir"
+    assert with_link.is_dir() and (outside / "kept.png").read_bytes() == b"outside"
+    assert (with_foreign / "notes.txt").read_bytes() == b"decoy"
+    assert (with_subdir / "variant.png").is_dir()
+    assert aside_file.read_bytes() == b"aside"
+    assert stage_link.is_symlink()
+    assert (stage_foreign_top / "notes.txt").read_bytes() == b"keep"
+    assert (bad_assembled / "extra.txt").read_bytes() == b"keep"
+
+    # Linked variants/ directory is never entered by sweep
+    for child in list(variants_dir.iterdir()):
+        if child.is_symlink() or child.is_file():
+            child.unlink()
+        else:
+            for sub in list(child.iterdir()):
+                if sub.is_symlink() or sub.is_file():
+                    sub.unlink()
+                else:
+                    sub.rmdir()
+            child.rmdir()
+    variants_dir.rmdir()
+    outside_variants = outside / "linked-variants"
+    _write_variant_dir(outside_variants, "var_" + "f" * 16)
+    variants_dir.symlink_to(outside_variants, target_is_directory=True)
+    counts3, _ = jobs.sweep(now=NOW)
+    assert counts3.results_removed == 0 and (outside_variants / ("var_" + "f" * 16)).is_dir()
+
+
+def test_interrupt_removes_uncommitted_media_variant_unless_succeeded_or_held(tree: Any) -> None:
+    _, _, jobs = tree
+    sha = SHAS[0]
+    folder = jobs.upload_folder(sha)
+
+    # Unheld running media job: interrupt marks interrupted and removes uncommitted variant
+    r1 = _media_record(sha, "restoration", "running", 1, "1" * 16)
+    jobs.write_record(r1)
+    v1 = _write_variant_dir(folder / "variants", "var_" + "1" * 16)
+    ended1 = jobs.interrupt(r1, now=NOW)
+    assert ended1["state"] == "interrupted" and not v1.exists()
+
+    # Earlier succeeded job already names var_22...: interrupt on a newer rerun keeps var_22...
+    s2 = _media_record(sha, "display_copy", "succeeded", 2, "2" * 16)
+    r2 = _media_record(sha, "display_copy", "running", 3, "2" * 16)
+    jobs.write_record(s2)
+    jobs.write_record(r2)
+    v2 = _write_variant_dir(folder / "variants", "var_" + "2" * 16)
+    ended2 = jobs.interrupt(r2, now=NOW)
+    assert ended2["state"] == "interrupted" and v2.is_dir()
+
+    # Record meanwhile succeeded on disk (Ended path): variant stays
+    s3 = _media_record(sha, "restoration", "succeeded", 4, "3" * 16)
+    r3_stale = _media_record(sha, "restoration", "running", 4, "3" * 16)
+    jobs.write_record(s3)
+    v3 = _write_variant_dir(folder / "variants", "var_" + "3" * 16)
+    ended3 = jobs.interrupt(r3_stale, now=NOW)
+    assert ended3["state"] == "succeeded" and v3.is_dir()
+
+    # Another process holds the graph's lock when interrupt runs: variant stays
+    r4 = _media_record(sha, "restoration", "running", 5, "4" * 16)
+    jobs.write_record(r4)
+    v4 = _write_variant_dir(folder / "variants", "var_" + "4" * 16)
+    holder = JobStore(IngestStore(jobs.root, max_bytes=1000))
+    assert holder.try_hold(holder.lock_of(r4))
+    try:
+        ended4 = jobs.interrupt(r4, now=NOW)
+        assert ended4["state"] == "interrupted" and v4.is_dir()
+    finally:
+        holder.release(holder.lock_of(r4))
+
+
+MEDIA_ATTEMPT_STEPS = ("queued", "running", "staging", "publish_variant", "keep_attempt", "succeeded")
+
+
+def _media_attempt(root: str, sha: str, stop_after: int, inside_commit: bool) -> None:
+    _, jobs = stores(Path(root))
+    suffix = "7" * 16
+    jobs.try_hold(jobs.lock_path(sha, "restoration", f"graph_{suffix}"))
+    job_id = f"job_{sha[:16]}{1:016x}"
+    folder = jobs.upload_folder(sha)
+    stage_dir = jobs.root / ".partial" / ("variant-" + "ab" * 8)
+    for step, name in enumerate(MEDIA_ATTEMPT_STEPS, start=1):
+        if inside_commit and step == stop_after:
+            job_store.os.replace = lambda *a, **kw: os._exit(0)  # type: ignore[assignment]
+        if name in ("queued", "running", "succeeded"):
+            jobs.write_record({**_media_record(sha, "restoration", name, 1, suffix), "id": job_id})
+        elif name == "staging":
+            (jobs.root / ".partial").mkdir(mode=0o700, exist_ok=True)
+            _write_variant_dir(stage_dir, f"var_{suffix}")
+        elif name == "publish_variant":
+            (folder / "variants").mkdir(mode=0o700, exist_ok=True)
+            os.rename(stage_dir / f"var_{suffix}", folder / "variants" / f"var_{suffix}")
+            stage_dir.rmdir()
+        elif name == "keep_attempt":
+            attempts = folder / "attempts"
+            attempts.mkdir(mode=0o700, exist_ok=True)
+            att = attempts / f"att_{suffix}.json"
+            att.write_bytes(b"{}\n")
+            os.chmod(att, 0o400)
+        if step == stop_after:
+            os._exit(0)
+
+
+@pytest.mark.parametrize(
+    ("stop_after", "inside_commit"),
+    [(n, False) for n in range(1, len(MEDIA_ATTEMPT_STEPS) + 1)] + [(len(MEDIA_ATTEMPT_STEPS), True)],
+    ids=[f"after {MEDIA_ATTEMPT_STEPS[n - 1]}" for n in range(1, len(MEDIA_ATTEMPT_STEPS) + 1)] + ["inside succeeded"],
+)
+def test_p_job_3_media_process_stopped_after_any_write_leaves_a_store_the_sweep_makes_whole(
+    tree: Any, stop_after: int, inside_commit: bool
+) -> None:
+    _, _, jobs = tree
+    sha = SHAS[0]
+    suffix = "7" * 16
+    folder = jobs.upload_folder(sha)
+    original = {k: v for k, v in snapshot(folder).items() if not k.startswith(("jobs", "variants", "attempts"))}
+    assert _ended(_child(_media_attempt, str(jobs.root), sha, stop_after, inside_commit), "media attempt") == 0
+    counts, handed = jobs.sweep(now=NOW)
+    done = stop_after - 1 if inside_commit else stop_after
+    committed = MEDIA_ATTEMPT_STEPS[done - 1] == "succeeded"
+    stored = jobs.read_job(f"job_{sha[:16]}{1:016x}")
+    if MEDIA_ATTEMPT_STEPS[done - 1] == "queued":
+        assert stored["state"] == "queued" and len(handed) == 1
+    elif committed:
+        assert stored["state"] == "succeeded" and jobs.succeeded_variant_ids(sha) == {f"var_{suffix}"}
+    else:
+        assert stored["state"] == "interrupted" and counts.interrupted == 1
+        assert jobs.succeeded_variant_ids(sha) == set()
+    assert (folder / "variants" / f"var_{suffix}").exists() == committed
+    assert (folder / "attempts" / f"att_{suffix}.json").exists() == (done >= 5)
+    assert not list((jobs.root / ".partial").iterdir()) if (jobs.root / ".partial").exists() else True
+    after = {k: v for k, v in snapshot(folder).items() if not k.startswith(("jobs", "variants", "attempts"))}
+    assert after == original
+

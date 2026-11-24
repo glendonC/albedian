@@ -1458,3 +1458,85 @@ def test_only_a_solve_publishes_a_predicted_sky_and_only_an_approximate_one_with
     for ended in (runner.wait(solve["id"], BOUND_S), runner.wait(media["id"], BOUND_S)):
         assert ended["state"] == "succeeded" and "predictedSkyAtUTC" not in ended, ended
     assert sorted(refusals) == ["media refused", "refused", "refused"]
+
+
+@pytest.mark.parametrize("mode", ["canceled", "deadline", "store_failure", "older_succeeded_kept"])
+def test_a_media_job_that_does_not_commit_removes_its_uncommitted_variant_unless_an_older_succeeded_job_names_it(
+    world: dict[str, Any], monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
+    """REQ-JOB-4.5, 5.4, 5.5: when a media job published `variants/var_<h>` inside its run and then stops before
+    committing (canceled, past its deadline at commit, or unable to store `succeeded`), `_finish` removes the
+    uncommitted variant folder, while keeping any variant already named by an older `succeeded` job."""
+    store: JobStore = world["store"]
+    sha = world["shas"][0]
+    request = {"kind": "restoration"}
+    base_kind = media_kind(Script())
+    graph_ref = base_kind.subject(sha, request)
+    assert graph_ref is not None
+    vid = f"var_{graph_ref.removeprefix('graph_')}"
+    folder = store.upload_folder(sha)
+
+    def write_variant() -> Path:
+        vdir = folder / "variants" / vid
+        vdir.mkdir(parents=True, exist_ok=True)
+        os.chmod(vdir, 0o700)
+        for name, body in (("variant.png", b"png"), ("variant.json", b"{}"), ("graph.json", b"{}"), ("attempt.json", b"{}")):
+            (vdir / name).write_bytes(body)
+            os.chmod(vdir / name, 0o400)
+        return vdir
+
+    if mode == "older_succeeded_kept":
+        older = {
+            "id": f"job_{sha[:16]}{99:016x}",
+            "sourceAssetSha256": sha,
+            "kind": "restoration",
+            "state": "succeeded",
+            "createdAtUTC": "2020-01-01T00:00:00Z",
+            "startedAtUTC": "2020-01-01T00:00:00Z",
+            "finishedAtUTC": "2020-01-01T00:00:01Z",
+            "producer": {"name": "albedian.older_media", "revision": 1},
+            "request": request,
+            "graphId": graph_ref,
+            "attemptId": f"att_{graph_ref.removeprefix('graph_')}",
+            "variantId": vid,
+            "stages": [],
+        }
+        store.write_record(older)
+        existing = write_variant()
+
+    def body(ctx: JobContext) -> KindResult:
+        if mode != "older_succeeded_kept":
+            write_variant()
+        if mode == "canceled":
+            runner.cancel(ctx.job_id)
+            ctx.check_cancel()
+        if mode == "older_succeeded_kept":
+            raise JobRefusal("The restoration stopped on an internal error.")
+        if mode == "deadline":
+            ctx._job.deadline = time.monotonic() - 1.0
+        return KindResult("succeeded", {"attemptId": f"att_{ctx.job_id[4:20]}", "variantId": vid})
+
+    world["kinds"]["restoration"] = media_kind(Script(), body)
+    runner = world["runner"]()
+    if mode == "store_failure":
+        real_write = runner.store.write_record
+
+        def fail_on_succeeded(payload: dict[str, Any]) -> dict[str, Any]:
+            if payload.get("state") == "succeeded":
+                raise OSError(28, "No space left on device")
+            return real_write(payload)
+
+        monkeypatch.setattr(runner.store, "write_record", fail_on_succeeded)
+
+    started, created = runner.start(sha, "restoration", request)
+    assert created
+    ended = runner.wait(started["id"], BOUND_S)
+    if mode == "canceled":
+        assert ended["state"] == "canceled" and not (folder / "variants" / vid).exists()
+    elif mode == "deadline":
+        assert ended["state"] == "failed" and not (folder / "variants" / vid).exists()
+    elif mode == "store_failure":
+        assert ended["state"] == "failed" and not (folder / "variants" / vid).exists()
+    else:
+        assert ended["state"] == "failed" and existing.is_dir()
+

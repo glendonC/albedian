@@ -701,6 +701,8 @@ class Runner:
                     os.unlink(path)
                 except FileNotFoundError:
                     pass
+            if job.kind.name in MEDIA_JOB_KINDS:
+                self.store.remove_uncommitted_variant(job.record["sourceAssetSha256"], job.record.get("graphId"))
         partials = self.store.root / PARTIAL_FOLDER
         try:
             names = os.listdir(partials)

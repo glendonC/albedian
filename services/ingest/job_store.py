@@ -56,6 +56,7 @@ ACTIVE_FILE_MODE = 0o600
 TERMINAL_STATES = frozenset({"succeeded", "rejected", "failed", "canceled", "interrupted"})
 JOBS_FOLDER = "jobs"
 SOLUTIONS_FOLDER = "solutions"
+VARIANTS_FOLDER = "variants"
 PARTIAL_FOLDER = ".partial"
 # [proposed] bound for waiting on an upload's jobs/ folder lock across threads or processes: long enough for local
 # record fsyncs under load, while guaranteeing no call in the store can wait without end
@@ -65,6 +66,13 @@ FOLDER_LOCK_POLL_SEC = 0.002
 JOB_ID = re.compile(r"job_([0-9a-f]{16})[0-9a-f]{16}")
 JOB_FILE = re.compile(r"(job_[0-9a-f]{32})\.json")
 RESULT_FILE = re.compile(r"(job_[0-9a-f]{32})\.json")
+VARIANT_DIR = re.compile(r"var_([0-9a-f]{16})")
+VARIANT_STAGE_DIR = re.compile(r"variant-[0-9a-f]{16}")
+GRAPH_ID = re.compile(r"graph_([0-9a-f]{16})")
+MEDIA_LOCK_FILE = re.compile(r"(?:display_copy|restoration)\.graph_([0-9a-f]{16})\.lock")
+VARIANT_ENTRY_NAMES = frozenset(
+    {"variant.png", "variant.mov", "variant.mp4", "variant.json", "graph.json", "attempt.json"}
+)
 JOB_PARTIAL = re.compile(r"(job_[0-9a-f]{32})-[a-z0-9_]{1,64}(?:\.[a-z0-9]{1,8})?\.part")
 STORE_SCRATCH = re.compile(r"\.job-[0-9a-f]{16}\.tmp")
 LOCK_FILE = re.compile(r"[a-z_]{1,32}(?:\.(?:graph|align)_[0-9a-f]{16})?\.lock")
@@ -460,16 +468,136 @@ class JobStore:
 
     def interrupt(self, record: dict[str, Any], now: Optional[datetime] = None) -> dict[str, Any]:
         """A running record no live process holds, stored as interrupted (REQ-JOB-3.4); when its job has meanwhile
-        ended, the record it ended with."""
+        ended, the record it ended with. Any uncommitted media variant of that job is removed unless named by a
+        succeeded job or held by a live process (REQ-JOB-5.5, platform-or4)."""
         ended = UploadJob.model_validate(_interrupted(record, now or datetime.now(timezone.utc))).model_dump(
             by_alias=True, exclude_unset=True)
         try:
-            return self.write_record(ended)
+            written = self.write_record(ended)
         except Ended:
             stored = self.read_job(record["id"])
             if stored is None:
                 raise
             return stored
+        if written.get("kind") in MEDIA_JOB_KINDS:
+            self.remove_uncommitted_variant(written["sourceAssetSha256"], written.get("graphId"), check_held=True)
+        return written
+
+    def succeeded_variant_ids(self, sha256: str) -> set[str]:
+        """The variant ids named by readable `succeeded` media job records of `sha256` (REQ-JOB-5.4, platform-or4)."""
+        return {
+            r["variantId"]
+            for r in self.jobs_of(sha256)
+            if r["kind"] in MEDIA_JOB_KINDS
+            and r["state"] == "succeeded"
+            and isinstance(r.get("variantId"), str)
+            and VARIANT_DIR.fullmatch(r["variantId"]) is not None
+        }
+
+    def _media_variant_held(self, upload: Path, variant_id: str) -> bool:
+        """Whether any live process holds a media lock for the graph that produces `variant_id`."""
+        match = VARIANT_DIR.fullmatch(variant_id)
+        if match is None:
+            return False
+        jobs = upload / JOBS_FOLDER
+        suffix = match.group(1)
+        return any(self.is_held(jobs / f"{kind}.graph_{suffix}.lock") for kind in MEDIA_JOB_KINDS)
+
+    def _any_media_lock_held(self) -> bool:
+        """Whether any upload has a held media job lock, so concurrent staging in `.partial/` is never removed."""
+        for upload in self._upload_folders():
+            jobs = upload / JOBS_FOLDER
+            if not self._exists(jobs):
+                continue
+            try:
+                with os.scandir(jobs) as raw_jobs:
+                    entries = list(raw_jobs)
+            except OSError:
+                continue
+            for entry in entries:
+                if MEDIA_LOCK_FILE.fullmatch(entry.name) and entry.is_file(follow_symlinks=False):
+                    if self.is_held(Path(entry.path)):
+                        return True
+        return False
+
+    def _remove_variant_folder(self, target: Path) -> bool:
+        """Removes `variants/var_<16hex>` only when it is a real directory below the root containing regular variant
+        files alone (`VARIANT_ENTRY_NAMES`, never a link or foreign entry; P-JOB-6)."""
+        if not VARIANT_DIR.fullmatch(target.name) or not self._exists(target):
+            return False
+        try:
+            with os.scandir(target) as raw_entries:
+                entries = list(raw_entries)
+        except OSError:
+            return False
+        if any(not entry.is_file(follow_symlinks=False) or entry.name not in VARIANT_ENTRY_NAMES for entry in entries):
+            return False
+        for entry in entries:
+            try:
+                os.unlink(entry.path)
+            except FileNotFoundError:
+                pass
+        try:
+            os.rmdir(target)
+        except OSError:
+            return False
+        return True
+
+    def _remove_variant_staging(self, staging: Path) -> bool:
+        """Removes a crashed `publish_variant` staging directory (`.partial/variant-<16hex>`) only when it is a real
+        directory holding at most `var_<16hex>` directories of regular variant files (`VARIANT_ENTRY_NAMES`), never
+        through a link or over a foreign entry (P-JOB-6)."""
+        if not VARIANT_STAGE_DIR.fullmatch(staging.name) or not self._exists(staging):
+            return False
+        try:
+            with os.scandir(staging) as raw_subs:
+                subs = list(raw_subs)
+        except OSError:
+            return False
+        sub_files: list[tuple[Path, list[Path]]] = []
+        for sub in subs:
+            if not VARIANT_DIR.fullmatch(sub.name) or not sub.is_dir(follow_symlinks=False):
+                return False
+            sub_path = Path(sub.path)
+            if not self._exists(sub_path):
+                return False
+            try:
+                with os.scandir(sub_path) as raw_leaves:
+                    leaves = list(raw_leaves)
+            except OSError:
+                return False
+            if any(not leaf.is_file(follow_symlinks=False) or leaf.name not in VARIANT_ENTRY_NAMES for leaf in leaves):
+                return False
+            sub_files.append((sub_path, [Path(leaf.path) for leaf in leaves]))
+        for sub_path, leaves in sub_files:
+            for leaf_path in leaves:
+                try:
+                    os.unlink(leaf_path)
+                except FileNotFoundError:
+                    pass
+            try:
+                os.rmdir(sub_path)
+            except OSError:
+                return False
+        try:
+            os.rmdir(staging)
+        except OSError:
+            return False
+        return True
+
+    def remove_uncommitted_variant(self, sha256: str, graph_id: Optional[str], *, check_held: bool = False) -> bool:
+        """Removes `<upload>/variants/var_<h>` for `graph_<h>` when no readable `succeeded` media job names it and,
+        with `check_held`, when no live process holds that graph's lock."""
+        match = GRAPH_ID.fullmatch(graph_id or "")
+        if match is None:
+            return False
+        variant_id = f"var_{match.group(1)}"
+        if variant_id in self.succeeded_variant_ids(sha256):
+            return False
+        upload = self.upload_folder(sha256)
+        if check_held and self._media_variant_held(upload, variant_id):
+            return False
+        return self._remove_variant_folder(upload / VARIANTS_FOLDER / variant_id)
 
     def _solution_file(self, sha256: str, path: Path) -> Optional[dict[str, Any]]:
         """A stored solution file, read without following a link, parsed as RFC 8259 JSON with finite numbers,
@@ -633,6 +761,8 @@ class JobStore:
         for upload in self._upload_folders():
             jobs = upload / JOBS_FOLDER
             succeeded: set[str] = set()
+            succeeded_variants: set[str] = set()
+            held_variants: set[str] = set()
             if self._exists(jobs):
                 try:
                     with _locked_jobs_folder(jobs):
@@ -640,6 +770,11 @@ class JobStore:
                             entries = list(raw_jobs)
                         for entry in entries:
                             if not entry.is_file(follow_symlinks=False):
+                                continue
+                            lock_match = MEDIA_LOCK_FILE.fullmatch(entry.name)
+                            if lock_match is not None:
+                                if self.is_held(Path(entry.path)):
+                                    held_variants.add(f"var_{lock_match.group(1)}")
                                 continue
                             if STORE_SCRATCH.fullmatch(entry.name):
                                 if not self.is_held(Path(entry.path)):
@@ -670,13 +805,23 @@ class JobStore:
                                     pass
                             elif record["state"] == "running":
                                 running.add(record["id"])
+                                if record["kind"] in MEDIA_JOB_KINDS:
+                                    gm = GRAPH_ID.fullmatch(record.get("graphId") or "")
+                                    if gm is not None:
+                                        held_variants.add(f"var_{gm.group(1)}")
                             elif record["state"] == "queued" and not held:
                                 handed_back.append(record)
                                 counts["handed_back"] += 1
                             elif record["state"] == "queued":
                                 running.add(record["id"])
+                                if record["kind"] in MEDIA_JOB_KINDS:
+                                    gm = GRAPH_ID.fullmatch(record.get("graphId") or "")
+                                    if gm is not None:
+                                        held_variants.add(f"var_{gm.group(1)}")
                             elif record["state"] == "succeeded":
                                 succeeded.add(record["id"])
+                                if record["kind"] in MEDIA_JOB_KINDS and isinstance(record.get("variantId"), str):
+                                    succeeded_variants.add(record["variantId"])
                 except FileNotFoundError:
                     pass
             results = upload / SOLUTIONS_FOLDER
@@ -694,6 +839,24 @@ class JobStore:
                             counts["results_removed"] += 1
                         except FileNotFoundError:
                             pass
+            variants = upload / VARIANTS_FOLDER
+            if self._exists(variants):
+                try:
+                    with os.scandir(variants) as raw_variants:
+                        variant_entries = list(raw_variants)
+                except FileNotFoundError:
+                    variant_entries = []
+                for entry in variant_entries:
+                    if (
+                        VARIANT_DIR.fullmatch(entry.name)
+                        and entry.is_dir(follow_symlinks=False)
+                        and entry.name not in succeeded_variants
+                        and entry.name not in held_variants
+                        and not self._media_variant_held(upload, entry.name)
+                        and entry.name not in self.succeeded_variant_ids(upload.name)
+                    ):
+                        if self._remove_variant_folder(Path(entry.path)):
+                            counts["results_removed"] += 1
         partials = self.root / PARTIAL_FOLDER
         if self._exists(partials):
             try:
@@ -709,6 +872,13 @@ class JobStore:
                         counts["partials_removed"] += 1
                     except FileNotFoundError:
                         pass
+                elif (
+                    VARIANT_STAGE_DIR.fullmatch(entry.name)
+                    and entry.is_dir(follow_symlinks=False)
+                    and not self._any_media_lock_held()
+                ):
+                    if self._remove_variant_staging(Path(entry.path)):
+                        counts["partials_removed"] += 1
         result = SweepCounts(**counts)
         LOG.info(
             "job sweep: %d interrupted, %d handed back, %d unreadable, %d results, %d partials and %d scratch "
