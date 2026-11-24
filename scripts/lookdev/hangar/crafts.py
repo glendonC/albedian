@@ -1923,6 +1923,113 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 6.5,
         "changes": "tdrs",
     },
+    "odyssey": {
+        "title": "Mars Odyssey",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-mars-odyssey",
+            "title": "Mars Odyssey, NASA 3D Resources",
+            "folder": "Mars Odyssey",
+            "file": "Mars Odyssey.glb",
+            "bytes": 5_801_372,
+            "sha256": "ac0faa8dbfb54aabcbe3d06886c3d98dd29d120fd49b1c9fa6abbfbed22b049a",
+            "picture": "Mars Odyssey.png",
+            "picture_bytes": 839_607,
+            "picture_sha256": "71db35e3ff52316029d3e8b91da2446a069ace342de352be711af4e9ef4a1ac1",
+            "local": "odyssey",
+        },
+        "drop_objects": [],
+        # The main engine bell and parabolic high-gain dish sit on the propulsion end at +Y in the import frame while
+        # the science deck and deployable GRS gamma-ray boom reach along -Y, and the three-panel solar array stands up
+        # along +Z across X [tested: Blender import survey and NSSDCA 2001-013A]: firing the main engine pushes the
+        # orbiter along -Y with +Z up.
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # NASA's file is drawn in metres: the main gold-foil bus ("foil_gold" in Y = -0.75..0.95, excluding the dish
+        # backing at +Y and the gamma sensor head out on the -Y boom) measures 2.2085 units across X against NSSDCA
+        # 2001-013A's "2.2 meters x 1.7 meters x 2.6 meters" (0.9962 m per unit) [tested: build log]. Because the
+        # deployed boom and solar array extend beyond the stowed box dimensions (and the boom truss reaches 4.8 m from
+        # the science deck against NSSDCA's 6 m), the scale is marked true_to "part".
+        "scale_from": {
+            "material": "foil_gold",
+            "band": {"axis": "y", "min": -0.75, "max": 0.95},
+            "axis": "x",
+            "metres": 2.2,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+            "true_to": "part",
+            "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters.",
+        },
+        # Every embedded texture surveyed with uv_dump and uv_cover [tested]: the Russian space agency / IKI HEND
+        # circular emblem on the HEND detector cap and small printed labels on the solar panels are painted over in
+        # their surrounding surface colours, as are the NASA logotype on a white label in tex_boom's unused space and
+        # three small stencils/labels in unused space of tex_01, tex_03 and tex_04.
+        "materials": {
+            "tex_01": {
+                "role": "photo_atlas",
+                "paint_out": [
+                    {
+                        "box": (18, 662, 242, 855),
+                        "fill_from": (340, 710, 440, 810),
+                        "what": "the Russian space agency and IKI HEND mission emblem",
+                    },
+                    {"box": (40, 878, 76, 918), "what": "a printed HEND unit label in unused texture space"},
+                    {"box": (936, 548, 976, 570), "what": "a small printed label on an outer solar panel"},
+                ],
+            },
+            "tex_02": {
+                "role": "photo_atlas",
+                "paint_out": [
+                    {"box": (41, 472, 57, 528), "fill_from": (60, 472, 90, 528), "what": "a small printed label on the centre solar panel"},
+                    {"box": (389, 472, 405, 528), "fill_from": (350, 472, 380, 528), "what": "a small printed label on the centre solar panel"},
+                ],
+            },
+            "shiny_panel": {
+                "role": "textured",
+                "metallic": 0.0,
+                "roughness": 0.25,
+                "paint_out": [
+                    {"box": (41, 472, 57, 528), "fill_from": (60, 472, 90, 528), "what": "a small printed label on the centre solar panel"},
+                    {"box": (389, 472, 405, 528), "fill_from": (350, 472, 380, 528), "what": "a small printed label on the centre solar panel"},
+                ],
+            },
+            "tex_03": {
+                "role": "photo_atlas",
+                "paint_out": [
+                    {"box": (54, 279, 73, 351), "fill_from": (20, 279, 48, 351), "what": "a printed stencil in unused texture space"},
+                ],
+            },
+            "tex_04": {
+                "role": "photo_atlas",
+                "paint_out": [
+                    {"box": (528, 348, 576, 362), "fill_from": (460, 340, 515, 360), "what": "a small printed label in unused texture space"},
+                ],
+            },
+            "tex_boom": {
+                "role": "photo_atlas",
+                "paint_out": [
+                    {"box": (833, 445, 875, 480), "what": "the NASA logotype and small print on a white label in unused texture space"},
+                ],
+            },
+            "foil_gold": {"role": "photo_atlas"},
+            "tex_AO": {"role": "painted", "base": (0.85, 0.85, 0.83), "roughness": 0.55, "occlusion_from_source": True},
+            "tex_AO_2": {"role": "painted", "base": (0.76, 0.76, 0.76), "roughness": 0.5, "occlusion_from_source": True},
+        },
+        "material_rules": [
+            {"match": ["foil_silver", "panels"], "role": "photo_atlas"},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # The 6 m GRS boom is a lattice of hundreds of small struts whose 4-triangle-per-part floor would starve the
+        # bus, solar panels and dish under whole-mesh collapse decimation: decimate each material on its own.
+        "decimate_by_material": True,
+        # Five 1024 px photo atlases each carry metal-roughness and normal maps: 768 px at lod1 and 384 px at lod2
+        # keep both levels well within the 1.5 MB and 600 KB budgets with all 10 primitives preserved.
+        "texture_edge": {"lod1": 768, "lod2": 384},
+        # Frames the bus, propulsion module, high-gain dish and three-panel solar array inside the 8.2 m boom length.
+        "body_radius_m": 2.8,
+        "changes": "odyssey",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -2562,6 +2669,26 @@ HANGAR: list[dict] = [
             {"key": "dishDiameterM", "value": 5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
             {"key": "solarArraysLengthM", "value": 21, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
             {"key": "power", "value": "solar arrays, 2.3 kW", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A", "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"},
+        ],
+    },
+    {
+        # 2001 Mars Odyssey orbits Mars as a science orbiter and UHF relay: no speed between stars. NSSDCA 2001-013A
+        # gives 725.0 kg launch mass including 348.7 kg of fuel in its prose (matching NASA Science's 725.0 kg) and
+        # 376.3 kg dry mass in its Facts in Brief box [verified: nssdc.gsfc.nasa.gov and science.nasa.gov].
+        "id": "mars-odyssey",
+        "name": "Mars Odyssey",
+        "model": "odyssey",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2001-04-07", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "The 2001 Mars Odyssey launched on 7 April 2001 at 15:02:22 UT (11:02:22 a.m. EDT)."},
+            {"key": "marsOrbit", "value": "2001-10-24", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "After a seven month cruise the spacecraft reached Mars on 24 October 2001 at 02:26 UT (23 October 10:26 p.m. EDT)."},
+            {"key": "activeRecord", "value": "longest continually active mission in orbit around a planet other than Earth", "page": "https://science.nasa.gov/mission/odyssey/", "quote": "The spacecraft also holds the record for the longest continually active mission in orbit around a planet other than Earth."},
+            {"key": "relay", "value": "X-band to Earth via the high-gain antenna and UHF to Mars landers", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "Communications between the orbiter and Earth are in X-band via the high-gain antenna and communications between the orbiter and any Mars landers are via the UHF antenna."},
+            {"key": "launchMassKg", "value": 725.0, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "The spacecraft has a launch mass of 725.0 kg, including 348.7 kg of fuel."},
+            {"key": "dryMassKg", "value": 376.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "Mass: 376.3 kg"},
+            {"key": "body", "value": "box-shaped, 2.2 by 1.7 by 2.6 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters."},
+            {"key": "boomLengthM", "value": 6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "Above the equipment module, connected by struts, is the science deck, holding the star cameras, high energy neutron detector, UHF antenna, the THEMIS instrument and a deployable 6 meter boom holding the gamma sensor head for the GRS."},
+            {"key": "power", "value": "gallium arsenide solar cells and a 16 amp-hr nickel hydrogen battery", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A", "quote": "Power is provided by the gallium arsenide solar cells in the solar panel and a 16 amp-hr nickel hydrogen battery."},
         ],
     },
 ]

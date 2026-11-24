@@ -2213,6 +2213,69 @@
         "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,",
         "trueTo": "part"
       }
+    },
+    "odyssey": {
+      "title": "Mars Odyssey",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "odyssey/odyssey_lod0.glb",
+          "bytes": 1733680,
+          "triangles": 8532,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "odyssey/odyssey_lod1.glb",
+          "bytes": 1092800,
+          "triangles": 4734,
+          "textureEdgeMax": 768,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "odyssey/odyssey_lod2.glb",
+          "bytes": 467708,
+          "triangles": 2739,
+          "textureEdgeMax": 384,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "odyssey/odyssey_picker.webp",
+          "bytes": 4194,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -2.838,
+          -0.799,
+          -2.608
+        ],
+        "max": [
+          2.809,
+          2.548,
+          5.581
+        ]
+      },
+      "bodyRadiusM": 2.8,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "foil_gold",
+        "metres": 2.2,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+        "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters.",
+        "partBand": {
+          "axis": "y",
+          "min": -0.75,
+          "max": 0.95
+        },
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -3807,6 +3870,68 @@
           "value": "solar arrays, 2.3 kW",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
           "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,"
+        }
+      ]
+    },
+    {
+      "id": "mars-odyssey",
+      "name": "Mars Odyssey",
+      "model": "odyssey",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2001-04-07",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "The 2001 Mars Odyssey launched on 7 April 2001 at 15:02:22 UT (11:02:22 a.m. EDT)."
+        },
+        {
+          "key": "marsOrbit",
+          "value": "2001-10-24",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "After a seven month cruise the spacecraft reached Mars on 24 October 2001 at 02:26 UT (23 October 10:26 p.m. EDT)."
+        },
+        {
+          "key": "activeRecord",
+          "value": "longest continually active mission in orbit around a planet other than Earth",
+          "page": "https://science.nasa.gov/mission/odyssey/",
+          "quote": "The spacecraft also holds the record for the longest continually active mission in orbit around a planet other than Earth."
+        },
+        {
+          "key": "relay",
+          "value": "X-band to Earth via the high-gain antenna and UHF to Mars landers",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "Communications between the orbiter and Earth are in X-band via the high-gain antenna and communications between the orbiter and any Mars landers are via the UHF antenna."
+        },
+        {
+          "key": "launchMassKg",
+          "value": 725.0,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "The spacecraft has a launch mass of 725.0 kg, including 348.7 kg of fuel."
+        },
+        {
+          "key": "dryMassKg",
+          "value": 376.3,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "Mass: 376.3 kg"
+        },
+        {
+          "key": "body",
+          "value": "box-shaped, 2.2 by 1.7 by 2.6 m",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters."
+        },
+        {
+          "key": "boomLengthM",
+          "value": 6,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "Above the equipment module, connected by struts, is the science deck, holding the star cameras, high energy neutron detector, UHF antenna, the THEMIS instrument and a deployable 6 meter boom holding the gamma sensor head for the GRS."
+        },
+        {
+          "key": "power",
+          "value": "gallium arsenide solar cells and a 16 amp-hr nickel hydrogen battery",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+          "quote": "Power is provided by the gallium arsenide solar cells in the solar panel and a 16 amp-hr nickel hydrogen battery."
         }
       ]
     }

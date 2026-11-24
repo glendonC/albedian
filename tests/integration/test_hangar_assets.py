@@ -155,6 +155,48 @@ def test_levels_fall_in_triangles_and_need_no_decoder_or_transform() -> None:
     assert CRAFTS["perseverance"].get("drop_animations") is True
 
 
+def _primitive_triangles(gltf: dict) -> dict[str, int]:
+    mats = [re.sub(r"\.\d+$", "", m.get("name", f"mat_{i}")) for i, m in enumerate(gltf.get("materials", []))]
+    out: dict[str, int] = {}
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            key = mats[prim["material"]] if "material" in prim else "<none>"
+            out[key] = out.get(key, 0) + gltf["accessors"][prim["indices"]]["count"] // 3
+    return out
+
+
+def _glb_spans(gltf: dict) -> list[float]:
+    lo = [float("inf")] * 3
+    hi = [float("-inf")] * 3
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            pos = gltf["accessors"][prim["attributes"]["POSITION"]]
+            lo = [min(a, b) for a, b in zip(lo, pos["min"])]
+            hi = [max(a, b) for a, b in zip(hi, pos["max"])]
+    return [b - a for a, b in zip(lo, hi)]
+
+
+def test_decimation_never_lets_a_boom_or_truss_starve_primary_primitives_in_lod2() -> None:
+    # A dense lattice boom of many disconnected struts hits Blender's 4-triangle-per-part floor under whole-mesh
+    # collapse decimation and can starve the bus, dish and solar panels in lod2 (SPATIAL mo-1's catch on Mars Odyssey).
+    for name, model in FACTS["models"].items():
+        g0 = _gltf(HANGAR_DIR / model["files"]["lod0"]["path"])
+        g1 = _gltf(HANGAR_DIR / model["files"]["lod1"]["path"])
+        g2 = _gltf(HANGAR_DIR / model["files"]["lod2"]["path"])
+        p0, p1, p2 = _primitive_triangles(g0), _primitive_triangles(g1), _primitive_triangles(g2)
+        tot0, tot2 = sum(p0.values()), sum(p2.values())
+        for mat, tris0 in p0.items():
+            share0 = tris0 / tot0
+            share2 = p2.get(mat, 0) / tot2
+            assert share2 - share0 <= 0.5, (name, mat, round(share0, 3), round(share2, 3))
+        if CRAFTS[name].get("decimate_by_material"):
+            assert set(p1) == set(p0) and all(v > 0 for v in p1.values()), (name, p1)
+            assert set(p2) == set(p0) and all(v > 0 for v in p2.values()), (name, p2)
+            for axis, (s0, s2) in enumerate(zip(_glb_spans(g0), _glb_spans(g2))):
+                assert s2 >= 0.95 * s0, (name, axis, s0, s2)
+    assert CRAFTS["odyssey"].get("decimate_by_material") is True
+
+
 def test_the_true_size_is_metres_of_a_real_craft() -> None:
     for name, model in FACTS["models"].items():
         lo, hi = model["boundsM"]["min"], model["boundsM"]["max"]
@@ -244,7 +286,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
     near_ids = {e["id"] for e in near}
-    assert near_ids <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance", "clementine", "tdrs"}
+    assert near_ids <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe", "juno", "dawn", "messenger", "spitzer", "osiris-rex", "mro", "stardust", "deep-space-1", "mars-global-surveyor", "near-shoemaker", "maven", "cassini", "ibex", "van-allen-probes", "deep-impact", "viking-lander", "apollo-soyuz", "kepler", "ingenuity", "perseverance", "clementine", "tdrs", "mars-odyssey"}
     assert "clementine" in near_ids and FACTS["models"]["clementine"]["scaleFrom"] == {
         "part": None,
         "metres": 2,
@@ -258,6 +300,14 @@ def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
         "trueTo": "part",
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2002-011A",
         "quote": "With a mass of 1,781 kg, power of 2.3 kW, a pair of steerable, transponding antennas of diameter 5 m, and pair of solar arrays of length 21 m,",
+    }
+    assert "mars-odyssey" in near_ids and FACTS["models"]["odyssey"]["scaleFrom"] == {
+        "part": "foil_gold",
+        "partBand": {"axis": "y", "min": -0.75, "max": 0.95},
+        "metres": 2.2,
+        "trueTo": "part",
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2001-013A",
+        "quote": "The main body of the 2001 Mars Odyssey is box-shaped, 2.2 meters x 1.7 meters x 2.6 meters.",
     }
     for e in FACTS["entries"]:
         if e["travel"] is not None:

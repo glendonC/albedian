@@ -292,6 +292,18 @@ CHANGES = {
         "apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the "
         "textures re-encoded as WebP."
     ),
+    # lod0 for photo textures, gold and silver foils, solar cells and baked parts, emblem and labels painted out ("odyssey")
+    "lod0_odyssey": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and its gold and silver "
+        "foils kept as the base colour, with metalness, roughness and surface relief added from their own colours and "
+        "shading, the Russian space agency and IKI HEND mission emblem and three small printed labels on the solar "
+        "panels painted over in the colour around them, as are the NASA logotype and three small printed labels in "
+        "unused texture space, the solar array's cells keeping their texture with one roughness and no metalness, the "
+        "gamma sensor shield and the dish and hinge brackets painted white or grey with NASA's baked shading moved to "
+        "the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth "
+        "within an angle and sharp beyond it, and the textures re-encoded as WebP."
+    ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
         "with the craft's facts), and textures at most 1024 pixels on a side."
@@ -333,6 +345,7 @@ MEAN_ROUGHNESS_FACTOR = 0.5  # NASA's ISS materials multiply their green channel
 MASK_EDGE = 512  # a kept alpha mask's largest edge
 PICKER_SAMPLES = 32  # Cycles samples for a rendered picker picture
 PAINT_OUT_BAND_PX = 3  # the band around a painted-out box whose median colour fills it
+MIN_MATERIAL_TRIS = 24  # per-material decimation floor so flat panel primitives never collapse to nothing
 
 
 def sha256_file(path: Path) -> str:
@@ -715,6 +728,61 @@ def drop_small_parts(obj: bpy.types.Object, metres: float) -> int:
     return removed
 
 
+def decimate_by_material(obj: bpy.types.Object, ratio: float, smooth_deg: float | None) -> None:
+    """Collapse-decimate each material slot on its own so a dense lattice boom cannot starve the bus, panels or dish."""
+    import bmesh
+
+    source_mesh = obj.data.copy()
+    parts: list[bpy.types.Object] = []
+    for slot_idx in range(len(obj.material_slots)):
+        part = obj.copy()
+        part.data = source_mesh.copy()
+        part.name = f"{obj.name}_slot_{slot_idx:02d}"
+        bpy.context.scene.collection.objects.link(part)
+        bm = bmesh.new()
+        bm.from_mesh(part.data)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index != slot_idx], context="FACES")
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+        bm.to_mesh(part.data)
+        bm.free()
+        part.data.update()
+        part_tris = sum(len(p.vertices) - 2 for p in part.data.polygons)
+        if part_tris == 0:
+            me_tmp = part.data
+            bpy.data.objects.remove(part, do_unlink=True)
+            bpy.data.meshes.remove(me_tmp)
+            continue
+        part_ratio = min(1.0, max(ratio, MIN_MATERIAL_TRIS / part_tris))
+        if part_ratio < 1.0:
+            dec = part.modifiers.new("lod", "DECIMATE")
+            dec.decimate_type = "COLLAPSE"
+            dec.ratio = part_ratio
+            dec.use_collapse_triangulate = True
+            bpy.context.view_layer.objects.active = part
+            bpy.ops.object.modifier_apply(modifier=dec.name)
+            part.data.validate(verbose=False, clean_customdata=False)
+        parts.append(part)
+    bm = bmesh.new()
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    for part in parts:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.join()
+    obj.data.validate(verbose=False, clean_customdata=False)
+    bpy.data.meshes.remove(source_mesh)
+    if smooth_deg:
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        if obj.data.has_custom_normals:
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(smooth_deg))
+
+
 def render_picker(obj: bpy.types.Object, path: Path) -> None:
     """The picker's picture where NASA's own preview cannot serve: the rebuilt model from its front quarter, Cycles,
     one key light, transparent background, PICKER_EDGE pixels on its longer side, WebP."""
@@ -1038,13 +1106,16 @@ def main() -> None:
                     node.image = resized(node.image, {**TEXTURE_EDGE, **recipe.get("texture_edge", {})}[level], level)
             slot.material = mat
         if ratio < 1.0:
-            dec = obj.modifiers.new("lod", "DECIMATE")
-            dec.decimate_type = "COLLAPSE"
-            dec.ratio = ratio
-            dec.use_collapse_triangulate = True
-            bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.modifier_apply(modifier=dec.name)
-            obj.data.validate(verbose=False, clean_customdata=False)
+            if recipe.get("decimate_by_material"):
+                decimate_by_material(obj, ratio, recipe.get("smooth_deg"))
+            else:
+                dec = obj.modifiers.new("lod", "DECIMATE")
+                dec.decimate_type = "COLLAPSE"
+                dec.ratio = ratio
+                dec.use_collapse_triangulate = True
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.modifier_apply(modifier=dec.name)
+                obj.data.validate(verbose=False, clean_customdata=False)
         small = recipe.get("drop_parts_under_m", {}).get(level)
         if small:
             removed = drop_small_parts(obj, small)

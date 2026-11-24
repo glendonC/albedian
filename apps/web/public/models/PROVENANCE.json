@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "6f60fddff8ba06bb7b1d9c0911794c1925b7a3f794a7916423abd1116768abda",
+      "sha256": "5dedbcfc03b82c1fc83667dfc50add147d0f98825f321e83904abfda9a7c4f42",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1611,6 +1611,65 @@
         "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model is a small picture on white, which the picker shows as a white square."
       },
       "note": "Rendered from this folder's lod0 build of https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb."
+    },
+    {
+      "path": "hangar/odyssey/odyssey_lod0.glb",
+      "sha256": "13c3577e6d2e3ada9bfa4acccdc8041d580a507dd99368db87db05aebd8b0998",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft odyssey --out apps/web/public/models/hangar/odyssey",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and its gold and silver foils kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, the Russian space agency and IKI HEND mission emblem and three small printed labels on the solar panels painted over in the colour around them, as are the NASA logotype and three small printed labels in unused texture space, the solar array's cells keeping their texture with one roughness and no metalness, the gamma sensor shield and the dish and hinge brackets painted white or grey with NASA's baked shading moved to the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Odyssey/Mars%20Odyssey.glb (5801372 bytes, SHA-256 ac0faa8dbfb54aabcbe3d06886c3d98dd29d120fd49b1c9fa6abbfbed22b049a); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/odyssey/odyssey_lod1.glb",
+      "sha256": "fc5883113ea238ea4fee7a83ca62ea6a4fd56c257c607b2da8c8c3ea224d6f64",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft odyssey --out apps/web/public/models/hangar/odyssey",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Odyssey/Mars%20Odyssey.glb (5801372 bytes, SHA-256 ac0faa8dbfb54aabcbe3d06886c3d98dd29d120fd49b1c9fa6abbfbed22b049a); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/odyssey/odyssey_lod2.glb",
+      "sha256": "0c85e595b08f838dc958b1e9d1015cace45ce0215e691203fcb5b817fd5970d8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft odyssey --out apps/web/public/models/hangar/odyssey",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Odyssey/Mars%20Odyssey.glb (5801372 bytes, SHA-256 ac0faa8dbfb54aabcbe3d06886c3d98dd29d120fd49b1c9fa6abbfbed22b049a); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/odyssey/odyssey_picker.webp",
+      "sha256": "83ae52a1815d37f717738db9dd1c9ab144cfade2f3d4ec12aec2bd6553d5aecd",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft odyssey --out apps/web/public/models/hangar/odyssey",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Odyssey/Mars%20Odyssey.png (839607 bytes, SHA-256 71db35e3ff52316029d3e8b91da2446a069ace342de352be711af4e9ef4a1ac1)."
     },
     {
       "path": "hangar/osirisrex/osirisrex_lod0.glb",
