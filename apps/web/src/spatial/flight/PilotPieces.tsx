@@ -89,11 +89,18 @@ export function laptopPickerListMaxHeight(
 /** Laptop flight-pills bottom offset (32 px beside .ask-bar, or stepped 16 px above it), so CraftPicker re-measures. */
 export const FlightPillsBottomContext = createContext<number>(32);
 
+function typing(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  const tag = el?.tagName?.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable === true;
+}
+
 export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft | null) => void; phone?: boolean }> = ({ craft, onPick, phone = false }) => {
   const [open, setOpen] = useState(false);
   const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null)) ?? YOUR_VIEW_CHOICE;
   const list = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const pillsBottomPx = useContext(FlightPillsBottomContext);
   const [listMaxPx, setListMaxPx] = useState(() => laptopPickerListMaxHeight(typeof window === 'undefined' ? 900 : window.innerHeight || 900));
   useLayoutEffect(() => {
@@ -128,6 +135,45 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
   useEffect(() => {
     if (!open) return;
     list.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+  // Capture-phase keyboard handling when open: Escape closes the picker before Back to Moment hears it (yielding first
+  // to KeyboardHelp if its dialog is open), and ArrowUp/ArrowDown move focus across [role="option"] rows without
+  // nudging the 3D camera behind it
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        typing(event.target) ||
+        document.querySelector('.keys-help [role="dialog"]')
+      ) {
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        trigger.current?.focus();
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const options = [...(list.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
+        if (options.length === 0) return;
+        const activeIdx = options.indexOf(document.activeElement as HTMLButtonElement);
+        const selectedIdx = options.findIndex((el) => el.getAttribute('aria-selected') === 'true');
+        const baseIdx = activeIdx >= 0 ? activeIdx : selectedIdx >= 0 ? selectedIdx : 0;
+        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        const nextIdx = activeIdx >= 0 ? Math.max(0, Math.min(options.length - 1, baseIdx + delta)) : baseIdx;
+        const next = options[nextIdx];
+        next?.focus();
+        next?.scrollIntoView?.({ block: 'nearest' });
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [open]);
   const choose = (choice: CraftChoice) => {
     onPick(choice.id ? (CRAFTS[choice.id] ?? null) : null);
@@ -247,6 +293,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
         </div>
       )}
       <button
+        ref={trigger}
         type="button"
         className={`look-second look-second--with-circle ${phone ? 'look-size-phone' : 'look-size-compact'}`}
         aria-expanded={open}
@@ -321,17 +368,47 @@ export const PhoneTagRow: React.FC<{ open: boolean; onToggle: () => void }> = ({
 );
 
 /** D30 item 5: the whole disclosure as the phone card sheet, the tag row on top, each line at 13 px, ink 66 percent. */
-export const DetailsSheet: React.FC<{ lines: readonly string[]; onClose: () => void }> = ({ lines, onClose }) => (
-  <OverAskBar>
-  <div className="details-sheet" data-testid="details-sheet" data-hud-interactive="true" style={{ ...PHONE_SHEET, padding: '14px 18px 20px' }}>
-    <PhoneTagRow open onToggle={onClose} />
-    <ul style={{ listStyle: 'none', margin: '14px 0 0', padding: 0, display: 'grid', gap: 9 }}>
-      {lines.map((line) => (
-        <li key={line} style={{ fontSize: 13, lineHeight: 1.45, color: INK_66 }}>
-          {line}
-        </li>
-      ))}
-    </ul>
-  </div>
-  </OverAskBar>
-);
+export const DetailsSheet: React.FC<{ lines: readonly string[]; onClose: () => void }> = ({ lines, onClose }) => {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    let escaped = false;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        typing(event.target) ||
+        document.querySelector('.keys-help [role="dialog"]')
+      ) {
+        return;
+      }
+      event.preventDefault();
+      escaped = true;
+      close.current();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      if (escaped) {
+        document.querySelector<HTMLButtonElement>('[data-testid="details-circle"]')?.focus();
+      }
+    };
+  }, []);
+  return (
+    <OverAskBar>
+      <div className="details-sheet" data-testid="details-sheet" data-hud-interactive="true" style={{ ...PHONE_SHEET, padding: '14px 18px 20px' }}>
+        <PhoneTagRow open onToggle={onClose} />
+        <ul style={{ listStyle: 'none', margin: '14px 0 0', padding: 0, display: 'grid', gap: 9 }}>
+          {lines.map((line) => (
+            <li key={line} style={{ fontSize: 13, lineHeight: 1.45, color: INK_66 }}>
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </OverAskBar>
+  );
+};

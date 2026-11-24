@@ -422,9 +422,10 @@ export const SpatialObservatoryViewport: React.FC<
   // Keyboard navigation (WASD + Arrows)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (entryStageActive) return;
-      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return;
+      if (entryStageActive || e.defaultPrevented) return;
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable) return;
       const renderer = rendererRef.current;
       if (!renderer) return;
 
@@ -452,9 +453,11 @@ export const SpatialObservatoryViewport: React.FC<
           renderer.nudgeLook(-0.08, 0);
           break;
         case 'ArrowUp':
+          if (document.querySelector('[role="listbox"]')) break;
           renderer.nudgeLook(0, 0.06);
           break;
         case 'ArrowDown':
+          if (document.querySelector('[role="listbox"]')) break;
           renderer.nudgeLook(0, -0.06);
           break;
       }

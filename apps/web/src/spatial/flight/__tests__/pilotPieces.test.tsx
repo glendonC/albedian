@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CRAFTS } from '../crafts.js';
 import { FlightPills, laptopFlightPillsBottomPx } from '../ConePieces.js';
-import { CraftPicker, PilotTrip, laptopPickerListMaxHeight } from '../PilotPieces.js';
+import { CraftPicker, DetailsCircle, DetailsSheet, PilotTrip, laptopPickerListMaxHeight } from '../PilotPieces.js';
 import { FlightClock, CRAFT_CHOICES } from '../pilotReadout.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -242,6 +242,90 @@ describe('CraftPicker (D26 item 3, D35)', () => {
       askBar.remove();
       vi.restoreAllMocks();
     }
+  });
+
+  it('closes CraftPicker and DetailsSheet on Escape returning focus to the trigger, and steps option focus on ArrowUp and ArrowDown', async () => {
+    const key = (target: EventTarget, init: KeyboardEventInit) => {
+      const ev = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      act(() => {
+        target.dispatchEvent(ev);
+      });
+      return ev;
+    };
+
+    // 1. Laptop CraftPicker: ArrowDown/ArrowUp move focus across options with preventDefault; Escape closes and focuses trigger
+    await act(async () => root.render(createElement(CraftPicker, { craft: CRAFTS['voyager-1']!, onPick: () => {} })));
+    const trigger = container.querySelector('[data-testid="craft-picker"] > button') as HTMLButtonElement;
+    trigger.focus();
+    await act(async () => trigger.click());
+    expect(container.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+
+    // First ArrowDown from trigger focuses the selected option (voyager-1, index 1), next ArrowDown advances to voyager-2 (index 2), ArrowUp returns to voyager-1
+    const down1 = key(trigger, { key: 'ArrowDown' });
+    expect(down1.defaultPrevented).toBe(true);
+    expect((document.activeElement as HTMLElement).getAttribute('data-craft')).toBe('voyager-1');
+    const down2 = key(document.activeElement!, { key: 'ArrowDown' });
+    expect(down2.defaultPrevented).toBe(true);
+    expect((document.activeElement as HTMLElement).getAttribute('data-craft')).toBe('voyager-2');
+    const up1 = key(document.activeElement!, { key: 'ArrowUp' });
+    expect(up1.defaultPrevented).toBe(true);
+    expect((document.activeElement as HTMLElement).getAttribute('data-craft')).toBe('voyager-1');
+
+    // Escape inside an input or with ctrlKey or while KeyboardHelp dialog is open leaves CraftPicker open
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    const helpWrap = document.createElement('div');
+    helpWrap.className = 'keys-help';
+    const helpDialog = document.createElement('section');
+    helpDialog.setAttribute('role', 'dialog');
+    helpWrap.appendChild(helpDialog);
+    document.body.appendChild(helpWrap);
+    try {
+      expect(key(input, { key: 'Escape' }).defaultPrevented).toBe(false);
+      expect(container.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+      expect(key(window, { key: 'Escape' }).defaultPrevented).toBe(false);
+      expect(container.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+    } finally {
+      input.remove();
+      helpWrap.remove();
+    }
+    expect(key(window, { key: 'Escape', ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(container.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+
+    const esc = key(window, { key: 'Escape' });
+    expect(esc.defaultPrevented).toBe(true);
+    expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    // 2. Phone DetailsSheet: Escape calls onClose with preventDefault and returns focus to details-circle
+    let detailsOpen = true;
+    const renderDetails = () =>
+      createElement(
+        'div',
+        null,
+        createElement(
+          'div',
+          { style: { visibility: detailsOpen ? 'hidden' : 'visible' } },
+          createElement(DetailsCircle, { open: detailsOpen, onToggle: () => (detailsOpen = !detailsOpen) }),
+        ),
+        detailsOpen
+          ? createElement(DetailsSheet, {
+              lines: ['Drawn or computed by the app; not measured in the source recording.'],
+              onClose: () => {
+                detailsOpen = false;
+                act(() => {
+                  root.render(renderDetails());
+                });
+              },
+            })
+          : null,
+      );
+    await act(async () => root.render(renderDetails()));
+    expect(document.querySelector('[data-testid="details-sheet"]')).not.toBeNull();
+    const sheetEsc = key(window, { key: 'Escape' });
+    expect(sheetEsc.defaultPrevented).toBe(true);
+    expect(document.querySelector('[data-testid="details-sheet"]')).toBeNull();
+    expect(document.activeElement).toBe(container.querySelector('[data-testid="details-circle"]'));
   });
 });
 
