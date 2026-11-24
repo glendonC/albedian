@@ -3,7 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { createEmptyObservationSession, dispatchAlbedianAction } from '@albedian/observation';
+import { createEmptyObservationSession, dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { HOME_SCREEN, choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 import type { Arrival } from '../arrival.js';
@@ -567,6 +567,37 @@ describe('the viewport shows the approved star card over the photo, above phone 
     act(() => pill('Your photo').click());
     expect(current.spatialView.mode).toBe('source_2d');
     expect(current.lastStatusBanner).toMatch(/^Returned to Moment/);
+  });
+
+  // clip-playing-checkpoint-1: Real sky leaves through the viewport's own reducer call, so the viewport sets the clock to
+  // a playing clip's live time first; it also hands App that live time, for the commands that leave through App
+  it('leaves a playing clip for Real sky at the frame on screen, and hands App the live time', () => {
+    const base = createSyntheticCalibratedSession();
+    let current = { ...base, isPlaying: false, currentSourceTimeSec: 1.5, spatialView: { ...base.spatialView, mode: 'source_2d' } } as ObservationSession;
+    const setSession = (update: ObservationSession | ((prev: ObservationSession) => ObservationSession)) => {
+      current = typeof update === 'function' ? update(current) : update;
+    };
+    const clipClockRef: { current: (() => number | null) | null } = { current: null };
+    open(current, { setSession, clipClockRef });
+    const video = q(`${STAGE} video`) as HTMLVideoElement;
+    expect(video).not.toBeNull();
+    let paused = true;
+    Object.defineProperty(video, 'paused', { configurable: true, get: () => paused });
+    Object.defineProperty(video, 'currentTime', { configurable: true, get: () => 7.25, set: () => {} });
+    // Standing still, there is no live time to hand over
+    expect(clipClockRef.current!()).toBeNull();
+    // The clip's own play event (the Play circle by pointer or key) writes playing to the session
+    paused = false;
+    act(() => {
+      video.dispatchEvent(new Event('play'));
+    });
+    expect(current.isPlaying).toBe(true);
+    expect(clipClockRef.current!()).toBe(7.25);
+    act(() => ([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === 'Real sky')!).click());
+    expect(current.machines.navigation).toBe('sky_registered');
+    const checkpoint = returnCheckpointOf(current)!;
+    expect(checkpoint.sourceTimeSec).toBe(7.25);
+    expect(checkpoint.playbackWasPlaying).toBe(true);
   });
 
   it('never draws Real sky over a solve that did not pass its check, whatever its status word', () => {

@@ -58,6 +58,12 @@ export interface SourcePhotoStageProps {
  * The notice for a file the browser cannot draw (C18, decided by the lead 12:47): the kind's plain name, never a media
  * type: HEIC photos, HEVC clips, or this kind of file where there is no plain name.
  */
+/** Plays a clip element; a browser that refuses (it is muted, so none should) leaves it where it stands. */
+function playAgain(video: HTMLVideoElement): void {
+  const started = video.play();
+  if (started && typeof started.catch === 'function') started.catch(() => {});
+}
+
 export function undrawableNotice(asset: Pick<SourceAsset, 'mediaKind' | 'mimeType' | 'videoCodec'>): string {
   const clip = asset.mediaKind === 'video';
   const type = (asset.mimeType ?? '').toLowerCase();
@@ -106,6 +112,19 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     const video = videoRef.current;
     if (video && video.readyState >= 1) seekToClock(video);
   }, [asset?.uri, clockSec, shown]);
+
+  // Back to Moment (clip-playing-checkpoint-1, AGENTS.md 1.5): when the recording comes back on screen, from the sky
+  // (where the clip stayed drawn under it, and may have played on) or drawn again from 3D (onLoadedMetadata below), the
+  // clip stands at the restored frame and plays again if the restored session says it was playing. This runs only when
+  // the recording comes back on screen (a new clip element has no metadata yet at its first draw), so a clip on screen
+  // all along is never started here: its own Play and pause are the person's
+  const onSource = isSourcePhotoShown(session);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!onSource || !video || video.readyState < 1) return;
+    seekToClock(video);
+    if (session.isPlaying && video.paused) playAgain(video);
+  }, [onSource]);
 
   if (!asset || !shown) return null;
 
@@ -213,6 +232,8 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           onLoadedMetadata={(e) => {
             seekToClock(e.currentTarget);
             reportDecodedSize(e.currentTarget.videoWidth, e.currentTarget.videoHeight);
+            // Drawn again at Back to Moment from 3D with the restored session playing: it plays from the restored frame
+            if (session.isPlaying && onSource && e.currentTarget.paused) playAgain(e.currentTarget);
           }}
         />
       ) : (

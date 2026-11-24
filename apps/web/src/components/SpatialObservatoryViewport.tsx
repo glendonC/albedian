@@ -61,12 +61,15 @@ import { useRestoration } from '../reveal/restoration.js';
 import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
+import { liveClipSec, useClipPlayback, withClipClock } from '../reveal/clipPlayback.js';
 import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
 
 export interface SpatialObservatoryViewportProps {
   session: ObservationSession;
   setSession: React.Dispatch<React.SetStateAction<ObservationSession>>;
+  /** Where the playing clip's live time is handed to App, so a command that leaves the recording saves it. */
+  clipClockRef?: React.MutableRefObject<(() => number | null) | null>;
   selectedFinding: CelestialFinding | null;
   discoveredMedia: DiscoveredMediaItem[];
   activeDiscoveredId: string | null;
@@ -146,6 +149,7 @@ export const SpatialObservatoryViewport: React.FC<
 > = ({
   session,
   setSession,
+  clipClockRef,
   selectedFinding,
   discoveredMedia,
   activeDiscoveredId,
@@ -215,6 +219,19 @@ export const SpatialObservatoryViewport: React.FC<
       clipVideo.removeEventListener('pause', onPause);
     };
   }, [clipVideo]);
+  // The clip's own play and pause, its end included, written to the session (clip-playing-checkpoint-1), and its live
+  // time handed to App for the commands that leave the recording
+  useClipPlayback(clipVideo, setSession);
+  const clipVideoNow = useRef(clipVideo);
+  clipVideoNow.current = clipVideo;
+  useEffect(() => {
+    if (!clipClockRef) return undefined;
+    const clock = () => liveClipSec(clipVideoNow.current);
+    clipClockRef.current = clock;
+    return () => {
+      if (clipClockRef.current === clock) clipClockRef.current = null;
+    };
+  }, [clipClockRef]);
   const clipActive = !entryStageActive && !arrival && !skyOver && session.sourceAsset?.mediaKind === 'video' && isSourcePhotoShown(session);
   const liveSession = clipActive && clipPlaying ? ({ ...session, isPlaying: true } as ObservationSession) : session;
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), over a verified or pose-estimated photo or clip;
@@ -513,9 +530,11 @@ export const SpatialObservatoryViewport: React.FC<
   // The sky the solve allows: measured over a verified solve, predicted otherwise (as main's panel opened it)
   const showSky = useCallback(
     (mode: 'measured' | 'predicted') =>
-      setSession((cur) => {
-        const solution = cur.observationSolution;
-        if (!solution) return cur;
+      setSession((now) => {
+        const solution = now.observationSolution;
+        if (!solution) return now;
+        // A playing clip's live time first, so the moment saved on leaving is the frame on screen
+        const cur = withClipClock(now, liveClipSec(clipVideoNow.current));
         return dispatchAlbedianAction(cur, {
           type: 'sky.show',
           requestId: `ui-sky-show-${cur.viewRevision}`,

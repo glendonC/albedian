@@ -56,6 +56,7 @@ import {
   type SpeechRecognitionLike,
 } from './voice/speechInput.js';
 import type { HomeRefusal } from './components/homeRefusal.js';
+import { withClipClock } from './reveal/clipPlayback.js';
 import './styles/fonts.css';
 import './styles/albedian.css';
 
@@ -245,9 +246,14 @@ export const App: React.FC = () => {
     runCommand(utterance, modality, pointer);
   };
 
+  // The playing clip's live time, handed over by the viewport (clip-playing-checkpoint-1)
+  const clipClockRef = useRef<(() => number | null) | null>(null);
+
   const runCommand = (utterance: string, modality: 'voice' | 'text' | 'pointer', pointer: ActionContext['recentPointer']) => {
     setAnswer(null);
-    const asked = sessionRef.current;
+    // While a clip plays, the clock is first set to its live time, so a command that leaves the recording saves the
+    // frame on screen and Back to Moment returns the clip playing there (LEAD ANSWER to WEB-UX 15:35 on 24 Nov)
+    const asked = withClipClock(sessionRef.current, clipClockRef.current?.() ?? null);
     const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
     setSession(result.session);
     // A command it cannot carry out shows its refusal where answers show, over the laptop reveal (command, decided
@@ -528,6 +534,7 @@ export const App: React.FC = () => {
         commandText={commandText}
         setCommandText={setCommandText}
         onRunUtterance={(utt, mod) => runUtterance(utt, mod)}
+        clipClockRef={clipClockRef}
         onSelectFinding={(id, coords) => handleSelectFinding(id, coords)}
         onPushToTalk={handlePushToTalk}
         onFileChosen={handleFileChosen}
