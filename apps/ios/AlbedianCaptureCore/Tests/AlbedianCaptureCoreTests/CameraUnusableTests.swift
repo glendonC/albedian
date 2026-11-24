@@ -175,6 +175,12 @@ final class CameraUnusableTests: XCTestCase {
         XCTAssertTrue(model.contains("case.videoDeviceNotAvailableDueToSystemPressure?:.interruptedBySystemPressure"))
         XCTAssertTrue(model.contains("cameraWatch.forEach(NotificationCenter.default.removeObserver)"), "no watch left after aiming")
         XCTAssertTrue(session.contains("funcconfigure()->Failure?{ifdevice!=nil{returnnil}"), "the camera set up once")
+        // Try again starts the session after a set-up that worked, and after an interruption only starts it again (AUDIT-C's
+        // T1 on camera-unusable-m1: without the start the state reads live over a black preview, the failure this cures)
+        let tryAgain = try XCTUnwrap(model.range(of: "functryCameraAgain(){"), "Try again's own function")
+        let tryAgainBody = String(model[tryAgain.upperBound...].prefix(220))
+        XCTAssertTrue(tryAgainBody.hasPrefix("ifcase.interrupted=aimCamera{returncamera.start()}cameraProblem=camera.configure()cameraReported(Self.cameraEvent(cameraProblem))ifcameraProblem==nil{camera.start()}}"),
+                      "Try again sets up and starts the camera: \(tryAgainBody)")
         XCTAssertEqual(model.components(separatedBy: "self.stop(RefusalSentence.of(detail)??detail,").count - 1, 2, "both send paths")
     }
 }
