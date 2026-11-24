@@ -82,3 +82,215 @@ describe('isRealSkyShown', () => {
     expect(isRealSkyShown(session)).toBe(false);
   });
 });
+
+// milkyway-flight-one (ruled 16:18 on 24 Nov): in flight the layer shows the starless glow in a canvas of its own, so Go
+// there dissolves the photograph into it; Real sky itself stays ESO's photograph as published.
+describe('RealSkyLayer in flight: the starless glow', () => {
+  const asked: string[] = [];
+  class RecordingImage extends FailingImage {
+    override set src(url: string) {
+      asked.push(url);
+    }
+  }
+  beforeEach(() => {
+    asked.length = 0;
+    vi.stubGlobal('Image', RecordingImage);
+  });
+
+  it('asks for the starless glow, in a canvas of its own, when there', async () => {
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session: poseSession(sample('plate_calibrated') as ObservationSolution), rect: null, viewportWidthPx: 1440, viewportHeightPx: 900, there: true }));
+    });
+    expect(asked).toContain('/textures/eso_milkyway_panorama.jpg');
+    expect(asked).toContain('/textures/eso_milkyway_diffuse_6k.webp');
+    const glow = container.querySelector('canvas.real-sky__glow');
+    expect(glow).not.toBeNull();
+    expect(glow!.getAttribute('data-state')).toBe('loading');
+    expect(glow!.classList.contains('is-drawn')).toBe(false);
+  });
+
+  it('moves the glow with the stars on the arrival, over the same area as the photograph (17:18 ruling)', async () => {
+    const shift = { fullPx: [64, -32] as const, nowPx: [16, -8] as const };
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session: poseSession(sample('plate_calibrated') as ObservationSolution), rect: null, viewportWidthPx: 1440, viewportHeightPx: 900, there: true, shift }));
+    });
+    const photo = container.querySelector<HTMLCanvasElement>('canvas.real-sky__canvas')!;
+    const glow = container.querySelector<HTMLCanvasElement>('canvas.real-sky__glow')!;
+    expect(glow.style.transform).toBe('translate(16px, -8px)');
+    for (const key of ['left', 'top', 'width', 'height', 'transform'] as const) expect(glow.style[key]).toBe(photo.style[key]);
+    expect([glow.width, glow.height]).toEqual([photo.width, photo.height]);
+    expect(glow.width).toBeGreaterThan(1440);
+  });
+
+  it('never asks for the glow in Real sky, before Go there', async () => {
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session: poseSession(sample('plate_calibrated') as ObservationSolution), rect: null, viewportWidthPx: 1440, viewportHeightPx: 900 }));
+    });
+    expect(asked).toEqual(['/textures/eso_milkyway_panorama.jpg']);
+    expect(container.querySelector('canvas.real-sky__glow')).toBeNull();
+  });
+});
+
+describe('RealSkyLayer in flight: the glow fills the planets', () => {
+  it('draws the glow canvas with the planet-filling shader, and the photograph with its own', async () => {
+    const { FLIGHT_GLOW_FRAGMENT } = await import('../../spatial/sky/flightMilkyWay.js');
+    const compiled = new Map<HTMLCanvasElement, string[]>();
+    // A WebGL 2 stand-in that records each canvas's shader sources and says yes to every step
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      const canvas = this;
+      return new Proxy({}, {
+        get: (_t, p) => {
+          if (p === 'shaderSource') return (_s: unknown, src: string) => compiled.set(canvas, [...(compiled.get(canvas) ?? []), src]);
+          if (p === 'getShaderParameter' || p === 'getProgramParameter') return () => true;
+          if (p === 'getError' || p === 'NO_ERROR') return p === 'NO_ERROR' ? 0 : () => 0;
+          if (typeof p === 'string' && /^[A-Z_0-9]+$/.test(p)) return 1;
+          return () => ({});
+        },
+      }) as unknown as RenderingContext;
+    } as never);
+    class LoadingImage extends FailingImage {
+      override set src(_url: string) {
+        setTimeout(() => this.onload?.(), 0);
+      }
+    }
+    vi.stubGlobal('Image', LoadingImage);
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session: poseSession(sample('plate_calibrated') as ObservationSolution), rect: null, viewportWidthPx: 1440, viewportHeightPx: 900, there: true }));
+    });
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    const glow = container.querySelector<HTMLCanvasElement>('canvas.real-sky__glow')!;
+    const photo = container.querySelector<HTMLCanvasElement>('canvas.real-sky__canvas')!;
+    expect(glow.classList.contains('is-drawn')).toBe(true);
+    expect(compiled.get(glow)).toContain(FLIGHT_GLOW_FRAGMENT);
+    expect(compiled.get(photo)).not.toContain(FLIGHT_GLOW_FRAGMENT);
+    vi.restoreAllMocks();
+  });
+
+  it('draws the glow over the same moved area as the photograph on the arrival (its view and origin)', async () => {
+    const views = new Map<HTMLCanvasElement, number[][]>();
+    // A WebGL 2 stand-in that records each canvas's two-number uniforms (the view's size, then its origin)
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      const canvas = this;
+      return new Proxy({}, {
+        get: (_t, p) => {
+          if (p === 'uniform2f') return (_l: unknown, x: number, y: number) => views.set(canvas, [...(views.get(canvas) ?? []), [x, y]]);
+          if (p === 'getShaderParameter' || p === 'getProgramParameter') return () => true;
+          if (p === 'getError' || p === 'NO_ERROR') return p === 'NO_ERROR' ? 0 : () => 0;
+          if (typeof p === 'string' && /^[A-Z_0-9]+$/.test(p)) return 1;
+          return () => ({});
+        },
+      }) as unknown as RenderingContext;
+    } as never);
+    class LoadingImage extends FailingImage {
+      override set src(_url: string) {
+        setTimeout(() => this.onload?.(), 0);
+      }
+    }
+    vi.stubGlobal('Image', LoadingImage);
+    const session = poseSession(sample('plate_calibrated') as ObservationSolution);
+    const shift = { fullPx: [64, -32] as const, nowPx: [16, -8] as const };
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session, rect: null, viewportWidthPx: 1440, viewportHeightPx: 900, there: true, shift }));
+    });
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    const glow = container.querySelector<HTMLCanvasElement>('canvas.real-sky__glow')!;
+    const photo = container.querySelector<HTMLCanvasElement>('canvas.real-sky__canvas')!;
+    expect(glow.classList.contains('is-drawn')).toBe(true);
+    expect(views.get(photo)).toEqual([[1440 + 64, 900 + 32], [-64, 0]]);
+    expect(views.get(glow)).toEqual(views.get(photo));
+    // A new star flown to: a new move, and the glow is drawn again over the new area with the photograph
+    const next = { fullPx: [-40, 20] as const, nowPx: [0, 0] as const };
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session, rect: null, viewportWidthPx: 1440, viewportHeightPx: 900, there: true, shift: next }));
+    });
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    expect(views.get(photo)!.slice(-2)).toEqual([[1440 + 40, 900 + 20], [0, -20]]);
+    expect(views.get(glow)!.slice(-2)).toEqual(views.get(photo)!.slice(-2));
+    vi.restoreAllMocks();
+  });
+});
+
+// AUDIT-D on milkyway-flight-one (18:18): in flight the photograph is hidden, so the layer says whether the glow drew;
+// the flight's Milky Way line follows that, never the photograph's state
+describe('RealSkyLayer in flight: says whether the glow drew', () => {
+  /** A WebGL 2 stand-in that says yes to every step. */
+  function yesGl() {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() =>
+      new Proxy({}, {
+        get: (_t, p) => {
+          if (p === 'getShaderParameter' || p === 'getProgramParameter') return () => true;
+          if (p === 'getError' || p === 'NO_ERROR') return p === 'NO_ERROR' ? 0 : () => 0;
+          if (typeof p === 'string' && /^[A-Z_0-9]+$/.test(p)) return 1;
+          return () => ({});
+        },
+      })) as never);
+  }
+  /** The photograph loads; the glow loads, fails or never answers, as asked. */
+  function images(glow: 'loads' | 'fails' | 'waits') {
+    class SomeImage extends FailingImage {
+      override set src(url: string) {
+        if (!url.includes('diffuse')) setTimeout(() => this.onload?.(), 0);
+        else if (glow === 'loads') setTimeout(() => this.onload?.(), 0);
+        else if (glow === 'fails') setTimeout(() => this.onerror?.(), 0);
+      }
+    }
+    vi.stubGlobal('Image', SomeImage);
+  }
+  async function render(onDrawn: (d: boolean) => void, onGlowDrawn: (d: boolean) => void) {
+    await act(async () => {
+      root.render(createElement(RealSkyLayer, { session: poseSession(sample('plate_calibrated') as ObservationSolution), rect: null, viewportWidthPx: 1440, viewportHeightPx: 900, there: true, onDrawn, onGlowDrawn }));
+    });
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+  }
+
+  it('says the glow is not drawn when it fails, though the photograph drew', async () => {
+    yesGl();
+    images('fails');
+    const onDrawn = vi.fn();
+    const onGlowDrawn = vi.fn();
+    await render(onDrawn, onGlowDrawn);
+    expect(onDrawn).toHaveBeenLastCalledWith(true);
+    expect(container.querySelector('canvas.real-sky__glow')!.getAttribute('data-state')).toBe('failed');
+    expect(onGlowDrawn).not.toHaveBeenCalledWith(true);
+    expect(onGlowDrawn).toHaveBeenLastCalledWith(false);
+    vi.restoreAllMocks();
+  });
+
+  it('says the glow is not drawn while it is still loading, though the photograph drew', async () => {
+    yesGl();
+    images('waits');
+    const onDrawn = vi.fn();
+    const onGlowDrawn = vi.fn();
+    await render(onDrawn, onGlowDrawn);
+    expect(onDrawn).toHaveBeenLastCalledWith(true);
+    expect(container.querySelector('canvas.real-sky__glow')!.getAttribute('data-state')).toBe('loading');
+    expect(onGlowDrawn).not.toHaveBeenCalledWith(true);
+    vi.restoreAllMocks();
+  });
+
+  it('says the glow is drawn once it is, and not as the layer leaves', async () => {
+    yesGl();
+    images('loads');
+    const onGlowDrawn = vi.fn();
+    await render(() => {}, onGlowDrawn);
+    expect(onGlowDrawn).toHaveBeenLastCalledWith(true);
+    await act(async () => root.render(createElement('div')));
+    expect(onGlowDrawn).toHaveBeenLastCalledWith(false);
+    vi.restoreAllMocks();
+  });
+});
+
+// The ruled level (16:18): there, the photograph gives way and the drawn glow stands at full, never dimmed
+describe('the flight\'s Milky Way at its own level', () => {
+  it('shows the drawn glow at opacity 1 there, the photograph at 0', () => {
+    const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rule = (selector: string) => {
+      const at = css.indexOf(`${selector} {`);
+      expect(at).toBeGreaterThanOrEqual(0);
+      return css.slice(at, css.indexOf('}', at));
+    };
+    expect(rule('.real-sky.is-there .real-sky__glow.is-drawn')).toMatch(/opacity:\s*1;/);
+    expect(css).toMatch(/\.real-sky\.is-there \.real-sky__canvas,\s*\.real-sky__glow\s*\{[^}]*opacity:\s*0;/);
+    expect(css).not.toMatch(/\.real-sky\.is-there\.is-shown\s*\{[^}]*opacity:\s*0\.3/);
+  });
+});

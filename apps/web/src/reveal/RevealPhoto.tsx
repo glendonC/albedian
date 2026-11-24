@@ -22,6 +22,7 @@ import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
 import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
 import { arrivalShiftOf } from '../spatial/flight/arrival.js';
+import { FLIGHT_MILKY_WAY_LINE, flightMilkyWayLineShown } from '../spatial/sky/flightMilkyWay.js';
 import { CraftPicker, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
 import { phoneCraftFraming } from '../spatial/flight/craftScene.js';
 import { CRAFT_PICKER_FOOT, craftSpeedSource } from '../spatial/flight/pilotReadout.js';
@@ -126,7 +127,7 @@ const FLIGHT_LINES = {
   spec: 'Drawn or computed by the app; not measured in the source recording.',
   stars: 'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
   rings: 'Rings: the stars your photo matched.',
-  milkyWay: 'Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.',
+  milkyWay: FLIGHT_MILKY_WAY_LINE,
 } as const;
 import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { threeFigures, type FlightReadout } from './flightView.js';
@@ -406,6 +407,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const [steered, setSteered] = useState<{ fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null>(null);
   // What is only true from Earth (the panorama, the photo-frame marks) leaves in the cone view and while steering
   const earthOnly = cone || steering;
+  // milkyway-flight-one: while steering the sky is the starless glow's dome, told by the star layer once it has drawn
+  const [domeDrawn, setDomeDrawn] = useState(false);
+  // ...and at a star the starless glow, told by the Real sky layer once it has drawn (AUDIT-D 18:18)
+  const [glowDrawn, setGlowDrawn] = useState(false);
   // Free flight has no star ahead, so the readout keeps "from Earth" only (D26 item 6)
   const shownFlight =
     flight && steering && steered
@@ -808,7 +813,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       ) : phone && (!skyLineShown || there) ? null : there ? (
         // The flight's column from the flight's first frame (3D stars, rings and any craft draw before the panorama
-        // finishes loading, and through a Back to Moment return); the Milky Way line waits for skyOnScreen below
+        // finishes loading, and through a Back to Moment return); the Milky Way line waits for the glow, or the dome while steering, below
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {cone ? (
@@ -825,8 +830,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
               <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>
               {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
-              {/* The Milky Way line names the panorama, so only once it has drawn */}
-              {!steering && skyOnScreen && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
+              {/* The Milky Way line names the sky, so only once it has drawn (the dome while steering) */}
+              {flightMilkyWayLineShown({ steering, glowDrawn, domeDrawn }) && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
               {/* While steering, D26 item 6's plain lines at 13 px, ink 66 percent */}
               {steering &&
                 STEER_LINES.map((line) => (
@@ -1010,8 +1015,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     >
       {/* The room to scroll to Restore, 16 px under Ask out loud (D38 item 1) */}
       {phoneRestoreOffered && <div className="reveal-phone-room" aria-hidden="true" />}
-      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
+      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} onGlowDrawn={setGlowDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} onSkyDome={setDomeDrawn} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {leader.mounted && leaderShape && !earthOnly && (
@@ -1288,7 +1293,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                   FLIGHT_LINES.stars,
                   FLIGHT_LINES.rings,
                   ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
-                  ...(steering ? [] : [FLIGHT_LINES.milkyWay]),
+                  ...(flightMilkyWayLineShown({ steering, glowDrawn, domeDrawn }) ? [FLIGHT_LINES.milkyWay] : []),
                   ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
                   ...(craft ? [CRAFT_PICKER_FOOT] : []),
                 ]

@@ -4,6 +4,7 @@ import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { PHONE_SLOT } from './phoneSlot.js';
 import { loadPanoramaRegistration, type PanoramaRegistration } from '../spatial/sky/skyRegistration.js';
 import { realSkyGrid } from './realSkyGrid.js';
+import { FLIGHT_GLOW_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../spatial/sky/flightMilkyWay.js';
 
 /** ESO's Milky Way panorama (eso0932a) as the app serves it, byte for byte as ESO's large file (textures/PROVENANCE.json). */
 export const REAL_SKY_PANORAMA_URL = '/textures/eso_milkyway_panorama.jpg';
@@ -136,12 +137,12 @@ export function realSkyArea(viewW: number, viewH: number, fullShiftPx: readonly 
   return { x0, y0, widthPx: Math.max(viewW, viewW - dx) - x0, heightPx: Math.max(viewH, viewH - dy) - y0 };
 }
 
-function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: ObservationSession, registration: PanoramaRegistration, viewW: number, viewH: number, area = realSkyArea(viewW, viewH, null)): boolean {
+function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: ObservationSession, registration: PanoramaRegistration, viewW: number, viewH: number, area = realSkyArea(viewW, viewH, null), fragment: string = FRAGMENT): boolean {
   const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
   const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
   if (!grid || !gl) return false;
   const vs = compile(gl, gl.VERTEX_SHADER, VERTEX);
-  const fs = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
+  const fs = compile(gl, gl.FRAGMENT_SHADER, fragment);
   const program = gl.createProgram();
   if (!vs || !fs || !program) return false;
   gl.attachShader(program, vs);
@@ -212,6 +213,8 @@ export const RealSkyLayer: React.FC<{
   leaving?: boolean;
   /** Told whether the panorama is drawn: false while it loads, when it fails, and as the layer leaves. */
   onDrawn?: (drawn: boolean) => void;
+  /** In flight: told whether the starless glow is drawn, false while it loads, when it fails, and as the layer leaves. */
+  onGlowDrawn?: (drawn: boolean) => void;
   /** At phone width: the bands above and below the photo's slot shaded instead of the side columns. */
   phone?: boolean;
   /** There, after Go there: on the phone, the shade under the taller readout. */
@@ -223,11 +226,15 @@ export const RealSkyLayer: React.FC<{
   shift?: { readonly fullPx: readonly [number, number]; readonly nowPx: readonly [number, number] } | null;
   /** There on the phone: the readout's measured top, which D30's scrim rises to meet; the slot's shade without it. */
   readoutTopPx?: number | null;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false, there = false, readoutTopPx = null, shift = null }) => {
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, onGlowDrawn, phone = false, there = false, readoutTopPx = null, shift = null }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
   const moving = shift !== null && (shift.fullPx[0] !== 0 || shift.fullPx[1] !== 0);
   const area = realSkyArea(viewportWidthPx, viewportHeightPx, moving ? shift!.fullPx : null);
+  // milkyway-flight-one: in flight the starless glow in a canvas of its own, asked for at the first Go there
+  const glowCanvas = useRef<HTMLCanvasElement>(null);
+  const [glowState, setGlowState] = useState<LayerState | 'idle'>('idle');
+  const glowWanted = there || glowState !== 'idle';
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
   // The reveal's status follows what is on screen (the auditor's verdict on unit-realsky-1)
   const told = useRef(onDrawn);
@@ -236,6 +243,13 @@ export const RealSkyLayer: React.FC<{
     told.current?.(state === 'drawn');
   }, [state]);
   useEffect(() => () => told.current?.(false), []);
+  // milkyway-flight-one: in flight the photograph is hidden, so what the flight's line names is the glow (AUDIT-D 18:18)
+  const toldGlow = useRef(onGlowDrawn);
+  toldGlow.current = onGlowDrawn;
+  useEffect(() => {
+    toldGlow.current?.(glowState === 'drawn');
+  }, [glowState]);
+  useEffect(() => () => toldGlow.current?.(false), []);
 
   useEffect(() => {
     let current = true;
@@ -259,6 +273,30 @@ export const RealSkyLayer: React.FC<{
     };
   }, [session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx, area.x0, area.y0, area.widthPx, area.heightPx]);
 
+  useEffect(() => {
+    if (!glowWanted) return undefined;
+    let current = true;
+    setGlowState('loading');
+    const image = new Image();
+    image.decoding = 'async';
+    const loaded = new Promise<HTMLImageElement>((resolve, reject) => {
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('glow'));
+    });
+    image.src = FLIGHT_MILKY_WAY_URL;
+    void Promise.all([loaded, loadPanoramaRegistration()])
+      .then(([img, registration]) => {
+        if (!current || !glowCanvas.current) return;
+        setGlowState(draw(glowCanvas.current, img, session, registration, viewportWidthPx, viewportHeightPx, area, FLIGHT_GLOW_FRAGMENT) ? 'drawn' : 'failed');
+      })
+      .catch(() => {
+        if (current) setGlowState('failed');
+      });
+    return () => {
+      current = false;
+    };
+  }, [glowWanted, session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx, area.x0, area.y0, area.widthPx, area.heightPx]);
+
   return (
     <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas
@@ -268,6 +306,16 @@ export const RealSkyLayer: React.FC<{
         height={Math.round(area.heightPx * dpr)}
         style={moving ? { left: area.x0, top: area.y0, width: area.widthPx, height: area.heightPx, transform: `translate(${shift!.nowPx[0]}px, ${shift!.nowPx[1]}px)` } : undefined}
       />
+      {glowWanted && (
+        <canvas
+          ref={glowCanvas}
+          className={glowState === 'drawn' ? 'real-sky__glow is-drawn' : 'real-sky__glow'}
+          data-state={glowState === 'idle' ? 'loading' : glowState}
+          width={Math.round(area.widthPx * dpr)}
+          height={Math.round(area.heightPx * dpr)}
+          style={moving ? { left: area.x0, top: area.y0, width: area.widthPx, height: area.heightPx, transform: `translate(${shift!.nowPx[0]}px, ${shift!.nowPx[1]}px)` } : undefined}
+        />
+      )}
       {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? (there && readoutTopPx !== null ? phoneThereScrim(viewportHeightPx, readoutTopPx) : phoneRealSkyShade(viewportHeightPx, { there })) : realSkyShade(rect, viewportWidthPx) }} />}
     </div>
   );

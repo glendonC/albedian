@@ -1,6 +1,7 @@
 import type { AssetProvenanceRecord } from '@albedian/contracts';
 import { AUDIO_CREDITS, AUDIO_NOTICES_URL, type AudioCredit } from '../audio/audioCredits.js';
 import { realSkyChanges } from '../reveal/RealSkyLayer.js';
+import { milkyWayInFlightChanges } from '../spatial/sky/flightMilkyWay.js';
 import { milkyWay3dChanges, milkyWayCopyDrawn } from '../spatial/sky/panoramaGrade.js';
 import { lupus3Changes, lupus3SceneWords } from '../spatial/webgl/lupus3Grade.js';
 import { homeBackdropChanges } from './homeBackdrop.js';
@@ -106,7 +107,7 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
  * changed: openngc.json's record states how (recordChangeLines), so its own list here is empty.
  */
 export const CHANGES: Readonly<Record<string, () => readonly string[]>> = {
-  eso0932a: () => [homeBackdropChanges(), milkyWay3dChanges(), milkyWayCopyDrawn(), realSkyChanges()],
+  eso0932a: () => [homeBackdropChanges(), milkyWay3dChanges(), milkyWayCopyDrawn(), realSkyChanges(), milkyWayInFlightChanges()],
   eso1804a: () => [lupus3Changes(), lupus3SceneWords()],
   'openngc-v20260501-ngc': () => [],
   'openngc-v20260501-addendum': () => [],

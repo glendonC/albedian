@@ -18,18 +18,20 @@ import { MOTION_TOKENS } from '@albedian/design-system';
 import { blockLeaveMs, linesLeaveMs } from '../../hooks/useLeaving.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
-const sky = vi.hoisted(() => ({ drawn: true, readoutTopPx: undefined as number | null | undefined }));
+const sky = vi.hoisted(() => ({ drawn: true, glow: true, readoutTopPx: undefined as number | null | undefined }));
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; readoutTopPx?: number | null }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onGlowDrawn?: (drawn: boolean) => void; there?: boolean; readoutTopPx?: number | null }) => {
       // The phone's sky band ends at the readout's top it is given (D30 item 1)
       sky.readoutTopPx = props.readoutTopPx;
       useEffect(() => {
         props.onDrawn?.(sky.drawn);
-      }, [props.onDrawn]);
+        // In flight the layer draws the starless glow, and says so (milkyway-flight-one)
+        props.onGlowDrawn?.(sky.drawn && sky.glow && props.there === true);
+      }, [props.onDrawn, props.onGlowDrawn, props.there]);
       return h('div', { className: 'real-sky', 'data-testid': 'real-sky' });
     },
   };
@@ -519,7 +521,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       'Drawn or computed by the app; not measured in the source recording.',
       'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
       'Rings: the stars your photo matched.',
-      'Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.',
+      "Milky Way: ESO/S. Brunier's photograph as seen from Earth, with its own stars removed.",
     ]);
   });
 
@@ -571,7 +573,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="reveal-marks"]')).toBeNull();
     expect(q(READOUT)).not.toBeNull();
     expect(q('[data-testid="steer-speed"]')!.textContent).toBe('this flight: 1.00 ly each second');
-    expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).not.toContain('Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.');
+    expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).not.toContain("Milky Way: ESO/S. Brunier's photograph as seen from Earth, with its own stars removed.");
     press();
     expect(q('[data-testid="steer-line"]')).toBeNull();
     expect(q('[data-testid="real-sky"]')).not.toBeNull();
@@ -754,6 +756,20 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
     expect(q('[data-testid="reveal-status"]')!.textContent).toContain('Milky Way: ESO/S. Brunier');
+  });
+
+  it('leaves the Milky Way line out at a star while the starless glow is loading or has failed, the photograph drawn (AUDIT-D 18:18)', () => {
+    sky.glow = false;
+    try {
+      const { session } = rigelPicked();
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+      const status = q('[data-testid="reveal-status"]')!;
+      expect(status.getAttribute('data-moment')).toBe('there');
+      expect(status.textContent).not.toContain('Milky Way');
+      expect(status.textContent).toContain('Rings: the stars your photo matched.');
+    } finally {
+      sky.glow = true;
+    }
   });
 
   it('shows the flight\'s Simulated status, craft source line and return disclosure before the panorama has drawn, leaving out only the Milky Way line', () => {

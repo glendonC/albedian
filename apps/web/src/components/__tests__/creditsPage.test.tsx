@@ -163,8 +163,8 @@ describe('creditRows: rows by what a person sees, every source credited from the
       // Every line of the block's shader/backdrop and record changes, in order, once
       expect(block?.changes, id).toEqual(combined);
     }
-    // The panorama's four and Lupus 3's two are held to the code by creditChanges.test.ts; OpenNGC comes from its record
-    expect(CHANGES.eso0932a!()).toHaveLength(4);
+    // The panorama's five and Lupus 3's two are held to the code by creditChanges.test.ts; OpenNGC comes from its record
+    expect(CHANGES.eso0932a!()).toHaveLength(5);
     expect(recordChangeLines(loaded, 'eso0932a')).toHaveLength(2);
     expect(CHANGES.eso1804a!()).toHaveLength(2);
     expect(recordChangeLines(loaded, 'eso1804a')).toEqual([]);

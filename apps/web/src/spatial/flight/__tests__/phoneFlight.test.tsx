@@ -20,6 +20,8 @@ const seen = vi.hoisted(() => ({
   onDragSky: undefined as (() => void) | undefined,
   onPressSky: undefined as (() => void) | undefined,
   scrimTopPx: undefined as number | null | undefined,
+  // The starless glow drawn in flight (milkyway-flight-one); false stands for one loading or failed
+  glow: true,
 }));
 vi.mock('../FlightStarsLayer.js', async () => {
   const { createElement: h, useEffect } = await import('react');
@@ -42,11 +44,12 @@ vi.mock('../../../reveal/RealSkyLayer.js', async (importOriginal) => {
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; readoutTopPx?: number | null }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onGlowDrawn?: (drawn: boolean) => void; there?: boolean; readoutTopPx?: number | null }) => {
       seen.scrimTopPx = props.readoutTopPx;
       useEffect(() => {
         props.onDrawn?.(true);
-      }, [props.onDrawn]);
+        props.onGlowDrawn?.(seen.glow && props.there === true);
+      }, [props.onDrawn, props.onGlowDrawn, props.there]);
       return h('div', { 'data-testid': 'real-sky' });
     },
   };
@@ -209,7 +212,7 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
       'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
       'Rings: the stars your photo matched.',
       '3 stars have no measured distance, so they stay where they appear from Earth.',
-      'Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.',
+      "Milky Way: ESO/S. Brunier's photograph as seen from Earth, with its own stars removed.",
       'Speed: NASA, 17.0 km/s relative to the Sun (August 2024).',
       "NASA's own 3D models. Drawn by the app, not measured.",
     ]);
@@ -217,6 +220,19 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     click(pressed);
     expect(q('[data-testid="details-sheet"]')).toBeNull();
     expect((q('[data-testid="flight-readout"]') as HTMLElement).style.visibility).toBe('');
+  });
+
+  it('leaves the Milky Way line out of the details while the starless glow is not drawn (AUDIT-D 18:18)', () => {
+    seen.glow = false;
+    try {
+      showPhone();
+      click(q('[data-testid="details-circle"]'));
+      const lines = all('[data-testid="details-sheet"] li').map((li) => li.textContent);
+      expect(lines.some((l) => l?.startsWith('Milky Way'))).toBe(false);
+      expect(lines).toContain('Rings: the stars your photo matched.');
+    } finally {
+      seen.glow = true;
+    }
   });
 
   it('leaves the craft\'s lines out of the details when no craft flies', () => {

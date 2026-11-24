@@ -947,13 +947,25 @@
   opacity: 1;
 }
 
-/* In the flight through the stars the panorama's own stars are as seen from Earth, so it is dimmed to 0.3 (D27 item 3,
-   UIUX-flight-READY.md); its movement into 0.3 is MOTION's, until then it changes with the view */
-.real-sky.is-there.is-shown {
-  opacity: 0.3;
+/* In the flight through the stars the photograph's own stars are as seen from Earth, so the flight shows the starless
+   glow made from it at full level instead (milkyway-flight-one, ruled 16:18 on 24 Nov; was dimmed to 0.3, D27 item 3):
+   the photograph's canvas leaves and the glow's comes in over the view's own dissolve */
+.real-sky__canvas,
+.real-sky__glow {
+  transition: opacity var(--look-mo-dur-view) var(--look-mo-ease-std);
+}
+
+.real-sky.is-there .real-sky__canvas,
+.real-sky__glow {
+  opacity: 0;
+}
+
+.real-sky.is-there .real-sky__glow.is-drawn {
+  opacity: 1;
 }
 
 .real-sky__canvas,
+.real-sky__glow,
 .real-sky__shade {
   position: absolute;
   inset: 0;
