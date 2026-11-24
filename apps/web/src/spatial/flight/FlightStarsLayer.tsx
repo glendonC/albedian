@@ -11,8 +11,8 @@ import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLI
 import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, type ArrivalBloom, type ArrivalStar } from './arrival.js';
 import { FlightCraftLayer } from './FlightCraftLayer.js';
 import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
-import { FLIGHT_MILKY_WAY_URL, createFlightDome, disposeFlightDome, drawFlightDome, type FlightDomeGpu } from '../sky/flightMilkyWay.js';
-import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
+import { FlightDomeLayer, type DomeView } from '../sky/FlightDomeLayer.js';
+import { createFlightFinish, pickedRowOf, type FlightFinish } from './flightFinish.js';
 import { laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
@@ -66,11 +66,13 @@ interface Gpu {
    * not build (the stars still draw).
    */
   bloom?: { program: WebGLProgram; vao: WebGLVertexArrayObject; uniforms: Record<string, WebGLUniformLocation | null> } | null;
-  /** milkyway-flight-one: the starless glow as a dome while steering, once it has loaded. */
-  dome: FlightDomeGpu | null;
+  /** flight-stars-finish-one: the predicted sky's bloom and tone mapping for the flight's stars; none where three cannot take the context. */
+  finish: FlightFinish | null;
+  /** The tile and row of the star flown to, kept until the star or the tiles change. */
+  pickedAt?: { star: ArrivalStar; tiles: number; at: { key: string; row: number } | null };
 }
 
-const UNIFORMS = ['uEye', 'uRowX', 'uRowY', 'uRowZ', 'uPix', 'uLens', 'uAffX', 'uAffY', 'uView', 'uLimit', 'uPixelRatio', 'uGain'] as const;
+const UNIFORMS = ['uEye', 'uRowX', 'uRowY', 'uRowZ', 'uPix', 'uLens', 'uAffX', 'uAffY', 'uView', 'uLimit', 'uPixelRatio', 'uGain', 'uLinear'] as const;
 
 /** D28 item 5: in the cone view the catalog stars are the faint far field, at 45 percent; in flight, as the sky view. */
 export const CONE_FIELD_GAIN = 0.45;
@@ -83,7 +85,10 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string): WebG
   return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
 }
 
-function createGpu(canvas: HTMLCanvasElement): Gpu | null {
+/** Makes the finish for a canvas, its context and its size (flightFinish.ts); a test may stand in for it. */
+export type MakeFinish = typeof createFlightFinish;
+
+function createGpu(canvas: HTMLCanvasElement, makeFinish: (canvas: HTMLCanvasElement, gl: WebGL2RenderingContext) => FlightFinish | null): Gpu | null {
   const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: true, alpha: false });
   if (!gl) return null;
   const vs = compile(gl, gl.VERTEX_SHADER, FLIGHT_STAR_VERTEX);
@@ -96,7 +101,8 @@ function createGpu(canvas: HTMLCanvasElement): Gpu | null {
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
   const uniforms: Record<string, WebGLUniformLocation | null> = {};
   for (const name of UNIFORMS) uniforms[name] = gl.getUniformLocation(program, name);
-  return { gl, program, uniforms, tiles: new Map(), dome: null };
+  const finish = makeFinish(canvas, gl);
+  return { gl, program, uniforms, tiles: new Map(), finish };
 }
 
 /** The bloom's program and its quad (two triangles over the square the glow fills). */
@@ -131,6 +137,22 @@ function arrivalStarOfTiles(gpu: Gpu, referencePc: Vec3): ArrivalStar | null {
     if (star) return star;
   }
   return null;
+}
+
+/** flight-stars-finish-one: where the star flown to sits among the tiles (flightFinish.ts pickedRowOf). */
+function pickedRowOfTiles(gpu: Gpu, picked: ArrivalStar): { key: string; row: number } | null {
+  const kept = gpu.pickedAt;
+  if (kept && kept.star === picked && kept.tiles === gpu.tiles.size) return kept.at;
+  let at: { key: string; row: number } | null = null;
+  for (const [key, entry] of gpu.tiles) {
+    const row = pickedRowOf(entry.tile, picked.positionPc);
+    if (row !== null) {
+      at = { key, row };
+      break;
+    }
+  }
+  gpu.pickedAt = { star: picked, tiles: gpu.tiles.size, at };
+  return at;
 }
 
 function tileTints(tile: CatalogStarCoreTile): Float32Array {
@@ -189,7 +211,12 @@ function uploadTile(gpu: Gpu, tile: CatalogStarCoreTile, reference: Vec3, existi
   return { tile, vao, buffers, referenceKey: keyOfReference(reference), skySphere: arrays.skySphereCount, noDistanceOnScreen: existing?.noDistanceOnScreen ?? 0 };
 }
 
-function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number, gain = 1, bloom: ArrivalBloom | null = null, dome = false): void {
+/**
+ * One frame of the layer. In flight (`finished`), flight-stars-finish-one: every star but the one flown to is drawn in
+ * linear light into the finish's half-float buffer, bloomed and tone mapped onto the canvas by the predicted sky's
+ * steps, and then the star flown to is drawn alone in display light, with arrival-star-1's bloom, as before.
+ */
+function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number, gain = 1, bloom: ArrivalBloom | null = null, picked: ArrivalStar | null = null, finished = false): void {
   const { gl, program, uniforms } = gpu;
   // A new star flown to rebases every tile on its place (the floating origin)
   const refKey = keyOfReference(camera.referencePc);
@@ -199,12 +226,15 @@ function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelR
     if (again) gpu.tiles.set(key, again);
   }
   const u = flightStarUniforms(camera);
+  const finish = finished ? gpu.finish : null;
+  // The star flown to: its tile and row, left out of the finished pass and drawn alone after it
+  const skip = finish && picked ? pickedRowOfTiles(gpu, picked) : null;
+  finish?.begin();
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  // While steering the Milky Way turns with the camera: drawn first, opaque, the stars added over it
-  if (dome && gpu.dome) drawFlightDome(gl, gpu.dome, camera, camera.viewportWidthPx, camera.viewportHeightPx, pixelRatio);
   gl.useProgram(program);
+  gl.uniform1f(uniforms.uLinear!, finish ? 1 : 0);
   gl.uniform3fv(uniforms.uEye!, u.uEye);
   gl.uniform3fv(uniforms.uRowX!, u.uRowX);
   gl.uniform3fv(uniforms.uRowY!, u.uRowY);
@@ -220,9 +250,29 @@ function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelR
   // Light adds: additive blending, as the sky view's catalog stars
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE);
-  for (const entry of gpu.tiles.values()) {
+  for (const [key, entry] of gpu.tiles) {
     gl.bindVertexArray(entry.vao);
-    gl.drawArrays(gl.POINTS, 0, entry.tile.count);
+    if (skip && skip.key === key) {
+      // Every row but the star flown to's
+      if (skip.row > 0) gl.drawArrays(gl.POINTS, 0, skip.row);
+      if (skip.row + 1 < entry.tile.count) gl.drawArrays(gl.POINTS, skip.row + 1, entry.tile.count - skip.row - 1);
+    } else {
+      gl.drawArrays(gl.POINTS, 0, entry.tile.count);
+    }
+  }
+  if (finish) {
+    // Bloomed and tone mapped onto the canvas; then the star flown to alone, its uniforms kept, in display light
+    finish.end();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    const entry = skip ? gpu.tiles.get(skip.key) : undefined;
+    if (skip && entry) {
+      gl.useProgram(program);
+      gl.uniform1f(uniforms.uLinear!, 0);
+      gl.bindVertexArray(entry.vao);
+      gl.drawArrays(gl.POINTS, skip.row, 1);
+    }
   }
   // arrival-star-1: the star flown to, its glow added as light around its own dot
   if (bloom && bloom.diameterPx > 0) {
@@ -265,6 +315,8 @@ export const FlightStarsLayer: React.FC<{
   onDragSky?: () => void;
   /** milkyway-flight-one: told true once the steering dome has drawn, false when steering stops. */
   onSkyDome?: (drawn: boolean) => void;
+  /** flight-stars-finish-one: makes the stars' finish; the predicted sky's bloom and tone mapping by default. */
+  makeFinish?: MakeFinish;
   /** While steering, told where the camera stands and how fast it flies, each frame; none when steering stops. */
   onSteer?: (state: { fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null) => void;
 }> = ({
@@ -282,6 +334,7 @@ export const FlightStarsLayer: React.FC<{
   onDragSky,
   onSteer,
   onSkyDome,
+  makeFinish,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
@@ -473,8 +526,11 @@ export const FlightStarsLayer: React.FC<{
   const bloomRef = useRef(bloom);
   bloomRef.current = bloom;
   const referenceKey = camera ? keyOfReference(camera.referencePc) : '';
-  const domeRef = useRef(flying);
-  domeRef.current = flying;
+  // milkyway-flight-one's steering dome, in a canvas of its own behind this one, drawn by the frame loop too
+  const domeDraw = useRef<((v: DomeView) => void) | null>(null);
+  // flight-stars-finish-one: the finish's maker, read once a mount
+  const finishMaker = useRef(makeFinish);
+  finishMaker.current = makeFinish;
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
   const onDrag = useCallback((dx: number, dy: number) => setOrbit((o) => dragConeOrbit(o, dx, dy)), []);
@@ -484,7 +540,7 @@ export const FlightStarsLayer: React.FC<{
   useEffect(() => {
     let current = true;
     const el = canvas.current;
-    const made = el ? createGpu(el) : null;
+    const made = el ? createGpu(el, (c, gl) => (finishMaker.current ?? createFlightFinish)(c, gl, viewportWidthPx, viewportHeightPx, dpr)) : null;
     if (!made) {
       setState('failed');
       return undefined;
@@ -512,7 +568,7 @@ export const FlightStarsLayer: React.FC<{
         noDistanceOnScreen += t.noDistanceOnScreen;
       }
       setCounts({ stars, skySphere, noDistanceOnScreen });
-      drawFrame(g, v, canvas.current, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, domeRef.current);
+      drawFrame(g, v, canvas.current, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, found ?? arrivalRef.current, !coneRef.current);
       setState('drawn');
     };
     void openTiles(onTile).then(
@@ -541,7 +597,7 @@ export const FlightStarsLayer: React.FC<{
         }
         g.gl.deleteProgram(g.program);
         if (g.bloom) g.gl.deleteProgram(g.bloom.program);
-        if (g.dome) disposeFlightDome(g.gl, g.dome);
+        g.finish?.dispose();
       }
       gpu.current = null;
     };
@@ -563,39 +619,18 @@ export const FlightStarsLayer: React.FC<{
   // Every change of where the camera stands, or of the orbit, draws a frame
   useEffect(() => {
     const g = gpu.current;
-    if (g && view && canvas.current && g.tiles.size > 0) drawFrame(g, view, canvas.current, dpr, gain, bloom, flying);
-  }, [view, dpr, gain, bloom, flying]);
+    if (g && view && canvas.current && g.tiles.size > 0) drawFrame(g, view, canvas.current, dpr, gain, bloom, arrival, !cone);
+  }, [view, dpr, gain, bloom, arrival, cone]);
 
-  // milkyway-flight-one: the glow for the steering dome, loaded the first time the person steers
+  // flight-stars-finish-one: the finish's buffers follow the window
+  useEffect(() => {
+    gpu.current?.finish?.setSize(viewportWidthPx, viewportHeightPx, dpr);
+  }, [viewportWidthPx, viewportHeightPx, dpr]);
+
+  // milkyway-flight-one: the steering dome says when it has drawn, and that it has gone when steering stops
   const toldDome = useRef(onSkyDome);
   toldDome.current = onSkyDome;
-  useEffect(() => {
-    const g = gpu.current;
-    toldDome.current?.(flying && !!g?.dome);
-    if (!flying || !g || g.dome) return undefined;
-    let current = true;
-    const img = new Image();
-    img.decoding = 'async';
-    const loaded = new Promise<HTMLImageElement>((resolve, reject) => {
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('flight dome'));
-    });
-    img.src = FLIGHT_MILKY_WAY_URL;
-    void Promise.all([loaded, loadPanoramaRegistration()]).then(
-      ([image, registration]) => {
-        const now = gpu.current;
-        if (!current || !now || now.dome) return;
-        now.dome = createFlightDome(now.gl, image, registration);
-        const v = viewRef.current;
-        if (v && canvas.current && now.tiles.size > 0) drawFrame(now, v, canvas.current, dpr, gainRef.current, bloomRef.current, domeRef.current);
-        toldDome.current?.(!!now.dome && domeRef.current);
-      },
-      () => undefined
-    );
-    return () => {
-      current = false;
-    };
-  }, [flying, dpr]);
+  const onDomeDrawn = useCallback((drawn: boolean) => toldDome.current?.(drawn), []);
 
   useEffect(() => {
     told.current?.(counts.noDistanceOnScreen);
@@ -616,7 +651,8 @@ export const FlightStarsLayer: React.FC<{
       const v = starViewOfSteer(cam, { positionPc: s.positionPc, rows: s.chase });
       const g = gpu.current;
       const star = arrivalRef.current;
-      if (g && canvas.current && g.tiles.size > 0) drawFrame(g, v, canvas.current, dpr, gainRef.current, star ? arrivalBloomOf(star, v) : null, domeRef.current);
+      domeDraw.current?.(v);
+      if (g && canvas.current && g.tiles.size > 0) drawFrame(g, v, canvas.current, dpr, gainRef.current, star ? arrivalBloomOf(star, v) : null, star, true);
       const svg = steerRings.current;
       if (svg) svg.innerHTML = flightRings(session, v, keepOutBoxes(), ringRadius).map((r) => `<circle data-finding-id="${r.findingId}" cx="${r.xPx}" cy="${r.yPx}" r="${ringRadius}" fill="none" stroke="${RING_STROKE}" stroke-width="1"></circle>`).join('');
       craftDraw.current?.({ positionPc: s.positionPc, rows: s.chase, craftRows: s.rows });
@@ -637,6 +673,7 @@ export const FlightStarsLayer: React.FC<{
   const craftPlace = baseFraming && shift && !steer ? arrivalCraftFraming(baseFraming, viewportWidthPx, viewportHeightPx, phone, arrivalProgress(session)) : baseFraming;
   return (
     <>
+    {flying && view && <FlightDomeLayer view={view} viewportWidthPx={viewportWidthPx} viewportHeightPx={viewportHeightPx} drawRef={domeDraw} onDrawn={onDomeDrawn} />}
     <div
       ref={layerEl}
       className="flight-stars"

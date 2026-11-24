@@ -65,11 +65,15 @@ in vec3 vTint;
 in float vAlpha;
 in float vGain;
 in float vSpike;
+// flight-stars-finish-one: 1 when the stars are finished, so the catalog tint is taken to linear light as the predicted
+// sky's points take it (tilePointsMesh.ts); 0 in display light, as before
+uniform float uLinear;
 out vec4 outColor;
 void main() {
   vec2 uv = gl_PointCoord * 2.0 - 1.0;
   float d = length(uv);
   if (d > 1.0) discard;
+  vec3 tint = uLinear > 0.5 ? mix(vTint / 12.92, pow((vTint + 0.055) / 1.055, vec3(2.4)), step(0.04045, vTint)) : vTint;
   float r = d * mix(1.0, 2.2, vSpike);
   float core = exp(-r * r * 3.2);
   float halo = exp(-r * 3.0) * 0.3;
@@ -80,7 +84,7 @@ void main() {
     spikes = (sx + sy) * 0.55;
   }
   float intensity = (core + halo + spikes) * vAlpha * vGain;
-  vec3 col = mix(vTint, vec3(1.0), clamp(core * 0.6, 0.0, 1.0)) * intensity;
+  vec3 col = mix(tint, vec3(1.0), clamp(core * 0.6, 0.0, 1.0)) * intensity;
   outColor = vec4(col, 1.0);
 }`;
 
