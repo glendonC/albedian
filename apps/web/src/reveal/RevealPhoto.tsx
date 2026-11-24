@@ -77,6 +77,18 @@ const PhoneCounts: React.FC<{ counts: ReturnType<typeof evidenceCounts>; hidden?
   </div>
 );
 
+/** The part of a frame on screen inside the viewport (align-zoom-1's cut on the laptop). */
+function clippedToView(frame: { leftPx: number; topPx: number; widthPx: number; heightPx: number }, viewW: number, viewH: number) {
+  const leftPx = Math.max(0, frame.leftPx);
+  const topPx = Math.max(0, frame.topPx);
+  return {
+    leftPx,
+    topPx,
+    widthPx: Math.max(0, Math.min(viewW, frame.leftPx + frame.widthPx) - leftPx),
+    heightPx: Math.max(0, Math.min(viewH, frame.topPx + frame.heightPx) - topPx),
+  };
+}
+
 /** When the last lock-on mark has gone: a travelling one after its travel and colour, a leaving one after frame out. */
 function lockOnMarksEndMs(plan: { travelling: readonly unknown[]; leaving: readonly unknown[] }, reduce: boolean): number {
   const motion = resolveMotionTokens(reduce);
@@ -503,6 +515,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const alignAllowed = !there && !skyShown && !compareOn && status.kind === 'unmatched' && frame !== null && !bareFrame;
   const kept = alignedFrom && session.sourceAsset && alignedFrom.sha256 === session.sourceAsset.sha256 ? alignedFrom : null;
   const aligning = alignAllowed ? aligningState : null;
+  // align-zoom-1 (UIUX-alignzoom-READY.md): while aligning, the photo at its own pixels around this point of it (shares
+  // of the whole frame), or the whole photo; drawn larger only, never kept in the session, gone when aligning ends
+  const [alignZoomState, setAlignZoom] = useState<{ u: number; v: number } | null>(null);
+  const alignZoom = aligning ? alignZoomState : null;
+  const alignZoomShown = useRef(false);
+  alignZoomShown.current = alignZoom !== null;
+  useEffect(() => {
+    if (!aligning) setAlignZoom(null);
+  }, [aligning === null]);
   const keptRefused = kept && kept.refusal === undefined && alignAllowed && !aligning ? kept : null;
   // D38 (UIUX-restorephone-READY.md, UIUX-clipphone-READY.md section 4): on a matched phone photo or clip, Restore 16 px
   // under Ask out loud, reached by scrolling the whole screen under the fixed top bar; while it works, D2's phone row
@@ -570,7 +591,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     if (!aligning) return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setAligning(null);
+      if (event.key !== 'Escape') return;
+      // At the photo's own pixels, Esc returns to the whole photo first (align-zoom-1)
+      if (alignZoomShown.current) setAlignZoom(null);
+      else setAligning(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -832,6 +856,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 <span>Drag to move</span>
                 <span>Ctrl and drag to turn</span>
                 <span>Scroll or pinch to scale</span>
+                {/* align-zoom-1 (UIUX-alignzoom-READY.md item 7, the lead's words) */}
+                <span>Double-click to see the photo full size</span>
               </div>
               <div className="align-acts">
                 {onSolveFromHere && <MainAction label="Solve from here" onClick={() => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from)} />}
@@ -1010,9 +1036,76 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {aligning && frame && (
-        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} clear={keepClear} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
-      )}
+      {aligning && frame && asset && (() => {
+        const onPose = (pose: AlignPose) => setAligning((now) => (now ? { ...now, pose } : now));
+        // The photo at its own pixels (1:1) when it is drawn smaller than that; a photo drawn at or above them has no zoom
+        const fullScale = uprightWidth / Math.max(1, frame.widthPx);
+        const onZoomAt = (xPx: number, yPx: number) => {
+          if (alignZoom) setAlignZoom(null);
+          else if (fullScale > 1) setAlignZoom({ u: (xPx - frame.leftPx) / frame.widthPx, v: (yPx - frame.topPx) / frame.heightPx });
+        };
+        // Inside the photo's own frame on screen (the phone's slot), the point at its centre, the frame always covered
+        const box = phone ? phoneSlotRect(frame, viewW) : clippedToView(frame, viewW, viewH);
+        const widthPx = frame.widthPx * fullScale;
+        const heightPx = frame.heightPx * fullScale;
+        const clamp = (at: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, at));
+        const zoomed = alignZoom && {
+          leftPx: clamp(box.leftPx + box.widthPx / 2 - alignZoom.u * widthPx, box.leftPx + box.widthPx - widthPx, box.leftPx),
+          topPx: clamp(box.topPx + box.heightPx / 2 - alignZoom.v * heightPx, box.topPx + box.heightPx - heightPx, box.topPx),
+          widthPx,
+          heightPx,
+        };
+        const pictureStyle: React.CSSProperties = zoomed === null ? {} : {
+          position: 'absolute',
+          left: `${zoomed.leftPx}px`,
+          top: `${zoomed.topPx}px`,
+          width: `${zoomed.widthPx}px`,
+          height: `${zoomed.heightPx}px`,
+          maxWidth: 'none',
+          display: 'block',
+          // Turned by its own tag, as the stage draws it; no filter, no stretch: the pixels are only drawn larger
+          imageOrientation: 'from-image',
+        };
+        // One wrapper and one layer for both views (the picture's place held by null), so the layer, and what its
+        // pointers saw, lives across the toggle
+        return (
+          <div
+            className="align-zoom"
+            {...(zoomed
+              ? {
+                  'data-testid': 'align-zoom',
+                  style: { clipPath: `inset(${box.topPx}px ${viewW - box.leftPx - box.widthPx}px ${viewH - box.topPx - box.heightPx}px ${box.leftPx}px)` },
+                }
+              : {})}
+          >
+            {zoomed === null ? null : asset.mediaKind === 'video' ? (
+              <video
+                src={asset.uri}
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden="true"
+                style={pictureStyle}
+                onLoadedMetadata={(event) => {
+                  event.currentTarget.currentTime = session.currentSourceTimeSec;
+                }}
+              />
+            ) : (
+              <img src={asset.uri} alt="" aria-hidden="true" draggable={false} style={pictureStyle} />
+            )}
+            <AlignLayer
+              rect={zoomed ?? frame}
+              wholeRect={zoomed ? frame : undefined}
+              pose={aligning.pose}
+              targets={alignTargetList}
+              phone={phone}
+              clear={keepClear}
+              onPose={onPose}
+              onZoomAt={onZoomAt}
+            />
+          </div>
+        );
+      })()}
 
       {/* Refused after Solve from here (D24 step 4): the rings stay amber and dashed at the kept pose */}
       {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} handOver arriving={phone} phone={phone} />}

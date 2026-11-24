@@ -17,7 +17,12 @@ export const PhoneAligningBlock: React.FC<{ onSolve?: () => void; leaving?: bool
       <EvidenceTag evidenceClass="predicted" />
     </span>
     <p className="align-phone__lead">Drag the stars onto the dots you see.</p>
-    <p className="align-phone__help">Drag to move. Turn or pinch with two fingers.</p>
+    {/* align-zoom-1's line under it, in its form (UIUX-alignzoom-READY.md item 7, the lead's words) */}
+    <p className="align-phone__help">
+      Drag to move. Turn or pinch with two fingers.
+      <br />
+      Double-tap to see the photo full size.
+    </p>
     {(onSolve || leaving) && (
       <div className="align-phone__solve">
         <MainAction label="Solve from here" size="phone" onClick={onSolve ?? (() => {})} />

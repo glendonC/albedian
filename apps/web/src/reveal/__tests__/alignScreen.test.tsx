@@ -89,7 +89,8 @@ describe('at phone width (alp-align)', () => {
     expect(go[1]!.className).toBe('reveal-phone-go reveal-phone-go--more');
     act(() => button('Line it up yourself')!.click());
     expect(q('.align-phone__lead')!.textContent).toBe('Drag the stars onto the dots you see.');
-    expect(q('.align-phone__help')!.textContent).toBe('Drag to move. Turn or pinch with two fingers.');
+    // With align-zoom-1's line under it (UIUX-alignzoom-READY.md item 7)
+    expect(q('.align-phone__help')!.innerHTML).toBe('Drag to move. Turn or pinch with two fingers.<br>Double-tap to see the photo full size.');
     expect(q('[data-testid="align-layer"]')!.className).toBe('align-layer is-phone');
     expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
     expect(told).toEqual([false, true]);
@@ -180,7 +181,13 @@ describe('aligning', () => {
     start();
     const status = q('.reveal-status.is-unmatched')!;
     expect(status.querySelector('.reveal-status__lead')!.textContent).toBe('Drag the stars onto the dots you see.');
-    expect([...status.querySelectorAll('.align-help span')].map((s) => s.textContent)).toEqual(['Drag to move', 'Ctrl and drag to turn', 'Scroll or pinch to scale']);
+    // D24's three, then align-zoom-1's line (UIUX-alignzoom-READY.md item 7)
+    expect([...status.querySelectorAll('.align-help span')].map((s) => s.textContent)).toEqual([
+      'Drag to move',
+      'Ctrl and drag to turn',
+      'Scroll or pinch to scale',
+      'Double-click to see the photo full size',
+    ]);
     expect([...status.querySelectorAll('.align-acts button')].map((b) => b.textContent)).toEqual(['Cancel']);
     // No recorded heading reaches the web yet: it starts facing the brightest star, and says so
     expect(q('[data-testid="align-readout"]')!.innerHTML).toBe('150° · 34° up · turned 0° · 53° across<br>Started from the brightest star, Fomalhaut.');

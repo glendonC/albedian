@@ -189,6 +189,12 @@ const WHEEL_SCALE_PER_PX = 0.0015;
 const WHEEL_GLIDE_PER_60TH = 0.8;
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
+/** A finger that lifts within this many pixels of where it came down tapped; it did not drag. */
+const TAP_SLOP_PX = 10;
+/** A second tap this soon after the first and this near it is a double-tap (align-zoom-1). */
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_PX = 30;
+
 export const AlignLayer: React.FC<{
   rect: FrameRect;
   pose: AlignPose;
@@ -197,7 +203,14 @@ export const AlignLayer: React.FC<{
   phone?: boolean;
   /** Places on screen no name is set over (the rings all stay while aligning). */
   clear?: readonly Box[];
-}> = ({ rect, pose, targets, onPose, phone = false, clear = [] }) => {
+  /**
+   * align-zoom-1 (UIUX-alignzoom-READY.md): a double-click, or a finger's double-tap, at this point on screen. The
+   * browser's own double-tap zoom never has it (touch-action none, and the second tap's default is stopped).
+   */
+  onZoomAt?: (xPx: number, yPx: number) => void;
+  /** The whole photo's frame while `rect` is drawn at the photo's own pixels: a hand-over reads the marks there. */
+  wholeRect?: FrameRect;
+}> = ({ rect, pose, targets, onPose, phone = false, clear = [], onZoomAt, wholeRect }) => {
   const layer = useRef<HTMLDivElement>(null);
   const live = useRef(pose);
   live.current = pose;
@@ -256,17 +269,40 @@ export const AlignLayer: React.FC<{
     };
   }, []);
 
+  // A finger's taps: where and when the last one lifted, and whether the finger now down has moved past a tap
+  const lastTap = useRef<{ x: number; y: number; at: number } | null>(null);
+  const tapDown = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const byFinger = (event: React.PointerEvent) => event.pointerType === 'touch' || event.pointerType === 'pen';
+  // Whether the last pointer down was a finger: Chrome follows a finger's double-tap with a dblclick of its own, which
+  // the taps have already answered
+  const fingerLast = useRef(false);
+  const nearLastTap = (x: number, y: number) => {
+    const last = lastTap.current;
+    return last !== null && performance.now() - last.at <= DOUBLE_TAP_MS && Math.hypot(x - last.x, y - last.y) <= DOUBLE_TAP_PX;
+  };
+
   const centre = { x: rect.leftPx + rect.widthPx / 2, y: rect.topPx + rect.heightPx / 2 };
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     held.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     holding.current = null;
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    fingerLast.current = byFinger(event);
+    if (byFinger(event) && held.current.size === 1) {
+      tapDown.current = { x: event.clientX, y: event.clientY, moved: false };
+      // The second tap of a double-tap is the app's, not the browser's
+      if (nearLastTap(event.clientX, event.clientY)) event.preventDefault();
+    } else {
+      tapDown.current = null;
+      lastTap.current = null;
+    }
   };
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const pointers = held.current;
     const from = pointers.get(event.pointerId);
     if (!from) return;
     const to = { x: event.clientX, y: event.clientY };
+    const down = tapDown.current;
+    if (down && Math.hypot(to.x - down.x, to.y - down.y) > TAP_SLOP_PX) down.moved = true;
     // A place on screen in the frame's own pixels, and as shares of it
     const inFrame = (p: { x: number; y: number }) => ({ x: p.x - rect.leftPx, y: p.y - rect.topPx });
     const share = (p: { x: number; y: number }) => ({ u: (p.x - rect.leftPx) / rect.widthPx, v: (p.y - rect.topPx) / rect.heightPx });
@@ -300,11 +336,26 @@ export const AlignLayer: React.FC<{
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     held.current.delete(event.pointerId);
     holding.current = null;
+    const down = tapDown.current;
+    tapDown.current = null;
+    if (!down || !byFinger(event) || event.type !== 'pointerup') return;
+    if (down.moved || Math.hypot(event.clientX - down.x, event.clientY - down.y) > TAP_SLOP_PX) {
+      lastTap.current = null;
+      return;
+    }
+    if (nearLastTap(event.clientX, event.clientY)) {
+      lastTap.current = null;
+      onZoomAt?.(event.clientX, event.clientY);
+    } else {
+      lastTap.current = { x: event.clientX, y: event.clientY, at: performance.now() };
+    }
   };
 
-  const marks = alignMarks(targets, pose, rect, phone ? 11 : 13, clear);
+  const fontPx = phone ? 11 : 13;
+  const marks = alignMarks(targets, pose, rect, fontPx, clear);
   useEffect(() => {
-    lastDrawn = { marks, rect };
+    // A Solve from here hand-over reads the marks where the whole photo's frame puts them, zoomed or not
+    lastDrawn = wholeRect ? { marks: alignMarks(targets, pose, wholeRect, fontPx, clear), rect: wholeRect } : { marks, rect };
   });
   return (
     <div
@@ -316,6 +367,9 @@ export const AlignLayer: React.FC<{
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onDoubleClick={(event) => {
+        if (!fingerLast.current) onZoomAt?.(event.clientX, event.clientY);
+      }}
       // On a Mac, Ctrl and click is the secondary click: the browser's menu would take the pointer and end the turn
       onContextMenu={(event) => event.preventDefault()}
     >

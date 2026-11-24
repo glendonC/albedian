@@ -1498,6 +1498,14 @@
   cursor: grabbing;
 }
 
+/* align-zoom-1 (UIUX-alignzoom-READY.md): the photo at its own pixels and the aligning layer over it, cut to the photo's
+   frame on screen by an inline clip-path; it steps in and out with no movement (MOTION, 24 Nov 13:00) */
+.align-zoom {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .align-layer__rings {
   position: absolute;
   inset: 0;
