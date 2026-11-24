@@ -46,6 +46,7 @@ describe('restorationOf: a job record to what the screen shows', () => {
     expect(preRefusals).toEqual([
       "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
       "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.",
+      "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored.",
     ]);
     for (const sentence of preRefusals) {
       expect(restorationOf({ ...failed, error: sentence }, sha256)).toEqual({

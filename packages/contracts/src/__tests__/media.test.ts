@@ -440,21 +440,26 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
       const [schema, base, at] = slots[slot]!;
       for (const text of texts) expect(accepts(SCHEMAS[schema], put(base(), at, text)), `${slot}: ${text}`).toBe(true);
     }
-    // restore-8e added C20's colour-profile refusal; nearblack-0 added C36's near-black photo refusal [verified:
-    // UIUX-colourwords-READY.md and STATE.md C36 DECIDED-BY-LEAD, 2026-11-23]
-    expect(FAILURES.length).toBe(10 + FAILURE_FORMATS.length + FAILURE_CAPABILITIES.length);
+    // restore-8e added C20's colour-profile refusal; nearblack-0 and nearblackclip-0 added C36's photo and clip
+    // near-black refusals [verified: UIUX-colourwords-READY.md and UIUX-nearblackrestore-READY.md, DECIDED-BY-LEAD]
+    expect(FAILURES.length).toBe(11 + FAILURE_FORMATS.length + FAILURE_CAPABILITIES.length);
     expect(DEFAULT_BASES.length).toBe(3 * 18 + RESTORATION_CRITERIA.length + 1);
   });
 
-  it('accepts the C36 near-black photo refusal sentence on a failed attempt and restoration job only', () => {
+  it('accepts the C36 near-black photo and clip refusal sentences on a failed attempt and restoration job only', () => {
     const nearBlackRefusal = "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.";
+    const nearBlackClipRefusal = "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored.";
     expect(FAILURE_SENTENCES).toContain(nearBlackRefusal);
+    expect(FAILURE_SENTENCES).toContain(nearBlackClipRefusal);
     const failed = VALID.ProcessingAttempt[9]!;
     expect(accepts(ProcessingAttemptSchema, { ...failed, failureReason: nearBlackRefusal })).toBe(true);
+    expect(accepts(ProcessingAttemptSchema, { ...failed, failureReason: nearBlackClipRefusal })).toBe(true);
     for (const bad of [
       nearBlackRefusal.slice(0, -1),
-      nearBlackRefusal.replace("photo's", "clip's"),
+      nearBlackClipRefusal.slice(0, -1),
+      nearBlackRefusal.replace("photo's", "video's"),
       "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.",
+      "This clip's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.",
     ]) {
       const parsed = ProcessingAttemptSchema.safeParse({ ...failed, failureReason: bad });
       expect(parsed.success, bad).toBe(false);
@@ -468,7 +473,9 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     const failedMedia = jobFixture.valid.find((r) => r.kind === 'restoration' && r.state === 'failed')!;
     const failedSolve = jobFixture.valid.find((r) => r.kind === 'solve' && r.state === 'failed')!;
     expect(accepts(contracts.UploadJobSchema, { ...failedMedia, error: nearBlackRefusal })).toBe(true);
+    expect(accepts(contracts.UploadJobSchema, { ...failedMedia, error: nearBlackClipRefusal })).toBe(true);
     expect(accepts(contracts.UploadJobSchema, { ...failedSolve, error: nearBlackRefusal })).toBe(false);
+    expect(accepts(contracts.UploadJobSchema, { ...failedSolve, error: nearBlackClipRefusal })).toBe(false);
   });
 
   it('PBT: any text outside a slot list is refused there', () => {

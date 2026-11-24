@@ -614,6 +614,8 @@ export const FAILURE_SENTENCES = [
   "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
   // Review row C36 (nearblack-0, decided by the lead on 2026-11-23): a photo whose darkest quarter sits on black
   "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.",
+  // Review row C36 clip form (nearblackclip-0, decided by the lead on 2026-11-24): a clip whose darkest quarter sits on black
+  "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored.",
 ] as const;
 /** The plain sentences a record's notes may hold [proposed, each from the requirement named in design section 14]. */
 export const NOTES = [

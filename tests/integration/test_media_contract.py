@@ -479,25 +479,30 @@ def test_every_entry_of_every_list_is_accepted_in_its_slot() -> None:
         schema, base, path = _SLOTS[slot]
         for text in allowed:
             assert accepts(MODELS[schema], _put(base(), path, text)), f"{slot}: {text!r}"
-    # restore-8e added C20's colour-profile refusal; nearblack-0 added C36's near-black photo refusal [verified:
-    # UIUX-colourwords-READY.md and STATE.md C36 DECIDED-BY-LEAD, 2026-11-23]
-    assert len(FAILURES) == 10 + len(media.FAILURE_FORMATS) + len(media.FAILURE_CAPABILITIES)
+    # restore-8e added C20's colour-profile refusal; nearblack-0 and nearblackclip-0 added C36's photo and clip
+    # near-black refusals [verified: UIUX-colourwords-READY.md and UIUX-nearblackrestore-READY.md, DECIDED-BY-LEAD]
+    assert len(FAILURES) == 11 + len(media.FAILURE_FORMATS) + len(media.FAILURE_CAPABILITIES)
     assert len(DEFAULT_BASES) == 3 * 18 + len(media.RESTORATION_CRITERIA) + 1
 
 
 NEAR_BLACK_REFUSAL = "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored."
+NEAR_BLACK_CLIP_REFUSAL = "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored."
 
 
-def test_a_near_black_photos_refusal_sentence_is_accepted_on_a_failed_attempt_and_restoration_job() -> None:
+def test_a_near_black_photos_or_clips_refusal_sentence_is_accepted_on_a_failed_attempt_and_restoration_job() -> None:
     from services.contracts import jobs as job_contracts
 
     assert NEAR_BLACK_REFUSAL in media.FAILURE_SENTENCES
+    assert NEAR_BLACK_CLIP_REFUSAL in media.FAILURE_SENTENCES
     failed = VALID["ProcessingAttempt"][9]
     assert accepts(media.ProcessingAttempt, {**failed, "failureReason": NEAR_BLACK_REFUSAL})
+    assert accepts(media.ProcessingAttempt, {**failed, "failureReason": NEAR_BLACK_CLIP_REFUSAL})
     for bad in (
         NEAR_BLACK_REFUSAL[:-1],
-        NEAR_BLACK_REFUSAL.replace("photo's", "clip's"),
+        NEAR_BLACK_CLIP_REFUSAL[:-1],
+        NEAR_BLACK_REFUSAL.replace("photo's", "video's"),
         "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.",
+        "This clip's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars.",
     ):
         found = messages(media.ProcessingAttempt, {**failed, "failureReason": bad})
         assert any(media.M_FAILURE_SENTENCE in text for text in found), (bad, found)
@@ -505,7 +510,9 @@ def test_a_near_black_photos_refusal_sentence_is_accepted_on_a_failed_attempt_an
     failed_media = next(r for r in job_samples if r["kind"] == "restoration" and r["state"] == "failed")
     failed_solve = next(r for r in job_samples if r["kind"] == "solve" and r["state"] == "failed")
     assert accepts(job_contracts.UploadJob, {**failed_media, "error": NEAR_BLACK_REFUSAL})
+    assert accepts(job_contracts.UploadJob, {**failed_media, "error": NEAR_BLACK_CLIP_REFUSAL})
     assert not accepts(job_contracts.UploadJob, {**failed_solve, "error": NEAR_BLACK_REFUSAL})
+    assert not accepts(job_contracts.UploadJob, {**failed_solve, "error": NEAR_BLACK_CLIP_REFUSAL})
 
 
 def _near_misses(text: str) -> list[str]:
