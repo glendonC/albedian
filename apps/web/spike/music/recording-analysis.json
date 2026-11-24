@@ -1,0 +1,123 @@
+{
+  "about": "The recording piece's measured analysis (beats, key and bar chords; apps/web/spike/music/analysis.ts), as render.mjs recorded it in .cache/music/facts.json in the render of 7 November 2026 at commit 1ef14db7. Tracked so a clean clone's recording piece plays with no render: serveSources.mjs serves it at /recording-analysis.json when no render's facts.json holds one.",
+  "render": {
+    "commit": "1ef14db7a6657f069572b6f58a2d0a0446972797",
+    "uncommittedAudioChanges": false,
+    "renderedAt": "2026-11-07"
+  },
+  "analysis": {
+    "file": "scottbuckley/sb_signaltonoise_nomelody.mp3",
+    "bpm": 66.66381019472705,
+    "beatSec": 0.9000385640235407,
+    "tempoStrength": 0.7236970139824708,
+    "beatsPerBar": 4,
+    "key": {
+      "name": "G major",
+      "tonic": 7,
+      "mode": "major",
+      "correlation": 0.6698216694992603
+    },
+    "fromSec": 203.11722029060405,
+    "bars": [
+      {
+        "bar": 1,
+        "chord": "Dm",
+        "confident": true,
+        "score": 0.891905778670879,
+        "margin": 0.05761106983973763
+      },
+      {
+        "bar": 2,
+        "chord": "Dm",
+        "confident": true,
+        "score": 0.9194654849212756,
+        "margin": 0.08342557998964306
+      },
+      {
+        "bar": 3,
+        "chord": "Em",
+        "confident": true,
+        "score": 0.972742580894253,
+        "margin": 0.23172228506902326
+      },
+      {
+        "bar": 4,
+        "chord": "Em",
+        "confident": true,
+        "score": 0.8469072061439076,
+        "margin": 0.08950081086873207
+      },
+      {
+        "bar": 5,
+        "chord": "Dm",
+        "confident": true,
+        "score": 0.9513328023769405,
+        "margin": 0.14558077673969827
+      },
+      {
+        "bar": 6,
+        "chord": "Dm",
+        "confident": true,
+        "score": 0.9532804177518936,
+        "margin": 0.10069249996300855
+      },
+      {
+        "bar": 7,
+        "chord": "Em",
+        "confident": true,
+        "score": 0.9712606266461973,
+        "margin": 0.16943323439324354
+      },
+      {
+        "bar": 8,
+        "chord": "Em",
+        "confident": true,
+        "score": 0.9605327929455549,
+        "margin": 0.1456398236544706
+      },
+      {
+        "bar": 9,
+        "chord": "Dm",
+        "confident": true,
+        "score": 0.9479009629791886,
+        "margin": 0.1196825219049854
+      },
+      {
+        "bar": 10,
+        "chord": "Dm",
+        "confident": true,
+        "score": 0.9132207141196766,
+        "margin": 0.07976693458824691
+      },
+      {
+        "bar": 11,
+        "chord": "Em",
+        "confident": true,
+        "score": 0.9414773781033985,
+        "margin": 0.12318168454009604
+      },
+      {
+        "bar": 12,
+        "chord": "Em",
+        "confident": false,
+        "score": 0.7673136231515346,
+        "margin": 0.039217919097135234
+      },
+      {
+        "bar": 13,
+        "chord": "F",
+        "confident": true,
+        "score": 0.8878555126922237,
+        "margin": 0.14552434449101348
+      },
+      {
+        "bar": 14,
+        "chord": "F",
+        "confident": true,
+        "score": 0.8701733544632123,
+        "margin": 0.11802328002343687
+      }
+    ],
+    "statement": "Measured from the recording (analysis.ts): 66.7 beats a minute (whole-track onset autocorrelation 0.72), excerpt key G major (Krumhansl and Kessler profiles, correlation 0.67); 13 of 14 bars' chords measured with confidence; the other bars use the key's pentatonic notes."
+  }
+}

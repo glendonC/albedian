@@ -11,8 +11,9 @@
  * ?music=ambient-beats or ?music=recording to pin a piece). Files come from .cache/music/sources/
  * (sources.json lists each with its licence and SHA-256; render.mjs checks them).
  * /recording-analysis.json is the recording piece's measured analysis (beats, key and bar chords,
- * from analysis.ts) as .cache/music/facts.json records it from the last render. Vite's /@fs route
- * cannot serve VCSL's file names that hold '#', hence this server.
+ * from analysis.ts) as .cache/music/facts.json records it from the last render, or, with no render
+ * there (a clean clone), as recording-analysis.json beside this file tracks it from the render of
+ * 7 November. Vite's /@fs route cannot serve VCSL's file names that hold '#', hence this server.
  *
  * Loopback only, and only the files sources.json lists (with their licences and SHA-256) plus the
  * analysis: no other file in the folder, no path that leaves it, plain or escaped, and no symbolic link,
@@ -54,14 +55,24 @@ function servableFile(sourcesDir, rel) {
   return fs.statSync(real).isFile() ? real : null;
 }
 
-function recordingAnalysis(factsFile) {
-  if (!fs.existsSync(factsFile)) return null;
-  const facts = JSON.parse(fs.readFileSync(factsFile, 'utf8'));
-  return facts.clips?.find((clip) => clip.id === 'recording')?.analysis ?? null;
+/** The recording piece's analysis tracked beside this file, for a clone with no render (music-facts-tracked-one). */
+export const TRACKED_ANALYSIS_FILE = fileURLToPath(new URL('./recording-analysis.json', import.meta.url));
+
+function recordingAnalysis(factsFile, trackedFile) {
+  if (fs.existsSync(factsFile)) {
+    const facts = JSON.parse(fs.readFileSync(factsFile, 'utf8'));
+    const measured = facts.clips?.find((clip) => clip.id === 'recording')?.analysis;
+    if (measured) return measured;
+  }
+  if (!fs.existsSync(trackedFile)) return null;
+  return JSON.parse(fs.readFileSync(trackedFile, 'utf8')).analysis ?? null;
 }
 
-/** The server for one sources folder and facts file, sending only the `listed` relative paths. */
-export function createSourcesServer({ sourcesDir, factsFile, listed }) {
+/**
+ * The server for one sources folder and facts file, sending only the `listed` relative paths; the tracked analysis
+ * stands in for a facts file that holds none.
+ */
+export function createSourcesServer({ sourcesDir, factsFile, listed, trackedAnalysisFile = TRACKED_ANALYSIS_FILE }) {
   const root = path.resolve(sourcesDir);
   const allowed = new Set(listed);
   return http.createServer((req, res) => {
@@ -73,7 +84,7 @@ export function createSourcesServer({ sourcesDir, factsFile, listed }) {
       return;
     }
     if (rel === 'recording-analysis.json') {
-      const analysis = recordingAnalysis(factsFile);
+      const analysis = recordingAnalysis(factsFile, trackedAnalysisFile);
       if (!analysis) {
         res.writeHead(404).end();
         return;

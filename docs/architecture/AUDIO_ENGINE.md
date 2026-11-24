@@ -900,10 +900,12 @@ redirect only to the same host, a file kept only when its size and SHA-256 match
 already there with its listed size and SHA-256 is kept without a request, so a second run fetches
 nothing. `musicSourcesList.test.ts` keeps the list equal to the files the app plays. The other `72`
 files `sources.json` catalogues (the mixes evaluated during selection and the VCSL files no
-instrument plays) are not fetched. The recording piece also needs its measured analysis, which only
-a render writes into `.cache/music/facts.json`; until then a clean clone's recording piece is
-unavailable (`[inference from code]`: `MusicLayer` gives up on the piece when
-`/recording-analysis.json` is missing).
+instrument plays) are not fetched. The recording piece also needs its measured analysis, which a
+render writes into `.cache/music/facts.json`; a clean clone has no render, so
+[`recording-analysis.json`](../../apps/web/spike/music/recording-analysis.json), tracked beside
+`sources.json`, holds the analysis of the render of 7 November (commit `1ef14db7`, no uncommitted
+audio changes) and `serveSources.mjs` serves it when no render's `facts.json` holds one (`[tested]`:
+`serveSources.test.mjs`, `recordingAnalysis.test.ts`).
 
 To reproduce the three masters, the `256 kb/s` AAC clips, `facts.json` and the listening page from
 the samples in `.cache/music/sources/`:
@@ -967,7 +969,8 @@ moments of a visit, a piece plays through, a silence follows, then another piece
   build made without `VITE_ALBEDIAN_MUSIC_SOURCES` carries neither address (`[tested]`); a build
   given it, as the field run's `--lan` build is, fetches from that base. The recording piece
   plays inside the beats and chords `analysis.ts` measured from the recording when the demo page was
-  rendered, served as `/recording-analysis.json` from `.cache/music/facts.json`. Where a file is
+  rendered, served as `/recording-analysis.json` from `.cache/music/facts.json`, or from the
+  tracked `recording-analysis.json` when no render's `facts.json` holds one. Where a file is
   missing the music stays silent and `getMusicStatus()` names it; nothing stands in for it
   (`[tested]`). While Audio is on the layer then tries again after `15`, `30` and `60 s` and every
   `120 s` after, on the context's clock (so not while it is suspended), fetching only what it still

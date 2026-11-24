@@ -105,6 +105,37 @@ describe('the development sources server', () => {
     expect(JSON.parse(res.body.toString('utf8'))).toEqual(ANALYSIS);
   });
 
+  // music-facts-tracked-one (LEAD ANSWER 18:04 on 24 Nov): a clean clone has no render's facts.json, so the recording
+  // piece's analysis tracked beside sources.json is served in its place
+  it("serves the tracked analysis when no render's facts file holds one, and nothing when neither does", async () => {
+    const tracked = JSON.parse(fs.readFileSync(new URL('../recording-analysis.json', import.meta.url), 'utf8')).analysis;
+    expect(tracked.file).toBe('scottbuckley/sb_signaltonoise_nomelody.mp3');
+    const noRecording = path.join(tmp, 'facts-without-recording.json');
+    fs.writeFileSync(noRecording, JSON.stringify({ clips: [{ id: 'organ-pulse' }] }));
+    const answers = [];
+    for (const [factsFile, trackedFile] of [
+      [path.join(tmp, 'no-facts.json'), undefined],
+      [noRecording, undefined],
+      [path.join(tmp, 'no-facts.json'), path.join(tmp, 'no-tracked.json')],
+    ]) {
+      const bare = createSourcesServer({ sourcesDir: path.join(tmp, 'sources'), factsFile, listed: [], ...(trackedFile ? { trackedAnalysisFile: trackedFile } : {}) });
+      const { port: barePort } = await listenOnLoopback(bare, 0);
+      answers.push(
+        await new Promise((resolve, reject) => {
+          http.get({ host: LOOPBACK, port: barePort, path: '/recording-analysis.json' }, (res) => {
+            const chunks = [];
+            res.on('data', (c) => chunks.push(c));
+            res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+          }).on('error', reject);
+        })
+      );
+      await new Promise((resolve) => bare.close(resolve));
+    }
+    expect(answers.slice(0, 2).map((a) => a.status)).toEqual([200, 200]);
+    for (const answer of answers.slice(0, 2)) expect(JSON.parse(answer.body)).toEqual(tracked);
+    expect(answers[2].status).toBe(404);
+  });
+
   it('answers 404 to every way out of its folder, plain or escaped', async () => {
     for (const raw of [
       '/../secret.txt',
