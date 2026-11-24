@@ -156,6 +156,15 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(aim.contains("ifdynamicTypeSize.isAccessibilitySize{AimLinesColumn(line:AimFrame.mostLine,coach:AimFrame.mostCoach,hidden:0,reduceMotion:true).dynamicTypeSize(...DynamicTypeSize.accessibility1).hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}}"),
                       "the room measured from the most the column can show, held as the column is, never shown")
         XCTAssertFalse(aim.contains("geometry.size.width*4/3"), "nothing drawn at the full width's height any more")
+        // AUDIT-C's T3 on largertext-m1: the rings are placed and drawn for the frame they are given, the preview's own
+        XCTAssertTrue(aim.contains("letplaced=SkyOverlayView.placed(aim.marks(model.skyMarks),attitude:model.currentAttitude,acrossFovDeg:model.previewFovDeg,width:width,height:width*4/3)"),
+                      "the rings placed for the frame's width")
+        XCTAssertTrue(aim.contains("PlacedSkyOverlay(placed:placed,width:width,height:width*4/3).atTop(Arrive.photoTop)"),
+                      "the rings drawn in the frame's width")
+        XCTAssertFalse(aim.contains("width:Double(geometry.size.width)"), "nothing placed or drawn at the screen's width")
+        // AUDIT-C's T4: the Predicted tag stands with the rings' first one, a single ring included (the tag rule)
+        XCTAssertTrue(aim.contains("if!placed.isEmpty{EvidenceTag(evidence:.predicted).frame(height:44).atTop(Arrive.topControls)"),
+                      "the tag with any ring drawn")
     }
 
     /// largertext-m2, Result: the Observed and Predicted counts stay side by side, 16 pt apart, while both fit whole on
