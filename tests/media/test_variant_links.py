@@ -14,7 +14,8 @@ Covers, through the API on a store of its own holding one display copy:
   on every route that reads it, and is left out of the listing, which still lists the rest; so is a listed record
   without its UTC instant.
 - A variant record naming another id than its folder, or an attempt record another id than its file, is never served
-  or listed.
+  or listed. A variant record naming no type the routes serve (missing, unknown, or no string) is 500 with the route's
+  fixed sentence on the file, export and manifest routes, never an unhandled error.
 - The file route sends the file it opened and checked, whole or by ranges, and never opens its path again.
 """
 
@@ -479,3 +480,39 @@ def test_the_file_answer_sends_its_descriptor_even_offered_pathsend_and_closes_i
     anyio.run(media_router._OpenedFileResponse(other, second, media_type="image/png"),
               {**scope, "method": "HEAD"}, receive, send)
     assert b"".join(m.get("body", b"") for m in sent[1:]) == b"" and second.closed
+
+
+RECORDS_REFUSED = "the stored records do not make a manifest the contract takes"
+
+
+@pytest.mark.parametrize("mime", ["missing", "image/heic", 5, ["image/png"], {"type": "image/png"}],
+                         ids=["missing", "unknown", "number", "list", "object"])
+def test_a_variant_record_naming_no_type_the_routes_serve_is_500_with_their_sentence(stored, mime) -> None:
+    client, sha, folder, job, outside = stored
+    vid = job["variantId"]
+    path = folder / "variants" / vid / "variant.json"
+    record = json.loads(path.read_text())
+    if mime == "missing":
+        del record["mimeType"]
+    else:
+        record["mimeType"] = mime
+    with replaced(path, "bytes", outside, json.dumps(record).encode("utf-8")):
+        for route, sentence in (("/file", RECORD_UNREADABLE), ("/export", RECORDS_REFUSED),
+                                ("/manifest", RECORDS_REFUSED)):
+            answer = client.get(f"/api/media/{sha}/variants/{vid}{route}")
+            assert answer.status_code == 500, (route, answer.status_code)
+            assert answer.headers["content-type"] == "application/json", route
+            assert answer.json()["detail"] == sentence, route
+        # The record route answers the records as they are stored
+        assert client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"] == record
+    assert client.get(f"/api/media/{sha}/variants/{vid}/file").status_code == 200
+
+
+def test_the_routes_type_tables_name_the_types_the_contract_serves() -> None:
+    from services.contracts.media import VARIANT_MIME_TYPES
+    from services.media import variants
+
+    # The file route takes a type with a file name and the export one with an extension; while both tables name the
+    # contract's types, the export's own check refuses what the manifest's contract check already refuses, and a type
+    # added to the contract alone fails here before a route meets it
+    assert set(variants.VARIANT_FILES) == set(variants.EXPORT_EXTENSIONS) == set(VARIANT_MIME_TYPES)

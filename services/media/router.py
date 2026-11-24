@@ -254,7 +254,11 @@ def get_variant_file(
     """The stored variant's bytes, served as the original is: cached privately, never sniffed, shown inline."""
     # The file is opened once, without following a link, and that descriptor is what is sent (_OpenedFileResponse)
     folder, (variant,) = _variant_records(JobStore(store), store, sha256, variant_id, ("variant.json",))
-    path = folder / variants.variant_file_name(variant["mimeType"])
+    mime = variant.get("mimeType")
+    # A record naming no type the store keeps a file for names no file: it is not a variant record the route can read
+    if not isinstance(mime, str) or mime not in variants.VARIANT_FILES:
+        raise HTTPException(status_code=500, detail=RECORD_UNREADABLE)
+    path = folder / variants.variant_file_name(mime)
     try:
         fd = _open_unlinked(path)
     except FileNotFoundError:
@@ -262,7 +266,7 @@ def get_variant_file(
     return _OpenedFileResponse(
         path,
         os.fdopen(fd, "rb"),
-        media_type=variant["mimeType"],
+        media_type=mime,
         headers={
             "Cache-Control": "private, max-age=31536000, immutable",
             "X-Content-Type-Options": "nosniff",
@@ -289,8 +293,10 @@ def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[P
     folder, (variant, graph, attempt) = _variant_records(jobs, store, sha256, variant_id, VARIANT_RECORDS)
     if attempt.get("status") != "ready":
         raise HTTPException(status_code=404, detail=NO_VARIANT)
-    # Every type the contract serves has an export row; a record naming another is not a record the manifest takes
-    if variant.get("mimeType") not in variants.EXPORT_EXTENSIONS:
+    # Every type the contract serves has an export row; a record naming another, or naming none (not a string), is not
+    # a record the manifest takes
+    mime = variant.get("mimeType")
+    if not isinstance(mime, str) or mime not in variants.EXPORT_EXTENSIONS:
         raise HTTPException(status_code=500, detail=RECORDS_REFUSED)
     try:
         manifest = variants.export_manifest(variant, graph, attempt, jobs.newest_solution_id(sha256))
