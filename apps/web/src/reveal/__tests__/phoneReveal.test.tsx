@@ -8,6 +8,7 @@ import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
+import { EARLY_SOURCE_WORDS } from '../earlyPose.js';
 import { revealMarks } from '../revealMarks.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 import { cornerPaths } from '../cornerPaths.js';
@@ -231,7 +232,7 @@ describe('the no-match reveal at phone width', () => {
     expect(document.documentElement.style.getPropertyValue('--phone-scroll')).toBe('');
   });
 
-  it('steps PhoneNoMatch aside while an answer is open on an unmatched phone photo or clip, while keeping PhoneAlignRefused and its Predicted tag mounted', () => {
+  it('steps PhoneNoMatch and PhoneAlignRefused aside while an answer is open on an unmatched phone photo or clip, anchoring AnswerPanel 16 px above the Predicted alignment lead over kept rings', () => {
     const answer = { heard: 'where is Sirius?', sentence: "Nothing in this clip's data answers that.", answer: null };
     // Unmatched photo with open answer: PhoneNoMatch steps aside, AnswerPanel shows cleanly
     act(() => {
@@ -240,6 +241,7 @@ describe('the no-match reveal at phone width', () => {
     expect(q('[data-testid="reveal-answer"]')!.className).toBe('reveal-answer is-phone');
     expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
     expect(q('.reveal-phone-lead')).toBeNull();
+    expect(q('.restore-phone-go')).toBeNull();
 
     // Unmatched clip with open answer: PhoneNoMatch steps aside too
     const unmatchedClip = poseSession({ ...sample('horizon_predicted_only') } as ObservationSolution, 'video');
@@ -248,6 +250,7 @@ describe('the no-match reveal at phone width', () => {
     });
     expect(q('[data-testid="reveal-answer"]')!.className).toBe('reveal-answer is-phone');
     expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+    expect(q('.restore-phone-go')).toBeNull();
 
     // Closing the answer brings PhoneNoMatch back
     act(() => {
@@ -255,23 +258,119 @@ describe('the no-match reveal at phone width', () => {
     });
     expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
 
-    // Over a kept refused alignment (PhoneAlignRefused), the Predicted tag stays mounted even when an answer is open
-    const photoSession = unmatched();
-    act(() => {
-      root.render(
-        createElement(RevealPhoto, {
-          session: photoSession,
-          onSelectFinding: () => {},
-          onHome: () => {},
-          phone: true,
-          viewportWidthPx: VIEW.w,
-          viewportHeightPx: VIEW.h,
-          alignedFrom: { sha256: photoSession.sourceAsset!.sha256, pose: { azDeg: 150, altDeg: 30, rollDeg: 0, fovXDeg: 60, aspect: 4 / 3 }, from: { kind: 'brightest', name: 'Fomalhaut' } },
-          answer,
-        })
-      );
+    // Over a kept refused alignment before restoration (PhoneAlignRefused), both photo and clip step PhoneAlignRefused aside,
+    // mount [data-testid="reveal-phone-estimate"] (Predicted + alignment source line), anchor AnswerPanel 16 px above it,
+    // and keep Line it up again at 772
+    const origBcr = HTMLElement.prototype.getBoundingClientRect;
+    let estTop = 701;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') === 'reveal-phone-estimate') {
+        const bottom = estTop + 55;
+        return { left: 24, top: estTop, right: 366, bottom, width: 342, height: 55, x: 24, y: estTop, toJSON: () => ({}) } as DOMRect;
+      }
+      return origBcr.call(this);
     });
-    expect(q('.reveal-status.is-unmatched.is-phone.is-refused .look-tag[data-evidence-class="predicted"]')).not.toBeNull();
+    try {
+      const photoSession = unmatched();
+      const photoAligned = {
+        sha256: photoSession.sourceAsset!.sha256,
+        pose: { azDeg: 150, altDeg: 30, rollDeg: 0, fovXDeg: 60, aspect: 4 / 3 },
+        from: { kind: 'brightest' as const, name: 'Fomalhaut' },
+      };
+      act(() => {
+        root.render(
+          createElement(RevealPhoto, {
+            session: photoSession,
+            onSelectFinding: () => {},
+            onHome: () => {},
+            phone: true,
+            viewportWidthPx: VIEW.w,
+            viewportHeightPx: VIEW.h,
+            alignedFrom: photoAligned,
+            answer,
+          })
+        );
+      });
+      expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+      expect(q('.reveal-status.is-unmatched.is-phone.is-refused')).toBeNull();
+      const photoEst = all('[data-testid="reveal-phone-estimate"]');
+      expect(photoEst).toHaveLength(1);
+      expect(photoEst[0]!.className).toBe('reveal-phone-estimate');
+      expect(photoEst[0]!.querySelector('.look-tag[data-evidence-class="predicted"]')).not.toBeNull();
+      expect(photoEst[0]!.querySelector('.reveal-phone-estimate__source')!.textContent).toBe(EARLY_SOURCE_WORDS.alignment);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${VIEW.h - 701 + 16}px`);
+      expect(q('.restore-phone-go button')!.textContent).toBe('Line it up again');
+
+      // Closing the answer on the photo unmounts reveal-phone-estimate and brings PhoneAlignRefused back
+      act(() => {
+        root.render(
+          createElement(RevealPhoto, {
+            session: photoSession,
+            onSelectFinding: () => {},
+            onHome: () => {},
+            phone: true,
+            viewportWidthPx: VIEW.w,
+            viewportHeightPx: VIEW.h,
+            alignedFrom: photoAligned,
+            answer: null,
+          })
+        );
+      });
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect(q('.restore-phone-go')).toBeNull();
+      expect(q('.reveal-status.is-unmatched.is-phone.is-refused .look-tag[data-evidence-class="predicted"]')).not.toBeNull();
+
+      // Unmatched clip over kept refused alignment + open answer: reveal-phone-estimate carries is-clip (above D16's player at y 638)
+      estTop = 583;
+      const clipAligned = {
+        sha256: unmatchedClip.sourceAsset!.sha256,
+        pose: { azDeg: 150, altDeg: 30, rollDeg: 0, fovXDeg: 60, aspect: 16 / 9 },
+        from: { kind: 'brightest' as const, name: 'Fomalhaut' },
+      };
+      act(() => {
+        root.render(
+          createElement(RevealPhoto, {
+            session: unmatchedClip,
+            onSelectFinding: () => {},
+            onHome: () => {},
+            phone: true,
+            viewportWidthPx: VIEW.w,
+            viewportHeightPx: VIEW.h,
+            alignedFrom: clipAligned,
+            answer,
+          })
+        );
+      });
+      expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+      expect(q('.align-refused__block')).toBeNull();
+      const clipEst = all('[data-testid="reveal-phone-estimate"]');
+      expect(clipEst).toHaveLength(1);
+      expect(clipEst[0]!.className).toBe('reveal-phone-estimate is-clip');
+      expect(clipEst[0]!.querySelector('.look-tag[data-evidence-class="predicted"]')).not.toBeNull();
+      expect(clipEst[0]!.querySelector('.reveal-phone-estimate__source')!.textContent).toBe(EARLY_SOURCE_WORDS.alignment);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${VIEW.h - 583 + 16}px`);
+      expect(q('.restore-phone-go button')!.textContent).toBe('Line it up again');
+
+      // Closing the answer on the clip brings PhoneAlignRefused's align-refused__block back
+      act(() => {
+        root.render(
+          createElement(RevealPhoto, {
+            session: unmatchedClip,
+            onSelectFinding: () => {},
+            onHome: () => {},
+            phone: true,
+            viewportWidthPx: VIEW.w,
+            viewportHeightPx: VIEW.h,
+            alignedFrom: clipAligned,
+            answer: null,
+          })
+        );
+      });
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect(q('.align-refused__block')).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

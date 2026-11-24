@@ -657,6 +657,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       ) : null}
     </>
   );
+  const phoneAlignRefusedUnderAnswer =
+    phone && !phoneCompare && !phoneRestoring && !phoneStopped && !skyOnScreen && Boolean(answer) && status.kind === 'unmatched' && keptRingsDrawn;
   const phoneStoppedUnderAnswer = phoneStopped && Boolean(answer) && restoration?.phase === 'stopped' && !restoration.canTryAgain;
   const phoneRestoreLead =
     (phoneRestoring || phoneStopped) && !nonPredictedCardOpen && (!answer || phoneStoppedUnderAnswer) && phonePredictedRingsDrawn
@@ -722,7 +724,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         // UIUX-tagphone-READY.md item C: the person's rings carry the Predicted tag, at full from their first frame
         <PhoneAligningBlock onSolve={onSolveFromHere ? () => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from) : undefined} />
-      ) : phone && !skyOnScreen && status.kind === 'unmatched' && keptRefused ? (
+      ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' && keptRefused ? (
         <PhoneAlignRefused
           clip={phoneClip}
           hideTag={cardAbovePredicted}
@@ -1162,13 +1164,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* D38 at phone width: while the restoration works, its lead (item A's tag) over the step and Cancel; once it stops,
           the stop's own block. Drawn before the card, so a picked star's sheet rises over them, the lead's tag drawn
           until the sheet covers it (item D), as the sheet covers Ask out loud */}
-      {phoneStoppedUnderAnswer && phoneRestoreLead !== null && (
+      {(phoneAlignRefusedUnderAnswer || (phoneStoppedUnderAnswer && phoneRestoreLead !== null)) && (
         <div
           ref={estimateRef}
           className={phoneClip ? 'reveal-phone-estimate is-clip' : 'reveal-phone-estimate'}
           data-testid="reveal-phone-estimate"
         >
-          {phoneRestoreLead}
+          {phoneAlignRefusedUnderAnswer ? phonePredictedLead : phoneRestoreLead}
         </div>
       )}
       {phoneRestoring && phoneRestoreLead !== null && (
@@ -1190,10 +1192,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
       {/* After a refusal on a phone no-match photo or clip, the screen's own main action comes back at 772 (Show predicted
           sky, or Line it up again over a kept refused alignment: DECIDED-BY-LEAD 05:02, UIUX-clipphone-READY.md section 4) */}
-      {phoneStopped && restoration?.phase === 'stopped' && !restoration.canTryAgain && status.kind === 'unmatched' && (keptRefused !== null || status.predictedSky) && (
+      {(phoneAlignRefusedUnderAnswer || (phoneStopped && restoration?.phase === 'stopped' && !restoration.canTryAgain && status.kind === 'unmatched' && (keptRefused !== null || status.predictedSky))) && (
         <div className="restore-phone-go">
           {keptRefused !== null ? (
-            <MainAction label="Line it up again" size="phone" onClick={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })} />
+            <MainAction
+              label="Line it up again"
+              size="phone"
+              onClick={() => {
+                if (answer) onCloseAnswer?.();
+                setAligning({ pose: keptRefused.pose, from: keptRefused.from });
+              }}
+            />
           ) : (
             <MainAction label="Show predicted sky" size="phone" onClick={() => onShowPredictedSky?.()} />
           )}

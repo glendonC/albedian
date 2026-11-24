@@ -167,4 +167,99 @@ describe('the Predicted tag over a refused line-up\'s kept rings through a phone
       spy.mockRestore();
     }
   });
+
+  it('phone-alignrefused-answer-1: before restoration, steps PhoneAlignRefused aside under an open answer on both photo and clip, keeps Predicted + alignment source 16 px below AnswerPanel, and reopens aligning cleanly from Line it up again', async () => {
+    const origBcr = HTMLElement.prototype.getBoundingClientRect;
+    let estTop = 701;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') === 'reveal-phone-estimate') {
+        return { left: 24, top: estTop, right: 366, bottom: estTop + 55, width: 342, height: 55, x: 24, y: estTop, toJSON: () => ({}) } as DOMRect;
+      }
+      return origBcr.call(this);
+    });
+    try {
+      const answer = { heard: 'Take me to Zorblax', sentence: "Nothing in this photo's data answers that.", answer: null };
+      // Bare upload without capture time or place (!status.predictedSky) before restoration (phase: 'idle')
+      const bare = unmatched();
+      const withoutTimeOrPlace = {
+        ...bare,
+        sourceAsset: { ...bare.sourceAsset!, capturedAtUTC: undefined, observerLocation: undefined },
+        observationSolution: { ...bare.observationSolution!, status: 'failed', poseEstimate: undefined },
+      } as unknown as ObservationSession;
+      let closedCount = 0;
+      await showPhone({
+        session: withoutTimeOrPlace,
+        alignedFrom: { sha256: withoutTimeOrPlace.sourceAsset!.sha256, pose: KEPT, from: { kind: 'brightest', name: 'Fomalhaut' } },
+        onSolveFromHere: () => {},
+        onCloseAnswer: () => {
+          closedCount += 1;
+        },
+        restoration: { phase: 'idle' },
+        answer,
+      });
+      expect(q('[data-testid="early-marks"]')).not.toBeNull();
+      expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+      expect(q('.reveal-status.is-unmatched.is-phone.is-refused')).toBeNull();
+      const photoLead = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(photoLead).not.toBeNull();
+      expect(photoLead.className).toBe('reveal-phone-estimate');
+      expect(leadOf(photoLead)).toEqual([TAG, ['reveal-phone-estimate__source', EARLY_SOURCE_WORDS.alignment]]);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 701 + 16}px`);
+      const again = q('.restore-phone-go button') as HTMLButtonElement;
+      expect(again.textContent).toBe('Line it up again');
+      expect(again.className).toContain('look-main');
+      expect(again.className).toContain('look-size-phone');
+
+      // Pressing Line it up again closes the open answer and enters PhoneAligningBlock cleanly
+      act(() => again.click());
+      expect(closedCount).toBe(1);
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Solve from here')).toBe(true);
+
+      // Unmatched clip over kept alignment rings before restoration (phase: 'idle') + open answer
+      estTop = 583;
+      const clipBase = unmatched();
+      const clipSha = 'b'.repeat(64);
+      const clipSession = {
+        ...clipBase,
+        sourceAsset: { ...clipBase.sourceAsset!, sha256: clipSha, mediaKind: 'video', width: 1920, height: 1080 },
+      } as ObservationSession;
+      await showPhone({
+        session: clipSession,
+        alignedFrom: { sha256: clipSha, pose: { ...KEPT, aspect: 16 / 9 }, from: { kind: 'brightest', name: 'Fomalhaut' } },
+        onSolveFromHere: () => {},
+        restoration: { phase: 'idle' },
+        answer: { heard: 'where is Polaris?', sentence: "Nothing in this clip's data answers that.", answer: null },
+      });
+      expect(q('[data-testid="early-marks"]')).not.toBeNull();
+      expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+      expect(q('.align-refused__block')).toBeNull();
+      const clipLead = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(clipLead).not.toBeNull();
+      expect(clipLead.className).toBe('reveal-phone-estimate is-clip');
+      expect(leadOf(clipLead)).toEqual([TAG, ['reveal-phone-estimate__source', EARLY_SOURCE_WORDS.alignment]]);
+      expect((q('[data-testid="reveal-answer"]') as HTMLElement).style.bottom).toBe(`${844 - 583 + 16}px`);
+      expect(q('.restore-phone-go button')!.textContent).toBe('Line it up again');
+
+      // While a restoration is running or stopped retryably (canTryAgain: true), phoneAlignRefusedUnderAnswer does not
+      // mount a duplicate .restore-phone-go over Cancel or Try again
+      await showPhone({
+        session: clipSession,
+        alignedFrom: { sha256: clipSha, pose: { ...KEPT, aspect: 16 / 9 }, from: { kind: 'brightest', name: 'Fomalhaut' } },
+        restoration: { phase: 'working', job: RUNNING },
+        answer: { heard: 'where is Polaris?', sentence: "Nothing in this clip's data answers that.", answer: null },
+      });
+      expect([...container.querySelectorAll('.restore-phone-go button')].map((b) => b.textContent)).toEqual(['Cancel']);
+      await showPhone({
+        session: clipSession,
+        alignedFrom: { sha256: clipSha, pose: { ...KEPT, aspect: 16 / 9 }, from: { kind: 'brightest', name: 'Fomalhaut' } },
+        restoration: { phase: 'stopped', job: { ...RUNNING, state: 'failed' } as unknown as UploadJob, sentence: 'Stopped.', subline: null, canTryAgain: true },
+        answer: { heard: 'where is Polaris?', sentence: "Nothing in this clip's data answers that.", answer: null },
+      });
+      expect([...container.querySelectorAll('.restore-phone-go button')].map((b) => b.textContent)).toEqual(['Try again']);
+      expect(q('.restore-phone-stopped')).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
