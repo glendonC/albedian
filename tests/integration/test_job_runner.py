@@ -10,7 +10,7 @@ real media kinds run through the API with their child's step called in this proc
 from __future__ import annotations
 
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import hashlib
 import io
 import json
@@ -34,7 +34,7 @@ from services.api import create_app
 from services.contracts.jobs import INTERRUPTED_SENTENCE, UploadJob
 from services.ingest import router as ingest_router
 from services.ingest import runner as job_runner
-from services.ingest.job_store import JobStore, new_job_id
+from services.ingest.job_store import JobStore, instant, new_job_id
 from services.ingest.runner import (
     JobContext,
     JobKind,
@@ -1396,6 +1396,40 @@ def _approximate_with_pose(sha: str) -> dict[str, Any]:
     return out
 
 
+def test_a_start_on_a_whole_second_is_before_a_predicted_sky_later_in_that_second(
+        world: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """The case behind the CI failure of 24 Nov on 1b997c84 (Python 3.14): `format_utc` writes milliseconds only when
+    they are not zero, so a start on a whole second ("...:26Z") and a predicted sky 4 ms later ("...:26.004Z") compare
+    the wrong way as strings ("Z" sorts after "."). The runner's clock is held still, then moved 4 ms, so the case comes
+    every run instead of about once in a thousand; the times are compared as instants."""
+    whole = datetime(2026, 11, 24, 20, 44, 26, tzinfo=timezone.utc)
+    clock = {"now": whole}
+    monkeypatch.setattr(job_runner, "_now", lambda: clock["now"])
+    published, release = threading.Event(), threading.Event()
+
+    def body(ctx: JobContext) -> KindResult:
+        clock["now"] = whole + timedelta(milliseconds=4)
+        ctx.predicted_sky(_approximate_with_pose(ctx.sha256))
+        published.set()
+        assert release.wait(BOUND_S), "the test never released the run"
+        return _publish_solution(ctx)
+
+    world["kinds"]["solve"] = solve_kind(Script(), body)
+    runner, sha = world["runner"](), world["shas"][0]
+    record, _ = runner.start(sha, "solve")
+    assert published.wait(BOUND_S)
+    live = runner.get(record["id"])
+    assert (live["startedAtUTC"], live["predictedSkyAtUTC"]) == ("2026-11-24T20:44:26Z", "2026-11-24T20:44:26.004Z")
+    assert live["state"] == "running" and _starts_by(live["startedAtUTC"], live["predictedSkyAtUTC"])
+    release.set()
+    assert runner.wait(record["id"], BOUND_S)["state"] == "succeeded"
+
+
+def _starts_by(earlier: str, later: str) -> bool:
+    """Whether the UTC stamp `earlier` is no later than `later`, compared as instants, never as strings."""
+    return instant(earlier) <= instant(later)
+
+
 def test_a_solve_publishes_its_predicted_sky_while_it_runs_and_its_record_says_when(world: dict[str, Any]) -> None:
     """REQ-JOB-2.7: the pose-placed sky is served while the search goes on, the record names its time on disk and
     live, keeps it when the job ends, and the sky itself goes with the job's other partial outputs."""
@@ -1413,7 +1447,7 @@ def test_a_solve_publishes_its_predicted_sky_while_it_runs_and_its_record_says_w
     assert published.wait(BOUND_S)
     live = runner.get(record["id"])
     UploadJob.model_validate(live)
-    assert live["state"] == "running" and live["startedAtUTC"] <= live["predictedSkyAtUTC"]
+    assert live["state"] == "running" and _starts_by(live["startedAtUTC"], live["predictedSkyAtUTC"])
     assert _on_disk(world["store"], record["id"])["predictedSkyAtUTC"] == live["predictedSkyAtUTC"]
     assert runner.predicted_sky(record["id"]) == _approximate_with_pose(sha)
     # A job whose ending is being written serves none, even before its partials are gone
