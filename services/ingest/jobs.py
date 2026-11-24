@@ -122,6 +122,17 @@ BLIND_LENT_WORDS = {
     "both": "The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded "
     "and where it was, which the stars do not confirm. " + _BLIND_SECOND,
 }
+# The whole-sky search's words for the time and place the photo's own file holds (own-moment-fallback-1), in C22's
+# shape: the first sentence shown, the second kept in the record; no value of the time or the place is said (decided
+# by the lead on UIUX's read against the records, 2026-11-24 18:10). A clip's warnings take the clip's noun
+BLIND_OWN_WORDS = (
+    "The stars alone lined this photo up; what is predicted on it is drawn for the photo's recorded capture time and "
+    "place, which the stars do not confirm. " + _BLIND_SECOND
+)
+BLIND_OWN_CLIP_WORDS = (
+    "The stars alone lined this clip up; what is predicted on it is drawn for the clip's recorded capture time and "
+    "place, which the stars do not confirm. " + _BLIND_SECOND
+)
 # C13 item 9 (.lead/uiux/UIUX-pointingwords-DECIDED-BY-LEAD.md, decided 2026-11-19 07:40)
 RECORD_NOT_USED = "The iPhone record stored with this photo belongs to another photo, so it was not used."
 # The warning when the verified calibration's centre lies outside the hint's stated uncertainty: the WCS wins
@@ -499,6 +510,11 @@ def _solve_chain(
     solution kept only when it calibrates (the lead's answer of 2026-11-19 13:20: a lent moment must never cost a photo
     a solve it gets alone). The predicted sky still uses the lent moment.
 
+    When the time and the place are the photo's own, so the phone solver searched from the horizon at that moment
+    alone, and still nothing calibrated, the phone solver once more over the whole sky (`whole_sky`), its solution kept
+    only when it calibrates, with `BLIND_OWN_WORDS` (the lead's answer of 2026-11-24 13:25: a photo's own moment must
+    never cost it a solve it gets alone either). It keeps the photo's moment for the stars' epoch and their altitudes.
+
     A solve from a person's alignment (`person_fov_deg`, with `person_axes` the pose in the stored frame) runs its own
     searches instead (`_solve_person_chain`). It runs no unhinted search: the upload's plain solve is its own job."""
     if person_fov_deg is not None:
@@ -528,7 +544,18 @@ def _solve_chain(
                 blind, observed_at_utc=chain.get("obs_utc_iso"), observer_lat=chain.get("lat_deg"),
                 observer_lon=chain.get("lon_deg"), warnings=[*blind.warnings, BLIND_LENT_WORDS[moment_lent]],
             )
+    elif _searched_from_the_horizon(chain, detections):
+        whole = _solve_chain_once(solve_image, detections, width, height, on_event=on_event, whole_sky=True, **chain)
+        if whole.status == "calibrated":
+            return replace(whole, warnings=[*whole.warnings, BLIND_OWN_WORDS])
     return solution
+
+
+def _searched_from_the_horizon(chain: Mapping[str, Any], detections: list) -> bool:
+    """Whether the chain's phone solver searched from the horizon only: the photo has a time and a place, and a phone
+    search ran (a camera-tagged upload, or one with ten detections or more after the plate solver)."""
+    has_moment = all(chain.get(key) is not None for key in ("obs_utc_iso", "lat_deg", "lon_deg"))
+    return has_moment and (bool(chain.get("camera_meta")) or len(detections) >= 10)
 
 
 # The fields of view the last search of an aligned solve sweeps, as factors of the person's, nearest first: nine rungs
@@ -618,10 +645,14 @@ def _solve_chain_once(
     hint_radius_deg: float | None = None,
     triangle_radius_deg: float | None = None,
     display_turns: int = 0,
+    whole_sky: bool = False,
 ):
     """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child. A pointing
     record's centre hint (pointing-4) goes to each: the phone solver keeps rotations within `hint_radius_deg` of it,
     the plate solver the catalog within `triangle_radius_deg` (its own 68 deg when None).
+
+    With `whole_sky` (own-moment-fallback-1) only the phone searches run, each over the whole sky at the photo's
+    moment (`solve_phone_photo`'s `whole_sky`); the plate solver searched the whole sky in the first run already.
 
     `on_event("solver", name)` comes before each search and `on_event("candidate", done, total)` reports its counts.
     """
@@ -632,6 +663,7 @@ def _solve_chain_once(
     # The phone solver also takes how the picture is shown, for its upright pass (the cut for a turned frame)
     phone_hint = dict(
         hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg, display_turns=display_turns,
+        whole_sky=whole_sky,
     )
     plate_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=triangle_radius_deg)
     if camera_meta:
@@ -664,7 +696,7 @@ def _solve_chain_once(
                 on_candidate=on_candidate,
                 **phone_hint,
             )
-        if solution.status != "calibrated":
+        if solution.status != "calibrated" and not whole_sky:
             on_event("solver", "triangle")
             plate_sol = solve_and_verify_field(
                 detections,
@@ -682,21 +714,23 @@ def _solve_chain_once(
             if plate_sol.status == "calibrated":
                 solution = plate_sol
     else:
-        on_event("solver", "triangle")
-        solution = solve_and_verify_field(
-            detections,
-            width,
-            height,
-            obs_utc_iso=obs_utc_iso,
-            observer_lat=lat_deg,
-            observer_lon=lon_deg,
-            source_asset_id=source_asset_id,
-            source_sha256=sha256,
-            solution_id=solution_id,
-            on_candidate=on_candidate,
-            **plate_hint,
-        )
-        if solution.status != "calibrated" and len(detections) >= 10:
+        solution = None
+        if not whole_sky:
+            on_event("solver", "triangle")
+            solution = solve_and_verify_field(
+                detections,
+                width,
+                height,
+                obs_utc_iso=obs_utc_iso,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                source_asset_id=source_asset_id,
+                source_sha256=sha256,
+                solution_id=solution_id,
+                on_candidate=on_candidate,
+                **plate_hint,
+            )
+        if (solution is None or solution.status != "calibrated") and len(detections) >= 10:
             on_event("solver", "phone_photo")
             phone_sol = solve_phone_photo(
                 solve_image,
@@ -710,8 +744,10 @@ def _solve_chain_once(
                 on_candidate=on_candidate,
                 **phone_hint,
             )
-            if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
+            if solution is None or phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
                 solution = phone_sol
+    if solution is None:
+        raise ValueError("The whole sky rerun runs a phone search, which needs a camera tag or ten detections.")
     return _with_noise_words(solution, detections)
 
 
@@ -1199,8 +1235,11 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     if pointing_hint is not None and solution.pointing_hint is None:
         solution = replace(solution, pointing_hint=pointing_hint)
     if media_kind == "video":
-        # A clip's count warnings name the clip (C14 and C25, the clip's noun), whichever search or stop made them
-        solution = replace(solution, warnings=[clip_words(words) for words in solution.warnings])
+        # A clip's count warnings name the clip (C14 and C25, the clip's noun), whichever search or stop made them, and
+        # so does the whole-sky search's (own-moment-fallback-1: a clip with its own time and place reaches it too)
+        solution = replace(solution, warnings=[
+            BLIND_OWN_CLIP_WORDS if words == BLIND_OWN_WORDS else clip_words(words) for words in solution.warnings
+        ])
     return solution
 
 
@@ -1329,8 +1368,10 @@ SOLVE_PRODUCER_FILES = (
 # `catalogRef` (catalogref-bj-geo-1); 27, nadir un-refraction clamped at -90 deg and subnormal field-of-view guards in
 # `record_pose`, the Moon's `MIN_PEAK_LUMA` floor (and NaN) in `find_sun_core`, sub-millisecond `frame_moment`
 # truncation without `.000Z`, and OpenNGC duplicate / newline guards (science-edge-1); 28, a predicted Solar System
-# body titled by its plain name, its class in its evidence class (ephemeris-title-plain-1)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 28, SOLVE_PRODUCER_FILES)
+# body titled by its plain name, its class in its evidence class (ephemeris-title-plain-1); 29, the phone solver once
+# more over the whole sky when the horizon search at the photo's own time and place calibrates nothing
+# (own-moment-fallback-1), which calibrates photos whose own moment left them predicted only
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 29, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

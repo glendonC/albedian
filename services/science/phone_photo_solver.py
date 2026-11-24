@@ -23,7 +23,8 @@ Design and references:
      refines the camera attitude, focal length, and distortion (`BrownConrady` or `KannalaBrandt`)
      on a held-in training subset and checks agreement with an independent refit on the disjoint
      held-out inliers [tested].
-  2. When time or place is unknown (or if horizon-constrained search finds no verified solution),
+  2. When time or place is unknown (or, in the solve chain's whole-sky rerun, when the horizon search finds no
+     verified solution),
      a scale-invariant 3D triangle geometric matcher searches ICRS star triangles [tested].
 - Acceptance gate (`evaluate_coincidence_gate`) weighs each held-out inlier residual against the
   background detection density following the Bayesian decision model of Lang et al. (2010, AJ 139,
@@ -2158,6 +2159,7 @@ def solve_phone_photo(
     seed_axes_icrs: Sequence[tuple[float, float]] | None = None,
     fov_candidates_deg: Sequence[float] | None = None,
     display_turns: int = 0,
+    whole_sky: bool = False,
 ) -> ObservationSolution:
     """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification.
 
@@ -2180,7 +2182,13 @@ def solve_phone_photo(
     field. A pose far from the truth is refused by the gate, so it can lose a solve but never make one.
 
     `display_turns` (the asset's displayOrientation, clockwise quarter turns) puts the first pass's upright prior in
-    the picture as it is shown, so a photo stored sideways is lined up in the first pass."""
+    the picture as it is shown, so a photo stored sideways is lined up in the first pass.
+
+    `whole_sky` (own-moment-fallback-1) runs the blind search over the whole sky for a photo with a time and a place,
+    in place of the horizon search: the search the photo gets with no moment, its stars verified with no horizon cut,
+    so a wrong clock or place cannot lose it; the stars are still moved to the photo's own epoch and each match is
+    given its altitude and azimuth at the photo's moment. One solve, with no second prior; it takes no centre hint and
+    no pose to try, which narrow only the horizon search."""
     if detections is None:
         raw_luma = _to_luma_2d(image)
         luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2190,7 +2198,7 @@ def solve_phone_photo(
         camera_label=camera_label, fov_diagonal_deg=fov_diagonal_deg, catalog_stars=catalog_stars,
         source_asset_id=source_asset_id, source_sha256=source_sha256, frame_time_sec=frame_time_sec,
         solution_id=solution_id, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg,
-        seed_axes_icrs=seed_axes_icrs, fov_candidates_deg=fov_candidates_deg,
+        seed_axes_icrs=seed_axes_icrs, fov_candidates_deg=fov_candidates_deg, whole_sky=whole_sky,
     )
     first_total = [0]
 
@@ -2208,8 +2216,9 @@ def solve_phone_photo(
         image, attitude_prior=_upright_prior_for(display_turns), on_candidate=first_counts, **common
     )
     horizon = obs_utc_iso is not None and observer_lat is not None and observer_lon is not None and catalog_stars is None
-    # A pose tried as the answer is one solve: no search runs, so a second prior has nothing to keep
-    if first.status == "calibrated" or not horizon or seed_axes_icrs is not None:
+    # A pose tried as the answer is one solve: no search runs, so a second prior has nothing to keep; nor has the
+    # whole-sky search, which keeps no prior
+    if first.status == "calibrated" or not horizon or seed_axes_icrs is not None or whole_sky:
         return first
     return _solve_phone_photo_with(image, attitude_prior=_attitude_prior_takes, on_candidate=second_counts, **common)
 
@@ -2235,9 +2244,13 @@ def _solve_phone_photo_with(
     hint_radius_deg: float | None = None,
     seed_axes_icrs: Sequence[tuple[float, float]] | None = None,
     fov_candidates_deg: Sequence[float] | None = None,
+    whole_sky: bool = False,
 ) -> ObservationSolution:
-    """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes."""
+    """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes (with
+    `whole_sky`, the blind search in its place)."""
     require_source_sha256(source_sha256)
+    if whole_sky and (seed_axes_icrs is not None or hint_radius_deg is not None):
+        raise ValueError("A centre hint or a pose to try narrows the horizon search, never the whole sky search.")
     if (observer_lat is None) != (observer_lon is None):
         raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
     hinted = (hint_ra_deg, hint_dec_deg, hint_radius_deg)
@@ -2328,7 +2341,7 @@ def _solve_phone_photo_with(
                 rot_matrix=rotation, fov_diagonal_deg=seed_fov, width=width, height=height, lens_model=seed_lens,
                 sky_frame=sky_frame,
             )
-    elif sky_frame is not None and catalog_stars is None:
+    elif sky_frame is not None and catalog_stars is None and not whole_sky:
         row_idx_b, ra_b, dec_b, _ = tile_index.query_bright(v_limit=6.3, max_stars=3500, epoch_jyear=epoch_jyear)
         enu_b = sky_frame.icrs_to_sky_vec(ra_b, dec_b)
         above = enu_b[:, 2] > math.sin(math.radians(0.5))
@@ -2355,7 +2368,7 @@ def _solve_phone_photo_with(
                 hint,
             )
 
-    if initial_wcs is None and (sky_frame is None or catalog_stars is not None):
+    if initial_wcs is None and (sky_frame is None or catalog_stars is not None or whole_sky):
         if catalog_stars is not None:
             custom_list = list(catalog_stars)
             c_ra = np.array([s.ra_deg for s in custom_list], dtype=np.float64)
@@ -2364,7 +2377,7 @@ def _solve_phone_photo_with(
             # The whole sky's brightest stars, in no region's favour (solve-search-1)
             c_ra, c_dec = _blind_search_catalog(tile_index, epoch_jyear)
         initial_wcs = _search_blind_icrs_triangles(
-            pool, width, height, c_ra, c_dec, fov_models, on_candidate if sky_frame is None else None
+            pool, width, height, c_ra, c_dec, fov_models, on_candidate if sky_frame is None or whole_sky else None
         )
 
     if initial_wcs is None:
@@ -2395,7 +2408,9 @@ def _solve_phone_photo_with(
         all_idx, all_ra, all_dec, _ = tile_index.query_bright(v_limit=v_lim, max_stars=8000, epoch_jyear=epoch_jyear)
         px0, py0 = initial_wcs.world_to_pixel_batch(all_ra, all_dec)
         in_box = np.isfinite(px0) & (px0 >= -8.0) & (px0 <= width + 8.0) & (py0 >= -8.0) & (py0 <= height + 8.0)
-        if sky_frame is not None:
+        # The whole-sky search keeps the stars below the horizon of the photo's moment, as the search with no moment
+        # does: a wrong clock or place must not take its stars away
+        if sky_frame is not None and not whole_sky:
             enu_all = sky_frame.icrs_to_sky_vec(all_ra, all_dec)
             in_box &= enu_all[:, 2] > math.sin(math.radians(0.2))
         box_sub = np.flatnonzero(in_box)[:max_in_frame]
