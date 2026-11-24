@@ -399,8 +399,17 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--legend-n)) both;
 }
 
-.reveal-legend {
+/* Its words word in, not the block: its title, its counts and a tag for what was measured. A Predicted or Simulated
+   tag in it has no entrance, so it stands at full from the rings' first frame, the legend mounting with the marks
+   (the tag rule; DECIDED-BY-LEAD 12:40 on 24 Nov, MOTION-legend-predtag-QUESTION.md) */
+.reveal-legend:not(.is-leaving) > .reveal-legend__title,
+.reveal-legend:not(.is-leaving) .reveal-legend__count,
+.reveal-legend:not(.is-leaving) .reveal-legend__row > .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+}
+
+.reveal-legend .reveal-legend__row > .look-tag:is([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
+  animation: none;
 }
 
 .ask-bar {
@@ -476,7 +485,9 @@
   animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in));
 }
 
-.is-locking .reveal-legend {
+.is-locking .reveal-legend:not(.is-leaving) > .reveal-legend__title,
+.is-locking .reveal-legend:not(.is-leaving) .reveal-legend__count,
+.is-locking .reveal-legend:not(.is-leaving) .reveal-legend__row > .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
   animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
 }
 
@@ -509,7 +520,9 @@
     animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in));
   }
 
-  .is-locking .reveal-legend {
+  .is-locking .reveal-legend:not(.is-leaving) > .reveal-legend__title,
+  .is-locking .reveal-legend:not(.is-leaving) .reveal-legend__count,
+  .is-locking .reveal-legend:not(.is-leaving) .reveal-legend__row > .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
     animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
   }
 

@@ -1120,17 +1120,23 @@ describe('the matched marks arrive brightest first, all within a third of a seco
 // The motion record (MOTION-READY-web.md, "Reveal parts"): the reveal's words arrive only once its marks are in (the
 // marks' span), as words in, 20 ms apart: the status first (its own unit), then In this photo, then Ask out loud
 describe('the reveal\'s words arrive after its marks', () => {
-  it('brings In this photo in after the marks, one stagger after the status\'s place', () => {
-    let found: Record<string, string> = {};
+  // Its words, not the block (DECIDED-BY-LEAD 12:40 on 24 Nov): a Predicted or Simulated tag in it has no entrance
+  // (ringsTagged.test.tsx)
+  it('brings In this photo\'s words in after the marks, one stagger after the status\'s place', () => {
+    const found: Record<string, Record<string, string>> = {};
     postcss.parse(motionCss).walkRules((rule) => {
-      if (rule.selector.replace(/\s+/g, ' ') === '.reveal-legend' && rule.parent?.type === 'root') {
-        rule.walkDecls((decl) => {
-          found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
-        });
-      }
+      if (rule.parent?.type !== 'root' || !rule.selector.includes('reveal-legend') || rule.selector.includes('.reveal-legend.is-leaving') || rule.selector.includes('is-locking')) return;
+      const decls: Record<string, string> = {};
+      rule.walkDecls((decl) => {
+        decls[decl.prop] = decl.value.replace(/\s+/g, ' ');
+      });
+      found[rule.selectors.map((s) => s.replace(/\s+/g, ' ')).join(', ')] = decls;
     });
     expect(found).toEqual({
-      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
+      '.reveal-legend:not(.is-leaving) > .reveal-legend__title, .reveal-legend:not(.is-leaving) .reveal-legend__count, .reveal-legend:not(.is-leaving) .reveal-legend__row > .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"])': {
+        animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
+      },
+      '.reveal-legend .reveal-legend__row > .look-tag:is([data-evidence-class="predicted"], [data-evidence-class="simulated"])': { animation: 'none' },
     });
   });
 });

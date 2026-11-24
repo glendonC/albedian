@@ -510,3 +510,130 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
     }
   });
 });
+
+// DECIDED-BY-LEAD 12:40 on 24 Nov (MOTION-legend-predtag-QUESTION.md): In this photo's Predicted tag stands at full from
+// the predicted rings' first frame, at the reveal and after Back to Moment, normal and Reduce Motion, while the legend's
+// words keep their words in. The legend mounts with the marks layer, so a tag with no entrance, under no ancestor with
+// one, is at full from the rings' first frame.
+describe("In this photo's Predicted tag stands with the rings it names", () => {
+  /** Every animation declaration motion.css gives this element now: top level, and under Reduce Motion when asked. */
+  function animationsOf(el: Element, reduced: boolean): Array<{ selector: string; decls: Record<string, string> }> {
+    const found: Array<{ selector: string; decls: Record<string, string> }> = [];
+    postcss.parse(motionCss).walkRules((rule) => {
+      const parent = rule.parent;
+      const atTop = parent?.type === 'root';
+      const underReduced = parent?.type === 'atrule' && (parent as postcss.AtRule).name === 'media' && (parent as postcss.AtRule).params.includes('prefers-reduced-motion: reduce');
+      if (!atTop && !(reduced && underReduced)) return;
+      const hit = rule.selectors.some((selector) => {
+        try {
+          return el.matches(selector);
+        } catch {
+          // A selector jsdom cannot read never names the legend (checked below)
+          expect(selector.includes('reveal-legend'), selector).toBe(false);
+          return false;
+        }
+      });
+      if (!hit) return;
+      const decls: Record<string, string> = {};
+      rule.walkDecls((d) => {
+        if (d.prop.startsWith('animation')) decls[d.prop] = d.value.replace(/\s+/g, ' ');
+      });
+      if (Object.keys(decls).length > 0) found.push({ selector: rule.selector.replace(/\s+/g, ' '), decls });
+    });
+    return found;
+  }
+  const WORDS_IN_AFTER_MARKS =
+    'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both';
+  const legendParts = () => {
+    const legend = q('.reveal-legend')!;
+    const predictedTag = legend.querySelector('.reveal-legend__row > .look-tag[data-evidence-class="predicted"]')!;
+    const measuredTag = legend.querySelector('.reveal-legend__row > .look-tag:not([data-evidence-class="predicted"])')!;
+    return { legend, predictedTag, predictedRow: predictedTag.parentElement!, measuredTag, title: legend.querySelector('.reveal-legend__title')!, counts: [...legend.querySelectorAll('.reveal-legend__count')] };
+  };
+
+  for (const reduced of [false, true]) {
+    it(`gives the Predicted tag and everything around it in the legend no entrance, its words their words in after the marks${reduced ? ', under Reduce Motion too' : ''}`, () => {
+      show(poseSession(POSE));
+      expect(container.querySelectorAll('button.reveal-mark.is-predicted').length).toBeGreaterThan(0);
+      const { legend, predictedTag, predictedRow, measuredTag, title, counts } = legendParts();
+      expect(predictedTag).not.toBeNull();
+      expect(measuredTag).not.toBeNull();
+      // The tag itself, its row and the legend: nothing but "none"
+      for (const el of [predictedTag, predictedRow, legend]) {
+        for (const { selector, decls } of animationsOf(el, reduced)) expect(decls, selector).toEqual({ animation: 'none' });
+      }
+      expect(animationsOf(predictedTag, reduced).map((r) => r.decls)).toEqual([{ animation: 'none' }]);
+      // The words, and a tag for what was measured, keep their words in after the marks' span
+      for (const el of [title, ...counts, measuredTag]) {
+        expect(animationsOf(el, reduced).map((r) => r.decls.animation), el.className).toContain(WORDS_IN_AFTER_MARKS);
+      }
+    });
+  }
+
+  for (const reduced of [false, true]) {
+    it(`keeps the lock-on's later words in on the legend's words and none on its Predicted tag${reduced ? ', under Reduce Motion too' : ''}`, () => {
+      show(poseSession(POSE));
+      const { legend, predictedTag, predictedRow, title, counts } = legendParts();
+      // The lock-on's class sits on the reveal's own root
+      const photo = container.querySelector('.reveal-photo')!;
+      photo.classList.add('is-locking');
+      const delay = reduced
+        ? 'calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger))'
+        : 'calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger))';
+      for (const el of [title, ...counts]) {
+        const rules = animationsOf(el, reduced);
+        expect(rules.map((r) => r.decls['animation-delay']), el.className).toContain(delay);
+        // The lock-on rule comes after the arrival rule, so its delay is the one that holds
+        const last = rules.filter((r) => r.decls['animation-delay'] !== undefined || r.decls.animation !== undefined).at(-1)!;
+        expect(last.decls['animation-delay'], el.className).toBe(delay);
+      }
+      for (const el of [predictedTag, predictedRow, legend]) {
+        for (const { selector, decls } of animationsOf(el, reduced)) expect(decls, selector).toEqual({ animation: 'none' });
+      }
+      photo.classList.remove('is-locking');
+    });
+  }
+
+  it("gives a Simulated row's tag no entrance either (simulated is in the legend's order)", () => {
+    const session = poseSession(POSE);
+    const predicted = session.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const withSimulated = {
+      ...session,
+      observationSolution: { ...session.observationSolution!, findings: [...session.observationSolution!.findings, { ...predicted, id: 'finding-simulated-one', evidenceClass: 'simulated' }] },
+    } as ObservationSession;
+    show(withSimulated);
+    const tag = q('.reveal-legend .reveal-legend__row > .look-tag[data-evidence-class="simulated"]')!;
+    expect(tag).not.toBeNull();
+    for (const reduced of [false, true]) {
+      expect(animationsOf(tag, reduced).map((r) => r.decls)).toEqual([{ animation: 'none' }]);
+      for (const { selector, decls } of animationsOf(tag.parentElement!, reduced)) expect(decls, selector).toEqual({ animation: 'none' });
+    }
+  });
+
+  it('mounts again at Back to Moment with the rings, its Predicted tag at full and its words in after the marks', () => {
+    vi.useFakeTimers();
+    try {
+      const session = poseSession(POSE);
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+      act(() => vi.advanceTimersByTime(5000));
+      expect(q('.reveal-legend')).toBeNull();
+      show(session);
+      expect(container.querySelectorAll('button.reveal-mark.is-predicted').length).toBeGreaterThan(0);
+      const { predictedTag, predictedRow, legend, title } = legendParts();
+      for (const el of [predictedTag, predictedRow, legend]) {
+        for (const { selector, decls } of animationsOf(el, false)) expect(decls, selector).toEqual({ animation: 'none' });
+      }
+      expect(animationsOf(title, false).map((r) => r.decls.animation)).toContain(WORDS_IN_AFTER_MARKS);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still leaves at Go there as recorded: the rows last first, then the title', () => {
+    show(poseSession(POSE));
+    const { legend, predictedRow, title } = legendParts();
+    legend.classList.add('is-leaving');
+    expect(animationsOf(predictedRow, false).map((r) => r.decls.animation).at(-1)).toContain('look-mo-words-out');
+    expect(animationsOf(title, false).map((r) => r.decls.animation).at(-1)).toContain('look-mo-words-out');
+  });
+});
