@@ -99,6 +99,7 @@ struct HomeScreen: View {
             ZStack {
                 Image("milky-way-home").resizable().scaledToFill()
                     .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                    .accessibilityHidden(true)
                 // linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)
                 LinearGradient(stops: HomeBackdrop.shade.map { .init(color: .black.opacity($0.opacity), location: CGFloat($0.location)) },
                                startPoint: .bottom, endPoint: .top)
@@ -195,7 +196,7 @@ struct AimScreen: View {
                     // so it opens again from its home
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
-                            AlbedianIcon.cameraSlash.image(18)
+                            AlbedianIcon.cameraSlash.image(18).accessibilityHidden(true)
                             Text("Albedian can't use the camera").font(AlbedianFont.regular(17)).tracking(-0.01 * 17)
                         }
                         .foregroundStyle(Color(ControlStyle.ink))
@@ -255,7 +256,7 @@ struct AimScreen: View {
                             VStack(spacing: 1) {
                                 ForEach(model.coachLines(), id: \.words) { line in
                                     HStack(spacing: 6) {
-                                        AlbedianIcon(rawValue: line.icon)?.image(14)
+                                        AlbedianIcon(rawValue: line.icon)?.image(14).accessibilityHidden(true)
                                         Text(line.words).font(AlbedianFont.regular(12)).tracking(-0.005 * 12).lineLimit(1)
                                     }
                                     .frame(height: 12 * 1.35)
@@ -331,7 +332,7 @@ struct AfterShotScreen: View {
                 if model.unreachable {
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
-                            AlbedianIcon.unreachable.image(17)
+                            AlbedianIcon.unreachable.image(17).accessibilityHidden(true)
                             Text("Can't reach the laptop").font(AlbedianFont.regular(17)).tracking(-0.01 * 17)
                         }
                         .foregroundStyle(Color(ControlStyle.ink))
@@ -378,6 +379,7 @@ struct ConnectScreen: View {
                     Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet))
                 }
                 TextField("", text: $model.typedAddress)
+                    .accessibilityLabel("Laptop address")
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -396,7 +398,7 @@ struct ConnectScreen: View {
                 if model.addressRefused {
                     // INTERIM (D11): the warning-circle icon and one line in ink at 15 pt, words for the owner to judge
                     HStack(alignment: .top, spacing: 8) {
-                        AlbedianIcon.warning.image(18).padding(.top, 1)
+                        AlbedianIcon.warning.image(18).padding(.top, 1).accessibilityHidden(true)
                         Text("Type the address Albedian shows on the laptop.").font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
                     }
                     .foregroundStyle(Color(ControlStyle.ink))
@@ -458,6 +460,7 @@ struct ResultScreen: View {
                             .font(AlbedianFont.light(40).monospacedDigit()).tracking(-0.045 * 40)
                         EvidenceTag(evidence: .catalogMatched)
                     }
+                    .accessibilityElement(children: .combine)
                     .foregroundStyle(Color(ControlStyle.ink))
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
                     .atTop(Arrive.photoTop + cardHeight + 22)
@@ -488,6 +491,7 @@ struct ResultScreen: View {
             Text(value.formatted()).font(AlbedianFont.regular(15).monospacedDigit()).tracking(-0.01 * 15).foregroundStyle(Color(ControlStyle.ink))
             EvidenceTag(evidence: evidence)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 

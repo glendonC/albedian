@@ -308,7 +308,7 @@ struct StoppedScreen: View {
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                 if let sentence = model.stoppedSentence {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        AlbedianIcon.warning.image(18).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+                        AlbedianIcon.warning.image(18).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }.accessibilityHidden(true)
                         Text(sentence).font(AlbedianFont.regular(17)).tracking(-0.01 * 17).multilineTextAlignment(.leading)
                     }
                     .foregroundStyle(Color(ControlStyle.ink))

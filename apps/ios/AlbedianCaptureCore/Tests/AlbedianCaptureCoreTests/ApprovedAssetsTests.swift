@@ -125,4 +125,45 @@ final class ApprovedAssetsTests: XCTestCase {
             }
         }
     }
+
+    func testDecorativeImagesAreHiddenAndConnectFieldAndResultCountsCarryVoiceOverMetadata() throws {
+        let companionRaw = try String(contentsOf: app.appendingPathComponent("Screens/CompanionScreens.swift"), encoding: .utf8)
+        let afterSendRaw = try String(contentsOf: app.appendingPathComponent("Screens/AfterSendScreens.swift"), encoding: .utf8)
+        let companionSplit = try SourceReader.split(companionRaw, .swift)
+        let afterSendSplit = try SourceReader.split(afterSendRaw, .swift)
+        let compactCompanion = companionSplit.code.filter { !$0.isWhitespace }
+        let compactAfterSend = afterSendSplit.code.filter { !$0.isWhitespace }
+
+        // Home backdrop image and all five paired-with-text status/coach icons are hidden from VoiceOver
+        XCTAssertTrue(compactCompanion.contains("Image().resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped().accessibilityHidden(true)"),
+                      "HomeScreen milky-way-home decorative image must be accessibilityHidden")
+        XCTAssertTrue(companionSplit.literals.contains("milky-way-home"))
+        XCTAssertTrue(compactCompanion.contains("AlbedianIcon.cameraSlash.image(18).accessibilityHidden(true)"),
+                      "AimScreen cameraSlash decorative icon must be accessibilityHidden")
+        XCTAssertTrue(compactCompanion.contains("AlbedianIcon(rawValue:line.icon)?.image(14).accessibilityHidden(true)"),
+                      "AimScreen coach decorative icon must be accessibilityHidden")
+        XCTAssertTrue(compactCompanion.contains("AlbedianIcon.unreachable.image(17).accessibilityHidden(true)"),
+                      "AfterShotScreen unreachable decorative icon must be accessibilityHidden")
+        XCTAssertTrue(compactCompanion.contains("AlbedianIcon.warning.image(18).padding(.top,1).accessibilityHidden(true)"),
+                      "ConnectScreen warning decorative icon must be accessibilityHidden")
+        XCTAssertTrue(compactAfterSend.contains("AlbedianIcon.warning.image(18).alignmentGuide(.firstTextBaseline){$0[.bottom]-3}.accessibilityHidden(true)"),
+                      "StoppedScreen warning decorative icon must be accessibilityHidden")
+        // CreditsScreen open-link button keeps its button label and does not hide its sole button label view
+        XCTAssertFalse(compactCompanion.contains("AlbedianIcon.openLink.image(16).accessibilityHidden(true)"))
+
+        // ConnectScreen address TextField carries an explicit Laptop address VoiceOver label
+        XCTAssertTrue(compactCompanion.contains("TextField(,text:$model.typedAddress).accessibilityLabel()"),
+                      "ConnectScreen TextField must carry an accessibilityLabel")
+        let codeLines = companionSplit.code.components(separatedBy: "\n")
+        let litLines = companionSplit.literals.components(separatedBy: "\n")
+        let labelLineIndex = try XCTUnwrap(codeLines.firstIndex { $0.filter { !$0.isWhitespace }.contains(".accessibilityLabel()") })
+        XCTAssertTrue(litLines[labelLineIndex].contains("Laptop address"),
+                      "ConnectScreen TextField accessibilityLabel must say Laptop address")
+
+        // ResultScreen calibrated primary count+tag HStack and secondary/non-calibrated count helper combine children
+        XCTAssertTrue(compactCompanion.contains("EvidenceTag(evidence:.catalogMatched)}.accessibilityElement(children:.combine)"),
+                      "ResultScreen catalogMatched count+tag HStack must combine children for VoiceOver")
+        XCTAssertTrue(compactCompanion.contains("EvidenceTag(evidence:evidence)}.accessibilityElement(children:.combine)"),
+                      "ResultScreen count helper HStack must combine children for VoiceOver")
+    }
 }
