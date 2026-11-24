@@ -218,6 +218,35 @@ describe('D34 and D38 phone clip restoration wait, compare, and stopped states',
     });
     expect(q('.restore-phone-wait.is-clip .work-phone-row > b')!.textContent).toBe('Queued · 2 ahead');
     expect(q('.restore-phone-lead')).toBeNull();
+
+    // 0-done gate checkpoint (jobs.py:519) keeps Checking mounted in .work-phone-row instead of dropping the row
+    const gateZeroClip = {
+      ...RUNNING_CLIP,
+      stages: [
+        { stage: 'decode', unit: 'frames', done: 328, total: 328 },
+        { stage: 'measure', unit: 'frames', done: 8, total: 8 },
+        { stage: 'restore', unit: 'frames', done: 328, total: 328 },
+        { stage: 'encode', unit: 'frames', done: 328, total: 328 },
+        { stage: 'write', unit: 'bytes', done: 900_000, total: 900_000 },
+        { stage: 'verify', unit: 'frames', done: 0, total: 328 },
+      ],
+    } as unknown as UploadJob;
+    act(() => {
+      root.render(
+        createElement(RevealPhoto, {
+          session: slottedClip(poseSession(sample('plate_calibrated'), 'video')),
+          onSelectFinding: noop,
+          onHome: noop,
+          phone: true,
+          viewportWidthPx: W,
+          viewportHeightPx: H,
+          restoration: { phase: 'working', job: gateZeroClip },
+          onCancelRestore: onCancel,
+        })
+      );
+    });
+    expect(q('.restore-phone-wait.is-clip .work-phone-row > b')!.textContent).toBe('Checking');
+    expect(q('.restore-phone-wait.is-clip .work-phone-row__v')!.textContent).toBe('0 of 328');
   });
 
   it('ready clip compare (crp-cmp): fits exact clip box, syncs muted video, portals 24 px labels above matched marks, filters predicted marks, and lists versions at 828', async () => {

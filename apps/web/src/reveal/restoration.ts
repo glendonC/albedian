@@ -213,10 +213,13 @@ function countedRows(entries: ReadonlyMap<string, Entry>, succeeded: boolean, st
     if (entry === null || entry.done === 0) return counting(name, 'next', null);
     return counting(name, stopped ? 'failed' : working ? 'now' : 'next', entry);
   });
-  if (stopped && !rows.some((row) => row.state === 'failed')) {
-    const unpaid = rows.findIndex((row) => row.state !== 'done');
-    const at = unpaid >= 0 ? unpaid : RESTORE_STEPS.length - 1;
-    rows[at] = counting(RESTORE_STEPS[at]!, 'failed', entries.get(RESTORE_STEPS[at]!) ?? null);
+  if ((stopped || working) && !rows.some((row) => row.state === (stopped ? 'failed' : 'now'))) {
+    const reported = rows.findIndex((row) => row.state !== 'done' && entries.has(row.stage));
+    const unpaid = reported >= 0 ? reported : rows.findIndex((row) => row.state !== 'done');
+    const at = unpaid >= 0 ? unpaid : stopped ? RESTORE_STEPS.length - 1 : -1;
+    if (at >= 0) {
+      rows[at] = counting(RESTORE_STEPS[at]!, stopped ? 'failed' : 'now', entries.get(RESTORE_STEPS[at]!) ?? null);
+    }
   }
   return rows;
 }

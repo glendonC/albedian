@@ -218,10 +218,21 @@ export const RestoreCompare: React.FC<{
   });
   const limit = Math.max(1, maxZoom);
 
-  // The wheel needs a listener that may cancel the page's own scroll
+  useEffect(() => {
+    const current = zoomRef.current;
+    if (current.z === 1 && current.tx === 0 && current.ty === 0) return;
+    const z = Math.min(limit, current.z);
+    const next = z <= 1 ? WHOLE : clamped({ z, tx: current.tx, ty: current.ty });
+    if (next.z !== current.z || next.tx !== current.tx || next.ty !== current.ty) {
+      zoomRef.current = next;
+      setZoom(next);
+    }
+  }, [limit, rect.widthPx, rect.heightPx]);
+
+  // The wheel needs a listener that may cancel the page's own scroll, only while the compare can zoom (D15, D36)
   useEffect(() => {
     const el = box.current;
-    if (!el) return undefined;
+    if (!el || limit <= 1) return undefined;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const at = local(event.clientX, event.clientY);

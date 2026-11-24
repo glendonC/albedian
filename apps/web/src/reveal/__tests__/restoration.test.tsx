@@ -43,7 +43,10 @@ describe('restorationOf: a job record to what the screen shows', () => {
   it('treats deterministic pre-restoration refusals in FAILURE_SENTENCES ending ", so it was not restored." as refusals, with no Try again', () => {
     const failed = restoration('failed');
     const preRefusals = FAILURE_SENTENCES.filter((s) => s.endsWith(', so it was not restored.'));
-    expect(preRefusals.length).toBeGreaterThanOrEqual(1);
+    expect(preRefusals).toEqual([
+      "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
+      "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored.",
+    ]);
     for (const sentence of preRefusals) {
       expect(restorationOf({ ...failed, error: sentence }, sha256)).toEqual({
         phase: 'stopped',

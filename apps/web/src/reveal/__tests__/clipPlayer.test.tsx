@@ -159,6 +159,25 @@ describe('ClipPlayer', () => {
     // Not held: moving does nothing
     pointer('pointermove', 118);
     expect(video.currentTime).toBeCloseTo(10.9, 6);
+
+    // Secondary mouse button does not start a scrub
+    act(() => {
+      line.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 118, button: 2 }) as PointerEvent);
+    });
+    expect(video.currentTime).toBeCloseTo(10.9, 6);
+
+    // pointercancel mid-scrub clears held and settles onSeek at the frame shown (P-SKY-9); unheld pointercancel is a no-op
+    onSeek.mockClear();
+    pointer('pointerdown', 168);
+    expect(video.currentTime).toBeCloseTo(2.725, 6);
+    expect(onSeek).not.toHaveBeenCalled();
+    pointer('pointercancel', 168);
+    expect(onSeek).toHaveBeenCalledTimes(1);
+    expect(onSeek).toHaveBeenLastCalledWith(video.currentTime);
+    pointer('pointermove', 318);
+    expect(video.currentTime).toBeCloseTo(2.725, 6);
+    pointer('pointercancel', 318);
+    expect(onSeek).toHaveBeenCalledTimes(1);
   });
 
   it('steps one second with the left and right arrows, never past either end, and leaves other keys alone', () => {

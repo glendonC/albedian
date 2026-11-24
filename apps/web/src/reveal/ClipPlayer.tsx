@@ -91,6 +91,7 @@ export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec:
         aria-valuetext={clipTime(time)}
         tabIndex={0}
         onPointerDown={(event) => {
+          if (event.button > 0) return;
           held.current = true;
           event.currentTarget.setPointerCapture?.(event.pointerId);
           go(timeAtX(event.clientX, event.currentTarget.getBoundingClientRect(), durationSec), false);
@@ -102,6 +103,11 @@ export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec:
           if (!held.current) return;
           held.current = false;
           go(timeAtX(event.clientX, event.currentTarget.getBoundingClientRect(), durationSec), true);
+        }}
+        onPointerCancel={() => {
+          if (!held.current) return;
+          held.current = false;
+          if (video) onSeek(video.currentTime);
         }}
         onKeyDown={(event) => {
           if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;

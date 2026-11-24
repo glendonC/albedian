@@ -180,6 +180,41 @@ describe("restorationRows: the job's own steps in order", () => {
     const gated = { ...clipAt(328, 328, 328, 'rejected'), stages: [...clipAt(328, 328, 328).stages, { stage: 'write', unit: 'bytes', done: 9_000_000, total: 9_000_000 }, { stage: 'verify', unit: 'frames', done: 40, total: 328 }] } as UploadJob;
     expect(restorationRows(gated).map((r) => r.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'failed']);
   });
+
+  it('keeps an active step on a running clip across 0-done stage hand-offs, and marks Measured when stopped during sample measure', () => {
+    // jobs.py:471: measure initializes at 0 of 8 before decode is entered
+    const measureStart = { ...still(0), stages: [{ stage: 'measure', unit: 'frames', done: 0, total: 8 }] } as UploadJob;
+    expect(shape(measureStart)).toEqual([
+      ['Opened', 'next', null, null],
+      ['Measured', 'now', '0 of 8', 0],
+      ['Restoring', 'next', null, null],
+      ['Encoding', 'next', null, null],
+      ['Saving', 'next', null, null],
+      ['Checking', 'next', null, null],
+    ]);
+    // Stopped during measure at 0 of 8: Measured is marked failed, not Opened
+    expect(shape({ ...measureStart, state: 'canceled', finishedAtUTC: measureStart.startedAtUTC } as UploadJob)[1]).toEqual([
+      'Measured', 'failed', '0 of 8', 0,
+    ]);
+    // jobs.py:480: measure is 8 of 8 while measure_clip solves noise and lift before decode starts
+    const measureDone = { ...still(0), stages: [{ stage: 'measure', unit: 'frames', done: 8, total: 8 }] } as UploadJob;
+    expect(shape(measureDone)[0]).toEqual(['Opened', 'now', null, null]);
+    // jobs.py:485: decode, restore and encode initialize at 0 of 328 before frame 0 finishes decoding
+    expect(shape(clipAt(0, 0, 0))[0]).toEqual(['Opened', 'now', '0 of 328', 0]);
+    expect(shape(clipAt(0, 0, 0)).map(([, state]) => state)).toEqual(['now', 'done', 'next', 'next', 'next', 'next']);
+    // jobs.py:511 and 519: after Saving finishes, during check_stored_clip (uncounted) and verify 0 of 328
+    const writtenStages = [...clipAt(328, 328, 328).stages, { stage: 'write', unit: 'bytes', done: 9_000_000, total: 9_000_000 }];
+    expect(shape({ ...still(0), stages: writtenStages } as UploadJob)[5]).toEqual(['Checking', 'now', null, null]);
+    expect(shape({ ...still(0), stages: [...writtenStages, { stage: 'verify', unit: 'frames', done: 0, total: 328 }] } as UploadJob)[5]).toEqual([
+      'Checking', 'now', '0 of 328', 0,
+    ]);
+    // Once all six clip stages reach their full counts while running, every row stays done
+    expect(
+      restorationRows({ ...still(0), stages: [...writtenStages, { stage: 'verify', unit: 'frames', done: 328, total: 328 }] } as UploadJob).every(
+        (r) => r.state === 'done',
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('the restoration on the reveal (laptop)', () => {
@@ -401,11 +436,33 @@ describe('D15: marks over the compare and zooming both pictures together (UIUX-r
     expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
   });
 
-  it('does not zoom a photo no larger than its frame, whose real pixels are the whole view', () => {
+  it('does not zoom or swallow wheel scroll when maxZoom is 1, and re-clamps zoom when the frame grows to real pixels', () => {
     show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } });
     place();
-    wheel(-300);
+    const unzoomableWheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -300, clientX: 200, clientY: 300 });
+    act(() => {
+      compare().dispatchEvent(unzoomableWheel);
+    });
+    expect(unzoomableWheel.defaultPrevented).toBe(false);
     expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
+
+    // Zoom in on a large photo, then widen the viewport so the frame exceeds the photo's real pixels (maxZoom <= 1)
+    done();
+    place();
+    const zoomWheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -300, clientX: 200, clientY: 300 });
+    act(() => {
+      compare().dispatchEvent(zoomWheel);
+    });
+    expect(zoomWheel.defaultPrevented).toBe(true);
+    expect(layers()[0]!.style.transform).not.toBe('translate(0px, 0px) scale(1)');
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+
+    show(
+      { phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } },
+      { session: calibrated(), viewportWidthPx: 2560, viewportHeightPx: 1440 },
+    );
+    expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
   });
 
   it('shows the photo bare while Original pixels is pressed: no compare', () => {
