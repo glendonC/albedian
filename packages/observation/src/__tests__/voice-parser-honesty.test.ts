@@ -274,7 +274,7 @@ describe('@albedian/observation voice parser: epochs', () => {
     expect(result.outcome).toMatchObject({
       status: 'rejected',
       reason: 'not_connected',
-      explanation: 'The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.',
+      explanation: "The sky is shown only at your clip's own time.",
     });
     expect(result.session).toBe(base);
     const spoken = executeVoiceOrTextCommand(base, 'show the sky in 1500 CE', 'voice', undefined, { now: NOW });
@@ -437,7 +437,7 @@ describe('@albedian/observation voice parser: refusals', () => {
     expect(dispatched.outcome).toMatchObject({
       status: 'rejected',
       reason: 'not_connected',
-      explanation: 'Voice cannot do this in the app yet.',
+      explanation: 'Voice cannot do that in this app.',
     });
     expect(dispatched.session).toBe(base);
   });

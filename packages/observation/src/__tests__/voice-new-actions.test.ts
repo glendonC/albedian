@@ -50,7 +50,7 @@ describe('@albedian/observation: voice actions the app cannot carry out yet', ()
           status: 'rejected',
           actionId: action.requestId,
           reason: 'not_connected',
-          explanation: 'Voice cannot do this in the app yet.',
+          explanation: 'Voice cannot do that in this app.',
           nextActions: [],
         });
         expect(result.session).toBe(session);
@@ -83,7 +83,8 @@ describe('@albedian/observation: voice actions the app cannot carry out yet', ()
           status: 'rejected',
           actionId: action.requestId,
           reason: 'no_grounded_answer',
-          explanation: 'No tool can answer questions from your data yet.',
+          // An empty session holds no recording: the ruled sentence with the default noun (reducer 501)
+          explanation: "That question cannot be answered from your photo's data.",
           nextActions: [],
         });
         expect(result.session).toBe(session);

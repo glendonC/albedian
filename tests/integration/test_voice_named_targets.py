@@ -121,6 +121,14 @@ def _reading(utterance: str, context: dict[str, Any]) -> dict[str, Any]:
     return {"target": target} if target else {"action": action["type"]}
 
 
+def _acts_on_nothing(reply: dict[str, Any]) -> bool:
+    """A refusal, or a question proposed for the reducer, which answers it in its own words with the recording's noun
+    (DECIDED-BY-LEAD 24 Nov 18:18): never an action on a finding."""
+    if reply["status"] == "rejected":
+        return "proposedAction" not in reply
+    return reply["status"] == "proposed" and reply["proposedAction"]["type"] == "question.ask"
+
+
 def _reply(utterance: str, context: dict[str, Any]) -> dict[str, Any]:
     reply = check_voice_command(utterance, context, current_year=YEAR)
     parsed = contract.VOICE_COMMAND_RESPONSE.validate_python(reply)
@@ -158,8 +166,7 @@ def test_each_row_is_read_as_the_app_parser_reads_it(
         assert reply["status"] == "needs_input"
         assert [choice["id"] for choice in reply["choices"]] == reads["ask"]
     elif "refused" in reads:
-        assert reply["status"] == "rejected"
-        assert "proposedAction" not in reply
+        assert _acts_on_nothing(reply), reply
     else:
         # A reading the checks then refuse (a flight to a predicted body) still names no other thing
         target = reply.get("proposedAction", {}).get("findingId")
@@ -378,7 +385,7 @@ def test_only_a_request_that_points_is_asked_which_finding_under_the_pointer_it_
     refused = ("take me to Andromeda", "how far is the Orion Nebula?", "how far is the star?", "select the bright one")
     for utterance in refused:
         reply = _reply(utterance, context)
-        assert reply["status"] == "rejected", (utterance, reply)
+        assert _acts_on_nothing(reply), (utterance, reply)
         assert "finding-obs" not in json.dumps(reply), utterance
     for utterance in ("what is that?", "take me there", "explore"):
         reply = _reply(utterance, context)
@@ -631,8 +638,7 @@ def test_pbt_a_name_the_backend_does_not_know_is_refused_even_when_the_sentence_
     said = f"{before}{template.format(n=stranger)}{after}"
     assert _reading(said, context) == {"refused": True}, said
     reply = _reply(said, context)
-    assert reply["status"] == "rejected", said
-    assert "proposedAction" not in reply
+    assert _acts_on_nothing(reply), said
 
 
 @settings(max_examples=300, deadline=None)
@@ -744,8 +750,7 @@ def _every_name_is_known_or_nothing_is_done(names_said: tuple[tuple[str, str, st
     assert reading == {"refused": True}, said
     read = parse_voice_intent(said, context, current_year=YEAR)
     reply = _reply(said, context)
-    assert reply["status"] == "rejected", said
-    assert "proposedAction" not in reply and "choices" not in reply, said
+    assert _acts_on_nothing(reply) and "choices" not in reply, said
     if read.action is not None:
         # A question: no rule acted on it, names alone or a sentence no rule takes ("is the North Star ...")
         assert read.action["type"] == "question.ask", said
@@ -819,8 +824,7 @@ def test_a_question_about_noise_or_a_shadow_proposes_nothing(utterance: str) -> 
         read = parse_voice_intent(utterance, context, current_year=YEAR)
         assert read.action is None or read.action["type"] == "question.ask", (utterance, read.action)
         reply = _reply(utterance, context)
-        assert reply["status"] == "rejected", utterance
-        assert "proposedAction" not in reply
+        assert _acts_on_nothing(reply), utterance
 
 
 def test_the_restore_profile_is_read_from_whole_words_too() -> None:

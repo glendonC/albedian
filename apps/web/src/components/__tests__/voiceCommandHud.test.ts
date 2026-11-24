@@ -434,8 +434,7 @@ describe('SpatialObservatoryViewport wiring (hud-4)', () => {
       ...afterCmd,
       selectedFindingId: finding.id,
       machines: { ...afterCmd.machines, voice: 'listening' },
-      lastStatusBanner:
-        'The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.',
+      lastStatusBanner: "The sky is shown only at your photo's own time.",
     };
 
     renderViewport(session, finding, { onPushToTalk, setCommandText, onRunUtterance });
@@ -447,9 +446,7 @@ describe('SpatialObservatoryViewport wiring (hud-4)', () => {
     expect(q('voice-command-hud')).not.toBeNull();
     expect(q('voice-ptt-btn')?.getAttribute('aria-pressed')).toBe('true');
     expect(q('voice-last-utterance')?.textContent).toBe('Show me this sky a thousand years ago');
-    expect(q('voice-status-banner')?.textContent).toContain(
-      'The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.'
-    );
+    expect(q('voice-status-banner')?.textContent).toContain("The sky is shown only at your photo's own time.");
 
     act(() => q<HTMLButtonElement>('voice-type-btn')!.click());
     expect(setCommandText).toHaveBeenLastCalledWith('');

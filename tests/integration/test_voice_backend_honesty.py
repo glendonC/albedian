@@ -147,7 +147,8 @@ def test_a_target_nothing_names_or_points_at_forms_no_action(utterance: str) -> 
 )
 def test_a_name_inside_another_word_names_nothing(utterance: str) -> None:
     reply = _reply(utterance, BARE)
-    assert reply["status"] == "rejected"
+    # Refused, or a question proposed for the reducer to answer (DECIDED-BY-LEAD 18:18): never an action on a finding
+    assert reply["status"] == "rejected" or reply["proposedAction"]["type"] == "question.ask", reply
     assert "findingId" not in reply.get("proposedAction", {})
 
 
@@ -417,11 +418,6 @@ def test_a_finding_no_source_holds_is_not_described() -> None:
 
 # --- space.enter, as the reducer gates it -------------------------------------------------------------------
 
-# The sky states with no worked-out sky, so nothing in it can be flown to: no solution yet, or an unresolved one (the
-# reducer refuses the same, packages/observation/src/reducer.ts)
-NO_SKY_STATES = {"not_requested", "detecting", "solving", "verifying", "unresolved"}
-
-
 @settings(max_examples=200, deadline=None)
 @given(
     sky=st.sampled_from(SKY_STATES),
@@ -436,19 +432,17 @@ NO_SKY_STATES = {"not_requested", "detecting", "solving", "verifying", "unresolv
 @example(sky="calibrated", finding_id="finding-predicted-saturn", as_viewpoint=False)
 @example(sky="predicted_only", finding_id="finding-observed-moon", as_viewpoint=True)
 @example(sky="unresolved", finding_id="finding-star-vega", as_viewpoint=False)
-def test_pbt_a_flight_needs_only_a_worked_out_sky_at_the_backend(sky: str, finding_id: str, as_viewpoint: bool) -> None:
+def test_pbt_a_flight_is_proposed_for_the_reducer_to_judge(sky: str, finding_id: str, as_viewpoint: bool) -> None:
     if as_viewpoint:
         action = _action("space.viewpoint", targetFindingId=finding_id, units="pc", offsetParsec=[1, 0, 0], trajectory="orbit")
     else:
         action = _action("space.enter", findingId=finding_id, distancePolicy="measured_or_estimated")
     reply = _reply("take me there", {**BARE, "calibrationState": sky}, action)
-    if sky in NO_SKY_STATES and not as_viewpoint:
-        assert (reply["status"], reply["reason"]) == ("rejected", "unresolved_sky")
-        assert "calibrated" not in reply["explanation"]
-    else:
-        # Whether the target is a star with a catalog row and a star catalog's distance, or the Sun, the Moon or a
-        # planet, is the reducer's to judge with the finding, as the app parser leaves it: the backend proposes
-        assert reply["status"] == "proposed", reply
+    # Whether the sky was worked out, and whether the target is a star with a catalog row and a star catalog's
+    # distance or the Sun, the Moon or a planet, is the reducer's to judge with the session in hand, and to word with the
+    # recording's noun, which the backend is not told (DECIDED-BY-LEAD 18:18): the backend proposes every flight
+    assert reply["status"] == "proposed", reply
+    assert reply["proposedAction"]["type"] == action["type"]
 
 
 # --- Years from the clock, as said, and every epoch refused ---------------------------------------------------
@@ -508,7 +502,6 @@ def test_pbt_years_ago_count_back_from_the_clock_year_across_1_bce_to_1_ce(years
     year_ce = _historical(YEAR - years)
     intent = parse_voice_intent(utterance, BARE, current_year=YEAR)
     reply = _reply(utterance, BARE)
-    assert "proposedAction" not in reply
     if contract.EPOCH_MIN_YEAR_CE <= year_ce <= contract.EPOCH_MAX_YEAR_CE:
         assert intent.action is not None
         assert intent.action == {
@@ -516,10 +509,12 @@ def test_pbt_years_ago_count_back_from_the_clock_year_across_1_bce_to_1_ce(years
             "epochISO": intent.action["epochISO"], "yearCE": year_ce,
         }
         assert _iso_year(intent.action["epochISO"]) == _astronomical(year_ce)
-        assert (reply["status"], reply["reason"], reply["explanation"]) == ("rejected", "not_connected", NO_EPOCH_VIEW)
+        # Proposed for the reducer, which words its refusal with the recording's noun (DECIDED-BY-LEAD 18:18)
+        assert (reply["status"], reply["proposedAction"]["type"]) == ("proposed", "space.epoch")
     else:
         assert (intent.action, intent.reason) == (None, "invalid_epoch")
         assert (reply["status"], reply["reason"]) == ("rejected", "invalid_epoch")
+        assert "proposedAction" not in reply
         assert (reply["explanation"], reply["nextActions"]) == (_out_of_range(year_ce), EPOCH_ADVICE)
 
 
@@ -881,21 +876,21 @@ def test_an_epoch_without_an_integer_year_fails_the_contract(fields: dict[str, A
     "year, past", [(contract.EPOCH_MIN_YEAR_CE, contract.EPOCH_MIN_YEAR_CE - 1),
                    (contract.EPOCH_MAX_YEAR_CE, contract.EPOCH_MAX_YEAR_CE + 1)]
 )
-def test_an_epoch_at_a_bound_is_not_connected_and_one_past_it_is_invalid_epoch(year: int, past: int) -> None:
+def test_an_epoch_at_a_bound_is_proposed_and_one_past_it_is_invalid_epoch(year: int, past: int) -> None:
     epoch = _action("space.epoch", epochISO="2000-01-01T00:00:00Z", yearCE=year)
     reply = _reply("show that year", BARE, epoch)
-    assert (reply["status"], reply["reason"], reply["explanation"]) == ("rejected", "not_connected", NO_EPOCH_VIEW)
+    assert (reply["status"], reply["proposedAction"]["yearCE"]) == ("proposed", year)
     refused = _reply("show that year", BARE, {**epoch, "yearCE": past})
     assert (refused["status"], refused["reason"]) == ("rejected", "invalid_epoch")
     assert (refused["explanation"], refused["nextActions"]) == (_out_of_range(past), EPOCH_ADVICE)
 
 
-def test_a_parsed_epoch_is_refused_as_the_reducer_refuses_it() -> None:
+def test_a_parsed_epoch_is_proposed_for_the_reducer_to_refuse_in_its_words() -> None:
     reply = _reply("show the sky as it was 500 years ago", BARE)
-    assert (reply["status"], reply["reason"], reply["explanation"]) == ("rejected", "not_connected", NO_EPOCH_VIEW)
-    assert reply["nextActions"] == []
+    assert (reply["status"], reply["proposedAction"]["type"]) == ("proposed", "space.epoch")
     assert reply["interpretation"] == {"parser": "rules"}
-    assert "proposedAction" not in reply
+    # The reducer's refusal, worded with the recording's noun, is not the backend's to say
+    assert "explanation" not in reply and NO_EPOCH_VIEW not in json.dumps(reply)
 
 
 # The years voiceParser.ts's tests pin epochIsoForYear to, pinned here for the Python side
@@ -941,8 +936,6 @@ def test_pbt_epoch_iso_is_iso_8601_in_astronomical_numbering(year_ce: int) -> No
         (_action("space.regime", regime="deep_sky"), "not_connected"),
         (_action("scene.show", scene="black_hole"), "not_connected"),
         (_action("audio.set", gain=0.5), "not_connected"),
-        (_action("space.epoch", epochISO="1601-01-01T00:00:00Z", yearCE=1601), "not_connected"),
-        (_action("question.ask", question="how old is that light?"), "no_grounded_answer"),
     ],
     ids=lambda value: value["type"] if isinstance(value, dict) else value,
 )
@@ -954,10 +947,27 @@ def test_the_backend_refuses_what_the_reducer_refuses_in_its_words(action: dict[
     assert f"'{reply['explanation']}'" in REDUCER_TS.read_text(encoding="utf-8")
 
 
-def test_a_request_no_action_matches_is_a_question_nothing_answers_yet() -> None:
+@pytest.mark.parametrize(
+    "action, context",
+    [
+        (_action("space.epoch", epochISO="1601-01-01T00:00:00Z", yearCE=1601), BARE),
+        (_action("question.ask", question="how old is that light?"), BARE),
+        (_action("space.enter", findingId="finding-star-vega", distancePolicy="measured_or_estimated"),
+         {**BARE, "calibrationState": "unresolved"}),
+    ],
+    ids=lambda value: value["type"] if isinstance(value, dict) and "type" in value else "",
+)
+def test_the_backend_proposes_what_only_the_reducer_can_word(action: dict[str, Any], context: dict[str, Any]) -> None:
+    # Each ruled sentence names the recording ("your photo's own time", "your clip's data", "the sky in this photo"),
+    # which the backend is not told; the web runs every proposal through the reducer, which says it (DECIDED-BY-LEAD 18:18)
+    reply = _reply("do it", context, action)
+    assert (reply["status"], reply["proposedAction"]["type"]) == ("proposed", action["type"]), reply
+    assert "explanation" not in reply
+
+
+def test_a_request_no_action_matches_is_a_question_for_the_reducer() -> None:
     reply = _reply("hello there", BARE)
-    assert (reply["status"], reply["reason"]) == ("rejected", "no_grounded_answer")
-    assert "proposedAction" not in reply
+    assert (reply["status"], reply["proposedAction"]["type"]) == ("proposed", "question.ask")
     # Each request carries its own id (tests/integration/test_voice_named_targets.py), so each is read on its own
     with_selected = {**BARE, "selectedFindingId": "finding-star-vega"}
     for context in (BARE, with_selected):
@@ -997,7 +1007,8 @@ def test_every_reply_to_a_parsed_request_names_the_rules() -> None:
         _reply("what is that one?", overlapping),
         _reply("replace the sky with fake stars", BARE),
     ]
-    assert [reply["status"] for reply in replies] == ["proposed", "rejected", "rejected", "needs_input", "rejected"]
+    # "hello there" is a question, proposed for the reducer to answer in its own words (DECIDED-BY-LEAD 18:18)
+    assert [reply["status"] for reply in replies] == ["proposed", "rejected", "proposed", "needs_input", "rejected"]
     assert all(reply["interpretation"] == {"parser": "rules"} for reply in replies)
 
 

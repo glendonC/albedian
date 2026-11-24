@@ -83,6 +83,11 @@ function flightRefusalExplanation(finding: CelestialFinding, kind: FlightRefusal
   return refusalSentence({ kind, name });
 }
 
+/** The recording's own noun in a sentence a person reads: a video is a "clip", the decided noun (C35). */
+function mediaNoun(session: ObservationSession): 'photo' | 'clip' {
+  return session.sourceAsset?.mediaKind === 'video' ? 'clip' : 'photo';
+}
+
 function rejectAction(
   session: ObservationSession,
   actionId: string,
@@ -124,7 +129,8 @@ export function dispatchAlbedianAction(
       session,
       action.requestId,
       'stale_revision',
-      `Stale action revision: expected ${action.expectedViewRevision}, but session is at revision ${session.viewRevision}.`,
+      // UIUX-predflight-READY.md's table, RULED 12:56 on 24 Nov (reducer 115)
+      'The screen changed while you asked.',
       ['Rebuild ActionContext from latest ObservationSession and retry']
     );
   }
@@ -135,17 +141,17 @@ export function dispatchAlbedianAction(
   switch (action.type) {
     case 'media.restore': {
       if (!base.sourceAsset || action.sourceAssetId !== base.sourceAsset.id) {
-        return rejectAction(session, action.requestId, 'missing_source', `SourceAsset "${action.sourceAssetId}" does not match active session asset "${base.sourceAsset?.id ?? 'none'}".`, ['Dispatch media.restore with the active SourceAsset ID']);
+        return rejectAction(session, action.requestId, 'missing_source', `Restore works on the ${mediaNoun(base)} on screen.`, ['Dispatch media.restore with the active SourceAsset ID']);
       }
       if ((action.constraints as { allowSyntheticSky?: boolean }).allowSyntheticSky !== false) {
-        return rejectAction(session, action.requestId, 'unsafe_synthetic_edit', 'Synthetic sky generation is forbidden by Albedian fidelity policy.', ['Use star_protected or temporal restoration profiles']);
+        return rejectAction(session, action.requestId, 'unsafe_synthetic_edit', `Nothing is generated here: a restoration uses only your ${mediaNoun(base)}'s own pixels.`, ['Use star_protected or temporal restoration profiles']);
       }
       // A stored restoration of this recording, by its kind and its source; nothing here restores anything, so the
       // outcome claims only what the variant's own disclosure says
       const sourceSha256 = base.sourceAsset.sha256;
       const variant = base.mediaVariants.find((v) => v.kind === 'restoration' && v.sourceSha256 === sourceSha256);
       if (!variant) {
-        return rejectAction(session, action.requestId, 'missing_source', 'No restored version of this recording exists yet.', ['Run restoration pipeline first']);
+        return rejectAction(session, action.requestId, 'missing_source', `This ${mediaNoun(base)} has not been restored.`, ['Run restoration pipeline first']);
       }
       const name = 'the restored version';
       const status = `Applied ${name} (${variant.disclosure})`;
@@ -171,7 +177,7 @@ export function dispatchAlbedianAction(
       const variantA = base.mediaVariants.find((v) => v.id === action.variantAId);
       const variantB = base.mediaVariants.find((v) => v.id === action.variantBId);
       if (!variantA || !variantB) {
-        return rejectAction(session, action.requestId, 'missing_source', `Cannot compare missing media variants (${action.variantAId} vs ${action.variantBId}).`, ['Select valid media variants from session.mediaVariants']);
+        return rejectAction(session, action.requestId, 'missing_source', `This ${mediaNoun(base)} has not been restored, so there is nothing to compare.`, ['Select valid media variants from session.mediaVariants']);
       }
       const status = `Comparing ${variantA.id} with ${variantB.id} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
       return completeAction(
@@ -185,7 +191,7 @@ export function dispatchAlbedianAction(
 
     case 'media.seek': {
       if (!base.sourceAsset) {
-        return rejectAction(session, action.requestId, 'missing_source', 'Cannot seek when no SourceAsset is loaded.', ['Import a recording first']);
+        return rejectAction(session, action.requestId, 'missing_source', 'There is no clip here to move through.', ['Import a recording first']);
       }
       const clampedSec = Math.min(Math.max(0, action.sourceTimeSec), base.sourceAsset.durationMs / 1000);
       const status = `Seeked to ${clampedSec.toFixed(2)}s (audio stream synchronized).`;
@@ -222,7 +228,7 @@ export function dispatchAlbedianAction(
         // none has been made, and which of its time and place the recording lacks, only when it lacks one. The
         // solver's own warnings are written for the solver's log, so none is passed on to a person
         if (!base.sourceAsset) {
-          return rejectAction(session, action.requestId, 'unresolved_sky', 'There is no photo or video here yet, so there is no sky to show.', ['Import a recording first']);
+          return rejectAction(session, action.requestId, 'unresolved_sky', 'There is no photo or clip here, so there is no sky to show.', ['Import a recording first']);
         }
         // A clip is named "clip", the decided noun; no "yet", since a solve that ended predicted only says it too (C34)
         const kind = base.sourceAsset.mediaKind === 'video' ? 'clip' : 'photo';
@@ -233,11 +239,13 @@ export function dispatchAlbedianAction(
         const noTime = !base.sourceAsset.capturedAtUTC;
         const noPlace = !base.sourceAsset.observerLocation;
         const lacks = noTime && noPlace ? 'when or where' : noTime ? 'when' : noPlace ? 'where' : undefined;
-        const said = lacks ? `${sky} The ${kind} does not say ${lacks} it was taken.` : sky;
+        // The noun's own verb, as the sky layer's words say it (apps/web/src/services/skyLayerWords.ts): a clip is
+        // recorded, a photo taken
+        const said = lacks ? `${sky} The ${kind} does not say ${lacks} it was ${kind === 'clip' ? 'recorded' : 'taken'}.` : sky;
         return rejectAction(session, action.requestId, 'unresolved_sky', said, []);
       }
       if (action.mode === 'measured' && (base.machines.calibration !== 'calibrated' || base.observationSolution.status !== 'calibrated')) {
-        return rejectAction(session, action.requestId, 'unresolved_sky', `Direct measured pixel registration requires a calibrated WCS solution (current status: ${base.observationSolution.status}).`, ['Show predicted sky model instead (`mode: "predicted"`)']);
+        return rejectAction(session, action.requestId, 'unresolved_sky', `This ${mediaNoun(base)}'s stars were not matched, so the real sky cannot be laid over it.`, ['Show predicted sky model instead (`mode: "predicted"`)']);
       }
       const fromSource = base.machines.navigation === 'source' || base.machines.navigation === 'comparison';
       const nextHistory = fromSource ? pushCheckpointIfDepartingSource(base, 'Departure from Source to Registered Sky') : base.navigationHistory;
@@ -337,7 +345,7 @@ export function dispatchAlbedianAction(
 
     case 'space.enter': {
       if (!base.observationSolution || base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
-        return rejectAction(session, action.requestId, 'unresolved_sky', 'Cannot enter 3D catalog space from an unresolved sky.', ['Calibrate sky first']);
+        return rejectAction(session, action.requestId, 'unresolved_sky', `The sky in this ${mediaNoun(base)} has not been worked out, so nothing in it can be flown to.`, ['Calibrate sky first']);
       }
       const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
       if (!finding) {
@@ -519,7 +527,7 @@ export function dispatchAlbedianAction(
     case 'space.regime':
     case 'scene.show':
     case 'audio.set':
-      return rejectAction(session, action.requestId, 'not_connected', 'Voice cannot do this in the app yet.', []);
+      return rejectAction(session, action.requestId, 'not_connected', 'Voice cannot do that in this app.', []);
     // The view cannot show another year yet: it does not move the drawn stars to a chosen year (camera-rig's
     // propagation has no caller), so a new epoch would change only the words on screen
     case 'space.epoch':
@@ -527,7 +535,7 @@ export function dispatchAlbedianAction(
         session,
         action.requestId,
         'not_connected',
-        'The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.',
+        `The sky is shown only at your ${mediaNoun(base)}'s own time.`,
         []
       );
 
@@ -537,7 +545,7 @@ export function dispatchAlbedianAction(
         session,
         action.requestId,
         'no_grounded_answer',
-        'No tool can answer questions from your data yet.',
+        `That question cannot be answered from your ${mediaNoun(base)}'s data.`,
         []
       );
   }

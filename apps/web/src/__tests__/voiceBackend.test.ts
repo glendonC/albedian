@@ -294,3 +294,28 @@ describe('@albedian/web voice backend: applying a reply', () => {
     );
   });
 });
+
+describe('applyVoiceBackendReply: what only the reducer can word (reducer-plain-words-1, DECIDED-BY-LEAD 18:18)', () => {
+  // The backend proposes an epoch, a question and a flight from a sky not worked out, since their ruled sentences name
+  // the recording, which it is not told; the reducer refuses each in those words, a photo's or a clip's
+  const asMedia = (session: ObservationSession, mediaKind: 'image' | 'video'): ObservationSession =>
+    ({ ...session, sourceAsset: { ...session.sourceAsset!, mediaKind } }) as ObservationSession;
+  const unsolved = (session: ObservationSession): ObservationSession => ({
+    ...session,
+    machines: { ...session.machines, calibration: 'unresolved' },
+  });
+  const cases = [
+    [{ type: 'space.epoch', epochISO: '1601-01-01T00:00:00Z', yearCE: 1601 }, (noun: string) => `The sky is shown only at your ${noun}'s own time.`, false],
+    [{ type: 'question.ask', question: 'how old is that light?' }, (noun: string) => `That question cannot be answered from your ${noun}'s data.`, false],
+    [{ type: 'space.enter', findingId: 'finding_betelgeuse', distancePolicy: 'measured_or_estimated' }, (noun: string) => `The sky in this ${noun} has not been worked out, so nothing in it can be flown to.`, true],
+  ] as const;
+
+  it.each(cases.map(([action, words, noSky]) => [action.type, action, words, noSky] as const))('%s reaches the reducer and its words for a photo and a clip', (_type, action, words, noSky) => {
+    for (const [mediaKind, noun] of [['image', 'photo'], ['video', 'clip']] as const) {
+      const session = noSky ? unsolved(asMedia(base, mediaKind)) : asMedia(base, mediaKind);
+      const applied = applyVoiceBackendReply(session, proposed({ ...action, requestId: 'req-backend', expectedViewRevision: session.viewRevision } as AlbedianAction));
+      expect(applied.outcome).toMatchObject({ status: 'rejected', explanation: words(noun) });
+      expect(applied.session.lastStatusBanner).toBe(words(noun));
+    }
+  });
+});

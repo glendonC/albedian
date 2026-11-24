@@ -141,7 +141,8 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     ).toMatchObject({
       status: 'rejected',
       reason: 'missing_source',
-      explanation: 'SourceAsset "src_none" does not match active session asset "none".',
+      // No recording at all: the ruled sentence with the default noun (reducer 126)
+      explanation: 'Restore works on the photo on screen.',
     });
     expect(
       dispatchAlbedianAction(parsed, {
@@ -788,7 +789,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       expect(result.outcome).toMatchObject({
         status: 'rejected',
         reason: 'missing_source',
-        explanation: 'No restored version of this recording exists yet.',
+        explanation: 'This clip has not been restored.',
       });
       expect(result.session).toBe(session);
     }

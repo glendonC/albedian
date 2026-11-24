@@ -477,11 +477,9 @@ def test_the_reply_names_the_model_asked_and_the_model_that_answered(monkeypatch
 
 
 MODEL_EPOCHS = {
-    # Every epoch in range is refused as the reducer refuses it, whoever formed it
-    "a year in range": ({"yearCE": 1601}, "not_connected",
-                        "The app cannot show the sky at another year yet: the view does not move the stars to a chosen year."),
-    "years before now": ({"yearsBeforeNow": 300}, "not_connected",
-                         "The app cannot show the sky at another year yet: the view does not move the stars to a chosen year."),
+    # Every epoch in range is proposed for the reducer to word, whoever formed it (DECIDED-BY-LEAD 18:18)
+    "a year in range": ({"yearCE": 1601}, None, None),
+    "years before now": ({"yearsBeforeNow": 300}, None, None),
     "year 0": ({"yearCE": 0}, "invalid_epoch", "There is no year 0: 1 BCE is followed by 1 CE."),
     "a year out of range": ({"yearCE": -10001}, "invalid_epoch",
                             "Year 10001 BCE is outside the range of a space.epoch year, 10000 BCE to 12000 CE."),
@@ -497,8 +495,11 @@ def test_a_model_epoch_is_refused_and_names_the_model(
     outcome = check_voice_command("show me the sky in another year", CONTEXT)
     contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
     assert len(api.requests) == 1
-    assert (outcome["status"], outcome["reason"], outcome["explanation"]) == ("rejected", reason, explanation)
     assert outcome["interpretation"] == _model()
+    if reason is None:
+        assert (outcome["status"], outcome["proposedAction"]["type"]) == ("proposed", "space.epoch")
+        return
+    assert (outcome["status"], outcome["reason"], outcome["explanation"]) == ("rejected", reason, explanation)
     assert "proposedAction" not in outcome
 
 

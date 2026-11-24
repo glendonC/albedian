@@ -75,7 +75,7 @@ const clearer = (s: ObservationSession) => executeVoiceOrTextCommand(s, 'make th
 describe('voice finds the restored version the screen shows', () => {
   it('on main the app holds no restored version after Restore, so voice refuses (the finding, as reproduced live)', () => {
     expect(session.mediaVariants).toEqual([]);
-    expect(clearer(session).outcome).toMatchObject({ status: 'rejected', reason: 'missing_source', explanation: 'No restored version of this recording exists yet.' });
+    expect(clearer(session).outcome).toMatchObject({ status: 'rejected', reason: 'missing_source', explanation: 'This photo has not been restored.' });
   });
 
   it('after Restore, the laptop compare shows the newest ready restoration: it is reported, and voice then finds it', async () => {

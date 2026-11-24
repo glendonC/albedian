@@ -99,7 +99,7 @@ describe('asking to restore does what the Restore button does', () => {
     load(recording('image'));
     seen.props.restoreNowRef!.current = vi.fn(() => false);
     ask('make the sky clearer');
-    expect(seen.props.answer?.sentence).toBe('No restored version of this recording exists yet.');
+    expect(seen.props.answer?.sentence).toBe('This photo has not been restored.');
   });
 
   it('a restored version already on screen: the reducer finds it, and the button is not pressed again', () => {
@@ -121,6 +121,6 @@ describe('asking to restore does what the Restore button does', () => {
     ask('compare with the original');
     expect(seen.props.session.voiceActions.at(-1)!.proposedAction?.type).toBe('media.compare');
     expect(pressed).not.toHaveBeenCalled();
-    expect(seen.props.answer?.sentence).toMatch(/^Cannot compare missing media variants/);
+    expect(seen.props.answer?.sentence).toBe('This photo has not been restored, so there is nothing to compare.');
   });
 });

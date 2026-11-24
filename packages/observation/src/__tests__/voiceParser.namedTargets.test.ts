@@ -1219,7 +1219,7 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     const overcast = createSyntheticUnresolvedSession();
     const original = run(overcast, 'restore the video');
     expect(original.outcome).toMatchObject({ status: 'rejected' });
-    expect(JSON.stringify(original.outcome)).toContain('No restored version of this recording exists yet.');
+    expect(JSON.stringify(original.outcome)).toContain('This clip has not been restored.');
     const natural = run(base, 'restore the video');
     expect(natural.outcome).toMatchObject({
       status: 'completed',
@@ -1264,17 +1264,17 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     const unresolved = sessionOf('plate_too_few_sources');
     const { capturedAtUTC: _dropped, ...timeless } = unresolved.sourceAsset!;
     expect(said({ ...unresolved, sourceAsset: timeless })).toEqual([
-      "This clip's sky could not be worked out from its stars. The clip does not say when it was taken.",
+      "This clip's sky could not be worked out from its stars. The clip does not say when it was recorded.",
       [],
     ]);
     const { observerLocation: _nowhere, ...placeless } = unresolved.sourceAsset!;
     expect(said({ ...unresolved, sourceAsset: placeless })).toEqual([
-      "This clip's sky could not be worked out from its stars. The clip does not say where it was taken.",
+      "This clip's sky could not be worked out from its stars. The clip does not say where it was recorded.",
       [],
     ]);
     const { observerLocation: _gone, ...bare } = timeless;
     expect(said({ ...unresolved, sourceAsset: bare })).toEqual([
-      "This clip's sky could not be worked out from its stars. The clip does not say when or where it was taken.",
+      "This clip's sky could not be worked out from its stars. The clip does not say when or where it was recorded.",
       [],
     ]);
 
@@ -1282,13 +1282,13 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     const { observationSolution: _none, ...unsolved } = unresolved;
     expect(said(unsolved as ObservationSession)).toEqual(["This clip's sky has not been worked out.", []]);
     expect(said({ ...(unsolved as ObservationSession), sourceAsset: bare })).toEqual([
-      "This clip's sky has not been worked out. The clip does not say when or where it was taken.",
+      "This clip's sky has not been worked out. The clip does not say when or where it was recorded.",
       [],
     ]);
     // No recording either: there is no sky to speak of, and the next step is to bring one
     const { sourceAsset: _noAsset, ...empty } = unsolved;
     expect(said(empty as ObservationSession)).toEqual([
-      'There is no photo or video here yet, so there is no sky to show.',
+      'There is no photo or clip here, so there is no sky to show.',
       ['Import a recording first'],
     ]);
     // The app marks the sky unresolved while it still holds a solve that came out: that solve's warnings explain

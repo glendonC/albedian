@@ -99,19 +99,15 @@ def new_request_id() -> str:
     return f"req-{uuid.uuid4().hex}"
 
 
-# What the reducer answers for each action the app cannot do yet (packages/observation/src/reducer.ts)
+# What the reducer answers, word for word, for each action voice cannot do in this app (packages/observation/src/reducer.ts,
+# UIUX-predflight-READY.md row 487). An epoch, a question and a flight are not here: the reducer words their refusals
+# with the recording's noun, which the backend is not told, so they are proposed and the reducer says them
+# (DECIDED-BY-LEAD 24 Nov 18:18)
 NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
-    "ui.overlay": ("not_connected", "Voice cannot do this in the app yet."),
-    "space.regime": ("not_connected", "Voice cannot do this in the app yet."),
-    "scene.show": ("not_connected", "Voice cannot do this in the app yet."),
-    "audio.set": ("not_connected", "Voice cannot do this in the app yet."),
-    # The view cannot show another year yet: it does not move the drawn stars to a chosen year, so a new epoch
-    # would change only the words on screen
-    "space.epoch": (
-        "not_connected",
-        "The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.",
-    ),
-    "question.ask": ("no_grounded_answer", "No tool can answer questions from your data yet."),
+    "ui.overlay": ("not_connected", "Voice cannot do that in this app."),
+    "space.regime": ("not_connected", "Voice cannot do that in this app."),
+    "scene.show": ("not_connected", "Voice cannot do that in this app."),
+    "audio.set": ("not_connected", "Voice cannot do that in this app."),
 }
 UNSAFE_PHRASES = ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")
 
@@ -960,25 +956,6 @@ def _as_whole(value: Any) -> int | None:
     return None
 
 
-# The calibration states with no worked-out sky: no solution yet, or an unresolved one. The reducer refuses a flight in
-# them in this same sentence (packages/observation/src/reducer.ts, space.enter)
-_NO_SKY_STATES = frozenset({"not_requested", "detecting", "solving", "verifying", "unresolved"})
-_NO_SKY_FLIGHT = "Cannot enter 3D catalog space from an unresolved sky."
-
-
-def _flight_refusal(ctx: ActionContext) -> tuple[str, str, list[str]] | None:
-    """Why the reducer would refuse this flight, as far as the backend can tell, or None.
-
-    The flight rule (services/contracts/astronomy.py `flight_refusal`) judges the finding, which the backend does not
-    hold: whether it is a star with a catalog row and a star catalog's distance, or the Sun, the Moon or a planet, is
-    the reducer's to say with the finding in hand, as the app parser leaves it (so neither parser refuses what the other
-    proposes). Only a sky with no solution worked out refuses every flight, in the reducer's own sentence.
-    """
-    if ctx.calibration_state in _NO_SKY_STATES:
-        return ("unresolved_sky", _NO_SKY_FLIGHT, ["Calibrate the sky first"])
-    return None
-
-
 def _epoch_refusal(action: dict[str, Any]) -> tuple[str, str, list[str]] | None:
     """Why a space.epoch year cannot stand, as the rules say it: year 0, or a whole year outside the contract's
     range. None otherwise.
@@ -1175,9 +1152,7 @@ def _check(
             return disambiguation
 
     refusal = None
-    if action_type == "space.enter":
-        refusal = _flight_refusal(ctx)
-    elif action_type in NOT_IN_THE_APP_YET:
+    if action_type in NOT_IN_THE_APP_YET:
         refusal = (*NOT_IN_THE_APP_YET[action_type], [])
     if refusal is not None:
         return _rejected(action_id, *refusal)
