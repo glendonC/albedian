@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 import numpy as np
+from scipy import ndimage
 
 from services.media import clip_io, colour, encode, frame_pool, gate, noise, spatial, stars, temporal, tone
 from services.media.decode import (
@@ -46,6 +47,10 @@ class ClipRefusal(Exception):
 # A restoration's refusal of a near-black clip whose darkest quarter sits on the black floor so its dark-level noise
 # cannot be measured [decided 2026-11-24 by the lead: review row C36 clip form, UIUX-nearblackrestore-READY.md]
 NEAR_BLACK_CLIP = "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored."
+# The not-measured reason of a clip whose darkest quarter is a flat dark band above black: no noise there to measure,
+# so no noise reduction and the lift held by the quantisation bound [decided 2026-11-24 by the lead: flatband-zero's
+# reason, the decided note, never the internal error sentence]
+DARK_LEVEL_FLAT = "dark_level_flat"
 STEP_VERSION = "1.0.0"
 # The noise table and the lift are measured on this many frames spread over the whole clip, the first and the last
 # among them [proposed: REQ-RST-4.1 asks for frames spread over the clip; eight 2.4 MP frames give the table about
@@ -273,15 +278,35 @@ def _blocks_on_black_clip(luma_codes: np.ndarray, blocks: np.ndarray, black_code
     (`noise.ENERGY_PERCENTILE`) of them lie wholly on or below `black_code`, and the median code across all luma
     samples of the chosen blocks is at most `black_code` [proposed: range-aware clip form of `photo._blocks_on_black_clip`,
     zero extra constants; tested on limited- and full-range clips and controls]."""
-    chosen_mask = np.asarray(blocks, dtype=bool)
-    if not chosen_mask.any():
+    chosen = _chosen_code_blocks(luma_codes, blocks)
+    if not chosen.size:
         return False
+    block_peak = chosen.max(axis=(1, 2))
+    return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) <= black_code and np.median(chosen) <= black_code)
+
+
+def _blocks_flat_in_codes(luma_codes: np.ndarray, blocks: np.ndarray) -> bool:
+    """Whether the noise estimator's own 25th-percentile block (`noise.ENERGY_PERCENTILE`, by the same linear rule) of
+    the chosen blocks holds one luma code, and so does its border out to the fine scale's reach (half the B3 kernel,
+    `noise.B3_TAPS`): its fine-scale energy is then the float rounding of the linear light alone (3.7e-18 at Y'=40 on
+    macOS, clip-edge-audit trap 2) [tested], never a neighbour's noise reaching in, which stays measured as at revision
+    10 [decided 2026-11-24 by the lead: a noise made of rounding reads as zero; zero extra constants]."""
+    if not np.asarray(blocks, dtype=bool).any():
+        return False
+    size = 2 * (len(noise.B3_TAPS) // 2) + 1
+    highest = _chosen_code_blocks(ndimage.maximum_filter(luma_codes, size=size, mode="nearest"), blocks)
+    lowest = _chosen_code_blocks(ndimage.minimum_filter(luma_codes, size=size, mode="nearest"), blocks)
+    block_spread = highest.max(axis=(1, 2)) - lowest.min(axis=(1, 2))
+    return bool(np.percentile(block_spread, noise.ENERGY_PERCENTILE) <= 0)
+
+
+def _chosen_code_blocks(luma_codes: np.ndarray, blocks: np.ndarray) -> np.ndarray:
+    """The luma codes of the chosen blocks (`noise.BLOCK_PX` square, in the noise module's row-major block order)."""
+    chosen_mask = np.asarray(blocks, dtype=bool)
     rows, columns = luma_codes.shape[0] // noise.BLOCK_PX, luma_codes.shape[1] // noise.BLOCK_PX
     cut = luma_codes[: rows * noise.BLOCK_PX, : columns * noise.BLOCK_PX]
     grid = cut.reshape(rows, noise.BLOCK_PX, columns, noise.BLOCK_PX).swapaxes(1, 2)
-    chosen = grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX)[chosen_mask]
-    block_peak = chosen.max(axis=(1, 2))
-    return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) <= black_code and np.median(chosen) <= black_code)
+    return grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX)[chosen_mask]
 
 
 def measure_stars(clip: ClipColour, run: frame_pool.Run) -> list[stars.StarField]:
@@ -329,10 +354,18 @@ def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], expo
     if measurement.reason is None:
         blocks = noise.darkest_quarter_blocks(luminance, footprint, clipped_map)
         before = noise.fine_noise(luminance, blocks)
-        if not (math.isfinite(before) and before > 0):
-            if math.isfinite(before) and _blocks_on_black_clip(codes_mosaic[..., 0], blocks, clip.black_code()):
-                raise ClipRefusal(NEAR_BLACK_CLIP)
+        if not math.isfinite(before):
             raise ClipFramesError("the noise at the dark level could not be measured on both images")
+        on_black = _blocks_on_black_clip(codes_mosaic[..., 0], blocks, clip.black_code())
+        if not before > 0 and on_black:
+            raise ClipRefusal(NEAR_BLACK_CLIP)
+        # Above black, a darkest quarter with no noise is a flat dark band; and wherever its quarter block and that
+        # block's border hold one luma code, a `before` above zero is rounding, so no ratio of it is stored. Only a
+        # `before` of zero on the black floor is refused, so a clip that restores today is never refused for this
+        # [decided 2026-11-24 by the lead, flatband-two]
+        if not before > 0 or _blocks_flat_in_codes(codes_mosaic[..., 0], blocks):
+            measurement = noise.NoiseMeasurement(DARK_LEVEL_FLAT)
+    if measurement.reason is None:
         working = np.concatenate([_filtered(clip, light, foot, measurement) for light, foot in zip(linear, footprints)], axis=0)
         original_noise = measurement.luma_fine_sigma_at(tone.dark_level(luminance))
         working_noise = noise.fine_noise(working @ np.asarray(LUMA), blocks)

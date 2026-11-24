@@ -1070,7 +1070,7 @@ def _banded_clip_file(path: Path, sky_y: int, *, pix_fmt: str = "yuv420p", colou
         encoder.finish()
 
 
-def test_a_near_black_clip_ends_its_job_failed_with_c36_on_measured_and_other_clip_frame_errors_stay_internal(
+def test_a_near_black_clip_ends_its_job_failed_with_c36_on_measured_and_a_flat_band_above_black_restores_unmeasured(
         client, tmp_path) -> None:
     # Review row C36 clip form + stage-row guard [decided 2026-11-24, UIUX-nearblackrestore-READY.md]:
     # 1. Limited-range 12-frame Regime B clip (Y'=16 top quarter, noisy rising bottom) stops on `measure` at (7, 8)
@@ -1100,12 +1100,15 @@ def test_a_near_black_clip_ends_its_job_failed_with_c36_on_measured_and_other_cl
     assert (attempt["status"], attempt["failureReason"]) == ("failed", clip_frames.NEAR_BLACK_CLIP)
 
     # 2. A 1-frame near-black clip holds `measure` at (0, 1) so `restorationRows` marks Measured (not Restoring) failed,
-    #    full-range Y'=0 also refuses with C36, and flat dark grey above black_code stays decode.INTERNAL_ERROR
+    #    full-range Y'=0 also refuses with C36, and a flat dark band above black_code (full range Y'=16, limited Y'=24,
+    #    and Y'=40 whose dark-level noise was float rounding) restores on the not-measured path as dark_level_flat with
+    #    the decided note, never the internal error (flatband-two) [decided 2026-11-24 by the lead]
     for name, sky_y, pix_fmt, colour_range, count, expected_reason, expected_stage in (
         ("one_frame", 16, "yuv420p", "tv", 1, expected, ("measure", "frames", 0, 1)),
         ("full_black", 0, "yuvj420p", "pc", 4, expected, ("measure", "frames", 3, 4)),
-        ("full_grey_y16", 16, "yuvj420p", "pc", 4, decode.INTERNAL_ERROR, ("measure", "frames", 3, 4)),
-        ("tv_grey_y24", 24, "yuv420p", "tv", 4, decode.INTERNAL_ERROR, ("measure", "frames", 3, 4)),
+        ("full_grey_y16", 16, "yuvj420p", "pc", 4, None, None),
+        ("tv_grey_y24", 24, "yuv420p", "tv", 4, None, None),
+        ("tv_grey_y40", 40, "yuv420p", "tv", 4, None, None),
     ):
         case_dir = tmp_path / name
         case_dir.mkdir()
@@ -1125,9 +1128,22 @@ def test_a_near_black_clip_ends_its_job_failed_with_c36_on_measured_and_other_cl
             None, {"mimeType": "video/quicktime", "durationMs": 100.0, "audioStreams": []}, partials,
             lambda *ev: events.append(ev), workers=1,
         )
-        assert (out["status"], out["failureReason"]) == ("failed", expected_reason), (name, out)
-        assert events[-1] == expected_stage, (name, events)
-        assert list((case_dir / "store" / ".partial").iterdir()) == [] and not (store_folder / "variants").exists()
+        assert list((case_dir / "store" / ".partial").iterdir()) == []
+        if expected_reason is not None:
+            assert (out["status"], out["failureReason"]) == ("failed", expected_reason), (name, out)
+            assert events[-1] == expected_stage, (name, events)
+            assert not (store_folder / "variants").exists()
+            continue
+        assert out["status"] == "ready", (name, out)
+        records = [json.loads(p.read_text()) for p in store_folder.rglob("*.json")]
+        attempt = next(r.get("attempt", r) for r in records if "measured" in r.get("attempt", r))
+        contracts.ProcessingAttempt.model_validate(attempt)
+        assert attempt["measured"]["noiseNotMeasured"] == "dark_level_flat", name
+        notes, lift = attempt["measured"]["notes"], attempt["measured"]["lift"]
+        assert lift["decidedBy"] != "noise_bound" and contracts.NOTES[1] not in notes, (name, notes)
+        assert (contracts.NOTES[0] in notes) == (lift["decidedBy"] == "quantisation_bound"), (name, notes, lift)
+        assert "fineNoiseLeft" not in attempt["measured"] and "noise" not in attempt["measured"], name
+        assert attempt["gate"]["passed"] is True and (store_folder / "variants").exists()
 
 
 def _noisy_sky_clip_file(path: Path, *, count: int = 10, size: int = 128) -> None:

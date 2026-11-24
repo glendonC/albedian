@@ -694,7 +694,7 @@ def test_a_dark_clip_with_measurable_noise_near_black_still_measures_and_restore
     assert all(g.outcome.record["passed"] for g in gated)
 
 
-def test_a_zero_dark_level_noise_not_on_the_black_floor_or_another_noise_fault_stays_clip_frames_error(
+def test_a_zero_dark_level_noise_not_on_the_black_floor_is_dark_level_flat_and_only_a_missing_noise_stays_an_error(
         monkeypatch: pytest.MonkeyPatch) -> None:
     tags_tv = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
     # 1. Limited 8-bit flat grey at Y'=24 (above black_code=16), full-range 8-bit flat grey at Y'=16 (above black_code=0),
@@ -709,8 +709,12 @@ def test_a_zero_dark_level_noise_not_on_the_black_floor_or_another_noise_fault_s
         ("yuv420p", tags_tv, [(24, 16), (48, 24)]),
     ):
         clip = clip_frames.clip_colour(video(pix_fmt, tags, width=192, height=192))
-        with pytest.raises(clip_frames.ClipFramesError):
-            clip_frames.measure_clip(clip, _banded_clip_frames(clip, bands))
+        # flatband-two [decided 2026-11-24 by the lead]: no noise at the dark level to measure, the not-measured path
+        measured = clip_frames.measure_clip(clip, _banded_clip_frames(clip, bands))
+        assert measured.measurement.reason == "dark_level_flat", bands
+        # No noise bound without a noise; the decided note only where the quantisation bound holds the lift (tone)
+        assert measured.fine_noise_left is None and measured.lift.decided_by != "noise_bound"
+        assert (tone.NOTE_NOISE_NOT_MEASURED in measured.lift.notes) == (measured.lift.decided_by == "quantisation_bound")
     # Direct _blocks_on_black_clip check where median <= 16 (7 of 8 rows at 16) while every block's peak is 24 (> 16)
     mostly_black_rows = np.full((64, 64), 16, dtype=np.int64)
     mostly_black_rows[::8, :] = 24
@@ -766,6 +770,135 @@ def test_a_clip_whose_frames_have_a_side_of_exactly_min_side_px_has_its_noise_me
     measured = clip_frames.measure_clip(clip, frames)
     assert measured.measurement.reason != "frame_too_small"
     assert measured.measurement.reason is None and measured.fine_noise_left is not None
+
+
+@pytest.mark.parametrize("pix_fmt,tags,band", [
+    ("yuv420p", BT709_TV, 17),
+    ("yuv420p", BT709_TV, 30),
+    ("yuv420p", BT709_TV, 40),
+    ("yuv420p", BT709_TV, 48),
+    ("yuv420p", BT709_TV, 60),
+    ("yuv420p10le", BT709_TV, 192),
+    ("yuvj420p", clip_io.ColourTags(), 44),
+])
+def test_a_flat_band_above_black_takes_the_not_measured_path_and_stores_no_ratio_of_rounding(
+        monkeypatch: pytest.MonkeyPatch, pix_fmt: str, tags: clip_io.ColourTags, band: int) -> None:
+    # clip-edge-audit trap 2 and flatband-two [decided 2026-11-24 by the lead]: a band of one code above black left
+    # `before` at the float rounding of the linear light (3.7e-18 at Y'=40 on macOS), which let the clip store a
+    # `fineNoiseLeft` made of rounding; it reads as zero now, and the band takes the not-measured path as
+    # `dark_level_flat`, never the internal error and never C36 (it is above black)
+    clip = clip_frames.clip_colour(video(pix_fmt, tags, width=192, height=192))
+    frames = _banded_clip_frames(clip, [(64, band)])
+    seen, calls = [], []
+    real_fine, real_edge = noise.fine_noise, spatial.edge_avoiding
+
+    def recording(plane, blocks):
+        seen.append(real_fine(plane, blocks))
+        return seen[-1]
+
+    monkeypatch.setattr(noise, "fine_noise", recording)
+    monkeypatch.setattr(spatial, "edge_avoiding", lambda *a, **k: calls.append(1) or real_edge(*a, **k))
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason == clip_frames.DARK_LEVEL_FLAT == "dark_level_flat"
+    # No noise bound without a noise; the decided note only where the quantisation bound holds the lift (tone)
+    assert measured.fine_noise_left is None and measured.lift.decided_by != "noise_bound"
+    assert (tone.NOTE_NOISE_NOT_MEASURED in measured.lift.notes) == (measured.lift.decided_by == "quantisation_bound")
+    # Only `before` was taken, zero or rounding, and no filter ran
+    assert len(seen) == 1 and 0.0 <= seen[0] < 1e-12 and calls == [], (seen, calls)
+    # It restores as every not-measured clip does, the lift alone, and the gate passes
+    monkeypatch.undo()
+    results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 2, tuple(frames[:2])))
+    assert all(r.neighbours == 0 for r in results)
+    gated = clip_frames.gate_run(measured, frame_pool.Run(0, 0, 2, tuple(zip(frames[:2], [r.planes for r in results]))))
+    assert all(g.outcome.record["passed"] for g in gated)
+
+
+def test_a_darkest_quarter_on_the_black_floor_with_a_noise_reaching_in_is_measured_as_before() -> None:
+    # flatband-two keeps every clip that restores today restoring [decided 2026-11-24 by the lead]: black blocks of one
+    # code between noisy ones hold no noise of their own, but the fine scale reaches 2 px into them, so `before` is
+    # above zero and revision 10 measured the clip; reading that as zero on the black floor would refuse it with C36
+    clip = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    frames = []
+    for k in range(6):
+        rng = np.random.default_rng(331 + k)
+        y = np.clip(np.round(30.0 + rng.normal(0.0, 4.0, (192, 192))), 17, 235).astype(np.uint8)
+        for row in range(0, 192, 8):
+            for column in range((row // 8) % 2 * 8, 192, 16):
+                y[row:row + 8, column:column + 8] = 16
+        frames.append((y, np.full((96, 96), 128, np.uint8), np.full((96, 96), 128, np.uint8)))
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is None and measured.fine_noise_left is not None
+
+
+def test_a_dark_level_noise_of_exactly_zero_above_black_is_dark_level_flat_whatever_its_codes(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # A `before` of zero above black is no noise to measure, flat codes or not (a noiseless ramp could give it): the clip
+    # takes the not-measured path and is never divided by it. The noise is held at zero here, the sky's codes are noisy
+    clip = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    frames = _banded_clip_frames(clip, [(64, 30)])
+    for y, _, _ in frames:
+        y[:64] = np.clip(30 + np.random.default_rng(5).integers(-3, 4, (64, 192)), 17, 235)
+    real_fine = noise.fine_noise
+    calls = []
+
+    def zero_first(plane, blocks):
+        calls.append(1)
+        return 0.0 if len(calls) == 1 else real_fine(plane, blocks)
+
+    monkeypatch.setattr(noise, "fine_noise", zero_first)
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason == "dark_level_flat" and measured.fine_noise_left is None
+    assert calls == [1]
+
+
+def test_a_noisy_sky_with_a_few_blocks_a_coder_flattened_keeps_its_noise_reduction() -> None:
+    # AUDIT-B's note one on flatband-two: a few one-code blocks, as an encoder leaves in a dark sky, must not turn the
+    # noise reduction off; only the estimator's quarter of them does. Here 14 patches of one code, each a block and
+    # its 2 px border, sit darker than the noisy sky, so they lead the darkest quarter but are about a tenth of it
+    clip = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    frames = []
+    for k in range(6):
+        rng = np.random.default_rng(271 + k)
+        y = np.clip(np.round(30.0 + rng.normal(0.0, 4.0, (192, 192))), 17, 235).astype(np.uint8)
+        for row, column in [(r, c) for r in range(16, 176, 40) for c in range(16, 176, 48)][:14]:
+            y[row - 2:row + 10, column - 2:column + 10] = 20
+        frames.append((y, np.full((96, 96), 128, np.uint8), np.full((96, 96), 128, np.uint8)))
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is None and measured.fine_noise_left is not None
+
+
+def test_a_quarter_block_is_one_code_only_with_its_border_out_to_the_fine_scales_reach() -> None:
+    # Only then is its fine-scale energy rounding alone: the B3 kernel reaches 2 px past the block
+    assert len(noise.B3_TAPS) // 2 == 2
+    flat = np.full((64, 64), 40, dtype=np.int64)
+    every, none_ = np.ones(64, dtype=bool), np.zeros(64, dtype=bool)
+    assert clip_frames._blocks_flat_in_codes(flat, every) is True
+    assert clip_frames._blocks_flat_in_codes(flat, none_) is False
+    # One sample a code apart in every block: no block is one code
+    stepped = flat.copy()
+    stepped[3::8, 3::8] = 41
+    assert clip_frames._blocks_flat_in_codes(stepped, every) is False
+    # The estimator's own percentile: np.percentile's linear rule puts 25 percent of 64 blocks at 15.75, so 16 blocks
+    # of one code with their borders (block rows 0 and 1, rows 0 to 17 cleared) are not enough, and 17 are
+    edge = stepped.copy()
+    edge[:18] = 40
+    assert clip_frames._blocks_flat_in_codes(edge, every) is False
+    edge[19, 3] = 40
+    assert clip_frames._blocks_flat_in_codes(edge, every) is True
+    # A block of one code whose other code, above or below it, lies 1 or 2 px past it is not flat; 3 px past, it is
+    for other in (41, 39):
+        for split, block_row_3_flat in ((32, False), (33, False), (34, True), (35, True)):
+            halves = flat.copy()
+            halves[split:] = other
+            third = np.zeros(64, dtype=bool)
+            third[24:32] = True
+            assert clip_frames._blocks_flat_in_codes(halves, third) is block_row_3_flat, (other, split)
+    # Only the chosen blocks count
+    halves = flat.copy()
+    halves[32:] = 41
+    far = np.zeros(64, dtype=bool)
+    far[:24] = True
+    assert clip_frames._blocks_flat_in_codes(halves, far) is True
 
 
 @pytest.mark.parametrize("width,height", [(64, 48), (48, 64), (64, 6)])
