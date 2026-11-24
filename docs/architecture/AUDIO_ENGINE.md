@@ -883,12 +883,32 @@ URL, licence, credit line, byte size and SHA-256 in
 
 `render.mjs` verifies the SHA-256 of every present file in `.cache/music/sources/` against
 `sources.json` before rendering and writes `.cache/music/page/notices.txt` alongside
-`.cache/music/page/index.html`. To fetch the sources on a clean machine and reproduce the three
-masters, the `256 kb/s` AAC clips, `facts.json` and the listening page:
+`.cache/music/page/index.html`.
+
+On a clean clone the samples the app plays come from one tracked list and one tracked script
+(`[tested]`): [`data/music_sources.json`](../../data/music_sources.json) names the `144` files
+`directions.ts` plays (`143` VCSL samples and the No Piano Melody mix of *Signal to Noise*,
+`261,741,326` bytes), each with the address, size, SHA-256, licence and credit `sources.json`
+records for it, and
 
 ```sh
-python3 -I .lanetools/music_sources_list.py
-python3 -I .lanetools/fetch_sources.py
+uv run python scripts/fetch_music_sources.py
+```
+
+fetches them into `.cache/music/sources/` with `scripts/fetch_download.py`'s checks: https only, a
+redirect only to the same host, a file kept only when its size and SHA-256 match the list. A file
+already there with its listed size and SHA-256 is kept without a request, so a second run fetches
+nothing. `musicSourcesList.test.ts` keeps the list equal to the files the app plays. The other `72`
+files `sources.json` catalogues (the mixes evaluated during selection and the VCSL files no
+instrument plays) are not fetched. The recording piece also needs its measured analysis, which only
+a render writes into `.cache/music/facts.json`; until then a clean clone's recording piece is
+unavailable (`[inference from code]`: `MusicLayer` gives up on the piece when
+`/recording-analysis.json` is missing).
+
+To reproduce the three masters, the `256 kb/s` AAC clips, `facts.json` and the listening page from
+the samples in `.cache/music/sources/`:
+
+```sh
 pnpm --filter @albedian/web exec vite --port 5188 --strictPort &
 node apps/web/spike/music/render.mjs --url http://localhost:5188 --out .cache/music
 ```

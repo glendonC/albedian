@@ -26,9 +26,10 @@ Then:
 3. If you will use a phone, run `pnpm field --lan` once on your home network to check that the build passes and
    the phone opens the app [proposed].
 4. The music needs its samples in `.cache/music/sources` of the checkout you run `pnpm field` from. `pnpm field`
-   and `pnpm field --check` print how many sample files they found [tested]. If it says the folder is missing, fetch the samples as
-   `docs/architecture/AUDIO_ENGINE.md` section 13.6 describes; without them the app runs and its music says it is
-   unavailable [inference from code].
+   and `pnpm field --check` print how many sample files they found [tested]. If it says the folder is missing, fetch the samples
+   from that checkout's root with `uv run python scripts/fetch_music_sources.py` (144 files, about 262 MB; it is safe
+   to run again, and `docs/architecture/AUDIO_ENGINE.md` section 13.6 says what it fetches) [tested]; without them
+   the app runs and its music says it is unavailable [inference from code].
 
 ## Start and stop
 
@@ -80,7 +81,7 @@ What any device on that network can do while it runs:
 - Read back an upload's record, original and solution by its content hash. A device knows a hash only for a file
   it uploaded or was given [inference from code].
 - Fetch the music through `/music-sources/`: every regular file in `.cache/music/sources`, that is the CC0 and
-  CC BY samples `apps/web/spike/music/sources.json` lists plus the fetch step's own two JSON lists, and the
+  CC BY samples `data/music_sources.json` lists (and any other file an earlier fetch left there), and the
   recording's analysis [tested: the music server serves every regular file in that folder].
 
 What it cannot get:
