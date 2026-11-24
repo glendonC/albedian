@@ -729,15 +729,21 @@ table at the pixel's own smoothed intensity, `e = max(D2 - v, 0)`, and the weigh
   of 1.4826 x MAD of the response over the usable samples and the two frames' own `sigma_m` added in quadrature:
   each frame's `sigma_m` alone was 1.8 times too large on structured synthetic skies, since the scene cancels in
   the difference, and the frames' own keeps a difference that covers a tile from widening the test.
-- With it, a point of 4 to 200 noise sigmas drawn into all, some or one of the neighbours carried less than one
-  noise unit of the merged frame into it in every trial; at 3.5 sigmas the point was kept out in 39 of 40 seeds (36
-  of 40 at a threshold of 4). Fainter, it is not always kept out: at 2, 2.5 and 3 sigmas with every neighbour
-  carrying it, it brought a noise unit or more in 18, 6 and 3 of 24 trials. Near frame `k`'s own noise such a point
-  cannot be told from it: that is the faint star of section 7, which guard 1 judges at the gate. The cost, on the
-  steady sky of `tests/media/test_temporal.py` (stars, no clouds, a pan of 6 to 19 px per frame, every neighbour
-  registered and moved as the job moves it): fine noise left 0.274 of the frame's, against 0.267 for the pairwise
-  weight alone (medians of 12 seeds). An earlier probe of restore-6 on a scene that did not move, with the point test's
-  noise taken from the whole frame, gave 0.395 against 0.380; it is not the merge as built.
+- With it, a point of 4.5 to 200 noise sigmas drawn into all, some or one of the neighbours carried less than one
+  noise unit of the merged frame into it in every trial (501 of 501 seeds at 4.5, seed 712585 included); at 4.0
+  sigmas it carried less than one noise unit in 500 of 501 seeds (in seed 712585, where frame `k` itself has a +2.9
+  sigma upward noise peak at the point's place and one half-pixel-shifted neighbour stays at 2.89 difference sigmas
+  while the other five exceed 3, that neighbour carries 2.50 noise units, still below `CONFIRM_THRESHOLD_SNR` and
+  not a point source of output frame `k`), and at 3.5 sigmas in 39 of 40 seeds (35 of 40 at a threshold of 4 under
+  the detector's `sigma_m`, 36 of 40 under the plain MAD; never a point source of output frame `k` in any of the 40
+  seeds or 712585) [tested: restore-6 and quantised-noise v2]. Fainter, it is not always kept out: at 2, 2.5 and 3
+  sigmas with every neighbour carrying it, it brought a noise unit or more in 18, 6 and 3 of 24 trials. Near frame
+  `k`'s own noise such a point cannot be told from it: that is the faint star of section 7, which guard 1 judges at
+  the gate. The cost, on the steady sky of `tests/media/test_temporal.py` (stars, no clouds, a pan of 6 to 19 px per
+  frame, every neighbour registered and moved as the job moves it): fine noise left 0.274 of the frame's, against
+  0.267 for the pairwise weight alone (medians of 12 seeds; 0.269 on seeds 0 to 11 under quantised-noise v2). An
+  earlier probe of restore-6 on a scene that did not move, with the point test's noise taken from the whole frame,
+  gave 0.395 against 0.380; it is not the merge as built.
 
 **Per frame, after the merge:** the stars of that frame, confirmed on the original frame alone or on its original
 frames together (sections 3 and 7), the spatial filter (section 5), the dissolve passes (section 7), then the

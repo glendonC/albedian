@@ -18,6 +18,7 @@ from services.science.detector import (
     DETECTION_THRESHOLD,
     _build_gaussian_psf_kernel,
     _estimate_background_and_noise,
+    matched_filter_noise,
 )
 
 
@@ -41,10 +42,81 @@ def test_the_tiles_cover_the_frame_with_their_overlap() -> None:
 def test_the_matched_noise_is_the_spread_of_the_detectors_own_response() -> None:
     scene = star_field(1)
     tile = luma(scene)[:256, :256]
-    background, _ = _estimate_background_and_noise(tile)
+    background, _ = _estimate_background_and_noise(tile, grouped=True)
     response = ndimage.convolve(tile - background, _build_gaussian_psf_kernel(), mode="nearest")
     expected = 1.4826 * np.median(np.abs(response - np.median(response)))
-    assert stars.matched_noise(tile) == pytest.approx(expected, rel=1e-12)
+    # Measured as one tile of the crop's size (leaving out the 4 px border and clipped flats, never subdivided into
+    # 64 px sub-tiles): 1.31 % off the whole-tile MAD on this 16 bit scene [tested], within 4 % [proposed]
+    assert stars.matched_noise(tile) == pytest.approx(float(np.median(matched_filter_noise(tile, tile=stars.TILE_PX))), rel=1e-12)
+    assert stars.tile_noise(tile).matched == stars.matched_noise(tile)
+    assert stars.matched_noise(tile) == pytest.approx(expected, rel=0.04)
+    # A crop wider than TILE_PX handed directly to `matched_noise` is still measured as one single tile
+    rng = np.random.default_rng(21)
+    wide = 100.0 + rng.normal(0.0, 1.0, (400, 400))
+    wide[:100, :] = 100.0 + rng.normal(0.0, 8.0, (100, 400))
+    assert stars.matched_noise(wide) == pytest.approx(float(np.median(matched_filter_noise(wide, tile=400))), rel=1e-12)
+
+
+ROUNDING_SIGMA_8BIT = 1.0 / math.sqrt(12.0)
+# Over the 20 tiles of each 768 x 1024 8 bit dark sky below, each tile's `matched_noise` differed from the median over
+# that tile of the whole-frame `matched_filter_noise` map by at most 3.87 % [tested]; 4 % leaves room across float
+# implementations [proposed]
+DARK_TILE_MAP_TOLERANCE = 0.04
+# At read noise 0.70 codes on a sky between two codes (16.3), the detector's grouped background and clipped spread keep
+# the pixel sigma within 5 % of the rounded tile's own spread about its truth (realsky-4b; plain MAD read 63 % high)
+DARK_SIGMA_TOLERANCE = 0.05
+QUANTISED_DARK_SKIES = [
+    pytest.param(-0.2, 0.35, 11, id="near black clip, 98 % at code 0"),
+    pytest.param(16.0, 0.16, 12, id="quiet 8 bit sky, over 99 % at code 16"),
+    pytest.param(16.2, 0.40, 13, id="sub-code 8 bit sky, read noise 0.40"),
+    pytest.param(16.3, 0.70, 14, id="sub-code 8 bit sky, read noise 0.70"),
+]
+
+
+@pytest.mark.parametrize(("base", "read_noise", "seed"), QUANTISED_DARK_SKIES)
+def test_a_quantised_dark_tile_never_reads_zero_and_matches_the_detectors_matched_filter_noise(
+    base: float, read_noise: float, seed: int
+) -> None:
+    rng = np.random.default_rng(seed)
+    frame = np.clip(np.rint(base + rng.normal(0.0, read_noise, (768, 1024))), 0, 255).astype(np.float64)
+    frame_map = matched_filter_noise(frame)
+    for tile in stars.tiles(*frame.shape):
+        part = frame[tile.y0:tile.y1, tile.x0:tile.x1]
+        measured = stars.tile_noise(part)
+        # Every tile holds at least two 8 bit codes here, so neither its matched nor its pixel noise falls below the
+        # 8 bit rounding floor, and neither ever reads 0
+        assert measured.matched >= ROUNDING_SIGMA_8BIT * (1.0 - 1e-12)
+        assert measured.sigma >= ROUNDING_SIGMA_8BIT * (1.0 - 1e-12)
+        assert measured.matched == pytest.approx(float(np.median(matched_filter_noise(part, tile=stars.TILE_PX))), rel=1e-12)
+        want = float(np.median(frame_map[tile.y0:tile.y1, tile.x0:tile.x1]))
+        assert measured.matched == pytest.approx(want, rel=DARK_TILE_MAP_TOLERANCE)
+        expected_bg, _ = _estimate_background_and_noise(part, grouped=True)
+        assert np.array_equal(measured.residual, part - expected_bg)
+        if base > 1.0 and read_noise >= 0.4:
+            spread = float(np.std(part - base))
+            assert abs(measured.sigma / spread - 1.0) <= DARK_SIGMA_TOLERANCE
+    # A completely flat tile of one value keeps the pixel floor on `sigma` and stays un-floored (within float rounding
+    # of 0, never clamped to 0.001) on `matched`
+    flat = stars.tile_noise(np.full((256, 256), 16.0))
+    assert flat.sigma >= 1e-3 and flat.matched == pytest.approx(0.0, abs=1e-12)
+
+
+def test_a_dark_linear_light_tile_keeps_its_own_matched_noise_below_the_detectors_code_floor() -> None:
+    rng = np.random.default_rng(16)
+    dark = 0.002 + rng.normal(0.0, 0.0002, (256, 256))
+    background, _ = _estimate_background_and_noise(dark, grouped=True)
+    response = ndimage.convolve(dark - background, _build_gaussian_psf_kernel(), mode="nearest")
+    expected = 1.4826 * float(np.median(np.abs(response - np.median(response))))
+    # Continuous linear light (0..1) is not clamped at ABSOLUTE_NOISE_FLOOR = 0.001: ~0.00023 here [tested]
+    got = stars.matched_noise(dark)
+    assert got == pytest.approx(expected, rel=0.05)
+    assert 0.00018 < got < 0.0003
+    # When over three quarters of a dark linear tile sits on black clip 0.0, it falls back to the positive pixel noise
+    # (never 0.0 as the plain whole-tile MAD gave, and never clamped up to 0.001)
+    crushed = np.zeros((256, 256), dtype=np.float64)
+    crushed[:96, :96] = np.maximum(0.0, 0.002 + rng.normal(0.0, 0.0002, (96, 96)))
+    crushed_got = stars.matched_noise(crushed)
+    assert 0.0 < crushed_got < 0.0003
 
 
 def nearest(points: np.ndarray, x: float, y: float) -> float:

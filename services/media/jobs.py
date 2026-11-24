@@ -59,8 +59,10 @@ MEDIA_PRODUCER_FILES = (
 # still's job stored, and a clip had none before it; 4, a stored still's record names the profile its own file holds,
 # and a photo whose profile cannot be rebuilt gets a converted or untagged display copy (restore-8d, 8e); 5, raised
 # samples hiding each other on their rings read as a group against a ring round the group (restore-4g); 6, the flux
-# check kept when no measured star keeps a positive flux ratio (the flux gate unit)
-MEDIA_PRODUCER = Producer("albedian.restore", 6, MEDIA_PRODUCER_FILES)
+# check kept when no measured star keeps a positive flux ratio (the flux gate unit); 7, a tile's matched noise from
+# the detector's single-tile noise map floored at its pixel and rounding noise, and its background and pixel sigma from
+# the detector's grid path (quantised-noise)
+MEDIA_PRODUCER = Producer("albedian.restore", 7, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a

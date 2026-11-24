@@ -2,10 +2,12 @@
 section 3; REQ-RST-6.1, 6.2), and what the integrity gate calls on top of them (design section 7): a frame's points
 by the same tiles and rule, their confirmation on the original's pixels, and aperture flux against empty apertures.
 
-The detector is the repository's own (`services/science/detector.py`). Its matched-filter noise per tile is built
-here from two private helpers of that module [decided 2026-11-11: design section 3]; the detector's shared
-`matched_filter_noise` (unit realsky-3) is not used here yet [open: switching to it is its own unit]. Pure
-functions on arrays: no file, no job.
+The detector is the repository's own (`services/science/detector.py`). Its matched-filter noise per tile comes from
+the detector's `_detector_noise_map` (unit realsky-3) as one tile of the crop's size, floored at the tile's pixel and
+rounding noise without the detector's code-scale absolute floor so linear-light callers keep their own scale, and its
+background and pixel sigma come from `_estimate_background_and_noise(..., grouped=True)` and `_effective_sigma`
+(realsky-4b) [tested: on the public sample clip's frames 40, 164 and 290, the plain MAD read 0 on 39 of 135 tiles and
+the pixel sigma on 3]. Pure functions on arrays: no file, no job.
 """
 
 from __future__ import annotations
@@ -19,7 +21,10 @@ from scipy import ndimage
 from services.science.detector import (
     LUMA_WEIGHTS,
     _build_gaussian_psf_kernel,
+    _detector_noise_map,
+    _effective_sigma,
     _estimate_background_and_noise,
+    _quantization_sigma,
     detect_point_sources,
     verify_candidates_on_original_pixels,
 )
@@ -154,15 +159,17 @@ class TileNoise:
 
 
 def tile_noise(tile_luma: np.ndarray) -> TileNoise:
-    background, sigma = _estimate_background_and_noise(tile_luma)
-    residual = tile_luma - background
-    response = ndimage.convolve(residual, _build_gaussian_psf_kernel(), mode="nearest")
-    return TileNoise(residual, float(sigma), MAD_TO_SIGMA * float(np.median(np.abs(response - np.median(response)))))
+    luma = np.asarray(tile_luma, dtype=np.float64)
+    background, sigma = _estimate_background_and_noise(luma, grouped=True)
+    residual = luma - background
+    pixel_sigma = max(float(sigma), _quantization_sigma(luma))
+    matched = ndimage.convolve(residual, _build_gaussian_psf_kernel(), mode="nearest")
+    noise_map = _detector_noise_map(luma, matched, None, pixel_sigma, tile=max(TILE_PX, *luma.shape))
+    return TileNoise(residual, _effective_sigma(sigma, luma), float(np.median(noise_map)))
 
 
 def matched_noise(tile_luma: np.ndarray) -> float:
-    """sigma_m: 1.4826 x MAD of the detector's own matched-filter response on the tile, its kernel on the luma minus
-    the detector's background."""
+    """sigma_m: the detector's matched-response spread on the tile, floored at its pixel and rounding noise."""
     return tile_noise(tile_luma).matched
 
 

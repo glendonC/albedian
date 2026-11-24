@@ -98,8 +98,9 @@ pictures under `.cache/restore-review/<unit>/`.
   - _Requirements: REQ-RST-4.1 to 4.8, 5.1 to 5.4, 6.1, 6.2, 8.9_
   - Landed on `main` as `0145388b`, with restore-3b as `1ce89d58`, chroma-1 coarse-scale chroma smoothing as `03ce4480`
     (`services/media/chroma.py`) and `stars.py`'s docstring update as `721c1d47` after realsky-3 (`cff00b12`).
-  - [ ] quantised-noise (built off `main`, awaiting landing): wire `stars.matched_noise` and `stars.tile_noise` to
-    `detector.matched_filter_noise` (`cff00b12`) and the detector's quantised-sky grid path (`5b1d12e9`).
+  - [x] quantised-noise: wire `stars.matched_noise` and `stars.tile_noise` to `detector._detector_noise_map` as one
+    tile without the code-scale floor (`cff00b12`) and the detector's quantised-sky grid path (`5b1d12e9`), raising
+    `albedian.restore` to revision 7, and pin Hypothesis seed `712585` in `test_temporal.py`.
 
 - [x] 4. restore-4: the integrity gate, and photos restored end to end (REQ-RST-6, REQ-RST-12; P-RST-11, 13)
   - New: `services/media/gate.py` (the variant's points, confirmation, the dissolve passes, flux),
