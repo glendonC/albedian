@@ -109,6 +109,11 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('clementine', 'lunarOrbit', false))).toEqual(['lunarOrbit', null, '']);
     expect(rows(withFact('clementine', 'lunarOrbit', true))).toEqual([null, 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.', 'to the Moon']);
     expect([CRAFTS.clementine!.name, CRAFT_CHOICES.find((c) => c.id === 'clementine')!.detail, none('clementine')]).toEqual(['Clementine', 'to the Moon', 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.']);
+    // The 23 Nov 11:37 ruling (td-1): TDRS near Earth as IBEX, the Van Allen Probes and Webb, its words waiting for
+    // orbit in its record, which ASSETS' entry carries (hangar-47, NASA's TDRS mission page)
+    expect(rows(withFact('tdrs', 'orbit', false))).toEqual(['orbit', null, '']);
+    expect(rows(withFact('tdrs', 'orbit', true))).toEqual([null, 'No real travel time: TDRS orbits Earth in geosynchronous orbit, relaying data for space missions.', 'near Earth']);
+    expect([CRAFTS.tdrs!.name, CRAFT_CHOICES.find((c) => c.id === 'tdrs')!.detail, none('tdrs')]).toEqual(['TDRS', 'near Earth', 'No real travel time: TDRS orbits Earth in geosynchronous orbit, relaying data for space missions.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
@@ -145,6 +150,8 @@ describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3, D35 items 1 and 2)', ()
     const others = craft!.choices.filter((c) => !CRAFTS[c.id!]!.speed);
     expect(craft!.choices).toEqual([...travelling, ...others]);
     expect(others.map((c) => c.name)).toEqual([...others.map((c) => c.name)].sort((x, y) => x.localeCompare(y, 'en')));
+    const tdrsIdx = others.findIndex((c) => c.id === 'tdrs');
+    expect([others[tdrsIdx - 1]?.name, others[tdrsIdx]?.name, others[tdrsIdx + 1]?.name]).toEqual(['Stardust', 'TDRS', 'Van Allen Probes']);
     expect(suits!.choices.map((c) => c.id)).toEqual(HANGAR_CRAFTS.filter((c) => c.kind === 'suit').map((c) => c.id));
     expect(suits!.choices.every((c) => c.detail === '')).toBe(true);
     expect(CRAFT_CHOICES).toHaveLength(1 + HANGAR_CRAFTS.length);

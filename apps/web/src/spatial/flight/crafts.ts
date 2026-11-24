@@ -65,6 +65,8 @@ export const KEPLER_ELEVATION_DEG = 20;
 export const KEPLER_HEADING_DEG = 40;
 export const INGENUITY_ELEVATION_DEG = 15;
 export const CLEMENTINE_HEADING_DEG = 12;
+export const TDRS_HEADING_DEG = 35;
+export const TDRS_ELEVATION_DEG = 25;
 
 /**
  * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
@@ -144,6 +146,16 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
     forward: [-Math.sin((CLEMENTINE_HEADING_DEG * Math.PI) / 180), -Math.cos((CLEMENTINE_HEADING_DEG * Math.PI) / 180), 0],
     up: [0, 0, -1],
   },
+  // td-1 (the 23 Nov 11:37 ruling), checked live against tdrs_picker.webp (.cache/uiux/built/td-1/zoom.png):
+  // Earth-facing antenna deck (+Y) upright, turned 35 deg about +Y (235 deg turntable heading, 5 deg past turn_008)
+  // and seen 25 deg from above (~34 deg total downward ray with yFraction 0.62) so the blue solar wings run upper-left
+  // to lower-right, the foreground 5 m mesh dish sits lower-left, the second 5 m mesh dish sits upper-centre, the 2 m
+  // dark dish sits upper-left, and the crescent boom reaches right
+  tdrs: seenFromAbove(
+    [-Math.sin((TDRS_HEADING_DEG * Math.PI) / 180), 0, -Math.cos((TDRS_HEADING_DEG * Math.PI) / 180)],
+    [0, 1, 0],
+    TDRS_ELEVATION_DEG,
+  ),
 };
 
 /**

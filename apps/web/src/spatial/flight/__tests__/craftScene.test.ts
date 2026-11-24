@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CLEMENTINE_HEADING_DEG, CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
+import { CLEMENTINE_HEADING_DEG, CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, STARDUST_ELEVATION_DEG, TDRS_ELEVATION_DEG, TDRS_HEADING_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftFrameRadiusM, craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
@@ -192,6 +192,10 @@ describe('craftFromSearch: the interim choice by page address', () => {
       // in-1 (the 22 Nov 22:18 ruling), checked live against NASA's render: on its legs, the hangar's up kept, from the
       // front quarter on the right (28.8 degrees off its front, the hangar picture camera's angle mirrored)
       ingenuity: [[-0.55 / Math.hypot(0.55, 1), 0, -1 / Math.hypot(0.55, 1)], [0, 1, 0], INGENUITY_ELEVATION_DEG],
+      // td-1 (the 23 Nov 11:37 ruling), checked live against tdrs_picker.webp (.cache/uiux/built/td-1/zoom.png):
+      // antenna deck (+Y) upright, turned 35 deg about +Y and seen 25 deg from above so the blue solar wings run
+      // upper-left to lower-right and the two 5 m mesh dishes sit at lower-left and upper-centre
+      tdrs: [[-Math.sin((TDRS_HEADING_DEG * Math.PI) / 180), 0, -Math.cos((TDRS_HEADING_DEG * Math.PI) / 180)], [0, 1, 0], TDRS_ELEVATION_DEG],
     };
     for (const [id, [f, u, deg]] of Object.entries(fromAbove)) {
       const e = (deg * Math.PI) / 180;
@@ -208,6 +212,9 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect([KEPLER_HEADING_DEG, KEPLER_ELEVATION_DEG]).toEqual([40, 20]);
     // Ingenuity's from its sheet (.cache/spatial/rest-in, rest-in-q): 15, the hangar picture camera's "a little above"
     expect(INGENUITY_ELEVATION_DEG).toBe(15);
+    // TDRS's from its sheet (.cache/uiux/built/td-1/zoom.png): 35 deg heading (235 deg turntable, 5 deg past turn_008)
+    // and 25 deg extra elevation (~34 deg total downward ray with yFraction 0.62)
+    expect([TDRS_HEADING_DEG, TDRS_ELEVATION_DEG]).toEqual([35, 25]);
     // as-2 (the 21 Nov 14:33 ruling), checked live against NASA's render: Apollo-Soyuz from its side, level, the hangar's
     // up kept
     expect([CRAFTS['apollo-soyuz']!.modelForward, CRAFTS['apollo-soyuz']!.modelUp]).toEqual([[1, 0, 0], [0, 1, 0]]);
@@ -228,7 +235,7 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const clemRad = (CLEMENTINE_HEADING_DEG * Math.PI) / 180;
     expect(CRAFTS.clementine!.modelUp).toEqual([0, 0, -1]);
     CRAFTS.clementine!.modelForward.forEach((x, i) => expect(x).toBeCloseTo([-Math.sin(clemRad), -Math.cos(clemRad), 0][i]!, 12));
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity', 'perseverance', 'clementine']);
+    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity', 'perseverance', 'clementine', 'tdrs']);
     const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
     expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
     expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
@@ -434,6 +441,34 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(boomEnd.yPx).toBeLessThan(centre.yPx - 20);
     // The dish's facing: up the screen more than sideways (the 30 degree tilt that raises the boom leans it a little right)
     expect(centre.yPx - dishFace.yPx).toBeGreaterThan(Math.abs(dishFace.xPx - centre.xPx));
+  });
+
+  it('rests TDRS with its antenna deck upright, solar wings upper-left to lower-right, and foreground 5 m dish lower-left (td-1)', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 1440, 900)!;
+    const scene = craftSceneOf(camera, CRAFTS.tdrs!, [0, 0, 0], 12, undefined, undefined, 10.4)!;
+    const at = (m: Vec3) => {
+      const w = apply(scene.modelMatrix, m);
+      const c = apply(scene.clipMatrix, [w[0], w[1], w[2]]);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 1440, yPx: ((1 - c[1] / c[3]) / 2) * 900 };
+    };
+    const centre = at([0, 0, 0]);
+    const deck = at([0, 2.8, 0]);
+    const leftWing = at([-10, 0, 0]);
+    const rightWing = at([10, 0, 0]);
+    const foreDish = at([0, 2, 4]);
+    const aftDish = at([0, 2, -4]);
+    // Antenna deck (+Y) stands upright above the bus centre
+    expect(centre.yPx - deck.yPx).toBeGreaterThan(25);
+    // Solar wings (-X to +X) run diagonally from upper-left to lower-right
+    expect(leftWing.xPx).toBeLessThan(centre.xPx - 80);
+    expect(leftWing.yPx).toBeLessThan(centre.yPx - 15);
+    expect(rightWing.xPx).toBeGreaterThan(centre.xPx + 80);
+    expect(rightWing.yPx).toBeGreaterThan(centre.yPx + 15);
+    // Foreground 5 m dish (+Z) sits lower-left of the second 5 m dish (-Z)
+    expect(foreDish.xPx).toBeLessThan(centre.xPx - 20);
+    expect(foreDish.yPx).toBeGreaterThan(aftDish.yPx + 25);
+    expect(aftDish.xPx).toBeGreaterThan(foreDish.xPx + 40);
   });
 });
 
