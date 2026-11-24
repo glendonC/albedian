@@ -288,7 +288,9 @@ private struct StepRow: View {
                 }
             }
             .frame(height: 2)
+            .accessibilityHidden(true)
         }
+        .accessibilityElement(children: .combine)
         .padding(.horizontal, CGFloat(Arrive.side))
     }
 }
@@ -355,7 +357,9 @@ struct KeptScreen: View {
                             }
                         }
                         .frame(height: 2)
+                        .accessibilityHidden(true)
                     }
+                    .accessibilityElement(children: .combine)
                     .padding(.horizontal, CGFloat(Arrive.side))
                     // 30 pt under the photo: 668 on the record's 390 pt screen
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)

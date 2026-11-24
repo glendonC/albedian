@@ -166,4 +166,31 @@ final class ApprovedAssetsTests: XCTestCase {
         XCTAssertTrue(compactCompanion.contains("EvidenceTag(evidence:evidence)}.accessibilityElement(children:.combine)"),
                       "ResultScreen count helper HStack must combine children for VoiceOver")
     }
+
+    func testCanvasStarLabelsUseFixedSizeGeistAndWaitStepRowsCombineChildren() throws {
+        let overlayRaw = try String(contentsOf: app.appendingPathComponent("Screens/SkyOverlayView.swift"), encoding: .utf8)
+        let afterSendRaw = try String(contentsOf: app.appendingPathComponent("Screens/AfterSendScreens.swift"), encoding: .utf8)
+        let overlaySplit = try SourceReader.split(overlayRaw, .swift)
+        let afterSendSplit = try SourceReader.split(afterSendRaw, .swift)
+        let compactOverlay = overlaySplit.code.filter { !$0.isWhitespace }
+        let compactAfterSend = afterSendSplit.code.filter { !$0.isWhitespace }
+
+        // PlacedSkyOverlay.draw (shared by AimScreen and WaitingScreen EarlyMark) uses fixedSize Geist-Regular so
+        // Canvas star labels match SkyOverlayNames's fixed 11.0 pt collision boxes under Larger Text
+        XCTAssertFalse(compactOverlay.contains("AlbedianFont.regular("),
+                       "PlacedSkyOverlay Canvas must not use Dynamic-Type-scaled AlbedianFont.regular")
+        XCTAssertTrue(compactOverlay.contains("Text(mark.name).font(Font.custom(,fixedSize:size))"),
+                      "PlacedSkyOverlay.draw must resolve star names with Font.custom(_, fixedSize: size)")
+        let overlayCodeLines = overlaySplit.code.components(separatedBy: "\n")
+        let overlayLitLines = overlaySplit.literals.components(separatedBy: "\n")
+        let customIdx = try XCTUnwrap(overlayCodeLines.firstIndex { $0.filter { !$0.isWhitespace }.contains("Font.custom(,fixedSize:size)") })
+        XCTAssertTrue(overlayLitLines[customIdx].contains("Geist-Regular"),
+                      "Canvas fixedSize font must be Geist-Regular")
+        XCTAssertTrue(compactAfterSend.contains("Canvas{context,sizeinPlacedSkyOverlay.draw(mark,at:CGPoint(x:size.width/2,y:size.height/2),onLeft:onLeft,named:onLeft!=nil,in:context)}"))
+
+        // WaitingScreen StepRow and KeptScreen sending row hide the 2 pt bar and combine step name + count for VoiceOver
+        let combinedRowPattern = ".frame(height:2).accessibilityHidden(true)}.accessibilityElement(children:.combine).padding(.horizontal,CGFloat(Arrive.side))"
+        XCTAssertEqual(compactAfterSend.components(separatedBy: combinedRowPattern).count - 1, 2,
+                       "WaitingScreen StepRow and KeptScreen sending row must hide the 2 pt bar and combine children")
+    }
 }

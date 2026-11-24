@@ -58,7 +58,7 @@ struct PlacedSkyOverlay: View {
         guard let onLeft else { return }
         let size = SkyOverlayStyle.nameSizePt
         func name(_ colour: Color) -> GraphicsContext.ResolvedText {
-            context.resolve(Text(mark.name).font(AlbedianFont.regular(size)).tracking(CGFloat(SkyOverlayStyle.nameTracking * size))
+            context.resolve(Text(mark.name).font(Font.custom("Geist-Regular", fixedSize: size)).tracking(CGFloat(SkyOverlayStyle.nameTracking * size))
                 .foregroundStyle(colour))
         }
         let fill = name(amber)
