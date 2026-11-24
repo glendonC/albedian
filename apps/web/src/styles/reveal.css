@@ -520,6 +520,33 @@
   pointer-events: auto;
 }
 
+/* card-backing-one (UIUX-reveal-READY.md, the addition of 24 Nov 18:13, DECIDED-BY-LEAD 18:14): behind the open star
+   card on the laptop, and the answer in its place, the laptop column fade ruled 16:40 (D19's values): black at 82
+   percent under it, clearing to nothing over 44 px beyond its open edges (left, top and bottom), the window's right
+   edge closing it (the card stands 32 px from it); no box, no edge line, and no motion of its own: it comes and goes
+   with the card. The phone's sheet and the card on the predicted sky have their own ground */
+.reveal-card:not(.is-phone):not(.is-sky),
+.reveal-answer:not(.is-phone) {
+  isolation: isolate;
+}
+
+.reveal-card:not(.is-phone):not(.is-sky)::before,
+.reveal-answer:not(.is-phone)::before {
+  content: '';
+  position: absolute;
+  left: -44px;
+  top: -44px;
+  bottom: -44px;
+  right: -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-composite: intersect;
+}
+
 .reveal-answer__q {
   margin: 0 0 14px;
   font-size: 14px;

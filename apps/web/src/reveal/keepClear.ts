@@ -20,6 +20,9 @@ export const REVEAL_KEEP_CLEAR = [
   // The phone restoration's tag block in its wait and its stop's block (the 16:19 record; d38tag-2)
   '.restore-phone-lead',
   '.restore-phone-why',
+  // card-backing-one (UIUX-reveal-READY.md, the addition of 24 Nov 18:13): the open star card on the laptop; the phone's
+  // sheet and the card on the predicted sky keep their own rules. The picked star's mark stays (revealMarks)
+  '.reveal-card:not(.is-phone):not(.is-sky)',
 ] as const;
 
 /** On the working screen: its column (the lead, the source line, Cancel and the rows) and the Sound circle. */
