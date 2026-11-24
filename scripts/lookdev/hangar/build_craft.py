@@ -219,10 +219,11 @@ CHANGES = {
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
         "with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; "
         "NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no "
-        "metalness, the cameras' photo texture given metalness, roughness and surface relief from its own colours "
-        "with two small printed labels painted over in the colour around them, NASA's own colour, metalness and "
-        "roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made "
-        "again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "metalness, the JPL logo and the NASA insignia on two plates in the blade texture painted over in the colour "
+        "of the surface around them, the cameras' photo texture given metalness, roughness and surface relief from its "
+        "own colours with two small printed labels painted over in the colour around them, NASA's own colour, "
+        "metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the "
+        "normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
     # lod0 for a rover scaled from its wheels, agency marks and placard painted out ("changes": "perseverance")
     "lod0_perseverance": (
@@ -437,10 +438,15 @@ def atlas_maps(base: bpy.types.Image) -> tuple[np.ndarray, np.ndarray]:
     return orm, nrm
 
 
-def painted_out(img: bpy.types.Image, boxes: list[dict]) -> bpy.types.Image:
+def painted_out(img: bpy.types.Image, boxes: list[dict], share: bool = False) -> bpy.types.Image:
     """A copy of the photo texture with each box (source pixels, x0 y0 x1 y1 from the top left) filled with the median
     colour of a PAINT_OUT_BAND_PX band around it, or of the box its "fill_from" names: NASA's insignia and logotype
-    are not public domain, so a mark NASA photographed on the hardware is covered with the surface it is printed on."""
+    are not public domain, so a mark NASA photographed on the hardware is covered with the surface it is printed on.
+    With `share`, two materials that paint one image with the same boxes share one painted copy (Ingenuity's blades
+    and solar panel both sample NASA's blade texture), so the file carries it once at every level."""
+    key = (img.name, repr(boxes))
+    if share and key in _PAINTED:
+        return _PAINTED[key]
     px = image_array(img).copy()
     h, w, _ = px.shape
     for box in boxes:
@@ -463,7 +469,12 @@ def painted_out(img: bpy.types.Image, boxes: list[dict]) -> bpy.types.Image:
     out = bpy.data.images.new(f"{img.name}_painted", width=w, height=h, alpha=False)
     out.pixels.foreach_set(px.ravel())
     out.pack()
+    if share:
+        _PAINTED[key] = out
     return out
+
+
+_PAINTED: dict[tuple[str, str], bpy.types.Image] = {}
 
 
 def material_output_group() -> bpy.types.NodeTree:
@@ -636,7 +647,7 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
     elif spec["role"] == "textured":
         # NASA's own texture as the base colour (a printed label, a flag), with a flat metalness and roughness.
         if spec.get("paint_out"):
-            src_img = painted_out(src_img, spec["paint_out"])
+            src_img = painted_out(src_img, spec["paint_out"], share=True)
         base = nt.nodes.new("ShaderNodeTexImage")
         base.image = src_img
         links.new(base.outputs["Color"], bsdf.inputs["Base Color"])

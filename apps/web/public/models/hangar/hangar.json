@@ -1982,21 +1982,21 @@
       "files": {
         "lod0": {
           "path": "ingenuity/ingenuity_lod0.glb",
-          "bytes": 590268,
+          "bytes": 584184,
           "triangles": 9054,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "ingenuity/ingenuity_lod1.glb",
-          "bytes": 415304,
+          "bytes": 409220,
           "triangles": 4527,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "ingenuity/ingenuity_lod2.glb",
-          "bytes": 181188,
+          "bytes": 178188,
           "triangles": 1627,
           "textureEdgeMax": 512,
           "budgetBytes": 600000

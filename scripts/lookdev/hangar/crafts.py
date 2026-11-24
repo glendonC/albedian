@@ -25,6 +25,12 @@ TEXTURE_EDGE = {"lod0": 2048, "lod1": 1024, "lod2": 512}
 # Triangle share of the cleaned source kept per level (Blender's collapse decimation).
 LOD_RATIO = {"lod0": 1.0, "lod1": 0.5, "lod2": 0.18}
 PICKER_EDGE = 176  # the picker row's picture is 44 px; four times that for dense screens
+# The two plates in NASA's blade texture (1024 by 512, one file in the Ingenuity and Perseverance models), as
+# Perseverance's recipe paints them: the JPL logo and the NASA insignia, each filled from the surface beside it.
+BLADE_PLATES = [
+    {"box": (20, 165, 152, 208), "fill_from": (65, 140, 110, 160), "what": "the JPL logo on a front body plate"},
+    {"box": (887, 398, 1020, 508), "fill_from": (925, 393, 980, 399), "what": "the NASA insignia on a front body plate"},
+]
 
 CRAFTS: dict[str, dict] = {
     "voyager": {
@@ -1661,13 +1667,15 @@ CRAFTS: dict[str, dict] = {
             "quote": "Total length of rotors: Approximately 4 feet (approximately 1.2 meters) tip to tip",
         },
         # NASA's blade and solar panel texture (the blades' carbon fibre, the cells) and the fuselage's carbon fibre
-        # weave kept as the base colour with one roughness and no metalness; where the UVs fall in the blade texture
-        # there is no mark (its JPL logo, NASA insignia and US flag lie outside them). The cameras' photo texture,
-        # fully used, holds two small printed labels (a maker's name and model number, a part number), painted over
-        # in the colour around them. The metal parts keep NASA's own colour, metalness and roughness.
+        # weave kept as the base colour with one roughness and no metalness. The blade texture is the same file as
+        # Perseverance's and holds a plate with the JPL logo and a plate with the NASA insignia; no UV falls on them, but
+        # the file ships, so both are painted out exactly as Perseverance's are, in both materials that use it (one
+        # painted copy in each level); the US flag stays. The cameras' photo texture, fully used, holds two small
+        # printed labels (a maker's name and model number, a part number), painted over in the colour around them.
+        # The metal parts keep NASA's own colour, metalness and roughness.
         "materials": {
-            "blades": {"role": "textured", "image": "blade", "metallic": 0.0, "roughness": 0.45},
-            "chopper_sp": {"role": "textured", "image": "blade", "metallic": 0.0, "roughness": 0.25},
+            "blades": {"role": "textured", "image": "blade", "metallic": 0.0, "roughness": 0.45, "paint_out": BLADE_PLATES},
+            "chopper_sp": {"role": "textured", "image": "blade", "metallic": 0.0, "roughness": 0.25, "paint_out": BLADE_PLATES},
             "carbon fiber": {"role": "textured", "image": "CarbonFiber_albedo2", "metallic": 0.0, "roughness": 0.45},
             "binoculars": {
                 "role": "photo_atlas",

@@ -17,6 +17,7 @@ import struct
 from pathlib import Path
 from urllib.parse import urlparse
 
+import numpy as np
 import pytest
 
 from scripts.lookdev.hangar import write_hangar
@@ -269,6 +270,49 @@ def test_every_photo_texture_with_a_nasa_mark_has_it_painted_out(name: str) -> N
         for box in material.get("paint_out", []):
             x0, y0, x1, y1 = box["box"]
             assert 0 <= x0 < x1 and 0 <= y0 < y1 and box["what"]
+
+
+# NASA's "blade" texture (1024 by 512, the same file in the Ingenuity and Perseverance models) holds a plate with the
+# JPL logo and a plate with the NASA insignia; boxes in its own pixels, x0 y0 x1 y1 from the top left.
+BLADE_PLATES = ((20, 165, 152, 208), (887, 398, 1020, 508))
+
+
+def _glb_images(path: Path) -> dict[str, "np.ndarray"]:
+    import io
+
+    from PIL import Image
+
+    data = path.read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20 : 20 + length])
+    blob = data[20 + length + 8 :]
+    out = {}
+    for i, image in enumerate(gltf.get("images", [])):
+        view = gltf["bufferViews"][image["bufferView"]]
+        raw = blob[view.get("byteOffset", 0) : view.get("byteOffset", 0) + view["byteLength"]]
+        with Image.open(io.BytesIO(raw)) as picture:
+            out[image.get("name", str(i))] = np.asarray(picture.convert("RGB"), dtype=np.float64)
+    return out
+
+
+@pytest.mark.parametrize("name", ["ingenuity", "perseverance"])
+def test_the_blade_texture_ships_without_the_jpl_and_nasa_plates_at_every_level(name: str) -> None:
+    # SUBMISSION's risks R1.1 on 24 Nov: Ingenuity's files carried both plates while the record said no NASA mark is
+    # shown. Each plate's box, scaled to the level's copy and kept 3 source pixels inside its edge, is one flat colour
+    # after painting (a standard deviation under 12 of 255 per channel, against about 60 or more over a logo). The
+    # record's sentence for the close level says both marks were painted over.
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
+    sentence = record[f"hangar/{name}/{name}_lod0.glb"]["producedBy"]["changes"]
+    assert "JPL logo" in sentence and "NASA insignia" in sentence and "painted over" in sentence, sentence
+    for level in ("lod0", "lod1", "lod2"):
+        blades = {k: v for k, v in _glb_images(HANGAR_DIR / name / f"{name}_{level}.glb").items() if k.startswith("blade")}
+        assert blades, (name, level)
+        for image_name, px in blades.items():
+            h, w, _ = px.shape
+            for x0, y0, x1, y1 in BLADE_PLATES:
+                sx, sy = w / 1024, h / 512
+                crop = px[int((y0 + 3) * sy) : int((y1 - 3) * sy), int((x0 + 3) * sx) : int((x1 - 3) * sx)]
+                assert crop.size and crop.std(axis=(0, 1)).max() < 12, (name, level, image_name, (x0, y0, x1, y1))
 
 
 @pytest.mark.parametrize("name", sorted(CRAFTS))

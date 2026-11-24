@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "5dedbcfc03b82c1fc83667dfc50add147d0f98825f321e83904abfda9a7c4f42",
+      "sha256": "75fa1966411461a8e250c8fa826aef12856aa22fcc25fcf1021cae187bc72453",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -847,7 +847,7 @@
     },
     {
       "path": "hangar/ingenuity/ingenuity_lod0.glb",
-      "sha256": "2308cf557d9e99ccde556f93909aa25ce6f6eb27e59c93d0362a65ed398ff07e",
+      "sha256": "9687c3585733a85d619725e21961674994a88f761f648b92b80fcda291b08f80",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -856,13 +856,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no metalness, the cameras' photo texture given metalness, roughness and surface relief from its own colours with two small printed labels painted over in the colour around them, NASA's own colour, metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no metalness, the JPL logo and the NASA insignia on two plates in the blade texture painted over in the colour of the surface around them, the cameras' photo texture given metalness, roughness and surface relief from its own colours with two small printed labels painted over in the colour around them, NASA's own colour, metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
     {
       "path": "hangar/ingenuity/ingenuity_lod1.glb",
-      "sha256": "35555a4aa1f7338dda53d8d11c5e58f40416472aaff8e94afd5bf5a03badb814",
+      "sha256": "98f8cfa2a45370169fc6a1c9e21cc0cbca360050b9bad40a5b84cc3d4a2b69fb",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -877,7 +877,7 @@
     },
     {
       "path": "hangar/ingenuity/ingenuity_lod2.glb",
-      "sha256": "86df2ebba69f52d8323b5f8290b30ff9faf8a53d28cb044b2783245573188cc6",
+      "sha256": "00279f7cb8c70fe09c0666057efef1e8df9588c38c3318ce178913aef9d70715",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
