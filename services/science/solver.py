@@ -23,6 +23,7 @@ from services.science.catalog import (
     ra_dec_to_unit_vector,
     unit_vector_to_ra_dec,
 )
+from services.science.designations import designation_parts, star_title
 from services.science.detector import (
     InjectionRecoveryBin,
     InjectionRecoveryReport,
@@ -46,6 +47,7 @@ from services.science.phone_photo_solver import (
     _get_deep_star_index,
     _parse_iso_to_jd_utc,
     evaluate_coincidence_gate,
+    magnitude_band_words,
     naming_refusal_counts,
     naming_refusals,
     solve_phone_photo,
@@ -893,20 +895,32 @@ def solve_and_verify_field(
                 else (None, None)
             )
             ang_res_arcsec = res_px * refined_wcs.scale_deg_per_px * 3600.0
+            sub_parts = [
+                *designation_parts(st),
+                *([f"{st.median_pc:.1f} pc [{st.lower_pc:.1f} to {st.upper_pc:.1f} pc]"] if st.has_distance else []),
+            ]
+            distance_limitation = (
+                f"Distance is {st.distance_source}, not measured from this image."
+                if st.has_distance
+                else "Its catalog row gives no distance, so none is shown."
+            )
             findings_list.append(
                 CelestialFindingRecord(
                     id=f"finding-{st.id}",
                     observation_solution_id=solution_id,
                     evidence_class="catalog_matched",
-                    title=st.common_name,
-                    subtitle=f"{st.bayer_designation} · {st.median_pc:.1f} pc [{st.lower_pc:.1f} to {st.upper_pc:.1f} pc]",
+                    title=star_title(st),
+                    subtitle=" · ".join(sub_parts) if sub_parts else st.catalog_source_id,
                     ra_deg=st.ra_deg, dec_deg=st.dec_deg, alt_deg=alt_deg, az_deg=az_deg,
                     uncertainty_arcsec=max(0.5, ang_res_arcsec),
                     source_detection=det, catalog_star=st,
                     pixel_residual_px=res_px, angular_residual_arcsec=ang_res_arcsec,
                     verified_by_holdout=not is_train,
-                    limitations=(f"Distance is {st.distance_source}, not measured from this image.",
-                                 *((NAMING_FIT_STAR_NOTE,) if is_train else ())),
+                    limitations=(
+                        distance_limitation,
+                        *((magnitude_band_words(st.magnitude_band),) if st.magnitude_band is not None else ()),
+                        *((NAMING_FIT_STAR_NOTE,) if is_train else ()),
+                    ),
                     source_sha256=source_sha256,
                 )
             )
