@@ -101,7 +101,7 @@ pnpm field --check
 pnpm field
 ```
 
-`pnpm field --check` starts nothing and prints one line per need; fix any `MISSING` line first. `pnpm field` starts the API on 127.0.0.1:8000, the web app on http://localhost:5173 and the music sample server; open the web app and press Upload. The music's samples are not in the repository: without them in `.cache/music/sources` the app runs and the music stays silent, and `pnpm field --check` counts them ([`docs/FIELD_USE.md`](docs/FIELD_USE.md)).
+`pnpm field --check` starts nothing and prints one line per need; fix any `MISSING` line first. `pnpm field` starts the API on 127.0.0.1:8000, the web app on http://localhost:5173 and the music sample server; open the web app and press Upload. With no night photo at hand, try YagnKambariya's public-domain (CC0) photo [Venus, Moon, Orion](https://commons.wikimedia.org/w/index.php?curid=179998887) from Wikimedia Commons (corpus photo `rp-b-12`, [`docs/science/REAL_PHOTO_CORPUS.md`](docs/science/REAL_PHOTO_CORPUS.md)): download its original file from that page; on 24 November 2026 it calibrated in 18 s, and astrometry.net confirmed all 39 of its catalog matched stars. The music's samples are not in the repository: without them in `.cache/music/sources` the app runs and the music stays silent, and `pnpm field --check` counts them ([`docs/FIELD_USE.md`](docs/FIELD_USE.md)).
 
 ### 3. Run Verification & Property-Based Test Suites
 ```bash
