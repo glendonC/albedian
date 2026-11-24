@@ -167,6 +167,61 @@ describe('starCardFacts: a catalog matched star', () => {
     expect(starCardFacts(betelgeuse).subLine).toBe('Alpha Orionis · Orion');
     expect(starCardFacts(withRef({ bayerDesignation: undefined, constellation: 'Canis Major' })).subLine).toBe('Canis Major');
   });
+
+  it('falls back to flamsteedLongDesignation on Flamsteed-only proper-named stars such as Atlas, Electra and Maia', () => {
+    const atlas = CelestialFindingSchema.parse({
+      ...acrux,
+      id: 'finding-hip-17847',
+      title: 'Atlas',
+      subtitle: '27 Tau · HR 1178 · 118.6 pc [113.8-123.9 pc]',
+      evidenceClass: 'predicted',
+      sourceDetection: undefined,
+      catalogRef: {
+        ...acrux.catalogRef!,
+        id: 'hip-17847',
+        catalogSourceId: 'HIP 17847',
+        commonName: 'Atlas',
+        bayerDesignation: undefined,
+        flamsteedNumber: 27,
+        constellation: 'Tau',
+      },
+      evidence: {
+        id: 'ev-hip-17847',
+        evidenceClass: 'predicted',
+        catalogReferenceId: 'hip-17847',
+        verificationMethod: 'Predicted for the given time and place; not measured in the image',
+        limitations: ['Catalog position only.'],
+        verifiedByIndependentHoldout: false,
+      },
+    });
+    const electra = CelestialFindingSchema.parse({
+      ...atlas,
+      id: 'finding-hip-17499',
+      title: 'Electra',
+      subtitle: '17 Tau · HR 1142 · 124.2 pc [120.5-128.2 pc]',
+      catalogRef: { ...atlas.catalogRef!, id: 'hip-17499', catalogSourceId: 'HIP 17499', commonName: 'Electra', flamsteedNumber: 17 },
+      evidence: { ...atlas.evidence, id: 'ev-hip-17499', catalogReferenceId: 'hip-17499' },
+    });
+    const maia = CelestialFindingSchema.parse({
+      ...acrux,
+      id: 'finding-hip-17573',
+      title: 'Maia',
+      subtitle: '20 Tau · HR 1149 · 115.6 pc [111.4-120.1 pc]',
+      catalogRef: {
+        ...acrux.catalogRef!,
+        id: 'hip-17573',
+        catalogSourceId: 'HIP 17573',
+        commonName: 'Maia',
+        bayerDesignation: undefined,
+        flamsteedNumber: 20,
+        constellation: 'Taurus',
+      },
+      evidence: { ...acrux.evidence, id: 'ev-hip-17573', catalogReferenceId: 'hip-17573' },
+    });
+    expect(starCardFacts(atlas).subLine).toBe('27 Tauri · Taurus');
+    expect(starCardFacts(electra).subLine).toBe('17 Tauri · Taurus');
+    expect(starCardFacts(maia).subLine).toBe('20 Tauri · Taurus');
+  });
 });
 
 describe('starCardFacts: a star with no name (INTERIM: UIUX-unnamed-QUESTION.md)', () => {
@@ -209,11 +264,14 @@ describe('starCardFacts: a predicted object (INTERIM: UIUX-predicted-pick-QUESTI
 describe('starCardFacts: what a finding does not have is left out', () => {
   it('leaves the designation out of the line under the name when it is the name, and keeps the constellation', () => {
     expect(starCardFacts({ ...withRef({ commonName: 'HIP 60718' }), title: 'Alpha1 Crucis' }).subLine).toBe('Crux');
+    expect(starCardFacts({ ...withRef({ commonName: 'HIP 1366', catalogSourceId: 'HIP 1366', bayerDesignation: 'Theta Andromedae', flamsteedNumber: 24, constellation: 'And' }), title: 'Theta Andromedae' }).subLine).toBe('Andromeda');
+    expect(starCardFacts({ ...withRef({ commonName: 'HIP 154', catalogSourceId: 'HIP 154', bayerDesignation: undefined, flamsteedNumber: 30, constellation: 'Psc' }), title: '30 Piscium' }).subLine).toBe('Pisces');
     expect(starCardFacts(withRef({ bayerDesignation: undefined })).subLine).toBe('Crux');
   });
 
   it('writes no line under the name for a constellation it has no full name for, rather than a code', () => {
     expect(starCardFacts(withRef({ bayerDesignation: undefined, constellation: 'Xyz' })).subLine).toBeNull();
+    expect(starCardFacts(withRef({ bayerDesignation: undefined, flamsteedNumber: 27, constellation: 'Xyz' })).subLine).toBeNull();
     expect(starCardFacts(withRef({ constellation: 'Xyz' })).subLine).toBe('Alpha1 Crucis');
   });
 

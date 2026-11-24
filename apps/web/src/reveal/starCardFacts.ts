@@ -1,4 +1,4 @@
-import { DESIGNATION_CONSTELLATIONS, type CelestialFinding, type EvidenceClass } from '@albedian/contracts';
+import { DESIGNATION_CONSTELLATIONS, flamsteedLongDesignation, type CelestialFinding, type EvidenceClass } from '@albedian/contracts';
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { findingCanEnterSpace } from '../components/askSuggestions.js';
 import { RUWE_CAUTION_ABOVE, astrophysicsOf, formatSignificant } from '../components/scanScales.js';
@@ -75,7 +75,10 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
   const deep = isDeepSky(finding);
   // A deep-sky object is titled by its own name or its NGC number (D23): never a nameless star's parts
   const nameless = deep ? null : namelessParts(finding);
-  const designation = ref?.bayerDesignation !== undefined && ref.bayerDesignation !== finding.title ? ref.bayerDesignation : null;
+  const rawDesignation =
+    ref?.bayerDesignation ??
+    (ref?.flamsteedNumber !== undefined ? flamsteedLongDesignation(ref.flamsteedNumber, ref.constellation) : null);
+  const designation = rawDesignation !== null && rawDesignation !== finding.title ? rawDesignation : null;
   const constellation = ref ? (CONSTELLATION_NAME.get(ref.constellation) ?? null) : null;
   // A deep-sky object's small line is its type in words and its constellation ("Globular cluster · Centaurus", D23)
   const first = deep ? (deepSky ? deepSkyKindWords(deepSky.type) : null) : nameless ? nameless.number : designation;
