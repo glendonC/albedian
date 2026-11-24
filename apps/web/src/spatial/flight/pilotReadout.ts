@@ -52,6 +52,8 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   clementine: 'to the Moon',
   // The 23 Nov 11:37 ruling (td-1): as IBEX's, the Van Allen Probes' and Webb's
   tdrs: 'near Earth',
+  // The 24 Nov 05:48 ruling (mo-1): as MRO's, Mars Global Surveyor's and MAVEN's
+  'mars-odyssey': 'around Mars',
 };
 
 /**
@@ -75,6 +77,7 @@ const NEEDS_FACT: Readonly<Record<CraftId, string>> = {
   perseverance: 'landedOnMars',
   clementine: 'lunarOrbit',
   tdrs: 'orbit',
+  'mars-odyssey': 'marsOrbit',
 };
 
 /** The fact this craft's words still wait for in the hangar's record, or none. */
@@ -110,6 +113,7 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   perseverance: 'No real travel time: Perseverance landed in Jezero Crater on Mars in 2021.',
   clementine: 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.',
   tdrs: 'No real travel time: TDRS orbits Earth in geosynchronous orbit, relaying data for space missions.',
+  'mars-odyssey': 'No real travel time: Mars Odyssey has orbited Mars since 2001, relaying data from Mars landers.',
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */

@@ -114,6 +114,11 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('tdrs', 'orbit', false))).toEqual(['orbit', null, '']);
     expect(rows(withFact('tdrs', 'orbit', true))).toEqual([null, 'No real travel time: TDRS orbits Earth in geosynchronous orbit, relaying data for space missions.', 'near Earth']);
     expect([CRAFTS.tdrs!.name, CRAFT_CHOICES.find((c) => c.id === 'tdrs')!.detail, none('tdrs')]).toEqual(['TDRS', 'near Earth', 'No real travel time: TDRS orbits Earth in geosynchronous orbit, relaying data for space missions.']);
+    // The 24 Nov 05:48 ruling (mo-1): Mars Odyssey around Mars as MRO, MGS and MAVEN, its words waiting for marsOrbit
+    // in its record, which ASSETS' entry carries (hangar-48, NSSDCA 2001-013A and NASA Science)
+    expect(rows(withFact('mars-odyssey', 'marsOrbit', false))).toEqual(['marsOrbit', null, '']);
+    expect(rows(withFact('mars-odyssey', 'marsOrbit', true))).toEqual([null, 'No real travel time: Mars Odyssey has orbited Mars since 2001, relaying data from Mars landers.', 'around Mars']);
+    expect([CRAFTS['mars-odyssey']!.name, CRAFT_CHOICES.find((c) => c.id === 'mars-odyssey')!.detail, none('mars-odyssey')]).toEqual(['Mars Odyssey', 'around Mars', 'No real travel time: Mars Odyssey has orbited Mars since 2001, relaying data from Mars landers.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
@@ -152,6 +157,8 @@ describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3, D35 items 1 and 2)', ()
     expect(others.map((c) => c.name)).toEqual([...others.map((c) => c.name)].sort((x, y) => x.localeCompare(y, 'en')));
     const tdrsIdx = others.findIndex((c) => c.id === 'tdrs');
     expect([others[tdrsIdx - 1]?.name, others[tdrsIdx]?.name, others[tdrsIdx + 1]?.name]).toEqual(['Stardust', 'TDRS', 'Van Allen Probes']);
+    const moIdx = others.findIndex((c) => c.id === 'mars-odyssey');
+    expect([others[moIdx - 1]?.name, others[moIdx]?.name, others[moIdx + 1]?.name]).toEqual(['Mars Global Surveyor', 'Mars Odyssey', 'Mars Reconnaissance Orbiter']);
     expect(suits!.choices.map((c) => c.id)).toEqual(HANGAR_CRAFTS.filter((c) => c.kind === 'suit').map((c) => c.id));
     expect(suits!.choices.every((c) => c.detail === '')).toBe(true);
     expect(CRAFT_CHOICES).toHaveLength(1 + HANGAR_CRAFTS.length);

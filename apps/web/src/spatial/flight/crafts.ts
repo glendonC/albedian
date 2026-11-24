@@ -67,6 +67,8 @@ export const INGENUITY_ELEVATION_DEG = 15;
 export const CLEMENTINE_HEADING_DEG = 12;
 export const TDRS_HEADING_DEG = 35;
 export const TDRS_ELEVATION_DEG = 25;
+export const ODYSSEY_HEADING_DEG = 30;
+export const ODYSSEY_ELEVATION_DEG = 8;
 
 /**
  * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
@@ -155,6 +157,15 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
     [-Math.sin((TDRS_HEADING_DEG * Math.PI) / 180), 0, -Math.cos((TDRS_HEADING_DEG * Math.PI) / 180)],
     [0, 1, 0],
     TDRS_ELEVATION_DEG,
+  ),
+  // mo-1 (the 24 Nov 05:48 ruling), checked live against odyssey_picker.webp (.cache/uiux/built/mo-1/zoom.png):
+  // three-panel solar array (+Y) upright at upper-left showing its dark rear wiring harness, parabolic high-gain dish
+  // and main engine bell (-Z) at lower-left, gold-foil bus in the lower-left foreground, and GRS lattice boom (+Z)
+  // reaching right with the gold gamma sensor head at its tip
+  odyssey: seenFromAbove(
+    [Math.cos((ODYSSEY_HEADING_DEG * Math.PI) / 180), 0, Math.sin((ODYSSEY_HEADING_DEG * Math.PI) / 180)],
+    [0, 1, 0],
+    ODYSSEY_ELEVATION_DEG,
   ),
 };
 
