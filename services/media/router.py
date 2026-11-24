@@ -61,12 +61,16 @@ def get_media_discover(folders: MediaFolders = Depends(media_folders)) -> dict[s
 # Restoration jobs and their variants (spec restoration-for-every-upload, design sections 9 and 11; restore-2b)
 # =============================================================================================
 
+from collections.abc import Iterable  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
 from datetime import datetime, timezone  # noqa: E402
 import hashlib  # noqa: E402
 import os  # noqa: E402
 import stat  # noqa: E402
+from typing import BinaryIO, Optional  # noqa: E402
 import zlib  # noqa: E402
 
+import anyio  # noqa: E402
 from fastapi import Body  # noqa: E402
 from fastapi import Path as PathParameter  # noqa: E402
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse  # noqa: E402
@@ -83,24 +87,102 @@ SHA256_PATTERN = media_contract.MEDIA_PATTERNS["sha256"]
 VARIANT_PATTERN = media_contract.MEDIA_ID_PATTERNS["variant"]
 NO_UPLOAD = "no file with that hash is stored"
 NO_VARIANT = "no variant with that id is stored for that file"
+RECORD_UNREADABLE = "a stored record of that variant cannot be read"
+VARIANT_RECORDS = ("variant.json", "graph.json", "attempt.json")
+
+# Below the store's root these routes never go through a link, as the job store never does (AUDIT backend-security-b77,
+# item L1): every folder on the way is checked with `lstat`, every record and file is opened with `O_NOFOLLOW` and must
+# be a regular file, and a record must hold a JSON object naming its own folder or file.
 
 
-def _variant_folder(store: IngestStore, sha256: str, variant_id: str) -> Path:
-    if variant_id not in JobStore(store).succeeded_variant_ids(sha256):
-        raise HTTPException(status_code=404, detail=NO_VARIANT)
-    folder = store.folder(sha256) / "variants" / variant_id
-    try:
-        if not stat.S_ISDIR(os.lstat(folder).st_mode):
-            raise HTTPException(status_code=404, detail=NO_VARIANT)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
-    if not (folder / "variant.json").is_file():
-        raise HTTPException(status_code=404, detail=NO_VARIANT)
+class _Unreadable(ValueError):
+    """A stored record that is a regular file but holds no JSON object in UTF-8."""
+
+
+def _entered(store: IngestStore, sha256: str, *parts: str) -> Optional[Path]:
+    """The folder `parts` below the upload's folder, every folder on the way from the store's root a folder and no
+    link (`lstat`); None when one is missing or anything else."""
+    folder = store.root
+    for part in (*store.folder(sha256).relative_to(store.root).parts, *parts):
+        folder = folder / part
+        try:
+            if not stat.S_ISDIR(os.lstat(folder).st_mode):
+                return None
+        except OSError:
+            return None
     return folder
 
 
-def _read(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+def _record(path: Path) -> dict[str, Any]:
+    """A stored record: a regular file opened without following a link (FileNotFoundError for anything else) that
+    holds a JSON object in UTF-8 (_Unreadable otherwise)."""
+    data = _read_unlinked(path)
+    try:
+        record = json.loads(data.decode("utf-8"))
+    except (ValueError, RecursionError):
+        raise _Unreadable(path.name) from None
+    if not isinstance(record, dict):
+        raise _Unreadable(path.name)
+    return record
+
+
+def _variant_records(jobs: JobStore, store: IngestStore, sha256: str, variant_id: str,
+                     names: tuple[str, ...]) -> tuple[Path, list[dict[str, Any]]]:
+    """The variant's folder and its records `names`, `variant.json` first. 404 when no succeeded job names the variant
+    (REQ-JOB-5.4), when a folder on the way to it is missing or a link, when a record is missing, a link or no regular
+    file, and when the variant record names another variant; 500 when a record holds no JSON object."""
+    if variant_id not in jobs.succeeded_variant_ids(sha256):
+        raise HTTPException(status_code=404, detail=NO_VARIANT)
+    folder = _entered(store, sha256, "variants", variant_id)
+    if folder is None:
+        raise HTTPException(status_code=404, detail=NO_VARIANT)
+    try:
+        records = [_record(folder / name) for name in names]
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
+    except _Unreadable:
+        raise HTTPException(status_code=500, detail=RECORD_UNREADABLE) from None
+    if records[0].get("id") != variant_id:
+        raise HTTPException(status_code=404, detail=NO_VARIANT)
+    return folder, records
+
+
+def _listed(paths: Iterable[tuple[str, Path]], field: str) -> list[dict[str, Any]]:
+    """The records at `paths` (each with the id its folder or file names), oldest first by their UTC instant `field`.
+    A record that is no regular file reached without a link, holds no JSON object, names another id or carries no
+    instant in `field` is left out, so one damaged record never hides the rest (the job store's scans leave an
+    unreadable record out the same way)."""
+    kept = []
+    for name, path in paths:
+        try:
+            record = _record(path)
+            if record.get("id") == name:
+                kept.append((_utc_sort_key(record, field), record))
+        except (FileNotFoundError, _Unreadable, KeyError, TypeError, ValueError):
+            continue
+    return [record for _, record in sorted(kept, key=lambda pair: pair[0])]
+
+
+class _OpenedFileResponse(FileResponse):
+    """A FileResponse, ranges and all, that sends the file the route opened and checked and never its path again: its
+    stat is the descriptor's, every read goes through the descriptor, and the server is never handed the path to send
+    itself (the ASGI pathsend extension). The descriptor is closed when the answer ends, whether it was sent or not."""
+
+    def __init__(self, path: Path, handle: BinaryIO, **kwargs: Any) -> None:
+        self._handle = handle
+        super().__init__(path, stat_result=os.fstat(handle.fileno()), **kwargs)
+
+    async def __call__(self, scope, receive, send) -> None:
+        extensions = {key: value for key, value in (scope.get("extensions") or {}).items()
+                      if key != "http.response.pathsend"}
+        try:
+            await super().__call__({**scope, "extensions": extensions}, receive, send)
+        finally:
+            self._handle.close()
+
+    @asynccontextmanager
+    async def _open_file(self):
+        yield anyio.wrap_file(self._handle)
 
 
 def _utc_sort_key(record: dict[str, Any], field: str) -> tuple[datetime, str]:
@@ -136,18 +218,19 @@ def list_variants(
     sha256: str = PathParameter(pattern=SHA256_PATTERN), store: IngestStore = Depends(get_ingest_store)
 ) -> dict[str, Any]:
     """An upload's stored variants and every finished attempt, oldest first; there is no listing across uploads."""
+    # Only what is reached without a link and reads as a record of its own is listed (_listed). Kept out of the
+    # docstring, which is the route's published description (tests/fixtures/api_surface.json)
     if store.read_record(sha256) is None:
         raise HTTPException(status_code=404, detail=NO_UPLOAD)
-    succeeded = JobStore(store).succeeded_variant_ids(sha256)
-    folder = store.folder(sha256)
-    stored = [
-        _read(path)
-        for path in sorted((folder / "variants").glob("var_*/variant.json"))
-        if path.parent.name in succeeded and not path.parent.is_symlink() and not path.is_symlink()
-    ]
-    attempts = [_read(path) for path in sorted((folder / "attempts").glob("att_*.json"))]
-    stored.sort(key=lambda variant: _utc_sort_key(variant, "createdAtUTC"))
-    attempts.sort(key=lambda attempt: _utc_sort_key(attempt, "finishedAtUTC"))
+    named = []
+    for vid in sorted(JobStore(store).succeeded_variant_ids(sha256)):
+        folder = _entered(store, sha256, "variants", vid)
+        if folder is not None:
+            named.append((vid, folder / "variant.json"))
+    stored = _listed(named, "createdAtUTC")
+    folder = _entered(store, sha256, "attempts")
+    attempts = [] if folder is None else _listed(
+        ((path.stem, path) for path in sorted(folder.glob("att_*.json"))), "finishedAtUTC")
     return {"variants": stored, "attempts": attempts}
 
 
@@ -158,9 +241,8 @@ def get_variant(
     store: IngestStore = Depends(get_ingest_store),
 ) -> dict[str, Any]:
     """A stored variant's three records: the variant, the graph that made it and the attempt that passed its gate."""
-    folder = _variant_folder(store, sha256, variant_id)
-    return {"variant": _read(folder / "variant.json"), "graph": _read(folder / "graph.json"),
-            "attempt": _read(folder / "attempt.json")}
+    _, (variant, graph, attempt) = _variant_records(JobStore(store), store, sha256, variant_id, VARIANT_RECORDS)
+    return {"variant": variant, "graph": graph, "attempt": attempt}
 
 
 @router.get("/api/media/{sha256}/variants/{variant_id}/file", response_class=FileResponse)
@@ -170,10 +252,16 @@ def get_variant_file(
     store: IngestStore = Depends(get_ingest_store),
 ) -> FileResponse:
     """The stored variant's bytes, served as the original is: cached privately, never sniffed, shown inline."""
-    folder = _variant_folder(store, sha256, variant_id)
-    variant = _read(folder / "variant.json")
-    return FileResponse(
-        folder / variants.variant_file_name(variant["mimeType"]),
+    # The file is opened once, without following a link, and that descriptor is what is sent (_OpenedFileResponse)
+    folder, (variant,) = _variant_records(JobStore(store), store, sha256, variant_id, ("variant.json",))
+    path = folder / variants.variant_file_name(variant["mimeType"])
+    try:
+        fd = _open_unlinked(path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
+    return _OpenedFileResponse(
+        path,
+        os.fdopen(fd, "rb"),
         media_type=variant["mimeType"],
         headers={
             "Cache-Control": "private, max-age=31536000, immutable",
@@ -189,30 +277,17 @@ def get_variant_file(
 
 # Built on request from the stored records and the solution id named at that moment, so never kept by a cache
 EXPORT_HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
-VARIANT_RECORDS = ("variant.json", "graph.json", "attempt.json")
 RECORDS_REFUSED = "the stored records do not make a manifest the contract takes"
 FILE_CHANGED = "the stored file does not match its record"
 READ_BLOCK = 1 << 20
 
 
 def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[Path, dict[str, Any], dict[str, Any]]:
-    """The variant's folder, its manifest and its variant record. 404 when no succeeded job names it, when the folder
-    is missing, is a link, or lacks a record, and when its attempt is not `ready`: a rejected or failed attempt has
-    nothing to export (REQ-JOB-5.4, REQ-RST-9.6)."""
+    """The variant's folder, its manifest and its variant record. 404 and 500 as _variant_records answers them, and 404
+    when its attempt is not `ready`: a rejected or failed attempt has nothing to export (REQ-JOB-5.4, REQ-RST-9.6)."""
     jobs = JobStore(store)
-    if variant_id not in jobs.succeeded_variant_ids(sha256):
-        raise HTTPException(status_code=404, detail=NO_VARIANT)
-    folder = store.folder(sha256) / "variants" / variant_id
-    try:
-        if not stat.S_ISDIR(os.lstat(folder).st_mode):
-            raise HTTPException(status_code=404, detail=NO_VARIANT)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
-    try:
-        variant, graph, attempt = (json.loads(_read_unlinked(folder / name)) for name in VARIANT_RECORDS)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
-    if attempt.get("status") != "ready" or variant.get("id") != variant_id:
+    folder, (variant, graph, attempt) = _variant_records(jobs, store, sha256, variant_id, VARIANT_RECORDS)
+    if attempt.get("status") != "ready":
         raise HTTPException(status_code=404, detail=NO_VARIANT)
     # Every type the contract serves has an export row; a record naming another is not a record the manifest takes
     if variant.get("mimeType") not in variants.EXPORT_EXTENSIONS:
@@ -225,9 +300,10 @@ def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[P
 
 
 def _open_unlinked(path: Path) -> int:
-    """A descriptor of a regular file, never opened through a link. FileNotFoundError for a link or anything else."""
+    """A descriptor of a regular file, never opened through a link, and opened without waiting (a FIFO named like a
+    record would otherwise hold the request open). FileNotFoundError for a link or anything else."""
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except OSError as error:
         raise FileNotFoundError(path.name) from error
     if not stat.S_ISREG(os.fstat(fd).st_mode):
