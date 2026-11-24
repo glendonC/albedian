@@ -312,6 +312,101 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     expect(sheet.querySelector('.reveal-card__top > .look-tag')!.getAttribute('data-evidence-class')).toBe('predicted');
     expect([...sheet.querySelector('.reveal-card__top')!.children].map((el) => el.matches('.look-tag'))).toEqual([true, false]);
   });
+
+  it('passes the matching OpenNGC deep-sky row to StarCard when a predicted deep-sky object is picked, and asks for no table without one', async () => {
+    const { CelestialFindingSchema } = await import('@albedian/contracts');
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const { DEEP_SKY_CATALOG_URL, forgetDeepSkyTable } = await import('../deepSky.js');
+    forgetDeepSkyTable();
+    const tableFile = {
+      format: 'albedian.deep-sky-catalog',
+      columns: ['name', 'type', 'vMag', 'bMag'],
+      rows: [
+        ['NGC5139', 'GCl', 5.33, null],
+        ['NGC6611', 'Cl+N', 6.0, null],
+      ],
+    };
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify(tableFile)));
+    vi.stubGlobal('fetch', fetchSpy);
+    try {
+      const base = predictedSky();
+      act(() => root.render(createElement(PredictedSkyScreen, { session: base, onHome: noop })));
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      const omega = CelestialFindingSchema.parse({
+        id: 'finding-openngc-NGC5139',
+        title: 'Omega Centauri',
+        subtitle: 'Globular cluster in Centaurus',
+        evidenceClass: 'predicted',
+        skyPosition: { raDeg: 201.697, decDeg: -47.4795, uncertaintyArcsec: 12 },
+        catalogRef: {
+          id: 'openngc-NGC5139',
+          provider: 'OpenNGC',
+          releaseVersion: 'OpenNGC v20260501',
+          catalogSourceId: 'NGC5139',
+          commonName: 'Omega Centauri',
+          constellation: 'Cen',
+          objectType: 'deep_sky',
+          coordinateEpoch: 'J2000.0',
+          raDeg: 201.697,
+          decDeg: -47.4795,
+          apparentMagnitude: 5.33,
+          citation: 'OpenNGC',
+        },
+        evidence: {
+          id: 'ev-openngc-NGC5139',
+          evidenceClass: 'predicted',
+          catalogReferenceId: 'openngc-NGC5139',
+          verificationMethod: 'Predicted for the given time and place; not measured in the image',
+          limitations: ['Catalog centre only.'],
+          verifiedByIndependentHoldout: false,
+        },
+      });
+      const nonDeepSameId = CelestialFindingSchema.parse({
+        ...omega,
+        id: 'finding-predicted-star-other',
+        title: 'Alpha Centauri',
+        catalogRef: { ...omega.catalogRef!, id: 'star-other', provider: 'Hipparcos', releaseVersion: 'Hipparcos 2007', objectType: 'star', commonName: 'Alpha Centauri' },
+        evidence: { ...omega.evidence, id: 'ev-star-other', catalogReferenceId: 'star-other' },
+      });
+      const session = {
+        ...base,
+        selectedFindingId: omega.id,
+        observationSolution: { ...base.observationSolution!, findings: [...base.observationSolution!.findings, omega, nonDeepSameId] },
+      } as ObservationSession;
+
+      await act(async () => {
+        root.render(createElement(PredictedSkyScreen, { session, onHome: noop, onCloseCard: noop, onGoThere: noop }));
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(DEEP_SKY_CATALOG_URL);
+      const card = container.querySelector('.reveal-card.is-sky')!;
+      expect(card).not.toBeNull();
+      expect(card.querySelector('.reveal-card__name')!.textContent).toBe('Omega Centauri');
+      expect(card.querySelector('.reveal-card__sub')!.textContent).toBe('Globular cluster · Centaurus');
+      expect(card.querySelector('.reveal-card__number b')!.textContent).toBe('5.33');
+      expect(card.querySelector('.reveal-card__label')!.textContent).toBe('magnitude');
+      expect(card.querySelector('.reveal-card__source')!.textContent).toBe('OpenNGC v20260501 · NGC5139');
+      expect(card.querySelector('.reveal-card__acts')).toBeNull();
+
+      act(() => {
+        root.render(createElement(PredictedSkyScreen, { session, onHome: noop, onCloseCard: noop, onGoThere: noop, phone: true }));
+      });
+      expect(container.querySelector('.predsky.is-phone .reveal-card.is-phone .reveal-card__sub')!.textContent).toBe('Globular cluster · Centaurus');
+
+      act(() => {
+        root.render(createElement(PredictedSkyScreen, { session: { ...session, selectedFindingId: nonDeepSameId.id }, onHome: noop, onCloseCard: noop, onGoThere: noop }));
+      });
+      expect(container.querySelector('.reveal-card__sub')!.textContent).toBe('Centaurus');
+    } finally {
+      forgetDeepSkyTable();
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("the card's action row in the sky (ruled 13:25)", () => {

@@ -3,6 +3,7 @@ import type { ObservationSession } from '@albedian/contracts';
 import { EvidenceTag, IconButton, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
+import { deepSkyRowOf, isDeepSky, useDeepSkyTable } from './deepSky.js';
 import { phoneFacts, predictedSkyWords } from './predictedSky.js';
 import { StarCard } from './StarCard.js';
 import { predictedSkyMarks, skyLeaderPath, type Box } from './predictedSkyMarks.js';
@@ -60,6 +61,7 @@ export const PredictedSkyScreen: React.FC<{
   const size = useViewportSize();
   const status = useRef<HTMLDivElement>(null);
   const picked = session.observationSolution?.findings.find((f) => f.id === session.selectedFindingId && f.evidenceClass === 'predicted') ?? null;
+  const deepSky = useDeepSkyTable(session.observationSolution?.findings.some(isDeepSky) === true);
   // The open card's box (ruled 17:05): rings and names under it are left out, the picked star's own mark stays
   const [cardBox, setCardBox] = useState<Box | null>(null);
   useLayoutEffect(() => {
@@ -126,6 +128,7 @@ export const PredictedSkyScreen: React.FC<{
         <StarCard
           key={picked.id}
           finding={picked}
+          deepSky={isDeepSky(picked) ? deepSkyRowOf(picked, deepSky) : null}
           originalPixels={false}
           onToggleOriginalPixels={() => {}}
           onGoThere={() => onGoThere?.(picked.id)}
