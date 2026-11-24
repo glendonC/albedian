@@ -1,6 +1,6 @@
 {
  "albedian.restore": {
-  "revision": 8,
+  "revision": 9,
   "files": [
    "services/media/jobs.py",
    "services/media/photo.py",
@@ -21,7 +21,7 @@
    "services/media/frame_pool.py",
    "services/media/temporal.py"
   ],
-  "digest": "d99e83fd41f234dea324abd4c36fb445d0c8816cfe552db464a8f55c3ebc5ac9"
+  "digest": "6628136322d8898ce77b2dcb071b709f3b669ea3d1c0b69a3a8e787671e55556"
  },
  "albedian.solve_chain": {
   "revision": 27,

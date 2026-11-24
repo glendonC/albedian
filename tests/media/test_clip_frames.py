@@ -93,12 +93,13 @@ def test_each_primaries_tag_the_contract_names_is_carried(primaries: str, named:
     assert clip_frames.clip_colour(video(tags=tags)).description()["primaries"] == named
 
 
-@pytest.mark.parametrize("pix_fmt,tags,peak,steps", [
-    ("yuv420p", OWNER_TAGS, 235, 219), ("yuv420p10le", OWNER_TAGS, 940, 876),
-    ("yuvj420p", clip_io.ColourTags(), 255, 255), ("yuv444p10le", clip_io.ColourTags(range="pc"), 1023, 1023)])
-def test_luma_white_and_its_steps_follow_the_range_and_the_bit_depth(pix_fmt: str, tags, peak: int, steps: int) -> None:
+@pytest.mark.parametrize("pix_fmt,tags,black,peak,steps", [
+    ("yuv420p", OWNER_TAGS, 16, 235, 219), ("yuv420p10le", OWNER_TAGS, 64, 940, 876),
+    ("yuvj420p", clip_io.ColourTags(), 0, 255, 255), ("yuv444p10le", clip_io.ColourTags(range="pc"), 0, 1023, 1023)])
+def test_luma_white_and_its_steps_follow_the_range_and_the_bit_depth(
+        pix_fmt: str, tags, black: int, peak: int, steps: int) -> None:
     clip = clip_frames.clip_colour(video(pix_fmt, tags))
-    assert (clip.peak_code(), clip.code_steps()) == (peak, steps)
+    assert (clip.black_code(), clip.peak_code(), clip.code_steps()) == (black, peak, steps)
 
 
 def test_the_slope_of_the_transfer_is_its_formulas() -> None:
@@ -589,3 +590,132 @@ def test_with_neighbours_and_a_patch_fixed_to_the_sensor_the_gate_given_own_star
     for a, b in zip(alone, given):
         assert b.outcome.record == a.outcome.record and b.outcome.unconfirmed == a.outcome.unconfirmed
         assert (b.stars_found, b.stars_confirmed, b.together, b.fixed) == (a.stars_found, a.stars_confirmed, a.together, a.fixed)
+
+
+def _banded_clip_frames(clip: clip_frames.ClipColour, bands: list[tuple[int, int]], *, count: int = 6,
+                        size: int = 192) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """`count` frames of `size x size` whose upper rows hold constant Y' bands `(rows, y_code)` (in `clip.bits` codes)
+    and whose remaining rows hold a noisy rising horizon so `measure_noise` builds a full table (`reason is None`) while
+    `darkest_quarter_blocks` falls inside the upper bands."""
+    scale = 2 ** (clip.bits - 8)
+    top = 2**clip.bits - 1
+    mid = 2 ** (clip.bits - 1)
+    across, down = colour.SUBSAMPLING[clip.subsampling]
+    chroma_shape = (size // down, size // across)
+    yy = np.linspace(0.0, 1.0, size)[:, None]
+    frames = []
+    for k in range(count):
+        rng = np.random.default_rng(71 + k)
+        y = np.clip(np.round((48.0 + 96.0 * yy + rng.normal(0.0, 3.5, (size, size))) * scale), 0, top).astype(clip.dtype)
+        row = 0
+        for rows, y_code in bands:
+            y[row:row + rows, :] = y_code
+            row += rows
+        cb = np.full(chroma_shape, mid, dtype=clip.dtype)
+        cr = np.full(chroma_shape, mid, dtype=clip.dtype)
+        frames.append((y, cb, cr))
+    return frames
+
+
+BT709_TV = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+
+
+@pytest.mark.parametrize("pix_fmt,tags,sky_y", [
+    ("yuv420p", OWNER_TAGS, 16),
+    ("yuv420p", BT709_TV, 0),
+    ("yuv420p10le", OWNER_TAGS, 64),
+    ("yuvj420p", clip_io.ColourTags(), 0),
+    ("yuv444p10le", HD10, 0),
+])
+def test_a_near_black_clip_whose_darkest_quarter_sits_on_the_black_floor_raises_its_own_refusal_before_filtering(
+        monkeypatch: pytest.MonkeyPatch, pix_fmt: str, tags: clip_io.ColourTags, sky_y: int) -> None:
+    # Review row C36 clip form [decided 2026-11-24, UIUX-nearblackrestore-READY.md]: Regime B is refused before _filtered
+    clip = clip_frames.clip_colour(video(pix_fmt, tags, width=192, height=192))
+    frames = _banded_clip_frames(clip, [(64, sky_y)])
+    calls = []
+    real_edge = spatial.edge_avoiding
+    monkeypatch.setattr(spatial, "edge_avoiding", lambda *args, **kwargs: calls.append(1) or real_edge(*args, **kwargs))
+    with pytest.raises(clip_frames.ClipRefusal) as caught:
+        clip_frames.measure_clip(clip, frames)
+    assert caught.value.sentence == clip_frames.NEAR_BLACK_CLIP
+    assert caught.value.sentence == (
+        "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored."
+    )
+    assert calls == []
+
+
+def test_a_dark_clip_with_measurable_noise_near_black_still_measures_and_restores() -> None:
+    # A dark limited-range sky right above Y'=16 where samples clip at 16 yet fewer than a quarter of the
+    # darkest-quarter flat blocks are wholly flat and _zero_share <= 0.50: `before > 0`, so it restores cleanly
+    tags = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+    clip = clip_frames.clip_colour(video("yuv420p", tags, width=192, height=192))
+    frames = []
+    yy = np.linspace(0.0, 1.0, 192)[:, None]
+    for k in range(6):
+        rng = np.random.default_rng(81 + k)
+        sky = 16.0 + 18.0 * yy + rng.normal(0.0, 1.8, (192, 192))
+        y = np.clip(np.round(sky), 16, 235).astype(np.uint8)
+        frames.append((y, np.full((96, 96), 128, dtype=np.uint8), np.full((96, 96), 128, dtype=np.uint8)))
+    assert float(np.mean(frames[0][0][:48] == 16)) > 0.15
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason is None and measured.fine_noise_left is not None
+    results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, len(frames), tuple(frames)))
+    gated = clip_frames.gate_run(measured, frame_pool.Run(0, 0, len(frames), tuple(zip(frames, [r.planes for r in results]))))
+    assert all(g.outcome.record["passed"] for g in gated)
+
+
+def test_a_zero_dark_level_noise_not_on_the_black_floor_or_another_noise_fault_stays_clip_frames_error(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    tags_tv = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+    # 1. Limited 8-bit flat grey at Y'=24 (above black_code=16), full-range 8-bit flat grey at Y'=16 (above black_code=0),
+    #    limited 10-bit flat grey at Y'=96 (above black_code=64), a narrow 16-row black border ramped into 48 rows at Y'=24,
+    #    and 24 black rows beside 48 flat rows at Y'=24 (25th-percentile block peak == 16 while median == 24 > 16)
+    ramp = [(16, 16), *[(1, round(16 + 8 * (r + 1) / 16)) for r in range(16)], (48, 24)]
+    for pix_fmt, tags, bands in (
+        ("yuv420p", tags_tv, [(64, 24)]),
+        ("yuvj420p", clip_io.ColourTags(), [(64, 16)]),
+        ("yuv420p10le", tags_tv, [(64, 96)]),
+        ("yuv420p", tags_tv, ramp),
+        ("yuv420p", tags_tv, [(24, 16), (48, 24)]),
+    ):
+        clip = clip_frames.clip_colour(video(pix_fmt, tags, width=192, height=192))
+        with pytest.raises(clip_frames.ClipFramesError):
+            clip_frames.measure_clip(clip, _banded_clip_frames(clip, bands))
+    # Direct _blocks_on_black_clip check where median <= 16 (7 of 8 rows at 16) while every block's peak is 24 (> 16)
+    mostly_black_rows = np.full((64, 64), 16, dtype=np.int64)
+    mostly_black_rows[::8, :] = 24
+    assert clip_frames._blocks_on_black_clip(mostly_black_rows, np.ones(64, dtype=bool), 16) is False
+    assert clip_frames._blocks_on_black_clip(np.full((64, 64), 16, dtype=np.int64), np.zeros(64, dtype=bool), 16) is False
+    # 2. Empty darkest_quarter_blocks (before is NaN) and post-filter working_noise NaN stay ClipFramesError
+    clip = clip_frames.clip_colour(video("yuv420p", tags_tv, width=192, height=192))
+    noisy = scene_clip(clip, 4, 82, sigma=0.003, sky=0.03, size=192)
+    empty = np.zeros(4 * (192 // 8) * (192 // 8), dtype=bool)
+    monkeypatch.setattr(noise, "darkest_quarter_blocks", lambda luma, fp, cl: empty)
+    with pytest.raises(clip_frames.ClipFramesError):
+        clip_frames.measure_clip(clip, noisy)
+    monkeypatch.undo()
+    real_fine = noise.fine_noise
+    calls = []
+
+    def nan_after(plane, blocks):
+        calls.append(1)
+        return real_fine(plane, blocks) if len(calls) == 1 else float("nan")
+
+    monkeypatch.setattr(noise, "fine_noise", nan_after)
+    with pytest.raises(clip_frames.ClipFramesError):
+        clip_frames.measure_clip(clip, noisy)
+
+
+@pytest.mark.parametrize("width,height", [(64, 48), (48, 64), (64, 6)])
+def test_a_clip_whose_frames_have_a_side_under_min_side_px_reports_frame_too_small(width: int, height: int) -> None:
+    # Even when 8 sampled frames concatenated vertically reach 384 >= 64 rows, each frame is under MIN_SIDE_PX = 64
+    clip = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=width, height=height))
+    rng = np.random.default_rng(91)
+    frames = [clip.to_planes(np.clip(0.002 + rng.normal(0.0, 0.0008, (height, width, 3)), 0.0, 1.0)) for _ in range(8)]
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.measurement.reason == "frame_too_small"
+    assert measured.fine_noise_left is None
+    assert measured.lift.decided_by == "quantisation_bound"
+    assert tone.NOTE_NOISE_NOT_MEASURED in measured.lift.notes
+    results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 2, tuple(frames[:2])))
+    assert all(r.neighbours == 0 for r in results)

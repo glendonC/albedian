@@ -35,6 +35,17 @@ class ClipFramesError(Exception):
     """A clip the path cannot restore honestly: the job stores its internal-error sentence."""
 
 
+class ClipRefusal(Exception):
+    """A clip this path refuses before restoring, with a fixed sentence of the contract (`FAILURE_SENTENCES`)."""
+
+    def __init__(self, sentence: str) -> None:
+        super().__init__(sentence)
+        self.sentence = sentence
+
+
+# A restoration's refusal of a near-black clip whose darkest quarter sits on the black floor so its dark-level noise
+# cannot be measured [decided 2026-11-24 by the lead: review row C36 clip form, UIUX-nearblackrestore-READY.md]
+NEAR_BLACK_CLIP = "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored."
 STEP_VERSION = "1.0.0"
 # The noise table and the lift are measured on this many frames spread over the whole clip, the first and the last
 # among them [proposed: REQ-RST-4.1 asks for frames spread over the clip; eight 2.4 MP frames give the table about
@@ -96,6 +107,10 @@ class ClipColour:
     @property
     def dtype(self) -> np.dtype:
         return np.dtype(np.uint8) if self.bits == 8 else np.dtype(np.uint16)
+
+    def black_code(self) -> int:
+        """Luma's nominal black: 16 of 255 scaled for limited range, 0 for full range."""
+        return self.peak_code() - self.code_steps()
 
     def peak_code(self) -> int:
         """Luma's nominal white: 235 of 255 scaled for limited range, the top code for full range."""
@@ -252,11 +267,29 @@ def _whole_blocks(array: np.ndarray) -> np.ndarray:
     return array[: array.shape[0] // noise.BLOCK_PX * noise.BLOCK_PX]
 
 
+def _blocks_on_black_clip(luma_codes: np.ndarray, blocks: np.ndarray, black_code: int) -> bool:
+    """Whether the chosen flat blocks of the darkest quarter sit on or below luma's nominal black (`black_code`, 16 of
+    255 scaled for limited range and 0 for full range): at least the noise estimator's own 25th-percentile share
+    (`noise.ENERGY_PERCENTILE`) of them lie wholly on or below `black_code`, and the median code across all luma
+    samples of the chosen blocks is at most `black_code` [proposed: range-aware clip form of `photo._blocks_on_black_clip`,
+    zero extra constants; tested on limited- and full-range clips and controls]."""
+    chosen_mask = np.asarray(blocks, dtype=bool)
+    if not chosen_mask.any():
+        return False
+    rows, columns = luma_codes.shape[0] // noise.BLOCK_PX, luma_codes.shape[1] // noise.BLOCK_PX
+    cut = luma_codes[: rows * noise.BLOCK_PX, : columns * noise.BLOCK_PX]
+    grid = cut.reshape(rows, noise.BLOCK_PX, columns, noise.BLOCK_PX).swapaxes(1, 2)
+    chosen = grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX)[chosen_mask]
+    block_peak = chosen.max(axis=(1, 2))
+    return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) <= black_code and np.median(chosen) <= black_code)
+
+
 def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], exposure_ev: Optional[float] = None) -> ClipSettings:
     """The clip's noise table and lift from its measure frames (`sample_indices`), side by side as one mosaic: the
     stars of each frame on its own luma, the table from the flattest blocks, the noise left after the spatial filter at
     the darkest blocks, and the lift solved on the frames' median and its measured bounds. Without a table the lift is
     held by the quantisation bound alone (REQ-RST-4.3)."""
+    too_small = min(clip.height, clip.width) < noise.MIN_SIDE_PX
     linear, codes, footprints, clipped, found, confirmed = [], [], [], [], 0, 0
     for planes in sampled:
         light = clip.to_linear(planes)
@@ -264,28 +297,36 @@ def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], expo
         field_ = stars.find_stars(luma, peak=clip.peak_code())
         found += field_.found
         confirmed += field_.confirmed
-        linear.append(_whole_blocks(light))
-        # The luma decides whether a frame is at black: chroma is stored at half resolution and is flat wherever the
-        # scene is grey [proposed]
-        codes.append(_whole_blocks(np.repeat(luma.astype(np.int64)[..., None], 3, axis=-1)))
-        footprints.append(_whole_blocks(field_.footprint))
-        clipped.append(_whole_blocks(field_.clipped))
+        linear.append(light if clip.height < noise.BLOCK_PX else _whole_blocks(light))
+        if not too_small:
+            # The luma decides whether a frame is at black: chroma is stored at half resolution and is flat wherever the
+            # scene is grey [proposed]
+            codes.append(_whole_blocks(np.repeat(luma.astype(np.int64)[..., None], 3, axis=-1)))
+            footprints.append(_whole_blocks(field_.footprint))
+            clipped.append(_whole_blocks(field_.clipped))
     mosaic = np.concatenate(linear, axis=0)
-    footprint = np.concatenate(footprints, axis=0)
-    clipped_map = np.concatenate(clipped, axis=0)
-    measurement = noise.measure_noise(mosaic, np.concatenate(codes, axis=0), footprint, clipped_map,
-                                      encode_slope=clip.encode_slope, code_steps=clip.code_steps(), luma_weights=LUMA)
+    if too_small:
+        measurement = noise.NoiseMeasurement("frame_too_small")
+    else:
+        codes_mosaic = np.concatenate(codes, axis=0)
+        footprint = np.concatenate(footprints, axis=0)
+        clipped_map = np.concatenate(clipped, axis=0)
+        measurement = noise.measure_noise(mosaic, codes_mosaic, footprint, clipped_map,
+                                          encode_slope=clip.encode_slope, code_steps=clip.code_steps(), luma_weights=LUMA)
     luminance = mosaic @ np.asarray(LUMA)
     original_noise = working_noise = left = None
     if measurement.reason is None:
-        working = np.concatenate([_filtered(clip, light, foot, measurement) for light, foot in zip(linear, footprints)], axis=0)
         blocks = noise.darkest_quarter_blocks(luminance, footprint, clipped_map)
+        before = noise.fine_noise(luminance, blocks)
+        if not (math.isfinite(before) and before > 0):
+            if math.isfinite(before) and _blocks_on_black_clip(codes_mosaic[..., 0], blocks, clip.black_code()):
+                raise ClipRefusal(NEAR_BLACK_CLIP)
+            raise ClipFramesError("the noise at the dark level could not be measured on both images")
+        working = np.concatenate([_filtered(clip, light, foot, measurement) for light, foot in zip(linear, footprints)], axis=0)
         original_noise = measurement.luma_fine_sigma_at(tone.dark_level(luminance))
         working_noise = noise.fine_noise(working @ np.asarray(LUMA), blocks)
-        before = noise.fine_noise(luminance, blocks)
         # Both noises are numbers, or the noise bound would drop in silence (as photo.py)
-        if not (math.isfinite(before) and before > 0 and math.isfinite(working_noise) and math.isfinite(original_noise)
-                and original_noise > 0):
+        if not (math.isfinite(working_noise) and math.isfinite(original_noise) and original_noise > 0):
             raise ClipFramesError("the noise at the dark level could not be measured on both images")
         left = working_noise / before
     lift = tone.solve_lift(luminance, encode_slope=clip.encode_slope, decode=clip.decode, original_noise=original_noise,

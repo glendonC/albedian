@@ -62,8 +62,10 @@ MEDIA_PRODUCER_FILES = (
 # samples hiding each other on their rings read as a group against a ring round the group (restore-4g); 6, the flux
 # check kept when no measured star keeps a positive flux ratio (the flux gate unit); 7, a tile's matched noise from
 # the detector's single-tile noise map floored at its pixel and rounding noise, and its background and pixel sigma from
-# the detector's grid path (quantised-noise); 8, coarse-scale chroma smoothing before dissolve on stills (smooth-chroma-1)
-MEDIA_PRODUCER = Producer("albedian.restore", 8, MEDIA_PRODUCER_FILES)
+# the detector's grid path (quantised-noise); 8, coarse-scale chroma smoothing before dissolve on stills
+# (smooth-chroma-1); 9, pre-filter C36 refusal of near-black clips whose darkest quarter sits on the black floor, per-frame
+# MIN_SIDE_PX check in measure_clip, and measure stage held short of full until measure_clip returns (nearblackclip-1)
+MEDIA_PRODUCER = Producer("albedian.restore", 9, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -458,6 +460,8 @@ def clip_restoration_in_child(store_root: str, folder: str, original: str, sha25
                              variant_path, progress, workers or frame_pool.default_workers())
     except clip_io.ClipError as error:
         return recorder.failed(error.sentence)
+    except clip_frames.ClipRefusal as refusal:
+        return recorder.failed(refusal.sentence)
     except clip_frames.ClipFramesError:
         return recorder.failed(decode.INTERNAL_ERROR)
     finally:
@@ -471,7 +475,8 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
     clip = clip_frames.clip_colour(probe.video)
     container = clip_io.container_for(str(facts.get("mimeType")))
     count = probe.frame_count
-    # Once for the clip: the noise table and the lift from frames spread over the whole of it
+    # Once for the clip: the noise table and the lift from frames spread over the whole of it; `measure` stays short of
+    # `total` until `measure_clip` returns so a pre-restoration refusal marks Measured rather than Opened or Restoring
     wanted = clip_frames.sample_indices(count)
     measure = _Stage(progress, "measure", "frames", len(wanted))
     sampled = []
@@ -479,10 +484,12 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
         for frame in decoder:
             if frame.index in wanted:
                 sampled.append(tuple(np.array(plane) for plane in frame.planes))
-                measure.add()
-                if len(sampled) == len(wanted):
+                if len(sampled) < len(wanted):
+                    measure.add()
+                else:
                     break
     settings = clip_frames.measure_clip(clip, sampled, request.get("exposureEv"))
+    measure.add()
     del sampled
     # Every frame restored in the pool and encoded in order under a partial name
     turned = clip_io._form(orientation) is not None

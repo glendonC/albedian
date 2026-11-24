@@ -183,7 +183,7 @@ def test_a_restoration_ends_ready_with_the_16_bit_file_and_records_the_contract_
         for stage in seen["stages"]:
             assert stage["total"] is None or 0 <= stage["done"] <= stage["total"]
     stages = {stage["stage"]: stage for stage in job["stages"]}
-    for name in ("decode", "restore", "encode", "verify"):
+    for name in ("decode", "measure", "restore", "encode", "verify"):
         assert (stages[name]["done"], stages[name]["total"]) == (1, 1), name
     assert stages["write"]["done"] == stages["write"]["total"] == record["variant"]["byteSize"]
     # P-RST-1: the original is untouched, and nothing changed outside variants/, attempts/ and jobs/
@@ -742,6 +742,7 @@ def test_a_clip_restored_by_the_job_keeps_its_original_frame_times_audio_and_las
         for stage in seen["stages"]:
             assert stage["total"] is None or 0 <= stage["done"] <= stage["total"]
     stages = {stage["stage"]: stage for stage in job["stages"]}
+    assert (stages["measure"]["done"], stages["measure"]["total"]) == (len(clip_frames.sample_indices(count)),) * 2
     for name in ("decode", "restore", "encode", "verify"):
         assert (stages[name]["done"], stages[name]["total"]) == (count, count), name
     assert stages["write"]["done"] == stages["write"]["total"] == variant["byteSize"]
@@ -1028,4 +1029,85 @@ def test_the_restore_producer_lists_chroma_at_revision_eight_and_stores_chroma_c
     assert kinds.index("smooth_chroma") == kinds.index("spatial_denoise") + 1
     assert kinds.index("dissolve_unconfirmed") == kinds.index("smooth_chroma") + 1
     assert set(record["attempt"]["measured"]["chroma"]) == {"heldSamples", "clampedSamples"}
+
+
+def _banded_clip_file(path: Path, sky_y: int, *, pix_fmt: str = "yuv420p", colour_range: str = "tv",
+                      count: int = 12, size: int = 192) -> None:
+    from fractions import Fraction
+
+    tags = clip_io.ColourTags(range=colour_range, matrix="bt709", transfer="bt709", primaries="bt709")
+    video = clip_io.VideoFormat(size, size, pix_fmt, tags)
+    yy = np.linspace(0.0, 1.0, size)[:, None]
+    frames = []
+    for k in range(count):
+        rng = np.random.default_rng(71 + k)
+        y = np.clip(np.round(48.0 + 96.0 * yy + rng.normal(0.0, 3.5, (size, size))), 0, 255).astype(np.uint8)
+        y[:64, :] = sky_y
+        frames.append((y, np.full((size // 2, size // 2), 128, np.uint8), np.full((size // 2, size // 2), 128, np.uint8)))
+    with clip_io.ClipEncoder(path, video, time_base=Fraction(1, 600), frame_times=[20 * k for k in range(count)],
+                             container="mov", crf=0) as encoder:
+        for frame in frames:
+            encoder.write(frame)
+        encoder.finish()
+
+
+def test_a_near_black_clip_ends_its_job_failed_with_c36_on_measured_and_other_clip_frame_errors_stay_internal(
+        client, tmp_path) -> None:
+    # Review row C36 clip form + stage-row guard [decided 2026-11-24, UIUX-nearblackrestore-READY.md]:
+    # 1. Limited-range 12-frame Regime B clip (Y'=16 top quarter, noisy rising bottom) stops on `measure` at (7, 8)
+    #    with C36's clip sentence so RestoreSteps marks Measured (not Opened) with the x
+    source = tmp_path / "nearblack_tv.mov"
+    _banded_clip_file(source, 16, pix_fmt="yuv420p", colour_range="tv", count=12)
+    sha = upload(client, source.read_bytes(), "video/quicktime")
+    started = client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"})
+    assert started.status_code == 202, started.text
+    job = finished(client, started.json())
+    UploadJob.model_validate(job)
+    expected = "This clip's sky is so close to black that its faintest noise is cut off, so it was not restored."
+    assert (job["state"], job["error"]) == ("failed", expected), job
+    assert clip_frames.NEAR_BLACK_CLIP == expected
+    stages = {stage["stage"]: (stage["done"], stage["total"]) for stage in job["stages"]}
+    assert stages == {"measure": (7, 8)}
+    for seen in finished.seen:
+        for stage in seen["stages"]:
+            assert stage["total"] is None or 0 <= stage["done"] <= stage["total"]
+    folder = folder_of(client, sha)
+    assert not (folder / "variants").exists()
+    assert not any(name.startswith(job["id"]) for name in partial_files(client))
+    listed = client.get(f"/api/media/{sha}/variants").json()
+    assert listed["variants"] == [] and len(listed["attempts"]) == 1
+    attempt = listed["attempts"][0]
+    contracts.ProcessingAttempt.model_validate(attempt)
+    assert (attempt["status"], attempt["failureReason"]) == ("failed", clip_frames.NEAR_BLACK_CLIP)
+
+    # 2. A 1-frame near-black clip holds `measure` at (0, 1) so `restorationRows` marks Measured (not Restoring) failed,
+    #    full-range Y'=0 also refuses with C36, and flat dark grey above black_code stays decode.INTERNAL_ERROR
+    for name, sky_y, pix_fmt, colour_range, count, expected_reason, expected_stage in (
+        ("one_frame", 16, "yuv420p", "tv", 1, expected, ("measure", "frames", 0, 1)),
+        ("full_black", 0, "yuvj420p", "pc", 4, expected, ("measure", "frames", 3, 4)),
+        ("full_grey_y16", 16, "yuvj420p", "pc", 4, decode.INTERNAL_ERROR, ("measure", "frames", 3, 4)),
+        ("tv_grey_y24", 24, "yuv420p", "tv", 4, decode.INTERNAL_ERROR, ("measure", "frames", 3, 4)),
+    ):
+        case_dir = tmp_path / name
+        case_dir.mkdir()
+        clip_path = case_dir / "clip.mov"
+        _banded_clip_file(clip_path, sky_y, pix_fmt=pix_fmt, colour_range=colour_range, count=count)
+        case_sha = hashlib.sha256(clip_path.read_bytes()).hexdigest()
+        store_folder = case_dir / "store" / case_sha[:2] / case_sha
+        store_folder.mkdir(parents=True)
+        original = store_folder / "original.mov"
+        original.write_bytes(clip_path.read_bytes())
+        (case_dir / "store" / ".partial").mkdir()
+        partials = [str(case_dir / "store" / ".partial" / f"{JOB_ID}-enc.mov.part"),
+                    str(case_dir / "store" / ".partial" / f"{JOB_ID}-var.mov.part")]
+        events: list[tuple] = []
+        out = media_jobs.clip_restoration_in_child(
+            str(case_dir / "store"), str(store_folder), str(original), case_sha, JOB_ID, {"kind": "restoration"},
+            None, {"mimeType": "video/quicktime", "durationMs": 100.0, "audioStreams": []}, partials,
+            lambda *ev: events.append(ev), workers=1,
+        )
+        assert (out["status"], out["failureReason"]) == ("failed", expected_reason), (name, out)
+        assert events[-1] == expected_stage, (name, events)
+        assert list((case_dir / "store" / ".partial").iterdir()) == [] and not (store_folder / "variants").exists()
+
 
