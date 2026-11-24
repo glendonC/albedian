@@ -69,6 +69,18 @@ export const TDRS_HEADING_DEG = 35;
 export const TDRS_ELEVATION_DEG = 25;
 export const ODYSSEY_HEADING_DEG = 30;
 export const ODYSSEY_ELEVATION_DEG = 8;
+// hero-rests-one (the 24 Nov 14:15 ruling), each found against its NASA picture (.cache/spatial/hero-rests-one/)
+export const JWST_HEADING_DEG = 50;
+export const JWST_ELEVATION_DEG = 15;
+export const VOYAGER_HEADING_DEG = 170;
+export const VOYAGER_ELEVATION_DEG = 15;
+export const ISS_HEADING_DEG = 25;
+export const ISS_ELEVATION_DEG = 30;
+export const PARKER_HEADING_DEG = 50;
+export const PARKER_ELEVATION_DEG = 20;
+export const APOLLO_LM_HEADING_DEG = 45;
+export const APOLLO_LM_ELEVATION_DEG = 10;
+export const ACES_HEADING_DEG = 15;
 
 /**
  * A rest attitude seen from `deg` above: the camera's look and the screen's up turned together about the screen's
@@ -86,21 +98,58 @@ function seenFromAbove(forward: Vec3, up: Vec3, deg: number): { readonly forward
 /**
  * A craft's attitude at rest, by hangar model, where it is not the hangar's own frame (the design lane's rulings in
  * UIUX-pilot-READY.md): the model axis drawn along the way the camera looks (`forward`) and the one drawn up the screen.
- * - 13:32: Voyager stands as D26's render shows it, its long boom (the model's -X) straight down under the dish, its line
- *   of flight kept.
+ * - 24 Nov 14:15 (look gap one, hero-rests-one): every craft and suit rests as its own NASA picture shows it, so the
+ *   flight behind it shows the side its picture does: Webb its gold mirror, the suits their fronts and visors, Voyager
+ *   its dish's curve and its boom (no longer D26's flat white disc, the boom straight down).
  * - 17:10: a craft that never travels rests as its picture stands it: Hubble's tube and Gemini's nose (the model's +Z,
  *   their long axis) up the screen, a quarter turn about the screen's horizontal axis from the line of flight, so the
  *   model's +Y, its picture's up, faces the camera.
  * - 17:24, checked live against the pictures: Spitzer's tube up with its sunshield behind it (the turn the other way
  *   round, so the shield's side faces away); Dawn's wings straight across with their faces to the camera.
- * Every other model keeps the hangar's frame: +Z its line of flight, +Y the up of its picker picture (build_craft.py
- * renders the pictures with the camera's up along it).
+ * Only Juno, MESSENGER, MRO, Mars Global Surveyor, MAVEN and IBEX keep the hangar's frame, as their pictures stand them:
+ * +Z its line of flight, +Y the up of its picker picture (build_craft.py renders the pictures with the camera's up along
+ * it).
  */
 /** The look from the front quarter on the left, level (the hangar's picture camera's view across, build_craft.py). */
 const FRONT_QUARTER: Vec3 = [0.55 / Math.hypot(0.55, 1), 0, -1 / Math.hypot(0.55, 1)];
 
+/** The level look at a model's front (its -Z side toward the camera), turned `deg` toward its +X about the hangar's up. */
+function frontTurned(deg: number): Vec3 {
+  return [Math.sin((deg * Math.PI) / 180), 0, -Math.cos((deg * Math.PI) / 180)];
+}
+
 const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly up: Vec3 }>> = {
-  voyager: { up: [1, 0, 0] },
+  // hero-rests-one, checked against NASA's picture: the dish's inside (its concave side, -Z) up the screen and seen from
+  // above, the look 170 degrees round its axis from the model's +Y toward -X, so the magnetometer boom (-X) reaches to
+  // the upper left, the RTG boom to the lower left and the instrument boom behind the dish at the right
+  voyager: seenFromAbove(
+    [-Math.sin((VOYAGER_HEADING_DEG * Math.PI) / 180), Math.cos((VOYAGER_HEADING_DEG * Math.PI) / 180), 0],
+    [0, 0, -1],
+    VOYAGER_ELEVATION_DEG,
+  ),
+  // hero-rests-one, checked against NASA's picture: the gold mirror (+Z, where Webb looks) turned to the right over the
+  // sunshield, the sunshield's folded far end at the upper left, seen from above on its cold side (+Y)
+  jwst: seenFromAbove(frontTurned(JWST_HEADING_DEG), [0, 1, 0], JWST_ELEVATION_DEG),
+  // hero-rests-one, the five whose pictures the hangar rendered itself (build_craft.py render_picker, from the front
+  // quarter): as Deep Impact, the Viking Lander and Perseverance, level, so the suits show their visors and fronts, New
+  // Horizons its instrument side before the dish and the Shuttle its nose and payload bay
+  emu: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  z2: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  mark3: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  newhorizons: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  shuttle: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  // hero-rests-one, checked against NASA's pictures: the Mercury and Gemini suits from straight in front, ACES turned a
+  // little to its right side, all level and upright; Pioneer 10 its bus and booms before the dish's back
+  mercury_suit: { forward: [0, 0, -1], up: [0, 1, 0] },
+  gemini_suit: { forward: [0, 0, -1], up: [0, 1, 0] },
+  aces: { forward: frontTurned(-ACES_HEADING_DEG), up: [0, 1, 0] },
+  pioneer10: { forward: [0, 0, -1], up: [0, 1, 0] },
+  // hero-rests-one, checked against NASA's pictures: the station from above with its truss rising to the right; Parker
+  // with its heat shield's face at the right and its magnetometer boom at the upper left; the lunar module between two
+  // legs, its ladder at the lower left and its dish at the upper left
+  iss: seenFromAbove(frontTurned(ISS_HEADING_DEG), [0, 1, 0], ISS_ELEVATION_DEG),
+  parker: seenFromAbove(frontTurned(PARKER_HEADING_DEG), [0, 1, 0], PARKER_ELEVATION_DEG),
+  apollo_lm: seenFromAbove(frontTurned(-APOLLO_LM_HEADING_DEG), [0, 1, 0], APOLLO_LM_ELEVATION_DEG),
   hubble: { forward: [0, -1, 0], up: [0, 0, 1] },
   gemini: { forward: [0, -1, 0], up: [0, 0, 1] },
   spitzer: { forward: [0, 1, 0], up: [0, 0, 1] },

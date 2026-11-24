@@ -5,11 +5,13 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CLEMENTINE_HEADING_DEG, CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, ODYSSEY_ELEVATION_DEG, ODYSSEY_HEADING_DEG, STARDUST_ELEVATION_DEG, TDRS_ELEVATION_DEG, TDRS_HEADING_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
+import { ACES_HEADING_DEG, APOLLO_LM_ELEVATION_DEG, APOLLO_LM_HEADING_DEG, CLEMENTINE_HEADING_DEG, CRAFTS, CRAFT_FRAMING, HANGAR_CRAFTS, INGENUITY_ELEVATION_DEG, ISS_ELEVATION_DEG, ISS_HEADING_DEG, JWST_ELEVATION_DEG, JWST_HEADING_DEG, PARKER_ELEVATION_DEG, PARKER_HEADING_DEG, VOYAGER_ELEVATION_DEG, VOYAGER_HEADING_DEG, KEPLER_ELEVATION_DEG, KEPLER_HEADING_DEG, NEAR_ELEVATION_DEG, ODYSSEY_ELEVATION_DEG, ODYSSEY_HEADING_DEG, STARDUST_ELEVATION_DEG, TDRS_ELEVATION_DEG, TDRS_HEADING_DEG, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftFrameRadiusM, craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
 const H = 900;
+const sinD = (deg: number) => Math.sin((deg * Math.PI) / 180);
+const cosD = (deg: number) => Math.cos((deg * Math.PI) / 180);
 
 function there(): ObservationSession {
   const base = createSyntheticCalibratedSession();
@@ -148,10 +150,29 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(v.modelUrl).toBe('/models/hangar/voyager/voyager_lod1.glb');
     expect(v.phoneModelUrl).toBe('/models/hangar/voyager/voyager_lod2.glb');
     expect(v.pictureUrl).toBe('/models/hangar/voyager/voyager_picker.webp');
-    expect(v.modelForward).toEqual([0, 0, 1]);
-    // D26's rest pose as the design lane ruled (13:32): Voyager stands with its long boom (the model's -X) straight down
-    expect(v.modelUp).toEqual([1, 0, 0]);
-    expect(CRAFTS['voyager-2']!.modelUp).toEqual([1, 0, 0]);
+    // hero-rests-one (the 24 Nov 14:15 ruling, look gap one): Voyager rests as its NASA picture shows it, no longer as
+    // D26's flat white disc: the dish's inside (its concave side, the model's -Z) toward the camera and up the screen,
+    // the magnetometer boom (the model's -X) reaching to the upper left; both Voyagers share the model and the rest
+    const dot = (a: readonly number[], b: readonly number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!;
+    const rightOf = (c: { modelForward: Vec3; modelUp: Vec3 }): Vec3 => {
+      const [f, u] = [c.modelForward, c.modelUp];
+      return [f[1] * u[2] - f[2] * u[1], f[2] * u[0] - f[0] * u[2], f[0] * u[1] - f[1] * u[0]];
+    };
+    expect([CRAFTS['voyager-2']!.modelForward, CRAFTS['voyager-2']!.modelUp]).toEqual([v.modelForward, v.modelUp]);
+    expect(dot(v.modelForward, [0, 0, -1])).toBeLessThan(-0.2);
+    expect(dot(v.modelUp, [0, 0, -1])).toBeGreaterThan(0.9);
+    expect(dot(rightOf(v), [-1, 0, 0])).toBeLessThan(-0.9);
+    expect(dot(v.modelUp, [-1, 0, 0])).toBeGreaterThan(0);
+    // Webb shows its gold mirror (the model's +Z, where it looks) turned to the screen's right over the sunshield, its
+    // cold side (+Y) up; the suits show their fronts and visors (+Z, the way they face) as their pictures do
+    expect(dot(CRAFTS.jwst!.modelForward, [0, 0, 1])).toBeLessThan(-0.5);
+    expect(dot(rightOf(CRAFTS.jwst!), [0, 0, 1])).toBeGreaterThan(0.5);
+    expect(dot(CRAFTS.jwst!.modelUp, [0, 1, 0])).toBeGreaterThan(0.9);
+    for (const id of ['astronaut-emu', 'z2', 'mark-iii', 'mercury-suit', 'aces', 'gemini-suit']) {
+      expect(CRAFTS[id]!.kind).toBe('suit');
+      expect(dot(CRAFTS[id]!.modelForward, [0, 0, 1])).toBeLessThan(-0.8);
+      expect(CRAFTS[id]!.modelUp).toEqual([0, 1, 0]);
+    }
     // The 17:10 ruling: Hubble and Gemini, which never travel, rest as their pictures stand them: their long axis (the
     // model's +Z) up the screen, a quarter turn about the screen's horizontal axis from their line of flight
     for (const id of ['hubble', 'gemini']) {
@@ -199,6 +220,15 @@ describe('craftFromSearch: the interim choice by page address', () => {
       // mo-1 (the 24 Nov 05:48 ruling), checked live against odyssey_picker.webp (.cache/uiux/built/mo-1/zoom.png):
       // three-panel solar array (+Y) upright at upper-left, dish and engine bell (-Z) lower-left, GRS boom (+Z) right
       'mars-odyssey': [[Math.cos((ODYSSEY_HEADING_DEG * Math.PI) / 180), 0, Math.sin((ODYSSEY_HEADING_DEG * Math.PI) / 180)], [0, 1, 0], ODYSSEY_ELEVATION_DEG],
+      // hero-rests-one (the 24 Nov 14:15 ruling), each found against its NASA picture (.cache/spatial/hero-rests-one/):
+      // the level look turned from the front (-Z) toward the model's +X by the heading, about the hangar's up, then seen
+      // from above; Voyager's about its dish's axis, from its +Y side toward -X, the dish's inside (-Z) up
+      jwst: [[sinD(JWST_HEADING_DEG), 0, -cosD(JWST_HEADING_DEG)], [0, 1, 0], JWST_ELEVATION_DEG],
+      iss: [[sinD(ISS_HEADING_DEG), 0, -cosD(ISS_HEADING_DEG)], [0, 1, 0], ISS_ELEVATION_DEG],
+      'parker-solar-probe': [[sinD(PARKER_HEADING_DEG), 0, -cosD(PARKER_HEADING_DEG)], [0, 1, 0], PARKER_ELEVATION_DEG],
+      'apollo-lm': [[-sinD(APOLLO_LM_HEADING_DEG), 0, -cosD(APOLLO_LM_HEADING_DEG)], [0, 1, 0], APOLLO_LM_ELEVATION_DEG],
+      'voyager-1': [[-sinD(VOYAGER_HEADING_DEG), cosD(VOYAGER_HEADING_DEG), 0], [0, 0, -1], VOYAGER_ELEVATION_DEG],
+      'voyager-2': [[-sinD(VOYAGER_HEADING_DEG), cosD(VOYAGER_HEADING_DEG), 0], [0, 0, -1], VOYAGER_ELEVATION_DEG],
     };
     for (const [id, [f, u, deg]] of Object.entries(fromAbove)) {
       const e = (deg * Math.PI) / 180;
@@ -221,13 +251,24 @@ describe('craftFromSearch: the interim choice by page address', () => {
     // Mars Odyssey's from its sheet (.cache/uiux/built/mo-1/zoom.png): 30 deg heading (turn_001) and 8 deg extra
     // elevation (~17 deg total downward ray with yFraction 0.62)
     expect([ODYSSEY_HEADING_DEG, ODYSSEY_ELEVATION_DEG]).toEqual([30, 8]);
+    // hero-rests-one's, from their sheets (.cache/spatial/hero-rests-one/render/): Webb 50 and 15, Voyager 170 and 15,
+    // the station 25 and 30, Parker 50 and 20, the lunar module 45 (to the left) and 10, ACES 15 (to the left) and level
+    expect([JWST_HEADING_DEG, JWST_ELEVATION_DEG, VOYAGER_HEADING_DEG, VOYAGER_ELEVATION_DEG]).toEqual([50, 15, 170, 15]);
+    expect([ISS_HEADING_DEG, ISS_ELEVATION_DEG, PARKER_HEADING_DEG, PARKER_ELEVATION_DEG]).toEqual([25, 30, 50, 20]);
+    expect([APOLLO_LM_HEADING_DEG, APOLLO_LM_ELEVATION_DEG, ACES_HEADING_DEG]).toEqual([45, 10, 15]);
+    // ACES from the front, turned a little to its right side (the screen's left), level, upright
+    CRAFTS.aces!.modelForward.forEach((x, i) => expect(x).toBeCloseTo([-sinD(ACES_HEADING_DEG), 0, -cosD(ACES_HEADING_DEG)][i]!, 12));
+    // the Mercury suit, the Gemini suit and Pioneer 10 from straight in front, level, upright: Pioneer 10 its bus and
+    // booms before the dish's back, as its picture
+    for (const id of ['mercury-suit', 'gemini-suit', 'pioneer-10']) expect([CRAFTS[id]!.modelForward, CRAFTS[id]!.modelUp]).toEqual([[0, 0, -1], [0, 1, 0]]);
     // as-2 (the 21 Nov 14:33 ruling), checked live against NASA's render: Apollo-Soyuz from its side, level, the hangar's
     // up kept
     expect([CRAFTS['apollo-soyuz']!.modelForward, CRAFTS['apollo-soyuz']!.modelUp]).toEqual([[1, 0, 0], [0, 1, 0]]);
     // hangar-5 and pv-1, checked live against each render_picker picture (12:40 and 23 Nov 03:38 rulings; .cache/uiux/built/pv-1/zoom.png):
     // seen from the front quarter on the left, level (0 deg, since CRAFT_FRAMING yFraction 0.62 already looks ~9 deg down),
-    // the hangar's up (+Y) kept so the Viking Lander stands on its legs and Perseverance stands upright on its six wheels
-    for (const id of ['deep-impact', 'viking-lander', 'perseverance']) {
+    // the hangar's up (+Y) kept so the Viking Lander stands on its legs and Perseverance stands upright on its six wheels;
+    // hero-rests-one: the five whose pictures the hangar rendered from that same camera (build_craft.py render_picker)
+    for (const id of ['deep-impact', 'viking-lander', 'perseverance', 'astronaut-emu', 'new-horizons', 'z2', 'mark-iii', 'shuttle']) {
       const [fx, fy, fz] = CRAFTS[id]!.modelForward;
       expect(CRAFTS[id]!.modelUp).toEqual([0, 1, 0]);
       expect([fy, Math.hypot(fx, fy, fz)]).toEqual([0, expect.closeTo(1, 12)]);
@@ -241,11 +282,10 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const clemRad = (CLEMENTINE_HEADING_DEG * Math.PI) / 180;
     expect(CRAFTS.clementine!.modelUp).toEqual([0, 0, -1]);
     CRAFTS.clementine!.modelForward.forEach((x, i) => expect(x).toBeCloseTo([-Math.sin(clemRad), -Math.cos(clemRad), 0][i]!, 12));
-    const turned = new Set(['hubble', 'gemini', 'spitzer', 'dawn', 'osiris-rex', 'deep-space-1', 'near-shoemaker', 'cassini', 'van-allen-probes', 'stardust', 'deep-impact', 'viking-lander', 'apollo-soyuz', 'kepler', 'ingenuity', 'perseverance', 'clementine', 'tdrs', 'mars-odyssey']);
-    const others = Object.values(CRAFTS).filter((c) => !c.id.startsWith('voyager') && !turned.has(c.id));
-    expect(['juno', 'messenger', 'mro', 'mars-global-surveyor', 'maven', 'ibex'].every((id) => others.some((c) => c.id === id))).toBe(true);
-    expect(others.every((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1')).toBe(true);
-    expect(CRAFTS['voyager-1']!.modelForward).toEqual([0, 0, 1]);
+    // hero-rests-one, every entry checked against its picture: only these six already stand as their pictures do in the
+    // hangar's own frame (seen along their line of flight); every other craft and suit rests turned as its picture
+    const kept = Object.values(CRAFTS).filter((c) => c.modelUp.join() === '0,1,0' && c.modelForward.join() === '0,0,1');
+    expect(kept.map((c) => c.id).sort()).toEqual(['ibex', 'juno', 'mars-global-surveyor', 'maven', 'messenger', 'mro']);
     expect(v.kind).toBe('craft');
     expect(CRAFTS['astronaut-emu']!.kind).toBe('suit');
     // Every hangar entry, however many the hangar holds
@@ -328,7 +368,7 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(Math.hypot(top.xPx - foot.xPx, top.yPx - foot.yPx)).toBeCloseTo(184, 3);
   });
 
-  it('stands Voyager at rest with its boom straight down the screen and its dish above it (the 13:32 ruling)', () => {
+  it('rests Voyager as its NASA picture, its dish\'s axis up the screen rather than at the camera, its boom off to the left (hero-rests-one)', () => {
     const session = there();
     const camera = flightCameraOf(session, 390, 844)!;
     const scene = craftSceneOf(camera, CRAFTS['voyager-1']!, [0, 0, 0], 10, undefined, { xPx: 195, yPx: 298, diameterPx: 184 }, 8)!;
@@ -341,9 +381,14 @@ describe('craftFromSearch: the interim choice by page address', () => {
       return toScreen844([w[0], w[1], w[2]]);
     };
     const dish = at([0, 0, 0]);
+    // D26's pose looked down the dish's axis (the model's -Z), so 3 m along it landed on the dish's own centre: a flat
+    // white disc. Now that axis stands up the screen, so the dish's curve shows
+    const axis = at([0, 0, -3]);
+    expect(dish.yPx - axis.yPx).toBeGreaterThan(20);
+    expect(Math.abs(axis.xPx - dish.xPx)).toBeLessThan(0.3 * (dish.yPx - axis.yPx));
     const boomEnd = at([-12, 0, 0]);
-    expect(boomEnd.yPx - dish.yPx).toBeGreaterThan(100);
-    expect(Math.abs(boomEnd.xPx - dish.xPx)).toBeLessThan(0.15 * (boomEnd.yPx - dish.yPx));
+    expect(dish.xPx - boomEnd.xPx).toBeGreaterThan(100);
+    expect(Math.abs(boomEnd.yPx - dish.yPx)).toBeLessThan(0.3 * (dish.xPx - boomEnd.xPx));
   });
 
   it('takes a travel speed only relative to the Sun and above zero, else claims none (AUDIT-C on hangar-1)', () => {
