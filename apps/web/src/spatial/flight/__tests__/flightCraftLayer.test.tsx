@@ -200,6 +200,38 @@ describe('FlightCraftLayer: one renderer and one loader for the flight, models k
     expect(models['astronaut-emu']!.disposed()).toEqual({ geometry: false, material: false, texture: false });
     expect(load).toHaveBeenCalledTimes(4);
   });
+
+  it('never frees the model on screen: three switches inside one model load leave the shown one kept (craft-cache-pin-one)', async () => {
+    const { made, makeRenderer, drawn } = rendererStub();
+    const suit = modelOf(sizes['astronaut-emu']!);
+    const later: Record<string, (g: THREE.Group) => void> = {};
+    const load = vi.fn((url: string) =>
+      url === CRAFTS['astronaut-emu']!.modelUrl ? Promise.resolve(suit.model) : new Promise<THREE.Group>((r) => { later[url] = r; })
+    );
+    const camera = flightCameraOf(there(), 1440, 900)!;
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['astronaut-emu']!, load, makeRenderer })));
+    // Webb, Voyager and Hubble asked for while none of their models has come: the suit is still the one on screen
+    for (const id of ['jwst', 'voyager-1', 'hubble']) {
+      await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS[id]!, load, makeRenderer })));
+    }
+    expect(suit.disposed()).toEqual({ geometry: false, material: false, texture: false });
+    // and it is still drawn as itself on the next frame
+    const moved = { ...camera, observerPc: [camera.observerPc[0] * 0.9, camera.observerPc[1] * 0.9, camera.observerPc[2] * 0.9] as typeof camera.observerPc };
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera: moved, craft: CRAFTS.hubble!, load, makeRenderer })));
+    expect(drawn.at(-1)!.children).toEqual([suit.model]);
+    // Webb, the oldest not on screen, went instead (the cache keeps its size). Off screen now (Hubble drawn, the suit's
+    // frame-out ended), the suit is the oldest again: the next new model frees it, while Hubble, framing out, is kept
+    const hubble = modelOf(sizes.hubble!);
+    await act(async () => later[CRAFTS.hubble!.modelUrl]!(hubble.model));
+    const out = container.querySelector('[data-testid="flight-craft-out"]');
+    if (out) await act(async () => out.dispatchEvent(new Event('animationend', { bubbles: true })));
+    expect(suit.disposed()).toEqual({ geometry: false, material: false, texture: false });
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS.iss!, load, makeRenderer })));
+    await act(async () => await Promise.resolve());
+    expect(suit.disposed()).toEqual({ geometry: true, material: true, texture: true });
+    expect(hubble.disposed()).toEqual({ geometry: false, material: false, texture: false });
+    expect(made[0]!.dispose).not.toHaveBeenCalled();
+  });
 });
 
 describe('FlightCraftLayer: switching craft (craft-switch-motion-1, MOTION-READY-web.md section eight)', () => {

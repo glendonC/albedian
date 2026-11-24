@@ -95,6 +95,8 @@ interface CraftGpu {
 interface Shown {
   readonly cached: CachedModel;
   readonly craft: Craft;
+  /** The model's address, which keeps it in the cache while it is on screen. */
+  readonly url: string;
   readonly frameRadius: number;
 }
 
@@ -219,6 +221,22 @@ export const FlightCraftLayer: React.FC<{
     };
   }, [dpr, makeRenderer]);
 
+  /**
+   * Beyond the cache's size the models used longest ago go, their GPU memory freed; never one on screen, shown or framing
+   * out (craft-cache-pin-one). At most two are on screen, so an older one can always go: the cache keeps its size, and
+   * the model just asked for, the newest, is never reached.
+   */
+  const trimCache = (g: CraftGpu) => {
+    const cache = models.current;
+    const inUse = new Set([g.shown?.url, g.leaving?.url]);
+    for (const [oldUrl, oldest] of [...cache]) {
+      if (cache.size <= MODEL_CACHE_SIZE) break;
+      if (inUse.has(oldUrl)) continue;
+      cache.delete(oldUrl);
+      void oldest.then(({ model }) => disposeModel(model), () => {});
+    }
+  };
+
   // A craft asked for: its model from the flight's cache, else loaded once and kept; the one shown before frames out
   useEffect(() => {
     let current = true;
@@ -252,22 +270,14 @@ export const FlightCraftLayer: React.FC<{
         const size = box.getSize(new THREE.Vector3());
         return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3 };
       });
-      // Beyond the cache's size the oldest goes, its GPU memory freed
-      while (cache.size >= MODEL_CACHE_SIZE) {
-        const [oldestUrl, oldest] = cache.entries().next().value as [string, Promise<CachedModel>];
-        cache.delete(oldestUrl);
-        void oldest.then(({ model }) => {
-          if (g.holder.children.includes(model)) g.holder.remove(model);
-          disposeModel(model);
-        }, () => {});
-      }
     }
     cache.set(url, pending);
+    trimCache(g);
     setState('loading');
     pending.then(
       (cached) => {
         if (!current || gpu.current !== g) return;
-        g.shown = { cached, craft, frameRadius: craftFrameRadiusM(craft, cached.size, cached.radius) };
+        g.shown = { cached, craft, url, frameRadius: craftFrameRadiusM(craft, cached.size, cached.radius) };
         const drawn = draw(g);
         if (drawn) setEntering((n) => n + 1);
         setState(drawn ? 'drawn' : 'failed');
