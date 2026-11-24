@@ -430,8 +430,36 @@ def test_the_channel_by_channel_step_matches_the_whole_frame_reference_to_the_bi
     assert np.array_equal(result.clamped_map, must.clamped_map)
 
 
-def test_smooth_chroma_holds_at_most_six_and_three_quarter_frames_beyond_its_input() -> None:
-    # The whole-frame implementation held 22.78 frames here, this one 6.34; the rest is its 4-channel state, sums and 2D planes
+@settings(max_examples=20, deadline=None)
+@given(
+    seed=st.integers(0, 2**16),
+    height=st.integers(1, 70),
+    width=st.integers(1, 70),
+    levels=st.integers(1, 6),
+    strip=st.sampled_from([1, 2, 3, 5, 17, 64]),
+)
+@example(seed=3, height=70, width=9, levels=6, strip=3)
+@example(seed=4, height=1, width=1, levels=2, strip=1)
+def test_the_taps_strip_by_strip_match_the_whole_frame_reference_to_the_bit_at_any_strip_height(
+    seed: int, height: int, width: int, levels: int, strip: int
+) -> None:
+    # Strips a few rows high on small frames cross every reflected border, single and multi-fold, in one example
+    rng = np.random.default_rng(seed)
+    frame = rng.uniform(0.0, 0.06, (height, width, 3))
+    guide = rng.normal(0.0, 3.0, (height, width))
+    footprint = np.clip(rng.uniform(-0.3, 1.3, (height, width)), 0.0, 1.0) * (rng.uniform(size=(height, width)) < 0.35)
+    must = smooth_chroma_whole_reference(frame, guide, footprint, levels=levels)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(chroma, "STRIP_ROWS", strip)
+        result = chroma.smooth_chroma(frame, guide, footprint, levels=levels)
+    assert np.array_equal(result.frame.view(np.uint64), must.frame.view(np.uint64))
+    assert result.kept == must.kept and result.clamped == must.clamped
+    assert np.array_equal(result.clamped_map, must.clamped_map)
+
+
+def test_smooth_chroma_holds_at_most_five_and_three_quarter_frames_beyond_its_input() -> None:
+    # The whole-frame implementation held 22.78 frames here, whole-frame tap scratch 6.34, and strip-high tap scratch
+    # 5.45; the rest is its 4-channel state, sums and 2D planes
     import tracemalloc
 
     rng = np.random.default_rng(43)
@@ -449,7 +477,7 @@ def test_smooth_chroma_holds_at_most_six_and_three_quarter_frames_beyond_its_inp
     if started:
         tracemalloc.stop()
     del result
-    assert peak <= 6.75 * frame.nbytes
+    assert peak <= 5.75 * frame.nbytes
 
 
 def test_bounds_holds_at_most_three_and_a_half_frames_beyond_its_input() -> None:
@@ -471,6 +499,12 @@ def test_bounds_holds_at_most_three_and_a_half_frames_beyond_its_input() -> None
         tracemalloc.stop()
     del bounds
     assert peak <= 3.5 * frame.nbytes
+
+
+def test_a_reflected_border_is_copied_as_one_reversed_slice_not_a_sample_at_a_time() -> None:
+    # 4 3 2 1 0 | 1 ... 9 | 8 7 6 5: three slices, so a strip's load is a few block copies
+    assert chroma._runs(chroma._reflect_indices(10, 4)) == [
+        (slice(0, 5), slice(4, None, -1)), (slice(5, 14), slice(1, 10)), (slice(14, 18), slice(8, 4, -1))]
 
 
 def test_reflected_shifts_match_padded_slices_across_single_and_multi_fold_borders() -> None:

@@ -58,6 +58,11 @@ CARRY_FLOOR = 1e-6
 STAR_FLUX_SIGMAS = 3.0
 
 LUMA = stars.LUMA_WEIGHTS
+# A level's taps run over strips this many rows high: speed and memory only, every sample's arithmetic is the whole
+# frame's [tested: on a 1024 x 6016 sky 16 to 256 rows took 14.4 to 15.0 s against 14.5 to 16.7 s for whole-frame taps
+# at load 30 to 58, and 8 rows 29.4 s; 128 rows 12.8 and 13.3 s against 14.7 and 16.4 s at load 10 to 20; test_chroma's
+# 300 x 400 memory scene peaked at 5.45, 5.56 and 5.77 frames at 32, 64 and 128 rows against 6.34; .lanetools/speed-4]
+STRIP_ROWS = 64
 
 
 @dataclass(frozen=True)
@@ -93,45 +98,79 @@ def _reflect_indices(length: int, reach: int) -> np.ndarray:
     return np.pad(np.arange(length, dtype=np.intp), (reach, reach), mode="reflect")
 
 
+def _runs(indices: np.ndarray) -> list[tuple[slice, slice]]:
+    """`(destination, source)` slice pairs that copy `plane[indices]` along one axis piece by piece: each run of
+    indices stepping by +1 or by -1 is one slice, so a reflected border costs a reversed slice, not a gather."""
+    idx = [int(i) for i in indices]
+    runs: list[tuple[slice, slice]] = []
+    start, n = 0, len(idx)
+    while start < n:
+        stop = start + 1
+        if stop < n and idx[stop] - idx[start] in (1, -1):
+            step = idx[stop] - idx[start]
+            while stop < n and idx[stop] - idx[stop - 1] == step:
+                stop += 1
+        first, last = idx[start], idx[stop - 1]
+        source = slice(first, last + 1) if last >= first else slice(first, last - 1 if last > 0 else None, -1)
+        runs.append((slice(start, stop), source))
+        start = stop
+    return runs
+
+
+def _copy(plane: np.ndarray, runs: tuple[list[tuple[slice, slice]], list[tuple[slice, slice]]], out: np.ndarray) -> None:
+    """Fill `out` from `plane` by row runs and column runs (`_runs`)."""
+    row_runs, column_runs = runs
+    for dst_r, src_r in row_runs:
+        for dst_c, src_c in column_runs:
+            out[dst_r, dst_c] = plane[src_r, src_c]
+
+
 def _load_shifted(plane: np.ndarray, r_idx: np.ndarray, c_idx: np.ndarray, r0: int, c0: int, out: np.ndarray) -> None:
     """Fill `out` with `np.pad(plane, reach, mode='reflect')[r0:r0+H, c0:c0+W]` without allocating a padded array."""
     height, width = plane.shape
-    dy = r0 - (len(r_idx) - height) // 2
-    dx = c0 - (len(c_idx) - width) // 2
-    if abs(dy) <= height - 1 and abs(dx) <= width - 1:
-        if dy < 0:
-            top = -dy
-            r_parts = ((slice(0, top), slice(top, 0, -1)), (slice(top, height), slice(0, height - top)))
-        elif dy > 0:
-            bot = height - dy
-            r_stop = height - 2 - dy
-            r_parts = (
-                (slice(0, bot), slice(dy, height)),
-                (slice(bot, height), slice(height - 2, r_stop if r_stop >= 0 else None, -1)),
-            )
-        else:
-            r_parts = ((slice(0, height), slice(0, height)),)
+    _copy(plane, (_runs(r_idx[r0:r0 + height]), _runs(c_idx[c0:c0 + width])), out)
 
-        if dx < 0:
-            left = -dx
-            c_parts = ((slice(0, left), slice(left, 0, -1)), (slice(left, width), slice(0, width - left)))
-        elif dx > 0:
-            right = width - dx
-            c_stop = width - 2 - dx
-            c_parts = (
-                (slice(0, right), slice(dx, width)),
-                (slice(right, width), slice(width - 2, c_stop if c_stop >= 0 else None, -1)),
-            )
-        else:
-            c_parts = ((slice(0, width), slice(0, width)),)
 
-        for dst_r, src_r in r_parts:
-            for dst_c, src_c in c_parts:
-                out[dst_r, dst_c] = plane[src_r, src_c]
-    else:
-        rr = r_idx[r0 : r0 + height]
-        cc = c_idx[c0 : c0 + width]
-        out[:] = plane[rr[:, None], cc[None, :]]
+def _strip_sums(level_guide: np.ndarray, colour: list[np.ndarray], keep: np.ndarray, state: list[np.ndarray],
+                r_idx: np.ndarray, column_runs: list[list[tuple[slice, slice]]], step: int, rows: tuple[int, int],
+                widths: tuple[float, float], total: np.ndarray, sums: list[np.ndarray]) -> None:
+    """One strip of rows' share of a level's 25 taps, in the taps' own order, added into `total` and `sums`: each
+    sample's arithmetic is the whole frame's, read through scratch planes a strip high, which stay in the processor's
+    cache where whole-frame ones did not [tested: test_chroma's whole-frame reference to the bit]."""
+    y0, y1 = rows
+    guide_width, colour_width = widths
+    shape = (y1 - y0, level_guide.shape[1])
+    shifted, apart, term = np.empty(shape), np.empty(shape), np.empty(shape)
+    here = level_guide[y0:y1]
+    colour_here = [plane[y0:y1] for plane in colour]
+    total_here = total[y0:y1]
+    sums_here = [plane[y0:y1] for plane in sums]
+    for a, tap_a in enumerate(B3_TAPS):
+        row_runs = _runs(r_idx[a * step + y0:a * step + y1])
+        for b, tap_b in enumerate(B3_TAPS):
+            runs = (row_runs, column_runs[b])
+            _copy(level_guide, runs, shifted)
+            np.subtract(shifted, here, out=shifted)
+            weight = _range_weight(shifted, guide_width)
+
+            _copy(colour[0], runs, apart)
+            np.subtract(apart, colour_here[0], out=apart)
+            np.square(apart, out=apart)
+            for c in (1, 2):
+                _copy(colour[c], runs, term)
+                np.subtract(term, colour_here[c], out=term)
+                np.square(term, out=term)
+                apart += term
+            np.sqrt(apart, out=apart)
+            weight *= _range_weight(apart, colour_width)
+            weight *= tap_a * tap_b
+            _copy(keep, runs, term)
+            weight *= term
+            total_here += weight
+            for c in range(4):
+                _copy(state[c], runs, term)
+                term *= weight
+                sums_here[c] += term
 
 
 def _channel_bounds(
@@ -250,38 +289,13 @@ def smooth_chroma(frame: np.ndarray, guide: np.ndarray, footprint: np.ndarray, *
         c_idx = _reflect_indices(width, reach)
         total = np.zeros((height, width), dtype=np.float64)
         summed: list[np.ndarray | None] = [np.zeros((height, width), dtype=np.float64) for _ in range(4)]
-        shifted = np.empty((height, width), dtype=np.float64)
-        apart = np.empty((height, width), dtype=np.float64)
-        term = np.empty((height, width), dtype=np.float64)
-        for a, tap_a in enumerate(B3_TAPS):
-            for b, tap_b in enumerate(B3_TAPS):
-                r0, c0 = a * step, b * step
-                _load_shifted(level_guide, r_idx, c_idx, r0, c0, shifted)
-                np.subtract(shifted, level_guide, out=shifted)
-                weight = _range_weight(shifted, guide_width)
-
-                _load_shifted(colour[0], r_idx, c_idx, r0, c0, apart)
-                np.subtract(apart, colour[0], out=apart)
-                np.square(apart, out=apart)
-                for c in (1, 2):
-                    _load_shifted(colour[c], r_idx, c_idx, r0, c0, term)
-                    np.subtract(term, colour[c], out=term)
-                    np.square(term, out=term)
-                    apart += term
-                np.sqrt(apart, out=apart)
-                weight *= _range_weight(apart, colour_width)
-                weight *= tap_a * tap_b
-                _load_shifted(keep, r_idx, c_idx, r0, c0, term)
-                weight *= term
-                total += weight
-                for c in range(4):
-                    cc = current[c]
-                    sc = summed[c]
-                    assert cc is not None and sc is not None
-                    _load_shifted(cc, r_idx, c_idx, r0, c0, term)
-                    term *= weight
-                    sc += term
-        del colour, shifted, apart, term, weight, r_idx, c_idx
+        state = [cc for cc in current if cc is not None]
+        sums = [sc for sc in summed if sc is not None]
+        column_runs = [_runs(c_idx[b * step:b * step + width]) for b in range(len(B3_TAPS))]
+        for y0 in range(0, height, STRIP_ROWS):
+            _strip_sums(level_guide, colour, keep, state, r_idx, column_runs, step, (y0, min(height, y0 + STRIP_ROWS)),
+                        (guide_width, colour_width), total, sums)
+        del colour, r_idx, c_idx, state, sums, column_runs
         if level == levels - 1:
             del level_guide
 
