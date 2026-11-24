@@ -96,10 +96,12 @@ const VERTEX = `#version 300 es
 in vec2 aPos;
 in vec2 aUv;
 uniform vec2 uView;
+uniform vec2 uOrigin;
 out vec2 vUv;
 void main() {
   vUv = aUv;
-  gl_Position = vec4(aPos.x / uView.x * 2.0 - 1.0, 1.0 - aPos.y / uView.y * 2.0, 0.0, 1.0);
+  vec2 p = aPos - uOrigin;
+  gl_Position = vec4(p.x / uView.x * 2.0 - 1.0, 1.0 - p.y / uView.y * 2.0, 0.0, 1.0);
 }`;
 
 // The panorama's own pixels, unchanged: no grade (the approved picture shows them as ESO publishes them)
@@ -123,8 +125,19 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string): WebG
 }
 
 /** Draws the panorama through the grid into the canvas; false when the browser refuses any step. */
-function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: ObservationSession, registration: PanoramaRegistration, viewW: number, viewH: number): boolean {
-  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX);
+/**
+ * arrival-star-1: the window area the panorama covers while the flight brings the star flown to to its resting place
+ * (look gap two): the window and the strip the whole move uncovers; the window alone with no move.
+ */
+export function realSkyArea(viewW: number, viewH: number, fullShiftPx: readonly [number, number] | null): { x0: number; y0: number; widthPx: number; heightPx: number } {
+  const [dx, dy] = fullShiftPx ?? [0, 0];
+  const x0 = Math.min(0, -dx) || 0;
+  const y0 = Math.min(0, -dy) || 0;
+  return { x0, y0, widthPx: Math.max(viewW, viewW - dx) - x0, heightPx: Math.max(viewH, viewH - dy) - y0 };
+}
+
+function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: ObservationSession, registration: PanoramaRegistration, viewW: number, viewH: number, area = realSkyArea(viewW, viewH, null)): boolean {
+  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
   const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
   if (!grid || !gl) return false;
   const vs = compile(gl, gl.VERTEX_SHADER, VERTEX);
@@ -177,7 +190,8 @@ function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: Obser
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
   gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.uniform2f(gl.getUniformLocation(program, 'uView'), viewW, viewH);
+  gl.uniform2f(gl.getUniformLocation(program, 'uView'), area.widthPx, area.heightPx);
+  gl.uniform2f(gl.getUniformLocation(program, 'uOrigin'), area.x0, area.y0);
   gl.uniform1i(gl.getUniformLocation(program, 'uPanorama'), 0);
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -202,11 +216,18 @@ export const RealSkyLayer: React.FC<{
   phone?: boolean;
   /** There, after Go there: on the phone, the shade under the taller readout. */
   there?: boolean;
+  /**
+   * arrival-star-1 (look gap two): the flight's move of the view toward the star's resting place, whole and so far; the
+   * panorama moves with the stars, its shade does not.
+   */
+  shift?: { readonly fullPx: readonly [number, number]; readonly nowPx: readonly [number, number] } | null;
   /** There on the phone: the readout's measured top, which D30's scrim rises to meet; the slot's shade without it. */
   readoutTopPx?: number | null;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false, there = false, readoutTopPx = null }) => {
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, phone = false, there = false, readoutTopPx = null, shift = null }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
+  const moving = shift !== null && (shift.fullPx[0] !== 0 || shift.fullPx[1] !== 0);
+  const area = realSkyArea(viewportWidthPx, viewportHeightPx, moving ? shift!.fullPx : null);
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
   // The reveal's status follows what is on screen (the auditor's verdict on unit-realsky-1)
   const told = useRef(onDrawn);
@@ -228,7 +249,7 @@ export const RealSkyLayer: React.FC<{
     void Promise.all([loaded, loadPanoramaRegistration()])
       .then(([img, registration]) => {
         if (!current || !canvas.current) return;
-        setState(draw(canvas.current, img, session, registration, viewportWidthPx, viewportHeightPx) ? 'drawn' : 'failed');
+        setState(draw(canvas.current, img, session, registration, viewportWidthPx, viewportHeightPx, area) ? 'drawn' : 'failed');
       })
       .catch(() => {
         if (current) setState('failed');
@@ -236,11 +257,17 @@ export const RealSkyLayer: React.FC<{
     return () => {
       current = false;
     };
-  }, [session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx]);
+  }, [session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx, area.x0, area.y0, area.widthPx, area.heightPx]);
 
   return (
     <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
-      <canvas ref={canvas} className="real-sky__canvas" width={Math.round(viewportWidthPx * dpr)} height={Math.round(viewportHeightPx * dpr)} />
+      <canvas
+        ref={canvas}
+        className="real-sky__canvas"
+        width={Math.round(area.widthPx * dpr)}
+        height={Math.round(area.heightPx * dpr)}
+        style={moving ? { left: area.x0, top: area.y0, width: area.widthPx, height: area.heightPx, transform: `translate(${shift!.nowPx[0]}px, ${shift!.nowPx[1]}px)` } : undefined}
+      />
       {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? (there && readoutTopPx !== null ? phoneThereScrim(viewportHeightPx, readoutTopPx) : phoneRealSkyShade(viewportHeightPx, { there })) : realSkyShade(rect, viewportWidthPx) }} />}
     </div>
   );

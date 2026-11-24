@@ -21,6 +21,7 @@ import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
 import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
+import { arrivalShiftOf } from '../spatial/flight/arrival.js';
 import { CraftPicker, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
 import { phoneCraftFraming } from '../spatial/flight/craftScene.js';
 import { CRAFT_PICKER_FOOT, craftSpeedSource } from '../spatial/flight/pilotReadout.js';
@@ -427,7 +428,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // kept and aligning rings below. A matched mark left out under the column is no lock-on target, so its early mark
   // leaves on frame out (MOTION's first line)
   const keepClear = useKeepClear(!there);
-  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky, clear: there ? [] : keepClear }).filter((mark) => !there || mark.picked);
+  // arrival-star-1 (look gap two): There, the view's move toward the star's resting place, which the picked star's mark,
+  // its name and leader, and the panorama follow as the flight's stars do
+  const arrivalMove = there && !originalPixels ? arrivalShiftOf(session, viewW, viewH, phone) : null;
+  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky, clear: there ? [] : keepClear, pickedShiftPx: arrivalMove?.nowPx ?? null }).filter((mark) => !there || mark.picked);
   // The order the marks arrive in: brightest first (the motion record)
   // A deep-sky mark is not a matched mark: it takes no place in their arrival and appears without movement (D23)
   const arrivingMarks = marks.filter((mark) => mark.deepSky === null || mark.picked);
@@ -996,7 +1000,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     >
       {/* The room to scroll to Restore, 16 px under Ask out loud (D38 item 1) */}
       {phoneRestoreOffered && <div className="reveal-phone-room" aria-hidden="true" />}
-      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} />}
+      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
       {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
 

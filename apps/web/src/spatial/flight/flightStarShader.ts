@@ -117,3 +117,34 @@ export function flightStarUniforms(view: StarView): FlightStarUniforms {
     uView: [view.viewportWidthPx, view.viewportHeightPx],
   };
 }
+
+/**
+ * arrival-star-1: the bloom of the star flown to, one quad centred on the star (a point sprite cannot reach the cap's
+ * 480 px on every GPU). Its glow is `arrivalGlow` (arrival.ts), in the star's catalog tint, added as light like the
+ * stars; the star's own dot stays the star pass's.
+ */
+export const ARRIVAL_BLOOM_VERTEX = `#version 300 es
+precision highp float;
+in vec2 aCorner;
+uniform vec2 uCenter;
+uniform float uRadius;
+uniform vec2 uView;
+out vec2 vCorner;
+void main() {
+  vCorner = aCorner;
+  vec2 p = uCenter + aCorner * uRadius;
+  gl_Position = vec4(p.x / uView.x * 2.0 - 1.0, 1.0 - p.y / uView.y * 2.0, 0.0, 1.0);
+}`;
+
+export const ARRIVAL_BLOOM_FRAGMENT = `#version 300 es
+precision highp float;
+in vec2 vCorner;
+uniform vec3 uTint;
+out vec4 outColor;
+void main() {
+  float q = length(vCorner);
+  if (q >= 1.0) discard;
+  float g = q / 0.32;
+  float glow = 0.9 * exp(-g * g) + 0.25 * pow(1.0 - q, 3.0);
+  outColor = vec4(uTint * glow, 1.0);
+}`;

@@ -8,7 +8,7 @@ import { poseSession, sample } from '../../components/__tests__/poseSessions.js'
 import { sourcePixelToViewport } from '../../components/sourcePhotoRect.js';
 import { parsePanoramaRegistration, panoramaUv, sceneToIcrsRows, transposeRows, applyRows } from '../../spatial/sky/skyRegistration.js';
 import { panoramaUvOfIcrs, realSkyGrid, realSkyResidualArcmin, skyAtScreen, storedPointOfUpright } from '../realSkyGrid.js';
-import { canDrawRealSky, realSkyShade } from '../RealSkyLayer.js';
+import { canDrawRealSky, realSkyArea, realSkyShade } from '../RealSkyLayer.js';
 
 // Real sky (reveal, approved 2026-11-12, laptop 2): ESO's Milky Way panorama (eso0932a) drawn for every screen pixel
 // through the photo's solved WCS and the app's own panorama registration. These are the screen-to-sky and
@@ -126,6 +126,27 @@ describe('panoramaUvOfIcrs and the grid the layer draws', () => {
       }
     }
     expect(realSkyGrid({ ...calibrated(), observationSolution: undefined }, VIEW.w, VIEW.h, registration)).toBeNull();
+  });
+
+  it('covers the strip a move uncovers, each point showing the sky the window point shows (arrival-star-1)', () => {
+    // A move of 64 px right and 32 px up uncovers 64 px at the left and 32 px at the foot
+    const area = realSkyArea(VIEW.w, VIEW.h, [64, -32]);
+    expect(area).toEqual({ x0: -64, y0: 0, widthPx: VIEW.w + 64, heightPx: VIEW.h + 32 });
+    expect(realSkyArea(VIEW.w, VIEW.h, null)).toEqual({ x0: 0, y0: 0, widthPx: VIEW.w, heightPx: VIEW.h });
+    expect(realSkyArea(VIEW.w, VIEW.h, [-10, 20])).toEqual({ x0: 0, y0: -20, widthPx: VIEW.w + 10, heightPx: VIEW.h + 20 });
+    const grid = realSkyGrid(calibrated(), VIEW.w, VIEW.h, registration, 16, area)!;
+    const plain = realSkyGrid(calibrated(), VIEW.w, VIEW.h, registration, 16)!;
+    expect([grid.positions[0], grid.positions[1]]).toEqual([-64, 0]);
+    expect(grid.cols).toBe(Math.ceil((VIEW.w + 64) / 16) + 1);
+    expect(grid.rows).toBe(Math.ceil((VIEW.h + 32) / 16) + 1);
+    // The window's own grid points carry the same sky as before: 64 px is four cells in
+    for (const [i, j] of [[0, 0], [5, 3], [20, 10]] as const) {
+      const a = (j * plain.cols + i) * 2;
+      const b = (j * grid.cols + i + 4) * 2;
+      expect([grid.positions[b], grid.positions[b + 1]]).toEqual([plain.positions[a], plain.positions[a + 1]]);
+      expect(grid.uvs[b]! - Math.round(grid.uvs[b]! - plain.uvs[a]!)).toBeCloseTo(plain.uvs[a]!, 9);
+      expect(grid.uvs[b + 1]).toBeCloseTo(plain.uvs[a + 1]!, 9);
+    }
   });
 });
 

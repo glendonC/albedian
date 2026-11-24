@@ -139,7 +139,7 @@ export const FlightCraftLayer: React.FC<{
   }, [camera, craft, steer, framing?.xPx, framing?.yPx, framing?.diameterPx]);
 
   return (
-    <div className="flight-craft" data-testid="flight-craft" data-craft={craft.id} data-state={state} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <div className="flight-craft" data-testid="flight-craft" data-craft={craft.id} data-state={state} data-framing={framing ? `${framing.xPx.toFixed(1)},${framing.yPx.toFixed(1)}` : undefined} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <canvas ref={canvas} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
     </div>
   );

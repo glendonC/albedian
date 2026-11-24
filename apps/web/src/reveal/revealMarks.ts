@@ -139,6 +139,7 @@ export function revealMarks(
     deepSky = null,
     clear = [],
     scrollTopPx,
+    pickedShiftPx = null,
   }: {
     phone?: boolean;
     deepSky?: DeepSkyTable | null;
@@ -151,6 +152,11 @@ export function revealMarks(
     clear?: readonly Box[];
     /** How far the phone reveal has scrolled, shifting viewport clear boxes into the container's coordinates. */
     scrollTopPx?: number;
+    /**
+     * arrival-star-1 (look gap two, 15:34): There, the picked star's mark moved with the star as the flight brings it to
+     * its resting place; its name takes its side there by the same rule, and its leader follows.
+     */
+    pickedShiftPx?: readonly [number, number] | null;
   } = {}
 ): RevealMark[] {
   const spec = phone ? PHONE_NAMES : LAPTOP_NAMES;
@@ -183,6 +189,7 @@ export function revealMarks(
       position = throughSolve(finding, session, viewportWidthPx, viewportHeightPx) ?? position;
     }
     if (!position.visible) return [];
+    if (pickedShiftPx && finding.id === pickedId) position = { ...position, xPx: position.xPx + pickedShiftPx[0], yPx: position.yPx + pickedShiftPx[1] };
     return [{ finding, kind: (catalog ? 'catalog' : 'predicted') as RevealMarkKind, position, symbol: null as DeepSkySymbol | null, magnitude: null as number | null }];
   });
   const roomOf = (x: number, y: number, symbol: DeepSkySymbol | null): Box => {

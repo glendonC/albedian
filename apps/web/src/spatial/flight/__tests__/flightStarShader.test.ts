@@ -5,7 +5,8 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { buildFlightTileArrays, flightCameraOf, screenOfPlacement, type FlightCamera } from '../flightFrame.js';
-import { FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from '../flightStarShader.js';
+import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from '../flightStarShader.js';
+import { arrivalGlow } from '../arrival.js';
 import { starViewOfFlight } from '../starView.js';
 import { runVertexMain, type GlslInputs } from './glslSubset.js';
 
@@ -147,5 +148,28 @@ describe('FLIGHT_STAR_VERTEX, run from its own text', () => {
     const faint = { ...tile, magnitude: new Float32Array([2, 6.9]) };
     expect(drawnAt(camera, faint, 1)).toBeNull();
     expect(drawnAt(camera, faint, 0)).not.toBeNull();
+  });
+});
+
+describe('the arrival bloom\'s shaders, run from their own text (arrival-star-1)', () => {
+  it('lays its quad on the bloom\'s square: the corners a radius from the star, in the window\'s clip space', () => {
+    for (const corner of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as [number, number][]) {
+      const out = runVertexMain(ARRIVAL_BLOOM_VERTEX, { aCorner: corner, uCenter: [700, 400], uRadius: 150, uView: [1440, 900] });
+      const pos = out.gl_Position as number[];
+      expect(pos[0]).toBeCloseTo(((700 + corner[0]! * 150) / 1440) * 2 - 1, 9);
+      expect(pos[1]).toBeCloseTo(1 - ((400 + corner[1]! * 150) / 900) * 2, 9);
+      expect(out.vCorner).toEqual(corner);
+    }
+  });
+
+  it('glows as arrivalGlow does, in the star\'s tint, and draws nothing past the bloom\'s edge', () => {
+    expect(ARRIVAL_BLOOM_FRAGMENT).toContain('if (q >= 1.0) discard;');
+    const body = ARRIVAL_BLOOM_FRAGMENT.replace('if (q >= 1.0) discard;', '');
+    for (const [x, y] of [[0, 0], [0.2, 0.1], [0.5, -0.3], [-0.7, 0.6], [0.0, 0.99]] as const) {
+      const q = Math.hypot(x, y);
+      const out = runVertexMain(body, { vCorner: [x, y], uTint: [1, 0.5, 0.25] });
+      expect(out.glow as number).toBeCloseTo(arrivalGlow(q), 9);
+      expect((out.outColor as number[]).slice(0, 3)).toEqual([1, 0.5, 0.25].map((c) => expect.closeTo(c * arrivalGlow(q), 9)));
+    }
   });
 });

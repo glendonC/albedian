@@ -51,7 +51,7 @@ export function storedToScreenAffine(
   return [x.xPx - o.xPx, y.xPx - o.xPx, o.xPx, x.yPx - o.yPx, y.yPx - o.yPx, o.yPx];
 }
 
-function invertAffine(m: Affine2): Affine2 {
+export function invertAffine(m: Affine2): Affine2 {
   const det = m[0] * m[4] - m[1] * m[3];
   const a = m[4] / det;
   const b = -m[1] / det;

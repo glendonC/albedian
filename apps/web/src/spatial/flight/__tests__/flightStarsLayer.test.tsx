@@ -9,7 +9,10 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
 import { PHONE_CONE_CENTRE_Y_PX } from '../coneView.js';
-import { FLIGHT_LOAD_LIMIT_MAG, flightCameraOf } from '../flightFrame.js';
+import { FLIGHT_LOAD_LIMIT_MAG, flightCameraOf, flightViewCone } from '../flightFrame.js';
+import { HANGAR_CRAFTS } from '../crafts.js';
+import { arrivalBloomOf, arrivalStarOfTile, arrivalViewCone, arrivalShiftOf } from '../arrival.js';
+import { catalogStarTint } from '../../catalogStars/catalogStarTint.js';
 import { noDistanceStarsOnScreen } from '../flightRings.js';
 import { starViewOfFlight } from '../starView.js';
 
@@ -53,6 +56,10 @@ function recordingGl() {
     viewport: () => {}, clearColor: () => {}, clear: () => {}, useProgram: () => {}, enable: () => {}, blendFunc: () => {},
     uniform3fv: (loc: { name: string }, v: number[]) => calls.uniform3fv.set(loc.name, Array.from(v)),
     uniform2fv: () => {}, uniform1f: () => {}, deleteProgram: () => {},
+    // arrival-star-1's bloom quad
+    TRIANGLE_STRIP: 12,
+    uniform2f: (loc: { name: string }, x: number, y: number) => calls.uniform3fv.set(loc.name, [x, y]),
+    uniform3f: (loc: { name: string }, x: number, y: number, z: number) => calls.uniform3fv.set(loc.name, [x, y, z]),
     drawArrays: (_mode: number, _first: number, count: number) => calls.drawArrays.push(count),
   };
   return { gl, calls };
@@ -220,4 +227,89 @@ describe('FlightStarsLayer', () => {
     expect(calls.uniform3fv.get('uRowY')!).not.toEqual(laptopRowY);
     expect(calls.uniform3fv.get('uRowX')!).not.toEqual(laptopRowX);
   });
+
+  it('draws the star flown to with its bloom from its own row, after every star, and asks once for the whole move\'s sky (arrival-star-1)', async () => {
+    const { gl, calls } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    let deliver: ((t: CatalogStarCoreTile) => void) | null = null;
+    const setView = vi.fn();
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      deliver = onTile;
+      return { setView, dispose: () => {} };
+    };
+    const session = { ...there(), spatialView: { ...there().spatialView, transitionPhase: 'at_space', transitionProgress: 1 } } as ObservationSession;
+    const picked = session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId)!;
+    const ref = resolveFindingParsecPosition(picked)!;
+    const d = Math.hypot(ref[0], ref[1], ref[2]);
+    // The picked star's own row: at the place flown to, Gaia BP-RP 1.0
+    const own: CatalogStarCoreTile = {
+      layer: 0, order: 0, pix: 9, count: 1, positionBits: 32, directions: new Float32Array([ref[0] / d, ref[1] / d, ref[2] / d]),
+      magnitude: new Float32Array([1.5]), colorIndex: new Float32Array([1.0]), distancePc: new Float32Array([d]), flags: new Uint8Array([1]), byteLength: 0,
+    };
+    await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles })));
+    await act(async () => await Promise.resolve());
+    // The loader is asked for the sky of the whole move: the photo's cone widened to hold the window at rest
+    const photoCamera = flightCameraOf(session, 1440, 900)!;
+    const shift = arrivalShiftOf(session, 1440, 900, false)!;
+    expect(setView.mock.calls.at(-1)![0]).toEqual(arrivalViewCone(photoCamera, shift.fullPx));
+    expect(setView.mock.calls.at(-1)![0].radiusRad).toBeGreaterThan(flightViewCone(photoCamera).radiusRad);
+    await act(async () => deliver!(tile(1)));
+    expect(layer().getAttribute('data-bloom-px')).toBeNull();
+    const drawsBefore = calls.drawArrays.length;
+    await act(async () => deliver!(own));
+    // The stars, then the bloom's quad (4 corners) last
+    expect(calls.drawArrays.slice(drawsBefore).at(-1)).toBe(4);
+    const star = arrivalStarOfTile(own, ref)!;
+    const view = { ...starViewOfFlight(photoCamera), storedToScreen: [photoCamera.storedToScreen[0], photoCamera.storedToScreen[1], photoCamera.storedToScreen[2] + shift.nowPx[0], photoCamera.storedToScreen[3], photoCamera.storedToScreen[4], photoCamera.storedToScreen[5] + shift.nowPx[1]] as const };
+    const bloom = arrivalBloomOf(star, view)!;
+    expect(Number(layer().getAttribute('data-bloom-px'))).toBeCloseTo(bloom.diameterPx, 1);
+    const [x, y] = layer().getAttribute('data-bloom-at')!.split(',').map(Number);
+    // At rest the star stands at the resting place, its bloom around it
+    expect(x).toBeCloseTo(0.536 * 1440, 0);
+    expect(y).toBeCloseTo(0.476 * 900, 0);
+    expect(calls.uniform3fv.get('uCenter')).toEqual([expect.closeTo(bloom.xPx, 3), expect.closeTo(bloom.yPx, 3)]);
+    expect(calls.uniform3fv.get('uTint')).toEqual(catalogStarTint(1.0, false).map((c) => expect.closeTo(c, 6)));
+    // A new window: the loader is asked again for the whole move's sky at that size
+    await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1280, viewportHeightPx: 800, openTiles })));
+    const smaller = flightCameraOf(session, 1280, 800)!;
+    expect(setView.mock.calls.at(-1)![0]).toEqual(arrivalViewCone(smaller, arrivalShiftOf(session, 1280, 800, false)!.fullPx));
+  });
+
+  it('draws no bloom in the cone view, and none for a star whose row the tiles do not hold', async () => {
+    const { gl, calls } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    let deliver: ((t: CatalogStarCoreTile) => void) | null = null;
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      deliver = onTile;
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const session = there();
+    const picked = session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId)!;
+    const ref = resolveFindingParsecPosition(picked)!;
+    const d = Math.hypot(ref[0], ref[1], ref[2]);
+    const own: CatalogStarCoreTile = {
+      layer: 0, order: 0, pix: 9, count: 1, positionBits: 32, directions: new Float32Array([ref[0] / d, ref[1] / d, ref[2] / d]),
+      magnitude: new Float32Array([1.5]), colorIndex: new Float32Array([1.0]), distancePc: new Float32Array([d]), flags: new Uint8Array([1]), byteLength: 0,
+    };
+    await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, cone: true })));
+    await act(async () => await Promise.resolve());
+    await act(async () => deliver!(own));
+    expect(layer().getAttribute('data-bloom-px')).toBeNull();
+    expect(calls.drawArrays).not.toContain(4);
+  });
+
+  it('frames the craft at its arrival place below and left of the star at rest, at D26\'s point before the move (15:50)', async () => {
+    const { gl } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    const openTiles: OpenFlightTiles = async () => ({ setView: () => {}, dispose: () => {} });
+    const craft = HANGAR_CRAFTS.find((c) => c.id === 'astronaut-emu')!;
+    const atRest = { ...there(), spatialView: { ...there().spatialView, transitionPhase: 'at_space', transitionProgress: 1 } } as ObservationSession;
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: atRest, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft })));
+    const framed = () => container.querySelector('[data-testid="flight-craft"]')!.getAttribute('data-framing');
+    expect(framed()).toBe(`${(0.361 * 1440).toFixed(1)},${(0.711 * 900).toFixed(1)}`);
+    const before = { ...atRest, spatialView: { ...atRest.spatialView, transitionPhase: 'phase_a_photo_to_sky', transitionProgress: 0.5 } } as ObservationSession;
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: before, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft })));
+    expect(framed()).toBe(`${(0.5 * 1440).toFixed(1)},${(0.62 * 900).toFixed(1)}`);
+  });
 });
+

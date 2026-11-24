@@ -191,3 +191,22 @@ describe('a name yields to a brighter object or picked name (namebox-1, D20)', (
     expect(names(sessionOf([vega, pickedFaint], pickedFaint.id))).toEqual({ Vega: 'left', Subtle: 'right' });
   });
 });
+
+describe('There: the picked star moved to its resting place (arrival-star-1, look gap two, 15:34)', () => {
+  it('moves the picked mark alone by the flight\'s move, its name taking its side there by the same rule', () => {
+    const edge = at('Edgestar', 940, 200, 1);
+    const other = at('Otherstar', 300, 300, 1);
+    const session = sessionOf([edge, other], edge.id);
+    const still = Object.fromEntries(revealMarks(session, VIEW.w, VIEW.h).map((m) => [m.finding.title, m]));
+    // At the photo's right edge the picked name goes to the left
+    expect(still.Edgestar!.nameOnLeft).toBe(true);
+    const moved = Object.fromEntries(revealMarks(session, VIEW.w, VIEW.h, { pickedShiftPx: [-600, 100] }).map((m) => [m.finding.title, m]));
+    expect(moved.Edgestar!.xPx).toBeCloseTo(still.Edgestar!.xPx - 600, 9);
+    expect(moved.Edgestar!.yPx).toBeCloseTo(still.Edgestar!.yPx + 100, 9);
+    // Mid-frame there is room on the right, so the same rule puts it there
+    expect(moved.Edgestar!.nameOnLeft).toBe(false);
+    expect([moved.Otherstar!.xPx, moved.Otherstar!.yPx]).toEqual([still.Otherstar!.xPx, still.Otherstar!.yPx]);
+    // No move, no change
+    expect(revealMarks(session, VIEW.w, VIEW.h, { pickedShiftPx: null })).toEqual(revealMarks(session, VIEW.w, VIEW.h));
+  });
+});

@@ -86,18 +86,24 @@ export function realSkyGrid(
   viewportWidthPx: number,
   viewportHeightPx: number,
   registration: PanoramaRegistration,
-  stepPx = 8
+  stepPx = 8,
+  /**
+   * arrival-star-1: the window area the grid covers, in window pixels; the window by default. While the flight brings
+   * the star flown to to its resting place the panorama moves with the stars, so it is drawn over the window and the
+   * strip the move uncovers.
+   */
+  area: { x0: number; y0: number; widthPx: number; heightPx: number } = { x0: 0, y0: 0, widthPx: viewportWidthPx, heightPx: viewportHeightPx }
 ): RealSkyGrid | null {
   if (!verifiedSolve(session)) return null;
-  const cols = Math.ceil(viewportWidthPx / stepPx) + 1;
-  const rows = Math.ceil(viewportHeightPx / stepPx) + 1;
+  const cols = Math.ceil(area.widthPx / stepPx) + 1;
+  const rows = Math.ceil(area.heightPx / stepPx) + 1;
   const positions = new Float32Array(cols * rows * 2);
   const uvs = new Float32Array(cols * rows * 2);
   for (let j = 0; j < rows; j++) {
     let lastU = Number.NaN;
     for (let i = 0; i < cols; i++) {
-      const x = i * stepPx;
-      const y = j * stepPx;
+      const x = area.x0 + i * stepPx;
+      const y = area.y0 + j * stepPx;
       const sky = skyAtScreen(session, x, y, viewportWidthPx, viewportHeightPx)!;
       let [u, v] = panoramaUvOfIcrs(raDecToUnitVector(sky.raDeg, sky.decDeg), registration);
       // Carry u on from its neighbour (the row's left, or the cell above for a row's first vertex)
