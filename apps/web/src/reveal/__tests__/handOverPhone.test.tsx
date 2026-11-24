@@ -14,11 +14,10 @@ import { RevealPhoto } from '../RevealPhoto.js';
 import { WorkingScreen } from '../WorkingScreen.js';
 import type { Arrival } from '../arrival.js';
 
-// MOTION-READY-web.md section six, DECIDED-BY-LEAD 22 Nov 23:36 (MOTION-handover-phone-NOTE.md): on the phone, whose
-// working screen draws no rings, at the press of Solve from here every ring and name the aligning layer drew leaves where
-// it stood on frame out, the Predicted tag standing at full until their last frame and the aligning words and button
-// going on words out; at the refused end the kept rings come in as the reveal's marks do. Seen live at 390 by 844 on
-// rp-b-06: all fifteen rings, the tag and the words went in one frame, and came back at full in one frame.
+// MOTION-READY-web.md section six. The phone's hand-over of 22 Nov 23:36 (the rings leaving at the press, coming back at
+// the refused end) is REPLACED by DECIDED-BY-LEAD 24 Nov 12:58: the phone's wait keeps the rings, tested in
+// phoneSolveWait.test.tsx (phone-solve-wait-1). What stays here: a phone job not sent from the alignment draws nothing
+// of it, the laptop's refused end brings nothing in, and the aligning block's words still go last first.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -70,44 +69,8 @@ const align = () => act(() => root.render(createElement(AlignLayer, { rect: PHON
 const workPhone = (extra: Record<string, unknown>) =>
   act(() => root.render(createElement(WorkingScreen, { arrival, photoRect: PHONE_RECT, onTryAgain: () => {}, onUploadAnother: () => {}, onCancel: () => {}, phone: true, ...extra })));
 const all = (selector: string) => [...container.querySelectorAll(selector)];
-// A ring's place on screen: its place in its layer plus the layer's own
-const at = (el: Element) => {
-  const layer = el.closest('.align-layer') as HTMLElement;
-  return `${parseFloat(layer.style.left) + Number(el.getAttribute('cx'))},${parseFloat(layer.style.top) + Number(el.getAttribute('cy'))}`;
-};
-const endLeaving = () => {
-  for (const ring of all('[data-testid="early-marks"] circle.is-leaving')) act(() => void ring.dispatchEvent(new Event('animationend', { bubbles: true })));
-};
 
 describe('the press of Solve from here on the phone', () => {
-  it('lets every ring and name the aligning layer drew leave where it stood, under the tag at full and the words going', () => {
-    align();
-    const rings = all('[data-testid="align-layer"] circle').map(at);
-    const names = all('[data-testid="align-layer"] .align-layer__name').map((n) => n.textContent);
-    expect(rings.length).toBeGreaterThanOrEqual(2);
-    // The phone's working screen may be given no frame of its own: the rings leave in the frame they stood in
-    workPhone({ aligned: { marks: placed }, photoRect: null });
-    expect(all('[data-testid="early-marks"] circle.is-leaving').map(at)).toEqual(rings);
-    // in the very frame and 11 px phone class the aligning layer drew them in, not the working screen's or 13 px
-    const layer = container.querySelector('[data-testid="early-marks"]') as HTMLElement;
-    expect(layer.className).toBe('align-layer is-still is-phone');
-    expect([layer.style.left, layer.style.top, layer.style.width, layer.style.height]).toEqual(['0px', '100px', '390px', '520px']);
-    expect(all('[data-testid="early-marks"] circle:not(.is-leaving)')).toHaveLength(0);
-    expect(all('[data-testid="early-marks"] .align-layer__name.is-leaving').map((n) => n.textContent)).toEqual(names);
-    // The aligning block, leaving: its tag at full (no class or animation of its own), its words and button on words out
-    const block = container.querySelector('[data-testid="align-phone-leaving"]')!;
-    expect(block.classList.contains('is-leaving')).toBe(true);
-    expect(block.getAttribute('aria-hidden')).toBe('true');
-    expect(block.querySelector('.align-phone__tag')?.textContent).toContain('Predicted');
-    expect(block.querySelector('.align-phone__lead')?.textContent).toBe('Drag the stars onto the dots you see.');
-    expect(block.querySelector('.align-phone__solve')?.textContent).toContain('Solve from here');
-    // The tag goes with the rings' last frame, and nothing of the aligning screen stays
-    endLeaving();
-    expect(container.querySelector('[data-testid="align-phone-leaving"]')).toBeNull();
-    expect(all('[data-testid="early-marks"] circle')).toHaveLength(0);
-    expect(container.querySelector('[data-testid="working-screen"]')).not.toBeNull();
-  });
-
   it('draws nothing leaving for a job that was not sent from the alignment', () => {
     align();
     workPhone({ early: { source: 'moon', marks: placed } });
@@ -116,35 +79,8 @@ describe('the press of Solve from here on the phone', () => {
   });
 });
 
-describe('the refused end of Solve from here on the phone', () => {
-  it('brings the kept rings in as the reveal marks come, brightest first, at the 11 px phone size, with the tag from the first', () => {
-    align();
-    const alignNameSides = all('[data-testid="align-layer"] .align-layer__name').map((n) => `${n.textContent}:${n.classList.contains('is-left')}`);
-    expect(alignNameSides).toContain('Deneb:false');
-    workPhone({ aligned: { marks: placed } });
-    endLeaving();
-    act(() =>
-      root.render(
-        createElement(RevealPhoto, { session, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 390, viewportHeightPx: 844, phone: true, onShowPredictedSky: () => {}, alignedFrom: { sha256: session.sourceAsset!.sha256, pose: KEPT, from: { kind: 'brightest', name: 'Fomalhaut' } } })
-      )
-    );
-    const layer = container.querySelector('[data-testid="early-marks"]') as HTMLElement;
-    expect(layer.className).toBe('align-layer is-still is-phone');
-    const rings = all('[data-testid="early-marks"] circle');
-    expect(rings.length).toBeGreaterThanOrEqual(2);
-    expect(rings.every((ring) => ring.classList.contains('is-arriving'))).toBe(true);
-    // Brightest first: the rings in the order the targets come (brightest first), each its own rank
-    expect(rings.map((ring) => (ring as SVGElement).style.getPropertyValue('--mark-i'))).toEqual(rings.map((_, i) => String(i)));
-    expect(layer.style.getPropertyValue('--mark-n')).toBe(String(rings.length));
-    // Each name comes with its ring at the phone's 11 px size (Deneb stays right of its ring, inside 390 px, as aligned)
-    const names = all('[data-testid="early-marks"] .align-layer__name');
-    expect(names.map((n) => `${n.textContent}:${n.classList.contains('is-left')}`)).toEqual(alignNameSides);
-    expect(names.map((n) => (n as HTMLElement).style.getPropertyValue('--mark-i'))).toEqual(names.map((_, i) => String(i)));
-    for (const name of names) expect(name.classList.contains('is-arriving')).toBe(true);
-    expect(container.querySelector('[data-testid="reveal-status"]')?.textContent).toContain('Predicted');
-  });
-
-  it('brings nothing in on the laptop, not even a ring the working column hid, which comes back as it was', () => {
+describe('the refused end of Solve from here on the laptop', () => {
+  it('brings nothing in, not even a ring the working column hid, which comes back as it was', () => {
     act(() => root.render(createElement(AlignLayer, { rect: PHONE_RECT, pose: KEPT, targets, onPose: () => {} })));
     // The working column laid over the first ring alone
     const first = { x: PHONE_RECT.leftPx + placed[0]!.u * PHONE_RECT.widthPx, y: PHONE_RECT.topPx + placed[0]!.v * PHONE_RECT.heightPx };
@@ -177,12 +113,13 @@ describe('the phone hand-over styles', () => {
     });
     return found;
   }
-  it('brings rings in on the reveal marks\' own arrival, and takes the aligning words out last first', () => {
-    expect(rulesOf('.align-layer .is-arriving').animation).toBe('look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both');
-    expect(rulesOf('.align-layer.is-still')['--mark-step']).toBe('max(0ms, calc((var(--look-mo-span-marks) - var(--look-mo-dur-mark)) / max(1, var(--mark-n) - 1)))');
+  it('takes the aligning words out last first, and gives the still rings no arrival of their own', () => {
     expect(rulesOf('.align-phone.is-leaving .align-phone__solve').animation).toBe('look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 0) both');
     expect(rulesOf('.align-phone.is-leaving .align-phone__help').animation).toBe('look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 1) both');
     expect(rulesOf('.align-phone.is-leaving .align-phone__lead').animation).toBe('look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 2) both');
     expect(rulesOf('.align-phone.is-leaving .align-phone__tag')).toEqual({});
+    // The 23:36 refused-end arrival is gone with the phone's wait that keeps the rings (24 Nov 12:58)
+    expect(rulesOf('.align-layer .is-arriving')).toEqual({});
+    expect(rulesOf('.align-layer.is-still')).toEqual({});
   });
 });

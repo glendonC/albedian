@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
+import { EvidenceTag, IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { sizeLine, stageRows, type Arrival, type StageRow } from './arrival.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -35,7 +35,9 @@ export interface WorkingScreenProps {
   early?: EarlyPose | null;
   /**
    * D24 step 3, a solve sent from the person's alignment: the rings stay at their pose with "Matching near your
-   * alignment.", their source line as every early mark has (D25's decided words), Cancel and the solve's rows.
+   * alignment.", their source line as every early mark has (D25's decided words), Cancel and the solve's rows. At phone
+   * width (DECIDED-BY-LEAD 24 Nov 12:58): the rings under their Predicted tag, the source line, the one step row and
+   * Cancel, as D31 lays out the iPhone's wait.
    */
   aligned?: { marks: readonly PlacedTarget[] } | null;
 }
@@ -105,11 +107,13 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
   // the pose came from, Cancel (D2) and the job's rows; a stopped job shows as approved
   const shownEarly: EarlyPose | null = failure === null ? (aligned ? { source: 'alignment', marks: aligned.marks } : (early ?? null)) : null;
   // The laptop's early marks keep clear of the working column and the Sound circle (UIUX-keepclear-READY.md place 5);
-  // the phone draws none here. The lock-on travels only from the marks drawn (item 6), so it is told what they kept
-  // clear of
-  const keepClear = useKeepClear(!phone && shownEarly !== null && Boolean(photoRect), WORKING_KEEP_CLEAR);
+  // the phone draws only the person's own rings, after Solve from here (DECIDED-BY-LEAD 24 Nov 12:58), clear of its
+  // wait's block. The lock-on travels only from the marks drawn (item 6), so it is told what they kept clear of
+  const phoneAligned = phone && shownEarly?.source === 'alignment';
+  const drawsMarks = shownEarly !== null && (!phone || phoneAligned) && (phoneAligned || Boolean(photoRect));
+  const keepClear = useKeepClear(drawsMarks, WORKING_KEEP_CLEAR);
   useEffect(() => {
-    if (!phone && shownEarly !== null && photoRect) rememberWorkingClear(shownEarly.marks, keepClear);
+    if (drawsMarks) rememberWorkingClear(shownEarly!.marks, keepClear);
   });
 
   if (phone) {
@@ -122,13 +126,51 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
     // it, anchored at its foot as D19 anchors the phone answer, over the photo's lower edge darkened as D19 darkens it;
     // Try again and Upload another where Cancel was, so the buttons never move
     const stopped = failure ? (rows.find((row) => row.state === 'failed') ?? null) : null;
+    const stepRow =
+      job?.state === 'queued' ? (
+        <div className="work-phone-row">
+          <b>
+            Queued
+            {ahead > 0 && <span>{` · ${ahead} ahead`}</span>}
+          </b>
+        </div>
+      ) : now ? (
+        <div className="work-phone-row">
+          <b>{now.word}</b>
+          <span className="work-phone-row__v">{now.value}</span>
+          {now.fraction !== null && (
+            <span className="work-phone-row__bar">
+              <b style={{ width: barWidth(now.fraction) }} />
+            </span>
+          )}
+        </div>
+      ) : null;
+    const cancelButton = cancellable ? (
+      <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" size="phone" aria-disabled={held ? true : undefined} onClick={cancel} />
+    ) : null;
+    if (phoneAligned) {
+      // Solve from here on the phone (MOTION-READY-web.md section six, DECIDED-BY-LEAD 24 Nov 12:58; laid out as D31
+      // lays out the iPhone's wait): the person's rings stay where they stood, under their Predicted tag in its aligning
+      // place, with D24's source line, D2's one step row and Cancel; the aligning block's words and button go
+      return (
+        <div className="work-screen is-phone" data-testid="working-screen" data-hud-interactive="true">
+          <StillAlignMarks rect={photoRect ?? NO_FRAME} placed={shownEarly!.marks} clear={keepClear} handOver phone wordsLeaving={(gone) => <PhoneAligningBlock leaving onGone={gone} />} />
+          <div className="work-phone-top">
+            <IconButton label="Close" icon="x" size="phone" onClick={() => onHome?.()} />
+          </div>
+          <div className="work-phone-early" data-testid="work-early">
+            <span className="work-phone-early__tag">
+              <EvidenceTag evidenceClass="predicted" />
+            </span>
+            {stepRow}
+            <p className="work-phone-early__from">{EARLY_SOURCE_WORDS.alignment}</p>
+            <div className="work-phone-go">{cancelButton}</div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="work-screen is-phone" data-testid="working-screen" data-hud-interactive="true">
-        {/* Solve from here on the phone (MOTION-READY-web.md section six, DECIDED-BY-LEAD 22 Nov 23:36): this screen draws
-            no rings, so the aligning layer's rings and names leave where they stood, the aligning block beside them */}
-        {shownEarly?.source === 'alignment' && (
-          <StillAlignMarks rect={photoRect ?? NO_FRAME} placed={shownEarly.marks} handOver drawn={false} phone whileLeaving={<PhoneAligningBlock leaving />} />
-        )}
         <div className="work-phone-top">
           <IconButton label="Close" icon="x" size="phone" onClick={() => onHome?.()} />
         </div>
@@ -153,33 +195,18 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
               </div>
             )}
           </>
-        ) : job?.state === 'queued' ? (
-          <div className="work-phone-row">
-            <b>
-              Queued
-              {ahead > 0 && <span>{` · ${ahead} ahead`}</span>}
-            </b>
-          </div>
-        ) : now ? (
-          <div className="work-phone-row">
-            <b>{now.word}</b>
-            <span className="work-phone-row__v">{now.value}</span>
-            {now.fraction !== null && (
-              <span className="work-phone-row__bar">
-                <b style={{ width: barWidth(now.fraction) }} />
-              </span>
-            )}
-          </div>
-        ) : null}
+        ) : (
+          stepRow
+        )}
         <div className="work-phone-go">
           {failure ? (
             <>
               {failure.canTryAgain && <MainAction label="Try again" icon="arrow-clockwise" size="phone" onClick={onTryAgain} />}
               <SecondAction label="Upload another" size="phone" onClick={() => fileInput.current?.click()} />
             </>
-          ) : cancellable ? (
-            <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" size="phone" aria-disabled={held ? true : undefined} onClick={cancel} />
-          ) : null}
+          ) : (
+            cancelButton
+          )}
         </div>
         {fileChooser}
       </div>

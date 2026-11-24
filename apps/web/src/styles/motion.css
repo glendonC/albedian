@@ -441,10 +441,9 @@
   animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
 }
 
-/* On the phone (section six, DECIDED-BY-LEAD 22 Nov 23:36): at the press the aligning block's words and button go on
-   words out, last first, while its Predicted tag stands at full until the rings' last frame (no rule of its own); at
-   the refused end the kept rings the working screen did not draw come in as the reveal's marks do, brightest first,
-   each in 67 ms, the last by 330 ms (reduced motion: the 270 ms dissolve, all together). */
+/* On the phone (section six, DECIDED-BY-LEAD 24 Nov 12:58, phone-solve-wait-1): at the press the aligning block's words
+   and button go on words out, last first; the rings, names and Predicted tag stand where they stood into the wait, whose
+   own block (the tag, the source line, the step row and Cancel) has no entrance: it is there from its first frame */
 .align-phone.is-leaving .align-phone__solve {
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 0) both;
 }
@@ -455,14 +454,6 @@
 
 .align-phone.is-leaving .align-phone__lead {
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 2) both;
-}
-
-.align-layer.is-still {
-  --mark-step: max(0ms, calc((var(--look-mo-span-marks) - var(--look-mo-dur-mark)) / max(1, var(--mark-n) - 1)));
-}
-
-.align-layer .is-arriving {
-  animation: look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both;
 }
 
 @keyframes lockon-travel {
@@ -489,6 +480,14 @@
 .is-locking .reveal-legend:not(.is-leaving) .reveal-legend__count,
 .is-locking .reveal-legend:not(.is-leaving) .reveal-legend__row > .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
   animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
+}
+
+/* The phone's lock-on (section six, phone-solve-wait-1): In this photo at phone width words in on the 720 row, its place
+   in the stagger as on the laptop; a Predicted or Simulated tag in it stands at full from its first frame (the 17:38 tag
+   rule, as legend-predtag-1 has it on the laptop) */
+.is-locking .reveal-phone-counts b,
+.is-locking .reveal-phone-counts .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
 }
 
 :root:has(.reveal-photo.is-locking) .ask-bar {
@@ -523,6 +522,11 @@
   .is-locking .reveal-legend:not(.is-leaving) > .reveal-legend__title,
   .is-locking .reveal-legend:not(.is-leaving) .reveal-legend__count,
   .is-locking .reveal-legend:not(.is-leaving) .reveal-legend__row > .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
+    animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
+  }
+
+  .is-locking .reveal-phone-counts b,
+  .is-locking .reveal-phone-counts .look-tag:not([data-evidence-class="predicted"], [data-evidence-class="simulated"]) {
     animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
   }
 

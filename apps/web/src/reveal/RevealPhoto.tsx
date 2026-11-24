@@ -436,9 +436,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // The lock-on (D25, MOTION-READY-web.md section 6): on the laptop, the early sky of this upload, from the reveal's
   // first arrival; it travels only once the check passed, and the arrival lasts until its words are in
   const early = !phone && !there && frame !== null ? earlyPoseOf(lockOnSky, session.sourceAsset) : null;
-  // The early marks the lock-on starts from: a Solve from here's alignment rings for this upload, else the served sky's
+  // The early marks the lock-on starts from: a Solve from here's alignment rings for this upload, else the served sky's;
+  // the phone's too since its wait keeps them (MOTION-READY-web.md section six, DECIDED-BY-LEAD 24 Nov 12:58)
   const alignedEarly: EarlyPose | null =
-    !phone && !there && frame !== null && lockOnAligned !== null && lockOnAligned.sha256 === session.sourceAsset?.sha256 ? { source: 'alignment', marks: [...lockOnAligned.marks] } : null;
+    !there && frame !== null && lockOnAligned !== null && lockOnAligned.sha256 === session.sourceAsset?.sha256 ? { source: 'alignment', marks: [...lockOnAligned.marks] } : null;
   const lockOnEarly = alignedEarly ?? early;
   const [lockingAtStart] = useState(() => lockOnEarly !== null && status.kind === 'calibrated');
   const [arriving, setArriving] = useState(true);
@@ -446,7 +447,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     const timer = setTimeout(() => setArriving(false), lockingAtStart ? LOCK_ON_ARRIVAL_MS : REVEAL_ARRIVAL_MS);
     return () => clearTimeout(timer);
   }, []);
-  const lockOn = lockingAtStart && arriving && lockOnEarly && frame && !bareFrame && !earthOnly ? lockOnPlan(lockOnEarly, frame, arrivingMarks) : null;
+  const lockOn = lockingAtStart && arriving && lockOnEarly && frame && !bareFrame && !earthOnly ? lockOnPlan(lockOnEarly, frame, arrivingMarks, phone ? 11 : 13) : null;
   // The lock-on's early marks keep their source line at full in the status column, with no entrance, from the reveal's
   // first frame until the last of them has gone (UIUX-lockon-READY.md item 1, "no early marks are ever drawn without a
   // source line"; the 17:38 tag rule; AUDIT-C's tag sweep, break 1): the travelling ones in the frame-in and colour
@@ -1108,24 +1109,34 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       })()}
 
       {/* Refused after Solve from here (D24 step 4): the rings stay amber and dashed at the kept pose */}
-      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} handOver arriving={phone} phone={phone} />}
+      {keptRefused && frame && <StillAlignMarks rect={frame} placed={placedAtPose(alignTargetList, keptRefused.pose)} clear={keepClear} handOver phone={phone} />}
       {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
       {earlyKept && <StillAlignMarks rect={frame!} placed={early!.marks} clear={keepClear} />}
 
       {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
           solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}
-      {lockOn && lockOnFromEndMs > 0 && !lockOnFromDone && (
-        <div className="lockon-from" data-testid="lockon-from">
-          <p className="reveal-status__from">{EARLY_SOURCE_WORDS[lockOnEarly!.source]}</p>
-        </div>
-      )}
+      {lockOn && lockOnFromEndMs > 0 && !lockOnFromDone &&
+        (phone ? (
+          // The phone's lock-on (section six, DECIDED-BY-LEAD 24 Nov 12:58): the Predicted tag and the source line stand
+          // in their wait places until the last lock-on mark has gone
+          <div className="lockon-from is-phone" data-testid="lockon-from">
+            <span className="work-phone-early__tag">
+              <EvidenceTag evidenceClass="predicted" />
+            </span>
+            <p className="work-phone-early__from">{EARLY_SOURCE_WORDS[lockOnEarly!.source]}</p>
+          </div>
+        ) : (
+          <div className="lockon-from" data-testid="lockon-from">
+            <p className="reveal-status__from">{EARLY_SOURCE_WORDS[lockOnEarly!.source]}</p>
+          </div>
+        ))}
       {lockOn && (
         <div className="lockon" data-testid="lockon" aria-hidden="true">
           {lockOn.travelling.map((t) => (
-            <LockOnMark key={t.id} className="align-layer is-still lockon-mark is-travelling" xPx={t.fromXPx} yPx={t.fromYPx} name={t.name} nameOnLeft={t.nameOnLeft} dxPx={t.toXPx - t.fromXPx} dyPx={t.toYPx - t.fromYPx} />
+            <LockOnMark key={t.id} className={phone ? 'align-layer is-still lockon-mark is-travelling is-phone' : 'align-layer is-still lockon-mark is-travelling'} xPx={t.fromXPx} yPx={t.fromYPx} name={t.name} nameOnLeft={t.nameOnLeft} dxPx={t.toXPx - t.fromXPx} dyPx={t.toYPx - t.fromYPx} />
           ))}
           {lockOn.leaving.map((l) => (
-            <LockOnMark key={l.id} className="align-layer is-still lockon-mark is-leaving" xPx={l.xPx} yPx={l.yPx} name={l.name} nameOnLeft={l.nameOnLeft} />
+            <LockOnMark key={l.id} className={phone ? 'align-layer is-still lockon-mark is-leaving is-phone' : 'align-layer is-still lockon-mark is-leaving'} xPx={l.xPx} yPx={l.yPx} name={l.name} nameOnLeft={l.nameOnLeft} />
           ))}
         </div>
       )}

@@ -50,11 +50,12 @@ export function rememberWorkingClear(marks: readonly PlacedTarget[], clear: read
  * working column as it was), each sent to the reveal mark of the same catalog object (else the same finding), never to
  * a deep-sky symbol; the rest leave. An early mark the working screen did not draw (under its column) neither travels
  * nor leaves: its matched mark comes in at its solve place as the reveal's marks do (UIUX-keepclear-READY.md item 6;
- * MOTION-READY-web.md section 6, the 400 ms row).
+ * MOTION-READY-web.md section 6, the 400 ms row). `fontPx`: the names' size the working screen drew them at (13 px, 11 px
+ * on the phone's wait), so the same names stand on the same sides.
  */
-export function lockOnPlan(early: EarlyPose, frame: FrameRect, marks: readonly RevealMark[]): LockOnPlan {
+export function lockOnPlan(early: EarlyPose, frame: FrameRect, marks: readonly RevealMark[], fontPx = 13): LockOnPlan {
   const clear = workingClear !== null && workingClear.key === keyOfMarks(early.marks) ? workingClear.clear : [];
-  const drawn = placeMarks(early.marks, frame, 13, clear);
+  const drawn = placeMarks(early.marks, frame, fontPx, clear);
   const keyOf = new Map(early.marks.map((m) => [m.id, m.key]));
   const targets = marks.filter((mark) => mark.deepSky === null);
   const plan: LockOnPlan = { travelling: [], leaving: [], lockedIds: new Set() };

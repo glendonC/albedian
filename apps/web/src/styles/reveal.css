@@ -1908,6 +1908,32 @@
 .work-phone-row.is-stopped .work-phone-row__bar b {
   background: var(--look-ink-3);
 }
+/* The phone's wait after Solve from here (DECIDED-BY-LEAD 24 Nov 12:58, UIUX-align-READY.md beside D24, laid out as D31
+   lays out the iPhone's wait): the person's rings under their Predicted tag in its aligning place, D2's step row and
+   Cancel where they are, and D24's source line 14 px under the step row's line (its bar's foot at 710), at left and
+   right 24, 12 px, ink 44 percent, line height 1.4 (UIUX-iphone-lockon-READY.md item 2) */
+.work-phone-early {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* The Predicted tag in the aligning tag's place (.align-phone__tag: left 24, 614 to 642) */
+.work-phone-early__tag {
+  position: absolute;
+  left: 24px;
+  top: 614px;
+  display: flex;
+}
+.work-phone-early__from {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 724px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--look-ink-3);
+}
 /* The photo's lower edge (the slot ends at 638) darkened to 82 percent black over 44 px, as D19 darkens it */
 .work-phone-fade {
   position: absolute;
@@ -2254,6 +2280,15 @@
 }
 .lockon-from .reveal-status__from {
   margin: 0;
+}
+/* The phone's lock-on (phone-solve-wait-1): the block spans the screen, so the Predicted tag and the source line stand
+   in their wait places (.work-phone-early__tag, .work-phone-early__from) until the last lock-on mark has gone */
+.lockon-from.is-phone {
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
 }
 
 /* D24 at phone width (alp-align): "Solve from here" compact and centred at top 772 */

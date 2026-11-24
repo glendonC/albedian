@@ -372,14 +372,15 @@ describe('align-zoom-1 draws in one step', () => {
 });
 
 describe('align-zoom-1 at a Solve from here hand-over', () => {
-  it("hands over the marks where the whole photo puts them, so the phone's leaving rings stand over the whole photo", () => {
+  // The phone's wait draws the rings since phone-solve-wait-1 (DECIDED-BY-LEAD 24 Nov 12:58), in the frame handed over
+  it("hands over the marks where the whole photo puts them, so the phone's wait rings stand over the whole photo", () => {
     const session = unmatched();
     const targets = alignTargets(session.observationSolution);
     const pose = startPose(session)!.pose;
     const whole = { leftPx: 0, topPx: 120, widthPx: 390, heightPx: 520 };
     const zoomed = { leftPx: -900, topPx: -1000, widthPx: 3024, heightPx: 4032 };
     act(() => root.render(createElement(AlignLayer, { rect: zoomed, wholeRect: whole, pose, targets, onPose: () => {}, phone: true })));
-    act(() => root.render(createElement(StillAlignMarks, { rect: whole, placed: placedAtPose(targets, pose), handOver: true, drawn: false, phone: true })));
+    act(() => root.render(createElement(StillAlignMarks, { rect: whole, placed: placedAtPose(targets, pose), handOver: true, phone: true })));
     const still = q('[data-testid="early-marks"]') as HTMLElement;
     expect(boxOf(still)).toEqual(whole);
     expect(still.querySelectorAll('circle').length).toBeGreaterThan(0);
