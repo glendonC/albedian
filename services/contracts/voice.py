@@ -179,6 +179,13 @@ class MediaSeek(_Action):
     preserve_audio_sync: TrueOnly
 
 
+class MediaPlayback(_Action):
+    """A clip played or paused on screen (media-playback-0): the reducer writes it to isPlaying."""
+
+    type: Literal["media.playback"]
+    playing: bool
+
+
 class SkyShow(_Action):
     type: Literal["sky.show"]
     mode: Literal["measured", "predicted"]
@@ -280,14 +287,15 @@ class QuestionAsk(_Action):
 
 
 ACTION_MODELS = (
-    MediaRestore, MediaCompare, MediaSeek, SkyShow, FindingSelect, FindingDescribe, SpaceEnter, SpaceViewpoint,
-    SpaceEpoch, HistoryBack, NavigationCancel, UiOverlay, SourceReturn, SpaceRegime, SceneShow, AudioSet, QuestionAsk,
+    MediaRestore, MediaCompare, MediaSeek, MediaPlayback, SkyShow, FindingSelect, FindingDescribe, SpaceEnter,
+    SpaceViewpoint, SpaceEpoch, HistoryBack, NavigationCancel, UiOverlay, SourceReturn, SpaceRegime, SceneShow, AudioSet,
+    QuestionAsk,
 )
 AlbedianAction = Annotated[
     Union[
-        MediaRestore, MediaCompare, MediaSeek, SkyShow, FindingSelect, FindingDescribe, SpaceEnter, SpaceViewpoint,
-        SpaceEpoch, HistoryBack, NavigationCancel, UiOverlay, SourceReturn, SpaceRegime, SceneShow, AudioSet,
-        QuestionAsk,
+        MediaRestore, MediaCompare, MediaSeek, MediaPlayback, SkyShow, FindingSelect, FindingDescribe, SpaceEnter,
+        SpaceViewpoint, SpaceEpoch, HistoryBack, NavigationCancel, UiOverlay, SourceReturn, SpaceRegime, SceneShow,
+        AudioSet, QuestionAsk,
     ],
     Field(discriminator="type"),
 ]
@@ -1080,6 +1088,7 @@ def build_voice_samples() -> dict[str, Any]:
     )
     compare = act("media.compare", variantAId="var-sample-a", variantBId="var-sample-b", preserveTime=True)
     seek = act("media.seek", sourceTimeSec=0, preserveAudioSync=True)
+    play = act("media.playback", playing=True)
     sky = act("sky.show", mode="measured")
     select = act("finding.select", findingId="finding-star-vega")
     describe = act(
@@ -1103,7 +1112,7 @@ def build_voice_samples() -> dict[str, Any]:
     silence = act("audio.set", gain=0)
     question = act("question.ask", question="how old is that light?")
     actions = [
-        restore, compare, seek, sky,
+        restore, compare, seek, play, act("media.playback", playing=False), sky,
         act("sky.show", mode="predicted", observationSolutionId="sol-sample"),
         select, describe, enter, viewpoint, epoch,
         act("space.epoch", epochISO="-10000-01-01T00:00:00Z", yearCE=EPOCH_MIN_YEAR_CE),
@@ -1260,6 +1269,9 @@ def build_voice_samples() -> dict[str, Any]:
     bad(action, _with(restore, ["profile"], "dramatic"), "an unknown profile")
     bad(action, _with(compare, ["preserveTime"], 1), "1 is not true")
     bad(action, _with(seek, ["sourceTimeSec"], -0.5), "a negative time")
+    bad(action, _with(play, ["playing"], 1), "1 is not a boolean")
+    bad(action, _with(play, ["playing"], "true"), "text is not a boolean")
+    bad(action, {key: value for key, value in play.items() if key != "playing"}, "playing or paused is said")
     bad(action, _with(sky, ["mode"], "imagined"), "an unknown sky mode")
     bad(action, _with(sky, ["observationSolutionId"], None), "an optional field is absent, never null")
     bad(action, _with(select, ["findingId"], ""), "an empty finding id")

@@ -147,6 +147,14 @@ export const AlbedianActionSchema = z.discriminatedUnion('type', [
     sourceTimeSec: z.number().nonnegative(),
     preserveAudioSync: z.literal(true),
   }),
+  // A clip played or paused on screen (media-playback-0): the reducer writes it to isPlaying, so a CameraCheckpoint
+  // saved on leaving the recording carries playbackWasPlaying as it was
+  z.object({
+    type: z.literal('media.playback'),
+    requestId: z.string().min(1),
+    expectedViewRevision: z.number().int().nonnegative(),
+    playing: z.boolean(),
+  }),
   z.object({
     type: z.literal('sky.show'),
     requestId: z.string().min(1),

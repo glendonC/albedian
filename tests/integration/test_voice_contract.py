@@ -137,6 +137,20 @@ def test_the_actions_the_claude_path_composes_fit_the_mirror() -> None:
         assert _round_trip("AlbedianAction", action) == action
 
 
+def test_media_playback_says_whether_the_clip_plays_as_a_boolean_and_nothing_else() -> None:
+    """media-playback-0: a clip played or paused on screen, written through the reducer so a checkpoint carries it.
+    As Zod reads it: a strict boolean (1, 0, text and null refused, a missing one refused)."""
+    base = {"type": "media.playback", "requestId": "req", "expectedViewRevision": 0}
+    for playing in (True, False):
+        assert _round_trip("AlbedianAction", {**base, "playing": playing}) == {**base, "playing": playing}
+    for playing in (1, 0, "true", None):
+        with pytest.raises(ValidationError):
+            voice.ALBEDIAN_ACTION.validate_python({**base, "playing": playing})
+    with pytest.raises(ValidationError):
+        voice.ALBEDIAN_ACTION.validate_python(base)
+    assert "media.playback" in voice.ACTION_TYPES
+
+
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf], ids=["nan", "inf", "-inf"])
 def test_nan_and_the_infinities_are_refused(value: float) -> None:
     """Standard JSON carries none of them, so Zod never meets one; Python's json.loads reads them, so the
@@ -174,6 +188,8 @@ def contract_actions(draw: st.DrawFn) -> dict[str, Any]:
         fields = {"variantAId": draw(_text()), "variantBId": draw(_text()), "preserveTime": True}
     elif kind == "media.seek":
         fields = {"sourceTimeSec": draw(st.floats(0, 1e5)), "preserveAudioSync": True}
+    elif kind == "media.playback":
+        fields = {"playing": draw(st.booleans())}
     elif kind == "sky.show":
         fields = {"mode": draw(st.sampled_from(["measured", "predicted"]))}
         if draw(st.booleans()):

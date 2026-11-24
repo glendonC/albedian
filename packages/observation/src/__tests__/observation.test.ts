@@ -399,6 +399,11 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
         kind: fc.constant('media.compare' as const),
         variantAId: fc.constantFrom(firstVariant, lastVariant),
         variantBId: fc.constantFrom(firstVariant, lastVariant),
+      }),
+      // media-playback-0: playing or pausing the clip on screen is part of the moment saved on leaving it
+      fc.record({
+        kind: fc.constant('media.playback' as const),
+        playing: fc.boolean(),
       })
     );
 
@@ -515,22 +520,31 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
                   preserveTime: true,
                 };
                 break;
+              case 'media.playback':
+                action = {
+                  type: 'media.playback',
+                  requestId: reqId,
+                  expectedViewRevision: session.viewRevision,
+                  playing: step.playing,
+                };
+                break;
             }
 
             const res = dispatchAlbedianAction(session, action);
-            // space.epoch is refused because the view does not move the stars to a chosen year, and leaves the session as it was
-            if (action.type === 'space.epoch') {
-              expect(res.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected' });
-              expect(res.session).toBe(session);
-            } else {
-              expect(res.outcome.status).toBe('completed');
-            }
             // The photo is on screen on the source and in a wipe opened over it; a wipe opened in the sky or
             // space keeps that view, so leaving it is not leaving the photo (stated here, not imported, so the
             // property checks the rule rather than restating the code under test)
             const onRecording = (s: ObservationSession) =>
               s.machines.navigation === 'source' ||
               (s.machines.navigation === 'comparison' && s.spatialView.mode === 'source_2d');
+            // space.epoch is refused because the view does not move the stars to a chosen year, and media.playback
+            // away from the clip because it is not on screen; each leaves the session as it was
+            if (action.type === 'space.epoch' || (action.type === 'media.playback' && !onRecording(session))) {
+              expect(res.outcome).toMatchObject({ status: 'rejected', reason: action.type === 'space.epoch' ? 'not_connected' : 'missing_source' });
+              expect(res.session).toBe(session);
+            } else {
+              expect(res.outcome.status).toBe('completed');
+            }
             if (onRecording(session) && !onRecording(res.session)) {
               lastDeparture = session;
             }
@@ -578,6 +592,16 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
               { kind: 'media.compare', variantAId: firstVariant, variantBId: lastVariant },
               { kind: 'finding.select', findingId: 'finding_rigel' },
               { kind: 'sky.show' },
+            ],
+          ],
+          // media-playback-0: a paused clip played on screen, then left: Back to Moment brings it back playing; a
+          // playback asked for in space is refused and changes nothing
+          [
+            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: firstVariant, selectedFindingId: null, isPlaying: false },
+            [
+              { kind: 'media.playback', playing: true },
+              { kind: 'space.enter', findingId: 'finding_sirius' },
+              { kind: 'media.playback', playing: false },
             ],
           ],
         ],

@@ -17,6 +17,7 @@ import {
   pushCheckpointIfDepartingSource,
   returnCheckpointOf,
   restoreSessionToCheckpoint,
+  savedOnRecording,
   syncAnchorCheckpointIfInitial,
 } from './checkpoints.js';
 
@@ -184,6 +185,24 @@ export function dispatchAlbedianAction(
         `Seeked to ${clampedSec.toFixed(1)} seconds.`,
         status
       );
+    }
+
+    // A clip played or paused on screen (media-playback-0): written to isPlaying, so a checkpoint saved on leaving the
+    // recording carries playbackWasPlaying as it was (AGENTS.md 1.5). Only a clip on screen plays: on the recording, or
+    // under a compare wipe opened over it (the rule Back to Moment reads, savedOnRecording). The status line is left as
+    // it is: playing or pausing says nothing new on screen
+    case 'media.playback': {
+      if (!base.sourceAsset) {
+        return rejectAction(session, action.requestId, 'missing_source', 'Cannot play when no SourceAsset is loaded.', ['Import a recording first']);
+      }
+      if (base.sourceAsset.mediaKind !== 'video') {
+        return rejectAction(session, action.requestId, 'missing_source', 'A photo does not play; only a clip does.', []);
+      }
+      if (!savedOnRecording({ navigationState: base.machines.navigation, spatialView: base.spatialView })) {
+        return rejectAction(session, action.requestId, 'missing_source', 'The clip is not on screen, so it cannot play here.', ['Back to Moment first']);
+      }
+      const said = action.playing ? 'Playing the clip.' : 'Paused the clip.';
+      return completeAction({ ...base, viewRevision: nextRev, isPlaying: action.playing }, action.requestId, nextRev, said, said);
     }
 
     case 'sky.show': {

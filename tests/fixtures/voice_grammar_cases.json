@@ -5,6 +5,7 @@
   "finding.select",
   "history.back",
   "media.compare",
+  "media.playback",
   "media.restore",
   "media.seek",
   "navigation.cancel",
