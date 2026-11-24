@@ -17,6 +17,7 @@ Covers, on synthetic stills written as 16 bit PNGs and decoded as any upload is:
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import weakref
 
@@ -527,10 +528,12 @@ def test_the_graph_records_the_gates_settings_with_the_values_that_made_the_vari
             assert parameter["origin"] == "default" and parameter["basis"] == "Proposed in design section 7."
 
 
-def _banded_still(tmp_path, name: str, bands: list[tuple[int, tuple[int, int, int]]], *, bits: int = 8) -> decode.DecodedStill:
+def _banded_still(tmp_path, name: str, bands: list[tuple[int, tuple[int, int, int]]], *, bits: int = 8,
+                  sky: tuple[float, float, float] = (48.0, 96.0, 3.5)) -> decode.DecodedStill:
     """A 192 x 192 still whose upper rows hold constant bands `(rows, (r, g, b))` in 8-bit scale (scaled to 16 bits
     when `bits == 16`) and whose remaining rows hold a noisy rising sky so `measure_noise` builds a full table while
-    `darkest_quarter_blocks` falls inside the upper bands."""
+    `darkest_quarter_blocks` falls inside the upper bands. `sky` is its code at the top, its rise to the bottom and its
+    noise, in 8-bit scale."""
     import io
     from PIL import Image
 
@@ -539,9 +542,9 @@ def _banded_still(tmp_path, name: str, bands: list[tuple[int, tuple[int, int, in
     scale = 257 if bits == 16 else 1
     top = 65535 if bits == 16 else 255
     yy = np.linspace(0.0, 1.0, size)[:, None]
-    base_code = 48.0 + 96.0 * yy
+    base_code = sky[0] + sky[1] * yy
     noisy = np.clip(
-        np.round((base_code[..., None] + rng.normal(0.0, 3.5, (size, size, 3))) * scale),
+        np.round((base_code[..., None] + rng.normal(0.0, sky[2], (size, size, 3))) * scale),
         0,
         top,
     ).astype(np.uint16 if bits == 16 else np.uint8)
@@ -594,20 +597,167 @@ def test_a_dark_still_with_measurable_noise_near_black_still_restores(tmp_path) 
     assert result.status == "ready" and result.data is not None
 
 
-def test_a_zero_dark_level_noise_not_on_the_black_clip_or_another_noise_fault_stays_photo_error(
+# photo-flatband-one [decided 2026-11-24 13:25, 13:59 and 17:23 by the lead]: a still whose darkest quarter is a flat
+# band off the black clip takes the not-measured path with the reason `dark_level_flat` and the decided note, never
+# the internal error. Each band is 64 rows over `_banded_still`'s noisy sky; the noise at the dark level is exactly 0
+# on some and the float rounding of one code on others (5.8e-20 to 7.4e-18, .lanetools/flatband/sweep.py), on which
+# the measured path ran and recorded a fine noise left of rounding over rounding (0 to 0.17, .lanetools/flatband/
+# fnl.py). The ramp is a narrow black border (16 rows at 0) rising into flat grey (48 rows at 24).
+RAMP = [(16, (0, 0, 0)), *[(1, (round(24 * (r + 1) / 16),) * 3) for r in range(16)], (48, (24, 24, 24))]
+FLAT_BANDS = [
+    ("grey_24", [(64, (24, 24, 24))], 8),  # 0 today: the internal error
+    ("grey_1", [(64, (1, 1, 1))], 8),  # one code above black, 0 today
+    ("red_40", [(64, (40, 0, 0))], 8),  # 0 today
+    ("ramp", RAMP, 8),  # 0 today
+    ("grey_12", [(64, (12, 12, 12))], 8),  # rounding today: restored on the measured path
+    ("red_7", [(64, (7, 0, 0))], 8),  # rounding today
+    ("green_1", [(64, (0, 1, 0))], 16),  # rounding today, at 16 bits
+]
+
+
+@pytest.mark.parametrize("name,bands,bits", FLAT_BANDS, ids=[case[0] for case in FLAT_BANDS])
+def test_a_flat_dark_band_takes_the_not_measured_path_with_the_reason_dark_level_flat(
+        tmp_path, monkeypatch, name, bands, bits) -> None:
+    from services.media import tone
+
+    still = _banded_still(tmp_path, f"{name}.png", bands, bits=bits)
+    result = photo.restore_still(still)
+    measured = result.measured
+    assert result.status == "ready" and result.data is not None
+    assert measured["noiseNotMeasured"] == "dark_level_flat"
+    assert not {"noise", "fineNoiseLeft", "chroma"} & set(measured)
+    # The decided note is the not-measured path's own: said where the quantisation bound holds the lift, and these
+    # skies, bright over their band, take no lift (the job's test has a dark sky that shows it)
+    assert tone.NOTE_NOISE_NOT_MEASURED == contracts.NOTES[0]
+    held = measured["lift"]["decidedBy"] == "quantisation_bound"
+    assert (tone.NOTE_NOISE_NOT_MEASURED in measured["notes"]) is held
+    assert not {"spatial_denoise", "smooth_chroma"} & {step["kind"] for step in result.steps}
+    contracts.RestorationMeasurements.model_validate(measured)
+    contracts.IntegrityGateResult.model_validate(result.gate)
+    # Exactly the not-measured path: the same still with the measurement giving that reason from the start restores
+    # to the same file, record, gate and graph
+    real_measure = noise.measure_noise
+    monkeypatch.setattr(noise, "measure_noise", lambda *args, **kwargs: (
+        real_measure(*args, **kwargs), noise.NoiseMeasurement("dark_level_flat"))[1])
+    forced = photo.restore_still(still)
+    assert np.array_equal(result.stored, forced.stored) and result.data == forced.data
+    assert (result.measured, result.gate, result.steps) == (forced.measured, forced.gate, forced.steps)
+
+
+def _first_fine_noise(monkeypatch, value: float) -> None:
+    """`noise.fine_noise` gives `value` on its first call (the noise at the dark level before restoring), its own
+    answer after it."""
+    real_fine = noise.fine_noise
+    calls = []
+
+    def fine_noise(plane, blocks):
+        calls.append(1)
+        return value if len(calls) == 1 else real_fine(plane, blocks)
+
+    monkeypatch.setattr(noise, "fine_noise", fine_noise)
+
+
+def test_a_band_on_the_black_clip_whose_noise_reads_above_zero_is_never_refused_but_takes_dark_level_flat(
         tmp_path, monkeypatch) -> None:
-    # Flat darkest quarter at dark grey (24, 24, 24), saturated red (40, 0, 0), or a narrow black border (16 rows at 0)
-    # ramped into flat grey (48 rows at 24): none has a sky sitting on the black clip, so each stays PhotoError
-    ramp = [(16, (0, 0, 0)), *[(1, (round(24 * (r + 1) / 16),) * 3) for r in range(16)], (48, (24, 24, 24))]
-    for name, bands in (
-        ("flat_grey.png", [(64, (24, 24, 24))]),
-        ("flat_red.png", [(64, (40, 0, 0))]),
-        ("border_grey.png", ramp),
-    ):
-        still = _banded_still(tmp_path, name, bands, bits=8)
-        with pytest.raises(photo.PhotoError):
-            photo.restore_still(still)
-    # Empty darkest-quarter blocks (`before` is NaN) and post-spatial `after` NaN on a dark sky also stay PhotoError
+    # A noise above zero on blocks of code 0 (a neighbour's within the fine scale's reach, or rounding) went on to be
+    # restored before the unit; C36 stays for a noise of exactly zero only, so nothing that restored is now refused
+    still = _banded_still(tmp_path, "black.png", [(64, (0, 0, 0))], bits=8)
+    _first_fine_noise(monkeypatch, 1e-18)
+    result = photo.restore_still(still)
+    assert result.measured["noiseNotMeasured"] == "dark_level_flat" and result.status == "ready"
+
+
+def test_a_dark_level_noise_of_exactly_zero_takes_dark_level_flat_even_where_the_codes_vary(
+        tmp_path, monkeypatch) -> None:
+    # No block of the honest sky holds one code, yet a zero noise at the dark level cannot be measured either: it was
+    # the internal error, and is the not-measured path now
+    scene = star_field(11, size=192, count=10, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    still = still_of(scene.codes, tmp_path)
+    assert "noiseNotMeasured" not in photo.restore_still(still).measured
+    _first_fine_noise(monkeypatch, 0.0)
+    assert photo.restore_still(still).measured["noiseNotMeasured"] == "dark_level_flat"
+
+
+def test_a_flat_dark_band_inside_black_bars_is_measured_inside_them_and_takes_dark_level_flat(tmp_path) -> None:
+    still = _banded_still(tmp_path, "grey_24.png", FLAT_BANDS[0][1], bits=8)
+    barred = dataclasses.replace(still, samples=np.pad(still.samples, ((24, 24), (0, 0), (0, 0))))
+    result = photo.restore_still(barred)
+    assert result.bars == photo.bars_rule.Bars(top=24, bottom=24)
+    assert result.measured["noiseNotMeasured"] == "dark_level_flat" and result.status == "ready"
+    assert np.array_equal(result.picture, photo.restore_still(still).stored)
+
+
+def test_a_dark_band_on_fewer_than_a_quarter_of_the_darkest_blocks_keeps_the_measured_path(tmp_path) -> None:
+    # Eight rows at 24 are 24 of the darkest quarter's 144 blocks, one code each: the estimator's 25th-percentile
+    # block is not one of them, so the noise is measured as before the unit
+    still = _banded_still(tmp_path, "thin_grey.png", [(8, (24, 24, 24))], bits=8)
+    result = photo.restore_still(still)
+    assert "noiseNotMeasured" not in result.measured and "noise" in result.measured
+    assert result.measured["fineNoiseLeft"] < 1.0
+
+
+def test_a_frame_mostly_without_fine_detail_keeps_its_whole_frame_reason_before_the_dark_band(tmp_path) -> None:
+    # 112 of 192 rows at 24: more than half of every channel's fine detail is exactly zero, a whole-frame reason that
+    # the noise measure gives before any darkest quarter is chosen, as it did before the unit
+    still = _banded_still(tmp_path, "wide_grey.png", [(112, (24, 24, 24))], bits=8)
+    assert photo.restore_still(still).measured["noiseNotMeasured"] == "fine_detail_mostly_zero"
+
+
+def test_a_narrow_band_whose_edge_blocks_see_the_noisy_sky_keeps_the_measured_path(tmp_path) -> None:
+    # AUDIT-B's verdict on version one (verdicts/photo-flatband-one.md; the form of rp-b-01's crop under a 48 px band):
+    # 16 rows at code 1 over a dark sky (code 6 rising to 20, noise 2) are 48 of the darkest quarter's 144 blocks, each
+    # one code, but only the top row's 24 hold one code out to the fine scale's reach; the noise at the dark level is
+    # the sky's reaching into the band's edge row, a real noise, measured as at revision 10, never `dark_level_flat`
+    still = _banded_still(tmp_path, "narrow.png", [(16, (1, 1, 1))], bits=8, sky=(6.0, 14.0, 2.0))
+    result = photo.restore_still(still)
+    assert "noiseNotMeasured" not in result.measured and "noise" in result.measured
+    assert 0.0 < result.measured["fineNoiseLeft"] < 1.0
+
+
+def test_a_band_flat_in_green_and_blue_but_noisy_in_red_keeps_the_measured_path(tmp_path) -> None:
+    # Every channel must hold one code: a band whose red carries noise has a noise at the dark level to measure
+    still = _banded_still(tmp_path, "red_noisy.png", [(64, (24, 24, 24))], bits=8)
+    samples = np.array(still.samples, copy=True)
+    rng = np.random.default_rng(5)
+    samples[:64, :, 0] = (24 + rng.integers(-2, 3, samples[:64, :, 0].shape)).astype(samples.dtype)
+    result = photo.restore_still(dataclasses.replace(still, samples=samples))
+    assert "noiseNotMeasured" not in result.measured and "noise" in result.measured
+
+
+def test_a_block_is_flat_in_codes_when_it_and_its_border_to_the_fine_scales_reach_hold_one_code_per_channel() -> None:
+    def frame(flat: int, total: int = 100) -> tuple[np.ndarray, np.ndarray]:
+        rng = np.random.default_rng(total + flat)
+        codes = rng.integers(0, 4, (8, 8 * total, 3)).astype(np.uint16)
+        codes[:, :8 * flat] = np.array([40, 0, 7], dtype=np.uint16)  # one code in each channel, not one across them
+        return codes, np.ones(total, dtype=bool)
+
+    # The last flat block's border reaches 2 px into its random neighbour, so `flat` flat blocks are `flat - 1` flat out
+    # to the reach; numpy's linear 25th percentile of 100 sorted spreads sits between the 25th and 26th, so 26 of them
+    # hold it at 0
+    assert noise.flat_in_codes(*frame(27)) is True
+    assert noise.flat_in_codes(*frame(26)) is False
+    assert noise.flat_in_codes(frame(27)[0][..., 0], frame(27)[1]) is True  # a single plane, as the clip's luma
+    codes, chosen = frame(27)
+    codes[3, 3, 1] = 1  # one sample of one channel a code off: that block is no longer flat
+    assert noise.flat_in_codes(codes, chosen) is False
+    # The reach is 2 px: a sample 2 px past block 25's edge takes it out, one 3 px past does not
+    codes, chosen = frame(27)
+    codes[0, 8 * 26 + 2, 0] = 39
+    assert noise.flat_in_codes(codes, chosen) is True
+    codes[0, 8 * 26 + 1, 0] = 39
+    assert noise.flat_in_codes(codes, chosen) is False
+    # Only the chosen blocks count: 26 flat of the first 30, or 6 flat of the last 80
+    codes, chosen = frame(27)
+    chosen[30:] = False
+    assert noise.flat_in_codes(codes, chosen) is True
+    chosen[:] = True
+    chosen[:20] = False
+    assert noise.flat_in_codes(codes, chosen) is False
+    assert noise.flat_in_codes(codes, np.zeros(100, dtype=bool)) is False
+
+
+def test_a_dark_level_noise_that_is_not_a_number_stays_photo_error(tmp_path, monkeypatch) -> None:
+    # Empty darkest-quarter blocks (`before` is NaN) and post-spatial `after` NaN on a dark sky stay PhotoError
     scene = star_field(33, size=192, count=8, sky=0.0004, noise_sigma=0.00035, bits=16, peaks=(0.02, 0.2))
     dark_still = still_of(scene.codes, tmp_path)
     empty_blocks = np.zeros((192 // 8) * (192 // 8), dtype=bool)

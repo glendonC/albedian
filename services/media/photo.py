@@ -128,15 +128,21 @@ def _blocks_on_black_clip(codes: np.ndarray, blocks: np.ndarray) -> bool:
     estimator's own 25th-percentile share (`noise.ENERGY_PERCENTILE`) of them lie wholly on code 0 across every
     channel, and the median code across all samples of the chosen blocks is 0 [proposed: zero extra constants;
     reuses `noise.BLOCK_PX` and `noise.ENERGY_PERCENTILE`; tested on `rp-b-06` and synthetic controls]."""
-    chosen_mask = np.asarray(blocks, dtype=bool)
-    if not chosen_mask.any():
+    chosen = _chosen_code_blocks(codes, blocks)
+    if not chosen.size:
         return False
+    block_peak = chosen.max(axis=(1, 2, 3))
+    return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) == 0 and np.median(chosen) == 0)
+
+
+def _chosen_code_blocks(codes: np.ndarray, blocks: np.ndarray) -> np.ndarray:
+    """The codes of the chosen blocks, (blocks, `noise.BLOCK_PX`, `noise.BLOCK_PX`, channels), in the noise module's
+    row-major block order."""
+    chosen_mask = np.asarray(blocks, dtype=bool)
     rows, columns = codes.shape[0] // noise.BLOCK_PX, codes.shape[1] // noise.BLOCK_PX
     cut = codes[: rows * noise.BLOCK_PX, : columns * noise.BLOCK_PX]
     grid = cut.reshape(rows, noise.BLOCK_PX, columns, noise.BLOCK_PX, codes.shape[2]).swapaxes(1, 2)
-    chosen = grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX, codes.shape[2])[chosen_mask]
-    block_peak = chosen.max(axis=(1, 2, 3))
-    return bool(np.percentile(block_peak, noise.ENERGY_PERCENTILE) == 0 and np.median(chosen) == 0)
+    return grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX, codes.shape[2])[chosen_mask]
 
 
 def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = None, *,
@@ -198,10 +204,18 @@ def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], m
     if measurement.reason is None:
         blocks = noise.darkest_quarter_blocks(luminance, kept.weight, field.clipped)
         before = noise.fine_noise(luminance, blocks)
-        if not (math.isfinite(before) and before > 0):
-            if math.isfinite(before) and _blocks_on_black_clip(codes, blocks):
-                raise PhotoRefusal(NEAR_BLACK_CLIP)
+        if not math.isfinite(before):
             raise PhotoError("the noise at the dark level could not be measured on both images")
+        if before <= 0 and _blocks_on_black_clip(codes, blocks):
+            raise PhotoRefusal(NEAR_BLACK_CLIP)
+        if before <= 0 or noise.flat_in_codes(codes, blocks):
+            # A flat dark band: its noise cannot be measured, so the still takes the not-measured path from here, the
+            # kept regions as that path finds them; a band whose edge blocks see the sky within the fine scale's reach
+            # stays measured, by the clip's flat test [decided 2026-11-24 13:25, 13:59, 17:23 and 19:36 by the lead,
+            # photo-flatband-one]; the whole-frame reasons above are given first, as before
+            measurement = noise.NoiseMeasurement("dark_level_flat")
+            kept = gate.kept_regions(field, codes, top, luminance, measurement)
+    if measurement.reason is None:
         measured["noise"] = measurement.table()
         working = spatial.edge_avoiding(linear, noise.stabilised(luminance, measurement), kept.weight).frame
         working = gate.smooth_first_scale(working, kept)

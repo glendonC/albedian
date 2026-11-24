@@ -1007,7 +1007,7 @@ def _banded_png8(top_rgb: tuple[int, int, int]) -> bytes:
 
 
 def test_a_near_black_still_ends_its_job_failed_with_c36_after_decode_and_other_photo_errors_stay_internal(
-        client, tmp_path) -> None:
+        client, tmp_path, monkeypatch) -> None:
     from services.media import photo
 
     sha = upload(client, _banded_png8((0, 0, 0)))
@@ -1028,7 +1028,19 @@ def test_a_near_black_still_ends_its_job_failed_with_c36_after_decode_and_other_
     contracts.ProcessingAttempt.model_validate(attempt)
     assert (attempt["status"], attempt["failureReason"]) == ("failed", photo.NEAR_BLACK_CLIP)
 
-    # A still whose darkest quarter is flat above black (code 24, not clipped at 0) keeps the internal-error sentence
+    # A still whose darkest quarter is flat above black (code 24, not clipped at 0) took the internal-error sentence
+    # and now takes the not-measured path as dark_level_flat (photo-flatband-one) ...
+    flat_sha = upload(client, _banded_png8((24, 24, 24)))
+    flat_job = finished(client, client.post(f"/api/media/{flat_sha}/restore", json={"kind": "restoration"}).json())
+    assert flat_job["state"] == "succeeded", flat_job
+    flat_attempt = client.get(f"/api/media/{flat_sha}/variants/{flat_job['variantId']}").json()["attempt"]
+    assert flat_attempt["measured"]["noiseNotMeasured"] == "dark_level_flat"
+
+    # ... and a noise at the dark level that is not a number (no darkest-quarter block) keeps the internal-error sentence
+    from services.media import noise
+
+    monkeypatch.setattr(noise, "darkest_quarter_blocks", lambda luma, footprint, clipped: np.zeros(
+        (luma.shape[0] // noise.BLOCK_PX) * (luma.shape[1] // noise.BLOCK_PX), dtype=bool))
     grey_bytes = _banded_png8((24, 24, 24))
     grey_sha = hashlib.sha256(grey_bytes).hexdigest()
     grey_folder = tmp_path / "grey_store" / grey_sha[:2] / grey_sha
@@ -1074,6 +1086,26 @@ def test_a_still_inside_black_bars_is_stored_whole_with_its_bars_at_restore_revi
     assert served.shape == codes.shape
     assert not served[:20].any() and not served[-20:].any() and served[20:-20].any()
     assert bars.find_bars([served.max(axis=-1)], 0) == bars.Bars(top=20, bottom=20)
+
+
+def test_a_still_whose_darkest_quarter_is_a_flat_band_succeeds_as_dark_level_flat_at_restore_revision_twelve(
+        client) -> None:
+    # photo-flatband-one [decided 2026-11-24 13:59 and 17:23 by the lead]: a flat dark band a code above black is not
+    # the internal error; the attempt names the reason and shows the decided note
+    from services.media import variants
+
+    assert media_jobs.MEDIA_PRODUCER.revision >= 12
+    assert variants.PIPELINE_VERSION == f"1.{media_jobs.MEDIA_PRODUCER.revision}.0"
+    scene = star_field(11, size=192, count=10, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    codes = scene.codes.astype(np.uint16)
+    codes[:64] = 257  # 8-bit code 1 at 16 bits, darker than the sky below it
+    sha = upload(client, png16.write_png16(codes, None))
+    job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"}).json())
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
+    attempt = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()["attempt"]
+    measured = attempt["measured"]
+    assert measured["noiseNotMeasured"] == "dark_level_flat" and "noise" not in measured
+    assert measured["notes"][0] == tone.NOTE_NOISE_NOT_MEASURED and media_jobs.NOTE_BLACK not in measured["notes"]
 
 
 def _banded_clip_file(path: Path, sky_y: int, *, pix_fmt: str = "yuv420p", colour_range: str = "tv",

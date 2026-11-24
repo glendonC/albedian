@@ -68,8 +68,10 @@ MEDIA_PRODUCER_FILES = (
 # MIN_SIDE_PX check in measure_clip, and measure stage held short of full until measure_clip returns (nearblackclip-1);
 # 10, a still with black bars on both opposite edges that open its picture is measured, restored and gated inside them
 # and keeps its bars (photo-bars-one); 11, a clip whose darkest quarter is a flat dark band above black takes the
-# not-measured path as dark_level_flat, and a dark-level noise made of rounding reads as zero (flatband-two)
-MEDIA_PRODUCER = Producer("albedian.restore", 11, MEDIA_PRODUCER_FILES)
+# not-measured path as dark_level_flat, and a dark-level noise made of rounding reads as zero (flatband-two); 12, a
+# still whose darkest quarter is a flat band off the black clip takes the not-measured path as dark_level_flat, by the
+# clip's flat test, now one helper in noise.py, border reach included (photo-flatband-one)
+MEDIA_PRODUCER = Producer("albedian.restore", 12, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a

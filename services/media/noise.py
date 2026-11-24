@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import numpy as np
+from scipy import ndimage
 
 from services.science.detector import LUMA_WEIGHTS
 
@@ -215,6 +216,33 @@ def darkest_quarter_blocks(luminance: np.ndarray, footprint: np.ndarray, clipped
         quarter = np.percentile(level[flat], ENERGY_PERCENTILE)
         chosen = flat & (level <= quarter)
     return chosen
+
+
+def flat_in_codes(codes: np.ndarray, blocks: np.ndarray) -> bool:
+    """Whether the estimator's own 25th-percentile block of the chosen blocks (`ENERGY_PERCENTILE`, by the same linear
+    rule) holds one code, and so does its border out to the fine scale's reach (half the B3 kernel, `B3_TAPS`), in each
+    channel of `codes` (a code plane H x W, as a clip's luma, or planes H x W x C, as a still's): its fine-scale energy
+    is then the float rounding of the light alone (3.7e-18 at Y'=40 on a clip, up to 7.4e-18 on a still's bands)
+    [tested], never a neighbour's noise reaching in, which stays measured [decided 2026-11-24 by the lead:
+    flatband-two's rule, one helper for clips and stills since photo-flatband-one version two; zero extra constants]."""
+    chosen_mask = np.asarray(blocks, dtype=bool)
+    if not chosen_mask.any():
+        return False
+    planes = np.asarray(codes)
+    if planes.ndim == 2:
+        planes = planes[..., None]
+    reach = 2 * (len(B3_TAPS) // 2) + 1
+    rows, columns = planes.shape[0] // BLOCK_PX, planes.shape[1] // BLOCK_PX
+
+    def chosen(plane: np.ndarray) -> np.ndarray:
+        cut = plane[: rows * BLOCK_PX, : columns * BLOCK_PX]
+        grid = cut.reshape(rows, BLOCK_PX, columns, BLOCK_PX, plane.shape[2]).swapaxes(1, 2)
+        return grid.reshape(rows * columns, BLOCK_PX, BLOCK_PX, plane.shape[2])[chosen_mask]
+
+    highest = chosen(ndimage.maximum_filter(planes, size=(reach, reach, 1), mode="nearest"))
+    lowest = chosen(ndimage.minimum_filter(planes, size=(reach, reach, 1), mode="nearest"))
+    spread = (highest.max(axis=(1, 2)).astype(np.int64) - lowest.min(axis=(1, 2)).astype(np.int64)).max(axis=-1)
+    return bool(np.percentile(spread, ENERGY_PERCENTILE) <= 0)
 
 
 def fine_noise(plane: np.ndarray, blocks: np.ndarray) -> float:

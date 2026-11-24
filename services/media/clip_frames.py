@@ -16,7 +16,6 @@ from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 import numpy as np
-from scipy import ndimage
 
 from services.media import clip_io, colour, encode, frame_pool, gate, noise, spatial, stars, temporal, tone
 from services.media.decode import (
@@ -286,18 +285,10 @@ def _blocks_on_black_clip(luma_codes: np.ndarray, blocks: np.ndarray, black_code
 
 
 def _blocks_flat_in_codes(luma_codes: np.ndarray, blocks: np.ndarray) -> bool:
-    """Whether the noise estimator's own 25th-percentile block (`noise.ENERGY_PERCENTILE`, by the same linear rule) of
-    the chosen blocks holds one luma code, and so does its border out to the fine scale's reach (half the B3 kernel,
-    `noise.B3_TAPS`): its fine-scale energy is then the float rounding of the linear light alone (3.7e-18 at Y'=40 on
-    macOS, clip-edge-audit trap 2) [tested], never a neighbour's noise reaching in, which stays measured as at revision
-    10 [decided 2026-11-24 by the lead: a noise made of rounding reads as zero; zero extra constants]."""
-    if not np.asarray(blocks, dtype=bool).any():
-        return False
-    size = 2 * (len(noise.B3_TAPS) // 2) + 1
-    highest = _chosen_code_blocks(ndimage.maximum_filter(luma_codes, size=size, mode="nearest"), blocks)
-    lowest = _chosen_code_blocks(ndimage.minimum_filter(luma_codes, size=size, mode="nearest"), blocks)
-    block_spread = highest.max(axis=(1, 2)) - lowest.min(axis=(1, 2))
-    return bool(np.percentile(block_spread, noise.ENERGY_PERCENTILE) <= 0)
+    """Whether the darkest quarter's 25th-percentile block and its border out to the fine scale's reach hold one luma
+    code: `noise.flat_in_codes`, the one flat test for clips and stills (moved there unchanged by photo-flatband-one
+    version two; flatband-two's rule, 3.7e-18 at Y'=40 on macOS, clip-edge-audit trap 2)."""
+    return noise.flat_in_codes(luma_codes, blocks)
 
 
 def _chosen_code_blocks(luma_codes: np.ndarray, blocks: np.ndarray) -> np.ndarray:
