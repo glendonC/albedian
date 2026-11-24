@@ -14,6 +14,7 @@ export const PhoneNoMatch: React.FC<{
   onRestore?: () => void;
   clip?: boolean;
   inert?: boolean;
+  assetKey?: string;
 }> = ({
   status,
   onShowPredictedSky,
@@ -21,8 +22,9 @@ export const PhoneNoMatch: React.FC<{
   onRestore,
   clip = false,
   inert = false,
+  assetKey,
 }) => {
-  const { screen, onScroll } = usePhoneScroll();
+  const { screen, onScroll } = usePhoneScroll(assetKey);
   return (
     <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll} inert={inert}>
       <div
@@ -70,16 +72,18 @@ export const PhoneNoMatch: React.FC<{
 };
 
 /** The whole screen scrolls, and the photo (and the rings drawn on it) move up with it. */
-function usePhoneScroll() {
+function usePhoneScroll(assetKey?: string) {
   const screen = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (screen.current) screen.current.scrollTop = 0;
     const root = document.documentElement;
     root.dataset.phoneScroll = '';
+    root.style.removeProperty('--phone-scroll');
     return () => {
       delete root.dataset.phoneScroll;
       root.style.removeProperty('--phone-scroll');
     };
-  }, []);
+  }, [assetKey]);
   const onScroll = () => {
     document.documentElement.style.setProperty('--phone-scroll', `${screen.current?.scrollTop ?? 0}px`);
   };
@@ -99,8 +103,9 @@ export const PhoneAlignRefused: React.FC<{
   clip?: boolean;
   hideTag?: boolean;
   inert?: boolean;
-}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false, hideTag = false, inert = false }) => {
-  const { screen, onScroll } = usePhoneScroll();
+  assetKey?: string;
+}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false, hideTag = false, inert = false, assetKey }) => {
+  const { screen, onScroll } = usePhoneScroll(assetKey);
   const words = (
     <>
       {!hideTag && <EvidenceTag evidenceClass="predicted" />}

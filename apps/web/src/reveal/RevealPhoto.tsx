@@ -457,8 +457,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const compareShown = overPhoto && restoration?.phase === 'done' && !originalPixels;
   // D10 item 5 and D34 at phone width (UIUX-clipphone-READY.md section 4): a photo or clip that already has a ready
   // restoration (or has just finished one) shows the compare in the slot, the fixed sentence, and Download at 772
-  const phoneClip = phone && session.sourceAsset?.mediaKind === 'video';
-  const phoneMedia = phone && session.sourceAsset !== undefined;
+  const asset = session.sourceAsset;
+  const phoneClip = phone && asset?.mediaKind === 'video';
+  const phoneMedia = phone && asset !== undefined;
   const estimateRef = useRef<HTMLDivElement>(null);
   const [clipAnswerFootPx, setClipAnswerFootPx] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -475,9 +476,21 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           : null;
     if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
   });
-  const [versions, setVersions] = useState<StoredRestoration[]>([]);
+  const [storedVersions, setStoredVersions] = useState<{ sha256: string; list: StoredRestoration[] } | null>(null);
+  const versions = asset && storedVersions !== null && storedVersions.sha256 === asset.sha256 ? storedVersions.list : [];
+  const phoneRestoring = phoneMedia && !there && !skyShown && !skyLeaving && restoration?.phase === 'working';
+  const phoneRerunStopped = phoneMedia && !there && !skyShown && !skyLeaving && restoration?.phase === 'stopped';
   const phoneCompare =
-    phoneMedia && !there && !skyShown && !skyLeaving && !originalPixels && !bareFrame && frame !== null && (versions.length > 0 || restoration?.phase === 'done');
+    phoneMedia &&
+    !there &&
+    !skyShown &&
+    !skyLeaving &&
+    !originalPixels &&
+    !bareFrame &&
+    frame !== null &&
+    !phoneRestoring &&
+    !phoneRerunStopped &&
+    (versions.length > 0 || restoration?.phase === 'done');
   const compareOn = compareShown || phoneCompare;
   // UIUX-restorephone-READY.md, ruled 15:38 and decided by the lead 15:43 on 21 Nov (D15's pictures): over the
   // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
@@ -496,9 +509,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // and Cancel where Ask out loud sat. Not while a restoration is ready (the compare shows) or running
   const phoneRestoreOffered =
     phoneMedia && !phoneCompare && onRestore !== undefined && restoration?.phase === 'idle' && !there && !skyShown && !bareFrame && frame !== null && status.kind !== 'unmatched' && picked === null && !answer;
-  const phoneRestoring = phoneMedia && !there && !skyShown && !skyLeaving && restoration?.phase === 'working';
   // D38 item 5 (ruled 15:43): stopped, in D37's layout with D21's sentences; only Try again holds the foot (a refusal frees it)
-  const phoneStopped = phoneMedia && !there && !skyShown && !skyLeaving && !aligning && restoration?.phase === 'stopped';
+  const phoneStopped = phoneRerunStopped && !aligning;
   // D38's no-match rule: on the phone's no-match screen and its refused alignment, Restore under the screen's own
   // actions, reached by their scroll (UIUX-nomatch-restore-READY.md, alp-refused, UIUX-clipphone-READY.md section 3)
   const phoneNoMatchRestore =
@@ -517,13 +529,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const revealRoot = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!phoneScroll) return undefined;
+    if (revealRoot.current) revealRoot.current.scrollTop = 0;
     const doc = document.documentElement;
     doc.dataset.phoneScroll = '';
+    doc.style.removeProperty('--phone-scroll');
     return () => {
       delete doc.dataset.phoneScroll;
       doc.style.removeProperty('--phone-scroll');
     };
-  }, [phoneScroll]);
+  }, [phoneScroll, asset?.sha256]);
   const onRevealScroll = phoneScroll
     ? () => document.documentElement.style.setProperty('--phone-scroll', `${revealRoot.current?.scrollTop ?? 0}px`)
     : undefined;
@@ -561,21 +575,24 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [aligning !== null]);
-  const asset = session.sourceAsset;
   // Download (D10, D22), 18 px under the fixed sentence on a ready restoration: the export route's one zip, handed to the
   // browser's own download
   // D36: the photo's or clip's ready restorations, read once its restoration is done; the compare shows the newest, or
   // the row pressed until the compare is left; Download saves the one shown
   const doneVariant = restoration?.phase === 'done' ? restoration.job.variantId : undefined;
-  const [pickedVersion, setPickedVersion] = useState<string | null>(null);
+  const [pickedVersionState, setPickedVersionState] = useState<{ sha256: string; id: string } | null>(null);
+  const pickedVersion = asset && pickedVersionState !== null && pickedVersionState.sha256 === asset.sha256 ? pickedVersionState.id : null;
+  const setPickedVersion = (id: string | null) =>
+    setPickedVersionState(id !== null && asset ? { sha256: asset.sha256, id } : null);
   useEffect(() => {
-    setVersions([]);
+    setStoredVersions(null);
     // On the phone a photo's or clip's stored restorations are read at once (D10 item 5, D34)
     if ((doneVariant === undefined && !phoneMedia) || !asset) return undefined;
+    const sha = asset.sha256;
     let live = true;
-    readRestorations(asset.sha256)
+    readRestorations(sha)
       .then((list) => {
-        if (live) setVersions(list);
+        if (live) setStoredVersions({ sha256: sha, list });
       })
       .catch(() => {});
     return () => {
@@ -583,8 +600,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     };
   }, [doneVariant, phoneMedia, asset?.sha256]);
   useEffect(() => {
-    if (!compareOn) setPickedVersion(null);
+    if (!compareOn) setPickedVersionState(null);
   }, [compareOn]);
+  useEffect(() => {
+    setPickedVersionState(null);
+  }, [asset?.sha256]);
   const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
   const phoneCompareSrc =
@@ -729,6 +749,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <PhoneAligningBlock onSolve={onSolveFromHere ? () => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from) : undefined} />
       ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' && keptRefused ? (
         <PhoneAlignRefused
+          assetKey={asset?.sha256}
           clip={phoneClip}
           hideTag={cardAbovePredicted}
           inert={phoneCardOpen}
@@ -738,6 +759,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' ? (
         <PhoneNoMatch
+          assetKey={asset?.sha256}
           clip={phoneClip}
           inert={phoneCardOpen}
           status={status}
@@ -960,6 +982,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
       {compareShown && frame && restoration?.phase === 'done' && asset && (
         <RestoreCompare
+          key={asset.sha256}
           rect={frame}
           src={shownVersion && shownVersion.id !== restoration.job.variantId ? variantFileUrl(asset.sha256, shownVersion.id) : restoration.variantUrl}
           originalSrc={asset.uri}
@@ -976,6 +999,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           is drawn for the phone, and only matched marks stay over it (D15) */}
       {phoneCompare && frame && asset && phoneCompareSrc !== null && (
         <RestoreCompare
+          key={asset.sha256}
           rect={frame}
           slot={phoneSlotRect(frame, viewW)}
           src={phoneCompareSrc}
