@@ -507,13 +507,19 @@ def test_the_requested_exposure_reaches_the_restoration(tmp_path, monkeypatch) -
 
 def test_variants_and_attempts_are_listed_oldest_first(client) -> None:
     from services.ingest.job_store import JobStore
+    from services.media import router as media_router
 
     sha = upload(client, png8_with_title())
     folder = folder_of(client, sha)
     jobs = JobStore(IngestStore(client.store_root, max_bytes=200_000_000))
-    for idx, (suffix, created) in enumerate(
-        (("a" * 16, "2026-11-19T02:00:00Z"), ("b" * 16, "2026-11-19T01:00:00Z")), start=1
-    ):
+    instants = (
+        ("e" * 16, "2026-11-19T02:00:00Z"),
+        ("b" * 16, "2026-11-19T01:00:00.500Z"),
+        ("d" * 16, "2026-11-19T01:00:00Z"),
+        ("a" * 16, "2026-11-19T01:00:00.500Z"),
+        ("c" * 16, "2026-11-19T01:00:00.050Z"),
+    )
+    for idx, (suffix, created) in enumerate(instants, start=1):
         name = f"var_{suffix}"
         (folder / "variants" / name).mkdir(parents=True)
         (folder / "variants" / name / "variant.json").write_text(json.dumps({"id": name, "createdAtUTC": created}))
@@ -533,17 +539,28 @@ def test_variants_and_attempts_are_listed_oldest_first(client) -> None:
             "stages": [],
         })
     # An unnamed variant folder on disk (no succeeded job record) is never listed
-    unnamed = "var_" + "c" * 16
+    unnamed = "var_" + "f" * 16
     (folder / "variants" / unnamed).mkdir(parents=True)
     (folder / "variants" / unnamed / "variant.json").write_text(
         json.dumps({"id": unnamed, "createdAtUTC": "2026-11-19T00:30:00Z"})
     )
     (folder / "attempts").mkdir()
-    for name, ended in (("att_" + "a" * 16, "2026-11-19T02:00:00Z"), ("att_" + "b" * 16, "2026-11-19T01:00:00Z")):
-        (folder / "attempts" / f"{name}.json").write_text(json.dumps({"id": name, "finishedAtUTC": ended}))
+    for idx, (suffix, ended) in enumerate(instants, start=1):
+        name = f"att_{suffix}"
+        started_opposite = f"2026-11-19T00:{60 - idx:02d}:00Z"
+        (folder / "attempts" / f"{name}.json").write_text(
+            json.dumps({"id": name, "startedAtUTC": started_opposite, "finishedAtUTC": ended})
+        )
     listed = client.get(f"/api/media/{sha}/variants").json()
-    assert [v["id"] for v in listed["variants"]] == ["var_" + "b" * 16, "var_" + "a" * 16]
-    assert [a["id"] for a in listed["attempts"]] == ["att_" + "b" * 16, "att_" + "a" * 16]
+    expected = ["d" * 16, "c" * 16, "a" * 16, "b" * 16, "e" * 16]
+    assert [v["id"] for v in listed["variants"]] == [f"var_{s}" for s in expected]
+    assert [a["id"] for a in listed["attempts"]] == [f"att_{s}" for s in expected]
+    ties = [
+        {"id": "var_" + "b" * 16, "createdAtUTC": "2026-11-19T03:00:00+02:00"},
+        {"id": "var_" + "a" * 16, "createdAtUTC": "2026-11-19T01:00:00"},
+    ]
+    ties.sort(key=lambda r: media_router._utc_sort_key(r, "createdAtUTC"))
+    assert [r["id"] for r in ties] == ["var_" + "a" * 16, "var_" + "b" * 16]
 
 
 def test_post_publish_crash_serves_no_uncommitted_variant_sweeps_cleanly_and_lets_retry_succeed(

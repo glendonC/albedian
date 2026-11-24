@@ -61,6 +61,7 @@ def get_media_discover(folders: MediaFolders = Depends(media_folders)) -> dict[s
 # Restoration jobs and their variants (spec restoration-for-every-upload, design sections 9 and 11; restore-2b)
 # =============================================================================================
 
+from datetime import datetime, timezone  # noqa: E402
 import hashlib  # noqa: E402
 import os  # noqa: E402
 import stat  # noqa: E402
@@ -102,6 +103,12 @@ def _read(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _utc_sort_key(record: dict[str, Any], field: str) -> tuple[datetime, str]:
+    parsed = datetime.fromisoformat(record[field])
+    instant = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    return instant, record["id"]
+
+
 @router.post("/api/media/{sha256}/restore")
 def start_restoration_job(
     body: dict[str, Any] = Body(...),
@@ -139,8 +146,8 @@ def list_variants(
         if path.parent.name in succeeded and not path.parent.is_symlink() and not path.is_symlink()
     ]
     attempts = [_read(path) for path in sorted((folder / "attempts").glob("att_*.json"))]
-    stored.sort(key=lambda variant: (variant["createdAtUTC"], variant["id"]))
-    attempts.sort(key=lambda attempt: (attempt["finishedAtUTC"], attempt["id"]))
+    stored.sort(key=lambda variant: _utc_sort_key(variant, "createdAtUTC"))
+    attempts.sort(key=lambda attempt: _utc_sort_key(attempt, "finishedAtUTC"))
     return {"variants": stored, "attempts": attempts}
 
 
