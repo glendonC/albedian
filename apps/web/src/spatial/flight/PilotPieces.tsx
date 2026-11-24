@@ -89,10 +89,35 @@ export function laptopPickerListMaxHeight(
 /** Laptop flight-pills bottom offset (32 px beside .ask-bar, or stepped 16 px above it), so CraftPicker re-measures. */
 export const FlightPillsBottomContext = createContext<number>(32);
 
+const TABBABLE =
+  'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
 function typing(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   const tag = el?.tagName?.toLowerCase();
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable === true;
+}
+
+function trapSheetTab(event: KeyboardEvent, sheet: HTMLElement | null): void {
+  if (!sheet) return;
+  const focusables = Array.from(sheet.querySelectorAll<HTMLElement>(TABBABLE));
+  if (focusables.length === 0) {
+    event.preventDefault();
+    sheet.focus();
+    return;
+  }
+  const first = focusables[0]!;
+  const last = focusables[focusables.length - 1]!;
+  const active = document.activeElement as HTMLElement | null;
+  if (event.shiftKey) {
+    if (!active || active === sheet || active === first || !sheet.contains(active)) {
+      event.preventDefault();
+      last.focus();
+    }
+  } else if (!active || active === sheet || active === last || !sheet.contains(active)) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft | null) => void; phone?: boolean }> = ({ craft, onPick, phone = false }) => {
@@ -100,6 +125,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
   const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null)) ?? YOUR_VIEW_CHOICE;
   const list = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const phoneSheet = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const pillsBottomPx = useContext(FlightPillsBottomContext);
   const [listMaxPx, setListMaxPx] = useState(() => laptopPickerListMaxHeight(typeof window === 'undefined' ? 900 : window.innerHeight || 900));
@@ -131,14 +157,16 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       window.removeEventListener('resize', measure);
     };
   }, [open, phone, craft, pillsBottomPx]);
-  // D35 item 3: the current row is scrolled into view when the panel opens
+  // D35 item 3: the current row is scrolled into view when the panel opens; on the phone sheet focus moves inside the modal
   useEffect(() => {
     if (!open) return;
-    list.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
-  }, [open]);
-  // Capture-phase keyboard handling when open: Escape closes the picker before Back to Moment hears it (yielding first
-  // to KeyboardHelp if its dialog is open), and ArrowUp/ArrowDown move focus across [role="option"] rows without
-  // nudging the 3D camera behind it
+    const selected = list.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    selected?.scrollIntoView?.({ block: 'nearest' });
+    if (phone) (selected ?? phoneSheet.current)?.focus();
+  }, [open, phone]);
+  // Capture-phase keyboard handling when open: Tab/Shift+Tab stays contained inside the phone modal sheet, Escape closes
+  // the picker before Back to Moment hears it (yielding first to KeyboardHelp if its dialog is open), and ArrowUp/ArrowDown
+  // move focus across [role="option"] rows without nudging the 3D camera behind it
   useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -147,11 +175,15 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
         event.ctrlKey ||
         event.metaKey ||
         event.altKey ||
-        typing(event.target) ||
         document.querySelector('.keys-help [role="dialog"]')
       ) {
         return;
       }
+      if (phone && event.key === 'Tab') {
+        trapSheetTab(event, phoneSheet.current);
+        return;
+      }
+      if (typing(event.target)) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         setOpen(false);
@@ -174,7 +206,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open]);
+  }, [open, phone]);
   const choose = (choice: CraftChoice) => {
     onPick(choice.id ? (CRAFTS[choice.id] ?? null) : null);
     setOpen(false);
@@ -228,6 +260,8 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
   const rows = (
     <div
       ref={list}
+      role={phone ? 'listbox' : undefined}
+      aria-label={phone ? 'Craft' : undefined}
       data-testid="craft-picker-list"
       style={{
         display: 'grid',
@@ -257,7 +291,16 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
     <div className="craft-picker" data-testid="craft-picker" data-hud-interactive="true" style={{ position: 'relative', pointerEvents: 'auto' }}>
       {open && phone && (
         <OverAskBar>
-          <div role="listbox" aria-label="Craft" data-testid="craft-picker-panel" data-hud-interactive="true" style={{ ...PHONE_SHEET, top: 150, display: 'flex', flexDirection: 'column' }}>
+          <div
+            ref={phoneSheet}
+            role="dialog"
+            aria-modal={true}
+            aria-label="Craft"
+            tabIndex={-1}
+            data-testid="craft-picker-panel"
+            data-hud-interactive="true"
+            style={{ ...PHONE_SHEET, top: 150, display: 'flex', flexDirection: 'column' }}
+          >
             {/* E (UIUX-tagphone-READY.md, decided 13:08): the readout's tag row carried at the sheet's top, as D30 item 5's
                 details sheet does: the Simulated tag in the sheet's padding, 10 px above the list, no caret circle */}
             <div data-testid="craft-picker-tagrow" style={{ display: 'flex', alignItems: 'center', marginBottom: 10, flex: '0 0 auto' }}>
@@ -297,7 +340,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
         type="button"
         className={`look-second look-second--with-circle ${phone ? 'look-size-phone' : 'look-size-compact'}`}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup={phone ? 'dialog' : 'listbox'}
         onClick={() => setOpen((o) => !o)}
       >
         {(phone && current.id && PHONE_PILL_NAME[current.id]) || current.name}
@@ -352,6 +395,7 @@ export const DetailsCircle: React.FC<{ open: boolean; onToggle: () => void }> = 
     data-testid="details-circle"
     aria-label={open ? 'Fewer details' : 'More details'}
     aria-expanded={open}
+    aria-haspopup={open ? undefined : 'dialog'}
     onClick={onToggle}
     style={{ width: 36, height: 36, justifyContent: 'center', borderColor: 'rgba(244, 243, 239, 0.3)', pointerEvents: 'auto' }}
   >
@@ -369,22 +413,27 @@ export const PhoneTagRow: React.FC<{ open: boolean; onToggle: () => void }> = ({
 
 /** D30 item 5: the whole disclosure as the phone card sheet, the tag row on top, each line at 13 px, ink 66 percent. */
 export const DetailsSheet: React.FC<{ lines: readonly string[]; onClose: () => void }> = ({ lines, onClose }) => {
+  const sheet = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
     let escaped = false;
+    (sheet.current?.querySelector<HTMLButtonElement>('[data-testid="details-circle"]') ?? sheet.current)?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (
-        event.key !== 'Escape' ||
         event.defaultPrevented ||
         event.ctrlKey ||
         event.metaKey ||
         event.altKey ||
-        typing(event.target) ||
         document.querySelector('.keys-help [role="dialog"]')
       ) {
         return;
       }
+      if (event.key === 'Tab') {
+        trapSheetTab(event, sheet.current);
+        return;
+      }
+      if (event.key !== 'Escape' || typing(event.target)) return;
       event.preventDefault();
       escaped = true;
       close.current();
@@ -399,7 +448,17 @@ export const DetailsSheet: React.FC<{ lines: readonly string[]; onClose: () => v
   }, []);
   return (
     <OverAskBar>
-      <div className="details-sheet" data-testid="details-sheet" data-hud-interactive="true" style={{ ...PHONE_SHEET, padding: '14px 18px 20px' }}>
+      <div
+        ref={sheet}
+        role="dialog"
+        aria-modal={true}
+        aria-label="Details"
+        tabIndex={-1}
+        className="details-sheet"
+        data-testid="details-sheet"
+        data-hud-interactive="true"
+        style={{ ...PHONE_SHEET, padding: '14px 18px 20px' }}
+      >
         <PhoneTagRow open onToggle={onClose} />
         <ul style={{ listStyle: 'none', margin: '14px 0 0', padding: 0, display: 'grid', gap: 9 }}>
           {lines.map((line) => (

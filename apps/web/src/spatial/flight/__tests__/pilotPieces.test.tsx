@@ -327,6 +327,110 @@ describe('CraftPicker (D26 item 3, D35)', () => {
     expect(document.querySelector('[data-testid="details-sheet"]')).toBeNull();
     expect(document.activeElement).toBe(container.querySelector('[data-testid="details-circle"]'));
   });
+
+  it('contains Tab and Shift+Tab focus inside open phone CraftPicker and DetailsSheet modal sheets without trapping laptop CraftPicker', async () => {
+    const key = (target: EventTarget, init: KeyboardEventInit) => {
+      const ev = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      act(() => {
+        target.dispatchEvent(ev);
+      });
+      return ev;
+    };
+
+    // Laptop CraftPicker stays a non-modal listbox popup (Tab is not trapped)
+    await act(async () => root.render(createElement(CraftPicker, { craft: CRAFTS['voyager-1']!, onPick: () => {}, phone: false })));
+    const laptopTrigger = container.querySelector('[data-testid="craft-picker"] > button') as HTMLButtonElement;
+    expect(laptopTrigger.getAttribute('aria-haspopup')).toBe('listbox');
+    await act(async () => laptopTrigger.click());
+    const laptopPanel = container.querySelector('[data-testid="craft-picker-panel"]') as HTMLElement;
+    expect(laptopPanel.getAttribute('role')).toBe('listbox');
+    expect(laptopPanel.getAttribute('aria-modal')).toBeNull();
+    const laptopOpts = [...container.querySelectorAll<HTMLButtonElement>('[role="option"]')];
+    laptopOpts.at(-1)!.focus();
+    expect(key(laptopOpts.at(-1)!, { key: 'Tab' }).defaultPrevented).toBe(false);
+
+    // 1. Phone CraftPicker modal sheet: role="dialog" aria-modal="true" wrapping inner role="listbox", initial focus on selected option, Tab/Shift+Tab contained
+    const bgBtn = document.createElement('button');
+    bgBtn.textContent = 'Back to Moment';
+    document.body.appendChild(bgBtn);
+    try {
+      await act(async () => root.render(createElement(CraftPicker, { key: 'phone', craft: CRAFTS['voyager-1']!, onPick: () => {}, phone: true })));
+      const phoneTrigger = container.querySelector('[data-testid="craft-picker"] > button') as HTMLButtonElement;
+      expect(phoneTrigger.getAttribute('aria-haspopup')).toBe('dialog');
+      phoneTrigger.focus();
+      await act(async () => phoneTrigger.click());
+
+      const sheet = document.querySelector('[data-testid="craft-picker-panel"]') as HTMLElement;
+      expect([sheet.getAttribute('role'), sheet.getAttribute('aria-modal'), sheet.getAttribute('aria-label')]).toEqual(['dialog', 'true', 'Craft']);
+      const innerList = sheet.querySelector('[data-testid="craft-picker-list"]') as HTMLElement;
+      expect([innerList.getAttribute('role'), innerList.getAttribute('aria-label')]).toEqual(['listbox', 'Craft']);
+
+      const opts = [...sheet.querySelectorAll<HTMLButtonElement>('[role="option"]')];
+      const first = opts[0]!;
+      const middle = opts[1]!;
+      const last = opts.at(-1)!;
+      // Initial focus moves onto the selected option inside the sheet (voyager-1)
+      expect(document.activeElement).toBe(middle);
+
+      // Middle option lets normal intra-sheet Tab proceed without preventDefault
+      expect(key(middle, { key: 'Tab' }).defaultPrevented).toBe(false);
+
+      // Last option wraps forward on Tab to first option
+      last.focus();
+      const wrapForward = key(last, { key: 'Tab' });
+      expect(wrapForward.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(first);
+
+      // First option wraps backward on Shift+Tab to last option
+      const wrapBack = key(first, { key: 'Tab', shiftKey: true });
+      expect(wrapBack.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(last);
+
+      // Focus accidentally on occluded background button is pulled back into the sheet on both Tab and Shift+Tab
+      bgBtn.focus();
+      expect(key(bgBtn, { key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(first);
+      bgBtn.focus();
+      expect(key(bgBtn, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(last);
+
+      // 2. Phone DetailsSheet modal sheet: role="dialog" aria-modal="true", initial focus on Fewer details, Tab and Shift+Tab stay on Fewer details
+      let detailsOpen = true;
+      await act(async () =>
+        root.render(
+          createElement(
+            'div',
+            null,
+            createElement(DetailsCircle, { open: false, onToggle: () => {} }),
+            createElement(DetailsSheet, {
+              lines: ['Drawn or computed by the app; not measured in the source recording.'],
+              onClose: () => {
+                detailsOpen = false;
+              },
+            }),
+          ),
+        ),
+      );
+      expect(container.querySelector('[data-testid="details-circle"]')!.getAttribute('aria-haspopup')).toBe('dialog');
+      const dSheet = document.querySelector('[data-testid="details-sheet"]') as HTMLElement;
+      expect([dSheet.getAttribute('role'), dSheet.getAttribute('aria-modal'), dSheet.getAttribute('aria-label')]).toEqual(['dialog', 'true', 'Details']);
+      const closeBtn = dSheet.querySelector('[data-testid="details-circle"]') as HTMLButtonElement;
+      expect(closeBtn.getAttribute('aria-haspopup')).toBeNull();
+      expect(document.activeElement).toBe(closeBtn);
+
+      expect(key(closeBtn, { key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+      expect(key(closeBtn, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+
+      bgBtn.focus();
+      expect(key(bgBtn, { key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+      expect(detailsOpen).toBe(true);
+    } finally {
+      bgBtn.remove();
+    }
+  });
 });
 
 describe('PilotTrip (D26 items 4 and 5)', () => {

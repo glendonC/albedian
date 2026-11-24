@@ -229,7 +229,15 @@ describe('pilot-escape-keys-1: CraftPicker and DetailsSheet keyboard handling in
     const craftBtn = document.querySelector('[data-testid="craft-picker"] > button') as HTMLButtonElement;
     craftBtn.focus();
     await act(async () => craftBtn.click());
-    expect(document.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+    const craftSheet = document.querySelector('[data-testid="craft-picker-panel"]') as HTMLElement;
+    expect(craftSheet).not.toBeNull();
+    expect([craftSheet.getAttribute('role'), craftSheet.getAttribute('aria-modal')]).toEqual(['dialog', 'true']);
+    const craftOpts = [...craftSheet.querySelectorAll<HTMLButtonElement>('[role="option"]')];
+    expect(document.activeElement).toBe(craftOpts[0]);
+    expect(key(craftOpts[0]!, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(craftOpts.at(-1));
+    expect(key(craftOpts.at(-1)!, { key: 'Tab' }).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(craftOpts[0]);
 
     key(window, { key: 'Escape' });
     expect(document.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
@@ -241,7 +249,13 @@ describe('pilot-escape-keys-1: CraftPicker and DetailsSheet keyboard handling in
     expect(detailsBtn).not.toBeNull();
     detailsBtn.focus();
     await act(async () => detailsBtn.click());
-    expect(document.querySelector('[data-testid="details-sheet"]')).not.toBeNull();
+    const detailsSheet = document.querySelector('[data-testid="details-sheet"]') as HTMLElement;
+    expect(detailsSheet).not.toBeNull();
+    expect([detailsSheet.getAttribute('role'), detailsSheet.getAttribute('aria-modal')]).toEqual(['dialog', 'true']);
+    const sheetClose = detailsSheet.querySelector('[data-testid="details-circle"]') as HTMLButtonElement;
+    expect(document.activeElement).toBe(sheetClose);
+    expect(key(sheetClose, { key: 'Tab' }).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(sheetClose);
 
     key(window, { key: 'Escape' });
     expect(document.querySelector('[data-testid="details-sheet"]')).toBeNull();
