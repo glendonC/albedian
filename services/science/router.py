@@ -28,6 +28,7 @@ from services.science.catalog import (
 )
 from services.science.catalog_model import CatalogStar
 from services.science.ephemeris import (
+    BODY_NAMES,
     DEFAULT_BODIES,
     EphemerisOutOfRange,
     compute_solar_system_ephemerides,
@@ -61,14 +62,15 @@ def _time_refused(accepted: str) -> HTTPException:
     return HTTPException(status_code=422, detail=f"observedAtUTC must be {accepted}.")
 
 
+_A_SKY_TIME = "an ISO 8601 date and time, ending in Z or with an offset such as +00:00; one with neither is read as UTC"
+
+
 def _a_time_the_sky_code_reads(value: str) -> str:
     """Refuse at the door a time the sky code cannot read, which it would otherwise raise on deep in a route."""
     try:
         _iso_to_julian_date(value)
     except (ValueError, OverflowError):
-        raise _time_refused(
-            "an ISO 8601 date and time, ending in Z or with an offset such as +00:00; one with neither is read as UTC"
-        ) from None
+        raise _time_refused(_A_SKY_TIME) from None
     return value
 
 
@@ -217,6 +219,8 @@ class _AnsweredInASentence(APIRoute):
     infinity, a NaN, a lone surrogate) it cannot be written at all, which ends in a 500. A body FastAPI could not
     read at all, which it answers with a 400 of its own, is answered here in the same way."""
 
+    refusal = staticmethod(_what_is_wrong)
+
     def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
         handler = super().get_route_handler()
 
@@ -224,9 +228,9 @@ class _AnsweredInASentence(APIRoute):
             try:
                 return await handler(request)
             except RequestValidationError as error:
-                raise HTTPException(status_code=422, detail=_what_is_wrong(error.errors())) from None
+                raise HTTPException(status_code=422, detail=self.refusal(error.errors())) from None
             except StarletteHTTPException as error:
-                # The two routes raise no 400 of their own: this one is FastAPI's, for a body it could not decode.
+                # These routes raise no 400 of their own: this one is FastAPI's, for a body it could not decode.
                 # It raises Starlette's class, which FastAPI's own HTTPException extends
                 if error.status_code != 400:
                     raise
@@ -375,6 +379,59 @@ def _sky_context_refusal(errors: Sequence[Mapping[str, Any]]) -> str:
         if sentence not in sentences:
             sentences.append(sentence)
     return " ".join(sentences)
+
+
+# The words a refused radiometry-audit or ephemeris request is answered with, as the solve and sky-context routes
+# answer theirs: closed sentences, which name a field and what it must be and never repeat a value sent. A place and a
+# time are a person's, and FastAPI's own 422 sends them back, the whole body for a field that is missing (AUDIT
+# backend-security-b77 item L3, science-router-inputstrip-1)
+_MOMENT_ROUTE_FIELD_MUST_BE = {
+    "observedAtUTC": _A_SKY_TIME,
+    "latDeg": _SKY_CONTEXT_FIELD_MUST_BE["latDeg"],
+    "lonDeg": _SKY_CONTEXT_FIELD_MUST_BE["lonDeg"],
+    "targetSepDeg": "a number from 0.5 to 180",
+    "targetAltDeg": "a number from 0 to 90",
+    "bodies": f"a list of Solar System bodies, each one of {', '.join(BODY_NAMES[:-1])} and {BODY_NAMES[-1]}",
+}
+_UNKNOWN_BODY = f"bodies must be {_MOMENT_ROUTE_FIELD_MUST_BE['bodies']}."
+
+
+def _moment_route_refusal(errors: Sequence[Mapping[str, Any]]) -> str:
+    """A radiometry-audit or ephemeris request that failed validation, said plainly: one sentence for each field at
+    fault, in the order the errors come. Only each error's place and kind are read; its message and its input, which
+    can hold the value sent, are left out."""
+    sentences: list[str] = []
+    for error in errors:
+        where = error["loc"]
+        if len(where) < 2 or not isinstance(where[1], str):
+            sentence = _NOT_JSON if error["type"] == "json_invalid" else _NOT_AN_OBJECT
+        else:
+            name, must_be = where[1], _MOMENT_ROUTE_FIELD_MUST_BE.get(where[1], "a value this route takes")
+            sentence = f"{name} is missing: send {must_be}." if error["type"] == "missing" else f"{name} must be {must_be}."
+        if sentence not in sentences:
+            sentences.append(sentence)
+    return " ".join(sentences)
+
+
+class _MomentRouteAnswered(_AnsweredInASentence):
+    """The radiometry-audit and ephemeris routes' own answer to a request that fails validation: 422 and
+    `_moment_route_refusal`'s sentences, where FastAPI's own answer would send the time and place back."""
+
+    refusal = staticmethod(_moment_route_refusal)
+
+
+def _moment_route(path: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """`router.post(path)` for a route that computes for a time and place, which answers a request that fails
+    validation itself and says so in its API description."""
+
+    def register(route: Callable[..., Any]) -> Callable[..., Any]:
+        router.add_api_route(
+            path, route, methods=["POST"], route_class_override=_MomentRouteAnswered,
+            responses={422: {"model": SolveRefusal, "description": "The request is refused"}},
+        )
+        return route
+
+    return register
 
 
 class _SkyContextAnswered(APIRoute):
@@ -578,7 +635,7 @@ router.add_api_route(
 )
 
 
-@router.post("/api/science/radiometry-audit")
+@_moment_route("/api/science/radiometry-audit")
 def post_science_radiometry_audit(req: RadiometryAuditRequest) -> dict[str, Any]:
     """Return the Krisciunas & Schaefer (1991) sky brightness predicted at the stated target (its altitude and
     its separation from the Moon). No sensor limiting magnitude is estimated."""
@@ -698,19 +755,19 @@ def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
     return solution.to_contract_dict()
 
 
-@router.post("/api/science/ephemeris")
+@_moment_route("/api/science/ephemeris")
 def post_science_ephemeris(req: EphemerisRequest) -> dict[str, Any]:
     """Compute analytical ephemerides for Solar System bodies with explicit `predicted` evidence class."""
     _within_ephemeris_range(req.obs_utc_iso)
-    try:
-        ephem = compute_solar_system_ephemerides(
-            obs_utc_iso=req.obs_utc_iso,
-            lat_deg=req.lat_deg,
-            lon_deg=req.lon_deg,
-            bodies=tuple(req.bodies),
-        )
-    except KeyError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # A body the ephemeris does not hold is refused as any field at fault is, in a sentence without the name sent
+    if any(body not in BODY_NAMES for body in req.bodies):
+        raise HTTPException(status_code=422, detail=_UNKNOWN_BODY)
+    ephem = compute_solar_system_ephemerides(
+        obs_utc_iso=req.obs_utc_iso,
+        lat_deg=req.lat_deg,
+        lon_deg=req.lon_deg,
+        bodies=tuple(req.bodies),
+    )
 
     findings_dicts = []
     for item in ephem:
