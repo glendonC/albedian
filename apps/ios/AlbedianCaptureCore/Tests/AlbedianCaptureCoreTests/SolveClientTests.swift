@@ -349,4 +349,105 @@ final class SolveClientTests: XCTestCase {
         XCTAssertTrue(CaptureUploader.isValidTimeout(SolveClient.defaultSolveTimeoutSec))
         XCTAssertEqual(SolveClient.defaultPollIntervalSec, 1)
     }
+
+    func testUnchangedOrDroppedJobReadsNeverReportTheSameRunningJobTwiceInARow() async throws {
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let polls = Counter()
+        let mine = laptop(sha: sha, solution: solution)
+        let server = try LoopbackHTTPServer { request in
+            if request.path == "/api/ingest/jobs/\(Self.jobId(sha))" {
+                switch polls.next() {
+                case 1: return .json(503, "{\"detail\":\"busy\"}")
+                case 2: return .json(200, Self.job(sha, "queued", extra: ",\"queueAhead\":1"))
+                case 3, 4: return .json(200, Self.job(sha, "running", stages: Self.decoding))
+                default: return .json(200, Self.job(sha, "succeeded", stages: Self.matching))
+                }
+            }
+            return mine(request)
+        }
+        defer { server.stop() }
+        let (last, states) = try await solve(server, sha: sha)
+        guard case .solved = last else { return XCTFail("\(last)") }
+        XCTAssertFalse(zip(states, states.dropFirst()).contains { $0 == $1 }, "duplicate consecutive running states reported")
+        let running = states.compactMap { state -> SolveJob? in if case .running(let job) = state { job } else { nil } }
+        XCTAssertEqual(running.map(\.state), [.queued, .running])
+    }
+
+    func testConcludeRetriesTransientDropsOnReceiptAndSolutionAndRefusesClientErrorsAtOnce() async throws {
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let receiptHits = Counter()
+        let solutionHits = Counter()
+        let mine = laptop(sha: sha, solution: solution, startStatus: 200, startJob: Self.job(sha, "succeeded", stages: Self.matching))
+        let transient = try LoopbackHTTPServer { request in
+            if request.path == "/api/ingest/\(sha)", receiptHits.next() == 1 {
+                return .json(503, "{\"detail\":\"busy\"}")
+            }
+            if request.path == "/api/ingest/\(sha)/solution", solutionHits.next() <= 2 {
+                return .json(502, "bad gateway")
+            }
+            return mine(request)
+        }
+        defer { transient.stop() }
+        let (recovered, _) = try await solve(transient, sha: sha)
+        guard case .solved = recovered else { return XCTFail("transient conclude drop not recovered: \(recovered)") }
+        XCTAssertEqual(receiptHits.next() - 1, 2)
+        XCTAssertEqual(solutionHits.next() - 1, 3)
+
+        // Persistent 503 stops at concludeAttempts
+        let persistentHits = Counter()
+        let persistent = try LoopbackHTTPServer { request in
+            if request.path == "/api/ingest/\(sha)/solution" {
+                _ = persistentHits.next()
+                return .json(503, "{\"detail\":\"busy\"}")
+            }
+            return mine(request)
+        }
+        defer { persistent.stop() }
+        let (exhausted, _) = try await solve(persistent, sha: sha)
+        XCTAssertEqual(exhausted, .failed(.refused(status: 503, detail: "busy")))
+        XCTAssertEqual(persistentHits.next() - 1, SolveClient.concludeAttempts)
+
+        // Client 404 is never retried
+        let notFoundHits = Counter()
+        let notFound = try LoopbackHTTPServer { request in
+            if request.path == "/api/ingest/\(sha)/solution" {
+                _ = notFoundHits.next()
+                return .json(404, "{\"detail\":\"no solution\"}")
+            }
+            return mine(request)
+        }
+        defer { notFound.stop() }
+        let (missing, _) = try await solve(notFound, sha: sha)
+        XCTAssertEqual(missing, .failed(.refused(status: 404, detail: "no solution")))
+        XCTAssertEqual(notFoundHits.next() - 1, 1)
+
+        // Transport connection drops, timeouts and network errors on conclude are retried too
+        struct FlakyTransport: LaptopTransport {
+            let base = NetworkLaptopTransport()
+            let counts: Counter
+            func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double, bodyMaxBytes: Int,
+                          onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure> {
+                let head = String(decoding: request.prefix(120), as: UTF8.self)
+                if head.hasPrefix("GET /api/ingest/") {
+                    switch counts.next() {
+                    case 1: return .failure(.closed)
+                    case 3: return .failure(.timedOut)
+                    case 4: return .failure(.network(posixCode: 54))
+                    default: break
+                    }
+                }
+                return await base.exchange(request, to: endpoint, timeoutSec: timeoutSec, bodyMaxBytes: bodyMaxBytes, onSent: onSent)
+            }
+        }
+        let cleanServer = try LoopbackHTTPServer(responder: mine)
+        defer { cleanServer.stop() }
+        let transportCounts = Counter()
+        let client = SolveClient(address: try XCTUnwrap(LaptopAddress(cleanServer.baseURL)), solveTimeoutSec: 10,
+                                 readTimeoutSec: 5, pollIntervalSec: 0.02, transport: FlakyTransport(counts: transportCounts))
+        let transportEnd = await client.solve(sha256: sha) { _ in }
+        guard case .solved = transportEnd else { return XCTFail("transport drop not recovered: \(transportEnd)") }
+        XCTAssertEqual(transportCounts.next() - 1, 5)
+    }
 }

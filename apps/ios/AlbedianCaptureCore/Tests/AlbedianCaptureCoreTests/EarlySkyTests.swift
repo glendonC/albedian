@@ -1,4 +1,4 @@
-import AlbedianCaptureCore
+@testable import AlbedianCaptureCore
 import Foundation
 import XCTest
 
@@ -62,6 +62,60 @@ final class EarlySkyTests: XCTestCase {
     func testTheSourceSentenceIsTheDecidedOne() {
         XCTAssertEqual(EarlyPose.sourceSentence, "Placed from where your iPhone pointed: predicted until matched.")
         XCTAssertEqual(EarlyPose.evidence, .predicted)
+    }
+
+    /// Edge case 2.1: early marks count as drawn on the wait only when at least one projects wholly inside the 3:4 photo
+    /// frame AND a step or queued row stands under the photo; above-horizon stars outside the FOV or an empty laptop cut
+    /// never hold the wait for a lock-on animation that draws zero rings.
+    func testMarksCountAsDrawnOnlyWhenAtLeastOneProjectsInsideTheCardUnderARow() throws {
+        let record = try XCTUnwrap(try records().first { EarlyPose.read(recordWire: JSONText.data($0)) != nil })
+        let pose = try XCTUnwrap(EarlyPose.read(recordWire: JSONText.data(record)))
+        let q = pose.attitude
+        let norm = (q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w).squareRoot()
+        let unit = PointingRecord.Quaternion(x: q.x / norm, y: q.y / norm, z: q.z / norm, w: q.w / norm)
+        // Back camera looks along device -Z; rotate (0, 0, -1) into xTrueNorthZVertical (X north, Y west, Z up)
+        let look = unit.multiplied(PointingRecord.Quaternion(x: 0, y: 0, z: -1, w: 0)).multiplied(unit.conjugate)
+        let centreAlt = asin(max(-1, min(1, look.z))) * 180 / .pi
+        let centreAz = (atan2(-look.y, look.x) * 180 / .pi).truncatingRemainder(dividingBy: 360)
+        let azInRange = centreAz < 0 ? centreAz + 360 : centreAz
+        let oppositeAz = (azInRange + 180).truncatingRemainder(dividingBy: 360)
+
+        let inFrame = SkyMark(id: "s-in", name: "Rigel", altDeg: centreAlt, azDeg: azInRange, source: .catalog(release: "HIP"))
+        let behind = SkyMark(id: "s-out", name: "Vega", altDeg: -centreAlt, azDeg: oppositeAz, source: .catalog(release: "HIP"))
+
+        XCTAssertFalse(EarlyPose.hasDrawnMarks(laptopEarly: nil, pose: pose, phoneMarks: [behind], rowShown: true),
+                       "above-horizon or sky-context marks outside the camera FOV draw 0 rings")
+        XCTAssertFalse(EarlyPose.hasDrawnMarks(laptopEarly: nil, pose: pose, phoneMarks: [inFrame], rowShown: false),
+                       "without a step or queued row, no early marks are drawn")
+        XCTAssertTrue(EarlyPose.hasDrawnMarks(laptopEarly: nil, pose: pose, phoneMarks: [behind, inFrame], rowShown: true))
+        XCTAssertEqual(EarlyPose.placed(laptopEarly: nil, pose: pose, phoneMarks: [behind, inFrame],
+                                        widthPt: EarlyPose.defaultCardWidthPt, heightPt: EarlyPose.defaultCardWidthPt * 4 / 3).map(\.mark.id),
+                       ["s-in"])
+
+        let valid = try XCTUnwrap(ContractFixture.load("observation_solution_contract")["valid"]?.objectValue)
+        var sample = try XCTUnwrap(valid.members.first { $0.value["status"]?.stringValue == "approximate"
+            && $0.value["poseEstimate"] != nil && $0.value["wcs"] != nil }?.value)
+        let sha = String(repeating: "ab", count: 32)
+        let wcs = try XCTUnwrap(sample["wcs"])
+        let star: JSONValue = .object(JSONObject([
+            "id": .string("f-rigel"), "evidenceClass": .string("predicted"), "title": .string("Rigel"),
+            "skyPosition": .object(JSONObject(["raDeg": try XCTUnwrap(wcs["crvalRaDeg"]), "decDeg": try XCTUnwrap(wcs["crvalDecDeg"])])),
+            "catalogRef": .object(JSONObject(["objectType": .string("star"), "catalogSourceId": .string("HIP 24436"),
+                                              "apparentMagnitude": .number(JSONNumber(0.13)!)])),
+        ]))
+        sample["findings"] = .array([star])
+        sample["sourceSha256"] = .string(JSONString(sha))
+        sample["poseEstimate"]?["method"] = .string("device_attitude")
+        let sky = try XCTUnwrap(PredictedEarlySky.read(sample, sha256: sha))
+        let cx = try XCTUnwrap(wcs["crpixX"]?.numberValue)
+        let cy = try XCTUnwrap(wcs["crpixY"]?.numberValue)
+        let fitting = StoredFrame(widthPx: Int(cx * 2), heightPx: Int(cy * 2) + 1, orientation: .upright)
+        let croppedOut = StoredFrame(widthPx: 100_000, heightPx: 400, orientation: .upright)
+
+        XCTAssertTrue(EarlyPose.hasDrawnMarks(laptopEarly: (sky, fitting), pose: nil, phoneMarks: [], rowShown: true))
+        XCTAssertFalse(EarlyPose.hasDrawnMarks(laptopEarly: (sky, fitting), pose: nil, phoneMarks: [], rowShown: false))
+        XCTAssertFalse(EarlyPose.hasDrawnMarks(laptopEarly: (sky, croppedOut), pose: pose, phoneMarks: [inFrame], rowShown: true),
+                       "once laptopEarly is served it replaces phoneMarks, and if 0 targets fall on the 3:4 card nothing is drawn")
     }
 }
 

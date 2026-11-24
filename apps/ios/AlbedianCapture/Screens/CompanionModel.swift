@@ -221,6 +221,7 @@ final class CompanionModel {
         uploads.reset()
         solver.reset()
         earlyTask?.cancel()
+        laptopEarlyTask?.cancel()
         swapTask?.cancel()
         earlyPose = nil
         earlyMarks = []
@@ -229,6 +230,7 @@ final class CompanionModel {
         laptopEarly = nil
         laptopSwapOver = false
         laptopEarlyAsked = false
+        hadWaitRow = false
         unreachable = false
         shot = nil
         result = nil
@@ -408,16 +410,21 @@ final class CompanionModel {
     /// says it published one; while it is here the wait draws it instead of the phone's own projection.
     private(set) var laptopEarly: (sky: PredictedEarlySky, frame: StoredFrame)?
     private var laptopEarlyAsked = false
-    /// Whether early marks stand over the photo, from either source.
-    var hasEarlyMarks: Bool { laptopEarly != nil || (earlyPose != nil && !earlyMarks.isEmpty) }
+    private var hadWaitRow = false
+    /// Whether early marks actually stand over the wait's photo (`D31` item 3, `UIUX-built-1756` 17:38 tag rule).
+    var hasEarlyMarks: Bool {
+        EarlyPose.hasDrawnMarks(laptopEarly: laptopEarly, pose: earlyPose, phoneMarks: earlyMarks, rowShown: hadWaitRow)
+    }
     private(set) var lockOnSettled = false
     /// The laptop's early sky came `EarlyLine.swapWordsAfterSeconds` ago or more: the phone's rings have gone.
     private(set) var laptopSwapOver = false
     private var swapTask: Task<Void, Never>?
     private var earlyTask: Task<Void, Never>?
+    private var laptopEarlyTask: Task<Void, Never>?
 
     private func startEarlySky(address: LaptopAddress) {
         earlyTask?.cancel()
+        laptopEarlyTask?.cancel()
         swapTask?.cancel()
         earlyMarks = []
         lockOnPass = nil
@@ -425,6 +432,7 @@ final class CompanionModel {
         laptopEarly = nil
         laptopSwapOver = false
         laptopEarlyAsked = false
+        hadWaitRow = false
         earlyPose = shot?.recordWire.flatMap { EarlyPose.read(recordWire: $0) }
         guard let pose = earlyPose else { return }
         let client = SkyContextClient(address: address)
@@ -446,12 +454,15 @@ final class CompanionModel {
 
     /// The first running record that names the predicted sky's time asks the laptop for that sky, once.
     private func watchEarlySky(_ state: SolveState, sha256: String, address: LaptopAddress) {
-        guard case .running(let job) = state, job.predictedSkyAtUTC != nil, !laptopEarlyAsked else { return }
+        guard case .running(let job) = state else { return }
+        if WaitRow.current(job) != nil || QueuedRow.current(job) != nil { hadWaitRow = true }
+        guard job.predictedSkyAtUTC != nil, !laptopEarlyAsked else { return }
         laptopEarlyAsked = true
         let client = SolveClient(address: address)
-        Task { @MainActor [weak self] in
+        laptopEarlyTask?.cancel()
+        laptopEarlyTask = Task { @MainActor [weak self] in
             let early = await client.earlySky(jobId: job.id, sha256: sha256)
-            guard let self, self.laptopEarlyAsked, self.lockOnPass == nil, let early else { return }
+            guard !Task.isCancelled, let self, self.laptopEarlyAsked, self.lockOnPass == nil, let early else { return }
             self.laptopEarly = early
             // The swap's words change once the phone's rings have gone (EarlyLine.namedSource)
             self.swapTask = Task { @MainActor [weak self] in
@@ -463,6 +474,8 @@ final class CompanionModel {
     }
 
     private func solved(_ end: SolveState, sha256: String, address: LaptopAddress) {
+        earlyTask?.cancel()
+        laptopEarlyTask?.cancel()
         switch end {
         case .solved(_, let readout, let frame, let facts):
             result = (readout, frame, facts)

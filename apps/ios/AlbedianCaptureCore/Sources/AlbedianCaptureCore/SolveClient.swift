@@ -94,9 +94,10 @@ public final class SolveClient: Sendable {
             }
         }
         guard job.sourceAssetSha256 == sha256 else { return Self.finish(.failed(.jobForAnotherPhoto), onState) }
+        let reported = LastReported()
         var failedReads = 0
         while !job.hasEnded {
-            onState(.running(job))
+            if reported.isNew(job) { onState(.running(job)) }
             guard (ContinuousClock.now - began) < .seconds(solveTimeoutSec) else { return Self.finish(.failed(.timedOut), onState) }
             try? await Task.sleep(nanoseconds: UInt64(pollIntervalSec * 1_000_000_000))
             if Task.isCancelled { return Self.finish(.failed(.timedOut), onState) }
@@ -124,11 +125,35 @@ public final class SolveClient: Sendable {
     /// [proposed] Reads of the job that may fail in a row before the wait ends: at one a second, about ten seconds of a
     /// laptop that does not answer.
     static let followFailuresAllowed = 10
+    /// [proposed] Attempts allowed for each post-solve read (the receipt and the solution) before giving up on a
+    /// transient hotspot or server drop.
+    static let concludeAttempts = 3
+
+    private static func isTransient(_ failure: SolveFailure) -> Bool {
+        switch failure {
+        case .networkError, .timedOut, .connectionClosed: return true
+        case .refused(let status, _): return (500...599).contains(status)
+        default: return false
+        }
+    }
+
+    private func readAfterSolve(_ path: String, bodyMaxBytes: Int = HTTPReplyLimits.bodyMaxBytes) async -> Result<HTTPReply, SolveFailure> {
+        var attempt = 0
+        while true {
+            attempt += 1
+            let outcome = await exchange("GET", path, timeoutSec: readTimeoutSec, bodyMaxBytes: bodyMaxBytes)
+            guard case .failure(let failure) = outcome, Self.isTransient(failure), attempt < Self.concludeAttempts else {
+                return outcome
+            }
+            try? await Task.sleep(nanoseconds: UInt64(pollIntervalSec * 1_000_000_000))
+            if Task.isCancelled { return .failure(.timedOut) }
+        }
+    }
 
     private func conclude(_ sha256: String, _ job: SolveJob) async -> SolveState {
         guard job.state == .succeeded else { return .failed(.jobDidNotSucceed(job)) }
         let stored: StoredReceipt
-        switch await exchange("GET", "/api/ingest/\(sha256)", timeoutSec: readTimeoutSec) {
+        switch await readAfterSolve("/api/ingest/\(sha256)") {
         case .failure(let failure): return .failed(failure)
         case .success(let reply):
             guard let value = try? JSONText.read(reply.body), let receipt = StoredReceiptReader.read(value, sha256: sha256) else {
@@ -136,7 +161,7 @@ public final class SolveClient: Sendable {
             }
             stored = receipt
         }
-        switch await exchange("GET", "/api/ingest/\(sha256)/solution", timeoutSec: readTimeoutSec, bodyMaxBytes: Self.solutionMaxBytes) {
+        switch await readAfterSolve("/api/ingest/\(sha256)/solution", bodyMaxBytes: Self.solutionMaxBytes) {
         case .failure(let failure): return .failed(failure)
         case .success(let reply):
             switch Self.read(reply.body, { SolutionReader.read($0, sha256: sha256) }) {

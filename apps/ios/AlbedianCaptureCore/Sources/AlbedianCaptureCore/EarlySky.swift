@@ -37,4 +37,32 @@ public struct EarlyPose: Equatable, Sendable {
 
     /// The field across the photo's portrait width, the same focal length over its short side.
     public var acrossPortraitWidthDeg: Double? { SkyProjection.acrossPortraitWidthDeg(longSideFovDeg: longSideFovDeg) }
+
+    /// The approved wait card's portrait width in points (`UIUX-arrive-READY`, 390 by 520).
+    public static let defaultCardWidthPt = 390.0
+
+    /// The early marks that project wholly inside a portrait `widthPt` by `heightPt` photo frame: the laptop's early sky
+    /// when served (`lockon-m5`), else the phone's own record projection (`D31`).
+    public static func placed(laptopEarly: (sky: PredictedEarlySky, frame: StoredFrame)?, pose: EarlyPose?,
+                              phoneMarks: [SkyMark], widthPt: Double, heightPt: Double) -> [(mark: SkyMark, x: Double, y: Double)] {
+        if let laptop = laptopEarly {
+            return laptop.sky.placed(frame: laptop.frame, widthPt: widthPt, heightPt: heightPt)
+        }
+        guard let pose, !phoneMarks.isEmpty, let across = pose.acrossPortraitWidthDeg else { return [] }
+        return phoneMarks.compactMap { mark in
+            SkyProjection.point(altDeg: mark.altDeg, azDeg: mark.azDeg, attitude: pose.attitude, widthPt: widthPt,
+                                heightPt: heightPt, acrossFovDeg: across, marginPt: -SkyOverlayStyle.unnamedRingRadiusPt)
+                .map { (mark, $0.x, $0.y) }
+        }
+    }
+
+    /// Whether early marks actually stand over the wait's photo (`UIUX-built-1756` 17:38 tag rule, `D31` item 3): at
+    /// least one ring placed inside the 3:4 photo frame under a visible step or queued row.
+    public static func hasDrawnMarks(laptopEarly: (sky: PredictedEarlySky, frame: StoredFrame)?, pose: EarlyPose?,
+                                     phoneMarks: [SkyMark], rowShown: Bool, widthPt: Double = defaultCardWidthPt) -> Bool {
+        guard widthPt > 0 else { return false }
+        let count = placed(laptopEarly: laptopEarly, pose: pose, phoneMarks: phoneMarks, widthPt: widthPt,
+                           heightPt: widthPt * 4 / 3).count
+        return EarlyLine.marksShown(placed: count, rowShown: rowShown)
+    }
 }
