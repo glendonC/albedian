@@ -151,14 +151,16 @@ final class ApprovedAssetsTests: XCTestCase {
         // CreditsScreen open-link button keeps its button label and does not hide its sole button label view
         XCTAssertFalse(compactCompanion.contains("AlbedianIcon.openLink.image(16).accessibilityHidden(true)"))
 
-        // ConnectScreen address TextField carries an explicit Laptop address VoiceOver label
+        // ConnectScreen address TextField speaks exactly the approved visible word, Address (UIUX-connect-APPROVED.md;
+        // DECIDED-BY-LEAD 24 November 12:08 on UIUX-drift-laptopaddress-QUESTION: Laptop address has no record)
         XCTAssertTrue(compactCompanion.contains("TextField(,text:$model.typedAddress).accessibilityLabel()"),
                       "ConnectScreen TextField must carry an accessibilityLabel")
         let codeLines = companionSplit.code.components(separatedBy: "\n")
-        let litLines = companionSplit.literals.components(separatedBy: "\n")
+        let rawLines = companionRaw.components(separatedBy: "\n")
         let labelLineIndex = try XCTUnwrap(codeLines.firstIndex { $0.filter { !$0.isWhitespace }.contains(".accessibilityLabel()") })
-        XCTAssertTrue(litLines[labelLineIndex].contains("Laptop address"),
-                      "ConnectScreen TextField accessibilityLabel must say Laptop address")
+        XCTAssertEqual(rawLines[labelLineIndex].trimmingCharacters(in: .whitespaces), ".accessibilityLabel(\"Address\")",
+                       "ConnectScreen TextField accessibilityLabel must say exactly Address")
+        XCTAssertFalse(companionSplit.literals.contains("Laptop address"), "no word without a record on the Companion screens")
 
         // ResultScreen calibrated primary count+tag HStack and secondary/non-calibrated count helper combine children
         XCTAssertTrue(compactCompanion.contains("EvidenceTag(evidence:.catalogMatched)}.accessibilityElement(children:.combine)"),

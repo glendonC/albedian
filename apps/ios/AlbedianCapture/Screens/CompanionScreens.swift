@@ -379,7 +379,7 @@ struct ConnectScreen: View {
                     Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet))
                 }
                 TextField("", text: $model.typedAddress)
-                    .accessibilityLabel("Laptop address")
+                    .accessibilityLabel("Address")
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
