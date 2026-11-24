@@ -23,8 +23,9 @@ const STEP_SEC = 1;
 /**
  * A clip's player on the reveal (INTERIM: .lead/uiux/UIUX-clip-QUESTION.md, waiting on the owner; Vimeo's player): a
  * play circle apart from one thin timeline, the time riding above it in a small chip. A press on the line goes there,
- * holding and moving drags through the clip, the arrows step one second. Where it stops, the session's clock is set
- * through the reducer (onSeek), so what the reveal draws follows the frame on screen.
+ * holding and moving drags through the clip, the arrows step one second, Home and End go to its start and end. Where
+ * it stops, the session's clock is set through the reducer (onSeek), so what the reveal draws follows the frame on
+ * screen.
  */
 export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec: number; onSeek: (sec: number) => void; phone?: boolean }> = ({
   video,
@@ -110,6 +111,12 @@ export const ClipPlayer: React.FC<{ video: HTMLVideoElement | null; durationSec:
           if (video) onSeek(video.currentTime);
         }}
         onKeyDown={(event) => {
+          // Home and End go to the clip's start and end, as on every slider (the WAI-ARIA slider pattern)
+          if (event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            go(event.key === 'End' ? durationSec : 0, true);
+            return;
+          }
           if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
           event.preventDefault();
           go(time + (event.key === 'ArrowRight' ? STEP_SEC : -STEP_SEC), true);

@@ -203,6 +203,41 @@ describe('ClipPlayer', () => {
     expect(video.currentTime).toBe(10.9);
     expect(press('a').defaultPrevented).toBe(false);
   });
+
+  it("goes to the clip's start with Home and its end with End, setting the clock there (the slider pattern's own keys)", () => {
+    const onSeek = vi.fn();
+    show({ onSeek });
+    act(() => video.at(4.2));
+    const line = q('.clip-player__line') as HTMLElement;
+    const press = (key: string) => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      act(() => {
+        line.dispatchEvent(event);
+      });
+      return event;
+    };
+    expect(press('End').defaultPrevented).toBe(true);
+    expect(video.currentTime).toBe(10.9);
+    expect(onSeek).toHaveBeenCalledTimes(1);
+    expect(onSeek).toHaveBeenLastCalledWith(10.9);
+    expect(line.getAttribute('aria-valuenow')).toBe('10.9');
+    expect(line.getAttribute('aria-valuetext')).toBe('0:10');
+    expect(press('Home').defaultPrevented).toBe(true);
+    expect(video.currentTime).toBe(0);
+    expect(onSeek).toHaveBeenCalledTimes(2);
+    expect(onSeek).toHaveBeenLastCalledWith(0);
+    expect(line.getAttribute('aria-valuenow')).toBe('0');
+    expect(line.getAttribute('aria-valuetext')).toBe('0:00');
+    // Neither key goes anywhere from the button beside the line
+    const circle = container.querySelector('button') as HTMLButtonElement;
+    const fromCircle = new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true });
+    act(() => {
+      circle.dispatchEvent(fromCircle);
+    });
+    expect(fromCircle.defaultPrevented).toBe(false);
+    expect(video.currentTime).toBe(0);
+    expect(onSeek).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("the clip player's rules are the design lane's page", () => {
