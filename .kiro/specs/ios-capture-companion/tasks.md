@@ -158,8 +158,10 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     the job and solution fields shown, judged on the existing contract fixtures as a further reading.
   - Built and on `main`: the solve, its job read beside it, the status and counts by evidence class (`2944948e`,
     mobile-4 v2; runner job contract reader `51f2aa79`; `predictedSkyAtUTC` reader `86312b1b`; person-alignment job
-    request reader `197d0aaf`; shared solution fixture sample counting `f045e514`); "Open" on the result shows
-    `<paired address>/?upload=<sha256>` in the system's Safari view (`d6e33f53`, mobile-4b).
+    request reader `197d0aaf`; shared solution fixture sample counting `f045e514`; verified TAN WCS and held-out gates
+    on `calibrated`, `FINDING_CLASS_EVIDENCE` class invariants across all four classes, and closed `poseEstimate`
+    methods `767f9b01b5`, solread-2); "Open" on the result shows `<paired address>/?upload=<sha256>` in the system's
+    Safari view (`d6e33f53`, mobile-4b).
   - Needs first: mobile-3; pointing-3 if the result shows the pointing hint.
   - Only on an iPhone: nothing beyond mobile-3's network path.
   - _Requirements: REQ-IOS-4.2 (solve), REQ-IOS-5.1, 5.2_
@@ -225,7 +227,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - The wait with the job's current step and its own count, a result with no star matched in the web's own sentence
     with its counts, and a failed job (or a refused photo) in its own sentence with "Try again".
   - Built and on `main`: `1ee9cf39` (mobile-8), `6ed5fe48` and `b612b44f` (C17 `device_attitude` wording), `5663a3d3`
-    (D32 queued row), and `51c69c3182` (progress line curve, instant under Reduce Motion).
+    (D32 queued row), `51c69c3182` (progress line curve, instant under Reduce Motion), and `767f9b01b5` (solread-2
+    closed `poseEstimate.method` fallback in `OutcomeSentence` with no fabricated Moon or Sun claim).
   - Only on an iPhone [open: real iPhone check, `.lead/kiro/reports/MOBILE/iphone-checks.md` steps 10 to 13]: the
     wait's steps over the hotspot on a full-size photo.
   - _Requirements: REQ-IOS-4.2 (solve), REQ-IOS-5.1_
@@ -239,10 +242,11 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     `06278d26` and `72763fde` (lockon-m3/m3b pairing by `catalogSourceId`), `c01223f0` and `3ff0682d` (lockon-m4/m4b
     travel and kept step row), `1d67b003` (lockon-m4c unmatched `frameOut` and Reduce Motion dissolve), `d8c3a796`,
     `d3d8bdcc`, `582ac16e`, `3812db0f`, `c3b9fa4d` and `e036b364` (lockon-m5a to m5f laptop `PredictedEarlySky` WCS
-    placement and single-correction swap), `6b40ef54` (tagrule-1), and `50cadbeb` (swaparrive-1 brightest-first stagger
-    and post-travel arrival). Shown end to end on real solves in the simulator across northern and southern skies under
-    normal and `AXSReduceMotionEnabled = 1` modes (`.lead/kiro/reports/MOBILE/lockon-m5.md`,
-    `.lead/kiro/reports/MOBILE/reduce-motion-lockon-m.md`).
+    placement and single-correction swap), `6b40ef54` (tagrule-1), `50cadbeb` (swaparrive-1 brightest-first stagger
+    and post-travel arrival), `a20adc1b36` (earlymark-side-1 full-width `EarlyMark` Canvas frame for long southern Bayer
+    names), and `767f9b01b5` (solread-2 `PredictedEarlySky` contract hash, class and coordinate bounds). Shown end to
+    end on real solves in the simulator across northern and southern skies under normal and `AXSReduceMotionEnabled = 1`
+    modes (`.lead/kiro/reports/MOBILE/lockon-m5.md`, `.lead/kiro/reports/MOBILE/reduce-motion-lockon-m.md`).
   - tagsweep-m (`5672b756`, AUDIT-C's tag sweep of 21 Nov, items 5 and 9, as the lead ruled them): the source line
     stays at full through the pass until the early rings' last frame, and on a swap it keeps the phone's words until
     the phone's rings have gone, at the end of the shared rings' travel.
