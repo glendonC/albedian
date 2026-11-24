@@ -240,6 +240,64 @@
   }
 }
 
+/* craft-switch-motion-1 (MOTION-READY-web.md section eight, ruled 24 Nov 12:41 and 12:43): switching craft. The
+   outgoing craft frames out from the press, still drawn from the camera each frame in its own canvas; the incoming one
+   frames in from its first drawn frame; they overlap and neither waits; no rise, no scale. Under Reduce Motion the
+   tokens make both the 270 ms dissolve. */
+.flight-craft__out {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
+}
+
+.flight-craft__in.is-entering {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
+/* The laptop list is a card (section two's rule): the panel frames in, then its rows word in top first, 20 ms apart,
+   after the words' delay; leaving, the rows word out last first, then the panel frames out, inert from the press. The
+   order counts the rows in view (--i, --o; --n of them), so a long list leaves as fast as a card. */
+.craft-picker__panel {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
+.craft-picker__panel .craft-picker__line {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * var(--i, 0)) both;
+}
+
+.craft-picker__panel.is-leaving {
+  pointer-events: none;
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * var(--n, 0) + var(--look-mo-dur-words-out)) both;
+}
+
+.craft-picker__panel.is-leaving .craft-picker__line {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--o, 0)) both;
+}
+
+/* The phone sheet rises and goes down as a card's sheet does (.reveal-card.is-phone); its tag row rides it at full */
+.craft-picker__sheet {
+  animation: look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+}
+
+.craft-picker__sheet.is-leaving {
+  pointer-events: none;
+  animation: look-mo-sheet-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The list's words and panel together in the one dissolve */
+  .craft-picker__panel.is-leaving {
+    animation-delay: var(--look-mo-stagger);
+  }
+
+  /* Only the sheet's fill and hairline dissolve, the tag row at full (item D) */
+  .craft-picker__sheet {
+    animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+  }
+
+  .craft-picker__sheet.is-leaving {
+    animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .predsky.is-phone .reveal-card.is-phone {
     animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;

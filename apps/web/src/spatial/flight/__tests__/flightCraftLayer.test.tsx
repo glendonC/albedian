@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import type { ObservationSession } from '@albedian/contracts';
@@ -86,13 +89,21 @@ describe('FlightCraftLayer: one renderer and one loader for the flight, models k
     textureSpy = vi.spyOn(THREE.Texture.prototype, 'dispose');
   });
   const rendererStub = () => {
-    const made: Array<{ render: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> }> = [];
+    // Each render as it was drawn: the models in the scene's holder and its matrix at that moment
+    const drawn: Array<{ children: THREE.Object3D[]; matrix: number[] }> = [];
+    const made: Array<{ render: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn>; clear: ReturnType<typeof vi.fn> }> = [];
     const makeRenderer = vi.fn(() => {
-      const r = { setPixelRatio: vi.fn(), setSize: vi.fn(), setClearColor: vi.fn(), render: vi.fn(), dispose: vi.fn() };
+      const r = {
+        setPixelRatio: vi.fn(), setSize: vi.fn(), setClearColor: vi.fn(), dispose: vi.fn(), clear: vi.fn(),
+        render: vi.fn((scene: THREE.Scene) => {
+          const holder = scene.children[0] as THREE.Group;
+          drawn.push({ children: [...holder.children], matrix: Array.from(holder.matrix.elements) });
+        }),
+      };
       made.push(r);
       return r;
     });
-    return { made, makeRenderer };
+    return { made, makeRenderer, drawn };
   };
   const ids = ['astronaut-emu', 'jwst', 'voyager-1', 'hubble', 'iss'];
   const sizes: Record<string, [number, number, number]> = { 'astronaut-emu': [1, 2, 0.7], jwst: [14, 12, 24], 'voyager-1': [16, 7, 11], hubble: [4, 13, 4], iss: [100, 30, 70] };
@@ -129,22 +140,25 @@ describe('FlightCraftLayer: one renderer and one loader for the flight, models k
     expect(Array.from((scene.children[0] as THREE.Group).matrix.elements)).toEqual(want.modelMatrix.map((x) => expect.closeTo(x, 9)));
   });
 
-  it('keeps drawing the craft shown, as itself, while the next model loads', async () => {
-    const { made, makeRenderer } = rendererStub();
+  it('keeps drawing the outgoing craft, as itself, while the next model loads (section eight: into its own canvas)', async () => {
+    const { made, makeRenderer, drawn } = rendererStub();
     const emu = modelOf(sizes['astronaut-emu']!);
     let release: (g: THREE.Group) => void = () => {};
     const load = vi.fn((url: string) => (url === CRAFTS['astronaut-emu']!.modelUrl ? Promise.resolve(emu.model) : new Promise<THREE.Group>((r) => { release = r; })));
     const session = there();
     const camera = flightCameraOf(session, 1440, 900)!;
     await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['astronaut-emu']!, load, makeRenderer })));
-    const before = Array.from(((made[0]!.render.mock.calls.at(-1)![0] as THREE.Scene).children[0] as THREE.Group).matrix.elements);
+    const before = drawn.at(-1)!.matrix;
     await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS.jwst!, load, makeRenderer })));
     expect(layer().getAttribute('data-state')).toBe('loading');
     // A new frame of the flight while Webb loads: the suit, still at its own attitude
     const moved = { ...camera, observerPc: [camera.observerPc[0] * 0.9, camera.observerPc[1] * 0.9, camera.observerPc[2] * 0.9] as typeof camera.observerPc };
     await act(async () => root.render(createElement(FlightCraftLayer, { camera: moved, craft: CRAFTS.jwst!, load, makeRenderer })));
-    const holder = (made[0]!.render.mock.calls.at(-1)![0] as THREE.Scene).children[0] as THREE.Group;
-    expect(holder.children).toEqual([emu.model]);
+    const last = drawn.at(-1)!;
+    expect(last.children).toEqual([emu.model]);
+    // and the canvas of the craft shown is cleared, nothing drawn there until Webb's model is ready
+    expect(made[0]!.clear).toHaveBeenCalled();
+    const holder = { matrix: { elements: last.matrix } };
     const box = new THREE.Box3().setFromObject(emu.model);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const size = box.getSize(new THREE.Vector3());
@@ -184,6 +198,111 @@ describe('FlightCraftLayer: one renderer and one loader for the flight, models k
     expect(models.jwst!.disposed()).toEqual({ geometry: true, material: true, texture: true });
     expect(models['astronaut-emu']!.disposed()).toEqual({ geometry: false, material: false, texture: false });
     expect(load).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('FlightCraftLayer: switching craft (craft-switch-motion-1, MOTION-READY-web.md section eight)', () => {
+  const rendererStub = () => {
+    const drawn: Array<{ children: THREE.Object3D[] }> = [];
+    const makeRenderer = vi.fn(() => ({
+      setPixelRatio: vi.fn(), setSize: vi.fn(), setClearColor: vi.fn(), dispose: vi.fn(), clear: vi.fn(),
+      render: vi.fn((scene: THREE.Scene) => drawn.push({ children: [...(scene.children[0] as THREE.Group).children] })),
+    }));
+    return { makeRenderer, drawn };
+  };
+  const box = (s: number) => {
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(s, s, s), new THREE.MeshBasicMaterial()));
+    return g;
+  };
+  const layer = () => container.querySelector('[data-testid="flight-craft"]')!;
+  const out = () => container.querySelector('[data-testid="flight-craft-out"]');
+  const inFrame = () => container.querySelector('.flight-craft__in')!;
+
+  it('frames the outgoing craft out from the press, still drawn from the camera, the incoming in from its first drawn frame, overlapping', async () => {
+    const { makeRenderer, drawn } = rendererStub();
+    const suit = box(2);
+    const webb = box(20);
+    let release: (g: THREE.Group) => void = () => {};
+    const load = vi.fn((url: string) => (url === CRAFTS['astronaut-emu']!.modelUrl ? Promise.resolve(suit) : new Promise<THREE.Group>((r) => { release = r; })));
+    const copies: unknown[] = [];
+    const ctx2d = { clearRect: vi.fn(), drawImage: vi.fn((src: unknown) => copies.push(src)) };
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(((kind: string) => (kind === '2d' ? ctx2d : null)) as never);
+    const camera = flightCameraOf(there(), 1440, 900)!;
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['astronaut-emu']!, load, makeRenderer })));
+    // The first craft frames in from its first drawn frame too
+    expect(inFrame().classList.contains('is-entering')).toBe(true);
+    expect(out()).toBeNull();
+    // The press: the suit frames out at once, before Webb's model has come
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS.jwst!, load, makeRenderer })));
+    expect(out()!.className).toBe('flight-craft__out');
+    expect(layer().getAttribute('data-state')).toBe('loading');
+    // Drawn from the camera each frame while it goes, copied out of the craft canvas
+    const frames = drawn.length;
+    const moved = { ...camera, observerPc: [camera.observerPc[0] * 0.9, camera.observerPc[1] * 0.9, camera.observerPc[2] * 0.9] as typeof camera.observerPc };
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera: moved, craft: CRAFTS.jwst!, load, makeRenderer })));
+    expect(drawn.length).toBeGreaterThan(frames);
+    expect(drawn.at(-1)!.children).toEqual([suit]);
+    expect(copies.at(-1)).toBe(container.querySelector('.flight-craft__in canvas'));
+    // Webb arrives: it frames in from that frame while the suit is still going (neither waits)
+    inFrame().classList.remove('is-entering');
+    await act(async () => release(webb));
+    expect(layer().getAttribute('data-state')).toBe('drawn');
+    expect(inFrame().classList.contains('is-entering')).toBe(true);
+    expect(out()).not.toBeNull();
+    expect(drawn.at(-1)!.children).toEqual([webb]);
+    // The suit's frame-out ends: its canvas goes and it is drawn no more
+    await act(async () => out()!.dispatchEvent(new Event('animationend', { bubbles: true })));
+    expect(out()).toBeNull();
+    // The next frame of the flight draws Webb alone
+    const before = drawn.length;
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS.jwst!, load, makeRenderer })));
+    expect(drawn.slice(before).map((d) => d.children)).toEqual([[webb]]);
+  });
+
+  it('frames the craft out when Your view is picked, loading nothing', async () => {
+    const { makeRenderer } = rendererStub();
+    const load = vi.fn(async () => box(2));
+    const camera = flightCameraOf(there(), 1440, 900)!;
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['astronaut-emu']!, load, makeRenderer })));
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: null, load, makeRenderer })));
+    expect(out()).not.toBeNull();
+    expect(layer().getAttribute('data-craft')).toBe('none');
+    expect(load).toHaveBeenCalledTimes(1);
+    // Picked while the next model was still on its way: Your view has nothing to load, so nothing waits
+    const slow = vi.fn((url: string) => (url === CRAFTS['astronaut-emu']!.modelUrl ? Promise.resolve(box(2)) : new Promise<THREE.Group>(() => {})));
+    await act(async () => root.render(createElement('div')));
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['astronaut-emu']!, load: slow, makeRenderer })));
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS.jwst!, load: slow, makeRenderer })));
+    expect(layer().getAttribute('data-state')).toBe('loading');
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: null, load: slow, makeRenderer })));
+    expect(layer().getAttribute('data-state')).toBe('drawn');
+  });
+
+  it('keeps the craft layer in the flight after a craft was shown, so Your view frames it out', async () => {
+    const openTiles: OpenFlightTiles = async () => ({ setView: () => {}, dispose: () => {} });
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: CRAFTS['astronaut-emu']! })));
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: null })));
+    expect(layer().getAttribute('data-craft')).toBe('none');
+  });
+
+  it('times both by the record\'s own tokens: frame out and frame in, no rise and no scale, the dissolve under Reduce Motion', () => {
+    const css = readFileSync(resolvePath(dirname(fileURLToPath(import.meta.url)), '../../../styles/motion.css'), 'utf8');
+    const rule = (selector: string) => css.slice(css.indexOf(`${selector} {`), css.indexOf('}', css.indexOf(`${selector} {`)));
+    expect(rule('.flight-craft__out')).toContain('animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;');
+    expect(rule('.flight-craft__in.is-entering')).toContain('animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;');
+    // The picker: the laptop list as a card, the phone sheet as a card's sheet
+    expect(rule('.craft-picker__panel')).toContain('animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;');
+    expect(rule('.craft-picker__panel .craft-picker__line')).toContain('look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * var(--i, 0))');
+    expect(rule('.craft-picker__panel.is-leaving')).toContain('look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * var(--n, 0) + var(--look-mo-dur-words-out))');
+    expect(rule('.craft-picker__panel.is-leaving .craft-picker__line')).toContain('look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--o, 0))');
+    expect(rule('.craft-picker__sheet')).toContain('animation: look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;');
+    expect(rule('.craft-picker__sheet.is-leaving')).toContain('animation: look-mo-sheet-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;');
+    // Reduce Motion: the list's words and panel together (the stagger token, nought there); only the sheet's fill and hairline dissolve
+    const reduced = css.slice(css.indexOf('.craft-picker__panel.is-leaving {\n    animation-delay: var(--look-mo-stagger);'));
+    expect(reduced.startsWith('.craft-picker__panel.is-leaving {\n    animation-delay: var(--look-mo-stagger);')).toBe(true);
+    expect(reduced).toContain('.craft-picker__sheet {\n    animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;');
+    expect(reduced).toContain('.craft-picker__sheet.is-leaving {\n    animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;');
   });
 });
 

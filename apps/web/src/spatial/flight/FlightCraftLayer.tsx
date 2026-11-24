@@ -18,6 +18,11 @@ import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene
  * craft-cache-one (DECIDED-BY-LEAD 15:59): one renderer and one model loader for the whole flight, each parsed model kept
  * by its address so a switch back draws at once, the oldest beyond MODEL_CACHE_SIZE and every one on leaving disposed
  * (geometry, materials, textures). The picture of a craft is unchanged.
+ *
+ * craft-switch-motion-1 (MOTION-READY-web.md section eight, ruled 12:41 and 12:43): switching craft, the outgoing craft
+ * frames out from the press (look-mo-frame-out) while still drawn from the camera every frame, copied into its own
+ * canvas after its render; the incoming one frames in (look-mo-frame-in) from the first frame its model is drawn; the
+ * two overlap and neither waits. Under Reduce Motion the tokens make both the 270 ms dissolve.
  */
 
 type CraftState = 'loading' | 'drawn' | 'failed';
@@ -48,6 +53,7 @@ export interface CraftRenderer {
   setSize(width: number, height: number, updateStyle?: boolean): void;
   setClearColor(color: number, alpha: number): void;
   render(scene: THREE.Scene, camera: THREE.Camera): void;
+  clear(): void;
   dispose(): void;
 }
 
@@ -80,15 +86,49 @@ interface CraftGpu {
   camera: THREE.Camera;
   holder: THREE.Group;
   sun: THREE.DirectionalLight;
-  /** The model drawn now and the craft it is drawn as (kept until the next model is ready), none while the first loads. */
-  shown: { cached: CachedModel; craft: Craft; frameRadius: number } | null;
+  /** The model drawn now and the craft it is drawn as, none while the incoming one loads. */
+  shown: Shown | null;
+  /** The craft framing out after a switch, drawn into its own canvas until its frame-out ends. */
+  leaving: Shown | null;
 }
 
-function drawCraft(gpu: CraftGpu, camera: FlightCamera, steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }, framing?: CraftFraming): boolean {
-  const shown = gpu.shown;
-  if (!shown) return false;
+interface Shown {
+  readonly cached: CachedModel;
+  readonly craft: Craft;
+  readonly frameRadius: number;
+}
+
+type Steer = { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows };
+
+/**
+ * One frame: the outgoing craft, if any, rendered and copied into its own canvas; then the craft shown (or a clear canvas
+ * while it loads). True when the craft shown was drawn.
+ */
+function drawFrame(gpu: CraftGpu, camera: FlightCamera, steer: Steer | undefined, framing: CraftFraming | undefined, glCanvas: HTMLCanvasElement | null, outCanvas: HTMLCanvasElement | null): boolean {
+  if (gpu.leaving && outCanvas && glCanvas) {
+    if (drawCraft(gpu, gpu.leaving, camera, steer, framing)) {
+      if (outCanvas.width !== glCanvas.width) outCanvas.width = glCanvas.width;
+      if (outCanvas.height !== glCanvas.height) outCanvas.height = glCanvas.height;
+      const ctx = outCanvas.getContext('2d');
+      ctx?.clearRect(0, 0, outCanvas.width, outCanvas.height);
+      ctx?.drawImage(glCanvas, 0, 0);
+    }
+  }
+  if (!gpu.shown) {
+    gpu.holder.clear();
+    gpu.renderer.clear();
+    return false;
+  }
+  return drawCraft(gpu, gpu.shown, camera, steer, framing);
+}
+
+function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, steer?: Steer, framing?: CraftFraming): boolean {
   const scene = craftSceneOf(camera, shown.craft, shown.cached.centre, shown.cached.radius, steer, framing, shown.frameRadius);
   if (!scene) return false;
+  if (gpu.holder.children.length !== 1 || gpu.holder.children[0] !== shown.cached.model) {
+    gpu.holder.clear();
+    gpu.holder.add(shown.cached.model);
+  }
   gpu.holder.matrix.fromArray(scene.modelMatrix);
   gpu.holder.matrixWorldNeedsUpdate = true;
   gpu.camera.projectionMatrix.fromArray(scene.clipMatrix);
@@ -104,7 +144,8 @@ function drawCraft(gpu: CraftGpu, camera: FlightCamera, steer?: { positionPc: Ve
 
 export const FlightCraftLayer: React.FC<{
   camera: FlightCamera;
-  craft: Craft;
+  /** The craft asked for; none (Your view) after one was shown, so it can frame out. */
+  craft: Craft | null;
   /** Loads a model by address; the flight's own loader (NASA's files) by default. */
   load?: (url: string) => Promise<THREE.Group>;
   /** Makes the layer's one renderer; three's WebGLRenderer by default. */
@@ -131,6 +172,13 @@ export const FlightCraftLayer: React.FC<{
   const models = useRef(new Map<string, Promise<CachedModel>>());
   const loadRef = useRef(load);
   loadRef.current = load;
+  // The outgoing craft's canvas, one per switch, and the incoming one's frame-in, restarted at each first drawn frame
+  const outCanvas = useRef<HTMLCanvasElement>(null);
+  const inFrame = useRef<HTMLDivElement>(null);
+  const [leavingKey, setLeavingKey] = useState<number | null>(null);
+  const switches = useRef(0);
+  const [entering, setEntering] = useState(0);
+  const draw = (g: CraftGpu) => drawFrame(g, cameraRef.current, steerRef.current ?? undefined, framingRef.current, canvas.current, outCanvas.current);
 
   // One renderer, scene, camera and light for the whole flight; on leaving, every model and the loader go too
   useEffect(() => {
@@ -154,7 +202,7 @@ export const FlightCraftLayer: React.FC<{
     scene.add(holder);
     const sun = new THREE.DirectionalLight(0xffffff, 3);
     scene.add(sun, sun.target);
-    gpu.current = { renderer, scene, camera: cam, holder, sun, shown: null };
+    gpu.current = { renderer, scene, camera: cam, holder, sun, shown: null, leaving: null };
     const cache = models.current;
     return () => {
       gpu.current = null;
@@ -166,11 +214,22 @@ export const FlightCraftLayer: React.FC<{
     };
   }, [dpr, makeRenderer]);
 
-  // A craft asked for: its model from the flight's cache, else loaded once and kept
+  // A craft asked for: its model from the flight's cache, else loaded once and kept; the one shown before frames out
   useEffect(() => {
     let current = true;
     const g = gpu.current;
     if (!g) return undefined;
+    if (g.shown && g.shown.craft.id !== craft?.id) {
+      g.leaving = g.shown;
+      g.shown = null;
+      switches.current += 1;
+      setLeavingKey(switches.current);
+    }
+    if (!craft) {
+      setState('drawn');
+      return undefined;
+    }
+    if (g.shown?.craft.id === craft.id) return undefined;
     const url = craftModelUrl(craft, phone);
     const cache = models.current;
     let pending = cache.get(url);
@@ -203,10 +262,10 @@ export const FlightCraftLayer: React.FC<{
     pending.then(
       (cached) => {
         if (!current || gpu.current !== g) return;
-        g.holder.clear();
-        g.holder.add(cached.model);
         g.shown = { cached, craft, frameRadius: craftFrameRadiusM(craft, cached.size, cached.radius) };
-        setState(drawCraft(g, cameraRef.current, steerRef.current ?? undefined, framingRef.current) ? 'drawn' : 'failed');
+        const drawn = draw(g);
+        if (drawn) setEntering((n) => n + 1);
+        setState(drawn ? 'drawn' : 'failed');
       },
       () => {
         cache.delete(url);
@@ -218,17 +277,43 @@ export const FlightCraftLayer: React.FC<{
     };
   }, [craft, phone, dpr, makeRenderer]);
 
-  // Every frame of the flight draws the craft again from where the camera stands
+  // Every frame of the flight draws the craft again from where the camera stands, and the outgoing one while it goes
   useEffect(() => {
     const g = gpu.current;
-    if (!g || !g.shown) return;
+    if (!g || (!g.shown && !g.leaving)) return;
     g.renderer.setSize(camera.viewportWidthPx, camera.viewportHeightPx, false);
-    drawCraft(g, camera, steer ?? undefined, framing);
+    draw(g);
   }, [camera, steer, framing?.xPx, framing?.yPx, framing?.diameterPx]);
 
+  // The outgoing craft's canvas is drawn on its first frame
+  useEffect(() => {
+    const g = gpu.current;
+    if (g && leavingKey !== null) draw(g);
+  }, [leavingKey]);
+
+  // The incoming craft frames in from its first drawn frame: the animation started again on that frame
+  useEffect(() => {
+    const el = inFrame.current;
+    if (!el || entering === 0) return;
+    el.classList.remove('is-entering');
+    void el.offsetWidth;
+    el.classList.add('is-entering');
+  }, [entering]);
+
+  const leaveDone = () => {
+    const g = gpu.current;
+    if (g) g.leaving = null;
+    setLeavingKey(null);
+  };
+
   return (
-    <div className="flight-craft" data-testid="flight-craft" data-craft={craft.id} data-state={state} data-framing={framing ? `${framing.xPx.toFixed(1)},${framing.yPx.toFixed(1)}` : undefined} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      <canvas ref={canvas} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+    <div className="flight-craft" data-testid="flight-craft" data-craft={craft?.id ?? 'none'} data-state={state} data-framing={framing ? `${framing.xPx.toFixed(1)},${framing.yPx.toFixed(1)}` : undefined} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <div ref={inFrame} className="flight-craft__in" style={{ position: 'absolute', inset: 0 }}>
+        <canvas ref={canvas} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+      </div>
+      {leavingKey !== null && (
+        <canvas key={leavingKey} ref={outCanvas} className="flight-craft__out" data-testid="flight-craft-out" onAnimationEnd={leaveDone} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+      )}
     </div>
   );
 };

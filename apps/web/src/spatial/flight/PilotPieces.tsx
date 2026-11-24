@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { resolveMotionTokens } from '@albedian/design-system';
+import { reducedMotion } from '../../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon } from '../../look/index.js';
 import { CRAFTS, type Craft } from './crafts.js';
 import { CRAFT_CHOICES, CRAFT_GROUPS, CRAFT_PICKER_FOOT, YOUR_VIEW_CHOICE, pilotReadout, type CraftChoice } from './pilotReadout.js';
@@ -120,8 +122,43 @@ function trapSheetTab(event: KeyboardEvent, sheet: HTMLElement | null): void {
   }
 }
 
+/**
+ * craft-switch-motion-1: mounted while open, and while leaving until its own exit animation ends (a timer the fallback,
+ * for a page whose animations never run).
+ */
+function useLeavingUntilEnd(open: boolean, fallbackMs: () => number): { mounted: boolean; leaving: boolean; done: () => void } {
+  const [mounted, setMounted] = useState(open);
+  const fallback = useRef(fallbackMs);
+  fallback.current = fallbackMs;
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return undefined;
+    }
+    const timer = setTimeout(() => setMounted(false), fallback.current());
+    return () => clearTimeout(timer);
+  }, [open]);
+  return { mounted: open || mounted, leaving: !open && mounted, done: () => setMounted(false) };
+}
+
+/** The list's lines in view, top first: section two's card rule times what the eye sees, so a long list goes as a card. */
+function linesInView(list: HTMLElement | null): HTMLElement[] {
+  if (!list) return [];
+  const box = list.getBoundingClientRect();
+  return [...list.querySelectorAll<HTMLElement>('.craft-picker__line')].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > box.top && r.top < box.bottom;
+  });
+}
+
 export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft | null) => void; phone?: boolean }> = ({ craft, onPick, phone = false }) => {
   const [open, setOpen] = useState(false);
+  // MOTION-READY-web.md section eight: the picker opens and leaves as a card (the laptop) or a sheet (the phone)
+  const inViewCount = useRef(0);
+  const shown = useLeavingUntilEnd(open, () => {
+    const m = resolveMotionTokens(reducedMotion());
+    return (phone ? m.sheetMs : m.staggerMs * Math.max(0, inViewCount.current - 1) + m.wordsOutMs + m.frameOutMs) + 100;
+  });
   const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null)) ?? YOUR_VIEW_CHOICE;
   const list = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -157,6 +194,21 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       window.removeEventListener('resize', measure);
     };
   }, [open, phone, craft, pillsBottomPx]);
+  // The rows in view word in top first after the panel frames in; leaving, they word out last first, then the panel
+  useLayoutEffect(() => {
+    if (phone || !shown.mounted) return;
+    const list_ = list.current;
+    if (!list_) return;
+    if (open) {
+      list_.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+      linesInView(list_).forEach((el, i) => el.style.setProperty('--i', String(i)));
+    } else {
+      const seen = linesInView(list_);
+      inViewCount.current = seen.length;
+      seen.forEach((el, i) => el.style.setProperty('--o', String(seen.length - 1 - i)));
+      panel.current?.style.setProperty('--n', String(Math.max(0, seen.length - 1)));
+    }
+  }, [open, phone, shown.mounted]);
   // D35 item 3: the current row is scrolled into view when the panel opens; on the phone sheet focus moves inside the modal
   useEffect(() => {
     if (!open) return;
@@ -230,6 +282,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
         role="option"
         aria-selected={chosen}
         data-craft={choice.id ?? 'none'}
+        className="craft-picker__line"
         onClick={() => choose(choice)}
         style={{
           all: 'unset',
@@ -279,7 +332,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
       {rowOf(YOUR_VIEW_CHOICE)}
       {CRAFT_GROUPS.map((group) => (
         <div key={group.heading} role="group" aria-label={group.heading} style={{ display: 'grid', gap: 2 }}>
-          <p aria-hidden="true" data-testid="craft-picker-heading" style={heading}>
+          <p aria-hidden="true" data-testid="craft-picker-heading" className="craft-picker__line" style={heading}>
             {group.heading}
           </p>
           {group.choices.map(rowOf)}
@@ -289,7 +342,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
   );
   return (
     <div className="craft-picker" data-testid="craft-picker" data-hud-interactive="true" style={{ position: 'relative', pointerEvents: 'auto' }}>
-      {open && phone && (
+      {shown.mounted && phone && (
         <OverAskBar>
           <div
             ref={phoneSheet}
@@ -298,6 +351,11 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
             aria-label="Craft"
             tabIndex={-1}
             data-testid="craft-picker-panel"
+            className={['craft-picker__sheet', shown.leaving ? 'is-leaving' : null].filter(Boolean).join(' ')}
+            inert={shown.leaving}
+            onAnimationEnd={(e) => {
+              if (shown.leaving && e.target === e.currentTarget) shown.done();
+            }}
             data-hud-interactive="true"
             style={{ ...PHONE_SHEET, top: 150, display: 'flex', flexDirection: 'column' }}
           >
@@ -311,12 +369,17 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
           </div>
         </OverAskBar>
       )}
-      {open && !phone && (
+      {shown.mounted && !phone && (
         <div
           ref={panel}
           role="listbox"
           aria-label="Craft"
           data-testid="craft-picker-panel"
+          className={['craft-picker__panel', shown.leaving ? 'is-leaving' : null].filter(Boolean).join(' ')}
+          inert={shown.leaving}
+          onAnimationEnd={(e) => {
+            if (shown.leaving && e.target === e.currentTarget) shown.done();
+          }}
           style={{
             position: 'absolute',
             left: 0,

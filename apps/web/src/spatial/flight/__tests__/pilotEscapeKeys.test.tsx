@@ -190,7 +190,14 @@ describe('pilot-escape-keys-1: CraftPicker and DetailsSheet keyboard handling in
     expect(current.spatialView.mode).toBe('catalog_3d');
 
     key(window, { key: 'Escape' });
-    expect(document.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    // craft-switch-motion-1: the list leaves as a card (section eight), inert from the press, gone when its exit ends
+    {
+      const leavingPanel = document.querySelector('[data-testid="craft-picker-panel"]')!;
+      expect(leavingPanel.className).toContain('is-leaving');
+      expect(leavingPanel.hasAttribute('inert')).toBe(true);
+      await act(async () => leavingPanel.dispatchEvent(new Event('animationend', { bubbles: true })));
+      expect(document.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    }
     expect(document.activeElement).toBe(trigger);
     expect(current.spatialView.mode).toBe('catalog_3d');
 
@@ -240,7 +247,14 @@ describe('pilot-escape-keys-1: CraftPicker and DetailsSheet keyboard handling in
     expect(document.activeElement).toBe(craftOpts[0]);
 
     key(window, { key: 'Escape' });
-    expect(document.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    // craft-switch-motion-1: the list leaves as a card (section eight), inert from the press, gone when its exit ends
+    {
+      const leavingPanel = document.querySelector('[data-testid="craft-picker-panel"]')!;
+      expect(leavingPanel.className).toContain('is-leaving');
+      expect(leavingPanel.hasAttribute('inert')).toBe(true);
+      await act(async () => leavingPanel.dispatchEvent(new Event('animationend', { bubbles: true })));
+      expect(document.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    }
     expect(document.activeElement).toBe(craftBtn);
     expect(current.spatialView.mode).toBe('catalog_3d');
 

@@ -61,7 +61,14 @@ describe('CraftPicker (D26 item 3, D35)', () => {
     expect([...container.querySelectorAll('[data-testid="craft-picker-panel"] p')].at(-1)!.textContent).toBe("NASA's own 3D models. Drawn by the app, not measured.");
     await act(async () => (rows.find((r) => r.getAttribute('data-craft') === 'astronaut-emu') as HTMLButtonElement).click());
     expect(onPick).toHaveBeenLastCalledWith(CRAFTS['astronaut-emu']!);
-    expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    // craft-switch-motion-1: the list leaves as a card (section eight), inert from the press, gone when its exit ends
+    {
+      const leavingPanel = container.querySelector('[data-testid="craft-picker-panel"]')!;
+      expect(leavingPanel.className).toContain('is-leaving');
+      expect(leavingPanel.hasAttribute('inert')).toBe(true);
+      await act(async () => leavingPanel.dispatchEvent(new Event('animationend', { bubbles: true })));
+      expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    }
     await act(async () => (pill as HTMLButtonElement).click());
     await act(async () => (container.querySelectorAll('[role="option"]')[0] as HTMLButtonElement).click());
     expect(onPick).toHaveBeenLastCalledWith(null);
@@ -294,7 +301,14 @@ describe('CraftPicker (D26 item 3, D35)', () => {
 
     const esc = key(window, { key: 'Escape' });
     expect(esc.defaultPrevented).toBe(true);
-    expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    // craft-switch-motion-1: the list leaves as a card (section eight), inert from the press, gone when its exit ends
+    {
+      const leavingPanel = container.querySelector('[data-testid="craft-picker-panel"]')!;
+      expect(leavingPanel.className).toContain('is-leaving');
+      expect(leavingPanel.hasAttribute('inert')).toBe(true);
+      await act(async () => leavingPanel.dispatchEvent(new Event('animationend', { bubbles: true })));
+      expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    }
     expect(document.activeElement).toBe(trigger);
 
     // 2. Phone DetailsSheet: Escape calls onClose with preventDefault and returns focus to details-circle
@@ -472,3 +486,91 @@ describe('FlightClock: the flight\'s own travel time, measured', () => {
     expect(broken.seconds).toBeCloseTo(0.75, 12);
   });
 });
+
+describe('CraftPicker opening and leaving (craft-switch-motion-1, MOTION-READY-web.md section eight)', () => {
+  /** Lays the list's lines out 52 px apart under a 200 px tall list, as a browser would (jsdom lays nothing out). */
+  function layOut() {
+    const list = container.querySelector<HTMLElement>('[data-testid="craft-picker-list"]')!;
+    vi.spyOn(list, 'getBoundingClientRect').mockReturnValue({ top: 0, bottom: 200, left: 0, right: 392, width: 392, height: 200, x: 0, y: 0, toJSON: () => ({}) } as DOMRect);
+    [...list.querySelectorAll<HTMLElement>('.craft-picker__line')].forEach((el, k) => {
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ top: k * 52, bottom: k * 52 + 50, left: 0, right: 392, width: 392, height: 50, x: 0, y: k * 52, toJSON: () => ({}) } as DOMRect);
+    });
+    return list;
+  }
+
+  it('opens the laptop list as a card: the panel frames in, the rows in view word in top first; leaving, last first, then the panel', async () => {
+    await act(async () => root.render(createElement(CraftPicker, { craft: null, onPick: () => {} })));
+    const pill = container.querySelector<HTMLButtonElement>('[data-testid="craft-picker"] > button')!;
+    // Lay the lines out before the open's layout pass reads them: open once, lay out, close and open again
+    await act(async () => pill.click());
+    layOut();
+    await act(async () => pill.click());
+    await act(async () => container.querySelector('[data-testid="craft-picker-panel"]')!.dispatchEvent(new Event('animationend', { bubbles: true })));
+    expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    const spies = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const lines = [...(this.closest('[data-testid="craft-picker-list"]')?.querySelectorAll('.craft-picker__line') ?? [])];
+      const k = lines.indexOf(this);
+      if (this.getAttribute('data-testid') === 'craft-picker-list') return { top: 0, bottom: 200, left: 0, right: 392, width: 392, height: 200, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+      return { top: k * 52, bottom: k * 52 + 50, left: 0, right: 392, width: 392, height: 50, x: 0, y: k * 52, toJSON: () => ({}) } as DOMRect;
+    });
+    await act(async () => pill.click());
+    const panel = container.querySelector<HTMLElement>('[data-testid="craft-picker-panel"]')!;
+    expect(panel.className).toBe('craft-picker__panel');
+    const lines = [...panel.querySelectorAll<HTMLElement>('.craft-picker__line')];
+    // Four lines in the 200 px view: top first, 0 to 3; the rest unset
+    expect(lines.slice(0, 5).map((el) => el.style.getPropertyValue('--i'))).toEqual(['0', '1', '2', '3', '']);
+    await act(async () => pill.click());
+    expect(panel.className).toBe('craft-picker__panel is-leaving');
+    expect(lines.slice(0, 5).map((el) => el.style.getPropertyValue('--o'))).toEqual(['3', '2', '1', '0', '']);
+    expect(panel.style.getPropertyValue('--n')).toBe('3');
+    spies.mockRestore();
+  });
+
+  it('lets the phone sheet go down before it leaves the page, inert from the press', async () => {
+    await act(async () => root.render(createElement(CraftPicker, { craft: null, onPick: () => {}, phone: true })));
+    const pill = container.querySelector<HTMLButtonElement>('[data-testid="craft-picker"] > button')!;
+    await act(async () => pill.click());
+    const sheet = document.querySelector<HTMLElement>('[data-testid="craft-picker-panel"]')!;
+    expect(sheet.className).toBe('craft-picker__sheet');
+    await act(async () => (document.querySelector('[role="option"][data-craft="jwst"]') as HTMLButtonElement).click());
+    expect(sheet.className).toBe('craft-picker__sheet is-leaving');
+    expect(sheet.hasAttribute('inert')).toBe(true);
+    // A row's own animation ending is not the sheet's
+    await act(async () => sheet.querySelector('[role="option"]')!.dispatchEvent(new Event('animationend', { bubbles: true })));
+    expect(document.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+    await act(async () => sheet.dispatchEvent(new Event('animationend', { bubbles: true })));
+    expect(document.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+  });
+
+  it('leaves even where no animation runs, after the record\'s own times', async () => {
+    vi.useFakeTimers();
+    try {
+      await act(async () => root.render(createElement(CraftPicker, { craft: null, onPick: () => {} })));
+      const pill = container.querySelector<HTMLButtonElement>('[data-testid="craft-picker"] > button')!;
+      await act(async () => pill.click());
+      await act(async () => pill.click());
+      await act(async () => vi.advanceTimersByTime(100 + 300 + 50));
+      expect(container.querySelector('[data-testid="craft-picker-panel"]')).not.toBeNull();
+      await act(async () => vi.advanceTimersByTime(100));
+      expect(container.querySelector('[data-testid="craft-picker-panel"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('counts only the lines in the list\'s view, not those scrolled above it', async () => {
+    const spies = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const lines = [...(this.closest('[data-testid="craft-picker-list"]')?.querySelectorAll('.craft-picker__line') ?? [])];
+      const k = lines.indexOf(this);
+      if (this.getAttribute('data-testid') === 'craft-picker-list') return { top: 0, bottom: 200, left: 0, right: 392, width: 392, height: 200, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+      // Scrolled by two lines: the first two sit above the list's top
+      return { top: (k - 2) * 52, bottom: (k - 2) * 52 + 50, left: 0, right: 392, width: 392, height: 50, x: 0, y: (k - 2) * 52, toJSON: () => ({}) } as DOMRect;
+    });
+    await act(async () => root.render(createElement(CraftPicker, { craft: null, onPick: () => {} })));
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="craft-picker"] > button')!.click());
+    const lines = [...container.querySelectorAll<HTMLElement>('.craft-picker__line')];
+    expect(lines.slice(0, 7).map((el) => el.style.getPropertyValue('--i'))).toEqual(['', '', '0', '1', '2', '3', '']);
+    spies.mockRestore();
+  });
+});
+

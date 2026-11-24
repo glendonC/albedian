@@ -289,6 +289,10 @@ export const FlightStarsLayer: React.FC<{
   // The person's input turns the craft (steer.rows); the chase camera's look follows it (MOTION k13: 0.25 s, locked
   // under reduced motion), so in a turn the craft leads off the centre
   const [steer, setSteer] = useState<(SteerState & { chase: WcsCameraRows }) | null>(null);
+  const [craftSeen, setCraftSeen] = useState(Boolean(craft));
+  useEffect(() => {
+    if (craft) setCraftSeen(true);
+  }, [craft]);
   const reducedRef = useRef(session.reducedMotion === true);
   reducedRef.current = session.reducedMotion === true;
   const hands = useRef(new SteerHands(() => reducedRef.current));
@@ -519,6 +523,7 @@ export const FlightStarsLayer: React.FC<{
 
   const at = view?.observerPc ?? [0, 0, 0];
   const fromEarthPc = Math.hypot(at[0], at[1], at[2]);
+  // craft-switch-motion-1: once a craft was shown in this flight its layer stays, so a switch to Your view frames it out
   // The craft's place: below and left of the star at the arrival, on the star's own move (15:50); while the person
   // steers, pilot-1e's framing
   const baseFraming = craftFraming ?? (camera ? laptopCraftFraming(camera) : undefined);
@@ -557,7 +562,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}
     </>
   );
 };
