@@ -210,6 +210,7 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
         return transfer.encode16(tone.apply_lift(light, lift.beta))
 
     def to_original_codes(light: np.ndarray) -> np.ndarray:
+        # Each sample by its own channel's table alone, so the dissolve may encode only its points' tiles
         out = transfer.encode(light)
         out *= top
         return out
@@ -223,7 +224,7 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     del working
     dissolved = gate.dissolve(handed.pop(), linear=linear, to_stored=to_stored, to_original_codes=to_original_codes,
                               original=original, kept=kept, max_passes=max_passes, searches=searches,
-                              expected=expected)
+                              expected=expected, codes_by_tile=True)
     del linear
     lap("dissolve")
     steps.append({"kind": "dissolve_unconfirmed", "version": gate.STEP_VERSION, "parameters": [

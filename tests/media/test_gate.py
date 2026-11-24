@@ -677,6 +677,131 @@ def test_dissolve_channel_by_channel_is_the_whole_frame_dissolve_to_the_bit(
     assert np.array_equal(got.working, must.working)
 
 
+def many_tile_scene(seed: int) -> tuple[np.ndarray, np.ndarray, gate.Kept]:
+    """A 480 x 520 sky (2 x 3 detector tiles) with nine painted points, several sharing a tile and two in the overlap
+    between tiles, and a kept region; nothing in the original confirms them."""
+    rng = np.random.default_rng(seed)
+    shape = (480, 520)
+    linear = 0.01 + 0.00002 * rng.standard_normal(shape + (3,))
+    working = linear.copy()
+    for px, py in ((40.0, 50.0), (90.0, 62.0), (60.0, 140.0), (300.0, 80.0), (330.0, 150.0), (240.0, 236.0),
+                   (470.0, 300.0), (400.0, 420.0), (450.0, 452.0)):
+        working = working + gaussian(shape, px, py, 0.02)[..., None]
+    weight = np.zeros(shape)
+    weight[200:230, 120:150] = 1.0
+    return linear, working, gate.Kept(stars.StarField((), weight, np.zeros(shape, bool), 0, 0, 0), weight)
+
+
+def still_codes():
+    from services.media import encode, tone
+
+    transfer = encode.StillTransfer.of("srgb", None)
+
+    def to_codes(light: np.ndarray) -> np.ndarray:
+        out = transfer.encode(light)
+        out *= 255.0
+        return out
+
+    return (lambda light: transfer.encode16(tone.apply_lift(light, 0.05))), to_codes
+
+
+@settings(max_examples=8, deadline=None)
+@given(seed=st.integers(0, 2**16), max_passes=st.integers(1, 3), codes_by_tile=st.booleans())
+def test_dissolve_over_many_tiles_is_the_whole_frame_dissolve_to_the_bit(
+        seed: int, max_passes: int, codes_by_tile: bool) -> None:
+    linear, working, kept = many_tile_scene(seed)
+    to_stored, to_codes = still_codes()
+    original = gate.Original(np.zeros((0, 2)))
+    must = dissolve_whole(working, linear=linear, to_stored=to_stored, to_original_codes=to_codes,
+                          original=original, kept=kept, max_passes=max_passes)
+    got = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=to_codes, original=original,
+                        kept=kept, max_passes=max_passes, codes_by_tile=codes_by_tile)
+    assert got.per_pass == must.per_pass and got.per_pass[0] >= 9
+    assert np.array_equal(got.working, must.working)
+
+
+def test_a_pass_measures_each_tile_once_however_many_of_its_points_it_dissolves(monkeypatch) -> None:
+    linear, working, kept = many_tile_scene(5)
+    to_stored, to_codes = still_codes()
+    real = stars.tile_noise
+    seen: list[tuple[int, int]] = []
+    held: list[np.ndarray] = []
+
+    def counted(tile_luma: np.ndarray):
+        # The frame each slice is taken from stays alive, so no later pass's frame can reuse its address
+        held.append(tile_luma.base)
+        seen.append((id(tile_luma.base), tile_luma.__array_interface__["data"][0]))
+        return real(tile_luma)
+
+    monkeypatch.setattr(stars, "tile_noise", counted)
+    got = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=to_codes,
+                        original=gate.Original(np.zeros((0, 2))), kept=kept)
+    assert len(seen) == len(set(seen)), "a tile was measured twice in one pass"
+    assert sum(got.per_pass) > len(seen)
+
+
+def view_origin(view: np.ndarray) -> tuple[int, int]:
+    """The row and column of a view's first sample in the array it was sliced from."""
+    offset = view.__array_interface__["data"][0] - view.base.__array_interface__["data"][0]
+    return offset // view.base.strides[0], (offset % view.base.strides[0]) // view.base.strides[1]
+
+
+def test_a_still_pass_encodes_only_the_tiles_that_hold_its_points(monkeypatch) -> None:
+    linear, working, kept = many_tile_scene(6)
+    to_stored, to_codes = still_codes()
+    shapes: list[tuple[int, ...]] = []
+
+    def recorded(light: np.ndarray) -> np.ndarray:
+        shapes.append(light.shape)
+        return to_codes(light)
+
+    whole = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=recorded,
+                          original=gate.Original(np.zeros((0, 2))), kept=kept)
+    assert shapes == [working.shape] * len(whole.per_pass)
+    shapes.clear()
+    # Each pass encodes exactly the tiles it then measures: the tiles that hold its points
+    events: list[tuple[str, tuple[int, int]]] = []
+    held: list[np.ndarray] = []
+    real_noise = stars.tile_noise
+
+    def encoded(light: np.ndarray) -> np.ndarray:
+        held.append(light.base)
+        events.append(("encoded", view_origin(light)))
+        return recorded(light)
+
+    def measured(tile_luma: np.ndarray):
+        held.append(tile_luma.base)
+        events.append(("measured", view_origin(tile_luma)))
+        return real_noise(tile_luma)
+
+    monkeypatch.setattr(stars, "tile_noise", measured)
+    by_tile = gate.dissolve(working, linear=linear, to_stored=to_stored, to_original_codes=encoded,
+                            original=gate.Original(np.zeros((0, 2))), kept=kept, codes_by_tile=True)
+    assert by_tile.per_pass == whole.per_pass and np.array_equal(by_tile.working, whole.working)
+    assert shapes and all(s == (stars.TILE_PX, stars.TILE_PX, 3) for s in shapes)
+    passes: list[dict[str, set]] = []
+    for kind, origin in events:
+        if kind == "encoded" and (not passes or passes[-1]["measured"]):
+            passes.append({"encoded": set(), "measured": set()})
+        passes[-1][kind].add(origin)
+    assert len(passes) == len(whole.per_pass)
+    assert all(p["encoded"] == p["measured"] for p in passes), passes
+
+
+def test_codes_on_tiles_are_the_whole_frames_codes_there_and_nothing_elsewhere() -> None:
+    _, working, _ = many_tile_scene(7)
+    _, to_codes = still_codes()
+    grid = stars.tiles(*working.shape[:2])
+    full = to_codes(working)
+    got = gate._codes_on_tiles(working, to_codes, grid, {0, 4})
+    inside = np.zeros(working.shape[:2], dtype=bool)
+    for index in (0, 4):
+        tile = grid[index]
+        inside[tile.y0:tile.y1, tile.x0:tile.x1] = True
+    assert np.array_equal(got[inside], full[inside]) and not got[~inside].any()
+    assert np.array_equal(stars.luma_codes(got)[inside], stars.luma_codes(full)[inside])
+
+
 def test_unchanged_slices_only_the_windows_around_its_points() -> None:
     # Converting whole uint16 frames up front held 2.00 float64 frames here; slicing each 3 x 3 first holds under 0.01
     rng = np.random.default_rng(47)

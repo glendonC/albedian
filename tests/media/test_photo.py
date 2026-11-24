@@ -55,6 +55,45 @@ def test_an_honest_restoration_ends_ready_with_the_file_the_gate_ran_on(honest: 
     assert honest.gate["statistic"] == gate.STATISTIC
 
 
+def test_a_still_dissolves_tile_by_tile_into_the_same_file_and_gate_record(tmp_path, monkeypatch) -> None:
+    # A still's transfer maps each sample on its own, so its passes encode only the tiles that hold their points
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    still = still_of(scene.codes, tmp_path)
+    places = photo.painted_places(photo.restore_still(still), 4)
+    smooth = gate.smooth_first_scale
+
+    def with_bumps(working, kept):
+        # Points the original does not hold, so the passes have points to dissolve in more than one tile
+        out = smooth(working, kept)
+        yy, xx = np.mgrid[0:out.shape[0], 0:out.shape[1]].astype(np.float64)
+        for x, y in places:
+            out = out + (0.004 * np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2 * 1.3**2)))[..., None]
+        return out
+
+    monkeypatch.setattr(gate, "smooth_first_scale", with_bumps)
+    real = gate.dissolve
+    flags: list[bool] = []
+    runs: list[list[int]] = []
+
+    def forced(by_tile):
+        def call(*args, **kwargs):
+            flags.append(kwargs.get("codes_by_tile", False))
+            kwargs["codes_by_tile"] = by_tile if by_tile is not None else kwargs.get("codes_by_tile", False)
+            result = real(*args, **kwargs)
+            runs.append(result.per_pass)
+            return result
+        return call
+
+    monkeypatch.setattr(gate, "dissolve", forced(None))
+    by_tile = photo.restore_still(still)
+    monkeypatch.setattr(gate, "dissolve", forced(False))
+    whole = photo.restore_still(still)
+    assert flags[0] is True
+    assert runs[0] and runs[0] == runs[1]
+    assert by_tile.status == whole.status and by_tile.data == whole.data and by_tile.gate == whole.gate
+    assert np.array_equal(by_tile.stored, whole.stored)
+
+
 def test_the_graph_names_its_steps_in_the_jobs_order_each_parameter_with_its_origin(honest) -> None:
     kinds = [step["kind"] for step in honest.steps]
     assert kinds == [

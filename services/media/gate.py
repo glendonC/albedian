@@ -925,16 +925,31 @@ class Dissolved:
     per_pass: list[int]
 
 
+def _codes_on_tiles(working: np.ndarray, to_original_codes, grid: list[stars.Tile], indices: set[int]) -> np.ndarray:
+    """The original's codes of `working` on the given tiles alone and 0 elsewhere, in the whole frame's shape, so
+    their luma is read as the whole frame's is."""
+    codes = np.zeros(working.shape, dtype=np.float64)
+    for index in sorted(indices):
+        tile = grid[index]
+        codes[tile.y0:tile.y1, tile.x0:tile.x1] = to_original_codes(working[tile.y0:tile.y1, tile.x0:tile.x1])
+    return codes
+
+
 def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_codes, original: Original, kept: Kept,
              max_passes: int = MAX_PASSES, luma_of=None, searches: Searches | None = None,
-             expected: np.ndarray | None = None) -> Dissolved:
+             expected: np.ndarray | None = None, codes_by_tile: bool = False) -> Dissolved:
     """At most `max_passes` passes: the working image's points, in the stored codes (`to_stored`: linear light to
     the 16 bit codes as they will be stored; `luma_of` reads their luma on the scale of 255, `stored_luma` unless
     given), that the original does not confirm are replaced inside their discs by the fill,
     never inside a kept core. A disc that reaches a kept core takes the original itself there, so the kept region
     grows over the point instead of leaving a seam beside it. Each pass's count is kept. A pass after the first looks
     only in the tiles the last pass changed: the detector works tile by tile, so another tile's points are the ones
-    already found there, every one confirmed. The tile searches go into `searches`, for the gate (`Searches`)."""
+    already found there, every one confirmed. The tile searches go into `searches`, for the gate (`Searches`).
+    A disc's radius is read on the tile that holds its point, each tile measured once a pass however many of its
+    points the pass dissolves. With `codes_by_tile`, which a caller gives only where `to_original_codes` maps each
+    sample on its own (a still's transfer), a pass encodes only those tiles [tested: the same passes to the bit as
+    the whole frame's, test_gate; on rp-a-01 measuring each point's tile again took 19 s and encoding the whole frame
+    16 s, .lanetools/speed-3]."""
     per_pass = []
     core = kept.core
     left_out = kept.left_out
@@ -963,15 +978,22 @@ def dissolve(working: np.ndarray, *, linear: np.ndarray, to_stored, to_original_
         unconfirmed = [p for p, good in zip(points, ok) if not good]
         if not unconfirmed:
             break
-        luma = stars.luma_codes(to_original_codes(working))
+        holding = {point.tile for point in unconfirmed}
+        codes = (_codes_on_tiles(working, to_original_codes, grid, holding) if codes_by_tile
+                 else to_original_codes(working))
+        luma = stars.luma_codes(codes)
+        del codes
+        measured_on: dict[int, stars.TileNoise] = {}
         placed = []
         for point in unconfirmed:
             tile = grid[point.tile]
-            measured = stars.tile_noise(luma[tile.y0:tile.y1, tile.x0:tile.x1])
+            if point.tile not in measured_on:
+                measured_on[point.tile] = stars.tile_noise(luma[tile.y0:tile.y1, tile.x0:tile.x1])
+            measured = measured_on[point.tile]
             radius = stars._radius(measured.residual, measured.sigma, point.x_px - tile.x0, point.y_px - tile.y0)
             placed.append(stars.Star(point.x_px, point.y_px, point.snr,
                                      max(radius, DISSOLVE_MIN_RADIUS_PX) + DISSOLVE_GROW_PX * index))
-        del luma
+        del luma, measured_on
         smoothed = [p for p in placed if not near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
         kept_back = [p for p in placed if near_core[min(core.shape[0] - 1, int(round(p.y_px))), min(core.shape[1] - 1, int(round(p.x_px)))]]
         # The fill and the discs give a kept region's edge no weight, as its core: a fill that took the edge's light
