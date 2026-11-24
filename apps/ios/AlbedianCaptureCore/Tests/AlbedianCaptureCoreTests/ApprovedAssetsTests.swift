@@ -162,9 +162,10 @@ final class ApprovedAssetsTests: XCTestCase {
                        "ConnectScreen TextField accessibilityLabel must say exactly Address")
         XCTAssertFalse(companionSplit.literals.contains("Laptop address"), "no word without a record on the Companion screens")
 
-        // ResultScreen calibrated primary count+tag HStack and secondary/non-calibrated count helper combine children
-        XCTAssertTrue(compactCompanion.contains("EvidenceTag(evidence:.catalogMatched)}.accessibilityElement(children:.combine)"),
-                      "ResultScreen catalogMatched count+tag HStack must combine children for VoiceOver")
+        // ResultScreen calibrated primary count+tag (side by side or stacked, largertext-m2) and secondary/non-calibrated
+        // count helper combine children
+        XCTAssertTrue(compactCompanion.contains("VStack(alignment:.leading,spacing:8){matchedCount(matched);EvidenceTag(evidence:.catalogMatched)}}.accessibilityElement(children:.combine)"),
+                      "ResultScreen catalogMatched count+tag, either layout, must combine children for VoiceOver")
         XCTAssertTrue(compactCompanion.contains("EvidenceTag(evidence:evidence)}.accessibilityElement(children:.combine)"),
                       "ResultScreen count helper HStack must combine children for VoiceOver")
     }

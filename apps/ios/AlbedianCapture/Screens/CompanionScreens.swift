@@ -426,50 +426,68 @@ struct ConnectScreen: View {
 /// reports them, and "Open", which shows the photo's reveal on the paired laptop in the system's Safari view (mobile-4b).
 struct ResultScreen: View {
     let model: CompanionModel
+    // largertext-m2: the heights the rows take as laid out, so that the rows grow downward from the row above and the
+    // card gives the room still missing above "Open" (UIUX-iphone-largertext-READY, proposal 2)
+    @State private var firstRowHeight = 0.0
+    @State private var sentenceHeight = 0.0
+    @State private var countsHeight = 0.0
 
     var body: some View {
         GeometryReader { geometry in
             let cardWidth = Double(geometry.size.width) - 2 * Arrive.side
-            let cardHeight = cardWidth * 4 / 3
+            let fullCardHeight = cardWidth * 4 / 3
             ZStack {
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                 if let result = model.result, let sentence = OutcomeSentence.sentence(result.readout, result.facts) {
                     // A result that is not calibrated (UIUX-iphone-solve-READY, 2; mockup is-pre): no word at the top, no marks,
-                    // the web's own sentence at 592, the counts it has at 676, and "Open" at 730
-                    ShotPhoto(shot: model.shot, width: cardWidth).clipShape(RoundedRectangle(cornerRadius: 18)).atTop(Arrive.photoTop)
+                    // the web's own sentence at 592, the counts it has at 676, and "Open" at 730. largertext-m2: the counts
+                    // stand under the sentence when it grows, and the card gives the room still missing above "Open"
+                    let give = max(0, Arrive.photoTop + fullCardHeight + max(102, 18 + sentenceHeight + 8) + countsHeight + 16 - (Double(geometry.size.height) - Arrive.unreachableButtonsBottomGap - ControlStyle.mainHeight))
+                    let cardHeight = fullCardHeight - give
+                    let countsTop = Arrive.photoTop + cardHeight + max(102, 18 + sentenceHeight + 8)
+                    ShotPhoto(shot: model.shot, width: cardWidth)
+                        .frame(width: cardWidth, height: cardHeight).clipShape(RoundedRectangle(cornerRadius: 18)).atTop(Arrive.photoTop)
                     Text(sentence).font(AlbedianFont.light(20)).tracking(-0.025 * 20).foregroundStyle(Color(ControlStyle.ink))
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, CGFloat(Arrive.side))
+                        .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { sentenceHeight = $0 }
                         .atTop(Arrive.photoTop + cardHeight + 18)
-                    HStack(spacing: 16) {
-                        ForEach(OutcomeSentence.countsShown(result.readout), id: \.0) { pair in count(pair.1, Self.tag(pair.0)) }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
-                    .atTop(Arrive.photoTop + cardHeight + 102)
+                    counts(OutcomeSentence.countsShown(result.readout).map { (Self.tag($0.0), $0.1) })
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, CGFloat(Arrive.side))
+                        .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { countsHeight = $0 }
+                        .atTop(countsTop)
                     MainButton(title: "Open", icon: .arrow, action: model.openReveal).atBottom(Arrive.unreachableButtonsBottomGap)
                 } else if let result = model.result {
+                    // largertext-m2: the second row under the first when it grows, and the card giving the room still
+                    // missing above "Open", about its centre, so every mark stays on its star
+                    let give = max(0, Arrive.photoTop + fullCardHeight + max(78, 22 + firstRowHeight + 8) + countsHeight + 16 - (Double(geometry.size.height) - Arrive.mainBottomGap - ControlStyle.mainHeight))
+                    let cardHeight = fullCardHeight - give
+                    let secondTop = Arrive.photoTop + cardHeight + max(78, 22 + firstRowHeight + 8)
                     Text(result.readout.status.word).font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
                         .foregroundStyle(Color(ControlStyle.ink))
                         .frame(height: 44).atTop(Arrive.topControls)
                     ShotPhoto(shot: model.shot, width: cardWidth)
-                        .overlay { CatalogMarks(marks: result.readout.marks, frame: result.frame, width: cardWidth, height: cardHeight) }
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .overlay { CatalogMarks(marks: result.readout.marks, frame: result.frame, width: cardWidth, height: fullCardHeight) }
+                        .frame(width: cardWidth, height: cardHeight).clipShape(RoundedRectangle(cornerRadius: 18))
                         .atTop(Arrive.photoTop)
-                    HStack(spacing: 14) {
-                        Text((result.readout.counts[.catalogMatched] ?? 0).formatted())
-                            .font(AlbedianFont.light(40).monospacedDigit()).tracking(-0.045 * 40)
-                        EvidenceTag(evidence: .catalogMatched)
+                    // largertext-m2: the matched count and its tag side by side while they fit whole within the margins,
+                    // else the tag under the count, 8 pt apart, so the tag's word is never cut (the record's rule for the
+                    // row under it, applied where the largest size cuts "Catalog matched")
+                    let matched = (result.readout.counts[.catalogMatched] ?? 0).formatted()
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 14) { matchedCount(matched); EvidenceTag(evidence: .catalogMatched) }
+                        VStack(alignment: .leading, spacing: 8) { matchedCount(matched); EvidenceTag(evidence: .catalogMatched) }
                     }
                     .accessibilityElement(children: .combine)
                     .foregroundStyle(Color(ControlStyle.ink))
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                    .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { firstRowHeight = $0 }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, CGFloat(Arrive.side))
                     .atTop(Arrive.photoTop + cardHeight + 22)
-                    HStack(spacing: 16) {
-                        // A class with none is left out, as the web's legend leaves it out
-                        ForEach(ResultCounts.secondRow(result.readout.counts), id: \.0) { evidence, n in count(n, evidence == .observed ? .observed : .predicted) }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
-                    .atTop(Arrive.photoTop + cardHeight + 78)
+                    // A class with none is left out, as the web's legend leaves it out
+                    counts(ResultCounts.secondRow(result.readout.counts).map { ($0.0 == .observed ? .observed : .predicted, $0.1) })
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, CGFloat(Arrive.side))
+                        .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { countsHeight = $0 }
+                        .atTop(secondTop)
                     MainButton(title: "Open", icon: .arrow, action: model.openReveal).atBottom(Arrive.mainBottomGap)
                 }
             }
@@ -484,6 +502,21 @@ struct ResultScreen: View {
         case .predicted: .predicted
         case .simulated: .simulated
         }
+    }
+
+    /// largertext-m2 (UIUX-iphone-largertext-READY, proposal 2, from Apple's Human Interface Guidelines on Dynamic Type): the
+    /// counts side by side, 16 pt apart, while they all fit whole on one line, else stacked, each with its tag on its own
+    /// row, 8 pt apart; no evidence tag's word is ever cut.
+    private func counts(_ items: [(ControlStyle.Evidence, Int)]) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) { ForEach(items, id: \.0) { evidence, n in count(n, evidence) } }
+            VStack(alignment: .leading, spacing: 8) { ForEach(items, id: \.0) { evidence, n in count(n, evidence) } }
+        }
+    }
+
+    /// The calibrated result's matched count: Geist Light 40, tabular figures.
+    private func matchedCount(_ words: String) -> some View {
+        Text(words).font(AlbedianFont.light(40).monospacedDigit()).tracking(-0.045 * 40)
     }
 
     private func count(_ value: Int, _ evidence: ControlStyle.Evidence) -> some View {
