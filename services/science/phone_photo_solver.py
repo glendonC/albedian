@@ -33,7 +33,7 @@ Design and references:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from functools import lru_cache
 import itertools
@@ -68,6 +68,9 @@ from services.science.catalog_model import (
 )
 from services.science.designations import designation_of_row, designation_parts, star_title
 from services.science.detector import (
+    CLIPPED_CORE_MIN_PX,
+    FULL_SCALES,
+    _effective_sigma,
     _estimate_background_and_noise,
     _to_luma_2d,
     detect_point_sources,
@@ -1566,6 +1569,12 @@ def _rodrigues(omega: np.ndarray) -> np.ndarray:
 # The diagonal fields of view the refinement fits between, in degrees (its bounds' own literals)
 REFINE_FOV_MIN_DEG = 25.0
 REFINE_FOV_MAX_DEG = 145.0
+# Radial distortion regularization weights toward `(k1_0, k2_0)`: `(25.0, 60.0)` from 5 training pairs up, and twice
+# that shrinkage `(50.0, 120.0)` when only 3 or 4 training pairs constrain the six camera parameters (refine-2)
+# [proposed; tested across 48 random skies with 0 false solves and rp-a-07, reports/SOLVER/refine-2-measure.md]
+DISTORTION_REG_WEIGHTS: tuple[float, float] = (25.0, 60.0)
+FEW_PAIR_DISTORTION_MIN_PAIRS = 5
+FEW_PAIR_DISTORTION_REG_WEIGHTS: tuple[float, float] = (50.0, 120.0)
 
 
 def _refine_phone_camera_wcs(
@@ -1573,6 +1582,7 @@ def _refine_phone_camera_wcs(
     train_pairs: Sequence[tuple[SourceDetection, float, float]],
     *,
     fit_distortion: bool | None = None,
+    distortion_regularization: tuple[float, float] | None = None,
 ) -> PhoneCameraWCS:
     """Refine 3D attitude (3 Rodrigues parameters), focal scale (diagonal FOV), and radial distortion (k1, k2)."""
     if len(train_pairs) < 3:
@@ -1646,6 +1656,16 @@ def _refine_phone_camera_wcs(
             sky_frame=sky_frame,
         )
 
+    reg_weights = (
+        distortion_regularization
+        if distortion_regularization is not None
+        else (
+            DISTORTION_REG_WEIGHTS
+            if len(train_pairs) >= FEW_PAIR_DISTORTION_MIN_PAIRS
+            else FEW_PAIR_DISTORTION_REG_WEIGHTS
+        )
+    )
+    reg_k1, reg_k2 = float(reg_weights[0]), float(reg_weights[1])
     x0 = np.array([0.0, 0.0, 0.0, fov0, k1_0, k2_0], dtype=np.float64)
     k1_bound = 0.05 if lens_model == "kannala-brandt" else 0.14
     k2_bound = 0.025 if lens_model == "kannala-brandt" else 0.045
@@ -1674,7 +1694,7 @@ def _refine_phone_camera_wcs(
             rad = 1.0 + r2 * (k1 + r2 * k2)
             px = np.where(valid, focal * xn * rad + cx, 1e4)
             py = np.where(valid, focal * yn * rad + cy, 1e4)
-        reg = np.array([(fov - fov0) * 0.4, (k1 - k1_0) * 25.0, (k2 - k2_0) * 60.0], dtype=np.float64)
+        reg = np.array([(fov - fov0) * 0.4, (k1 - k1_0) * reg_k1, (k2 - k2_0) * reg_k2], dtype=np.float64)
         return np.concatenate([px - det_x, py - det_y, reg])
 
     opt = optimize.least_squares(
@@ -2138,6 +2158,312 @@ def _build_unresolved(
     )
 
 
+# Conversion from 2D radial root-mean-square moment sqrt(E[(x - cx)^2 + (y - cy)^2]) to isotropic Gaussian FWHM:
+# 2 * sqrt(2 * ln 2) * (radial_rms / sqrt(2)) = 2 * sqrt(ln 2) * radial_rms [verified]
+FWHM_PER_RADIAL_RMS = 2.0 * math.sqrt(math.log(2.0))
+
+
+def _bin_image_blocks(frame: np.ndarray, k: int) -> np.ndarray:
+    """Block-averaged `k x k` frame matching `services/science/binning.py` when no binned image was passed."""
+    if k == 1:
+        return frame
+    a = np.asarray(frame)
+    h, w = (a.shape[0] // k) * k, (a.shape[1] // k) * k
+    blocks = a[:h, :w].reshape(h // k, k, w // k, k, *a.shape[2:])
+    if np.issubdtype(a.dtype, np.integer):
+        return np.round(blocks.mean(axis=(1, 3), dtype=np.float64)).astype(a.dtype)
+    return blocks.mean(axis=(1, 3), dtype=np.float64)
+
+
+def _normalized_luma_2d(image: np.ndarray) -> np.ndarray:
+    """Convert an RGB or grayscale image to a 2D float64 luminance array on `[0, 1]`."""
+    raw_luma = _to_luma_2d(image)
+    if image.dtype == np.uint16 or float(np.nanmax(raw_luma)) > 255.5:
+        return raw_luma / 65535.0
+    if image.dtype == np.uint8 or float(np.nanmax(raw_luma)) > 1.5:
+        return raw_luma / 255.0
+    return raw_luma
+
+
+def _top_saturation_code(luma: np.ndarray) -> float | None:
+    """The data's top full-scale code when `luma` reaches one of `FULL_SCALES` (`1.0`, `255.0`, `65535.0`), else None."""
+    finite = luma[np.isfinite(luma)]
+    if finite.size == 0:
+        return None
+    top = float(np.max(finite))
+    for scale in FULL_SCALES:
+        if abs(top - scale) <= 1e-9 * scale:
+            return float(scale)
+    return None
+
+
+def remeasure_on_stored_pixels(
+    stored_luma: np.ndarray,
+    stored_bg: np.ndarray,
+    stored_sigma_eff: float,
+    binned_detections: Sequence[SourceDetection],
+    k: int,
+    asset_id: str | None = None,
+    *,
+    return_indices: bool = False,
+) -> list[SourceDetection] | tuple[list[SourceDetection], list[int]]:
+    """Re-measure each `k x k` binned detection's centroid, flux, FWHM, and centroid uncertainty directly on the
+    original stored pixels inside the `(5k x 5k)` patch covering its binned `5 x 5` footprint (refine-2).
+
+    Pure pixel measurement (`observed` class): never reads any astronomical catalog or WCS. Avoids unbinned matched-filter
+    fragmentation of `8` to `9 px` FWHM stars on 50 to 64 MP frames while keeping centroids in original stored pixel
+    coordinates [tested, reports/SOLVER/refine-2-measure.md].
+    """
+    if k < 1:
+        raise ValueError("A binning factor must be at least 1.")
+    if stored_luma.ndim != 2 or stored_bg.shape != stored_luma.shape:
+        raise ValueError("stored_luma and stored_bg must be 2D arrays of the same shape.")
+    if k == 1:
+        kept = list(binned_detections)
+        return (kept, list(range(len(kept)))) if return_indices else kept
+
+    h, w = stored_luma.shape
+    sigma_eff = max(float(stored_sigma_eff), 1e-9)
+    top_code = _top_saturation_code(stored_luma)
+    half = 2 * k + (k // 2)
+    out: list[SourceDetection] = []
+    kept_indices: list[int] = []
+
+    for idx, d in enumerate(binned_detections):
+        cx_init = (float(d.x_px) + 0.5) * k - 0.5
+        cy_init = (float(d.y_px) + 0.5) * k - 0.5
+        x0, y0 = int(round(cx_init)), int(round(cy_init))
+        if not (half <= x0 < w - half and half <= y0 < h - half):
+            continue
+        sy, sx = slice(y0 - half, y0 + half + 1), slice(x0 - half, x0 + half + 1)
+        patch = stored_luma[sy, sx] - stored_bg[sy, sx]
+        weights = np.maximum(0.0, patch - 0.75 * sigma_eff)
+        total_w = float(np.sum(weights))
+        if total_w <= 1e-9:
+            weights = np.maximum(0.0, patch)
+            total_w = float(np.sum(weights))
+        if total_w <= 1e-9:
+            continue
+        pos_patch = np.maximum(0.0, patch)
+        flux = float(np.sum(weights))
+        peak_val = float(np.max(pos_patch))
+        peak_ratio = min(1.0, max(0.0, peak_val / max(float(np.sum(pos_patch)), 1e-9)))
+
+        yy, xx = np.mgrid[y0 - half : y0 + half + 1, x0 - half : x0 + half + 1]
+        cx = float(np.sum(xx * weights) / total_w)
+        cy = float(np.sum(yy * weights) / total_w)
+        px0, py0 = x0, y0
+
+        rx0, ry0 = int(round(cx)), int(round(cy))
+        if half <= rx0 < w - half and half <= ry0 < h - half and (rx0 != x0 or ry0 != y0):
+            sy2, sx2 = slice(ry0 - half, ry0 + half + 1), slice(rx0 - half, rx0 + half + 1)
+            patch2 = stored_luma[sy2, sx2] - stored_bg[sy2, sx2]
+            w2 = np.maximum(0.0, patch2 - 0.75 * sigma_eff)
+            tw2 = float(np.sum(w2))
+            if tw2 > 1e-9:
+                yy2, xx2 = np.mgrid[ry0 - half : ry0 + half + 1, rx0 - half : rx0 + half + 1]
+                cx = float(np.sum(xx2 * w2) / tw2)
+                cy = float(np.sum(yy2 * w2) / tw2)
+                weights, yy, xx, total_w = w2, yy2, xx2, tw2
+                pos_patch = np.maximum(0.0, patch2)
+                flux = float(np.sum(weights))
+                peak_val = float(np.max(pos_patch))
+                peak_ratio = min(1.0, max(0.0, peak_val / max(float(np.sum(pos_patch)), 1e-9)))
+                px0, py0 = rx0, ry0
+
+        r2_moment = float(np.sum(weights * ((xx - cx) ** 2 + (yy - cy) ** 2)) / total_w)
+        fwhm_px = FWHM_PER_RADIAL_RMS * math.sqrt(max(0.0, r2_moment))
+        n_eff = max(1.0, float(np.count_nonzero(weights > 0)))
+        snr_stored = max(float(d.snr), flux / max(math.sqrt(n_eff) * sigma_eff, 1e-9))
+        centroid_unc = max(0.03, min(1.5 * k, max(fwhm_px, 0.5) / max(snr_stored, 1.0)))
+
+        sat_px = 0
+        is_sat = False
+        if top_code is not None:
+            luma_box = stored_luma[py0 - half : py0 + half + 1, px0 - half : px0 + half + 1]
+            sat_count = int(np.count_nonzero(luma_box >= top_code * (1.0 - 1e-9)))
+            # The detector's clipped-core minimum, counted in the star's box: one pixel at the top is a peak or a hot
+            # pixel, never a clipped core
+            if sat_count >= CLIPPED_CORE_MIN_PX:
+                is_sat = True
+                sat_px = sat_count
+
+        frame_rec = d.frame
+        if frame_rec is not None:
+            maj = frame_rec.profile_sigma_major_px
+            mnr = frame_rec.profile_sigma_minor_px
+            frame_rec = replace(
+                frame_rec,
+                profile_sigma_major_px=None if maj is None else float(maj) * k,
+                profile_sigma_minor_px=None if mnr is None else float(mnr) * k,
+            )
+
+        out.append(
+            SourceDetection(
+                x_px=cx,
+                y_px=cy,
+                flux=flux,
+                snr=snr_stored,
+                fwhm_px=fwhm_px,
+                centroid_uncertainty_px=centroid_unc,
+                asset_id=d.asset_id if asset_id is None else asset_id,
+                frame_time_sec=d.frame_time_sec,
+                peak_to_total_ratio=peak_ratio,
+                saturated=is_sat,
+                saturated_area_px=sat_px,
+                frame=frame_rec,
+            )
+        )
+        kept_indices.append(idx)
+
+    return (out, kept_indices) if return_indices else out
+
+
+def restate_binned_phone_wcs(binned_wcs: PhoneCameraWCS, k: int, width: int, height: int) -> PhoneCameraWCS:
+    """Restate a `PhoneCameraWCS` fitted on a `k x k` binned frame onto the stored `width x height` frame.
+
+    Preserves the exact block-centre principal point `(crpix + 0.5) * k - 0.5` when `width % k != 0` or `height % k != 0`,
+    scales `focal_px` by `k` (`scale_deg_per_px` by `1 / k`), and updates `fov_diagonal_deg` to the stored diagonal's
+    angle under `(focal_px, dist_k1, dist_k2)` [tested].
+    """
+    if not isinstance(binned_wcs, PhoneCameraWCS):
+        raise ValueError("binned_wcs must be a PhoneCameraWCS.")
+    if k < 1 or width <= 0 or height <= 0:
+        raise ValueError("k, width, and height must be positive integers.")
+    if k == 1 and (binned_wcs.width, binned_wcs.height) == (width, height):
+        return binned_wcs
+
+    target_focal = float(binned_wcs.focal_px) * k
+    crpix_x = (float(binned_wcs.crpix_x) + 0.5) * k - 0.5
+    crpix_y = (float(binned_wcs.crpix_y) + 0.5) * k - 0.5
+
+    half_diag = 0.5 * math.hypot(width, height) / max(target_focal, 1e-6)
+    fisheye = binned_wcs.lens_model == "kannala-brandt"
+    limit = _max_valid_radial(binned_wcs.dist_k1, binned_wcs.dist_k2, fisheye=fisheye)
+    top = limit if fisheye else min(limit, 25.0)
+    grid = np.linspace(0.0, top, 1025)
+    g2 = grid * grid
+    gd = grid * (1.0 + g2 * (binned_wcs.dist_k1 + g2 * binned_wcs.dist_k2))
+    r = float(np.interp(half_diag, gd, grid))
+    for _ in range(8):
+        s = r * r
+        f = r * (1.0 + s * (binned_wcs.dist_k1 + s * binned_wcs.dist_k2)) - half_diag
+        sl = 1.0 + s * (3.0 * binned_wcs.dist_k1 + 5.0 * binned_wcs.dist_k2 * s)
+        if sl > 1e-12:
+            r = min(top, max(0.0, r - f / sl))
+    half_angle_rad = r if fisheye else math.atan(r)
+    stored_fov_deg = min(175.0, max(5.0, math.degrees(2.0 * half_angle_rad)))
+
+    return replace(
+        binned_wcs,
+        crpix_x=crpix_x,
+        crpix_y=crpix_y,
+        scale_deg_per_px=float(binned_wcs.scale_deg_per_px) / k,
+        width=width,
+        height=height,
+        fov_diagonal_deg=stored_fov_deg,
+        focal_px=target_focal,
+    )
+
+
+def refine_binned_phone_solution(
+    stored_image: np.ndarray,
+    binned_solution: ObservationSolution,
+    k: int,
+    *,
+    binned_image: np.ndarray | None = None,
+    binned_detections: Sequence[SourceDetection] | None = None,
+    catalog_stars: Sequence[CatalogStar] | None = None,
+    initial_radius_px: float | None = None,
+) -> ObservationSolution:
+    """Carry a calibrated `k x k` binned `PhoneCameraWCS` solution onto `stored_image` under the unchanged `3.0 px` gate.
+
+    `binned_image`, when given, is `stored_image` binned `k x k` (block means); `binned_detections`, when given, are the
+    detector's on that binned frame. Without them both come from `stored_image` itself. Re-measures those detections
+    on original stored pixels (`remeasure_on_stored_pixels`), preserves the
+    binned stellar candidate ranking order mapped to stored detections, restates `binned_solution.wcs` onto the stored
+    frame (`restate_binned_phone_wcs`), associates within `max(4.8, MAX_HELD_OUT_MEDIAN_PX * k)` stored pixels
+    (`initial_radius_px` when given), refits, and runs `evaluate_coincidence_gate` (`MAX_HELD_OUT_MEDIAN_PX = 3.0`) and
+    `naming_refusals` in stored pixels; any non-calibrated refit degrades cleanly to `unresolved` with no WCS [tested,
+    reports/SOLVER/refine-2-measure.md].
+    """
+    if k < 1:
+        raise ValueError("A binning factor must be at least 1.")
+    if k == 1:
+        return binned_solution
+    if binned_solution.status != "calibrated" or not isinstance(binned_solution.wcs, PhoneCameraWCS):
+        raise ValueError("refine_binned_phone_solution requires a calibrated solution with a PhoneCameraWCS.")
+
+    stored_luma = _normalized_luma_2d(stored_image)
+    height, width = stored_luma.shape
+    stored_bg, stored_sig_bg = _estimate_background_and_noise(stored_luma, grouped=True)
+    stored_sig_eff = _effective_sigma(stored_sig_bg, stored_luma)
+
+    bin_img = binned_image if binned_image is not None else _bin_image_blocks(stored_image, k)
+    if np.asarray(bin_img).shape[:2] != (height // k, width // k):
+        raise ValueError("binned_image must be stored_image binned k x k.")
+    luma_bin = _normalized_luma_2d(bin_img)
+    bg_bin, _ = _estimate_background_and_noise(luma_bin)
+    # The detections are this stored image's own, found on its binned frame, never the binned solution's findings: a
+    # remeasurement keeps every detection it is given, so detections from another image would put observed points
+    # where these pixels hold no star (refine-2, the refusal case of test_refine2_solver.py)
+    dets_bin = (
+        list(binned_detections)
+        if binned_detections is not None
+        else detect_point_sources(
+            luma_bin, asset_id=binned_solution.source_asset_id, frame_time_sec=binned_solution.frame_time_sec
+        )
+    )
+    rem_pair = remeasure_on_stored_pixels(
+        stored_luma,
+        stored_bg,
+        stored_sig_eff,
+        dets_bin,
+        k,
+        binned_solution.source_asset_id,
+        return_indices=True,
+    )
+    assert isinstance(rem_pair, tuple)
+    stored_dets, kept_indices = rem_pair
+
+    ranked_bin, sky_frac_bin = _rank_stellar_candidates(bin_img, luma_bin, bg_bin, dets_bin, max_pool=85)
+    bin_id_to_stored = {id(dets_bin[i]): stored_dets[pos] for pos, i in enumerate(kept_indices)}
+    ranked_stored = [bin_id_to_stored[id(db)] for db in ranked_bin if id(db) in bin_id_to_stored]
+
+    initial_wcs = restate_binned_phone_wcs(binned_solution.wcs, k, width, height)
+    rad_px = max(4.8, MAX_HELD_OUT_MEDIAN_PX * k) if initial_radius_px is None else float(initial_radius_px)
+
+    refitted = _solve_phone_photo_with(
+        stored_image,
+        attitude_prior=_attitude_prior_takes,
+        detections=stored_dets,
+        obs_utc_iso=binned_solution.observed_at_utc,
+        observer_lat=binned_solution.observer_lat,
+        observer_lon=binned_solution.observer_lon,
+        catalog_stars=catalog_stars,
+        source_asset_id=binned_solution.source_asset_id,
+        source_sha256=binned_solution.source_sha256,
+        frame_time_sec=binned_solution.frame_time_sec,
+        solution_id=binned_solution.id,
+        _preset_initial_wcs=initial_wcs,
+        _preset_ranked=(ranked_stored, sky_frac_bin),
+        _preset_initial_radius_px=rad_px,
+        _precomputed_luma_bg=(stored_luma, stored_bg),
+    )
+
+    if binned_solution.quality is not None and binned_solution.quality.detection is not None and refitted.quality is not None:
+        det_diag = binned_solution.quality.detection
+        prof = det_diag.star_profile
+        if prof is not None:
+            prof = replace(prof, sigma_major_px=prof.sigma_major_px * k, sigma_minor_px=prof.sigma_minor_px * k)
+            det_diag = replace(det_diag, star_profile=prof)
+        refitted = replace(refitted, quality=replace(refitted.quality, detection=det_diag))
+
+    if refitted.status != "calibrated":
+        refitted = replace(refitted, status="unresolved", wcs=None)
+    return refitted
+
+
 def solve_phone_photo(
     image: np.ndarray,
     *,
@@ -2245,6 +2571,10 @@ def _solve_phone_photo_with(
     seed_axes_icrs: Sequence[tuple[float, float]] | None = None,
     fov_candidates_deg: Sequence[float] | None = None,
     whole_sky: bool = False,
+    _preset_initial_wcs: PhoneCameraWCS | None = None,
+    _preset_ranked: tuple[list[SourceDetection], float] | None = None,
+    _preset_initial_radius_px: float | None = None,
+    _precomputed_luma_bg: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> ObservationSolution:
     """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes (with
     `whole_sky`, the blind search in its place)."""
@@ -2265,10 +2595,13 @@ def _solve_phone_photo_with(
     ):
         raise ValueError(f"A field-of-view sweep names one or more fields in (0, {SEED_FOV_MAX_DEG:g}] degrees.")
 
-    raw_luma = _to_luma_2d(image)
-    luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
+    if _precomputed_luma_bg is not None:
+        luma, bg = _precomputed_luma_bg
+    else:
+        raw_luma = _to_luma_2d(image)
+        luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
+        bg, _ = _estimate_background_and_noise(luma)
     height, width = luma.shape
-    bg, _ = _estimate_background_and_noise(luma)
     if detections is None:
         detections = detect_point_sources(
             luma, asset_id=source_asset_id, frame_time_sec=frame_time_sec
@@ -2291,7 +2624,10 @@ def _solve_phone_photo_with(
             noise_warnings,
         )
 
-    ranked_candidates, sky_fraction = _rank_stellar_candidates(image, luma, bg, detections, max_pool=85)
+    if _preset_ranked is not None:
+        ranked_candidates, sky_fraction = _preset_ranked
+    else:
+        ranked_candidates, sky_fraction = _rank_stellar_candidates(image, luma, bg, detections, max_pool=85)
     if len(ranked_candidates) < 6:
         ranked_candidates = list(detections[:85])
     pool = ranked_candidates[:65]
@@ -2329,9 +2665,9 @@ def _solve_phone_photo_with(
         )
     else:
         epoch_limitations = ()
-    initial_wcs: PhoneCameraWCS | None = None
+    initial_wcs: PhoneCameraWCS | None = _preset_initial_wcs
 
-    if seed_axes_icrs is not None:
+    if initial_wcs is None and seed_axes_icrs is not None:
         # The pose as the search's answer (align-2w): the camera in this sky frame from its three directions, at the
         # first field of view; refined and verified below as any candidate. A mirrored pose gives no camera
         rotation = camera_rotation(seed_axes_icrs, sky_frame)
@@ -2341,7 +2677,7 @@ def _solve_phone_photo_with(
                 rot_matrix=rotation, fov_diagonal_deg=seed_fov, width=width, height=height, lens_model=seed_lens,
                 sky_frame=sky_frame,
             )
-    elif sky_frame is not None and catalog_stars is None and not whole_sky:
+    elif initial_wcs is None and sky_frame is not None and catalog_stars is None and not whole_sky:
         row_idx_b, ra_b, dec_b, _ = tile_index.query_bright(v_limit=6.3, max_stars=3500, epoch_jyear=epoch_jyear)
         enu_b = sky_frame.icrs_to_sky_vec(ra_b, dec_b)
         above = enu_b[:, 2] > math.sin(math.radians(0.5))
@@ -2421,12 +2757,18 @@ def _solve_phone_photo_with(
 
     eval_pool = ranked_candidates
 
-    # Initial association on ranked pool using 1.15-degree angular radius around initial triad attitude
+    # Initial association on ranked pool using 1.15-degree angular radius around initial triad attitude, or the tight
+    # stored-pixel handover radius when starting from a calibrated binned PhoneCameraWCS
     deg_in_px = 1.0 / max(initial_wcs.scale_deg_per_px, 1e-4)
-    init_rad_px = max(4.8, min(28.0, 1.15 * deg_in_px))
-    init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=init_rad_px)
-    if len(init_pairs) < 6:
-        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=init_rad_px * 1.4)
+    if _preset_initial_radius_px is not None:
+        init_pairs, _ = _associate_detections(
+            initial_wcs, eval_pool, v_ra, v_dec, radius_px=float(_preset_initial_radius_px)
+        )
+    else:
+        init_rad_px = max(4.8, min(28.0, 1.15 * deg_in_px))
+        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=init_rad_px)
+        if len(init_pairs) < 6:
+            init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=init_rad_px * 1.4)
     if len(init_pairs) < 6:
         return _build_unresolved(
             detections,
@@ -2457,7 +2799,9 @@ def _solve_phone_photo_with(
     train_tuples = [(eval_pool[d_i], float(v_ra[c_i]), float(v_dec[c_i])) for d_i, c_i, _ in train_items]
 
     refined_wcs = _refine_phone_camera_wcs(initial_wcs, train_tuples, fit_distortion=False)
-    if len(train_tuples) >= 5:
+    if len(train_tuples) >= 3:
+        # When 3 or 4 pairs train the fit (`< FEW_PAIR_DISTORTION_MIN_PAIRS`), `_refine_phone_camera_wcs` shrinks
+        # `(k1, k2)` with `(50.0, 120.0)` instead of `(25.0, 60.0)` (refine-2)
         refined_wcs = _refine_phone_camera_wcs(refined_wcs, train_tuples, fit_distortion=True)
 
     # Re-associate on refined WCS and run a second pass separating held-out inliers
@@ -2559,6 +2903,13 @@ def _solve_phone_photo_with(
     findings_list: list[CelestialFindingRecord] = []
     warnings: list[str] = []
 
+    batch_ra: np.ndarray | None = None
+    batch_dec: np.ndarray | None = None
+    if passed_gate and detections:
+        det_xs = np.array([d.x_px for d in detections], dtype=np.float64)
+        det_ys = np.array([d.y_px for d in detections], dtype=np.float64)
+        batch_ra, batch_dec = refined_wcs.pixel_to_world_batch(det_xs, det_ys)
+
     for idx, det in enumerate(detections):
         if passed_gate and id(det) in verified_by_det_id:
             st, res_px, is_train = verified_by_det_id[id(det)]
@@ -2600,7 +2951,8 @@ def _solve_phone_photo_with(
                 )
             )
         elif passed_gate:
-            ra_est, dec_est = refined_wcs.pixel_to_world(det.x_px, det.y_px)
+            assert batch_ra is not None and batch_dec is not None
+            ra_est, dec_est = float(batch_ra[idx]), float(batch_dec[idx])
             arcsec_per_px = refined_wcs.scale_deg_per_px * 3600.0
             findings_list.append(
                 CelestialFindingRecord(

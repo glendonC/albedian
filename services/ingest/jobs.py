@@ -1405,8 +1405,11 @@ SOLVE_PRODUCER_FILES = (
 # truncation without `.000Z`, and OpenNGC duplicate / newline guards (science-edge-1); 28, a predicted Solar System
 # body titled by its plain name, its class in its evidence class (ephemeris-title-plain-1); 29, the phone solver once
 # more over the whole sky when the horizon search at the photo's own time and place calibrates nothing
-# (own-moment-fallback-1), which calibrates photos whose own moment left them predicted only
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 29, SOLVE_PRODUCER_FILES)
+# (own-moment-fallback-1), which calibrates photos whose own moment left them predicted only; 30, the phone solver's
+# distortion fit from three training pairs, shrunk toward its start below five (refine-2), which changes the fit and
+# the held-out counts of a photo with three or four training pairs (no public photo's status), and the binned frame's
+# stored-pixel handover functions it adds, which the upload path does not call yet
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 30, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
