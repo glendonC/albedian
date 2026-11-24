@@ -1286,3 +1286,20 @@ def test_smooth_chroma_sits_between_spatial_and_dissolve_and_validates_its_param
     assert parsed.chroma is not None and (parsed.chroma.held_samples, parsed.chroma.clamped_samples) == (held, clamped)
     unmeasured = {**copy.deepcopy(VALID["RestorationMeasurements"][3]), "chroma": {"heldSamples": held, "clampedSamples": clamped}}
     assert "chroma counts require a measured noise table" in "; ".join(messages(media.RestorationMeasurements, unmeasured))
+
+
+def test_a_flat_dark_band_is_its_own_not_measured_reason_with_the_decided_note() -> None:
+    # flatband-zero [decided 2026-11-24 13:59 by the lead]: a flat dark band is not `fine_detail_mostly_zero`, which is
+    # set from the whole frame; the not-measured reasons gain `dark_level_flat`, for photos and clips alike, and the
+    # record shows the decided note that the noise could not be measured
+    assert media.NOISE_NOT_MEASURED_REASONS == (
+        "too_few_flat_blocks", "fine_detail_mostly_zero", "frame_too_small", "dark_level_flat")
+    assert SAMPLES["enums"]["noiseNotMeasuredReasons"] == list(media.NOISE_NOT_MEASURED_REASONS)
+    assert json.loads(FIXTURE.read_text())["enums"]["noiseNotMeasuredReasons"] == list(media.NOISE_NOT_MEASURED_REASONS)
+    flat = [m for m in VALID["RestorationMeasurements"] if m.get("noiseNotMeasured") == "dark_level_flat"]
+    assert len(flat) == 1
+    assert flat[0]["notes"] == [media.NOTES[0]] and media.NOTES[0].startswith("The noise could not be measured")
+    assert accepts(media.RestorationMeasurements, flat[0])
+    assert not accepts(media.RestorationMeasurements, {**flat[0], "noiseNotMeasured": "dark_level_flatness"})
+    # A reason, never beside a noise table
+    assert not accepts(media.RestorationMeasurements, {**flat[0], "noise": VALID["NoiseTable"][1]})

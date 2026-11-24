@@ -406,7 +406,14 @@ export const ASSUMABLE_COLOUR_VALUES = Array.from(
   new Set<string>([...COLOUR_RANGES, ...COLOUR_MATRICES, ...COLOUR_TRANSFERS, ...COLOUR_PRIMARIES, ...CHROMA_SITINGS])
 ) as [string, ...string[]];
 export const GATE_STATISTICS = ['detector', 'detector_local_background_removed'] as const;
-export const NOISE_NOT_MEASURED_REASONS = ['too_few_flat_blocks', 'fine_detail_mostly_zero', 'frame_too_small'] as const;
+// dark_level_flat: the darkest quarter is a flat band whose noise cannot be measured, set from that quarter, not the
+// whole frame [decided 2026-11-24 by the lead, flatband-zero]
+export const NOISE_NOT_MEASURED_REASONS = [
+  'too_few_flat_blocks',
+  'fine_detail_mostly_zero',
+  'frame_too_small',
+  'dark_level_flat',
+] as const;
 export const LIFT_DECIDED_BY = ['none', 'target', 'requested', 'noise_bound', 'quantisation_bound', 'maximum'] as const;
 export const ATTEMPT_STATUSES = ['ready', 'rejected', 'failed'] as const;
 export const REJECTION_REASONS = ['unconfirmed_points', 'star_flux_changed', 'frame_times_differ', 'audio_differs', 'copy_differs'] as const;

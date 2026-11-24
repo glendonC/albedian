@@ -1193,3 +1193,22 @@ describe("an integer row's whole float is that integer on both sides, and the tw
     );
   });
 });
+
+describe('the not-measured reasons (flatband-zero)', () => {
+  it('lists dark_level_flat as its own not-measured reason and accepts a record with it (flatband-zero)', () => {
+    // [decided 2026-11-24 13:59 by the lead] a flat dark band is its own reason, with the decided note on screen
+    expect([...MEDIA_ENUMS.noiseNotMeasuredReasons]).toEqual([
+      'too_few_flat_blocks',
+      'fine_detail_mostly_zero',
+      'frame_too_small',
+      'dark_level_flat',
+    ]);
+    expect(fixture.enums.noiseNotMeasuredReasons).toEqual([...MEDIA_ENUMS.noiseNotMeasuredReasons]);
+    const flat = (VALID.RestorationMeasurements as Rec[]).filter((m) => m.noiseNotMeasured === 'dark_level_flat');
+    expect(flat).toHaveLength(1);
+    expect(flat[0]!.notes).toEqual([NOTES[0]]);
+    expect(RestorationMeasurementsSchema.safeParse(flat[0]).success).toBe(true);
+    expect(RestorationMeasurementsSchema.safeParse({ ...flat[0], noiseNotMeasured: 'dark_level_flatness' }).success).toBe(false);
+    expect(RestorationMeasurementsSchema.safeParse({ ...flat[0], noise: (VALID.NoiseTable as Rec[])[1] }).success).toBe(false);
+  });
+});

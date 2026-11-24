@@ -99,7 +99,9 @@ ASSUMABLE_COLOUR_FIELDS = ("range", "matrix", "transfer", "primaries", "chromaSi
 # Every value an assumable field can hold, without repeats, in first-seen order
 ASSUMABLE_COLOUR_VALUES = tuple(dict.fromkeys((*COLOUR_RANGES, *COLOUR_MATRICES, *COLOUR_TRANSFERS, *COLOUR_PRIMARIES, *CHROMA_SITINGS)))
 GATE_STATISTICS = ("detector", "detector_local_background_removed")
-NOISE_NOT_MEASURED_REASONS = ("too_few_flat_blocks", "fine_detail_mostly_zero", "frame_too_small")
+# dark_level_flat: the darkest quarter is a flat band whose noise cannot be measured, set from that quarter, not the
+# whole frame [decided 2026-11-24 by the lead, flatband-zero]
+NOISE_NOT_MEASURED_REASONS = ("too_few_flat_blocks", "fine_detail_mostly_zero", "frame_too_small", "dark_level_flat")
 LIFT_DECIDED_BY = ("none", "target", "requested", "noise_bound", "quantisation_bound", "maximum")
 ATTEMPT_STATUSES = ("ready", "rejected", "failed")
 REJECTION_REASONS = ("unconfirmed_points", "star_flux_changed", "frame_times_differ", "audio_differs", "copy_differs")
@@ -1291,6 +1293,8 @@ def build_media_samples() -> dict[str, Any]:
                       "clip": {**clip_counts, "frameCount": 180, "framesWithNeighbours": 0, "exactRepeatShare": 0.96,
                                "pointsConfirmedOnFramesTogether": 0, "pointsFixedToSensor": 0},
                       "notes": [NOTE_BLACK]}
+    # A clip whose darkest quarter is a flat band above black: no noise table, the lift held by the quantisation bound
+    measured_flat = {**measured_black, "noiseNotMeasured": "dark_level_flat", "notes": [NOTES[0]]}
 
     variant_still_id, variant_display_id = _id("var", "still restoration"), _id("var", "display copy")
     variant_clip_id, variant_black_id = _id("var", "clip restoration"), _id("var", "black clip restoration")
@@ -1378,7 +1382,8 @@ def build_media_samples() -> dict[str, Any]:
         "IntegrityGateResult": [gate_passed, gate_unconfirmed, gate_flux, gate_no_stars, gate_clip, gate_written_as_floats,
                                 gate_black, gate_at_tolerance],
         "RestorationMeasurements": [measured_still, measured_display, measured_clip, measured_black,
-                                    {**measured_still, "chroma": {"heldSamples": 15199, "clampedSamples": 345}}],
+                                    {**measured_still, "chroma": {"heldSamples": 15199, "clampedSamples": 345}},
+                                    measured_flat],
         "ProcessingAttempt": attempts,
         "MediaVariant": variants,
         "ExportManifest": manifests,

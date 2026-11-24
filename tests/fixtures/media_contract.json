@@ -122,7 +122,8 @@
     "noiseNotMeasuredReasons": [
       "too_few_flat_blocks",
       "fine_detail_mostly_zero",
-      "frame_too_small"
+      "frame_too_small",
+      "dark_level_flat"
     ],
     "liftDecidedBy": [
       "none",
@@ -1364,7 +1365,7 @@
       "__proto__"
     ],
     "value": "/Users/me/Pictures/IMG_0001.MOV",
-    "records": 2355
+    "records": 2388
   },
   "valid": {
     "RestoreRequest": [
@@ -2781,6 +2782,40 @@
           "heldSamples": 15199,
           "clampedSamples": 345
         }
+      },
+      {
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 8,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "noiseNotMeasured": "dark_level_flat",
+        "stars": {
+          "found": 0,
+          "confirmed": 0
+        },
+        "lift": {
+          "gainAtBlack": 1.6,
+          "decidedBy": "quantisation_bound"
+        },
+        "clip": {
+          "frameCount": 180,
+          "framesWithNeighbours": 0,
+          "medianClosureErrorPx": 0.13,
+          "exactRepeatShare": 0.96,
+          "pointsConfirmedOnFramesTogether": 0,
+          "pointsFixedToSensor": 0,
+          "streamsNotCopied": 0
+        },
+        "notes": [
+          "The noise could not be measured, so no noise reduction ran and the lift is held by the quantisation bound alone."
+        ]
       }
     ],
     "ProcessingAttempt": [
