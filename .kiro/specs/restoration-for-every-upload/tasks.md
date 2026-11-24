@@ -241,7 +241,7 @@ pictures under `.cache/restore-review/<unit>/`.
     one zip stored without compression, `<variantId>.zip`, holding `<variantId>.png` byte for byte and
     `<variantId>.png.json`, the manifest, as review row D22 decided (`.lead/uiux/UIUX-export-READY.md`; section 12's
     two `albedian-` attachments are replaced by it); `GET .../manifest` answers the same sidecar. The manifest names
-    the newest solution id the job store names. A synthetic upload planted with a file name, a capture time, a place,
+    the newest solution id the job store names (`80dc06d6`, `271f7f3d`). A synthetic upload planted with a file name, a capture time, a place,
     a camera make, tEXt, iTXt, tIME and eXIf chunks and text in every kind of ICC text tag exports none of them;
     restore-8b (`1f9272a7`) builds the profile anew from its colour data alone (a fresh header, fixed text in the description
     and copyright, each colour tag at its defined length), in a restoration and in a display copy (REQ-RST-9.4,
@@ -251,7 +251,8 @@ pictures under `.cache/restore-review/<unit>/`.
     carry or keeps its samples untagged with the assumption recorded, and refuses the restoration in review row C20's
     words (`tests/media/test_stored_colour.py`). restore-8c (`e11757bd`, `809ed064`) writes zip64 past 2 GiB, as Python's zipfile
     does, so a long clip fits. Done 2026-11-19 for clips by restore-8c's second half (`bbe20cb7`) [tested:
-    `tests/media/test_export.py`]: a restored QuickTime or MP4 clip exports as `<variantId>.mov` or `.mp4`, the file
+    `tests/media/test_export.py`, `.lead/kiro/reports/EXPORT/download-e2e.md`,
+    `.lead/kiro/reports/EXPORT/download-ui-click-e2e.md`]: a restored QuickTime or MP4 clip exports as `<variantId>.mov` or `.mp4`, the file
     restore-7 stored losslessly, byte for byte, with `<variantId>.mov.json` or `.mp4.json`; a record naming a type
     with no export row is refused as a record (500).
   - _Requirements: REQ-RST-9.1 to 9.7_
@@ -296,9 +297,22 @@ pictures under `.cache/restore-review/<unit>/`.
 
 ## Not units of this lane
 
-- The web app is wired to the new routes by its own lane (`apps/web/src/`, owner `experience`): it asks for a
+- The web app is wired to the new routes by its own lanes (`apps/web/src/`, `WEB-UX` and `EXPORT`): it asks for a
   display copy after a HEIC or TIFF upload, shows variants and offers the export, once restore-2b has landed
   [decided 2026-11-11: the web app is that lane's files].
+  - Built on `main` for restoration, comparison, version history, stopped and refusal states, and `Download` export
+    [verified]: laptop photo client, step timers, upright compare, zoom and marks, version list and `Download`
+    (`478192eb`, `c60803a4`, `82fa88cf`, `d0dcdb8b`, `925342e1`, `f525a569`, `221eb199`, `795a4f14`, `5897f464`,
+    `0e639798`, `458076da`, `485a0ed0`, `168f8ae9`, `e55cce59`, `4a29535e`, `bedfa995`, `c49951e9`), laptop clip player,
+    synced clip compare (D34) and step counts (`b8ea0b5b`, `5cd47ced`, `de69a38e`), phone stopped-job layout (D37) and
+    phone photo restoration, compare (D10), version list (D36), stopped and refusal states (D38) and tag-rule / sheet
+    coordination (`1cc85271`, `59255159`, `8bd363c2`, `5ed713df`, `7601d372`, `be517a0c`, `b20702f5`, `0a92663d`,
+    `9cfdcb19`, `dd6eeeeb`, `e4439a92`, `ff04e729`, `8aeebecf`, `55f5c8a6`, `8a5ecd41`, `fce93835`, `022e9fa7`,
+    `38264cc2`), and phone clip player (D16), phone clip restoration (D34/D38), pre-restoration refusals (C20/C36) and
+    clip refusal nouns (`011b4f3a`, `76ae9eb5`, `e03918fa`, `6396608a`, `bc5f2a20`, `b3621ab9`). For formats a browser
+    cannot draw (HEIC, TIFF and HEVC), C18 (`de0290f2`) shows the plain Safari notice on screen
+    rather than starting a `display_copy` job from the web app (`readRestorations` in `458076da` lists `restoration`
+    variants only; web `display_copy` start stays `[open]`).
 - One shared function for the detector's matched-filter noise, `matched_filter_noise` in
   `services/science/detector.py`: unit realsky-3 of the REALSKY lane; restore switches to it when it lands
   [decided 2026-11-11: the solver needs the same measure to stop its detection flood].
