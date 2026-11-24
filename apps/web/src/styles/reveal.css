@@ -2288,6 +2288,45 @@
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
   pointer-events: none;
 }
+/* UIUX-tagphone-READY.md item D (ruled 23 Nov): when a non-predicted StarCard opens on the phone over drawn predicted
+   rings, the layer's Predicted block stands 16 px above StarCard (top 469 px) with D19's 44 px 82 percent black fade
+   and no entrance */
+.reveal-phone-estimate.is-above-card {
+  bottom: calc(100% - 453px);
+  animation: none;
+}
+.reveal-phone-estimate.is-above-card::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  top: -44px;
+  bottom: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
+  pointer-events: none;
+}
+/* Keep StarCard's top row and Reduced Motion sheet fill steady when .reveal-phone-estimate.is-above-card leaves under Original pixels */
+.reveal-photo.is-phone[data-card-above-predicted="true"] .reveal-card__top {
+  animation: none;
+}
+.reveal-photo.is-phone[data-card-above-predicted="true"] .reveal-card.is-leaving .reveal-card__top {
+  animation: none;
+}
+.reveal-photo.is-phone[data-card-above-predicted="true"] .reveal-card__top > :not(.look-tag) {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 0) both;
+}
+.reveal-photo.is-phone[data-card-above-predicted="true"] .reveal-card.is-leaving .reveal-card__top > :not(.look-tag) {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-photo.is-phone[data-card-above-predicted="true"] .reveal-card.is-phone {
+    animation: reveal-sheet-fill-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+  }
+  .reveal-photo.is-phone[data-card-above-predicted="true"] .reveal-card.is-phone.is-leaving {
+    animation: reveal-sheet-fill-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+  }
+}
 .reveal-status.is-unmatched.is-phone.is-clip:not(.is-refused) {
   padding: 772px 24px 40px;
 }

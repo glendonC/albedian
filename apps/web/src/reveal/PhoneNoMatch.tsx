@@ -95,17 +95,24 @@ export const PhoneAlignRefused: React.FC<{
   onShowPredictedSky?: () => void;
   onRestore?: () => void;
   clip?: boolean;
-}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false }) => {
+  hideTag?: boolean;
+}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false, hideTag = false }) => {
   const { screen, onScroll } = usePhoneScroll();
   const words = (
     <>
-      <EvidenceTag evidenceClass="predicted" />
+      {!hideTag && <EvidenceTag evidenceClass="predicted" />}
       <p className="reveal-status__lead">No stars matched near your alignment.</p>
       <p className="align-refused__kept">Your alignment is kept, drawn as predicted.</p>
     </>
   );
   return (
-    <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
+    <div
+      ref={screen}
+      className="reveal-phone-scroll"
+      data-testid="reveal-phone-scroll"
+      onScroll={onScroll}
+      style={hideTag ? { overflow: 'hidden', pointerEvents: 'none' } : undefined}
+    >
       <div
         className={
           clip

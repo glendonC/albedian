@@ -636,18 +636,32 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // drawn through the restoration as their own layer, so the lead stands for them too, the alignment's own source line
   // in the pose sentence's place
   const keptRingsDrawn = keptRefused !== null && frame !== null;
+  const phonePredictedRingsDrawn =
+    (marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn;
+  const nonPredictedCardOpen =
+    phone && !answer && card.mounted && cardStar !== null && cardStar.evidenceClass !== 'predicted';
+  const cardAbovePredicted = nonPredictedCardOpen && phonePredictedRingsDrawn;
+  const cardHadAbovePredicted = useRef(false);
+  if (!card.mounted) {
+    cardHadAbovePredicted.current = false;
+  } else if (cardAbovePredicted) {
+    cardHadAbovePredicted.current = true;
+  }
+  const phonePredictedLead = (
+    <>
+      <EvidenceTag evidenceClass="predicted" />
+      {status.kind === 'estimate' ? (
+        <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
+      ) : keptRingsDrawn ? (
+        <p className="reveal-phone-estimate__source">{EARLY_SOURCE_WORDS.alignment}</p>
+      ) : null}
+    </>
+  );
   const phoneStoppedUnderAnswer = phoneStopped && Boolean(answer) && restoration?.phase === 'stopped' && !restoration.canTryAgain;
   const phoneRestoreLead =
-    (phoneRestoring || phoneStopped) && (!answer || phoneStoppedUnderAnswer) && ((marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn) ? (
-      <>
-        <EvidenceTag evidenceClass="predicted" />
-        {status.kind === 'estimate' ? (
-          <p className="reveal-phone-estimate__source">{firstSentenceOf(status.lines[0] ?? '')}</p>
-        ) : keptRingsDrawn ? (
-          <p className="reveal-phone-estimate__source">{EARLY_SOURCE_WORDS.alignment}</p>
-        ) : null}
-      </>
-    ) : null;
+    (phoneRestoring || phoneStopped) && !nonPredictedCardOpen && (!answer || phoneStoppedUnderAnswer) && phonePredictedRingsDrawn
+      ? phonePredictedLead
+      : null;
   // Released, they come back on the words-in time, all together, not one by one as they first arrived
   const [marksBack, setMarksBack] = useState(false);
   useEffect(() => {
@@ -711,6 +725,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       ) : phone && !skyOnScreen && status.kind === 'unmatched' && keptRefused ? (
         <PhoneAlignRefused
           clip={phoneClip}
+          hideTag={cardAbovePredicted}
           onAgain={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })}
           onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
           onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
@@ -920,6 +935,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       data-testid="reveal-photo"
       data-hud-interactive="true"
       data-arriving={arriving ? 'true' : undefined}
+      data-card-above-predicted={cardAbovePredicted || cardHadAbovePredicted.current ? 'true' : undefined}
       onScroll={onRevealScroll}
     >
       {/* The room to scroll to Restore, 16 px under Ask out loud (D38 item 1) */}
@@ -1128,7 +1144,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
       {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
-      {phone && !phoneCompare && !phoneRestoring && !phoneStopped && !skyShown && status.kind === 'estimate' && (
+      {phone && !nonPredictedCardOpen && !phoneCompare && !phoneRestoring && !phoneStopped && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md items A and B; UIUX-clipphone-READY.md section 3): one
         // block anchored by its foot 16 px above Ask out loud (or at y 638 above D16's player on a clip), staying in
         // view under an open answer with its counts hidden: the Predicted tag at full from the rings' first frame, the
@@ -1184,6 +1200,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
+      {cardAbovePredicted && (
+        <div className="reveal-phone-estimate is-above-card" data-testid="reveal-phone-estimate">
+          {phonePredictedLead}
+        </div>
+      )}
+
       {!answer && card.mounted && cardStar && (
         <StarCard
           key={cardStar.id}
@@ -1217,7 +1239,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
-      {phone && !phoneClip && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !skyLineShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
+      {phone && !phoneClip && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !cardAbovePredicted && !skyLineShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
       {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
         <>

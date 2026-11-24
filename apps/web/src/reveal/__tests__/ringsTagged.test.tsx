@@ -6,8 +6,12 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
+import type { CelestialFinding, ObservationSession, ObservationSolution, UploadJob } from '@albedian/contracts';
+import { MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
 import { poseSession, sample, POSE } from '../../components/__tests__/poseSessions.js';
+import { blockLeaveMs } from '../../hooks/useLeaving.js';
+import { EARLY_SOURCE_WORDS } from '../earlyPose.js';
+import { UNCHANGED } from '../restoration.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
@@ -288,5 +292,221 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
     postcss.parse(motionCss).walkRules((rule) => {
       expect(/reveal-status[^,]*\.look-tag/.test(rule.selector), rule.selector).toBe(false);
     });
+  });
+
+  // UIUX-tagphone-READY.md item D (ruled 23 Nov, DECIDED-BY-LEAD): when a non-predicted StarCard opens on the phone
+  // over drawn predicted rings, StarCard keeps its own EvidenceClass while .reveal-phone-estimate.is-above-card stands
+  // 16 px above StarCard (y = 453) with D19's fade, animation: none, PhoneCounts omitted, and one Predicted tag total
+  it('item D for non-predicted StarCard: keeps StarCard EvidenceClass and stands .reveal-phone-estimate.is-above-card 16 px above StarCard across idle, Original pixels, restore and refused alignment', async () => {
+    const rule = (selector: string) => {
+      const found: Record<string, string> = {};
+      postcss.parse(revealCss).walkRules((r) => {
+        if (r.selector === selector) r.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
+      });
+      return found;
+    };
+    expect(rule('.reveal-phone-estimate.is-above-card')).toEqual({
+      bottom: 'calc(100% - 453px)',
+      animation: 'none',
+    });
+    expect(rule('.reveal-phone-estimate.is-above-card::before')).toEqual(rule('.reveal-answer.is-phone::before'));
+
+    const predictedTags = () => container.querySelectorAll('.look-tag[data-evidence-class="predicted"]');
+    const estSession = poseSession(POSE);
+    const moon = estSession.observationSolution!.findings.find((f) => f.evidenceClass === 'observed')!;
+    expect(moon).toBeDefined();
+
+    // Laptop is unaffected: no phone estimate block renders when an observed StarCard opens at laptop width
+    show({ ...estSession, selectedFindingId: moon.id });
+    expect(q('[data-testid="star-card"] .reveal-card__top > .look-tag')!.getAttribute('data-evidence-class')).toBe('observed');
+    expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+    act(() => root.unmount());
+    root = createRoot(container);
+
+    vi.useFakeTimers();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      String(input).includes('openngc.json')
+        ? new Response(JSON.stringify({ format: 'albedian.deep-sky-catalog', columns: ['name', 'type', 'vMag', 'bMag'], rows: [['NGC0224', 'G', 3.44, 4.36]] }), { status: 200 })
+        : new Response(JSON.stringify({ variants: [], attempts: [] }), { status: 200 })
+    );
+    try {
+      const renderPhone = (s: ObservationSession, extra: Record<string, unknown> = {}) =>
+        act(() =>
+          root.render(
+            createElement(RevealPhoto, {
+              session: s,
+              onSelectFinding: () => {},
+              onHome: () => {},
+              viewportWidthPx: 390,
+              viewportHeightPx: 844,
+              phone: true,
+              onRestore: () => {},
+              onCancelRestore: () => {},
+              onShowPredictedSky: () => {},
+              ...extra,
+            })
+          )
+        );
+
+      // 1. Idle estimate photo & clip: Observed StarCard + .reveal-phone-estimate.is-above-card, PhoneCounts omitted, 1 Predicted tag
+      renderPhone({ ...estSession, selectedFindingId: moon.id });
+      const card = q('[data-testid="star-card"]')!;
+      expect(card.querySelector('.reveal-card__top > .look-tag')!.getAttribute('data-evidence-class')).toBe('observed');
+      const above = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(above.className).toBe('reveal-phone-estimate is-above-card');
+      expect([...above.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'reveal-phone-estimate__source']);
+      expect(above.children[1]!.textContent).toMatch(/^Lined up by [^.]+\.$/);
+      expect(q('.reveal-phone-counts')).toBeNull();
+      expect(predictedTags()).toHaveLength(1);
+
+      const estClip = poseSession(POSE, 'video');
+      renderPhone({ ...estClip, selectedFindingId: moon.id });
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+      expect(predictedTags()).toHaveLength(1);
+
+      // 2. Original pixels: stays until marksShown finishes leaving (wordsOutMs), then hides; returns on frame 0 on release
+      renderPhone({ ...estSession, selectedFindingId: moon.id }, { originalPixels: true });
+      expect(q('[data-testid="reveal-marks"]')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+      expect(predictedTags()).toHaveLength(1);
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="reveal-marks"]')).toBeNull();
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect(q('[data-testid="reveal-photo"]')!.getAttribute('data-card-above-predicted')).toBe('true');
+      expect(predictedTags()).toHaveLength(0);
+      renderPhone({ ...estSession, selectedFindingId: moon.id }, { originalPixels: false });
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+      expect(predictedTags()).toHaveLength(1);
+
+      // 3. Card leaving (normal and Reduce Motion): stays .is-above-card throughout leaving, then returns to foot with PhoneCounts
+      const normalCardLeaveMs = Math.max(blockLeaveMs(7, resolveMotionTokens(false)), MOTION_TOKENS.sheetMs);
+      renderPhone({ ...estSession, selectedFindingId: null });
+      expect(q('[data-testid="star-card"]')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(normalCardLeaveMs - 1));
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+      expect(q('.reveal-phone-counts')).toBeNull();
+      expect(predictedTags()).toHaveLength(1);
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="reveal-photo"]')!.getAttribute('data-card-above-predicted')).toBeNull();
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate');
+      expect(q('.reveal-phone-counts')).not.toBeNull();
+
+      (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+        matches: query.includes('prefers-reduced-motion: reduce'),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      });
+      try {
+        const reducedTokens = resolveMotionTokens(true);
+        const reducedCardLeaveMs = Math.max(blockLeaveMs(7, reducedTokens), reducedTokens.sheetMs);
+        renderPhone({ ...estSession, selectedFindingId: moon.id });
+        expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+        renderPhone({ ...estSession, selectedFindingId: null });
+        act(() => vi.advanceTimersByTime(reducedCardLeaveMs - 1));
+        expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+        expect(predictedTags()).toHaveLength(1);
+        act(() => vi.advanceTimersByTime(1));
+        expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate');
+      } finally {
+        delete (window as unknown as Record<string, unknown>).matchMedia;
+      }
+
+      // Opening an answer while StarCard was open immediately hands back to item B's foot block
+      renderPhone({ ...estSession, selectedFindingId: moon.id });
+      renderPhone(
+        { ...estSession, selectedFindingId: moon.id },
+        { answer: { heard: 'Where is Zorblax?', sentence: 'Nothing named Zorblax is in the sky.', answer: null } }
+      );
+      expect(q('[data-testid="star-card"]')).toBeNull();
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate');
+
+      // 4. phoneRestoring & phoneStopped: duplicate .restore-phone-lead / .restore-phone-why__lead hidden underneath
+      const jobs = (JSON.parse(fs.readFileSync(path.resolve(here, '../../../../../tests/fixtures/job_contract.json'), 'utf8')) as { valid: UploadJob[] }).valid;
+      const done = jobs.find((job) => job.kind === 'restoration' && job.state === 'succeeded')!;
+      const { finishedAtUTC: _f, attemptId: _a, variantId: _v, ...rest } = structuredClone(done);
+      const still = (stage: string) => ({ stage, unit: 'frames', done: 1, total: 1 });
+      const runningJob = { ...rest, state: 'running', stages: [still('decode'), still('measure')] } as unknown as UploadJob;
+      const refusedJob = { ...rest, state: 'rejected', stages: [still('decode'), still('verify')] } as unknown as UploadJob;
+
+      renderPhone({ ...estSession, selectedFindingId: moon.id }, { restoration: { phase: 'working', job: runningJob } });
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+      expect(q('.restore-phone-lead')).toBeNull();
+      expect(q('.restore-phone-wait')).not.toBeNull();
+      expect(predictedTags()).toHaveLength(1);
+
+      renderPhone(
+        { ...estSession, selectedFindingId: moon.id },
+        { restoration: { phase: 'stopped', job: refusedJob, sentence: 'Stopped.', subline: UNCHANGED, canTryAgain: false } }
+      );
+      expect(q('[data-testid="reveal-phone-estimate"]')!.className).toBe('reveal-phone-estimate is-above-card');
+      expect(q('.restore-phone-why__lead')).toBeNull();
+      expect(q('.restore-phone-stopped')).not.toBeNull();
+      expect(predictedTags()).toHaveLength(1);
+
+      // 5. PhoneAlignRefused: observed StarCard over kept alignment rings shows EARLY_SOURCE_WORDS.alignment above card and hides duplicate tag below
+      const refusedAlignBase = unmatched();
+      const obsPoint: CelestialFinding = { ...moon, id: 'finding-observed-unmatched-1', title: 'Point source' };
+      const refusedAlignSession = {
+        ...refusedAlignBase,
+        selectedFindingId: obsPoint.id,
+        observationSolution: { ...refusedAlignBase.observationSolution!, findings: [...refusedAlignBase.observationSolution!.findings, obsPoint] },
+      } as ObservationSession;
+      const alignedFrom = {
+        sha256: refusedAlignSession.sourceAsset!.sha256,
+        pose: { azDeg: 150, altDeg: 30, rollDeg: 0, fovXDeg: 60, aspect: 3 / 4 },
+        from: { kind: 'brightest' as const, name: 'Fomalhaut' },
+      };
+      renderPhone(refusedAlignSession, { alignedFrom });
+      const alignAbove = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(alignAbove.className).toBe('reveal-phone-estimate is-above-card');
+      expect(alignAbove.querySelector('.reveal-phone-estimate__source')!.textContent).toBe(EARLY_SOURCE_WORDS.alignment);
+      expect(q('.reveal-status.is-unmatched.is-phone.is-refused .look-tag')).toBeNull();
+      expect(predictedTags()).toHaveLength(1);
+
+      // 6. Calibrated phone photo: without predicted marks -> no block; with naked-eye predicted DSO -> tag-only block above Catalog matched StarCard
+      const calBase = poseSession(sample('plate_calibrated'));
+      const noPredCal = {
+        ...calBase,
+        observationSolution: { ...calBase.observationSolution!, findings: calBase.observationSolution!.findings.filter((f) => f.evidenceClass !== 'predicted') },
+      } as ObservationSession;
+      const rigel = noPredCal.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+      renderPhone({ ...noPredCal, selectedFindingId: rigel.id });
+      expect(q('[data-testid="star-card"] .reveal-card__top > .look-tag')!.getAttribute('data-evidence-class')).toBe('catalog_matched');
+      expect(q('[data-testid="reveal-phone-estimate"]')).toBeNull();
+      expect(predictedTags()).toHaveLength(0);
+
+      const wcs = noPredCal.observationSolution!.wcs!;
+      const dso = {
+        ...POSE.findings.find((f) => f.evidenceClass === 'predicted')!,
+        id: 'finding-openngc-ngc0224',
+        title: 'M31',
+        evidenceClass: 'predicted' as const,
+        skyPosition: { raDeg: wcs.crvalRaDeg, decDeg: wcs.crvalDecDeg, altDeg: 45, azDeg: 180 },
+        catalogRef: { catalogName: 'OpenNGC', catalogSourceId: 'NGC0224', objectType: 'deep_sky', apparentMagnitude: 3.44 },
+      };
+      const calWithDso = {
+        ...noPredCal,
+        selectedFindingId: rigel.id,
+        observationSolution: { ...noPredCal.observationSolution!, findings: [...noPredCal.observationSolution!.findings, dso] },
+      } as unknown as ObservationSession;
+      renderPhone(calWithDso);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      const calAbove = q('[data-testid="reveal-phone-estimate"]')!;
+      expect(calAbove.className).toBe('reveal-phone-estimate is-above-card');
+      expect([...calAbove.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted']);
+      expect(predictedTags()).toHaveLength(1);
+      // Leaving on calibrated + predicted DSO keeps PhoneCounts hidden while StarCard leaves so 1 Predicted tag stands
+      renderPhone({ ...calWithDso, selectedFindingId: null });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.sheetMs - 1));
+      expect(q('.reveal-phone-counts')).toBeNull();
+      expect(predictedTags()).toHaveLength(1);
+    } finally {
+      fetchSpy.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });
