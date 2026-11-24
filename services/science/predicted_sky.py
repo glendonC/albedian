@@ -306,13 +306,15 @@ def frame_moment(captured_at_utc: str, frame_time_sec: float) -> str:
     refused, and the message never holds the moment."""
     if not isinstance(captured_at_utc, str) or not captured_at_utc.endswith("Z"):
         raise ValueError("The capture time must be a UTC instant ending in Z.")
+    if isinstance(frame_time_sec, bool) or not isinstance(frame_time_sec, (int, float)) or not math.isfinite(frame_time_sec):
+        raise ValueError("The frame time must be a finite number of seconds.")
     try:
         start = datetime.fromisoformat(captured_at_utc[:-1] + "+00:00")
     except ValueError:
         raise ValueError("The capture time is not an ISO 8601 instant.") from None
     moment = (start.astimezone(timezone.utc) + timedelta(seconds=float(frame_time_sec))).replace(tzinfo=None)
     # isoformat writes four-digit years on every platform; strftime's %Y leaves a year below 1000 to the platform
-    if moment.microsecond == 0:
+    if moment.microsecond // 1000 == 0:
         return moment.isoformat(timespec="seconds") + "Z"
     return moment.isoformat(timespec="milliseconds") + "Z"
 

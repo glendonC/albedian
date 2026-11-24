@@ -227,6 +227,22 @@ def test_no_duplicate_or_nonexistent_row_is_emitted_and_a_duplicate_names_its_ob
     # IC 11 is OpenNGC's duplicate of NGC 281: the object is emitted once, from its own row
     assert dsf.duplicated_name(_row("IC0011"), at) == "NGC0281"
     assert "NGC0281" in emitted and "IC0011" not in emitted
+    # A Dup row never resolves to itself, another Dup row, or a NonEx row
+    self_dup = list(_row("NGC0281"))
+    self_dup[at["type"]] = dsf.DUPLICATE_TYPE
+    self_dup[at["ngc"]] = ["0281"]
+    self_dup[at["ic"]] = []
+    assert dsf.duplicated_name(self_dup, at) is None
+    ngc_dup = next(r for r in duplicates if r[at["name"]].startswith("NGC"))
+    to_dup = list(_row("IC0011"))
+    to_dup[at["ngc"]] = [ngc_dup[at["name"]][3:]]
+    to_dup[at["ic"]] = []
+    assert dsf.duplicated_name(to_dup, at) is None
+    ngc_nonex = next(r for r in nonexistent if r[at["name"]].startswith("NGC"))
+    to_nonex = list(_row("IC0011"))
+    to_nonex[at["ngc"]] = [ngc_nonex[at["name"]][3:]]
+    to_nonex[at["ic"]] = []
+    assert dsf.duplicated_name(to_nonex, at) is None
 
 
 def test_titles_ids_and_magnitudes() -> None:
@@ -234,6 +250,7 @@ def test_titles_ids_and_magnitudes() -> None:
     assert dsf.display_name("IC0113", []) == "IC 113"
     assert dsf.display_name("NGC5195A", []) == "NGC 5195A"
     assert dsf.display_name("B033", []) == "B033"
+    assert dsf.display_name("NGC1976\n", []) == "NGC1976\n"
     assert dsf.finding_id("IC0080 NED01") == "finding-openngc-IC0080-NED01"
     # M31 has a V magnitude (3.44); a row with only B has none
     assert dsf.catalog_reference(_row("NGC0224"))["apparentMagnitude"] == 3.44

@@ -107,6 +107,15 @@ def test_frame_moment_adds_the_frame_offset_in_the_contract_form() -> None:
     # A recorded time with milliseconds (EXIF SubSecTimeOriginal) keeps them
     assert frame_moment("2030-01-01T02:00:00.120Z", 0.0) == "2030-01-01T02:00:00.120Z"
     assert frame_moment("2030-01-01T02:00:00.120Z", 0.88) == "2030-01-01T02:00:01Z"
+    # Sub-millisecond remainders (< 1 ms) never emit a trailing .000Z
+    assert frame_moment("2030-01-01T02:00:00Z", 0.0004) == "2030-01-01T02:00:00Z"
+    assert frame_moment("2030-01-01T02:00:00.000400Z", 0.0) == "2030-01-01T02:00:00Z"
+
+
+@pytest.mark.parametrize("bad_offset", [math.nan, math.inf, -math.inf, True, "1.0"])
+def test_frame_moment_refuses_non_finite_or_non_numeric_frame_offsets(bad_offset: Any) -> None:
+    with pytest.raises(ValueError, match="finite number of seconds"):
+        frame_moment("2030-01-01T02:00:00Z", bad_offset)
 
 
 def test_frame_moment_writes_a_four_digit_year_on_every_platform() -> None:
@@ -217,6 +226,8 @@ def test_the_sky_phase_refuses_an_altitude_that_is_not_one(bad: float) -> None:
 @given(when=in_range, lat=lat_st, lon=lon_st)
 @example(when=datetime(2030, 1, 1, 2, 0, tzinfo=timezone.utc), lat=30.0, lon=-40.0)
 @example(when=datetime(1800, 1, 1, tzinfo=timezone.utc), lat=-89.9, lon=179.9)
+@example(when=datetime(1900, 1, 1, tzinfo=timezone.utc), lat=90.0, lon=180.0)
+@example(when=datetime(2050, 12, 31, 23, 59, tzinfo=timezone.utc), lat=-90.0, lon=-180.0)
 @example(when=datetime(2050, 12, 31, 23, 59, tzinfo=timezone.utc), lat=89.9, lon=-179.9)
 @example(when=datetime(2030, 6, 21, 12, 0, tzinfo=timezone.utc), lat=0.0, lon=0.0)
 def test_pbt_every_predicted_object_is_up_and_every_one_up_is_there_once(when: datetime, lat: float, lon: float) -> None:

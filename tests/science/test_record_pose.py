@@ -376,3 +376,84 @@ def test_a_companion_photo_no_search_solves_is_lined_up_from_its_record_through_
         assert (spec.width, spec.height) != (4032, 3024)
     finally:
         app.dependency_overrides.pop(ingest_router.get_ingest_store, None)
+
+
+def test_nadir_pointing_does_not_fold_across_the_pole_under_refraction() -> None:
+    # A phone flat on a table screen-up (back camera straight down at -90 deg), or tilted 0.1 deg toward west (az 270),
+    # must stay at the nadir / west of nadir instead of subtracting 0.65 deg of horizon refraction past -90 deg onto
+    # the opposite meridian
+    north, _, up = np.eye(3)
+    flat = np.column_stack([np.cross(north, up), north, up])
+    flat_att = rh.record_attitude(_record(flat))
+    assert flat_att is not None
+    flat_pose = rh.record_pose(flat_att, width=WIDTH, height=HEIGHT, orientation=None, moment=MOMENT, lat=LAT, lon=LON)
+    assert isinstance(flat_pose, rh.RecordPose)
+    assert flat_pose.estimate.center_alt_deg == pytest.approx(-90.0, abs=1e-6)
+
+    tilted = Rotation.from_rotvec(math.radians(0.1) * north).as_matrix() @ flat
+    tilted_att = rh.record_attitude(_record(tilted))
+    assert tilted_att is not None
+    assert tilted_att.hint.center_az_deg == pytest.approx(270.0, abs=1e-4)
+    tilted_pose = rh.record_pose(tilted_att, width=WIDTH, height=HEIGHT, orientation=None, moment=MOMENT, lat=LAT, lon=LON)
+    assert isinstance(tilted_pose, rh.RecordPose)
+    assert tilted_pose.estimate.center_alt_deg == pytest.approx(-90.0, abs=1e-6)
+    # The WCS optical axis stays within 0.2 deg of the camera's true -89.9 deg west-of-nadir direction
+    c_ra, c_dec = tilted_pose.wcs.pixel_to_world(tilted_pose.wcs.crpix_x, tilted_pose.wcs.crpix_y)
+    c_alt, c_az = catalog.icrs_to_altaz(c_ra, c_dec, LAT, LON, MOMENT, refracted=False)
+    assert _angle(_direction(c_alt, c_az), _direction(-89.9, 270.0)) < 0.2
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {
+            "camera__fieldOfView": {"state": "reported", "horizontalDeg": 1e-300, "distortionCorrected": False},
+            "camera__videoZoomFactor": 1e25,
+        },
+        {
+            "camera__fieldOfView": {"state": "reported", "horizontalDeg": 1e-318, "distortionCorrected": False},
+            "camera__photoDimensionsPx": {"width": 32768, "height": 1},
+        },
+    ],
+)
+def test_subnormal_or_underflowing_fov_refuses_cleanly_as_record_fov(changes: dict[str, Any]) -> None:
+    rec = _record(_attitude(40.0, 120.0, 0.0), **changes)
+    att = rh.record_attitude(rec)
+    assert att is not None
+    w = rec.camera.photo_dimensions_px.width
+    h = rec.camera.photo_dimensions_px.height
+    pose = rh.record_pose(att, width=w, height=h, orientation=None, moment=MOMENT, lat=LAT, lon=LON)
+    assert isinstance(pose, Refusal) and pose.kind == "record_fov" and pose.reason == rh.NO_RECORD_FOV
+
+
+@pytest.mark.parametrize(
+    ("lat", "lon", "alt"),
+    [(90.0, 0.0, 90.0), (90.0, 180.0, 35.0), (-90.0, -180.0, 90.0), (89.9999, -180.0, 45.0)],
+)
+def test_record_pose_and_wcs_hold_at_geographic_and_celestial_poles(lat: float, lon: float, alt: float) -> None:
+    from services.contracts.astronomy import parse_observation_solution  # noqa: PLC0415
+
+    up = np.array([1.0, 0.0, 0.0]) if abs(alt) > 89.999 else None
+    camera = _direction(alt, 120.0)
+    if up is None:
+        up = np.array([0.0, 0.0, 1.0]) - camera[2] * camera
+        up /= np.linalg.norm(up)
+    z_axis = -camera
+    x_axis = np.cross(up, z_axis)
+    x_axis /= np.linalg.norm(x_axis)
+    rot = np.column_stack([x_axis, np.cross(z_axis, x_axis), z_axis])
+    att = rh.record_attitude(_record(rot, location__latDeg=lat, location__lonDeg=lon))
+    assert att is not None
+    asset = {**_asset(), "observerLocation": {"latDeg": lat, "lonDeg": lon}}
+    sol = ps.complete_sky(_unresolved(), asset, frames=_never_read, attitude=att)
+    assert sol.status == "approximate"
+    parse_observation_solution(sol.to_contract_dict())
+
+    for sign in (1.0, -1.0):
+        axis = np.array([0.0, 0.0, sign])
+        right = np.array([1.0, 0.0, 0.0])
+        down = np.cross(axis, right)
+        wcs = rh._wcs_of(np.stack([right, down, axis], axis=0), 60.0, 1000, 800)
+        ra_p, dec_p = wcs.pixel_to_world(600.0, 350.0)
+        wx, wy = wcs.world_to_pixel(ra_p, dec_p)
+        assert (wx, wy) == pytest.approx((600.0, 350.0), abs=1e-6)

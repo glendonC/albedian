@@ -138,3 +138,25 @@ def test_the_records_field_of_view_gives_the_frames_diagonal(zoom: float, diagon
 def test_a_record_with_no_field_of_view_gives_none() -> None:
     hint = rh.record_hint(_record(_attitude(30.0, 200.0, 0.0, "back"), camera__fieldOfView={"state": "unknown"}))
     assert hint is not None and hint.fov_diagonal_deg is None
+
+
+def test_a_field_of_view_underflowing_to_zero_under_extreme_zoom_gives_none() -> None:
+    rec = _record(
+        _attitude(30.0, 200.0, 0.0, "back"),
+        camera__fieldOfView={"state": "reported", "horizontalDeg": 1e-300, "distortionCorrected": False},
+        camera__videoZoomFactor=1e25,
+    )
+    hint = rh.record_hint(rec)
+    assert hint is not None and hint.fov_diagonal_deg is None
+
+
+@pytest.mark.parametrize("bad_vec", [np.zeros(3), np.array([math.nan, 0.0, -1.0])])
+def test_zero_or_nan_gravity_vector_fails_closed_instead_of_bypassing_tolerance(bad_vec: np.ndarray) -> None:
+    from services.contracts.pointing import DeviceVector  # noqa: PLC0415
+
+    valid = _record(_attitude(35.0, 200.0, 0.0, "back"))
+    bypassed_motion = valid.motion.model_copy(
+        update={"gravity_device_g": DeviceVector.model_construct(x=float(bad_vec[0]), y=float(bad_vec[1]), z=float(bad_vec[2]))}
+    )
+    bypassed = valid.model_copy(update={"motion": bypassed_motion})
+    assert rh.record_hint(bypassed) is None

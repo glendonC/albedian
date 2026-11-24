@@ -24,7 +24,7 @@
   "digest": "d99e83fd41f234dea324abd4c36fb445d0c8816cfe552db464a8f55c3ebc5ac9"
  },
  "albedian.solve_chain": {
-  "revision": 26,
+  "revision": 27,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -70,6 +70,6 @@
    "services/science/person_hint.py",
    "services/science/sun_pose.py"
   ],
-  "digest": "60fadffcee61c01c2c228dcc91777a53c454ededb9af7e54b7aad47882fba830"
+  "digest": "8c2288b546c86770d2c589faad1833d13572b25f1931ca90e30ed6d5688f1d03"
  }
 }

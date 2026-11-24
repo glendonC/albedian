@@ -61,17 +61,18 @@ def display_name(name: str, common_names: list[str]) -> str:
     """The first common name, else the NGC or IC designation written plainly ('NGC 1976'), else the row's name."""
     if common_names:
         return common_names[0]
-    match = _DESIGNATION.match(name)
+    match = _DESIGNATION.fullmatch(name)
     return f"{match.group(1)} {match.group(2)}" if match else name
 
 
 def duplicated_name(row: list[Any], at: dict[str, int]) -> str | None:
     """The name of the row a `Dup` row stands for, from its NGC or IC cross reference, when the table holds it."""
-    names = {r[at["name"]] for r in openngc_table()["rows"]}
+    own = row[at["name"]]
+    names = {r[at["name"]] for r in _candidate_rows()}
     for prefix, column in _CROSS_REFERENCE_COLUMNS:
         for value in row[at[column]] or []:
             candidate = f"{prefix}{value}"
-            if candidate in names:
+            if candidate != own and candidate in names:
                 return candidate
     return None
 

@@ -36,6 +36,7 @@ from scipy.spatial.transform import Rotation
 from services.contracts.pointing import PointingCamera, PointingRecord
 from services.science.catalog import (
     _least_rotation,
+    airless_altitude_deg,
     altaz_to_icrs,
     anchored_horizon_rotation,
     anchored_rotation_omission_arcsec,
@@ -102,7 +103,11 @@ def rotation_matrix(x: float, y: float, z: float, w: float) -> np.ndarray:
 
 
 def _angle_deg(a: np.ndarray, b: np.ndarray) -> float:
-    cos = float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+    denom = float(np.linalg.norm(a) * np.linalg.norm(b))
+    # A zero or NaN vector has no direction: 180 degrees, so a tolerance checked against it fails closed
+    if not denom > 0.0:
+        return 180.0
+    cos = float(np.dot(a, b)) / denom
     return math.degrees(math.acos(max(-1.0, min(1.0, cos))))
 
 
@@ -116,7 +121,8 @@ def record_fov_diagonal_deg(camera: PointingCamera) -> float | None:
     width = float(camera.active_format_dimensions_px.width)
     height = float(camera.active_format_dimensions_px.height)
     half = math.tan(math.radians(float(view.horizontal_deg)) / 2.0) * math.hypot(width, height) / width
-    return math.degrees(2.0 * math.atan(half / float(camera.video_zoom_factor)))
+    fov = math.degrees(2.0 * math.atan(half / float(camera.video_zoom_factor)))
+    return fov if fov > 0.0 else None
 
 
 @dataclass(frozen=True)
@@ -296,6 +302,9 @@ def record_pose(
     if fov is None or attitude.horizontal_fov_deg is None:
         return Refusal("record_fov", NO_RECORD_FOV)
     fovs = (fov * (1.0 - FOV_SWEEP_FRACTION), fov, fov * (1.0 + FOV_SWEEP_FRACTION))
+    # A field of view so small that its scale underflows to 0 gives no WCS the contract takes (its scale is above 0)
+    if not scale_deg_per_px(fovs[0], width, height) > 0.0:
+        return Refusal("record_fov", NO_RECORD_FOV)
     if fovs[-1] > MAX_POSE_FOV_DIAGONAL_DEG:
         return Refusal("record_fov", NO_RECORD_WIDE)
     rotation = np.asarray(attitude.rotation, dtype=np.float64)
@@ -305,7 +314,9 @@ def record_pose(
         TO_ENU @ rotation @ np.array(CAMERA_AXIS_DEVICE["back"]),
     ])
     rows_enu /= np.linalg.norm(rows_enu, axis=1, keepdims=True)
-    anchor_ra, anchor_dec = altaz_to_icrs(hint.center_alt_deg, hint.center_az_deg, lat, lon, moment, refracted=True)
+    # Un-refracting a pointing near straight down stops at the nadir (-90 deg) rather than folding across the pole
+    airless_alt = max(-90.0, airless_altitude_deg(hint.center_alt_deg))
+    anchor_ra, anchor_dec = altaz_to_icrs(airless_alt, hint.center_az_deg, lat, lon, moment)
     frame = anchored_horizon_rotation(anchor_ra, anchor_dec, lat, lon, moment)
     seen = frame @ np.asarray(ra_dec_to_unit_vector(anchor_ra, anchor_dec), dtype=np.float64)
     # The centre's refraction: the rows turned so the axis lies on the anchor's apparent (airless) place

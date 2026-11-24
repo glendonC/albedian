@@ -16,7 +16,7 @@ import pytest
 
 from services.science import sun_pose as sp
 from services.science.ephemeris import compute_solar_system_ephemerides
-from services.science.pose_estimate import Refusal
+from services.science.pose_estimate import MIN_PEAK_LUMA, Refusal
 
 MOMENT, LAT, LON = "2031-06-21T15:00:00Z", 30.0, -40.0
 H, W = 1200, 900
@@ -399,3 +399,65 @@ def test_a_core_no_brighter_than_the_sky_median_is_refused() -> None:
     assert isinstance(refused, Refusal) and refused.kind == "no_sun"
 
 
+@pytest.mark.parametrize("level", [0.0, 128.0, MIN_PEAK_LUMA - 0.5])
+@pytest.mark.parametrize("focal", [24.0, 500.0])
+def test_a_uniform_frame_under_the_peak_floor_reports_no_sun(level: float, focal: float) -> None:
+    flat = np.full((H, W), level, dtype=np.float64)
+    core = sp.find_sun_core(flat, max_diameter_px=500.0)
+    assert isinstance(core, Refusal) and core.kind == "no_sun" and core.reason == sp.NO_SUN
+    pose = sp.sun_horizon_pose(flat, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=focal)
+    assert isinstance(pose, Refusal) and pose.kind == "no_sun" and pose.reason == sp.NO_SUN
+
+
+@pytest.mark.parametrize("level", [MIN_PEAK_LUMA, 255.0])
+def test_a_uniform_bright_frame_is_glare_too_wide_or_at_the_edge_never_a_pose(level: float) -> None:
+    # A frame bright all over (blown out) is all glare: too wide for the Sun through a short lens, touching the
+    # frame's edge through a long one; both sentences hold for it, "no bright region" would not
+    flat = np.full((H, W), level, dtype=np.float64)
+    core = sp.find_sun_core(flat, max_diameter_px=500.0)
+    assert isinstance(core, Refusal) and core.kind == "sun_bloom" and core.reason == sp.SUN_BLOOM
+    short = sp.sun_horizon_pose(flat, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=24.0)
+    assert isinstance(short, Refusal) and short.kind == "sun_bloom" and short.reason == sp.sun_bloom_reason(24.0)
+    long = sp.sun_horizon_pose(flat, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=500.0)
+    assert isinstance(long, Refusal) and long.kind == "sun_edge" and long.reason == sp.SUN_EDGE
+
+
+def test_a_nan_frame_reports_no_sun() -> None:
+    frame = np.full((H, W), 255.0, dtype=np.float64)
+    frame[0, 0] = math.nan
+    core = sp.find_sun_core(frame, max_diameter_px=500.0)
+    assert isinstance(core, Refusal) and core.kind == "no_sun" and core.reason == sp.NO_SUN
+
+
+def test_a_dim_smudge_below_min_peak_luma_is_refused_as_no_sun() -> None:
+    sun = sp.topocentric_sun(POSE_MOMENT, LAT, LON)
+    f_px = math.hypot(W, H) / 2.0 / (math.hypot(36.0, 24.0) / 2.0 / FOCAL35)
+    cx, cy = (W - 1) / 2.0, (H - 1) / 2.0
+    centre_alt = sun.alt_deg - 15.0
+    sun_row = cy - f_px * math.tan(math.radians(sun.alt_deg - centre_alt))
+    horizon = int(round(cy + f_px * math.tan(math.radians(centre_alt))))
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float64)
+    dark = np.full((H, W), 5.5, dtype=np.float64)
+    dark[np.hypot(xx - cx, yy - sun_row) <= 15.0] = 16.0
+    dark[horizon:] = 0.0
+    refused = sp.sun_horizon_pose(dark, moment=POSE_MOMENT, lat=LAT, lon=LON, orientation=None, focal_35mm_mm=FOCAL35)
+    assert isinstance(refused, Refusal) and refused.kind == "no_sun" and refused.reason == sp.NO_SUN
+
+
+@pytest.mark.parametrize(
+    ("moment", "lat", "lon"),
+    [
+        ("2031-06-21T12:00:00Z", 90.0, 0.0),
+        ("2031-06-21T12:00:00Z", 90.0, 180.0),
+        ("2031-12-21T12:00:00Z", -90.0, -180.0),
+    ],
+)
+def test_polar_day_sun_pose_holds_at_geographic_poles_and_antimeridian(moment: str, lat: float, lon: float) -> None:
+    sun = sp.topocentric_sun(moment, lat, lon)
+    assert sun.alt_deg > sp.MIN_SUN_ALT_DEG
+    pose = sp.sun_horizon_pose(
+        _level_camera_frame(sun.alt_deg - 10.0, sun.alt_deg),
+        moment=moment, lat=lat, lon=lon, orientation=None, focal_35mm_mm=FOCAL35,
+    )
+    assert isinstance(pose, sp.SunPose), pose
+    assert 0.0 <= pose.estimate.center_az_deg < 360.0

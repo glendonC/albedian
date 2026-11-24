@@ -25,6 +25,7 @@ from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides
 from services.science.catalog import icrs_to_frame_altaz
 from services.science.pose_estimate import (
     MAX_DIAMETER_FACTOR,
+    MIN_PEAK_LUMA,
     SKYLINE_ALTS_DEG,
     SKYLINE_NOISE_FLOOR,
     MoonBlob,
@@ -140,6 +141,9 @@ def _find_core_region(luma: np.ndarray, *, max_diameter_px: float) -> tuple[SunC
     """`find_sun_core` together with the core's boolean mask in `luma`."""
     luma = np.asarray(luma, dtype=np.float64)
     top = float(np.max(luma))
+    # The Moon's floor (pose_estimate.py): a frame whose brightest code is under it, or NaN, holds no Sun's core
+    if not top >= MIN_PEAK_LUMA:
+        return Refusal("no_sun", NO_SUN)
     mask = luma >= top - SUN_CORE_CODES
     labels, count = ndimage.label(mask, structure=np.ones((3, 3), dtype=bool))
     if count == 0:
