@@ -46,6 +46,10 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(result.contains("letgive=max(0,Arrive.photoTop+fullCardHeight+max(78,22+firstRowHeight+8)+countsHeight+16-(Double(geometry.size.height)-Arrive.mainBottomGap-ControlStyle.mainHeight))"))
         XCTAssertTrue(result.contains("letgive=max(0,Arrive.photoTop+fullCardHeight+max(102,18+sentenceHeight+8)+countsHeight+16-(Double(geometry.size.height)-Arrive.unreachableButtonsBottomGap-ControlStyle.mainHeight))"))
         XCTAssertEqual(result.components(separatedBy: "letcardHeight=fullCardHeight-give").count - 1, 2, "each card is what is left once it has given")
+        // The catalog matched marks are placed on the whole 3:4 card before it is cut down about its centre, so each stays on
+        // its star when the card gives room (AUDIT-C's S1 on largertext-m2: a mark placed in the cut box would leave it)
+        XCTAssertTrue(result.contains(".overlay{CatalogMarks(marks:result.readout.marks,frame:result.frame,width:cardWidth,height:fullCardHeight)}.frame(width:cardWidth,height:cardHeight)"),
+                      "marks on the full card, then the card cut down")
         XCTAssertEqual(result.components(separatedBy: ".frame(width:cardWidth,height:cardHeight).clipShape(RoundedRectangle(cornerRadius:18))").count - 1, 2,
                        "the card shrinks about its centre, both results")
         let count = compact(try body(of: "    private func count(_ value: Int, _ evidence: ControlStyle.Evidence) -> some View", in: screens + "\n}\n"))
