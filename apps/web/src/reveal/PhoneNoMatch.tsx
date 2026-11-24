@@ -13,16 +13,18 @@ export const PhoneNoMatch: React.FC<{
   onAlign?: () => void;
   onRestore?: () => void;
   clip?: boolean;
+  inert?: boolean;
 }> = ({
   status,
   onShowPredictedSky,
   onAlign,
   onRestore,
   clip = false,
+  inert = false,
 }) => {
   const { screen, onScroll } = usePhoneScroll();
   return (
-    <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll}>
+    <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll} inert={inert}>
       <div
         className={clip ? 'reveal-status is-unmatched is-phone is-clip' : 'reveal-status is-unmatched is-phone'}
         data-testid="reveal-status"
@@ -96,7 +98,8 @@ export const PhoneAlignRefused: React.FC<{
   onRestore?: () => void;
   clip?: boolean;
   hideTag?: boolean;
-}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false, hideTag = false }) => {
+  inert?: boolean;
+}> = ({ onAgain, onShowPredictedSky, onRestore, clip = false, hideTag = false, inert = false }) => {
   const { screen, onScroll } = usePhoneScroll();
   const words = (
     <>
@@ -111,6 +114,7 @@ export const PhoneAlignRefused: React.FC<{
       className="reveal-phone-scroll"
       data-testid="reveal-phone-scroll"
       onScroll={onScroll}
+      inert={inert}
       style={hideTag ? { overflow: 'hidden', pointerEvents: 'none' } : undefined}
     >
       <div

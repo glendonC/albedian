@@ -406,10 +406,11 @@ export const RestorePhoneFoot: React.FC<{ onDownload: () => void; clip?: boolean
  * the job is on in D10's words, or "Queued" and the jobs ahead; Cancel where Ask out loud sat, held pressed from the
  * press (or the record's cancel time) until the job stops, as on the laptop.
  */
-export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promise<unknown> | void; clip?: boolean }> = ({
+export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promise<unknown> | void; clip?: boolean; inert?: boolean }> = ({
   job,
   onCancel,
   clip = false,
+  inert = false,
 }) => {
   const rows = useElapsedRows(restorationRows(job), job.id);
   const now = rows.find((row) => row.state === 'now') ?? null;
@@ -428,7 +429,7 @@ export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promis
   };
   const ahead = job.queueAhead ?? 0;
   return (
-    <div className={clip ? 'restore-phone-wait is-clip' : 'restore-phone-wait'}>
+    <div className={clip ? 'restore-phone-wait is-clip' : 'restore-phone-wait'} inert={inert}>
       {job.state === 'queued' ? (
         <div className="work-phone-row">
           <b>
@@ -469,10 +470,11 @@ export const RestorePhoneStopped: React.FC<{
   /** At the block's head, while predicted marks stay drawn: their tag (and an estimate's pose sentence), item A's. */
   lead?: React.ReactNode;
   clip?: boolean;
-}> = ({ job, sentence, subline, canTryAgain, onTryAgain, lead = null, clip = false }) => {
+  inert?: boolean;
+}> = ({ job, sentence, subline, canTryAgain, onTryAgain, lead = null, clip = false, inert = false }) => {
   const stopped = job ? (restorationRows(job).find((row) => row.state === 'failed') ?? null) : null;
   return (
-    <div className={clip ? 'restore-phone-stopped is-clip' : 'restore-phone-stopped'}>
+    <div className={clip ? 'restore-phone-stopped is-clip' : 'restore-phone-stopped'} inert={inert}>
       {!clip && <span className="work-phone-fade" aria-hidden="true" />}
       <div className="restore-phone-why" role="alert">
         {lead !== null && <div className="restore-phone-why__lead">{lead}</div>}

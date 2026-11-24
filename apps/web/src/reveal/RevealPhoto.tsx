@@ -46,6 +46,8 @@ export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colour
 
 /** How near the status column may come to In this photo before the legend gives way (refusedwrap-1, decided 20:44 on 22 Nov). */
 const LEGEND_CLEAR_PX = 24;
+/** Top of .reveal-card.is-phone in CSS px (reveal.css); marks with yPx > 469 sit behind the open phone card. */
+export const PHONE_CARD_TOP_PX = 469;
 
 /**
  * Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs; an answer
@@ -638,6 +640,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const keptRingsDrawn = keptRefused !== null && frame !== null;
   const phonePredictedRingsDrawn =
     (marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn;
+  const phoneCardOpen = phone && !answer && card.mounted && !card.leaving && cardStar !== null;
   const nonPredictedCardOpen =
     phone && !answer && card.mounted && cardStar !== null && cardStar.evidenceClass !== 'predicted';
   const cardAbovePredicted = nonPredictedCardOpen && phonePredictedRingsDrawn;
@@ -728,6 +731,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <PhoneAlignRefused
           clip={phoneClip}
           hideTag={cardAbovePredicted}
+          inert={phoneCardOpen}
           onAgain={() => setAligning({ pose: keptRefused.pose, from: keptRefused.from })}
           onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
           onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
@@ -735,6 +739,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' ? (
         <PhoneNoMatch
           clip={phoneClip}
+          inert={phoneCardOpen}
           status={status}
           onShowPredictedSky={() => onShowPredictedSky?.()}
           onAlign={alignOffered ? () => setAligning(alignStart) : undefined}
@@ -1024,25 +1029,30 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </svg>
           )
         )}
-        {drawnMarks.map((mark) => (
-          <button
-            key={mark.finding.id}
-            type="button"
-            className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
-            data-testid={`reveal-mark-${mark.finding.id}`}
-            data-evidence-class={mark.finding.evidenceClass}
-            aria-label={
-              getMarkerVisualSpec({ evidenceClass: mark.finding.evidenceClass, title: mark.finding.title, isSelected: mark.picked, isFocused: false, isHovered: false })
-                .ariaDescription
-            }
-            aria-pressed={mark.picked}
-            style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, '--mark-i': arrival.get(mark.finding.id) } as React.CSSProperties}
-            onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
-          >
-            <MarkGlyph mark={mark} phone={phone} />
-            {mark.name !== null && <span className="reveal-mark__name">{mark.name}</span>}
-          </button>
-        ))}
+        {drawnMarks.map((mark) => {
+          const coveredByPhoneCard = phoneCardOpen && mark.yPx > PHONE_CARD_TOP_PX;
+          return (
+            <button
+              key={mark.finding.id}
+              type="button"
+              className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
+              data-testid={`reveal-mark-${mark.finding.id}`}
+              data-evidence-class={mark.finding.evidenceClass}
+              inert={coveredByPhoneCard}
+              tabIndex={coveredByPhoneCard ? -1 : undefined}
+              aria-label={
+                getMarkerVisualSpec({ evidenceClass: mark.finding.evidenceClass, title: mark.finding.title, isSelected: mark.picked, isFocused: false, isHovered: false })
+                  .ariaDescription
+              }
+              aria-pressed={mark.picked}
+              style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, '--mark-i': arrival.get(mark.finding.id) } as React.CSSProperties}
+              onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
+            >
+              <MarkGlyph mark={mark} phone={phone} />
+              {mark.name !== null && <span className="reveal-mark__name">{mark.name}</span>}
+            </button>
+          );
+        })}
       </div>
       )}
 
@@ -1177,7 +1187,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <div className={phoneClip ? 'restore-phone-lead is-clip' : 'restore-phone-lead'}>{phoneRestoreLead}</div>
       )}
       {phoneRestoring && restoration?.phase === 'working' && (
-        <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} clip={phoneClip} />
+        <RestorePhoneWait job={restoration.job} onCancel={() => onCancelRestore?.()} clip={phoneClip} inert={phoneCardOpen} />
       )}
       {phoneStopped && !phoneStoppedUnderAnswer && restoration?.phase === 'stopped' && (
         <RestorePhoneStopped
@@ -1188,12 +1198,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onTryAgain={() => onRestore?.()}
           lead={phoneRestoreLead}
           clip={phoneClip}
+          inert={phoneCardOpen}
         />
       )}
       {/* After a refusal on a phone no-match photo or clip, the screen's own main action comes back at 772 (Show predicted
           sky, or Line it up again over a kept refused alignment: DECIDED-BY-LEAD 05:02, UIUX-clipphone-READY.md section 4) */}
       {(phoneAlignRefusedUnderAnswer || (phoneStopped && restoration?.phase === 'stopped' && !restoration.canTryAgain && status.kind === 'unmatched' && (keptRefused !== null || status.predictedSky))) && (
-        <div className="restore-phone-go">
+        <div className="restore-phone-go" inert={phoneCardOpen}>
           {keptRefused !== null ? (
             <MainAction
               label="Line it up again"
