@@ -11,6 +11,7 @@ chance.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import time
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ from typing import Optional
 import numpy as np
 from scipy import ndimage
 
+from services.media import bars as bars_rule
 from services.media import chroma, decode, encode, gate, noise, png16, spatial, stars, tone
 
 STEP_VERSION = "1.0.0"
@@ -82,14 +84,20 @@ class Context:
 class StillRestoration:
     status: str  # "ready" or "rejected"
     data: Optional[bytes]
-    stored: np.ndarray
+    stored: np.ndarray  # the whole stored frame, its bars included
     measured: dict
     gate: dict
     rejection: Optional[str]
     steps: list[dict]
-    context: Context
+    context: Context  # of the picture inside the bars, which the gate read
     seconds: dict = field(default_factory=dict)
     unconfirmed: tuple = ()
+    bars: bars_rule.Bars = bars_rule.Bars()
+
+    @property
+    def picture(self) -> np.ndarray:
+        """The stored samples inside the bars: what the gate read."""
+        return self.bars.crop(self.stored) if self.bars else self.stored
 
 
 @dataclass(frozen=True)
@@ -133,6 +141,30 @@ def _blocks_on_black_clip(codes: np.ndarray, blocks: np.ndarray) -> bool:
 
 def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = None, *,
                   max_passes: int = gate.MAX_PASSES) -> StillRestoration:
+    """The still restored and gated. A still with black bars (`bars.find_bars` on each sample's largest channel, black
+    at code 0: whole edge rows or columns at 0 in every channel on both opposite edges, each opening the picture) is
+    measured, restored and gated inside them, and its stored file keeps its bars as they were, at 0 [decided
+    2026-11-24 by the lead, photo-bars-one]: the picture inside restores exactly as the same picture without bars."""
+    codes = np.asarray(still.samples)
+    found = bars_rule.find_bars([codes.max(axis=-1)], 0)
+    if not found:
+        return _restore_picture(still, exposure_ev, max_passes)
+    inner = _restore_picture(dataclasses.replace(still, samples=found.crop(codes)), exposure_ev, max_passes)
+    started = time.perf_counter()
+    # Every bar sample is 0 in every channel (`find_bars` at black 0), and 0 is stored as 0 at 16 bits
+    stored = found.put_back(np.zeros(codes.shape, dtype=np.uint16), inner.stored)
+    data = encode.write_still(stored, profile_without_text(still.icc_profile)) if inner.data is not None else None
+    if data is not None:
+        stored = encode.read_still(data)
+        if not np.array_equal(found.crop(stored), inner.stored):
+            raise PhotoError("the stored file does not hold the picture the gate read")
+    seconds = dict(inner.seconds)
+    seconds["encode"] = seconds.get("encode", 0.0) + time.perf_counter() - started
+    return dataclasses.replace(inner, data=data, stored=stored, bars=found, seconds=seconds)
+
+
+def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], max_passes: int) -> StillRestoration:
+    """`restore_still` on a picture with no bars."""
     seconds: dict = {}
     clock = [time.perf_counter()]
 
@@ -275,7 +307,10 @@ def check_full(context: Context, stored: np.ndarray) -> Verdict:
 
 
 def check(result: StillRestoration, stored: np.ndarray) -> Verdict:
-    """The gate on another stored file of the same original: a painted trial."""
+    """The gate on another stored file of the same original: a painted trial. A whole frame of a barred still is read
+    inside its bars, as the gate read the restoration."""
+    if result.bars and np.shape(stored) == result.stored.shape:
+        stored = result.bars.crop(stored)
     return check_full(result.context, stored)
 
 
@@ -323,12 +358,13 @@ class Trials:
 
     def __init__(self, result: StillRestoration):
         self.result = result
-        self.luma = gate.stored_luma(result.stored)
+        self.picture = result.picture
+        self.luma = gate.stored_luma(self.picture)
         self.image = gate.search_statistic(self.luma, result.context.kept.left_out)
         self.grid = stars.tiles(*self.luma.shape)
 
     def painted_window(self, x: int, y: int, peak16: float) -> tuple[slice, slice, np.ndarray]:
-        stored = self.result.stored
+        stored = self.picture
         rows = slice(max(0, y - PATCH_REACH_PX), min(stored.shape[0], y + PATCH_REACH_PX + 1))
         columns = slice(max(0, x - PATCH_REACH_PX), min(stored.shape[1], x + PATCH_REACH_PX + 1))
         yy, xx = np.mgrid[rows, columns].astype(np.float64)
@@ -342,7 +378,7 @@ class Trials:
         stands `peak16` over the larger of its own and the original's own luma there (`over_original`, the trial a
         raised sample the original does not hold is refused for), or by `peak16` on the stored sample alone
         (AUDIT-B's probe of 2026-11-19), restore-4f."""
-        stored = self.result.stored
+        stored = self.picture
         rows = slice(y, min(stored.shape[0], y + size))
         columns = slice(x, min(stored.shape[1], x + size))
         lift = np.zeros(stored[rows, columns].shape[:2])
@@ -371,7 +407,7 @@ class Trials:
         x0, x1 = min(p[0] for p in places), max(p[0] for p in places) + 1
         y0, y1 = min(p[1] for p in places), max(p[1] for p in places) + 1
         rows, columns = slice(y0, y1), slice(x0, x1)
-        window = self.result.stored[rows, columns].copy()
+        window = self.picture[rows, columns].copy()
         for px, py in places:
             _, _, sample = self.raised_window(px, py, peak16, 1)
             window[py - y0, px - x0] = sample[0, 0]
@@ -385,7 +421,7 @@ class Trials:
         x0, x1 = min(p[0] for p in places), max(p[0] for p in places) + 1
         y0, y1 = min(p[1] for p in places), max(p[1] for p in places) + 1
         rows, columns = slice(y0, y1), slice(x0, x1)
-        window = self.result.stored[rows, columns].copy()
+        window = self.picture[rows, columns].copy()
         for px, py in places:
             _, _, sample = self.raised_window(px, py, peak16, 1)
             window[py - y0, px - x0] = sample[0, 0]
@@ -406,7 +442,7 @@ class Trials:
         margin = 2 * reach + 4
         b0, b1 = max(0, rows.start - margin), min(height, rows.stop + margin)
         a0, a1 = max(0, columns.start - margin), min(width, columns.stop + margin)
-        stored = self.result.stored[b0:b1, a0:a1].astype(np.float64)
+        stored = self.picture[b0:b1, a0:a1].astype(np.float64)
         stored[rows.start - b0:rows.stop - b0, columns.start - a0:columns.stop - a0] = window
         must = gate.kept_samples(stored, context.expected[b0:b1, a0:a1], kept.weight[b0:b1, a0:a1])
         inner = (slice(max(0, rows.start - reach) - b0, min(height, rows.stop + reach) - b0),

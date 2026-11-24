@@ -1031,6 +1031,25 @@ def test_the_restore_producer_lists_chroma_at_revision_eight_and_stores_chroma_c
     assert set(record["attempt"]["measured"]["chroma"]) == {"heldSamples", "clampedSamples"}
 
 
+def test_a_still_inside_black_bars_is_stored_whole_with_its_bars_at_restore_revision_ten(client) -> None:
+    # photo-bars-one: the restore producer lists the one bar helper, and the served file is the whole frame, its bars
+    # as they were (code 0) and its picture restored
+    from services.media import bars, variants
+
+    assert "services/media/bars.py" in media_jobs.MEDIA_PRODUCER.files
+    assert media_jobs.MEDIA_PRODUCER.revision >= 10
+    assert variants.PIPELINE_VERSION == f"1.{media_jobs.MEDIA_PRODUCER.revision}.0"
+    scene = star_field(11, size=192, count=10, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    codes = np.pad(scene.codes.astype(np.uint16), ((20, 20), (0, 0), (0, 0)))
+    sha = upload(client, png16.write_png16(codes, None))
+    job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"}).json())
+    assert job["state"] == "succeeded", job
+    served = decode.read_png(client.get(f"/api/media/{sha}/variants/{job['variantId']}/file").content)
+    assert served.shape == codes.shape
+    assert not served[:20].any() and not served[-20:].any() and served[20:-20].any()
+    assert bars.find_bars([served.max(axis=-1)], 0) == bars.Bars(top=20, bottom=20)
+
+
 def _banded_clip_file(path: Path, sky_y: int, *, pix_fmt: str = "yuv420p", colour_range: str = "tv",
                       count: int = 12, size: int = 192) -> None:
     from fractions import Fraction

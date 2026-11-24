@@ -771,3 +771,107 @@ def test_sixteen_bit_hdr_png_and_tiff_stills_with_saturated_star_cores_preserve_
         assert all(trials.refused(x, y, peak16)[0] for x, y in places)
         contracts.RestorationMeasurements.model_validate(res.measured)
         contracts.IntegrityGateResult.model_validate(res.gate)
+# photo-bars-one [decided 2026-11-24 13:25 and 13:36 by the lead]: a photo is measured, restored and gated inside black
+# bars on both opposite edges that open its picture, and its stored file keeps its bars
+
+@pytest.fixture(scope="module")
+def unbarred(tmp_path_factory):
+    scene = star_field(19, size=192, count=12, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    folder = tmp_path_factory.mktemp("unbarred")
+    return scene.codes, photo.restore_still(still_of(scene.codes, folder))
+
+
+@pytest.mark.parametrize("where", ["top_bottom", "left_right"])
+@pytest.mark.parametrize("bar", [8, 24, 48])
+def test_a_still_inside_black_bars_restores_exactly_as_its_unbarred_twin_and_keeps_its_bars(
+        tmp_path, unbarred, where: str, bar: int) -> None:
+    from services.media import bars
+
+    codes, twin = unbarred
+    assert twin.status == "ready"
+    pad = ((bar, bar), (0, 0), (0, 0)) if where == "top_bottom" else ((0, 0), (bar, bar), (0, 0))
+    barred = photo.restore_still(still_of(np.pad(codes, pad), tmp_path))
+    found = bars.Bars(bar, bar, 0, 0) if where == "top_bottom" else bars.Bars(0, 0, bar, bar)
+    assert barred.bars == found
+    assert (barred.status, barred.rejection) == (twin.status, twin.rejection)
+    assert barred.gate == twin.gate and barred.measured == twin.measured and barred.steps == twin.steps
+    assert barred.stored.shape == np.pad(codes, pad).shape
+    assert np.array_equal(found.crop(barred.stored), twin.stored)
+    outside = np.ones(barred.stored.shape[:2], dtype=bool)
+    outside[found.slices(barred.stored.shape)] = False
+    assert not barred.stored[outside].any()
+    assert barred.data is not None and np.array_equal(decode.read_png(barred.data), barred.stored)
+    contracts.RestorationMeasurements.model_validate(barred.measured)
+    contracts.IntegrityGateResult.model_validate(barred.gate)
+
+
+def test_painted_stars_inside_bars_are_refused_at_the_same_places_as_in_the_unbarred_twin(tmp_path, unbarred) -> None:
+    codes, twin = unbarred
+    barred = photo.restore_still(still_of(np.pad(codes, ((0, 0), (32, 32), (0, 0))), tmp_path))
+    places = photo.painted_places(barred, 4)
+    assert places and places == photo.painted_places(twin, 4)
+    peak16 = gate.SENSITIVITY_PEAK_CODES * gate.CODES_PER_8_BIT
+    trials = photo.Trials(barred)
+    assert np.array_equal(trials.picture, twin.stored)
+    assert all(trials.refused(x, y, peak16)[0] for x, y in places)
+    # The gate on the whole stored frame reads it inside its bars, as the restoration's own gate did
+    assert photo.check(barred, barred.stored).gate == barred.gate
+
+
+def test_a_band_black_in_one_channel_only_is_no_bar_of_a_still(tmp_path, unbarred, monkeypatch) -> None:
+    # A still's bar is 0 in every channel; what the photo then does with such a band is not this test's (flat bands
+    # are ruled apart)
+    codes, _ = unbarred
+    tinted = np.pad(codes, ((16, 16), (0, 0), (0, 0)))
+    tinted[:16, :, 1] = 600
+    tinted[-16:, :, 1] = 600
+    found = []
+    real = photo.bars_rule.find_bars
+    monkeypatch.setattr(photo.bars_rule, "find_bars", lambda *args, **kwargs: found.append(real(*args, **kwargs)) or found[-1])
+    try:
+        photo.restore_still(still_of(tinted, tmp_path))
+    except (photo.PhotoError, photo.PhotoRefusal):
+        pass
+    assert found == [photo.bars_rule.Bars()]
+
+
+def test_a_sky_on_the_black_floor_inside_bars_and_a_black_band_on_one_edge_still_meet_c36(tmp_path) -> None:
+    import io
+    from PIL import Image
+
+    rng = np.random.default_rng(73)
+    size = 192
+    yy = np.linspace(0.0, 1.0, size)[:, None]
+    picture = np.clip(np.round(48.0 + 96.0 * yy[..., None] + rng.normal(0.0, 3.5, (size, size, 3))), 0, 255).astype(np.uint8)
+    picture[64:128] = 0
+    for name, samples in (("inside_bars.png", np.pad(picture, ((24, 24), (0, 0), (0, 0)))),
+                          ("one_edge.png", np.pad(picture, ((48, 0), (0, 0), (0, 0))))):
+        buf = io.BytesIO()
+        Image.fromarray(samples, "RGB").save(buf, format="PNG")
+        path = tmp_path / name
+        path.write_bytes(buf.getvalue())
+        with pytest.raises(photo.PhotoRefusal) as caught:
+            photo.restore_still(decode.decode_still(path))
+        assert caught.value.sentence == photo.NEAR_BLACK_CLIP
+
+
+def test_a_starry_sky_black_to_its_edges_has_no_bars_and_is_restored_whole_as_before(tmp_path) -> None:
+    # Edge rows at code 0 whose next row is black too but for a star: no row past them opens the picture, so the
+    # still is measured whole, exactly as the path without bars measures it (the public clip's black sky, 13:36)
+    from services.media import bars
+
+    scene = star_field(19, size=192, count=12, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    codes = scene.codes.copy()
+    codes[:3] = 0
+    codes[2, 50] = 9000
+    codes[-3:] = 0
+    codes[-3, 80] = 9000
+    plane = codes.max(axis=-1)
+    assert not plane[:2].any() and plane[2].any() and np.median(plane[2]) == 0
+    assert not bars.find_bars([plane], 0)
+    still = still_of(codes, tmp_path)
+    result = photo.restore_still(still)
+    whole = photo._restore_picture(still, None, gate.MAX_PASSES)
+    assert not result.bars and result.stored.shape == codes.shape
+    assert (result.status, result.gate, result.measured) == (whole.status, whole.gate, whole.measured)
+    assert np.array_equal(result.stored, whole.stored)

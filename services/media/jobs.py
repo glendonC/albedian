@@ -46,6 +46,7 @@ MEDIA_PRODUCER_FILES = (
     "services/media/noise.py",
     "services/media/spatial.py",
     "services/media/chroma.py",
+    "services/media/bars.py",
     "services/media/tone.py",
     "services/science/detector.py",
     # A clip's result also comes from these (restore-7)
@@ -64,8 +65,10 @@ MEDIA_PRODUCER_FILES = (
 # the detector's single-tile noise map floored at its pixel and rounding noise, and its background and pixel sigma from
 # the detector's grid path (quantised-noise); 8, coarse-scale chroma smoothing before dissolve on stills
 # (smooth-chroma-1); 9, pre-filter C36 refusal of near-black clips whose darkest quarter sits on the black floor, per-frame
-# MIN_SIDE_PX check in measure_clip, and measure stage held short of full until measure_clip returns (nearblackclip-1)
-MEDIA_PRODUCER = Producer("albedian.restore", 9, MEDIA_PRODUCER_FILES)
+# MIN_SIDE_PX check in measure_clip, and measure stage held short of full until measure_clip returns (nearblackclip-1);
+# 10, a still with black bars on both opposite edges that open its picture is measured, restored and gated inside them
+# and keeps its bars (photo-bars-one)
+MEDIA_PRODUCER = Producer("albedian.restore", 10, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a

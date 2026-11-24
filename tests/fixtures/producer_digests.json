@@ -1,6 +1,6 @@
 {
  "albedian.restore": {
-  "revision": 9,
+  "revision": 10,
   "files": [
    "services/media/jobs.py",
    "services/media/photo.py",
@@ -14,6 +14,7 @@
    "services/media/noise.py",
    "services/media/spatial.py",
    "services/media/chroma.py",
+   "services/media/bars.py",
    "services/media/tone.py",
    "services/science/detector.py",
    "services/media/clip_io.py",
@@ -21,7 +22,7 @@
    "services/media/frame_pool.py",
    "services/media/temporal.py"
   ],
-  "digest": "1aa4d8b877eed0758cb93ca14199d9732c5c646576242fde4a36fd1a40fef45e"
+  "digest": "4adaef57453bcf0a749c233393f09bc1881ad5dc4166014daa6d16c8d9f9c1df"
  },
  "albedian.solve_chain": {
   "revision": 27,
