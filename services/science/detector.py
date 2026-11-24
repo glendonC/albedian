@@ -507,9 +507,57 @@ def _core_detection(
     )
 
 
-def _inside_a_core(x: float, y: float, cores: Sequence[ClippedCore]) -> bool:
-    """Whether a point lies within a core's own disk grown by one pixel."""
-    return any(math.hypot(x - c.x_px, y - c.y_px) <= math.sqrt(c.area_px / math.pi) + 1.0 for c in cores)
+class CoreBoxes(NamedTuple):
+    """The cores' centres and their disk radii grown by one pixel, as arrays, for `_first_core`'s box test."""
+
+    xs: np.ndarray
+    ys: np.ndarray
+    radii: np.ndarray
+
+
+def _core_boxes(cores: Sequence[ClippedCore]) -> CoreBoxes:
+    """The centres of `cores` and each one's radius as `_first_core` tests it: its own disk grown by one pixel."""
+    return CoreBoxes(
+        np.array([c.x_px for c in cores], dtype=np.float64),
+        np.array([c.y_px for c in cores], dtype=np.float64),
+        np.array([math.sqrt(c.area_px / math.pi) + 1.0 for c in cores], dtype=np.float64),
+    )
+
+
+def _first_core(x: float, y: float, cores: Sequence[ClippedCore], boxes: CoreBoxes) -> int | None:
+    """The first of `cores`, in order, whose own disk grown by one pixel holds the point, or None. The distance is
+    tested only for the cores whose box holds the point (|dx| and |dy| within the grown radius): a faithfully rounded
+    hypot is never below |dx| or |dy|, so a core the box leaves out fails the test too, and the first that passes is
+    the same (detector-speed-1: on a 5612 x 3741 public photo, 31 774 peaks each against all 1 814 cores took a third
+    of the solve's CPU)."""
+    inside = (np.abs(x - boxes.xs) <= boxes.radii) & (np.abs(y - boxes.ys) <= boxes.radii)
+    for i in np.flatnonzero(inside).tolist():
+        c = cores[i]
+        if math.hypot(x - c.x_px, y - c.y_px) <= math.sqrt(c.area_px / math.pi) + 1.0:
+            return i
+    return None
+
+
+def _inside_a_core(x: float, y: float, cores: Sequence[ClippedCore], boxes: CoreBoxes | None = None) -> bool:
+    """Whether a point lies within a core's own disk grown by one pixel (`_first_core`; a caller testing many points
+    builds the boxes once with `_core_boxes`)."""
+    return _first_core(x, y, cores, _core_boxes(cores) if boxes is None else boxes) is not None
+
+
+def _dilate_square(mask: np.ndarray, side: int) -> np.ndarray:
+    """`mask` dilated by a `side` x `side` square, nothing outside the frame: scipy's binary_dilation by that square,
+    as a max filter, which is separable and gives the same booleans for an odd side (detector-speed-1)."""
+    if side % 2 != 1:
+        raise ValueError("The square's side is odd, so it has a centre.")
+    return ndimage.maximum_filter(np.asarray(mask, dtype=np.uint8), size=side, mode="constant", cval=0).astype(bool)
+
+
+def _erode_square(mask: np.ndarray, side: int) -> np.ndarray:
+    """`mask` eroded by a `side` x `side` square, nothing outside the frame: scipy's binary_erosion by that square with
+    border_value 0, as a min filter, which is separable and gives the same booleans for an odd side (detector-speed-1)."""
+    if side % 2 != 1:
+        raise ValueError("The square's side is odd, so it has a centre.")
+    return ndimage.minimum_filter(np.asarray(mask, dtype=np.uint8), size=side, mode="constant", cval=0).astype(bool)
 
 
 def _noise_tile_px(height: int, width: int) -> int:
@@ -759,9 +807,9 @@ def _noise_patches(residual: np.ndarray, valid: np.ndarray, sigma_eff: float) ->
     WHITEN_STAR_NOISES times `sigma_eff` or more from 0."""
     far = np.abs(residual) >= WHITEN_STAR_NOISES * float(sigma_eff)
     side = 2 * WHITEN_STAR_PX + 1
-    near_star = ndimage.binary_dilation(far, structure=np.ones((side, side), dtype=bool))
+    near_star = _dilate_square(far, side)
     usable = np.asarray(valid, dtype=bool) & ~near_star
-    whole = ndimage.binary_erosion(usable, structure=np.ones((7, 7), dtype=bool), border_value=0)
+    whole = _erode_square(usable, 7)
     grid = whole[3::7, 3::7]
     gy, gx = np.nonzero(grid)
     if gy.size == 0:
@@ -855,7 +903,7 @@ def _profile_stars(residual: np.ndarray, sigma_eff: float, clipped: np.ndarray) 
     if ys.size == 0:
         return []
     values = residual[ys, xs]
-    near_flat = ndimage.binary_dilation(clipped, structure=np.ones((2 * half + 1, 2 * half + 1), dtype=bool))
+    near_flat = _dilate_square(clipped, 2 * half + 1)
     tree = cKDTree(np.stack([ys, xs], axis=1).astype(np.float64))
     chosen: list[tuple[float, int, int]] = []
     for i in np.argsort(-values, kind="stable"):
@@ -1383,6 +1431,15 @@ class InjectionRecoveryReport:
     bins: tuple[InjectionRecoveryBin, ...]
 
 
+_GRID5 = np.mgrid[0:5, 0:5]
+
+
+def _peak_grid(y0: int, x0: int) -> tuple[np.ndarray, np.ndarray]:
+    """`np.mgrid[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]` as a fixed grid plus the peak's offset: the same int64 values,
+    without building the index object for each of a frame's peaks (detector-speed-1)."""
+    return _GRID5[0] + (y0 - 2), _GRID5[1] + (x0 - 2)
+
+
 def _measure_peak_photometry(
     residual: np.ndarray,
     snr_map: np.ndarray,
@@ -1458,7 +1515,7 @@ def _measure_peak_photometry(
     peak_val = float(np.max(pos_patch5))
     peak_ratio = peak_val / max(float(np.sum(pos_patch5)), 1e-9)
 
-    yy, xx = np.mgrid[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]
+    yy, xx = _peak_grid(y0, x0)
     cx = float(np.sum(xx * weights) / total_w)
     cy = float(np.sum(yy * weights) / total_w)
 
@@ -1636,8 +1693,9 @@ def detect_point_sources(
         det for det in (_core_detection(core, snr_map, residual, asset_id, frame_time_sec) for core in cores) if det is not None
     ]
     peak_ys, peak_xs = np.nonzero(is_peak)
+    boxes = _core_boxes(cores)
     for y0, x0 in zip(peak_ys.tolist(), peak_xs.tolist()):
-        if cores and _inside_a_core(float(x0), float(y0), cores):
+        if cores and _inside_a_core(float(x0), float(y0), cores, boxes):
             continue
         det = _measure_peak_photometry(
             residual,
@@ -1706,6 +1764,7 @@ def verify_candidates_on_original_pixels(
     seen_cores: set[int] = set()
     seen_peaks: set[tuple[int, int]] = set()
     verified: list[SourceDetection] = []
+    boxes = _core_boxes(cores)
 
     for cand in proposed_candidates:
         if isinstance(cand, SourceDetection):
@@ -1715,7 +1774,7 @@ def verify_candidates_on_original_pixels(
             cand_x, cand_y = float(cand[0]), float(cand[1])
             resolved_asset_id = asset_id
 
-        core_index = next((i for i, c in enumerate(cores) if _inside_a_core(cand_x, cand_y, [c])), None)
+        core_index = _first_core(cand_x, cand_y, cores, boxes)
         if core_index is not None:
             if core_index not in seen_cores:
                 seen_cores.add(core_index)
