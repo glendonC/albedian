@@ -769,43 +769,39 @@ extension CompanionModel {
         screen = .kept
         let queue = keptNotSent
         keptSending = (0, queue.count)
-        sendNextKept(queue, index: 0, address: address)
-    }
-
-    private func sendNextKept(_ queue: [String], index: Int, address: LaptopAddress) {
-        guard index < queue.count else {
-            keptSending = nil
-            keptNotSent = []
-            refreshKept()
-            showHome()
-            return
-        }
-        guard let kept = load(queue[index]) else { return sendNextKept(queue, index: index + 1, address: address) }
-        uploads.start(photo: kept.photo, contentType: kept.contentType, recordWire: kept.recordWire,
-                      uploader: CaptureUploader(address: address)) { [weak self] last in
+        let uploader = CaptureUploader(address: address)
+        let solver = SolveClient(address: address)
+        Task { @MainActor [weak self] in
             guard let self else { return }
-            self.ledger.record(last, for: kept.sha256)
-            switch SendEnd.after(last) {
-            case .solve?:
-                self.pairing.keep(address)
-                self.keptSending = (index + 1, queue.count)
-                self.sendNextKept(queue, index: index + 1, address: address)
-            case .unreachable?:
-                // The approved "Can't reach the laptop" on the photo that did not go; it stays kept
-                self.keptSending = nil
-                self.shot = kept
-                self.unreachable = true
-                self.screen = .afterShot
-            case .notSent?:
-                self.keptSending = nil
-                self.shot = kept
-                if case .failed(.refused(.photo, _, let detail?)) = last {
-                    self.stop(RefusalSentence.of(detail) ?? detail, sha256: kept.sha256, address: address, solveOnly: false)
+            // kept-send-solves-one (DECIDED-BY-LEAD 24 Nov 18:28): each photo that goes has its solve asked for once, without
+            // waiting, so its result waits on the laptop where Open leads; nothing new on these screens
+            var lastTried: KeptShot?
+            let end = await KeptSend.run(queue, send: { sha in
+                guard let kept = self.load(sha) else { return nil }
+                lastTried = kept
+                let last = await uploader.send(photo: kept.photo, contentType: kept.contentType, recordWire: kept.recordWire) { _ in }
+                self.ledger.record(last, for: sha)
+                if case .solve? = SendEnd.after(last) { self.pairing.keep(address) }
+                return last
+            }, startSolve: { sha in _ = await solver.start(sha256: sha) },
+               progress: { gone in self.keptSending = (gone, queue.count) })
+            self.keptSending = nil
+            switch end {
+            case .allSent:
+                self.keptNotSent = []
+                self.refreshKept()
+                self.showHome()
+            case .stopped(let sha256, let last):
+                self.shot = lastTried
+                if case .unreachable? = SendEnd.after(last) {
+                    // The approved "Can't reach the laptop" on the photo that did not go; it stays kept
+                    self.unreachable = true
+                    self.screen = .afterShot
+                } else if case .failed(.refused(.photo, _, let detail?)) = last {
+                    self.stop(RefusalSentence.of(detail) ?? detail, sha256: sha256, address: address, solveOnly: false)
                 } else {
                     self.screen = .afterShot
                 }
-            case nil:
-                break
             }
         }
     }

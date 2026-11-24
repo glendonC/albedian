@@ -119,6 +119,19 @@ public final class SolveClient: Sendable {
         return Self.finish(await conclude(sha256, job), onState)
     }
 
+    /// Asks the laptop to solve a photo it holds and gives the job it started, without following it: the request `solve`
+    /// makes first, answered at once (kept-send-solves-one, the counted send of kept photos).
+    public func start(sha256: String) async -> Result<SolveJob, SolveFailure> {
+        guard PhotoHash.isContractHash(sha256) else { return .failure(.notPermitted) }
+        switch await exchange("POST", Self.startPath(sha256), timeoutSec: readTimeoutSec) {
+        case .failure(let failure): return .failure(failure)
+        case .success(let reply):
+            return Self.read(reply.body, SolveJobReader.read).flatMap { job in
+                job.sourceAssetSha256 == sha256 ? .success(job) : .failure(.jobForAnotherPhoto)
+            }
+        }
+    }
+
     /// The start's path: the answer at once, never the held form platform-7 removes.
     static func startPath(_ sha256: String) -> String { "/api/ingest/\(sha256)/solve?wait=false" }
 
