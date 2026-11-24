@@ -108,6 +108,17 @@ describe('isQuestion: which words go to the answer route', () => {
     expect(isQuestion('What is the second brightest star?', session)).toBe(true);
     expect(isQuestion('Take me to Zorblax', session)).toBe(false);
   });
+
+  it('keeps a command the parser refuses in its own typed words, so that sentence shows and not the route\'s (deepsky-answer-1)', () => {
+    const { session } = photo();
+    // No table holds these by name: the parser's no_named_row refusal is for a command, never a question
+    for (const words of ['select Eta Carinae', 'take me to the Magellanic Clouds', 'tell me about Eta Carinae']) {
+      expect(isQuestion(words, session), words).toBe(false);
+    }
+    // A question no command reads still goes to the route; a refused edit, typed or not, stays with the app
+    expect(isQuestion('Is that a plane?', session)).toBe(true);
+    expect(isQuestion('add a nebula over the field', session)).toBe(false);
+  });
 });
 
 describe('askVoiceAnswer: the answer route, checked both ways', () => {

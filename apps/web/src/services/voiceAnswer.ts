@@ -36,7 +36,8 @@ export function isQuestion(utterance: string, session: ObservationSession, recen
   const parsed = parseUtteranceToAction(utterance, buildActionContext(session, pointer), session);
   if (parsed.disambiguation) return false;
   if (parsed.action) return QUESTION_ACTIONS.has(parsed.action.type);
-  return parsed.reason === 'no_grounded_answer';
+  // A typed refusal is the parser's answer to a command it read (deepsky-answer-1): its own sentence shows, not the route's
+  return parsed.reason === 'no_grounded_answer' && parsed.refusal === undefined;
 }
 
 /**

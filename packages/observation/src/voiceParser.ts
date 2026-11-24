@@ -549,6 +549,13 @@ function spokenNamesOf(findings: readonly CelestialFinding[]): SpokenName[] {
   }
   // A body this solution holds is named below by its own record or its title; one it does not hold is missing
   for (const [spoken, shown] of Object.entries(PREDICTED_BODY_NAMES)) absent.set(spoken, shown);
+  // A southern showpiece the solution draws (its OpenNGC row, as the backend mints its id) is that finding by every
+  // name people say for it, "the Jewel Box" for the row titled "Herschel's Jewel Box" among them
+  for (const [label, spokenNames] of Object.entries(UNBAKED_OBJECTS)) {
+    const row = UNBAKED_DEEP_SKY_ROWS[label];
+    const id = row ? `finding-openngc-${row}` : undefined;
+    if (id !== undefined && held.has(id)) for (const spoken of spokenNames) add(own, spoken, id);
+  }
   for (const finding of findings) {
     for (const [spoken, iauName] of Object.entries(SPOKEN_STAR_ALIASES)) {
       if (finding.title === iauName) add(own, spoken, finding.id);
@@ -876,8 +883,22 @@ function whatIsNotHeld(
   said: NamesRead,
   unknown: string
 ): TargetResolutionResult | undefined {
-  const unbaked = unbakedObjectSaid(normalizedUtterance);
-  if (unbaked) return refused(unbakedRefusalRecord(...unbaked), 'no_grounded_answer', session);
+  // Only what the request leaves unread: a showpiece the solution draws was read as its finding above
+  const unbaked = unbakedObjectSaid(said.without);
+  if (unbaked) {
+    const [label, spoken] = unbaked;
+    // A showpiece with a deep-sky row that this solution does not draw is missing from the sky as an absent star is
+    // (C33, the lead's ruling of 24 Nov 17:15: once drawn ones are reachable, "voice does not reach" stops being true);
+    // one no table holds by name keeps its own refusal
+    if (UNBAKED_DEEP_SKY_ROWS[label]) {
+      if (!skyWasWorkedOut(context, session)) {
+        const reason = context.calibrationState === 'unresolved' ? 'unresolved_sky' : 'ambiguous_target';
+        return refused({ kind: 'sky_not_worked_out' }, reason, session);
+      }
+      return refused({ kind: 'not_in_this_sky', said: spoken, name: label }, 'ambiguous_target', session);
+    }
+    return refused(unbakedRefusalRecord(label, spoken), 'no_grounded_answer', session);
+  }
   if (SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(normalizedUtterance, name))) {
     const findings = session.observationSolution?.findings ?? [];
     const choices = SOUTHERN_CROSS_STARS.flatMap((name) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
-import { buildActionContext, parseUtteranceToAction, SOUTHERN_CROSS_STARS, unbakedRefusal } from '../voiceParser.js';
+import { buildActionContext, parseUtteranceToAction, SOUTHERN_CROSS_STARS, UNBAKED_DEEP_SKY_ROWS, unbakedRefusal } from '../voiceParser.js';
 import { createSyntheticCalibratedSession } from '../testing/syntheticSessions.js';
 
 /**
@@ -81,7 +81,8 @@ describe('southern names', () => {
     for (const verb of VERBS) {
       const result = parse(verb.replace('{}', said), session);
       expect(result.action, verb.replace('{}', said)).toBeUndefined();
-      expect(result.reason).toBe('no_grounded_answer');
+      // One with a deep-sky row this sky does not draw is not in this sky (C33); one with no row keeps its refusal
+      expect(result.reason).toBe(UNBAKED_DEEP_SKY_ROWS[label] ? 'ambiguous_target' : 'no_grounded_answer');
       expect(result.error?.toLowerCase()).toContain(label.toLowerCase());
     }
   });
@@ -97,7 +98,8 @@ describe('southern names', () => {
     expect(unbakedRefusal('Eta Carinae')).toBe(
       "Eta Carinae has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     );
-    expect(parse('take me to omega centauri', session).error).toBe(unbakedRefusal('Omega Centauri'));
+    // The app parser, which holds the photo's sky, says an undrawn one is not in it (C33)
+    expect(parse('take me to omega centauri', session).error).toMatch(/^Omega Centauri was not found in this (photo|clip)'s sky\.$/);
   });
 
   it('a named southern star the solution lacks is refused, not swapped for the selection', () => {

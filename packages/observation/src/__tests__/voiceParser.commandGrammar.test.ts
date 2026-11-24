@@ -110,7 +110,7 @@ describe('@albedian/observation voice grammar: the table both parsers read', () 
     ['step back', 'history.back', { mode: 'checkpoint' }],
     ['show constellation lines', 'ui.overlay', { overlay: 'constellationLines', enabled: true }],
     ['disable constellation lines', 'ui.overlay', { overlay: 'constellationLines', enabled: false }],
-    ['denoise the photo of omega centauri', 'rejected', { kind: 'deep_sky_out_of_reach', said: 'omega centauri', name: 'Omega Centauri', catalogRow: 'NGC5139' }],
+    ['denoise the photo of omega centauri', 'rejected', { kind: 'not_in_this_sky', said: 'omega centauri', name: 'Omega Centauri' }],
     ['hide the predicted sky', 'rejected', { kind: 'not_a_request', said: 'hide' }],
     ['turn off the predicted sky', 'rejected', { kind: 'not_a_request', said: 'turn' }],
     ['what does predicted mean', 'question.ask', {}],

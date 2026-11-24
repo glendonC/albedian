@@ -553,12 +553,12 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
 
   it('refuses a southern object or the Southern Cross beside a name this sky holds, in their own words', () => {
     const coalsack = parse('how far is Rigel from the Coalsack?', rigel);
-    expect([coalsack.action, coalsack.disambiguation, coalsack.reason]).toEqual([undefined, undefined, 'no_grounded_answer']);
+    expect([coalsack.action, coalsack.disambiguation, coalsack.reason]).toEqual([undefined, undefined, 'ambiguous_target']);
     expect(coalsack.error).toBe(parse('how far is the Coalsack?', rigel).error);
-    expect(coalsack.error).toMatch(/^The Coalsack is in the app's deep-sky catalog/);
+    expect(coalsack.error).toMatch(/^The Coalsack was not found in this /);
     for (const utterance of ['take me to Rigel or Omega Centauri', 'select Betelgeuse and the Jewel Box', 'Rigel, 47 Tuc']) {
       const parsed = parse(utterance, rigel);
-      expect([utterance, parsed.action, parsed.disambiguation, parsed.reason]).toEqual([utterance, undefined, undefined, 'no_grounded_answer']);
+      expect([utterance, parsed.action, parsed.disambiguation, parsed.reason]).toEqual([utterance, undefined, undefined, 'ambiguous_target']);
     }
     // No star of the Cross is in this sky: the same refusal as when the Cross is named alone, never Rigel's distance
     const cross = parse('how far is Rigel from the Southern Cross?', rigel);

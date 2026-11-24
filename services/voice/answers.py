@@ -55,6 +55,10 @@ QUESTION_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "what's this", "identify", "name of", "what object")),
 )
 _WIDE_KIND = "identity"
+# "What is" (or "what's") in a question naming a thing asks what that thing is ("what is Omega Centauri", "so what's
+# the Jewel Box"): identity, the wide kind, read only when no other kind is asked and the words name something, so
+# "what is the weather" asks nothing and "what is the distance of Acrux" asks the distance
+_WHAT_IS_NAMED = re.compile(r"\bwhat(?:\s+is|'s)\s+\S", re.ASCII)
 # The closed class of English negators (not, every n't form with and without its apostrophe, cannot, no, never, none,
 # nothing, neither, nor, without, except, anything but, other than, instead of); right before a comma a negator is an
 # interjection ("no, how far is it?") and does not negate the clause
@@ -654,6 +658,8 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
         raise ValueError("a recording is named a photo or a clip")
     unanswerable = contract.UNANSWERABLE_QUESTION_KIND
     asked, negated = asked_kinds(question)
+    if not asked and _WHAT_IS_NAMED.search(_lowered(question)) and _named_targets(question, solution):
+        asked = {_WIDE_KIND}
     if ranks_or_relates(question):
         return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_RANKS, noun=noun)
     if len(asked) > 1:

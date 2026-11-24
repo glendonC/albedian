@@ -125,8 +125,10 @@ describe('@albedian/observation voice parser: refusals alike with the backend', 
     console.log("refusal parity", JSON.stringify(counts), "differences", differences.length);
     expect(differences, differences.slice(0, 20).join("\n")).toEqual([]);
     // Both parsers read one command grammar (packages/contracts/src/data/voice-command-grammar.json), so no sentence is
-    // refused by one and acted on by the other; the refusals only the app gives are those that need the photo's sky
-    expect(counts, oneSided.join("\n")).toEqual({ same: 493, appOnly: 43, appRefusals: 602, backendRefusals: 536, appRefusesBackendActs: 0, backendRefusesAppActs: 0 });
+    // refused by one and acted on by the other; the refusals only the app gives are those that need the photo's sky,
+    // among them the six showpieces the backend says voice cannot reach and the app, holding the sky, says are not in
+    // it (deepsky-answer-1, C33)
+    expect(counts, oneSided.join("\n")).toEqual({ same: 487, appOnly: 49, appRefusals: 602, backendRefusals: 536, appRefusesBackendActs: 0, backendRefusesAppActs: 0 });
     for (const line of oneSided) expect(line, line).toMatch(/(backend no_grounded_answer|app question\.ask|app media\.compare|app navigation\.cancel|app ui\.overlay):/);
     // Every one-sided reading, held exactly in a tracked fixture that the backend's test also reads, so the list
     // changes only on purpose (answers-3b gives both parsers one command table)

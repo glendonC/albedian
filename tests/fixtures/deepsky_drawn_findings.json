@@ -1,0 +1,204 @@
+{
+ "about": "Three drawn deep-sky findings and one matched star exactly as the solve of the public corpus photo rp-b-01 (.cache/real-photos, data/downloads.json) served them through the upload path on main 217982b9, for the voice tests of deepsky-answer-1 (FIELD's deep-sky break of 24 Nov).",
+ "solutionStatus": "calibrated",
+ "findings": [
+  {
+   "id": "finding-hip-60718",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Acrux",
+   "subtitle": "Alpha1 Crucis \u00b7 HR 4730 \u00b7 98.7 pc [94.0-103.9 pc]",
+   "skyPosition": {
+    "raDeg": 186.64899091682477,
+    "decDeg": -63.099200270495935,
+    "uncertaintyArcsec": 56.5220779922687,
+    "altDeg": 30.595332140788024,
+    "azDeg": 149.84694167131673
+   },
+   "evidence": {
+    "id": "ev-finding-hip-60718",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "hip-60718",
+    "angularResidualArcsec": 56.5220779922687,
+    "pixelResidualPx": 1.5263681734628256,
+    "distanceUncertaintyNote": "Distance interval [94.0, 103.9] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 1829.0044485705084,
+    "yPx": 748.9947912150207,
+    "flux": 17.078625333921696,
+    "snr": 186.71745978099304,
+    "fwhmPx": 3.322669019028549,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "hip-60718",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 60718",
+    "commonName": "Acrux",
+    "bayerDesignation": "Alpha1 Crucis",
+    "constellation": "Cru",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 186.64899091682477,
+    "decDeg": -63.099200270495935,
+    "apparentMagnitude": 0.6739999999999999,
+    "properMotionRaMasYr": -35.84375,
+    "properMotionDecMasYr": -14.859375,
+    "bailerJonesDistancePc": {
+     "lower": 93.98184125984079,
+     "median": 98.71883010683966,
+     "upper": 103.90530692335166,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 93.98184125984079,
+    "median": 98.71883010683966,
+    "upper": 103.90530692335166,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -44.364642450633326,
+    -5.171610032761159,
+    -88.03658539243546
+   ]
+  },
+  {
+   "id": "finding-openngc-ESO056-115",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Large Magellanic Cloud",
+   "subtitle": "Galaxy \u00b7 Dor \u00b7 OpenNGC CC BY-SA 4.0",
+   "skyPosition": {
+    "raDeg": 80.89375,
+    "decDeg": -69.756111,
+    "uncertaintyArcsec": 120.47854916515367,
+    "altDeg": 42.73620148887905,
+    "azDeg": 194.6223508416374
+   },
+   "evidence": {
+    "id": "ev-finding-openngc-ESO056-115",
+    "evidenceClass": "predicted",
+    "verificationMethod": "OpenNGC catalog position placed for the recorded time and place by the predicted sky; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "openngc-ESO056-115",
+    "limitations": [
+     "Placed from its OpenNGC catalog centre (OpenNGC v20260501, J2000) for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+     "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+     "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "openngc-ESO056-115",
+    "provider": "OpenNGC",
+    "releaseVersion": "OpenNGC v20260501",
+    "catalogSourceId": "ESO056-115",
+    "commonName": "Large Magellanic Cloud",
+    "constellation": "Dor",
+    "objectType": "deep_sky",
+    "coordinateEpoch": "J2000.0",
+    "raDeg": 80.89375,
+    "decDeg": -69.756111,
+    "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+    "apparentMagnitude": 0.29
+   }
+  },
+  {
+   "id": "finding-openngc-NGC4755",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Herschel's Jewel Box",
+   "subtitle": "Open Cluster \u00b7 Cru \u00b7 OpenNGC CC BY-SA 4.0",
+   "skyPosition": {
+    "raDeg": 193.4045,
+    "decDeg": -60.356306,
+    "uncertaintyArcsec": 0.15
+   },
+   "evidence": {
+    "id": "ev-finding-openngc-NGC4755",
+    "evidenceClass": "predicted",
+    "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "openngc-NGC4755",
+    "limitations": [
+     "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+     "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+     "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+     "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "openngc-NGC4755",
+    "provider": "OpenNGC",
+    "releaseVersion": "OpenNGC v20260501",
+    "catalogSourceId": "NGC4755",
+    "commonName": "Herschel's Jewel Box",
+    "constellation": "Cru",
+    "objectType": "deep_sky",
+    "coordinateEpoch": "J2000.0",
+    "raDeg": 193.4045,
+    "decDeg": -60.356306,
+    "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0"
+   }
+  },
+  {
+   "id": "finding-openngc-NGC5139",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Omega Centauri",
+   "subtitle": "Globular Cluster \u00b7 Cen \u00b7 OpenNGC CC BY-SA 4.0",
+   "skyPosition": {
+    "raDeg": 201.691208,
+    "decDeg": -47.476861,
+    "uncertaintyArcsec": 0.15
+   },
+   "evidence": {
+    "id": "ev-finding-openngc-NGC5139",
+    "evidenceClass": "predicted",
+    "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "openngc-NGC5139",
+    "limitations": [
+     "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+     "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+     "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+     "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "openngc-NGC5139",
+    "provider": "OpenNGC",
+    "releaseVersion": "OpenNGC v20260501",
+    "catalogSourceId": "NGC5139",
+    "commonName": "Omega Centauri",
+    "constellation": "Cen",
+    "objectType": "deep_sky",
+    "coordinateEpoch": "J2000.0",
+    "raDeg": 201.691208,
+    "decDeg": -47.476861,
+    "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+    "apparentMagnitude": 5.33
+   }
+  }
+ ]
+}
