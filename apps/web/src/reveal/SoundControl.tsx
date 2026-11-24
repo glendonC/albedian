@@ -33,6 +33,16 @@ export const SoundControl: React.FC<SoundControlProps> = ({ on, onToggle, level,
   const percent = Math.round(Math.min(1, Math.max(0, level)) * 100);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Home') {
+      event.preventDefault();
+      onLevel(0);
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      onLevel(1);
+      return;
+    }
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     event.preventDefault();
     const next = percent + (event.key === 'ArrowUp' ? KEY_STEP : -KEY_STEP);
@@ -59,6 +69,7 @@ export const SoundControl: React.FC<SoundControlProps> = ({ on, onToggle, level,
             className="sound-control__volume"
             role="slider"
             aria-label="Volume"
+            aria-orientation="vertical"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={percent}

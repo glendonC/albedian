@@ -65,6 +65,7 @@ describe('KeyboardHelp', () => {
     expect(key(window, { key: '?', shiftKey: true }).defaultPrevented).toBe(true);
     const dialog = q('[role="dialog"]')!;
     expect(dialog.getAttribute('aria-label')).toBe('Keyboard');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(dialog.querySelector('.keys-help__title')!.textContent).toBe('Keyboard');
     expect(rows()).toEqual([
       ['Ask out loud', 'Space'],
@@ -137,6 +138,106 @@ describe('KeyboardHelp', () => {
     expect(q('[role="dialog"]')).toBeNull();
     key(window, { key: '?' });
     expect(document.activeElement).toBe(q('.keys-help__card'));
+  });
+
+  it('traps Tab and Shift+Tab inside the open Keyboard card and leaves Tab alone once closed', () => {
+    const outside = document.createElement('button');
+    outside.type = 'button';
+    outside.textContent = 'Sound';
+    document.body.appendChild(outside);
+    try {
+      show();
+      key(window, { key: '?' });
+      const cardEl = q('.keys-help__card') as HTMLElement;
+      const closeBtn = q('.keys-help button[aria-label="Close"]') as HTMLButtonElement;
+      expect(document.activeElement).toBe(cardEl);
+
+      // Tab from the dialog card moves to Close, and a second Tab stays on Close
+      expect(key(cardEl, { key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+      expect(key(closeBtn, { key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Shift+Tab from the dialog card or from Close wraps back onto Close
+      act(() => cardEl.focus());
+      expect(key(cardEl, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+      expect(key(closeBtn, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+
+      // With two tabbable controls inside the card, interior Tab steps pass through while ends wrap
+      const secondInCard = document.createElement('button');
+      secondInCard.type = 'button';
+      cardEl.appendChild(secondInCard);
+      try {
+        act(() => closeBtn.focus());
+        expect(key(closeBtn, { key: 'Tab' }).defaultPrevented).toBe(false);
+        expect(key(closeBtn, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+        expect(document.activeElement).toBe(secondInCard);
+        expect(key(secondInCard, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(false);
+        expect(key(secondInCard, { key: 'Tab' }).defaultPrevented).toBe(true);
+        expect(document.activeElement).toBe(closeBtn);
+      } finally {
+        secondInCard.remove();
+      }
+
+      // If focus somehow lands outside while open, Tab and Shift+Tab pull it back into the dialog
+      act(() => outside.focus());
+      expect(key(outside, { key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+      act(() => outside.focus());
+      expect(key(outside, { key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(closeBtn);
+
+      // Modified Tab shortcuts are left to the browser
+      expect(key(closeBtn, { key: 'Tab', ctrlKey: true }).defaultPrevented).toBe(false);
+
+      // Once closed (even while leaving), Tab is no longer trapped
+      key(window, { key: 'Escape' });
+      act(() => outside.focus());
+      expect(key(outside, { key: 'Tab' }).defaultPrevented).toBe(false);
+    } finally {
+      outside.remove();
+    }
+  });
+
+  it('restores focus to the trigger on Esc, Close click, and veil click, without clobbering it on repeated "?"', () => {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.textContent = 'Sound';
+    document.body.appendChild(trigger);
+    try {
+      show();
+      act(() => trigger.focus());
+      key(trigger, { key: '?' });
+      expect(document.activeElement).toBe(q('.keys-help__card'));
+      // Pressing "?" again while already open keeps the original trigger
+      key(q('.keys-help__card')!, { key: '?' });
+      key(window, { key: 'Escape' });
+      expect(document.activeElement).toBe(trigger);
+
+      // Closing with the Close circle restores the trigger even after focusing Close
+      key(trigger, { key: '?' });
+      const closeBtn = q('.keys-help button[aria-label="Close"]') as HTMLButtonElement;
+      act(() => {
+        closeBtn.focus();
+        closeBtn.click();
+      });
+      expect(document.activeElement).toBe(trigger);
+
+      // Closing by clicking the dimmed veil restores the trigger
+      key(trigger, { key: '?' });
+      act(() => (q('.keys-help__veil') as HTMLElement).click());
+      expect(document.activeElement).toBe(trigger);
+
+      // If the trigger unmounted before close, focus leaves the inert card cleanly
+      key(trigger, { key: '?' });
+      trigger.remove();
+      key(window, { key: 'Escape' });
+      expect(q('.keys-help__card')!.contains(document.activeElement)).toBe(false);
+    } finally {
+      if (trigger.isConnected) trigger.remove();
+    }
   });
 });
 
@@ -222,6 +323,7 @@ describe('keyboard help leaves as the motion record says', () => {
       expect((q('.keys-help') as HTMLElement).style.getPropertyValue('--keys-n')).toBe(String(n));
       key(window, { key: 'Escape' });
       expect(q('[role="dialog"]')).toBeNull();
+      expect(q('.keys-help__card')!.hasAttribute('aria-modal')).toBe(false);
       expect(leaving()).not.toBeNull();
       expect(leaving()!.hasAttribute('inert')).toBe(true);
       act(() => vi.advanceTimersByTime(blockLeaveMs(n + 1, MOTION_TOKENS) - 1));

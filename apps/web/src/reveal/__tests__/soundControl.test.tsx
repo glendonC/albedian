@@ -102,6 +102,7 @@ describe('SoundControl: what the sound is, and its volume, while on', () => {
     const volume = q('.sound-control__volume') as HTMLElement;
     expect(volume.getAttribute('role')).toBe('slider');
     expect(volume.getAttribute('aria-label')).toBe('Volume');
+    expect(volume.getAttribute('aria-orientation')).toBe('vertical');
     expect(volume.getAttribute('aria-valuemin')).toBe('0');
     expect(volume.getAttribute('aria-valuemax')).toBe('100');
     expect(volume.getAttribute('aria-valuenow')).toBe('70');
@@ -157,6 +158,11 @@ describe('SoundControl: what the sound is, and its volume, while on', () => {
     show({ level: 0.05, onLevel });
     press('ArrowDown');
     expect(onLevel).toHaveBeenLastCalledWith(0);
+    show({ level: 0.65, onLevel });
+    expect(press('Home').defaultPrevented).toBe(true);
+    expect(onLevel).toHaveBeenLastCalledWith(0);
+    expect(press('End').defaultPrevented).toBe(true);
+    expect(onLevel).toHaveBeenLastCalledWith(1);
   });
 });
 

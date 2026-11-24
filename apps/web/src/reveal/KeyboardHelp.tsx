@@ -29,6 +29,9 @@ const ROWS_3D: ReadonlyArray<readonly [string, readonly string[]]> = [
 ];
 const LAST: readonly [string, readonly string[]] = ['Keyboard', ['?']];
 
+const TABBABLE =
+  'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
 /**
  * Keyboard help (INTERIM: .lead/uiux/UIUX-keys-QUESTION.md, waiting on the owner; modelled on GitHub's "?" dialog):
  * "?" opens a centred dark card over the screen dimmed to 60 percent; Esc, the close circle or a click outside closes
@@ -38,10 +41,36 @@ const LAST: readonly [string, readonly string[]] = ['Keyboard', ['?']];
 export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
   const [open, setOpen] = useState(false);
   const card = useRef<HTMLElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (open && event.key === 'Tab') {
+        const dialog = card.current;
+        if (!dialog) return;
+        const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(TABBABLE));
+        if (focusables.length === 0) {
+          event.preventDefault();
+          dialog.focus();
+          return;
+        }
+        const first = focusables[0]!;
+        const last = focusables[focusables.length - 1]!;
+        const active = document.activeElement as HTMLElement | null;
+        if (event.shiftKey) {
+          if (!active || active === dialog || active === first || !dialog.contains(active)) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (!active || active === dialog || active === last || !dialog.contains(active)) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      if (typing(event.target)) return;
       if (event.key === '?') {
         event.preventDefault();
         setOpen(true);
@@ -56,7 +85,31 @@ export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
   }, [open]);
 
   useEffect(() => {
-    if (open) card.current?.focus();
+    if (open) {
+      if (!wasOpen.current) {
+        const active = document.activeElement;
+        opener.current =
+          active instanceof HTMLElement &&
+          active !== document.body &&
+          active !== document.documentElement &&
+          !card.current?.contains(active)
+            ? active
+            : null;
+        wasOpen.current = true;
+      }
+      card.current?.focus();
+      return;
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false;
+      const target = opener.current;
+      opener.current = null;
+      if (target && target.isConnected) {
+        target.focus();
+      } else if (card.current?.contains(document.activeElement)) {
+        (document.activeElement as HTMLElement).blur();
+      }
+    }
   }, [open]);
 
   const rows = [...ROWS, ...(threeD ? ROWS_3D : []), LAST];
@@ -71,7 +124,14 @@ export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
       style={{ '--keys-n': rows.length } as React.CSSProperties}
     >
       <div className="keys-help__veil" onClick={() => setOpen(false)} />
-      <section className="keys-help__card" role={leaving ? undefined : 'dialog'} aria-label="Keyboard" tabIndex={-1} ref={card}>
+      <section
+        className="keys-help__card"
+        role={leaving ? undefined : 'dialog'}
+        aria-modal={leaving ? undefined : true}
+        aria-label="Keyboard"
+        tabIndex={-1}
+        ref={card}
+      >
         <header className="keys-help__head">
           <b className="keys-help__title">Keyboard</b>
           <IconButton label="Close" icon="x" part="keys-help__close" onClick={() => setOpen(false)} />
