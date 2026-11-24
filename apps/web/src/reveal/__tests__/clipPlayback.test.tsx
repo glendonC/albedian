@@ -72,6 +72,19 @@ describe('withPlayback and withClipClock', () => {
     expect(withClipClock(photo, 7.25)).toBe(photo);
   });
 
+  // clip-checkpoint-time-test-one (AUDIT-C's T2 on clip-playing-checkpoint-1: the same-time tolerance widened from a
+  // millisecond to two seconds survived): a clip half a second, or a tenth of one, past the clock is a different frame
+  it('sets the clock for any frame the clip has moved to, however near: only the same instant is left alone', () => {
+    const playing = { ...withPlayback(pausedClip(), true), currentSourceTimeSec: 7 } as ObservationSession;
+    for (const live of [7.5, 7.1, 6.95, 7.002]) {
+      const synced = withClipClock(playing, live);
+      expect(synced.currentSourceTimeSec, String(live)).toBe(live);
+      expect(synced.viewRevision, String(live)).toBe(playing.viewRevision + 1);
+    }
+    // The same instant, to within half a millisecond, is no new frame
+    expect(withClipClock(playing, 7.0004)).toBe(playing);
+  });
+
   it('so a clip left while playing comes back playing at the frame it was on, at its sound level', () => {
     const playing = { ...withPlayback(pausedClip(), true), audioGain: 0.4 };
     const left = leave(withClipClock(playing, 7.25));
