@@ -654,6 +654,348 @@
   "evidence.distanceUncertaintyNote",
   "evidence.verifiedByIndependentHoldout"
  ],
+ "flightRule": {
+  "starCatalogDistanceMethods": [
+   "geometric_parallax",
+   "photogeometric_bailer_jones_edr3",
+   "geometric_bailer_jones_edr3"
+  ],
+  "solarSystemBodyKeys": [
+   "sun",
+   "moon",
+   "mercury",
+   "venus",
+   "mars",
+   "jupiter",
+   "saturn",
+   "uranus",
+   "neptune"
+  ],
+  "flightClasses": [
+   "catalog_matched",
+   "predicted"
+  ],
+  "samples": [
+   {
+    "about": "Rigel: matched, Bailer-Jones",
+    "finding": {
+     "id": "finding-star-rigel",
+     "evidenceClass": "catalog_matched",
+     "title": "Rigel",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 240.0,
+      "median": 260.0,
+      "upper": 280.0,
+      "method": "photogeometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": null
+   },
+   {
+    "about": "Sirius: matched, parallax",
+    "finding": {
+     "id": "finding-star-sirius",
+     "evidenceClass": "catalog_matched",
+     "title": "Sirius",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 7.9,
+      "median": 8.0,
+      "upper": 8.1,
+      "method": "geometric_parallax"
+     }
+    },
+    "refusal": null
+   },
+   {
+    "about": "Zosma: predicted, parallax",
+    "finding": {
+     "id": "finding-predicted-star-zosma",
+     "evidenceClass": "predicted",
+     "title": "Zosma",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 7.9,
+      "median": 8.0,
+      "upper": 8.1,
+      "method": "geometric_parallax"
+     }
+    },
+    "refusal": null
+   },
+   {
+    "about": "Gaia DR3 1: predicted, Bailer-Jones geometric",
+    "finding": {
+     "id": "finding-predicted-gaia-1",
+     "evidenceClass": "predicted",
+     "title": "Gaia DR3 1",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 99.0,
+      "median": 100.0,
+      "upper": 101.0,
+      "method": "geometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": null
+   },
+   {
+    "about": "Vega: matched, no distance",
+    "finding": {
+     "id": "finding-star-vega",
+     "evidenceClass": "catalog_matched",
+     "title": "Vega",
+     "catalogRef": {
+      "objectType": "star"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Tarazed: predicted, no distance",
+    "finding": {
+     "id": "finding-predicted-star-tarazed",
+     "evidenceClass": "predicted",
+     "title": "Tarazed",
+     "catalogRef": {
+      "objectType": "star"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Altair: predicted, a distance but no catalog row",
+    "finding": {
+     "id": "finding-predicted-star-altair",
+     "evidenceClass": "predicted",
+     "title": "Altair",
+     "inferredDistancePc": {
+      "lower": 240.0,
+      "median": 260.0,
+      "upper": 280.0,
+      "method": "photogeometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Deneb: predicted, an unknown method",
+    "finding": {
+     "id": "finding-predicted-star-deneb",
+     "evidenceClass": "predicted",
+     "title": "Deneb",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 240.0,
+      "median": 260.0,
+      "upper": 280.0,
+      "method": "inverse_parallax"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Spica: matched, the upper bound below the median",
+    "finding": {
+     "id": "finding-star-spica",
+     "evidenceClass": "catalog_matched",
+     "title": "Spica",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 240.0,
+      "median": 260.0,
+      "upper": 250.0,
+      "method": "photogeometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Mimosa: matched, a lower bound of 0",
+    "finding": {
+     "id": "finding-star-mimosa",
+     "evidenceClass": "catalog_matched",
+     "title": "Mimosa",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 0.0,
+      "median": 260.0,
+      "upper": 280.0,
+      "method": "photogeometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Pearl Cluster: predicted deep sky",
+    "finding": {
+     "id": "finding-openngc-NGC3766",
+     "evidenceClass": "predicted",
+     "title": "Pearl Cluster",
+     "catalogRef": {
+      "objectType": "deep_sky"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Star 3: observed in the pixels",
+    "finding": {
+     "id": "finding-obs-3",
+     "evidenceClass": "observed",
+     "title": "Star 3"
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Grid: simulated, a catalog distance",
+    "finding": {
+     "id": "finding-scene-grid",
+     "evidenceClass": "simulated",
+     "title": "Grid",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 240.0,
+      "median": 260.0,
+      "upper": 280.0,
+      "method": "photogeometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": "no_catalog_distance"
+   },
+   {
+    "about": "Moon: predicted, no distance",
+    "finding": {
+     "id": "finding-predicted-moon",
+     "evidenceClass": "predicted",
+     "title": "Moon"
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Sun: predicted",
+    "finding": {
+     "id": "finding-predicted-sun",
+     "evidenceClass": "predicted",
+     "title": "Sun"
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Jupiter: predicted, an ephemeris distance",
+    "finding": {
+     "id": "finding-predicted-jupiter",
+     "evidenceClass": "predicted",
+     "title": "Jupiter",
+     "inferredDistancePc": {
+      "lower": 2e-05,
+      "median": 2.1e-05,
+      "upper": 2.2e-05,
+      "method": "ephemeris_au"
+     }
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Moon: observed spot",
+    "finding": {
+     "id": "finding-observed-moon",
+     "evidenceClass": "observed",
+     "title": "Moon"
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Neptune: matched by its catalog type",
+    "finding": {
+     "id": "finding-jpl-899",
+     "evidenceClass": "catalog_matched",
+     "title": "Neptune",
+     "catalogRef": {
+      "objectType": "planet"
+     },
+     "inferredDistancePc": {
+      "lower": 2e-05,
+      "median": 2.1e-05,
+      "upper": 2.2e-05,
+      "method": "ephemeris_au"
+     }
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Odd: predicted star with an ephemeris distance",
+    "finding": {
+     "id": "finding-predicted-star-odd",
+     "evidenceClass": "predicted",
+     "title": "Odd",
+     "catalogRef": {
+      "objectType": "star"
+     },
+     "inferredDistancePc": {
+      "lower": 2e-05,
+      "median": 2.1e-05,
+      "upper": 2.2e-05,
+      "method": "ephemeris_au"
+     }
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Moon: matched by its catalog type alone",
+    "finding": {
+     "id": "finding-jpl-301",
+     "evidenceClass": "catalog_matched",
+     "title": "Moon",
+     "catalogRef": {
+      "objectType": "moon"
+     },
+     "inferredDistancePc": {
+      "lower": 7.9,
+      "median": 8.0,
+      "upper": 8.1,
+      "method": "geometric_parallax"
+     }
+    },
+    "refusal": "beyond_solar_system_only"
+   },
+   {
+    "about": "Mars: predicted by its catalog type alone",
+    "finding": {
+     "id": "finding-jpl-499",
+     "evidenceClass": "predicted",
+     "title": "Mars",
+     "catalogRef": {
+      "objectType": "planet"
+     },
+     "inferredDistancePc": {
+      "lower": 240.0,
+      "median": 260.0,
+      "upper": 280.0,
+      "method": "photogeometric_bailer_jones_edr3"
+     }
+    },
+    "refusal": "beyond_solar_system_only"
+   }
+  ]
+ },
  "rules": {
   "bayerDesignation": {
    "type": "text",

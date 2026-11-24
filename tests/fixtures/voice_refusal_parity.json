@@ -3852,7 +3852,7 @@
     {
      "status": "rejected",
      "reason": "no_grounded_answer",
-     "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+     "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
      "refusal": {
       "kind": "deep_sky_out_of_reach",
       "said": "large magellanic cloud",
@@ -3863,7 +3863,7 @@
     {
      "status": "rejected",
      "reason": "no_grounded_answer",
-     "explanation": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+     "explanation": "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
      "refusal": {
       "kind": "deep_sky_out_of_reach",
       "said": "coal sack",
@@ -7854,7 +7854,7 @@
     {
      "status": "rejected",
      "reason": "no_grounded_answer",
-     "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+     "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
      "refusal": {
       "kind": "deep_sky_out_of_reach",
       "said": "large magellanic cloud",
@@ -7865,7 +7865,7 @@
     {
      "status": "rejected",
      "reason": "no_grounded_answer",
-     "explanation": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+     "explanation": "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
      "refusal": {
       "kind": "deep_sky_out_of_reach",
       "said": "coal sack",
@@ -12052,7 +12052,7 @@
     {
      "status": "rejected",
      "reason": "no_grounded_answer",
-     "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+     "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
      "refusal": {
       "kind": "deep_sky_out_of_reach",
       "said": "large magellanic cloud",
@@ -12063,7 +12063,7 @@
     {
      "status": "rejected",
      "reason": "no_grounded_answer",
-     "explanation": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+     "explanation": "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
      "refusal": {
       "kind": "deep_sky_out_of_reach",
       "said": "coal sack",

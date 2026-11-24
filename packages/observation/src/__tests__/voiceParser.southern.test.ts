@@ -89,13 +89,13 @@ describe('southern names', () => {
   it('says where a deep-sky object is and that voice cannot reach it, in the backend words', () => {
     // The same sentences as services/voice/names.py (tests/integration/test_voice_southern_names.py)
     expect(unbakedRefusal('Omega Centauri')).toBe(
-      "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "Omega Centauri is in the app's deep-sky catalog (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     );
     expect(unbakedRefusal('the Coalsack')).toBe(
-      "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     );
     expect(unbakedRefusal('Eta Carinae')).toBe(
-      "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "Eta Carinae has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     );
     expect(parse('take me to omega centauri', session).error).toBe(unbakedRefusal('Omega Centauri'));
   });

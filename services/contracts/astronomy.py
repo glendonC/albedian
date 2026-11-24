@@ -222,6 +222,117 @@ FINDING_EVIDENCE_RULES = {
     "ownClass": "A finding's class is the class its evidence names.",
     "sameEntry": "A finding's catalog reference id names the catalog entry the finding carries.",
 }
+
+# The flight rule (flight-rule-0, DECIDED-BY-LEAD 24 Nov 12:55), the same as packages/contracts/src/astronomy.ts
+# `flightRefusal`: a finding may be flown to when it is catalog_matched, or predicted with a catalog reference, and its
+# distance interval is a usable one whose method is a star catalog's. An ephemeris distance never qualifies, and the
+# Sun, the Moon and the planets are refused as beyond the flight's reach. The finding is only read: nothing upgrades it.
+# The distance methods a star catalog gives: an inverse parallax, or a Bailer-Jones 2021 prior
+STAR_CATALOG_DISTANCE_METHODS: tuple[str, ...] = (
+    "geometric_parallax",
+    "photogeometric_bailer_jones_edr3",
+    "geometric_bailer_jones_edr3",
+)
+# The Sun, the Moon and the planets Mercury to Neptune, as their finding ids name them (finding-predicted-<key>, and
+# finding-observed-moon for the Moon's spot): services/science/ephemeris.py BODIES, in its order
+SOLAR_SYSTEM_BODY_KEYS: tuple[str, ...] = ("sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune")
+_SOLAR_SYSTEM_BODY_ID = re.compile(rf"^finding-(?:predicted|observed)-(?:{'|'.join(SOLAR_SYSTEM_BODY_KEYS)})$")
+_SOLAR_SYSTEM_OBJECT_TYPES = frozenset({"planet", "moon"})
+EPHEMERIS_DISTANCE_METHOD = "ephemeris_au"
+FLIGHT_CLASSES = ("catalog_matched", "predicted")
+
+
+def is_solar_system_body_id(finding_id: Any) -> bool:
+    """Whether a finding id names the Sun, the Moon or a planet (the voice backend holds only ids)."""
+    return isinstance(finding_id, str) and _SOLAR_SYSTEM_BODY_ID.fullmatch(finding_id) is not None
+
+
+def _usable_distance(distance: Any) -> bool:
+    """A distance interval the flight can stand on, as packages/evidence `formatDistanceWithUncertainty` accepts one:
+    finite numbers, a median and a lower bound above 0, and an upper bound not below the median."""
+    if not isinstance(distance, Mapping):
+        return False
+    lower, median, upper = distance.get("lower"), distance.get("median"), distance.get("upper")
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in (lower, median, upper)):
+        return False
+    return median > 0 and lower > 0 and upper >= median
+
+
+def flight_refusal(finding: Mapping[str, Any]) -> str | None:
+    """Why `finding` (a CelestialFinding in its wire form) cannot be flown to, as a refusal kind of the voice contract
+    (`no_catalog_distance`, `beyond_solar_system_only`), or None when it can."""
+    distance = finding.get("inferredDistancePc")
+    reference = finding.get("catalogRef")
+    method = distance.get("method") if isinstance(distance, Mapping) else None
+    object_type = reference.get("objectType") if isinstance(reference, Mapping) else None
+    if is_solar_system_body_id(finding.get("id")) or method == EPHEMERIS_DISTANCE_METHOD or object_type in _SOLAR_SYSTEM_OBJECT_TYPES:
+        return "beyond_solar_system_only"
+    klass = finding.get("evidenceClass")
+    if klass not in FLIGHT_CLASSES or (klass == "predicted" and not isinstance(reference, Mapping)):
+        return "no_catalog_distance"
+    if not _usable_distance(distance) or method not in STAR_CATALOG_DISTANCE_METHODS:
+        return "no_catalog_distance"
+    return None
+
+
+def _flight_sample(about: str, refusal: str | None, finding_id: str, klass: str, *, reference: dict[str, Any] | None = None,
+                   distance: dict[str, Any] | None = None) -> dict[str, Any]:
+    finding: dict[str, Any] = {"id": finding_id, "evidenceClass": klass, "title": about.split(":")[0]}
+    if reference is not None:
+        finding["catalogRef"] = reference
+    if distance is not None:
+        finding["inferredDistancePc"] = distance
+    return {"about": about, "finding": finding, "refusal": refusal}
+
+
+def flight_rule_samples() -> list[dict[str, Any]]:
+    """The findings both languages judge alike: one of each verdict for each class, and each edge of the rule."""
+    star = {"objectType": "star"}
+    deep = {"objectType": "deep_sky"}
+    bj = {"lower": 240.0, "median": 260.0, "upper": 280.0, "method": "photogeometric_bailer_jones_edr3"}
+    plx = {"lower": 7.9, "median": 8.0, "upper": 8.1, "method": "geometric_parallax"}
+    bjg = {"lower": 99.0, "median": 100.0, "upper": 101.0, "method": "geometric_bailer_jones_edr3"}
+    au = {"lower": 2.0e-5, "median": 2.1e-5, "upper": 2.2e-5, "method": EPHEMERIS_DISTANCE_METHOD}
+    return [
+        _flight_sample("Rigel: matched, Bailer-Jones", None, "finding-star-rigel", "catalog_matched", reference=star, distance=bj),
+        _flight_sample("Sirius: matched, parallax", None, "finding-star-sirius", "catalog_matched", reference=star, distance=plx),
+        _flight_sample("Zosma: predicted, parallax", None, "finding-predicted-star-zosma", "predicted", reference=star, distance=plx),
+        _flight_sample("Gaia DR3 1: predicted, Bailer-Jones geometric", None, "finding-predicted-gaia-1", "predicted", reference=star, distance=bjg),
+        _flight_sample("Vega: matched, no distance", "no_catalog_distance", "finding-star-vega", "catalog_matched", reference=star),
+        _flight_sample("Tarazed: predicted, no distance", "no_catalog_distance", "finding-predicted-star-tarazed", "predicted", reference=star),
+        _flight_sample("Altair: predicted, a distance but no catalog row", "no_catalog_distance", "finding-predicted-star-altair", "predicted", distance=bj),
+        _flight_sample("Deneb: predicted, an unknown method", "no_catalog_distance", "finding-predicted-star-deneb", "predicted",
+                       reference=star, distance={**bj, "method": "inverse_parallax"}),
+        _flight_sample("Spica: matched, the upper bound below the median", "no_catalog_distance", "finding-star-spica", "catalog_matched",
+                       reference=star, distance={**bj, "upper": 250.0}),
+        _flight_sample("Mimosa: matched, a lower bound of 0", "no_catalog_distance", "finding-star-mimosa", "catalog_matched",
+                       reference=star, distance={**bj, "lower": 0.0}),
+        _flight_sample("Pearl Cluster: predicted deep sky", "no_catalog_distance", "finding-openngc-NGC3766", "predicted", reference=deep),
+        _flight_sample("Star 3: observed in the pixels", "no_catalog_distance", "finding-obs-3", "observed"),
+        _flight_sample("Grid: simulated, a catalog distance", "no_catalog_distance", "finding-scene-grid", "simulated", reference=star, distance=bj),
+        _flight_sample("Moon: predicted, no distance", "beyond_solar_system_only", "finding-predicted-moon", "predicted"),
+        _flight_sample("Sun: predicted", "beyond_solar_system_only", "finding-predicted-sun", "predicted"),
+        _flight_sample("Jupiter: predicted, an ephemeris distance", "beyond_solar_system_only", "finding-predicted-jupiter", "predicted", distance=au),
+        _flight_sample("Moon: observed spot", "beyond_solar_system_only", "finding-observed-moon", "observed"),
+        _flight_sample("Neptune: matched by its catalog type", "beyond_solar_system_only", "finding-jpl-899", "catalog_matched",
+                       reference={"objectType": "planet"}, distance=au),
+        _flight_sample("Odd: predicted star with an ephemeris distance", "beyond_solar_system_only", "finding-predicted-star-odd", "predicted",
+                       reference=star, distance=au),
+        _flight_sample("Moon: matched by its catalog type alone", "beyond_solar_system_only", "finding-jpl-301", "catalog_matched",
+                       reference={"objectType": "moon"}, distance=plx),
+        _flight_sample("Mars: predicted by its catalog type alone", "beyond_solar_system_only", "finding-jpl-499", "predicted",
+                       reference={"objectType": "planet"}, distance=bj),
+    ]
+
+
+def flight_rule_table() -> dict[str, Any]:
+    """The rule as the shared fixture carries it, for the Zod side to judge the same samples alike."""
+    return {
+        "starCatalogDistanceMethods": list(STAR_CATALOG_DISTANCE_METHODS),
+        "solarSystemBodyKeys": list(SOLAR_SYSTEM_BODY_KEYS),
+        "flightClasses": list(FLIGHT_CLASSES),
+        "samples": flight_rule_samples(),
+    }
 BEACON_OF_ITS_METHOD = (
     "A pose estimate's beacon is the one its method lines up from: the moon for moon_camera_profile_level_head and "
     "moon_horizon, the sun for sun_horizon."

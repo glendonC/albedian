@@ -275,15 +275,15 @@ def test_no_baked_table_holds_an_object_listed_as_having_no_row() -> None:
 
 def test_the_refusal_says_where_the_object_is_and_that_voice_cannot_reach_it() -> None:
     assert names.unbaked_refusal("Omega Centauri") == (
-        "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach "
+        "Omega Centauri is in the app's deep-sky catalog (OpenNGC NGC5139), but voice does not reach "
         "deep-sky objects yet, so it cannot be selected, described or flown to."
     )
     assert names.unbaked_refusal("the Coalsack") == (
-        "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach "
+        "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach "
         "deep-sky objects yet, so it cannot be selected, described or flown to."
     )
     assert names.unbaked_refusal("Eta Carinae") == (
-        "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or "
+        "Eta Carinae has no named row in the app's catalogs yet, so it cannot be selected, described or "
         "flown to by name."
     )
     for label in names.UNBAKED_OBJECTS:

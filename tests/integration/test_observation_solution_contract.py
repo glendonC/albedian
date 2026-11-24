@@ -1171,6 +1171,8 @@ def build_fixture() -> dict[str, Any]:
         "findingClassEvidence": contract.FINDING_CLASS_EVIDENCE,
         "findingEvidenceRules": contract.FINDING_EVIDENCE_RULES,
         "findingFields": list(contract.FINDING_FIELDS),
+        # Which findings the app may fly to, and the refusal kind of each it may not (flight-rule-0)
+        "flightRule": contract.flight_rule_table(),
         **contract.field_table(),
         "homes": homes,
         "valid": valid,

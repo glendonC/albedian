@@ -420,6 +420,9 @@ def test_every_refusal_kind_has_a_sample_and_a_sentence_in_each_media_word() -> 
     assert replied == {kind for kind, spec in voice.REFUSAL_KINDS.items() if spec["backend"]}
 
 
+FLIGHT_REFUSAL_KINDS = {"no_catalog_distance", "beyond_solar_system_only"}
+
+
 def test_the_refusal_kinds_hold_the_leads_list() -> None:
     kinds = voice.REFUSAL_KINDS
     # A word not understood, a known name this sky lacks, a name no data holds, which one, nothing in view, the sky
@@ -435,8 +438,11 @@ def test_the_refusal_kinds_hold_the_leads_list() -> None:
             assert "name-mark" in shown and "said-mark" not in shown, kind
         elif spec["said"]:
             assert "said-mark" in shown, kind
-        # A kind that stands for a name also says what was said
-        assert not spec["name"] or spec["said"], kind
+        # A kind that stands for a name a person said also says what was said; a flight refusal names the finding
+        # asked for, which a button (Go there) asks for with no words (flight-rule-0)
+        assert not spec["name"] or spec["said"] or kind in FLIGHT_REFUSAL_KINDS, kind
+    # The flight's two refusals go out as no_distance_estimate, quote nothing said and name no catalog row
+    assert {k for k, spec in kinds.items() if spec["reasons"] == ["no_distance_estimate"]} == FLIGHT_REFUSAL_KINDS
     # The backend holds no photo: no kind that needs the photo's sky is the backend's
     assert {k for k, spec in kinds.items() if not spec["backend"]} == {
         "not_in_this_sky", "southern_cross_not_in_this_sky", "sky_not_worked_out", "nothing_in_view_sky_not_worked_out"}

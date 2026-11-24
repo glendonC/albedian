@@ -555,7 +555,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     const coalsack = parse('how far is Rigel from the Coalsack?', rigel);
     expect([coalsack.action, coalsack.disambiguation, coalsack.reason]).toEqual([undefined, undefined, 'no_grounded_answer']);
     expect(coalsack.error).toBe(parse('how far is the Coalsack?', rigel).error);
-    expect(coalsack.error).toMatch(/^The Coalsack is in the app's deep-sky catalogue/);
+    expect(coalsack.error).toMatch(/^The Coalsack is in the app's deep-sky catalog/);
     for (const utterance of ['take me to Rigel or Omega Centauri', 'select Betelgeuse and the Jewel Box', 'Rigel, 47 Tuc']) {
       const parsed = parse(utterance, rigel);
       expect([utterance, parsed.action, parsed.disambiguation, parsed.reason]).toEqual([utterance, undefined, undefined, 'no_grounded_answer']);

@@ -91,6 +91,24 @@
       "catalogRow": false,
       "backend": true
     },
+    "no_catalog_distance": {
+      "reasons": [
+        "no_distance_estimate"
+      ],
+      "said": false,
+      "name": true,
+      "catalogRow": false,
+      "backend": true
+    },
+    "beyond_solar_system_only": {
+      "reasons": [
+        "no_distance_estimate"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": true
+    },
     "southern_cross_not_in_this_sky": {
       "reasons": [
         "ambiguous_target"
@@ -298,7 +316,7 @@
         "catalogRow": "ESO056-115"
       },
       "media": "photo",
-      "sentence": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "sentence": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     },
     {
       "refusal": {
@@ -308,7 +326,7 @@
         "catalogRow": "ESO056-115"
       },
       "media": "video",
-      "sentence": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "sentence": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     },
     {
       "refusal": {
@@ -318,7 +336,7 @@
         "catalogRow": "NGC5139"
       },
       "media": "photo",
-      "sentence": "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "sentence": "Omega Centauri is in the app's deep-sky catalog (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     },
     {
       "refusal": {
@@ -328,7 +346,7 @@
         "catalogRow": "NGC5139"
       },
       "media": "video",
-      "sentence": "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "sentence": "Omega Centauri is in the app's deep-sky catalog (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     },
     {
       "refusal": {
@@ -338,7 +356,7 @@
         "catalogRow": "C099"
       },
       "media": "photo",
-      "sentence": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "sentence": "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     },
     {
       "refusal": {
@@ -348,7 +366,7 @@
         "catalogRow": "C099"
       },
       "media": "video",
-      "sentence": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+      "sentence": "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
     },
     {
       "refusal": {
@@ -357,7 +375,7 @@
         "name": "the Magellanic Clouds"
       },
       "media": "photo",
-      "sentence": "The Magellanic Clouds has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "sentence": "The Magellanic Clouds has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     },
     {
       "refusal": {
@@ -366,7 +384,7 @@
         "name": "the Magellanic Clouds"
       },
       "media": "video",
-      "sentence": "The Magellanic Clouds has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "sentence": "The Magellanic Clouds has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     },
     {
       "refusal": {
@@ -375,7 +393,7 @@
         "name": "Eta Carinae"
       },
       "media": "photo",
-      "sentence": "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "sentence": "Eta Carinae has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     },
     {
       "refusal": {
@@ -384,7 +402,53 @@
         "name": "Eta Carinae"
       },
       "media": "video",
-      "sentence": "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "sentence": "Eta Carinae has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "no_catalog_distance",
+        "name": "Zosma"
+      },
+      "media": "photo",
+      "sentence": "Zosma has no distance in the app's catalogs, so it cannot be flown to."
+    },
+    {
+      "refusal": {
+        "kind": "no_catalog_distance",
+        "name": "Zosma"
+      },
+      "media": "video",
+      "sentence": "Zosma has no distance in the app's catalogs, so it cannot be flown to."
+    },
+    {
+      "refusal": {
+        "kind": "no_catalog_distance",
+        "name": "the Pearl Cluster"
+      },
+      "media": "photo",
+      "sentence": "The Pearl Cluster has no distance in the app's catalogs, so it cannot be flown to."
+    },
+    {
+      "refusal": {
+        "kind": "no_catalog_distance",
+        "name": "the Pearl Cluster"
+      },
+      "media": "video",
+      "sentence": "The Pearl Cluster has no distance in the app's catalogs, so it cannot be flown to."
+    },
+    {
+      "refusal": {
+        "kind": "beyond_solar_system_only"
+      },
+      "media": "photo",
+      "sentence": "The flight goes only to stars beyond our solar system."
+    },
+    {
+      "refusal": {
+        "kind": "beyond_solar_system_only"
+      },
+      "media": "video",
+      "sentence": "The flight goes only to stars beyond our solar system."
     },
     {
       "refusal": {
@@ -599,7 +663,7 @@
         "name": "z"
       },
       "media": "photo",
-      "sentence": "Z has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "sentence": "Z has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     },
     {
       "refusal": {
@@ -608,7 +672,7 @@
         "name": "z"
       },
       "media": "video",
-      "sentence": "Z has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+      "sentence": "Z has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
     },
     {
       "refusal": {
@@ -1099,7 +1163,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1117,7 +1181,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "Omega Centauri is in the app's deep-sky catalog (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1135,7 +1199,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1153,7 +1217,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Magellanic Clouds has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.",
+        "explanation": "The Magellanic Clouds has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1170,7 +1234,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.",
+        "explanation": "Eta Carinae has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1182,6 +1246,53 @@
           "kind": "no_named_row",
           "said": "eta car",
           "name": "Eta Carinae"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Zosma has no distance in the app's catalogs, so it cannot be flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_distance_estimate",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_catalog_distance",
+          "name": "Zosma"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Pearl Cluster has no distance in the app's catalogs, so it cannot be flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_distance_estimate",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_catalog_distance",
+          "name": "the Pearl Cluster"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The flight goes only to stars beyond our solar system.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_distance_estimate",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "beyond_solar_system_only"
         }
       },
       {
@@ -1412,6 +1523,17 @@
         "kind": "no_named_row",
         "said": "eta car",
         "name": "Eta Carinae"
+      },
+      {
+        "kind": "no_catalog_distance",
+        "name": "Zosma"
+      },
+      {
+        "kind": "no_catalog_distance",
+        "name": "the Pearl Cluster"
+      },
+      {
+        "kind": "beyond_solar_system_only"
       },
       {
         "kind": "southern_cross_not_in_this_sky"
@@ -3052,7 +3174,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3114,7 +3236,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3175,7 +3297,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3217,7 +3339,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3238,7 +3360,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalog (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],

@@ -397,6 +397,10 @@ REFUSAL_KINDS: dict[str, dict[str, Any]] = {
     "deep_sky_out_of_reach": {"reasons": ["no_grounded_answer"], "said": True, "name": True, "catalogRow": True, "backend": True},
     # A sky name no catalogue of the app holds by name
     "no_named_row": {"reasons": ["no_grounded_answer"], "said": True, "name": True, "catalogRow": False, "backend": True},
+    # A finding the flight cannot reach for want of a star catalog's distance (the flight rule, services/contracts/astronomy.py)
+    "no_catalog_distance": {"reasons": ["no_distance_estimate"], "said": False, "name": True, "catalogRow": False, "backend": True},
+    # The Sun, the Moon or a planet: the flight goes only to stars
+    "beyond_solar_system_only": {"reasons": ["no_distance_estimate"], "said": False, "name": False, "catalogRow": False, "backend": True},
     # The Southern Cross, none of whose stars this sky holds
     "southern_cross_not_in_this_sky": {"reasons": ["ambiguous_target"], "said": False, "name": False, "catalogRow": False, "backend": False},
     # A thing described but not named, so it could be any of several
@@ -515,11 +519,17 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
         return f"{_capitalized(name)} was not found in this {word}'s sky."
     if kind == "deep_sky_out_of_reach":
         return (
-            f"{_capitalized(name)} is in the app's deep-sky catalogue (OpenNGC {row}), but voice does not reach "
+            f"{_capitalized(name)} is in the app's deep-sky catalog (OpenNGC {row}), but voice does not reach "
             "deep-sky objects yet, so it cannot be selected, described or flown to."
         )
     if kind == "no_named_row":
-        return f"{_capitalized(name)} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+        return f"{_capitalized(name)} has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name."
+    if kind == "no_catalog_distance":
+        # UIUX-predflight-READY.md item 5, RULED
+        return f"{_capitalized(name)} has no distance in the app's catalogs, so it cannot be flown to."
+    if kind == "beyond_solar_system_only":
+        # UIUX-predflight-READY.md item 5, RULED (the lead's sentence)
+        return "The flight goes only to stars beyond our solar system."
     if kind == "southern_cross_not_in_this_sky":
         return (
             "The Southern Cross is a constellation, not one star, and none of its stars "
@@ -1169,6 +1179,9 @@ def build_voice_samples() -> dict[str, Any]:
         {"kind": "deep_sky_out_of_reach", "said": "coal sack", "name": "the Coalsack", "catalogRow": "C099"},
         {"kind": "no_named_row", "said": "magellanic clouds", "name": "the Magellanic Clouds"},
         {"kind": "no_named_row", "said": "eta car", "name": "Eta Carinae"},
+        {"kind": "no_catalog_distance", "name": "Zosma"},
+        {"kind": "no_catalog_distance", "name": "the Pearl Cluster"},
+        {"kind": "beyond_solar_system_only"},
         {"kind": "southern_cross_not_in_this_sky"},
         {"kind": "which_one"},
         {"kind": "nothing_in_view"},

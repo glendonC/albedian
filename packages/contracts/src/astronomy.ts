@@ -423,6 +423,66 @@ export const FINDING_EVIDENCE_RULES = {
   sameEntry: "A finding's catalog reference id names the catalog entry the finding carries.",
 } as const;
 
+/**
+ * The flight rule (flight-rule-0, DECIDED-BY-LEAD 24 Nov 12:55), the same as services/contracts/astronomy.py
+ * `flight_refusal`: a finding may be flown to when it is catalog_matched, or predicted with a catalog reference, and its
+ * distance interval is a usable one whose method is a star catalog's. An ephemeris distance never qualifies, and the
+ * Sun, the Moon and the planets are refused as beyond the flight's reach. The finding is only read: nothing upgrades it,
+ * and the flight it allows is the simulated catalog view (AGENTS.md section 1).
+ */
+/** The distance methods a star catalog gives: an inverse parallax, or a Bailer-Jones 2021 prior. */
+export const STAR_CATALOG_DISTANCE_METHODS = [
+  'geometric_parallax',
+  'photogeometric_bailer_jones_edr3',
+  'geometric_bailer_jones_edr3',
+] as const;
+/** The Sun, the Moon and the planets Mercury to Neptune, as their finding ids name them (finding-predicted-<key>, and
+ * finding-observed-moon for the Moon's spot): services/science/ephemeris.py BODIES, in its order. */
+export const SOLAR_SYSTEM_BODY_KEYS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'] as const;
+export const FLIGHT_CLASSES = ['catalog_matched', 'predicted'] as const;
+const SOLAR_SYSTEM_BODY_ID = new RegExp(`^finding-(?:predicted|observed)-(?:${SOLAR_SYSTEM_BODY_KEYS.join('|')})$`);
+const SOLAR_SYSTEM_OBJECT_TYPES: ReadonlySet<string> = new Set(['planet', 'moon']);
+const EPHEMERIS_DISTANCE_METHOD = 'ephemeris_au';
+
+/** What the flight rule reads of a finding: a CelestialFinding holds it. */
+export interface FlightTarget {
+  id: string;
+  evidenceClass: EvidenceClass;
+  catalogRef?: { objectType?: string };
+  inferredDistancePc?: { lower: number; median: number; upper: number; method: string };
+}
+export type FlightRefusalKind = 'no_catalog_distance' | 'beyond_solar_system_only';
+
+/** Whether a finding id names the Sun, the Moon or a planet. */
+export function isSolarSystemBodyId(findingId: string): boolean {
+  return SOLAR_SYSTEM_BODY_ID.test(findingId);
+}
+
+/** A distance interval the flight can stand on, as packages/evidence `formatDistanceWithUncertainty` accepts one. */
+function usableDistance(distance: FlightTarget['inferredDistancePc']): boolean {
+  if (!distance) return false;
+  const { lower, median, upper } = distance;
+  if (![lower, median, upper].every((value) => typeof value === 'number' && Number.isFinite(value))) return false;
+  return median > 0 && lower > 0 && upper >= median;
+}
+
+/** Why `finding` cannot be flown to, as a refusal kind of the voice contract, or null when it can. */
+export function flightRefusal(finding: FlightTarget): FlightRefusalKind | null {
+  const method = finding.inferredDistancePc?.method;
+  const objectType = finding.catalogRef?.objectType;
+  if (isSolarSystemBodyId(finding.id) || method === EPHEMERIS_DISTANCE_METHOD || (objectType !== undefined && SOLAR_SYSTEM_OBJECT_TYPES.has(objectType))) {
+    return 'beyond_solar_system_only';
+  }
+  const klass = finding.evidenceClass;
+  if (!(FLIGHT_CLASSES as readonly string[]).includes(klass) || (klass === 'predicted' && !finding.catalogRef)) {
+    return 'no_catalog_distance';
+  }
+  if (!usableDistance(finding.inferredDistancePc) || !(STAR_CATALOG_DISTANCE_METHODS as readonly string[]).includes(method ?? '')) {
+    return 'no_catalog_distance';
+  }
+  return null;
+}
+
 
 export interface FindingIssue {
   path: string[];

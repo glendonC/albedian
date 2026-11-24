@@ -82,6 +82,10 @@ export const REFUSAL_KINDS = {
   deep_sky_out_of_reach: { reasons: ['no_grounded_answer'], said: true, name: true, catalogRow: true, backend: true },
   // A sky name no catalogue of the app holds by name
   no_named_row: { reasons: ['no_grounded_answer'], said: true, name: true, catalogRow: false, backend: true },
+  // A finding the flight cannot reach for want of a star catalog's distance (the flight rule, astronomy.ts)
+  no_catalog_distance: { reasons: ['no_distance_estimate'], said: false, name: true, catalogRow: false, backend: true },
+  // The Sun, the Moon or a planet: the flight goes only to stars
+  beyond_solar_system_only: { reasons: ['no_distance_estimate'], said: false, name: false, catalogRow: false, backend: true },
   // The Southern Cross, none of whose stars this sky holds
   southern_cross_not_in_this_sky: { reasons: ['ambiguous_target'], said: false, name: false, catalogRow: false, backend: false },
   // A thing described but not named, so it could be any of several
@@ -194,9 +198,15 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
     case 'not_in_this_sky':
       return `${capitalized(name)} was not found in this ${word}'s sky.`;
     case 'deep_sky_out_of_reach':
-      return `${capitalized(name)} is in the app's deep-sky catalogue (OpenNGC ${refusal.catalogRow ?? ''}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
+      return `${capitalized(name)} is in the app's deep-sky catalog (OpenNGC ${refusal.catalogRow ?? ''}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
     case 'no_named_row':
-      return `${capitalized(name)} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.`;
+      return `${capitalized(name)} has no named row in the app's catalogs yet, so it cannot be selected, described or flown to by name.`;
+    case 'no_catalog_distance':
+      // UIUX-predflight-READY.md item 5, RULED
+      return `${capitalized(name)} has no distance in the app's catalogs, so it cannot be flown to.`;
+    case 'beyond_solar_system_only':
+      // UIUX-predflight-READY.md item 5, RULED (the lead's sentence)
+      return 'The flight goes only to stars beyond our solar system.';
     case 'southern_cross_not_in_this_sky':
       return `The Southern Cross is a constellation, not one star, and none of its stars (${SOUTHERN_CROSS_STAR_NAMES.join(', ')}) is in the sky solution.`;
     case 'which_one':

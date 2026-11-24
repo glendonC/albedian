@@ -287,7 +287,7 @@ def test_a_southern_object_or_the_southern_cross_beside_a_known_name_is_answered
         assert "proposedAction" not in reply and "choices" not in reply
     with_rigel = _reply("how far is Rigel from the Coalsack?", SELECTED)
     assert with_rigel["explanation"] == _reply("how far is the Coalsack?", SELECTED)["explanation"]
-    assert with_rigel["explanation"].startswith("The Coalsack is in the app's deep-sky catalogue")
+    assert with_rigel["explanation"].startswith("The Coalsack is in the app's deep-sky catalog")
     # The Cross beside a star still asks which of its five stars, as it does named alone: never the star's distance
     cross = _reply("how far is Rigel from the Southern Cross?", SELECTED)
     alone = _reply("how far is the Southern Cross?", SELECTED)
