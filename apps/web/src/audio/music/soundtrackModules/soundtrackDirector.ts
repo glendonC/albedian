@@ -92,6 +92,19 @@ export class SoundtrackDirector {
     return this.tick(nowSec);
   }
 
+  /**
+   * The restored compare arrived (compare-music-1, DECIDED-BY-LEAD 12:41 on 24 Nov): it counts as a reveal that has held.
+   * In a silence the director takes the reveal at once, and the gap shortens to its entry for a reveal piece that did
+   * not just play, as for a settled moment (`commit`); a piece that plays, fades or starts, the music off or pinned,
+   * and Audio off are left as they are. A moment change still settling goes on settling.
+   */
+  arrive(nowSec: number): DirectorCommand[] {
+    const due = this.tick(nowSec);
+    if (this.phase !== 'gap' || this.setting !== SOUNDTRACK_SETTING) return due;
+    this.moment = 'reveal';
+    return [...due, ...this.commit(nowSec)];
+  }
+
   /** The Music setting: 'soundtrack', 'off' or a piece id to pin. Answered at once. */
   setSetting(setting: string, nowSec: number): DirectorCommand[] {
     const due = this.tick(nowSec);

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { INSTRUMENTS, RECORDING, ambientBeats, barPitchSet, organAndPulse, type InstrumentDef, type RecordingAnalysis } from '../directions';
 import { MusicLayer, neededZones } from '../MusicLayer';
 import { selectionNote, type MusicSelection } from '../selectionTone';
+import { MomentStore } from '../soundtrackMoment';
 import { SampleBank, chooseZone, playbackRate } from '../sampler';
 import type { ScreenStar } from '../starNotes';
 
@@ -388,6 +389,30 @@ describe('MusicLayer playing the soundtrack', () => {
     const [first, second] = layerNodes(ctx, music).passes;
     expect(first!.disconnected).toBe(true);
     expect(second!.disconnected).toBe(false);
+  });
+
+  // compare-music-1 (DECIDED-BY-LEAD 12:41 on 24 Nov): the restored compare's arrival reaches the music through the
+  // page's store and counts as a reveal, so a silence shortens to its 2 s entry
+  it("shortens a silence to its 2 s entry when the restored compare arrives, and hears no arrival once stopped", async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const moments = new MomentStore('back_to_moment');
+    const layer = new MusicLayer({ moment: 'back_to_moment', sourcesBase: BASE, fetch, random: () => 0.999, moments });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    const end = 10.25 + organAndPulse(STARS.slice(0, 2)).durationSec;
+    await clockTo(ctx, end + 5);
+    expect(layer.getStatus()).toMatchObject({ state: 'gap', piece: null, passes: 1 });
+    moments.arrive();
+    await clockTo(ctx, end + 5 + 1.8);
+    expect(layer.getStatus()).toMatchObject({ state: 'gap', passes: 1 });
+    await clockTo(ctx, end + 5 + 2.4);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', piece: 'ambient-beats', passes: 2 });
+    layer.stop();
+    moments.arrive();
+    expect(layer.getStatus()).toMatchObject({ state: 'off' });
   });
 
   it('drops a pass still loading when the moment moves on, so only the new piece plays', async () => {

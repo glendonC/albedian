@@ -31,6 +31,7 @@ import {
   type SoundtrackPiece,
 } from './soundtrack';
 import type { ScreenStar } from './starNotes';
+import { appSoundtrackMoment, type MomentStore } from './soundtrackMoment';
 import { duckUnderKicks, pingPongDelay, playKick, playPad, playRiser, playSub, syntheticHallImpulse } from './synth';
 
 /** The glue compressor: hard knee, so its automatic makeup gain has a closed form and is divided out. */
@@ -200,6 +201,8 @@ export interface MusicLayerOptions {
   readonly onPieceStarted?: (piece: PieceId) => void;
   /** Told each time the status changes, so the page can say whether music can play. */
   readonly onStatus?: (status: MusicStatus) => void;
+  /** Where the restored compare's arrivals come from (compare-music-1); the page's own store by default. */
+  readonly moments?: MomentStore;
 }
 
 /** off: Audio off, or the setting is off. loading: a piece is being prepared. gap: the silence between pieces. */
@@ -299,6 +302,8 @@ export class MusicLayer {
     this.status = { setting: setting as MusicSetting, moment, piece: null, state: 'off', reason: null, why: null, starsPlayed: 0, passes: 0, retryAtSec: null };
     // Known from the start: with no samples served, no music can play here
     if (!options.sourcesBase) this.status = { ...this.status, state: 'unavailable', reason: NOT_SERVED, why: 'not_served' };
+    // The restored compare's arrival counts as a reveal: a silence shortens to its entry (the director's `arrive`)
+    (options.moments ?? appSoundtrackMoment).subscribeArrivals(() => void this.answer(this.director.arrive(this.clock())));
   }
 
   /**

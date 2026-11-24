@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useElapsedRows } from './elapsedRows.js';
 import { followParent, onFrameAtParent } from './clipSync.js';
+import { useCompareArrival } from '../audio/music/soundtrackMoment.js';
 import { DISCLOSURES, type DisplayOrientation, type UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
@@ -230,6 +231,9 @@ export const RestoreCompare: React.FC<{
 }> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot, labelHost = null }) => {
   const clip = clipParent !== undefined;
   const boxRect = slot ?? rect;
+  // compare-music-1 (DECIDED-BY-LEAD 12:41 on 24 Nov): the compare's arrival counts as a reveal for the music; it is
+  // keyed by its upload, so a version switch is no arrival
+  useCompareArrival();
   // clipswap-1: on a playing or paused clip's version switch the restored clip drawn stays drawn until the one switched
   // to has a frame at the player's time, then they swap in one frame, so "Restored" never stands over the unrestored
   // original; a press back to the drawn version drops the incoming copy, a press to a third replaces it

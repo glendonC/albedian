@@ -151,6 +151,11 @@ class Stage {
   moment(moment: SoundtrackMoment): void {
     this.watchEnd(() => this.director.setMoment(moment, this.now));
   }
+  /** The restored compare arrived: like a moment taking effect, it may move a gap off its draw. */
+  arrive(): void {
+    this.changes.push(this.now);
+    this.watchEnd(() => this.director.arrive(this.now));
+  }
   setting(setting: string): void {
     this.settingChanged = true;
     this.changes.push(this.now);
@@ -383,6 +388,7 @@ describe('the soundtrack director, through the moments of a visit', () => {
 type Step =
   | { readonly kind: 'moment'; readonly moment: SoundtrackMoment; readonly dt: number }
   | { readonly kind: 'setting'; readonly setting: string; readonly dt: number }
+  | { readonly kind: 'arrive'; readonly dt: number }
   | { readonly kind: 'wait'; readonly dt: number };
 
 const SETTINGS = ['soundtrack', 'off', ...SOUNDTRACK.map((piece) => piece.id)];
@@ -390,7 +396,8 @@ const SETTINGS = ['soundtrack', 'off', ...SOUNDTRACK.map((piece) => piece.id)];
 const stepArb: fc.Arbitrary<Step> = fc.oneof(
   { weight: 4, arbitrary: fc.record({ kind: fc.constant('moment' as const), moment: fc.constantFrom(...SOUNDTRACK_MOMENTS), dt: fc.double({ min: 0, max: 8, noNaN: true }) }) },
   { weight: 1, arbitrary: fc.record({ kind: fc.constant('setting' as const), setting: fc.constantFrom(...SETTINGS), dt: fc.double({ min: 0, max: 8, noNaN: true }) }) },
-  { weight: 3, arbitrary: fc.record({ kind: fc.constant('wait' as const), dt: fc.double({ min: 0, max: 120, noNaN: true }) }) }
+  { weight: 3, arbitrary: fc.record({ kind: fc.constant('wait' as const), dt: fc.double({ min: 0, max: 120, noNaN: true }) }) },
+  { weight: 1, arbitrary: fc.record({ kind: fc.constant('arrive' as const), dt: fc.double({ min: 0, max: 60, noNaN: true }) }) }
 );
 
 /** Random draws for the director, cycled. */
@@ -417,6 +424,89 @@ const BUSY: [Step[], number[]] = [
   [0.9, 0.2],
 ];
 
+// compare-music-1 (DECIDED-BY-LEAD 12:41 on 24 Nov, MOTION motion-sound-gaps-24nov item four): the restored compare's
+// arrival counts as a reveal for the music, so a silence shortens to its 2 s entry, as it does for a settled moment; no
+// new sound, and a piece that plays is left as it is.
+describe("the restored compare's arrival", () => {
+  it('counts in a silence as a reveal that has held: the gap shortens to its 2 s entry and a reveal piece plays', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0.999 });
+    s.start();
+    s.advance(53 + 5);
+    expect(s.director.state).toMatchObject({ phase: 'gap', moment: 'back_to_moment' });
+    const drawn = s.director.state.untilSec!;
+    expect(drawn - 53).toBeGreaterThan(50);
+    s.arrive();
+    expect(s.director.state).toMatchObject({ phase: 'gap', moment: 'reveal', untilSec: 58 + T.entrySec });
+    s.advance(T.entrySec - 0.05);
+    expect(s.plays).toHaveLength(1);
+    s.advance(0.05);
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'ambient-beats' });
+    expect(s.plays.at(-1)!.atSec).toBeCloseTo(58 + T.entrySec, 6);
+  });
+
+  it('never lengthens a silence that ends sooner than its entry', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0 });
+    s.start();
+    s.advance(53 + 19);
+    const until = s.director.state.untilSec!;
+    expect(until - s.now).toBeLessThan(T.entrySec);
+    s.arrive();
+    expect(s.director.state.untilSec).toBe(until);
+  });
+
+  it('leaves a piece that plays, fades or starts as it is, and the moment with it', () => {
+    const s = stage({ moment: 'back_to_moment' });
+    s.start();
+    s.advance(10);
+    s.arrive();
+    expect(s.director.state).toMatchObject({ phase: 'playing', piece: 'organ-pulse', moment: 'back_to_moment' });
+    expect(s.fades).toHaveLength(0);
+    s.moment('travel');
+    s.advance(T.settleSec + 0.5);
+    expect(s.director.state.phase).toBe('fading');
+    s.arrive();
+    expect(s.director.state).toMatchObject({ phase: 'fading', moment: 'travel' });
+    expect(s.fades).toHaveLength(1);
+  });
+
+  it('lets the gap run its course when the only reveal piece is the one that just played', () => {
+    const s = stage({ moment: 'look_around', random: () => 0, pieces: [{ id: 'a', moments: ['reveal', 'look_around'] }, { id: 'b', moments: ['travel'] }] });
+    s.start();
+    s.advance(30 + 1);
+    const until = s.director.state.untilSec!;
+    s.arrive();
+    expect(s.director.state).toMatchObject({ phase: 'gap', untilSec: until });
+    s.advance(T.entrySec + 1);
+    expect(s.plays).toHaveLength(1);
+  });
+
+  it('does nothing with the music off, pinned or before Audio on', () => {
+    for (const setting of ['off', 'organ-pulse']) {
+      const s = stage({ moment: 'back_to_moment', setting, random: () => 0.999 });
+      s.start();
+      s.advance(60);
+      const before = s.director.state;
+      s.arrive();
+      expect(s.director.state).toEqual(before);
+    }
+    const quiet = stage({ moment: 'back_to_moment' });
+    expect(quiet.director.arrive(5)).toEqual([]);
+    expect(quiet.director.state).toMatchObject({ phase: 'stopped', moment: 'back_to_moment' });
+  });
+
+  it('keeps a moment change still settling, which takes effect when it has held', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0.999 });
+    s.start();
+    s.advance(53 + 5);
+    s.moment('star_card');
+    s.advance(0.5);
+    s.arrive();
+    expect(s.director.state.moment).toBe('reveal');
+    s.advance(T.settleSec);
+    expect(s.director.state.moment).toBe('star_card');
+  });
+});
+
 describe('the soundtrack director, over any visit', () => {
   it('keeps its rules whatever the moments, settings and waits', () => {
     fc.assert(
@@ -427,6 +517,7 @@ describe('the soundtrack director, over any visit', () => {
           s.advance(step.dt);
           if (step.kind === 'moment') s.moment(step.moment);
           if (step.kind === 'setting') s.setting(step.setting);
+          if (step.kind === 'arrive') s.arrive();
         }
         s.advance(200);
 

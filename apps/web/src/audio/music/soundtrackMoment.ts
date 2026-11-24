@@ -82,10 +82,16 @@ const sameInputs = (a: MomentInputs, b: MomentInputs) =>
   a.selectedFindingId === b.selectedFindingId &&
   a.solvedPhoto === b.solvedPhoto;
 
-/** The page's soundtrack moment, which the app's engine follows. */
+/**
+ * The page's soundtrack moment, which the app's engine follows, and the restored compare's arrivals, which the music
+ * hears apart from the moment (compare-music-1, DECIDED-BY-LEAD 12:41 on 24 Nov: an arrival counts as a reveal, so a
+ * silence shortens to its entry; MusicLayer passes it to the director).
+ */
 export class MomentStore {
   private moment: SoundtrackMoment;
   private readonly listeners = new Set<() => void>();
+  private arrived = 0;
+  private readonly arrivalListeners = new Set<() => void>();
 
   constructor(initial: SoundtrackMoment) {
     this.moment = initial;
@@ -103,10 +109,29 @@ export class MomentStore {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
+
+  /** How many times the restored compare has arrived on this page. */
+  readonly arrivals = (): number => this.arrived;
+
+  /** The restored compare arrived: told to the arrival listeners, the moment left as it is. */
+  readonly arrive = (): void => {
+    this.arrived += 1;
+    for (const listener of [...this.arrivalListeners]) listener();
+  };
+
+  readonly subscribeArrivals = (listener: () => void): (() => void) => {
+    this.arrivalListeners.add(listener);
+    return () => this.arrivalListeners.delete(listener);
+  };
 }
 
 /** This page's moment: the viewport sets it, the engine plays to it. */
 export const appSoundtrackMoment = new MomentStore('arrive');
+
+/** The restored compare's arrival, once when it is drawn (RestoreParts.tsx's RestoreCompare), put in `store`. */
+export function useCompareArrival(store: MomentStore = appSoundtrackMoment): void {
+  useEffect(() => store.arrive(), [store]);
+}
 
 /**
  * The soundtrack moment of the viewport, put in `store` for the engine. It moves on only when an

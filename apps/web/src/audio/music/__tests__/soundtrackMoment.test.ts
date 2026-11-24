@@ -117,3 +117,24 @@ describe('the soundtrack moment of a visit', () => {
     );
   });
 });
+
+// compare-music-1: the restored compare's arrival reaches the music through the page's store, apart from the moment
+describe("the store's arrivals", () => {
+  it('tells each arrival to its arrival listeners only, and lets a listener go', () => {
+    const store = new MomentStore('reveal');
+    const moments: string[] = [];
+    const arrived: number[] = [];
+    store.subscribe(() => moments.push(store.get()));
+    const stop = store.subscribeArrivals(() => arrived.push(store.arrivals()));
+    expect(store.arrivals()).toBe(0);
+    store.arrive();
+    store.arrive();
+    expect(arrived).toEqual([1, 2]);
+    expect(moments).toEqual([]);
+    expect(store.get()).toBe('reveal');
+    stop();
+    store.arrive();
+    expect(arrived).toEqual([1, 2]);
+    expect(store.arrivals()).toBe(3);
+  });
+});
