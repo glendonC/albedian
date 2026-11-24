@@ -164,6 +164,28 @@
   text-wrap: balance;
 }
 
+/* Gap eight (DECIDED-BY-LEAD 13:09 on 24 Nov): a clip's restoring rows and Cancel in one column, standing where the rows
+   stood, Cancel 16 px above the rows' top, so it rises with them as their bars are added */
+.restore-wait {
+  position: absolute;
+  left: 36px;
+  bottom: 40px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.restore-wait .work-why {
+  position: static;
+  width: auto;
+}
+
+.restore-wait .work-steps {
+  position: static;
+  width: auto;
+}
+
 /* A queued job's count of jobs ahead, in the third ink (D2, INTERIM) */
 .work-why p span {
   color: var(--look-ink-3);

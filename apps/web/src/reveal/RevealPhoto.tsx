@@ -1378,8 +1378,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {phone && !phoneClip && !phoneCompare && !phoneRestoring && !phoneStopped && !answer && !picked && !cardAbovePredicted && !skyLineShown && status.kind === 'calibrated' && counts.length > 0 && <PhoneCounts counts={counts} />}
 
-      {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
-        <>
+      {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (() => {
+        const why = (
           <RestoreWhy
             job={restoration.job}
             sentence={restoration.phase === 'stopped' ? restoration.sentence : null}
@@ -1389,9 +1389,23 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             onCancel={() => onCancelRestore?.()}
             onTryAgain={() => onRestore?.()}
           />
-          {restoration.job && <RestoreSteps job={restoration.job} />}
-        </>
-      )}
+        );
+        const steps = restoration.job && <RestoreSteps job={restoration.job} />;
+        // Gap eight (DECIDED-BY-LEAD 13:09 on 24 Nov): while a clip's steps count together, Cancel stands 16 px above the
+        // rows' top and rises with them as their bars are added, so no row runs under it; a still, and a stopped job,
+        // keep Cancel's block at its own place (D10)
+        return restoration.phase === 'working' && asset?.mediaKind === 'video' ? (
+          <div className="restore-wait">
+            {why}
+            {steps}
+          </div>
+        ) : (
+          <>
+            {why}
+            {steps}
+          </>
+        );
+      })()}
 
       {!phone && !restoring && legend.mounted && counts.length > 0 && (
         <div
