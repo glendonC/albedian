@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   CelestialFinding,
   ObservationSession,
@@ -407,17 +407,18 @@ export const SpatialObservatoryViewport: React.FC<
   }, [renderLayers]);
 
   // While the home covers the canvas no frame of the scene can be seen, so nothing draws under it; leaving it, the sky
-  // view draws (home-cycle-1: the home's showcase scene cycle under it, drawn by nothing and in no record, is gone)
+  // view is set up (home-cycle-1: the home's showcase scene cycle under it, drawn by nothing and in no record, is gone)
   useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer) return;
-    if (!entryStageActive) {
-      renderer.showSkyView?.();
-      renderer.setDrawing?.(true);
-      return;
-    }
-    renderer.setDrawing?.(false);
+    if (!entryStageActive) rendererRef.current?.showSkyView?.();
   }, [entryStageActive, rendererGeneration]);
+  // portal-pause-one (DECIDED-BY-LEAD 24 Nov 17:34): nor can any frame of it be seen under the photo's reveal, Real sky or
+  // the flight, steering included (measured at both sizes: hiding the canvas changes no pixel of those screens), so the
+  // scene draws only while it is what is on screen. Told in the commit that uncovers it, before that screen is painted,
+  // so its next frame is drawn before the screen shows it.
+  const portalCovered = entryStageActive || revealShown;
+  useLayoutEffect(() => {
+    rendererRef.current?.setDrawing?.(!portalCovered);
+  }, [portalCovered, rendererGeneration]);
 
   // Keyboard navigation (WASD + Arrows)
   useEffect(() => {

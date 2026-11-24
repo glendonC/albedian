@@ -77,11 +77,15 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-function renderViewport(uploadRefusal: { fileName: string; detail: string | null } | null = null): void {
+/** A session with no photo on screen yet (the home left, the receipt not come), and one with the photo on screen. */
+const NO_PHOTO = {} as unknown as ObservationSession;
+const PHOTO = { sourceAsset: {} } as unknown as ObservationSession;
+
+function renderViewport(uploadRefusal: { fileName: string; detail: string | null } | null = null, session: ObservationSession = NO_PHOTO): void {
   act(() => {
     root.render(
       createElement(SpatialObservatoryViewport, {
-        session: { sourceAsset: {} } as unknown as ObservationSession,
+        session,
         setSession: noop,
         selectedFinding: null,
         discoveredMedia: [],
@@ -114,6 +118,18 @@ describe('the scene under the home stops drawing', () => {
     choosePhotoOnHome(container);
     expect(container.querySelector(HOME_SCREEN)).toBeNull();
     expect(stub.drawing).toEqual([false, true]);
+  });
+
+  it('stays still under the photo the home leaves to, which covers it wholly (portal-pause-one)', () => {
+    renderViewport(null, PHOTO);
+    choosePhotoOnHome(container);
+    expect(container.querySelector(HOME_SCREEN)).toBeNull();
+    expect(stub.drawing).toEqual([false]);
+    // and draws again once nothing covers it, told in the same commit (a layout effect), before that screen is painted
+    renderViewport(null, NO_PHOTO);
+    expect(stub.drawing).toEqual([false, true]);
+    renderViewport(null, PHOTO);
+    expect(stub.drawing).toEqual([false, true, false]);
   });
 
   it('stops again when a refused upload brings the home back', () => {
