@@ -20,6 +20,7 @@ POST /api/media/{sha256}/restore  (kind: display_copy | restoration)        serv
      3  noise table, per channel and intensity                                services/media/noise.py
      4  clips: register neighbours, merge only where they agree               services/media/temporal.py
      5  spatial noise reduction, footprints kept                              services/media/spatial.py
+    5b  stills: coarse-scale chroma smoothing before dissolve, stars kept     services/media/chroma.py
      6  dissolve points the original does not confirm                         services/media/gate.py
      7  lift, bounded by noise and quantisation                               services/media/tone.py
      8  encode with the original's transfer; clips: frame times, audio copy   services/media/encode.py, clip_io.py

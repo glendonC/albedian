@@ -38,7 +38,8 @@ pictures under `.cache/restore-review/<unit>/`.
   - Landed on `main` as `e9cdd008`, with follow-ups `2900bfcc`, `4ab96b38` and `4fcdca53` (wire number and
     `GraphParameter` normalization), `673a680b` (clip registration and point-scale merge fields), `9eac2f19` (restore-4c
     star-gate settings), `95a365f4` (profile conversion disclosure, untagged assumption and C20 refusal), `7e12ffd7`
-    (any finite `medianFluxRatio`) and `52617e5d` (nearblack-0 C36 refusal sentence).
+    (any finite `medianFluxRatio`), `52617e5d` (nearblack-0 C36 refusal sentence) and `b995c11a` (smooth-chroma-0 step
+    kind, parameter rows and chroma counts).
 
 - [x] 2a. restore-2a: colour, the still decode, the 16 bit PNG, the variant store and the display copy as plain
   functions (REQ-RST-1.2, 1.3, 1.5, 1.6, REQ-RST-2.1 to 2.4, REQ-RST-3.1 to 3.6; P-RST-1, 3, 4, 5, 6) [decided
@@ -97,7 +98,8 @@ pictures under `.cache/restore-review/<unit>/`.
     synthetic noise within 20 percent; no output sample leaves the range of its inputs.
   - _Requirements: REQ-RST-4.1 to 4.8, 5.1 to 5.4, 6.1, 6.2, 8.9_
   - Landed on `main` as `0145388b`, with restore-3b as `1ce89d58`, chroma-1 coarse-scale chroma smoothing as `03ce4480`
-    (`services/media/chroma.py`) and `stars.py`'s docstring update as `721c1d47` after realsky-3 (`cff00b12`).
+    (`services/media/chroma.py`, bounded channel-by-channel in mem-chroma `b689ee02` with bit-identical output) and
+    `stars.py`'s docstring update as `721c1d47` after realsky-3 (`cff00b12`).
   - [x] quantised-noise: wire `stars.matched_noise` and `stars.tile_noise` to `detector._detector_noise_map` as one
     tile without the code-scale floor (`cff00b12`) and the detector's quantised-sky grid path (`5b1d12e9`), raising
     `albedian.restore` to revision 7, and pin Hypothesis seed `712585` in `test_temporal.py`.
@@ -145,10 +147,14 @@ pictures under `.cache/restore-review/<unit>/`.
     its farthest residual), its trials and its smaller open limit added to P-RST-11; `80c29046` keeps the flux check
     when no measured star keeps a positive ratio. Answer-preserving speed and memory follow-ups on `main`: `71581c61`,
     speed-2 (`be50795f`), restore-7s2 (`0431a53c`) and mem-1 (`d6f45fab`).
-  - [ ] nearblack-1 (built off `main`, awaiting landing): refuse a near-black photo whose faintest sky noise is cut off
-    at zero in C36's words (`52617e5d`).
-  - [ ] mem-23 (built off `main`, awaiting landing): hold the spatial cascade and gate searches within bounded memory on
-    large stills.
+  - [x] nearblack-1 (`4d3398b6`): refuse a near-black photo whose faintest sky noise is cut off at zero in C36's words
+    (`52617e5d`) before spatial restoration runs.
+  - [x] mem-23 (`1e8ed0e4`): hold the spatial cascade, dissolve, lift, encode and gate searches within bounded memory on
+    large stills with bit-identical output.
+  - [x] mem-chroma (`b689ee02`) and smooth-chroma-1 (`da8b6daa`, over smooth-chroma-0 `b995c11a`): run
+    `services/media/chroma.py` channel by channel without padded arrays and wire `smooth_chroma` strictly before
+    `gate.dissolve` in `services/media/photo.py`, recording `chroma` counts in `RestorationMeasurements` at restore
+    revision 8.
 
 - [x] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with
