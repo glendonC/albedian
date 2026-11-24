@@ -15,7 +15,7 @@ Labels, as AGENTS.md section 3 asks:
 ### Implemented capabilities
 
 - **Evidence contracts.** `ObservationSolution`, `CelestialFinding`, `RenderLayer`, `VoiceCommandResponse`, `SolarEclipseCatalog`, `LunarEclipseCatalog` and `ExoplanetTable`, with Zod and Pydantic parity and property tests on both sides. [tested]
-- **Sky and universe in the browser.** Five scale regimes and a four-scene landing carousel. 3.09 million Gaia DR3 and Hipparcos 2007 stars to G 12, streamed per HEALPix tile with names, colours, distances, temperature, luminosity, extinction and astrometric quality ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested]
+- **Sky and universe in the browser.** The reveal over a person's own photo with its four evidence tags, Real sky over ESO's panorama, the predicted sky for a photo's time and place, and a flight to a matched star with the camera behind NASA's models of 39 spacecraft and suits ([README.md](../README.md), "What It Does Today"). 3.09 million Gaia DR3 and Hipparcos 2007 stars to G 12, streamed per HEALPix tile with names, colours, distances, temperature, luminosity, extinction and astrometric quality ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested]
 - **WebGPU renderer, milestone 1.** Behind `?renderer=webgpu`, the cislunar scene draws catalog stars as point-spread sprites, tone-maps with AgX and discloses each layer's evidence class, in about 1 ms per frame at 3840x2160 on the M5 Max ([RENDERER_WEBGPU_SPIKE.md](architecture/RENDERER_WEBGPU_SPIKE.md), section 10). [tested, measured]
 - **Spatial audio engine.** HRTF voices, an ambisonic bed and convolution reverb driven by data mappings, with `SkyAudioFeed` feeding visible catalog stars from the camera pose, evidence-class disclosure and third-party notices in the viewport ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md)). [tested]
 - **Backend.** FastAPI endpoints covering content-addressed upload ingestion (`services/ingest/store.py`, `services/ingest/router.py`), EXIF/HEIF/QuickTime metadata, orientation and probe readers (`services/ingest/metadata.py`, `services/ingest/probe.py`), a plate solver with a held-out WCS gate (at least 6 held-out inliers and a median residual of at most 3 px), a horizon and Moon pose solver, a low-precision analytical ephemeris (`services/science/ephemeris.py`: Standish and Williams 1992 approximate Keplerian elements and Meeus 1998 chapter 47 geocentric Moon), a moonlight model, and a schema-validated voice command endpoint (`services/voice/intent.py`, `services/voice/claude.py`). [tested]
@@ -24,25 +24,25 @@ Labels, as AGENTS.md section 3 asks:
 
 ### The gap that matters most
 
-The first promise of the product, upload a night photo and learn where and when it was taken, does not solve a real consumer photo end-to-end yet:
+Most real phone photos still do not calibrate. Upload, the solve job and the reveal run end to end in the browser (`apps/web/src/App.tsx`, `services/ingest/jobs.py`), and the phone photo solver searches the Gaia DR3 and Hipparcos tiles under the held-out gate (`services/science/phone_photo_solver.py`), but the last count kept in the repository is 2 of the 60 public photos calibrated, both correct, on 19 November ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested]
 
-- The backend upload store, metadata/probe readers, and ingest routes are in place (`services/ingest/store.py`, `services/ingest/metadata.py`, `services/ingest/probe.py`, `services/ingest/router.py`), while the browser upload UI and asynchronous solve-job runner are still being connected (`apps/web/src/App.tsx`).
-- The baseline plate solver matches against 18 pinned Orion and Taurus stars (`services/science/catalog.py`). It failed on all three real clips in `data/artifacts/`. On the simulated phone-photo benchmark it solved 0 of 210 frames, and once it certified a wrong sky, about 70 degrees off, that passed the held-out gate ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated]
-- The horizon and Moon solver returns `approximate` or `predicted_only`, never `calibrated`. It looks for the horizon only between 38% and 72% of the frame height (`services/science/horizon_solver.py`).
+- A photo that does not calibrate gets the predicted sky for its recorded time and place, labelled `predicted` ([PREDICTED_SKY.md](science/PREDICTED_SKY.md)). [tested]
+- The horizon and Moon pose returns `approximate` or `predicted_only`, never `calibrated` (`services/science/horizon_solver.py`).
+- The flight goes only to a `catalog_matched` star with a catalog distance (`packages/observation/src/reducer.ts`), so most photos cannot be flown from yet.
 
-The real sky behind the glow, the reveal, the travel and the explanations all depend on a verified solution, so Track 1 comes first.
+The real sky behind the glow, the travel and the explanations all depend on a verified solution, so Track 1 comes first.
 
 ### Other gaps
 
 - **Science.**
-  - The ephemeris (`services/science/ephemeris.py`) uses the Standish and Williams (1992) approximate Keplerian elements (Earth-Moon barycentre, without light-time correction) and Meeus (1998) chapter 47 for a geocentric Moon (topocentric parallax is up to about 1 degree [inference]), without the Sun, Mercury, Neptune, or computed phase magnitudes.
+  - The ephemeris (`services/science/ephemeris.py`) gives the Sun, the Moon and the planets Mercury to Neptune from the IAU's ERFA routines, with the Moon's phase, the planets' apparent magnitudes and rise, transit and set, checked against stored JPL Horizons tables ([THIRD_PARTY.md](architecture/THIRD_PARTY.md)). [tested]
   - Radiometry assumes a fixed natural sky and has no light-pollution atlas data yet (`services/science/router.py`, `services/media/discovery.py`).
 - **Language.**
   - `services/voice/claude.py` integrates the official Anthropic Python SDK (`claude-opus-5-5` from configuration, strict tools with `tool_choice` `auto`, server-side refusal fallback and prompt caching), and `VoiceCommandResponse` carries schema-validated `AlbedianAction` payloads through the frontend reducer (`packages/contracts/src/spatial-and-voice.ts`, `packages/contracts/src/voice-command.ts`, `services/contracts/voice.py`, `apps/web/src/voice/voiceBackend.ts`). Live LLM calls stay off by default until the evaluation budget and corpus are complete. [tested]
-  - There is no knowledge base, retrieval or citation system yet.
-- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. They carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] Nine assets still have no recorded provenance (section 6).
+  - A question about a photo is answered from its stored solution by fixed tables, no model reading the question (`services/voice/answers.py`, `POST /api/voice/answer/{sha256}`); there is no knowledge base, retrieval or citation system.
+- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. They carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] One asset has no recorded provenance (section 6).
 - **Rendering.**
-  - Only the cislunar scene has WebGPU parity; every active scene carries per-layer evidence-class disclosures, and the synthetic nebula and black-hole decorative particle layers have been removed (`apps/web/src/spatial/SparkPortalRenderer.ts`). [tested]
+  - The sky view and the flight draw with WebGL2; the WebGPU host, behind `?renderer=webgpu`, draws only the Earth and Moon scene. The other scenes in `apps/web/src/spatial/SparkPortalRenderer.ts` (a modelled star, a black hole, illustrative surfaces) are reached by no control, and the lead ruled them cut on 24 November.
   - The atmosphere lookup is single scattering with hand-set colours, not Bruneton's model.
 - **Security.** The API answers only the web app's own origins (`ALBEDIAN_CORS_ORIGINS`) and only a `Host` that names the local host (`ALBEDIAN_TRUSTED_HOSTS`), refuses a foreign write before any route runs, scans only its configured folders, and returns no absolute path. Both Vite builds refuse any untracked, locally modified or symlinked file under `apps/web/public/`. [tested] A public deployment still needs its own review (section 3, Track 7).
 
@@ -61,7 +61,7 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
    - The `halpha` and `jwst_ir` modes and the red boost are removed: they recoloured the RGB photograph.
    - The landing turns toward the galactic centre at true scale, seen from beyond the Moon, at one real moment under one Sun (`2025-03-07T11:00:00Z`, [LANDING_MOMENT.md](science/LANDING_MOMENT.md)), while the fidelity pass in Track 4 replaces magnified background stars with catalog stars and diffuse Milky Way light.
 3. **The AgX look.** Set the contrast and black level for the WebGPU renderer (spike doc section 10, step 12).
-4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Decision: each is rebuilt to its physical layout as its scene is ported, and until then its disclosure states plainly that it is a modelled composition.
+4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Decision: each is rebuilt to its physical layout as its scene is ported, and until then its disclosure states plainly that it is a modelled composition. Since then: no control reaches the modelled star, the black hole or the surfaces, and on 24 November the lead ruled them cut; the Earth and Moon scene stays behind `?renderer=webgpu`.
 5. **Model for intent parsing.** Track 3 starts every route on `claude-opus-5-5`. Whether the latency-critical intent route later moves to a smaller model is decided after measuring.
 6. **Hosting.** Deep catalogs and dust volumes need object storage and a CDN. For example, Cloudflare R2 costs $0.015 per GB-month with no egress fees [verified].
 7. **Audio is music first.** Decision: a composed, adaptive score is the foundation, and the real catalog data plays inside it (Track 5).
