@@ -317,8 +317,22 @@ def _read_unlinked(path: Path) -> bytes:
         return handle.read()
 
 
+# Gap seven (DECIDED-BY-LEAD 13:09 on 24 Nov, beside D22): a person's download is named in plain words, never by an
+# internal id, and carries no time, place or original name; the browser numbers a second download by itself. The
+# manifest inside keeps its ids
+EXPORT_TITLES = {"image": "Albedian restored photo", "video": "Albedian restored clip"}
+# Every entry carries the zip format's first date (DECIDED-BY-LEAD 18:04 on 24 Nov), not the restoration's time, so the
+# files unpacked from a download do not tell when the restoration was made; the same stored state still exports the
+# same bytes
+EXPORT_ENTRY_DATE = (1980, 1, 1, 0, 0, 0)
+
+
+def _export_title(variant: dict[str, Any]) -> str:
+    return EXPORT_TITLES[variant["mimeType"].split("/", 1)[0]]
+
+
 def _export_name(variant: dict[str, Any]) -> str:
-    return f"{variant['id']}.{variants.EXPORT_EXTENSIONS[variant['mimeType']]}"
+    return f"{_export_title(variant)}.{variants.EXPORT_EXTENSIONS[variant['mimeType']]}"
 
 
 @router.get("/api/media/{sha256}/variants/{variant_id}/export", response_class=StreamingResponse)
@@ -328,13 +342,14 @@ def get_variant_export(
     store: IngestStore = Depends(get_ingest_store),
 ) -> StreamingResponse:
     """A ready variant to take away (REQ-RST-9.1, review row D22): one zip stored without compression, an attachment
-    named `<variantId>.zip`, holding `<variantId>.png`, the stored file byte for byte, and `<variantId>.png.json`, its
-    manifest. The file is read once to check it hashes to its record before a byte is sent, and again as it is sent."""
+    named `Albedian restored photo.zip`, holding `Albedian restored photo.png`, the stored file byte for byte, and
+    `Albedian restored photo.png.json`, its manifest; a clip's is `Albedian restored clip.zip`. The file is read once
+    to check it hashes to its record before a byte is sent, and again as it is sent."""
     folder, manifest, variant = _export_records(store, sha256, variant_id)
     name = _export_name(variant)
     try:
         # The variant's own file: a still's PNG, or a clip's `.mov` or `.mp4` as restore-7 stored it, exported as
-        # `<variantId>.mov` or `.mp4` beside its `.mov.json` or `.mp4.json` (EXPORT_EXTENSIONS)
+        # `Albedian restored clip.mov` or `.mp4` beside its `.mov.json` or `.mp4.json` (EXPORT_EXTENSIONS)
         fd = _open_unlinked(folder / variants.variant_file_name(variant["mimeType"]))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=NO_VARIANT) from None
@@ -357,7 +372,7 @@ def get_variant_export(
         variants.ZipEntry(f"{name}.json", len(sidecar), zlib.crc32(sidecar) & 0xFFFFFFFF, lambda: iter((sidecar,))),
     ]
     length = variants.stored_zip_size(entries)
-    body = variants.stored_zip(entries, variants.zip_date_time(variant["createdAtUTC"]))
+    body = variants.stored_zip(entries, EXPORT_ENTRY_DATE)
 
     def stream():
         try:
@@ -367,7 +382,7 @@ def get_variant_export(
 
     return StreamingResponse(stream(), media_type="application/zip", headers={
         **EXPORT_HEADERS, "Content-Length": str(length),
-        "Content-Disposition": f'attachment; filename="{variant_id}.zip"',
+        "Content-Disposition": f'attachment; filename="{_export_title(variant)}.zip"',
     })
 
 
@@ -378,7 +393,7 @@ def get_variant_manifest(
     store: IngestStore = Depends(get_ingest_store),
 ) -> Response:
     """A ready variant's manifest alone (REQ-RST-9.2), the export's own sidecar, as an attachment named
-    `<variantId>.png.json`."""
+    `Albedian restored photo.png.json` (a clip's `Albedian restored clip.mov.json` or `.mp4.json`)."""
     _, manifest, variant = _export_records(store, sha256, variant_id)
     return Response(variants.manifest_bytes(manifest), media_type="application/json", headers={
         **EXPORT_HEADERS, "Content-Disposition": f'attachment; filename="{_export_name(variant)}.json"',

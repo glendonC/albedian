@@ -2,9 +2,9 @@
 REQ-RST-9.1 to 9.7; P-RST-21; review row D22, `.lead/uiux/UIUX-export-READY.md`).
 
 Covers, through the API on a store of its own:
-- An export of a ready restoration is one zip stored without compression, an attachment named `<variant id>.zip`,
-  holding `<variant id>.png`, the stored variant byte for byte, and `<variant id>.png.json`, its manifest pretty
-  printed; the manifest route answers the same manifest. The exported bytes hash to the manifest's variant hash,
+- An export of a ready restoration is one zip stored without compression, an attachment named
+  `Albedian restored photo.zip`, holding `Albedian restored photo.png`, the stored variant byte for byte, and
+  `Albedian restored photo.png.json`, its manifest pretty printed; the manifest route answers the same manifest. The exported bytes hash to the manifest's variant hash,
   and the manifest parses under the contract (P-RST-21).
 - The manifest names the upload's newest solution id when the job store names one, and no solution otherwise.
 - A synthetic upload planted with a file name, a capture time, a place, container tags (tEXt, iTXt, tIME, eXIf with a
@@ -16,8 +16,13 @@ Covers, through the API on a store of its own:
   404; a record naming a type the export has no row for 500; a stored file that no longer hashes to its record is
   never served,
   and an entry that changes while it is sent stops the zip before its directory.
-- A restored clip, QuickTime and MP4, exports the same way: `<variant id>.mov` or `.mp4`, its stored file byte for
-  byte (lossless, restore-7), with `<variant id>.mov.json` or `.mp4.json`, its manifest (restore-8c's second half).
+- A restored clip, QuickTime and MP4, exports the same way: `Albedian restored clip.zip` holding
+  `Albedian restored clip.mov` or `.mp4`, its stored file byte for byte (lossless, restore-7), with
+  `Albedian restored clip.mov.json` or `.mp4.json`, its manifest (restore-8c's second half).
+- No name a person sees (the zip's, its two entries', the manifest's alone) carries an id, a time, a place or the
+  upload's own name: plain words and the file's extension (gap seven, DECIDED-BY-LEAD 13:09 on 24 Nov, beside D22);
+  the manifest inside keeps its ids. Every entry carries the zip format's first date, 1980-01-01 00:00, not the
+  restoration's time (DECIDED-BY-LEAD 18:04).
 - The builder, given the contract fixture's own parts, writes the fixture's manifests key for key (the Vitest parity
   suite parses those under ExportManifestSchema, so the builder's shape parses in both languages), and refuses a
   manifest of a rejected attempt.
@@ -28,6 +33,7 @@ Covers, through the API on a store of its own:
 from __future__ import annotations
 
 import hashlib
+import re
 import io
 import json
 import os
@@ -233,19 +239,19 @@ def test_an_export_is_one_stored_zip_of_the_variant_byte_for_byte_and_its_manife
     answer = client.get(f"/api/media/{sha}/variants/{vid}/export")
     assert answer.status_code == 200, answer.text
     assert answer.headers["content-type"] == "application/zip"
-    assert answer.headers["content-disposition"] == f'attachment; filename="{vid}.zip"'
+    assert answer.headers["content-disposition"] == 'attachment; filename="Albedian restored photo.zip"'
     assert answer.headers["x-content-type-options"] == "nosniff"
     assert answer.headers["cache-control"] == "no-store"
     assert int(answer.headers["content-length"]) == len(answer.content)
     archive, entries = unzip(answer.content)
-    assert [entry.filename for entry in entries] == [f"{vid}.png", f"{vid}.png.json"]
+    assert [entry.filename for entry in entries] == ["Albedian restored photo.png", "Albedian restored photo.png.json"]
     assert all(entry.compress_type == zipfile.ZIP_STORED and entry.flag_bits == 0 for entry in entries)
     # Readable by everyone who unpacks it, whatever the store's own 0400
     assert all((entry.external_attr >> 16) == 0o100644 for entry in entries)
     stored = (folder / "variants" / vid / "variant.png").read_bytes()
-    exported = archive.read(f"{vid}.png")
+    exported = archive.read("Albedian restored photo.png")
     assert exported == stored == client.get(f"/api/media/{sha}/variants/{vid}/file").content
-    sidecar = archive.read(f"{vid}.png.json")
+    sidecar = archive.read("Albedian restored photo.png.json")
     manifest = json.loads(sidecar.decode("utf-8"))
     # P-RST-21: the manifest parses and its variant hash is the SHA-256 of the exported bytes
     contracts.ExportManifest.model_validate(manifest)
@@ -261,7 +267,7 @@ def test_an_export_is_one_stored_zip_of_the_variant_byte_for_byte_and_its_manife
     alone = client.get(f"/api/media/{sha}/variants/{vid}/manifest")
     assert alone.status_code == 200 and alone.content == sidecar
     assert alone.headers["content-type"] == "application/json"
-    assert alone.headers["content-disposition"] == f'attachment; filename="{vid}.png.json"'
+    assert alone.headers["content-disposition"] == 'attachment; filename="Albedian restored photo.png.json"'
     assert alone.headers["cache-control"] == "no-store"
     # The same stored state exports the same bytes: no clock of its own
     assert client.get(f"/api/media/{sha}/variants/{vid}/export").content == answer.content
@@ -282,7 +288,7 @@ def test_the_manifest_names_the_newest_solution_the_job_store_names_and_none_wit
     for path in ("manifest", "export"):
         answer = client.get(f"/api/media/{sha}/variants/{vid}/{path}")
         assert answer.status_code == 200, answer.text
-        manifest = answer.json() if path == "manifest" else json.loads(unzip(answer.content)[0].read(f"{vid}.png.json"))
+        manifest = answer.json() if path == "manifest" else json.loads(unzip(answer.content)[0].read("Albedian restored photo.png.json"))
         contracts.ExportManifest.model_validate(manifest)
         assert manifest["observationSolutionId"] == f"sol_{sha[:16]}"
         assert list(manifest)[-2:] == ["observationSolutionId", "disclosure"]
@@ -313,7 +319,7 @@ def test_an_export_holds_no_name_time_place_or_container_tag_the_upload_was_plan
     vid = job["variantId"]
     content = client.get(f"/api/media/{sha}/variants/{vid}/export").content
     archive, _ = unzip(content)
-    exported, sidecar = archive.read(f"{vid}.png"), archive.read(f"{vid}.png.json").decode("utf-8")
+    exported, sidecar = archive.read("Albedian restored photo.png"), archive.read("Albedian restored photo.png.json").decode("utf-8")
     texts = [PLANTED_NAME, PLANTED_NAME.rsplit(".", 1)[0], PLANTED_TITLE, PLANTED_COMMENT, PLANTED_XMP, PLANTED_MAKE, PLANTED_EXIF_TIME,
              PLANTED_UTC, PLANTED_UTC[:10], str(client.store_root), str(Path.home())]
     for text in texts:
@@ -556,15 +562,15 @@ def test_a_clips_export_is_one_stored_zip_of_its_stored_file_byte_for_byte_and_i
     answer = client.get(f"/api/media/{sha}/variants/{vid}/export")
     assert answer.status_code == 200, answer.text
     assert answer.headers["content-type"] == "application/zip"
-    assert answer.headers["content-disposition"] == f'attachment; filename="{vid}.zip"'
+    assert answer.headers["content-disposition"] == 'attachment; filename="Albedian restored clip.zip"'
     assert int(answer.headers["content-length"]) == len(answer.content)
     archive, entries = unzip(answer.content)
-    assert [entry.filename for entry in entries] == [f"{vid}.{extension}", f"{vid}.{extension}.json"]
+    assert [entry.filename for entry in entries] == [f"Albedian restored clip.{extension}", f"Albedian restored clip.{extension}.json"]
     assert all(entry.compress_type == zipfile.ZIP_STORED for entry in entries)
     stored = (folder / "variants" / vid / f"variant.{extension}").read_bytes()
-    exported = archive.read(f"{vid}.{extension}")
+    exported = archive.read(f"Albedian restored clip.{extension}")
     assert exported == stored == client.get(f"/api/media/{sha}/variants/{vid}/file").content
-    sidecar = archive.read(f"{vid}.{extension}.json")
+    sidecar = archive.read(f"Albedian restored clip.{extension}.json")
     manifest = json.loads(sidecar.decode("utf-8"))
     # P-RST-21: the manifest parses and its variant hash is the SHA-256 of the exported bytes
     contracts.ExportManifest.model_validate(manifest)
@@ -575,11 +581,56 @@ def test_a_clips_export_is_one_stored_zip_of_its_stored_file_byte_for_byte_and_i
     assert (manifest["variant"], manifest["graph"], manifest["attempt"]) == (records["variant"], records["graph"], records["attempt"])
     alone = client.get(f"/api/media/{sha}/variants/{vid}/manifest")
     assert alone.status_code == 200 and alone.content == sidecar
-    assert alone.headers["content-disposition"] == f'attachment; filename="{vid}.{extension}.json"'
+    assert alone.headers["content-disposition"] == f'attachment; filename="Albedian restored clip.{extension}.json"'
     assert client.get(f"/api/media/{sha}/variants/{vid}/export").content == answer.content
     # No planted title, comment, place, time or stream tag goes out, in the clip or in its manifest
     for value in CLIP_PLANTED:
         assert value.encode("utf-8") not in answer.content, value
+
+
+FIRST_ZIP_DATE = (1980, 1, 1, 0, 0, 0)
+
+
+def names_seen(client: TestClient, sha: str, vid: str) -> list[str]:
+    """Every name a person sees for one export: the zip's, its entries', and the manifest's when saved alone. Every
+    entry carries the zip format's first date, not the restoration's time (DECIDED-BY-LEAD 18:04 on 24 Nov), so the
+    files unpacked from it do not tell when the restoration was made."""
+    export = client.get(f"/api/media/{sha}/variants/{vid}/export")
+    alone = client.get(f"/api/media/{sha}/variants/{vid}/manifest")
+    assert export.status_code == alone.status_code == 200
+    _, entries = unzip(export.content)
+    assert [entry.date_time for entry in entries] == [FIRST_ZIP_DATE, FIRST_ZIP_DATE]
+    disposition = re.compile(r'attachment; filename="([^"]*)"')
+    return [disposition.fullmatch(export.headers["content-disposition"]).group(1), *(e.filename for e in entries),
+            disposition.fullmatch(alone.headers["content-disposition"]).group(1)]
+
+
+def test_no_name_a_person_sees_carries_an_id_a_time_a_place_or_the_uploads_own_name(restored, restored_clips) -> None:
+    client, sha, _, job = restored
+    still = names_seen(client, sha, job["variantId"])
+    assert still == ["Albedian restored photo.zip", "Albedian restored photo.png", "Albedian restored photo.png.json",
+                     "Albedian restored photo.png.json"]
+    seen = {"png": (client, sha, job, still)}
+    clips_client, done = restored_clips
+    for extension, (clip_sha, _, clip_job) in done.items():
+        names = names_seen(clips_client, clip_sha, clip_job["variantId"])
+        assert names == ["Albedian restored clip.zip", f"Albedian restored clip.{extension}",
+                         f"Albedian restored clip.{extension}.json", f"Albedian restored clip.{extension}.json"]
+        seen[extension] = (clips_client, clip_sha, clip_job, names)
+    for extension, (who, upload, made, names) in seen.items():
+        record = who.get(f"/api/ingest/{upload}").json()
+        for name in names:
+            # Plain words and the extension: no digit before the extension, so no id, hash, date or time stands in it
+            assert re.fullmatch(r"Albedian restored (photo|clip)\.(zip|png|mov|mp4)(\.json)?", name), name
+            assert not re.search(r"\d", name.split(".", 1)[0]), name
+            for value in (made["variantId"], made["attemptId"], upload[:8], PLANTED_NAME.rsplit(".", 1)[0], "planted",
+                          CLIP_PLANTED_PLACE, *CLIP_PLANTED):
+                assert value not in name, (name, value)
+            assert json.dumps(record).find(name) == -1, (extension, name)
+        # The manifest inside keeps its ids
+        manifest = who.get(f"/api/media/{upload}/variants/{made['variantId']}/manifest").json()
+        assert (manifest["variant"]["id"], manifest["attempt"]["id"], manifest["sourceSha256"]) == (
+            made["variantId"], made["attemptId"], upload)
 
 
 @pytest.mark.parametrize(("path", "status"), [
@@ -601,10 +652,10 @@ def test_a_display_copy_exports_with_its_own_disclosure_and_no_text_of_the_origi
     assert job["state"] == "succeeded", job
     vid = job["variantId"]
     archive, _ = unzip(client.get(f"/api/media/{sha}/variants/{vid}/export").content)
-    manifest = json.loads(archive.read(f"{vid}.png.json"))
+    manifest = json.loads(archive.read("Albedian restored photo.png.json"))
     contracts.ExportManifest.model_validate(manifest)
     assert manifest["disclosure"] == contracts.DISCLOSURES["display_copy"] and "gate" not in manifest["attempt"]
-    exported = archive.read(f"{vid}.png")
+    exported = archive.read("Albedian restored photo.png")
     assert hashlib.sha256(exported).hexdigest() == manifest["variant"]["sha256"]
     # The same rebuild as a restoration's (restore-8b, decided 2026-11-19 07:40 by the lead): the clean sRGB's
     kept = png_profile(exported)

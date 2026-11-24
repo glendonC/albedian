@@ -261,7 +261,12 @@ pictures under `.cache/restore-review/<unit>/`.
     `tests/media/test_export.py`, `.lead/kiro/reports/EXPORT/download-e2e.md`,
     `.lead/kiro/reports/EXPORT/download-ui-click-e2e.md`]: a restored QuickTime or MP4 clip exports as `<variantId>.mov` or `.mp4`, the file
     restore-7 stored losslessly, byte for byte, with `<variantId>.mov.json` or `.mp4.json`; a record naming a type
-    with no export row is refused as a record (500).
+    with no export row is refused as a record (500). Renamed 2026-11-24 by download-name-one (gap seven,
+    DECIDED-BY-LEAD 13:09, beside D22) [tested: `tests/media/test_export.py`]: every name a person sees is plain words
+    and the extension, `Albedian restored photo.zip` holding `Albedian restored photo.png` and
+    `Albedian restored photo.png.json` (a clip's `Albedian restored clip.zip`, `.mov` or `.mp4`), with no id, time,
+    place or original name; the manifest inside keeps its ids; every entry carries the zip format's first date,
+    1980-01-01 00:00, not the restoration's time (DECIDED-BY-LEAD 18:04).
   - _Requirements: REQ-RST-9.1 to 9.7_
 
 - [x] 9. restore-9: the corrections of old code (REQ-RST-11)

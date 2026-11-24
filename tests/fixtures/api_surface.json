@@ -448,7 +448,7 @@
       "/api/media/{sha256}/variants/{variant_id}/export": {
         "get": {
           "summary": "Get Variant Export",
-          "description": "A ready variant to take away (REQ-RST-9.1, review row D22): one zip stored without compression, an attachment\nnamed `<variantId>.zip`, holding `<variantId>.png`, the stored file byte for byte, and `<variantId>.png.json`, its\nmanifest. The file is read once to check it hashes to its record before a byte is sent, and again as it is sent.",
+          "description": "A ready variant to take away (REQ-RST-9.1, review row D22): one zip stored without compression, an attachment\nnamed `Albedian restored photo.zip`, holding `Albedian restored photo.png`, the stored file byte for byte, and\n`Albedian restored photo.png.json`, its manifest; a clip's is `Albedian restored clip.zip`. The file is read once\nto check it hashes to its record before a byte is sent, and again as it is sent.",
           "operationId": "get_variant_export_api_media__sha256__variants__variant_id__export_get",
           "parameters": [
             {
@@ -492,7 +492,7 @@
       "/api/media/{sha256}/variants/{variant_id}/manifest": {
         "get": {
           "summary": "Get Variant Manifest",
-          "description": "A ready variant's manifest alone (REQ-RST-9.2), the export's own sidecar, as an attachment named\n`<variantId>.png.json`.",
+          "description": "A ready variant's manifest alone (REQ-RST-9.2), the export's own sidecar, as an attachment named\n`Albedian restored photo.png.json` (a clip's `Albedian restored clip.mov.json` or `.mp4.json`).",
           "operationId": "get_variant_manifest_api_media__sha256__variants__variant_id__manifest_get",
           "parameters": [
             {
