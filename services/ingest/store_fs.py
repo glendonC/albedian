@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 from pathlib import Path
 import secrets
+import stat
 import time
 from typing import Any
 
@@ -58,13 +60,31 @@ def hash_folder(root: Path, sha256: str) -> Path:
     return root / sha256[:2] / sha256
 
 
-def find_stored_original(root: Path, sha256: str) -> Path | None:
-    """Return the stored `original.<ext>` path for `sha256`, or `None` when absent."""
+def _real_hash_folder(root: Path, sha256: str) -> Path | None:
+    """`<root>/<aa>/<sha256>` when it and `<aa>` are folders and not links, else None. The root itself is
+    configuration and may be a link (a linked data folder); nothing below it is followed."""
     folder = hash_folder(root, sha256)
-    if not folder.is_dir():
+    for level in (folder.parent, folder):
+        try:
+            if not stat.S_ISDIR(os.lstat(level).st_mode):
+                return None
+        except (FileNotFoundError, NotADirectoryError):
+            return None
+    return folder
+
+
+def find_stored_original(root: Path, sha256: str) -> Path | None:
+    """Return the stored `original.<ext>` path for `sha256`, or `None` when absent. A link, a folder or a FIFO of that
+    name, or a linked hash folder, is no original."""
+    folder = _real_hash_folder(root, sha256)
+    if folder is None:
         return None
-    found = sorted(folder.glob("original.*"))
-    return found[0] if found else None
+    with os.scandir(folder) as entries:
+        found = sorted(
+            entry.name for entry in entries
+            if entry.name.startswith("original.") and entry.is_file(follow_symlinks=False)
+        )
+    return folder / found[0] if found else None
 
 
 def sweep_stale_partials(root: Path, now: float | None = None) -> int:
@@ -118,11 +138,30 @@ def _read_record_path(path: Path) -> dict[str, Any]:
 
 
 def read_stored_record(root: Path, sha256: str) -> dict[str, Any] | None:
-    """Read `<root>/<aa>/<sha256>/record.json` if present, else `None`."""
-    path = hash_folder(root, sha256) / RECORD_FILENAME
-    if not path.is_file():
+    """Read `<root>/<aa>/<sha256>/record.json` if present, else `None`. It is opened without following a link and
+    read only when it is a regular file: a link, a folder, a FIFO or a linked hash folder there is no record."""
+    folder = _real_hash_folder(root, sha256)
+    if folder is None:
         return None
-    return _read_record_path(path)
+    try:
+        # O_NONBLOCK: a FIFO there opens at once (and is refused below) instead of waiting for a writer
+        fd = os.open(folder / RECORD_FILENAME, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        # A link there: O_NOFOLLOW refuses it (a folder or a FIFO opens and is refused just below)
+        if error.errno == errno.ELOOP:
+            return None
+        raise
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return None
+        chunks = []
+        while chunk := os.read(fd, 1 << 16):
+            chunks.append(chunk)
+    finally:
+        os.close(fd)
+    return json.loads(b"".join(chunks).decode("utf-8"))
 
 
 def write_stored_record(root: Path, sha256: str, record: dict[str, Any]) -> dict[str, Any]:
