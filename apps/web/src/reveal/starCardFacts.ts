@@ -45,6 +45,10 @@ const CATALOG_DISTANCE_METHODS: ReadonlySet<string> = new Set([
   'geometric_bailer_jones_edr3',
 ]);
 
+export function isCatalogDistanceMethod(method: string): boolean {
+  return CATALOG_DISTANCE_METHODS.has(method);
+}
+
 /**
  * A constellation's name in full ("Lyra") for its code ("Lyr"), its Latin name ("Lyra"), or OpenNGC's Serpens Caput
  * and Cauda codes ("Se1", "Se2", packages/contracts/src/deep-sky.ts), from the contract's own table.
@@ -58,6 +62,10 @@ const CONSTELLATION_NAME: ReadonlyMap<string, string> = new Map([
   ['Se1', SERPENS],
   ['Se2', SERPENS],
 ]);
+
+export function constellationFullName(constellation: string): string | null {
+  return CONSTELLATION_NAME.get(constellation) ?? null;
+}
 
 /**
  * A star with no name, whose title is its catalog number (INTERIM: .lead/uiux/UIUX-unnamed-QUESTION.md, waiting on the
@@ -79,7 +87,7 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
     ref?.bayerDesignation ??
     (ref?.flamsteedNumber !== undefined ? flamsteedLongDesignation(ref.flamsteedNumber, ref.constellation) : null);
   const designation = rawDesignation !== null && rawDesignation !== finding.title ? rawDesignation : null;
-  const constellation = ref ? (CONSTELLATION_NAME.get(ref.constellation) ?? null) : null;
+  const constellation = ref ? constellationFullName(ref.constellation) : null;
   // A deep-sky object's small line is its type in words and its constellation ("Globular cluster · Centaurus", D23)
   const first = deep ? (deepSky ? deepSkyKindWords(deepSky.type) : null) : nameless ? nameless.number : designation;
   const subParts = [first, constellation].filter((part): part is string => part !== null);
@@ -92,7 +100,7 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
     numbers.push({ value: String(vMag), unit: '', label: 'magnitude', evidenceClass: finding.evidenceClass === 'observed' ? 'catalog_matched' : finding.evidenceClass });
   }
   const distance = finding.inferredDistancePc;
-  if (distance && CATALOG_DISTANCE_METHODS.has(distance.method)) {
+  if (distance && isCatalogDistanceMethod(distance.method)) {
     numbers.push({
       // Three figures: "25.0" for the approved picture's Vega, "322" for a star 322 light years away
       value: formatSignificant(distance.median * PARSEC_TO_LIGHT_YEAR),

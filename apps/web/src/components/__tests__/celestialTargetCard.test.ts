@@ -63,8 +63,15 @@ declare global {
 
 const cssPath = path.resolve(__dirname, '../../styles/albedian.css');
 const cssSource = fs.readFileSync(cssPath, 'utf8');
-const { DISTANCE_RAIL_LY, LUMINOSITY_RAIL_SUN, TEMPERATURE_RAIL_K, SUN_TEFF_K, cropPlacement, placeOnLogRail } =
-  await import('../scanScales.js');
+const {
+  DISTANCE_RAIL_LY,
+  LUMINOSITY_RAIL_SUN,
+  TEMPERATURE_RAIL_K,
+  SUN_TEFF_K,
+  cropPlacement,
+  distanceMethodLabel,
+  placeOnLogRail,
+} = await import('../scanScales.js');
 const { SourcePhotoStage } = await import('../SourcePhotoStage.js');
 
 let container: HTMLDivElement;
@@ -805,8 +812,199 @@ describe('catalog magnitude (integrity-25)', () => {
       renderCard({ session, selectedFinding: finding });
       return q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent;
     };
-    expect(catalogLine(m31)).toBe('And');
-    expect(catalogLine({ ...m31, catalogRef: { ...m31.catalogRef!, apparentMagnitude: 3.44 } })).toBe('And · Mag 3.44');
+    expect(catalogLine(m31)).toBe('Andromeda');
+    expect(catalogLine({ ...m31, catalogRef: { ...m31.catalogRef!, apparentMagnitude: 3.44 } })).toBe('Andromeda · Mag 3.44');
+  });
+});
+
+describe('catalog parity with StarCard (celestialcard-parity-1)', () => {
+  it('resolves 3-letter IAU codes, full Latin names, OpenNGC Se1/Se2 Serpens, and Flamsteed designations on subtitle and catalog row', async () => {
+    const { forgetDeepSkyTable } = await import('../../reveal/deepSky.js');
+    forgetDeepSkyTable();
+    const fetchSpy = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          format: 'albedian.deep-sky-catalog',
+          columns: ['name', 'type', 'vMag', 'bMag'],
+          rows: [
+            ['NGC5904', 'GCl', 5.65, null],
+            ['NGC6611', 'Cl+N', 6.0, null],
+          ],
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+    try {
+      const session = createSyntheticCalibratedSession();
+      const base = betelgeuseIn(session);
+
+      // 1. Flamsteed-only proper-named star (Atlas, 27 Tau) -> 27 Tauri · Taurus and Taurus · Mag 3.63
+      const atlas = CelestialFindingSchema.parse({
+        ...base,
+        id: 'finding-hip-17847',
+        title: 'Atlas',
+        subtitle: '27 Tau · HR 1178 · 118.6 pc [113.8-123.9 pc]',
+        catalogRef: {
+          ...base.catalogRef!,
+          id: 'hip-17847',
+          provider: 'Hipparcos',
+          releaseVersion: 'Hipparcos 2007',
+          catalogSourceId: 'HIP 17847',
+          commonName: 'Atlas',
+          bayerDesignation: undefined,
+          flamsteedNumber: 27,
+          constellation: 'Tau',
+          apparentMagnitude: 3.63,
+        },
+        evidence: { ...base.evidence, catalogReferenceId: 'hip-17847' },
+      });
+      renderCard({ session, selectedFinding: atlas });
+      expect(q('target-card-title')?.textContent).toBe('Atlas');
+      expect(q('target-card-subtitle')?.textContent).toBe('27 Tauri · Taurus');
+      expect(q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent).toBe('Taurus · Mag 3.63');
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      // 2. Bayer + Flamsteed star (Vega, full Latin 'Lyra') -> Bayer wins; Bayer-titled and Flamsteed-titled do not duplicate
+      const vega = CelestialFindingSchema.parse({
+        ...atlas,
+        id: 'finding-star-vega',
+        title: 'Vega',
+        catalogRef: { ...atlas.catalogRef!, id: 'star-vega', commonName: 'Vega', bayerDesignation: 'Alpha Lyrae', flamsteedNumber: 3, constellation: 'Lyra', apparentMagnitude: 0.03 },
+        evidence: { ...atlas.evidence, catalogReferenceId: 'star-vega' },
+      });
+      renderCard({ session, selectedFinding: vega });
+      expect(q('target-card-subtitle')?.textContent).toBe('Alpha Lyrae · Lyra');
+      expect(q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent).toBe('Lyra · Mag 0.03');
+
+      const piscium30 = CelestialFindingSchema.parse({
+        ...atlas,
+        id: 'finding-hip-154',
+        title: '30 Piscium',
+        catalogRef: { ...atlas.catalogRef!, id: 'hip-154', catalogSourceId: 'HIP 154', commonName: 'HIP 154', bayerDesignation: undefined, flamsteedNumber: 30, constellation: 'Psc' },
+        evidence: { ...atlas.evidence, catalogReferenceId: 'hip-154' },
+      });
+      renderCard({ session, selectedFinding: piscium30 });
+      expect(q('target-card-subtitle')?.textContent).toBe('Pisces');
+
+      // 3. OpenNGC Se1 and Se2 -> Serpens (with OpenNGC kind on subtitle)
+      const m16 = CelestialFindingSchema.parse({
+        id: 'finding-openngc-NGC6611',
+        observationSolutionId: session.observationSolution!.id,
+        evidenceClass: 'predicted',
+        title: 'lam Cen Nebula',
+        subtitle: 'Cl+N · Se2 · OpenNGC',
+        skyPosition: { raDeg: 274.7, decDeg: -13.8, uncertaintyArcsec: 12 },
+        catalogRef: {
+          id: 'openngc-NGC6611',
+          provider: 'OpenNGC',
+          releaseVersion: 'OpenNGC v20260501',
+          catalogSourceId: 'NGC6611',
+          commonName: 'Eagle Nebula',
+          constellation: 'Se2',
+          objectType: 'deep_sky',
+          coordinateEpoch: 'J2000.0',
+          raDeg: 274.7,
+          decDeg: -13.8,
+          apparentMagnitude: 6.0,
+          citation: 'OpenNGC',
+        },
+        evidence: {
+          id: 'ev-openngc-NGC6611',
+          evidenceClass: 'predicted',
+          catalogReferenceId: 'openngc-NGC6611',
+          verificationMethod: 'Catalog position projected through the solved WCS',
+          limitations: ['Catalog centre only.'],
+          verifiedByIndependentHoldout: false,
+        },
+      });
+      await act(async () => {
+        root.render(createElement(CelestialTargetCard, { session, selectedFinding: m16, onRunUtterance: () => {}, onPushToTalk: () => {} }));
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(q('target-card-title')?.textContent).toBe('Lambda Centauri Nebula');
+      expect(q('target-card-subtitle')?.textContent).toBe('Star cluster and nebula · Serpens');
+      expect(q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent).toBe('Serpens · Mag 6.00');
+
+      const m5 = CelestialFindingSchema.parse({
+        ...m16,
+        id: 'finding-openngc-NGC5904',
+        title: 'NGC 5904',
+        catalogRef: { ...m16.catalogRef!, id: 'openngc-NGC5904', catalogSourceId: 'NGC5904', commonName: 'NGC 5904', constellation: 'Se1', apparentMagnitude: 5.65 },
+        evidence: { ...m16.evidence, id: 'ev-openngc-NGC5904', catalogReferenceId: 'openngc-NGC5904' },
+      });
+      renderCard({ session, selectedFinding: m5 });
+      expect(q('target-card-subtitle')?.textContent).toBe('Globular cluster · Serpens');
+      expect(q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent).toBe('Serpens · Mag 5.65');
+
+      // 4. Unmapped constellation code omits raw code rather than printing it; pixel-only observed keeps its subtitle
+      renderCard({
+        session,
+        selectedFinding: { ...atlas, catalogRef: { ...atlas.catalogRef!, bayerDesignation: undefined, flamsteedNumber: undefined, constellation: 'Xyz', apparentMagnitude: undefined } },
+      });
+      expect(q('target-card-subtitle')).toBeNull();
+      expect(q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line:not([data-testid])')).toBeNull();
+      expect(q('target-card-catalog-row')?.textContent).not.toContain('Xyz');
+
+      const obsOnly: CelestialFinding = {
+        id: 'finding-obs-only',
+        observationSolutionId: session.observationSolution!.id,
+        evidenceClass: 'observed',
+        title: 'Point source',
+        subtitle: 'Measured in the photo',
+        sourceDetection: base.sourceDetection,
+        evidence: { id: 'ev-obs', evidenceClass: 'observed', verificationMethod: 'Measured in pixels', limitations: [], verifiedByIndependentHoldout: false },
+      };
+      renderCard({ session, selectedFinding: obsOnly });
+      expect(q('target-card-subtitle')?.textContent).toBe('Measured in the photo');
+    } finally {
+      forgetDeepSkyTable();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('places geometric_bailer_jones_edr3 on the distance rail with Go there enabled, while keeping ephemeris_au unconstrained off the stellar rail', () => {
+    const session = createSyntheticCalibratedSession();
+    const base = betelgeuseIn(session);
+    const etaLupi = CelestialFindingSchema.parse({
+      ...base,
+      id: 'finding-gaia-dr3-6010394022995479936',
+      title: 'Eta Lupi',
+      subtitle: 'Eta Lupi · 131.6 pc [125.0-139.0 pc]',
+      inferredDistancePc: { lower: 125.0, median: 131.6, upper: 139.0, method: 'geometric_bailer_jones_edr3' },
+      catalogRef: {
+        ...base.catalogRef!,
+        id: 'gaia-dr3-6010394022995479936',
+        provider: 'Gaia DR3',
+        releaseVersion: 'Gaia DR3 (2022)',
+        catalogSourceId: 'Gaia DR3 6010394022995479936',
+        commonName: 'Eta Lupi',
+        bayerDesignation: 'Eta Lupi',
+        constellation: 'Lup',
+        bailerJonesDistancePc: undefined,
+      },
+      evidence: { ...base.evidence, catalogReferenceId: 'gaia-dr3-6010394022995479936' },
+    });
+    renderCard({ session, selectedFinding: etaLupi });
+    expect(q('target-card-subtitle')?.textContent).toBe('Lupus');
+    expect(q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent).toContain('Lupus');
+    expect(q('target-card-distance-row')?.querySelector('.alb-scan-value')?.textContent).toBe('429 ly 132 pc');
+    expect(q('distance-rail')).not.toBeNull();
+    const label = distanceMethodLabel('geometric_bailer_jones_edr3');
+    expect(q('distance-rail-source')?.textContent).toBe(`${label.name} · ${label.range}: 408 to 453 ly`);
+    expect(q<HTMLButtonElement>('target-card-go-there')!.disabled).toBe(false);
+
+    const ephemerisBody = {
+      ...etaLupi,
+      evidenceClass: 'predicted' as const,
+      sourceDetection: undefined,
+      inferredDistancePc: { lower: 0.00002, median: 0.000021, upper: 0.000022, method: 'ephemeris_au' },
+      evidence: { id: 'ev-eph', evidenceClass: 'predicted' as const, verificationMethod: 'Ephemeris', limitations: [], verifiedByIndependentHoldout: false },
+    } as unknown as CelestialFinding;
+    renderCard({ session, selectedFinding: ephemerisBody });
+    expect(q('target-card-distance-row')?.querySelector('.alb-scan-value')?.textContent).toBe('Distance Unconstrained');
+    expect(q('distance-rail')).toBeNull();
   });
 });
 

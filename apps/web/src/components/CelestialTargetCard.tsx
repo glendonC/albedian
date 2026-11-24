@@ -25,6 +25,8 @@ import {
   type ScanInterval,
 } from './scanScales.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
+import { deepSkyRowOf, isDeepSky, useDeepSkyTable } from '../reveal/deepSky.js';
+import { constellationFullName, isCatalogDistanceMethod, starCardFacts } from '../reveal/starCardFacts.js';
 import { decodedFrameMatches, orientedSize, useViewportSize } from './sourcePhotoRect.js';
 import { projectFindingToViewport } from './CelestialMarkerOverlay.js';
 import {
@@ -225,6 +227,7 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
 }) => {
   const distInfo = formatDistanceWithUncertainty(selectedFinding?.inferredDistancePc);
   const canEnterSpace = findingCanEnterSpace(selectedFinding);
+  const deepSky = useDeepSkyTable(Boolean(selectedFinding && isDeepSky(selectedFinding)));
   const [cropFailedUrl, setCropFailedUrl] = useState<string | null>(null);
   const [cropMismatchUrl, setCropMismatchUrl] = useState<string | null>(null);
   const goThere = useRef<() => void>(() => {});
@@ -366,8 +369,9 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
   };
 
   const distancePc = selectedFinding.inferredDistancePc;
+  const hasCatalogDistance = Boolean(distancePc && distInfo.canEnter3DSpace && isCatalogDistanceMethod(distancePc.method));
   const distancePlacement =
-    distInfo.canEnter3DSpace && distancePc
+    hasCatalogDistance && distancePc
       ? placeIntervalOnLogRail(
           {
             median: distancePc.median * PARSEC_TO_LIGHT_YEAR,
@@ -385,13 +389,20 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
   const luminosityPlacement = luminosity ? placeIntervalOnLogRail(luminosity, LUMINOSITY_RAIL_SUN) : null;
   const ruwe = astro?.ruwe ?? null;
   const catalogSource = cat ? `${cat.provider}` : 'Catalog';
+  const cardFacts = starCardFacts(selectedFinding, isDeepSky(selectedFinding) ? deepSkyRowOf(selectedFinding, deepSky) : null);
+  const subtitle = cat ? cardFacts.subLine : selectedFinding.subtitle;
+  const fullConstellation = cat ? constellationFullName(cat.constellation) : null;
+  const catalogLineParts = [
+    fullConstellation,
+    cat?.apparentMagnitude !== undefined ? `Mag ${cat.apparentMagnitude.toFixed(2)}` : null,
+  ].filter((part): part is string => part !== null);
 
   return (
     <aside
       className="alb-target-card"
       data-hud-interactive="true"
       data-testid="celestial-target-card"
-      aria-label={`Selected target: ${selectedFinding.title}`}
+      aria-label={`Selected target: ${cardFacts.title}`}
     >
       <div className="alb-scan-body">
       {onClose && (
@@ -412,11 +423,13 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
           </span>
         </span>
         <h2 className="alb-scan-name" data-testid="target-card-title">
-          {selectedFinding.title}
+          {cardFacts.title}
         </h2>
-        <div className="alb-scan-sub" data-testid="target-card-subtitle">
-          {selectedFinding.subtitle}
-        </div>
+        {subtitle !== null && (
+          <div className="alb-scan-sub" data-testid="target-card-subtitle">
+            {subtitle}
+          </div>
+        )}
         <p className="alb-scan-disclosure" data-testid="target-card-disclosure">
           {badge.disclosure}
         </p>
@@ -481,10 +494,10 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
 
       <section className="alb-scan-sec" data-testid="target-card-distance-row">
         <SectionHead
-          evidenceClass={evidenceClass === 'catalog_matched' ? 'catalog_matched' : evidenceClass}
+          evidenceClass={evidenceClass}
           label="Distance"
           value={
-            distInfo.canEnter3DSpace && distancePc ? (
+            hasCatalogDistance && distancePc ? (
               <>
                 {formatSignificant(distancePc.median * PARSEC_TO_LIGHT_YEAR)} ly{' '}
                 <small>{formatSignificant(distancePc.median)} pc</small>
@@ -503,7 +516,7 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
             tickLabel={(tick, index) => (index === 0 ? `${formatTick(tick)} ly` : formatTick(tick))}
           />
         )}
-        {distancePc && distInfo.canEnter3DSpace ? (
+        {distancePc && hasCatalogDistance ? (
           <p className="alb-scan-source" data-testid="distance-rail-source">
             {distanceMethodLabel(distancePc.method).name} · {distanceMethodLabel(distancePc.method).range}:{' '}
             {formatSignificant(distancePc.lower * PARSEC_TO_LIGHT_YEAR)} to{' '}
@@ -588,10 +601,11 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
           <div className="alb-scan-catalog-id">
             {cat.provider} ({cat.releaseVersion}) · {cat.catalogSourceId}
           </div>
-          <div className="alb-scan-catalog-line">
-            {cat.constellation}
-            {cat.apparentMagnitude !== undefined && ` · Mag ${cat.apparentMagnitude.toFixed(2)}`}
-          </div>
+          {catalogLineParts.length > 0 && (
+            <div className="alb-scan-catalog-line">
+              {catalogLineParts.join(' · ')}
+            </div>
+          )}
           {cat.spectralType && (
             <div className="alb-scan-catalog-line" data-testid="target-card-spectral-type">
               Spectral type: {cat.spectralType}
