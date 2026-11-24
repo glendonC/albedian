@@ -270,10 +270,7 @@ public final class SensorRecorder: @unchecked Sendable {
     /// D8, INTERIM (UIUX-iphone-aim-QUESTION): the line under the aiming preview, what a photo's record would say now of
     /// its place and heading, by the builder's own rules (`PointingRecordBuilder.place`, `.heading`) on the newest
     /// readings; nil while both are there, or while no motion sample says whether a heading could be.
-    public func aimingLine(at deviceClock: Date) -> String? {
-        let (place, heading) = aimingReadings(at: deviceClock)
-        return AimNotice.line(place: place, heading: heading)
-    }
+    public func aimingLine(at deviceClock: Date) -> String? { aimingNow(at: deviceClock).line }
 
     /// What the aim overlay needs (mobile-5): the place and the heading accuracy a photo's record would carry now, by
     /// the same rules as `aimingLine`; nil whenever that record would have no place or no heading, so the overlay is
@@ -283,7 +280,10 @@ public final class SensorRecorder: @unchecked Sendable {
     /// The aim view's line and sky together, from one read of the readings (AUDIT-C's sweep, items 10 and 11).
     public func aimingNow(at deviceClock: Date) -> AimingNow {
         let (place, heading) = aimingReadings(at: deviceClock)
-        let line = AimNotice.line(place: place, heading: heading)
+        // UIUX-iphone-cameraunusable-READY item 2: while the person has not answered whether Albedian may use the location
+        // (nothing reported yet, or not determined), no line: never a no they did not give
+        let undecided = lock.withLock { authorization == nil || authorization == .notDetermined }
+        let line = undecided ? nil : AimNotice.line(place: place, heading: heading)
         guard case .allowed(let allowed) = place, case .measured(let measured)? = heading else { return AimingNow(line: line, sky: nil) }
         return AimingNow(line: line, sky: AimingSky(latDeg: allowed.latDeg, lonDeg: allowed.lonDeg,
                                                     headingAccuracyDeg: measured.headingAccuracyDeg))

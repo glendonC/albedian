@@ -43,8 +43,11 @@ final class CameraSession: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
     private var typeAtShutter: [Int64: PhotoContentType] = [:]
     private var beganAtShutter: (@Sendable (Double) -> Void)?
 
-    /// Sets up the session with the back wide-angle camera.
+    /// Sets up the session with the back wide-angle camera, once: the session keeps its input and output between aims,
+    /// and the next aim (Take again, or Start again from home) asks again [inference: AVFoundation refuses an input and an
+    /// output the session already holds, which would read as a camera that cannot be used; an iPhone check].
     func configure() -> Failure? {
+        if device != nil { return nil }
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else { return .noCamera }
         do {
             let input = try AVCaptureDeviceInput(device: device)

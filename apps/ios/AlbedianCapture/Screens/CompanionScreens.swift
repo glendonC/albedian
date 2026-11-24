@@ -209,6 +209,27 @@ struct AimScreen: View {
                     .opacity(AimExit.opacity(.rest, hidden: hidden))
                     MainButton(title: "Open Settings", icon: .arrow, action: SettingsPage.open).atBottom(Arrive.mainBottomGap)
                         .opacity(AimExit.opacity(.rest, hidden: hidden))
+                } else if model.aimCamera.showsTryAgain {
+                    // camera-unusable-m1 (UIUX-iphone-cameraunusable-READY, DECIDED-BY-LEAD 24 Nov 15:34): allowed but not
+                    // usable, D8's camera state as laid out, its grey line only when another app may hold the camera, and
+                    // "Try again" where the capture button sits; no capture button, no preview, no tag and no rings
+                    VStack(spacing: 6) {
+                        HStack(spacing: 8) {
+                            AlbedianIcon.cameraSlash.image(18).accessibilityHidden(true)
+                            Text(AimCamera.title).font(AlbedianFont.regular(17)).tracking(-0.01 * 17)
+                        }
+                        .foregroundStyle(Color(ControlStyle.ink))
+                        if let detail = model.aimCamera.detail {
+                            Text(detail).font(AlbedianFont.regular(14)).tracking(-0.005 * 14)
+                                .foregroundStyle(Color(ControlStyle.inkSecondary))
+                        }
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .atTop(340)
+                    .opacity(AimExit.opacity(.rest, hidden: hidden))
+                    MainButton(title: "Try again", icon: .arrow, action: model.tryCameraAgain).atBottom(Arrive.mainBottomGap)
+                        .opacity(AimExit.opacity(.rest, hidden: hidden))
                 } else {
                     let width = Double(geometry.size.width)
                     CameraPreview(session: model.camera.session)

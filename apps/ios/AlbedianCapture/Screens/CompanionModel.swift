@@ -66,6 +66,9 @@ final class CompanionModel {
     private(set) var cameraProblem: CameraSession.Failure?
     /// D8, INTERIM: the person refused the camera (or it is restricted), so aiming shows why in place of the preview.
     private(set) var cameraRefused = false
+    /// camera-unusable-m1 (UIUX-iphone-cameraunusable-READY): the aim view's camera as the person meets it.
+    private(set) var aimCamera: AimCamera = .live
+    private var cameraWatch: [NSObjectProtocol] = []
     /// The page the Safari view shows, set only for a page `SafariViewGate` allows.
     var openPage: OutsidePageItem?
 
@@ -133,10 +136,61 @@ final class CompanionModel {
         recorder?.start(interface: .portrait)
         let access = AVCaptureDevice.authorizationStatus(for: .video)
         cameraRefused = access == .denied || access == .restricted
-        guard !cameraRefused else { return }
+        guard !cameraRefused else { return cameraReported(.refused) }
         cameraProblem = camera.configure()
+        cameraReported(Self.cameraEvent(cameraProblem))
+        watchCamera()
         if cameraProblem == nil { camera.start() }
         startSky()
+    }
+
+    /// "Try again" on a camera that cannot be used: set it up and start it again; after an interruption, start it again,
+    /// and it comes back when the system ends the interruption.
+    func tryCameraAgain() {
+        if case .interrupted = aimCamera { return camera.start() }
+        cameraProblem = camera.configure()
+        cameraReported(Self.cameraEvent(cameraProblem))
+        if cameraProblem == nil { camera.start() }
+    }
+
+    private func cameraReported(_ event: CameraEvent?) {
+        guard let event else { return }
+        aimCamera = aimCamera.after(event)
+    }
+
+    /// What setting the camera up said, as the aim view's camera reads it.
+    nonisolated static func cameraEvent(_ failure: CameraSession.Failure?) -> CameraEvent {
+        switch failure {
+        case nil: .configured
+        case .noCamera?: .noCamera
+        default: .notUsable
+        }
+    }
+
+    /// Why the running session was interrupted (Apple's `AVCaptureSession.InterruptionReason`), or nil for a reason that
+    /// leaves the camera as it is (the app in the background, the microphone).
+    nonisolated static func cameraEvent(_ reason: AVCaptureSession.InterruptionReason?) -> CameraEvent? {
+        switch reason {
+        case .videoDeviceInUseByAnotherClient?, .videoDeviceNotAvailableWithMultipleForegroundApps?: .interruptedInUse
+        case .videoDeviceNotAvailableDueToSystemPressure?: .interruptedBySystemPressure
+        default: nil
+        }
+    }
+
+    /// The session's interruptions and their ends, while aiming.
+    private func watchCamera() {
+        guard cameraWatch.isEmpty else { return }
+        let center = NotificationCenter.default
+        cameraWatch = [
+            center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: camera.session, queue: .main) { [weak self] note in
+                let reason = (note.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int).flatMap(AVCaptureSession.InterruptionReason.init(rawValue:))
+                let event = Self.cameraEvent(reason)
+                MainActor.assumeIsolated { self?.cameraReported(event) }
+            },
+            center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: camera.session, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.cameraReported(.interruptionEnded) }
+            },
+        ]
     }
 
     /// D8, INTERIM: the line under the aiming preview, what the photo's record would say of its place and heading now,
@@ -205,6 +259,8 @@ final class CompanionModel {
         skyHeadingAccuracyDeg = nil
         recorder?.stop()
         recorder = nil
+        cameraWatch.forEach(NotificationCenter.default.removeObserver)
+        cameraWatch = []
         camera.stop()
     }
 
@@ -241,7 +297,7 @@ final class CompanionModel {
 
     /// The capture button: one long exposure, with "Hold still" while it runs (arrive iPhone 4).
     func shoot() {
-        guard !shooting, cameraProblem == nil else { return }
+        guard !shooting, cameraProblem == nil, aimCamera.showsCaptureButton else { return }
         shooting = true
         stopRequested = false
         exposureSec = nil
@@ -392,7 +448,10 @@ final class CompanionModel {
             case .notSent?:
                 // A photo the laptop refused, in its own words, follows the failed screen; a refused record's sentence is
                 // review question C9, so that one leaves the screen as it is
-                if case .failed(.refused(.photo, _, let detail?)) = last { self.stop(detail, sha256: shot.sha256, address: address, solveOnly: false) }
+                if case .failed(.refused(.photo, _, let detail?)) = last {
+                    // The laptop's reason as a sentence, by the approved rule (UIUX-iphone-cameraunusable-READY item 3)
+                    self.stop(RefusalSentence.of(detail) ?? detail, sha256: shot.sha256, address: address, solveOnly: false)
+                }
             case nil:
                 break
             }
@@ -569,6 +628,23 @@ final class CompanionModel {
         for (index, flag) in args.enumerated() where flag == "-AlbedianCoachStandIn" && args.indices.contains(index + 1) {
             standInCoach.insert(args[index + 1])
         }
+        // `-AlbedianCameraStandIn noCamera|inUse|interruptedThenEnds`: the camera states the simulator cannot make
+        // (camera-unusable-m1) on aiming, no sensors started; the last comes back 3 s after it was interrupted. A stand-in
+        if let index = args.firstIndex(of: "-AlbedianCameraStandIn"), args.indices.contains(index + 1) {
+            screen = .aim
+            switch args[index + 1] {
+            case "noCamera": cameraReported(.noCamera)
+            case "inUse": cameraReported(.notUsable)
+            default:
+                cameraReported(.configured)
+                cameraReported(.interruptedInUse)
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(3))
+                    self?.cameraReported(.interruptionEnded)
+                }
+            }
+            return
+        }
         if let index = args.firstIndex(of: "-AlbedianAimStandIn"), args.indices.contains(index + 5) {
             let n = args[(index + 1)...(index + 5)].compactMap(Double.init)
             if n.count == 5 {
@@ -724,7 +800,7 @@ extension CompanionModel {
                 self.keptSending = nil
                 self.shot = kept
                 if case .failed(.refused(.photo, _, let detail?)) = last {
-                    self.stop(detail, sha256: kept.sha256, address: address, solveOnly: false)
+                    self.stop(RefusalSentence.of(detail) ?? detail, sha256: kept.sha256, address: address, solveOnly: false)
                 } else {
                     self.screen = .afterShot
                 }
