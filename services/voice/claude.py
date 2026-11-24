@@ -15,7 +15,9 @@ from datetime import datetime, timezone
 from functools import lru_cache
 import json
 import logging
+import math
 import os
+import time
 from typing import TYPE_CHECKING, Any
 
 import anthropic
@@ -51,6 +53,8 @@ CONNECT_TIMEOUT_S = 2.0
 TIMEOUT_S = 20.0
 MAX_RETRIES = 1
 MAX_POINTER_RECENCY_MS = 10_000.0
+MAX_CLOCK_SKEW_MS = 60_000.0
+UNIX_EPOCH_THRESHOLD_MS = 1_000_000_000_000.0
 
 # The Solar System bodies a recording's sky is predicted with, from the ephemeris' own list
 # (services/science/predicted_sky.py), never retyped here: the Sun, the Moon and five planets. The rules
@@ -61,6 +65,7 @@ CATALOG_STAR_NAMES: dict[str, str] = {star.common_name: f"finding-{star.id}" for
 for _star in named_stars():
     CATALOG_STAR_NAMES.setdefault(_star.name, _star.finding_id)
 CATALOG_FINDING_IDS = frozenset(CATALOG_STAR_NAMES.values())
+PREDICTED_STAR_FINDING_IDS = frozenset(f"finding-predicted-{star.id}" for star in ALL_SKY_CATALOG_STARS)
 PREDICTED_FINDING_IDS = frozenset(f"finding-predicted-{key}" for key in PREDICTED_BODY_KEYS)
 
 _FINDING_ID = {
@@ -304,17 +309,18 @@ def _shared_client(api_key: str) -> anthropic.Anthropic:
     return build_client(api_key)
 
 
-def fresh_pointer(context: ActionContext) -> Any | None:
+def fresh_pointer(context: ActionContext, *, now_ms: float | None = None) -> Any | None:
     """The context's pointer when it belongs to `context.view_revision` and is not stale; else None."""
     pointer = context.recent_pointer
     if pointer is None or pointer.view_revision != context.view_revision:
         return None
-    if pointer.at_timestamp_ms < 0:
+    if not math.isfinite(pointer.at_timestamp_ms) or pointer.at_timestamp_ms < 0.0:
         return None
-    if (
-        pointer.at_timestamp_ms < 1_000_000_000_000
-        and context.source_time_sec * 1000.0 - pointer.at_timestamp_ms > MAX_POINTER_RECENCY_MS
-    ):
+    if pointer.at_timestamp_ms >= UNIX_EPOCH_THRESHOLD_MS:
+        clock_ms = time.time() * 1000.0 if now_ms is None else now_ms
+        age_ms = clock_ms - pointer.at_timestamp_ms
+        return pointer if -MAX_CLOCK_SKEW_MS <= age_ms <= MAX_POINTER_RECENCY_MS else None
+    if context.source_time_sec * 1000.0 - pointer.at_timestamp_ms > MAX_POINTER_RECENCY_MS:
         return None
     return pointer
 
@@ -370,7 +376,7 @@ def _matches(schema: dict[str, Any], value: Any) -> bool:
     if kind == "integer":
         return isinstance(value, int) and not isinstance(value, bool)
     if kind == "number":
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
     return False
 
 
@@ -396,7 +402,7 @@ def compose_action(
         "expectedViewRevision": expected_view_revision,
     }
     if "findingId" in tool_input:
-        known = CATALOG_FINDING_IDS | PREDICTED_FINDING_IDS | _context_finding_ids(context)
+        known = CATALOG_FINDING_IDS | PREDICTED_STAR_FINDING_IDS | PREDICTED_FINDING_IDS | _context_finding_ids(context)
         if tool_input["findingId"] not in known:
             return None
         action["findingId"] = tool_input["findingId"]

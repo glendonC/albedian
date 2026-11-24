@@ -14,7 +14,9 @@ sentence. Nothing here logs.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
+from functools import lru_cache
 import math
 import re
 from typing import Any
@@ -22,10 +24,15 @@ from typing import Any
 from pydantic import ValidationError
 
 from services.contracts import voice as contract
-from services.contracts.designation_tables import DESIGNATION_CONSTELLATIONS
+from services.contracts.designation import flamsteed_long_designation
+from services.contracts.designation_tables import (
+    DESIGNATION_CONSTELLATIONS,
+    DESIGNATION_INDICES,
+    DESIGNATION_LETTERS,
+)
 from services.contracts.voice import lower_case
-from services.science import radiometry
-from services.voice import intent
+from services.science import deep_sky_catalog, radiometry
+from services.voice import intent, names
 from services.voice.grammar import VOICE_GRAMMAR, fold
 
 # What a question asks, by the words that ask it. Every kind with a phrase in the request is asked; identity's
@@ -248,20 +255,255 @@ def moon_statements(moment: str) -> list[dict[str, Any]]:
                 ("moon_phase_name", {"kind": "text", "text": phase["phaseName"]}))]
 
 
+@dataclass(frozen=True)
+class _StaticTarget:
+    key: str
+    label: str
+    ids: tuple[str, ...]
+    bayer: str | None = None
+    flamsteed: str | None = None
+    is_moon: bool = False
+
+
+@dataclass(frozen=True)
+class _MatchedTarget:
+    index: int | None
+    label: str
+    key: str
+    is_moon: bool = False
+
+
+_EXTRA_SOLAR_BODIES: tuple[tuple[str, str], ...] = (
+    ("mercury", "Mercury"),
+    ("neptune", "Neptune"),
+    ("pluto", "Pluto"),
+)
+# An abbreviation after a number reads as a Flamsteed star only as the IAU writes it ("119 Tau"), since in lower case
+# many are words ("50 per cent", "3 men"); "Oct" never does, as after a number it is the month
+_DATE_ABBRS = frozenset({"Oct"})
+_CANON_LETTER = {lower_case(name): name for _, _, name in DESIGNATION_LETTERS}
+_CANON_GENITIVE = {lower_case(gen): gen for _, _, gen in DESIGNATION_CONSTELLATIONS}
+_ABBR_BY_GENITIVE = {lower_case(gen): abbr for abbr, _, gen in DESIGNATION_CONSTELLATIONS}
+_IAU_ABBRS = [abbr for abbr, _, _ in DESIGNATION_CONSTELLATIONS if abbr not in _DATE_ABBRS]
+
+
+def _alt_lower(items: list[str]) -> str:
+    return "|".join(re.escape(w) for w in sorted(items, key=lambda s: (-len(s), s)))
+
+
+_BAYER_QUERY_RE = re.compile(
+    rf"\b(?P<letter>{_alt_lower(list(_CANON_LETTER))})(?P<digit>{_alt_lower([d for d, _ in DESIGNATION_INDICES])})?\s+(?P<gen>{_alt_lower(list(_CANON_GENITIVE))})\b",
+    re.ASCII,
+)
+_FLAMSTEED_QUERY_RE = re.compile(
+    rf"\b(?P<num>[1-9]\d{{0,2}})\s+(?P<const>{_alt_lower(list(_ABBR_BY_GENITIVE))})\b",
+    re.ASCII,
+)
+_FLAMSTEED_ABBR_QUERY_RE = re.compile(rf"\b(?P<num>[1-9]\d{{0,2}})\s+(?P<const>{_alt_lower(_IAU_ABBRS)})\b", re.ASCII)
+_NGC_IC_QUERY_RE = re.compile(r"\b(?P<cat>ngc|ic)\s*0*(?P<num>[1-9]\d*[a-z]*)\b", re.ASCII)
+
+
+@lru_cache(maxsize=1)
+def _static_targets() -> tuple[tuple[tuple[re.Pattern[str], _StaticTarget], ...], dict[str, tuple[str, str]]]:
+    entries: list[tuple[str, re.Pattern[str], _StaticTarget]] = []
+    seen_spoken: set[str] = set()
+
+    for spoken, finding_id in intent._STAR_NAMES.items():
+        pred_id = finding_id if finding_id.startswith("finding-predicted-") else finding_id.replace("finding-", "finding-predicted-", 1)
+        shown = intent._SHOWN_NAMES[spoken]
+        seen_spoken.add(spoken)
+        entries.append((spoken, names.name_pattern(spoken), _StaticTarget(finding_id, shown, (finding_id, pred_id))))
+
+    for body_key in intent.PREDICTED_BODY_KEYS:
+        fid = f"finding-predicted-{body_key}"
+        shown = names.ascii_capitalized(body_key)
+        seen_spoken.add(body_key)
+        entries.append((body_key, names.whole_word(body_key), _StaticTarget(fid, shown, (fid,), is_moon=(body_key == "moon"))))
+
+    for spoken, shown in _EXTRA_SOLAR_BODIES:
+        fid = f"finding-predicted-{spoken}"
+        seen_spoken.add(spoken)
+        entries.append((spoken, names.whole_word(spoken), _StaticTarget(fid, shown, (fid,))))
+
+    for raw_label, spoken_list in names.UNBAKED_OBJECTS.items():
+        clean_label = raw_label.removeprefix("the ")
+        row_code = names.UNBAKED_DEEP_SKY_ROWS.get(raw_label)
+        fids = (deep_sky_catalog.finding_id(row_code),) if row_code is not None else ()
+        key = fids[0] if fids else f"unbaked:{lower_case(clean_label)}"
+        for sp in spoken_list:
+            if sp not in seen_spoken:
+                seen_spoken.add(sp)
+                entries.append((sp, names.whole_word(sp), _StaticTarget(key, clean_label, fids)))
+
+    table, at = deep_sky_catalog.table_and_columns()
+    by_code: dict[str, tuple[str, str]] = {}
+    common_counts: dict[str, int] = {}
+    candidate_rows = deep_sky_catalog._candidate_rows()
+    for row in candidate_rows:
+        for cn in row[at["commonNames"]] or []:
+            low = lower_case(cn)
+            common_counts[low] = common_counts.get(low, 0) + 1
+
+    for row in candidate_rows:
+        row_name = row[at["name"]]
+        fid = deep_sky_catalog.finding_id(row_name)
+        disp = deep_sky_catalog.display_name(row_name, row[at["commonNames"]] or [])
+        low_code = lower_case(row_name)
+        by_code[low_code] = (fid, disp)
+        unpadded = re.sub(r"^(ngc|ic)0+(\d)", r"\1\2", low_code)
+        by_code.setdefault(unpadded, (fid, disp))
+
+        for cn in row[at["commonNames"]] or []:
+            sp = lower_case(cn)
+            if sp in seen_spoken or (" " not in sp and common_counts.get(sp, 0) > 1):
+                continue
+            seen_spoken.add(sp)
+            entries.append((sp, names.whole_word(sp), _StaticTarget(fid, disp, (fid,))))
+
+        messier = row[at["messier"]]
+        if messier is not None:
+            m_num = int(messier)
+            m_key = f"messier {m_num}"
+            if m_key not in seen_spoken:
+                seen_spoken.add(m_key)
+                entries.append(
+                    (m_key, re.compile(rf"\b(?:messier\s+|m){m_num}\b", re.ASCII), _StaticTarget(fid, disp, (fid,)))
+                )
+
+    ordered = tuple(
+        (pattern, spec) for _sp, pattern, spec in sorted(entries, key=lambda item: (-len(item[0]), item[0]))
+    )
+    return ordered, by_code
+
+
+def _finding_flamsteed_long(finding: dict[str, Any]) -> str | None:
+    num = _get(finding, ("catalogRef", "flamsteedNumber"))
+    const = _get(finding, ("catalogRef", "constellation"))
+    if isinstance(num, (int, float)) and not isinstance(num, bool) and isinstance(const, str):
+        return flamsteed_long_designation(num, const)
+    return None
+
+
+def _match_finding(spec: _StaticTarget, findings: list[dict[str, Any]]) -> int | None:
+    low_label = lower_case(spec.label)
+    for index, finding in enumerate(findings):
+        fid = finding.get("id")
+        if fid in spec.ids:
+            return index
+        common = _get(finding, ("catalogRef", "commonName"))
+        if isinstance(common, str) and lower_case(common) == low_label:
+            return index
+        # A designation's label is the designation itself, so a title that is the designation matched just above
+        title = finding.get("title")
+        if isinstance(title, str) and lower_case(title) == low_label:
+            return index
+        if spec.bayer is not None and _get(finding, ("catalogRef", "bayerDesignation")) == spec.bayer:
+            return index
+        if spec.flamsteed is not None and _finding_flamsteed_long(finding) == spec.flamsteed:
+            return index
+    if spec.is_moon:
+        for index, finding in enumerate(findings):
+            if finding.get("id") == "finding-observed-moon":
+                return index
+    return None
+
+
+def _named_targets(question: str, solution: dict[str, Any] | None) -> list[_MatchedTarget]:
+    """Every target named in `question`, in the order spoken, resolved against `solution['findings']` when present."""
+    findings: list[dict[str, Any]] = list((solution or {}).get("findings") or [])
+    rest = _lowered(question)
+    static_list, by_code = _static_targets()
+    raw_hits: list[tuple[int, _StaticTarget]] = []
+
+    def take_spans(spans: list[tuple[int, int]], spec: _StaticTarget) -> None:
+        nonlocal rest
+        for start, end in spans:
+            raw_hits.append((start, spec))
+            rest = names.blank(rest, start, end)
+
+    for pattern, spec in static_list:
+        spans = [m.span() for m in pattern.finditer(rest)]
+        if spans:
+            take_spans(spans, spec)
+
+    for match in list(_NGC_IC_QUERY_RE.finditer(rest)):
+        start, end = match.span()
+        if rest[start:end].strip() == "":
+            continue
+        cat = match.group("cat").upper()
+        num = match.group("num").upper()
+        lookup = f"{cat.lower()}{num.lower()}"
+        fid, disp = by_code.get(lookup, (f"finding-openngc-{cat}{num}", f"{cat} {num}"))
+        take_spans([(start, end)], _StaticTarget(fid, disp, (fid,)))
+
+    for match in list(_BAYER_QUERY_RE.finditer(rest)):
+        start, end = match.span()
+        if rest[start:end].strip() == "":
+            continue
+        digit = match.group("digit") or ""
+        canon = f"{_CANON_LETTER[match.group('letter')]}{digit} {_CANON_GENITIVE[match.group('gen')]}"
+        take_spans([(start, end)], _StaticTarget(f"bayer:{canon}", canon, (), bayer=canon))
+
+    for match in list(_FLAMSTEED_QUERY_RE.finditer(rest)):
+        start, end = match.span()
+        if rest[start:end].strip() == "":
+            continue
+        canon_flam = flamsteed_long_designation(int(match.group("num")), _ABBR_BY_GENITIVE[match.group("const")])
+        if canon_flam is not None:
+            take_spans([(start, end)], _StaticTarget(f"flamsteed:{canon_flam}", canon_flam, (), flamsteed=canon_flam))
+
+    # The abbreviation in its IAU case, read from the words as written, at the same places as the lowered ones
+    cased = fold(VOICE_GRAMMAR, question).strip(intent._JAVASCRIPT_TRIM)
+    if len(cased) == len(rest):
+        for match in list(_FLAMSTEED_ABBR_QUERY_RE.finditer(cased)):
+            start, end = match.span()
+            if rest[start:end] != lower_case(cased[start:end]):
+                continue
+            canon_flam = flamsteed_long_designation(int(match.group("num")), match.group("const"))
+            if canon_flam is not None:
+                take_spans([(start, end)], _StaticTarget(f"flamsteed:{canon_flam}", canon_flam, (), flamsteed=canon_flam))
+
+    for index, finding in enumerate(findings):
+        title = finding.get("title")
+        if isinstance(title, str) and len(title.strip()) >= 3:
+            pat = names.whole_word(title.strip())
+            spans = [m.span() for m in pat.finditer(rest)]
+            if spans:
+                fid = str(finding.get("id") or f"finding-idx-{index}")
+                take_spans(spans, _StaticTarget(fid, title.strip(), (fid,)))
+
+    if raw_hits:
+        for pattern, named in intent._EVERYDAY_BARE_TABLE:
+            spans = [m.span() for m in pattern.finditer(rest)]
+            if spans:
+                pred_id = named.finding_id.replace("finding-", "finding-predicted-", 1)
+                take_spans(spans, _StaticTarget(named.finding_id, named.label, (named.finding_id, pred_id)))
+
+    raw_hits.sort(key=lambda hit: hit[0])
+    unique: list[_MatchedTarget] = []
+    seen_indices: set[int] = set()
+    seen_keys: set[str] = set()
+    for _pos, spec in raw_hits:
+        idx = _match_finding(spec, findings)
+        if idx is not None:
+            if idx in seen_indices:
+                continue
+            seen_indices.add(idx)
+        else:
+            if spec.key in seen_keys:
+                continue
+            seen_keys.add(spec.key)
+        unique.append(_MatchedTarget(index=idx, label=spec.label, key=spec.key, is_moon=spec.is_moon))
+    return unique
+
+
 def _target(question: str, solution: dict[str, Any], selected: str | None) -> tuple[int | None, str | None]:
     """The index of the finding the words are about, and the name said when no finding has it. A request that names
     more than one thing is refused before this is asked."""
     findings = solution.get("findings") or []
-    named, _without_names = intent._said(_lowered(question))
-    if named:
-        each = named[0]
-        for index, finding in enumerate(findings):
-            common = _get(finding, ("catalogRef", "commonName"))
-            if finding.get("id") in (each.finding_id, each.predicted_id) or (
-                isinstance(common, str) and lower_case(common) == lower_case(each.label)
-            ):
-                return index, None
-        return None, each.label
+    matched = _named_targets(question, solution)
+    if matched:
+        return matched[0].index, (None if matched[0].index is not None else matched[0].label)
     if selected is not None:
         for index, finding in enumerate(findings):
             if finding.get("id") == selected:
@@ -420,10 +662,10 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
         return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_ONLY_NEGATED if negated else None,
                         noun=noun)
     kind = next(iter(asked))
-    said_names = intent._said(_lowered(question))[0]
-    if len(said_names) > 1:
+    said_targets = _named_targets(question, solution)
+    if len(said_targets) > 1:
         return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_TWO_NAMES, noun=noun)
-    if kind == "moon_phase" and any(each.finding_id != "finding-predicted-moon" for each in said_names):
+    if kind == "moon_phase" and any(not each.is_moon for each in said_targets):
         return _refused(unanswerable, "outside_the_data", solution, noun=noun)
     if solution is None or solution.get("status") in UNSOLVED:
         return _refused(kind, "photo_not_solved", solution, noun=noun)

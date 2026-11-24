@@ -23,7 +23,7 @@ from services.ingest.job_store import JobStore, Unreadable
 from services.ingest.router import UNREADABLE_SOLUTION, get_ingest_store
 from services.ingest.store import IngestStore
 from services.voice.answers import answer_question, noun_of
-from services.voice.intent import check_voice_command
+from services.voice.intent import ActionContext, check_voice_command
 
 _SOLUTION_ID: TypeAdapter[str] = TypeAdapter(SolutionId)
 _FINDING_ID: TypeAdapter[str] = TypeAdapter(FindingId)
@@ -65,6 +65,13 @@ class VoiceCommandRequest(BaseModel):
     def _cap_utterance(cls, value: str) -> str:
         return check_utterance_length(value)
 
+    @field_validator("context")
+    @classmethod
+    def _validate_context(cls, value: dict[str, Any]) -> dict[str, Any]:
+        # A field of the wrong type is refused here, as a 422 that echoes nothing, not met later as a 500
+        ActionContext.from_dict(value)
+        return value
+
 
 def _read_checked_solution(store: IngestStore, sha256: str) -> dict[str, Any] | None:
     """The stored ObservationSolution for `sha256`, checked by the contract's parser and the answer contract's id
@@ -94,11 +101,12 @@ def post_voice_answer(
 ) -> dict[str, Any]:
     """Answer a question about a stored upload from its stored solution: the words as heard and one VoiceAnswer.
     Nothing here logs the words, and no model reads them."""
-    if store.read_record(sha256) is None or store.original(sha256) is None:
+    record = store.read_record(sha256)
+    if record is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
     solution = _read_checked_solution(store, sha256)
     # The recording named by its own noun, from the stored upload's media kind (C34)
-    asset = (store.read_record(sha256) or {}).get("sourceAsset")
+    asset = record.get("sourceAsset")
     noun = noun_of(asset.get("mediaKind") if isinstance(asset, dict) else None)
     reply = {"heard": req.question,
              "answer": answer_question(req.question, solution, req.selected_finding_id, noun=noun)}

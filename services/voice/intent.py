@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import logging
+import math
 import re
 from typing import Any, Literal
 import uuid
@@ -31,6 +32,7 @@ from services.contracts.voice import (
     FINDING_ACTION_TYPES,
     JAVASCRIPT_SPACES,
     QUESTION_MAX_UTF16,
+    SAFE_INTEGER_MAX,
     action_issues,
     lower_case,
     refusal_sentence,
@@ -178,15 +180,22 @@ class PointerContext:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PointerContext:
+        if not isinstance(data, dict):
+            raise ValueError("recentPointer must be an object")
+        raw_over = data.get("overlappingCandidateIds", data.get("overlapping_candidate_ids"))
+        if raw_over is None:
+            over: list[str] = []
+        elif isinstance(raw_over, (list, tuple)) and all(isinstance(item, str) and bool(item) for item in raw_over):
+            over = list(raw_over)
+        else:
+            raise ValueError("overlappingCandidateIds must be a list of non-empty strings")
         return cls(
-            x_px=float(data.get("xPx", data.get("x_px", 0.0))),
-            y_px=float(data.get("yPx", data.get("y_px", 0.0))),
-            at_timestamp_ms=float(data.get("atTimestampMs", data.get("at_timestamp_ms", 0.0))),
-            view_revision=int(data.get("viewRevision", data.get("view_revision", 0))),
-            nearest_finding_id=data.get("nearestFindingId", data.get("nearest_finding_id")),
-            overlapping_candidate_ids=list(
-                data.get("overlappingCandidateIds", data.get("overlapping_candidate_ids", []))
-            ),
+            x_px=_finite_float(data, "xPx", "x_px", default=0.0),
+            y_px=_finite_float(data, "yPx", "y_px", default=0.0),
+            at_timestamp_ms=_finite_float(data, "atTimestampMs", "at_timestamp_ms", default=0.0),
+            view_revision=_whole_revision(data, "viewRevision", "view_revision", default=0),
+            nearest_finding_id=_optional_str(data, "nearestFindingId", "nearest_finding_id"),
+            overlapping_candidate_ids=over,
         )
 
 
@@ -222,46 +231,120 @@ class ActionContext:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | ActionContext) -> ActionContext:
+    def from_dict(cls, data: dict[str, Any] | ActionContext | None) -> ActionContext:
+        if data is None:
+            return cls()
         if isinstance(data, ActionContext):
             return data
+        if not isinstance(data, dict):
+            raise ValueError("context must be an object")
         ptr_raw = data.get("recentPointer", data.get("recent_pointer"))
-        ptr = PointerContext.from_dict(ptr_raw) if isinstance(ptr_raw, dict) else ptr_raw
+        if ptr_raw is None or isinstance(ptr_raw, PointerContext):
+            ptr = ptr_raw
+        elif isinstance(ptr_raw, dict):
+            ptr = PointerContext.from_dict(ptr_raw)
+        else:
+            raise ValueError("recentPointer must be an object or null")
         return cls(
             session_id=_optional_str(data, "sessionId", "session_id"),
             source_asset_id=_optional_str(data, "sourceAssetId", "source_asset_id"),
-            source_time_sec=float(data.get("sourceTimeSec", data.get("source_time_sec", 0.0))),
-            navigation_state=str(data.get("navigationState", data.get("navigation_state", "source"))),
-            calibration_state=str(data.get("calibrationState", data.get("calibration_state", "not_requested"))),
-            selected_finding_id=data.get("selectedFindingId", data.get("selected_finding_id")),
-            focused_finding_id=data.get("focusedFindingId", data.get("focused_finding_id")),
+            source_time_sec=_finite_float(data, "sourceTimeSec", "source_time_sec", default=0.0, minimum=0.0),
+            navigation_state=_str_field(data, "navigationState", "navigation_state", default="source"),
+            calibration_state=_str_field(data, "calibrationState", "calibration_state", default="not_requested"),
+            selected_finding_id=_optional_str(data, "selectedFindingId", "selected_finding_id"),
+            focused_finding_id=_optional_str(data, "focusedFindingId", "focused_finding_id"),
             recent_pointer=ptr,
             simulation_epoch_iso=_optional_str(data, "simulationEpochISO", "simulation_epoch_iso"),
             observed_at_utc=_optional_str(data, "observedAtUTC", "observed_at_utc"),
-            view_revision=int(data.get("viewRevision", data.get("view_revision", 1))),
-            reduced_motion=bool(data.get("reducedMotion", data.get("reduced_motion", False))),
-            observer_lat=_optional_float(data, "observerLat", "observer_lat"),
-            observer_lon=_optional_float(data, "observerLon", "observer_lon"),
+            view_revision=_whole_revision(data, "viewRevision", "view_revision", default=1),
+            reduced_motion=_bool_field(data, "reducedMotion", "reduced_motion", default=False),
+            observer_lat=_optional_float(data, "observerLat", "observer_lat", minimum=-90.0, maximum=90.0),
+            observer_lon=_optional_float(data, "observerLon", "observer_lon", minimum=-180.0, maximum=180.0),
         )
 
 
-def _optional_float(data: dict[str, Any], *keys: str) -> float | None:
-    """Return the first non-null value among `keys` as a float, or None when none is given."""
+def _whole_revision(data: dict[str, Any], *keys: str, default: int) -> int:
     for key in keys:
-        value = data.get(key)
-        if value is not None:
-            return float(value)
+        if key in data:
+            whole = _as_whole(data[key])
+            if whole is None or not 0 <= whole <= SAFE_INTEGER_MAX:
+                raise ValueError(f"{key} must be a non-negative safe integer")
+            return whole
+    return default
+
+
+def _finite_number(raw: Any) -> float | None:
+    """`raw` as a finite float, or None for a boolean, a non-number, NaN, an infinity, or a whole number past a float's
+    range (JSON carries one, and `float` of it raises OverflowError, which would leave the route as a 500)."""
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return None
+    try:
+        value = float(raw)
+    except OverflowError:
+        return None
+    return value if math.isfinite(value) else None
+
+
+def _finite_float(data: dict[str, Any], *keys: str, default: float, minimum: float | None = None) -> float:
+    for key in keys:
+        if key in data:
+            raw = data[key]
+            value = _finite_number(raw)
+            if value is None:
+                raise ValueError(f"{key} must be a finite number")
+            if minimum is not None and value < minimum:
+                raise ValueError(f"{key} must be at least {minimum}")
+            return value
+    return default
+
+
+def _optional_float(
+    data: dict[str, Any], *keys: str, minimum: float | None = None, maximum: float | None = None
+) -> float | None:
+    """Return the first non-null value among `keys` as a finite float in bounds, or None when none is given."""
+    for key in keys:
+        if key in data:
+            raw = data[key]
+            if raw is None:
+                continue
+            value = _finite_number(raw)
+            if value is None:
+                raise ValueError(f"{key} must be a finite number")
+            if (minimum is not None and value < minimum) or (maximum is not None and value > maximum):
+                raise ValueError(f"{key} is out of bounds")
+            return value
     return None
 
 
 def _optional_str(data: dict[str, Any], *keys: str) -> str | None:
-    """Return the first non-null, non-empty value among `keys` as a string, or None when none is given."""
+    """Return the first non-null, non-empty string among `keys`, or None when none is given."""
     for key in keys:
-        value = data.get(key)
-        if value is not None:
-            text = str(value)
-            return text if text else None
+        if key in data:
+            value = data[key]
+            if value is None:
+                continue
+            if not isinstance(value, str):
+                raise ValueError(f"{key} must be a string")
+            return value if value else None
     return None
+
+
+def _str_field(data: dict[str, Any], *keys: str, default: str) -> str:
+    for key in keys:
+        if key in data and data[key] is not None:
+            if not isinstance(data[key], str):
+                raise ValueError(f"{key} must be a string")
+            return data[key]
+    return default
+
+
+def _bool_field(data: dict[str, Any], *keys: str, default: bool) -> bool:
+    for key in keys:
+        if key in data and data[key] is not None:
+            if not isinstance(data[key], bool):
+                raise ValueError(f"{key} must be a boolean")
+            return data[key]
+    return default
 
 
 @dataclass(frozen=True)
@@ -963,7 +1046,7 @@ def _describe_finding(finding_id: str, ctx: ActionContext) -> str | None:
     """The catalog row or ephemeris prediction behind a finding id, in its source's words; None if neither holds it."""
     # The backend holds catalog rows for the pinned stars only; a star named from the IAU table is described
     # by the app from its own solved finding
-    star = STAR_BY_ID.get(finding_id.removeprefix("finding-"))
+    star = STAR_BY_ID.get(finding_id.removeprefix("finding-predicted-").removeprefix("finding-"))
     if star is not None:
         return _describe_star(star)
     if finding_id in PREDICTED_FINDING_IDS:
@@ -1093,7 +1176,7 @@ def _check(
             "issues": issues,
         }
 
-    if action_type in FINDING_ACTION_TYPES:
+    if action_type in (*FINDING_ACTION_TYPES, "space.viewpoint"):
         disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
         if disambiguation is not None:
             return disambiguation
