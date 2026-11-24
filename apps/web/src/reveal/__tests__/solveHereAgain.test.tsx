@@ -52,7 +52,7 @@ const solution: ObservationSolution = {
   ...base,
   findings: [
     ...base.findings.filter((f) => f.evidenceClass !== 'predicted'),
-    target('finding-predicted-star-hip-113368', 'Fomalhaut (Predicted Ephemeris)', 20, 150, 1.16),
+    target('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16),
     target('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38),
   ],
 };

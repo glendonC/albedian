@@ -1328,8 +1328,9 @@ SOLVE_PRODUCER_FILES = (
 # `CatalogReference.bailerJonesDistancePc`, which Gaia DR3 tile rows without a photogeometric prior store on their
 # `catalogRef` (catalogref-bj-geo-1); 27, nadir un-refraction clamped at -90 deg and subnormal field-of-view guards in
 # `record_pose`, the Moon's `MIN_PEAK_LUMA` floor (and NaN) in `find_sun_core`, sub-millisecond `frame_moment`
-# truncation without `.000Z`, and OpenNGC duplicate / newline guards (science-edge-1)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 27, SOLVE_PRODUCER_FILES)
+# truncation without `.000Z`, and OpenNGC duplicate / newline guards (science-edge-1); 28, a predicted Solar System
+# body titled by its plain name, its class in its evidence class (ephemeris-title-plain-1)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 28, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

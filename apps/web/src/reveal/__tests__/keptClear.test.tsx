@@ -82,7 +82,7 @@ const template = base.findings.find((f) => f.evidenceClass === 'predicted')!;
 const target = (id: string, title: string, alt: number, az: number, mag: number) =>
   ({ ...template, id, title, skyPosition: { ...template.skyPosition!, altDeg: alt, azDeg: az }, catalogRef: { ...(template.catalogRef ?? {}), apparentMagnitude: mag, objectType: 'star' } }) as CelestialFinding;
 const SKY = [
-  target('finding-predicted-star-hip-113368', 'Fomalhaut (Predicted Ephemeris)', 20, 150, 1.16),
+  target('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16),
   target('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38),
   target('finding-predicted-star-hip-2', 'Two', 35, 110, 2.0),
 ];

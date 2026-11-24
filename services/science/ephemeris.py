@@ -483,7 +483,9 @@ def compute_solar_system_ephemerides(
                 name=body.name,
                 object_type=body.object_type,
                 evidence_class="predicted",
-                title=f"{body.name} (Predicted Ephemeris)",
+                # The plain body name, the name a person reads or hears; the class is the evidence class
+                # (the lead's ruling of 24 Nov 12:55, ephemeris-title-plain-1)
+                title=body.name,
                 subtitle=f"Predicted {body.object_type.capitalize()} · {dist_au:.3f} AU · Alt {alt_deg:+.1f}°",
                 ra_deg=ra_deg,
                 dec_deg=dec_deg,

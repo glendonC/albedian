@@ -36,7 +36,7 @@ final class PredictedEarlySkyTests: XCTestCase {
             finding("f-limit", title: "Alnitak", ra: ra + 0.5, dec: dec, type: "star", mag: 3.2, source: "HIP 26727"),
             finding("f-bright", title: "Rigel", ra: ra, dec: dec + 0.5, type: "star", mag: 0.13, source: "HIP 24436"),
             finding("f-gaia", title: "Gaia DR3 3017364132641362688", ra: ra - 0.5, dec: dec, type: "star", mag: 2.5, source: "Gaia DR3 3017364132641362688"),
-            finding("f-mars", title: "Mars (Predicted Ephemeris)", ra: ra, dec: dec - 0.5, type: "planet", mag: nil, source: "Mars"),
+            finding("f-mars", title: "Mars", ra: ra, dec: dec - 0.5, type: "planet", mag: nil, source: "Mars"),
             finding("f-ngc", title: "Pleiades", ra: ra, dec: dec, type: "deep_sky", mag: 1.6, source: "Mel22"),
         ]
         var withFindings = value
@@ -62,7 +62,7 @@ final class PredictedEarlySkyTests: XCTestCase {
         withFindings["findings"] = .array([
             finding("f-rigel", title: "Rigel", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "star", mag: 0.13, source: "HIP 24436"),
             finding("f-gaia", title: "Gaia DR3 1", ra: wcs.crvalRaDeg + 0.2, dec: wcs.crvalDecDeg, type: "star", mag: 2, source: "Gaia DR3 1"),
-            finding("f-mars", title: "Mars (Predicted Ephemeris)", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg + 0.2, type: "planet", mag: nil, source: "Mars"),
+            finding("f-mars", title: "Mars", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg + 0.2, type: "planet", mag: nil, source: "Mars"),
         ])
         let sky = try XCTUnwrap(PredictedEarlySky.read(withFindings, sha256: sha))
         let frame = StoredFrame(widthPx: Int(wcs.crpixX * 2), heightPx: Int(wcs.crpixY * 2) + 1, orientation: .upright)

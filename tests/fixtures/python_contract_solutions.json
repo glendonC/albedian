@@ -1021,7 +1021,7 @@
         "id": "finding-predicted-moon",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Moon (Predicted Ephemeris)",
+        "title": "Moon",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Above Horizon · Inside the frame (lined up, approximate)",
         "skyPosition": {
           "raDeg": 305.20320198123784,
@@ -1374,7 +1374,7 @@
         "id": "finding-predicted-moon",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Moon (Predicted Ephemeris)",
+        "title": "Moon",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Above Horizon",
         "skyPosition": {
           "raDeg": 305.20320198123784,
@@ -1403,7 +1403,7 @@
         "id": "finding-predicted-saturn",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Saturn (Predicted Ephemeris)",
+        "title": "Saturn",
         "subtitle": "Predicted Planet · 9.249 AU · Alt +4.3° · Above Horizon",
         "skyPosition": {
           "raDeg": 80.76819616869248,
@@ -1432,7 +1432,7 @@
         "id": "finding-predicted-uranus",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Uranus (Predicted Ephemeris)",
+        "title": "Uranus",
         "subtitle": "Predicted Planet · 19.431 AU · Alt +1.1° · Above Horizon",
         "skyPosition": {
           "raDeg": 85.99026035591349,
@@ -1531,7 +1531,7 @@
         "id": "finding-predicted-moon",
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
-        "title": "Moon (Predicted Ephemeris)",
+        "title": "Moon",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2°",
         "skyPosition": {
           "raDeg": 305.20320198123784,
@@ -1873,7 +1873,7 @@
         "id": "finding-predicted-uranus",
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
-        "title": "Uranus (Predicted Ephemeris)",
+        "title": "Uranus",
         "subtitle": "Predicted Planet · 19.431 AU · Alt +1.1°",
         "skyPosition": {
           "raDeg": 85.99026035591349,
@@ -1902,7 +1902,7 @@
         "id": "finding-predicted-saturn",
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
-        "title": "Saturn (Predicted Ephemeris)",
+        "title": "Saturn",
         "subtitle": "Predicted Planet · 9.249 AU · Alt +4.3°",
         "skyPosition": {
           "raDeg": 80.76819616869248,

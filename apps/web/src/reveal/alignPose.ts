@@ -94,7 +94,7 @@ export function alignTargetOf(finding: CelestialFinding): { name: string; magnit
   const planet = isPlanet(finding);
   if (!planet && !(isStar(finding) && magnitude !== null && magnitude <= ALIGN_MAGNITUDE_LIMIT)) return null;
   // A catalogue number is no name (D20): the ring stays, unnamed
-  return { name: properName(finding.title.replace(/ \(Predicted Ephemeris\)$/, '')) ?? '', magnitude };
+  return { name: properName(finding.title) ?? '', magnitude };
 }
 
 /** Brightest first, a planet the record gives no magnitude ahead of the stars, as the design's page orders them. */

@@ -106,7 +106,7 @@ public struct PredictedEarlySky: Equatable, Sendable {
             }
             guard kind == "planet" || (kind == "star" && (magnitude.map { $0 <= magnitudeLimit } ?? false)),
                   let at = wcs.pixel(raDeg: ra, decDeg: dec) else { return nil }
-            let title = (finding["title"]?.stringValue ?? "").replacingOccurrences(of: " (Predicted Ephemeris)", with: "")
+            let title = finding["title"]?.stringValue ?? ""
             return Target(id: id, name: properName(title) ?? "", magnitude: magnitude,
                           catalogSourceId: finding["catalogRef"]?["catalogSourceId"]?.stringValue, xPx: at.x, yPx: at.y,
                           isPlanet: kind == "planet")

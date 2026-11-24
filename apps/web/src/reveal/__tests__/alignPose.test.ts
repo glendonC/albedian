@@ -73,11 +73,11 @@ describe('the start', () => {
     return { ...session, sourceAsset: asset, observationSolution: { ...session.observationSolution!, findings } as ObservationSolution } as ObservationSession;
   }
   const sky = [
-    { id: 'finding-predicted-star-hip-1', title: 'Fomalhaut (Predicted Ephemeris)', alt: 20, az: 150, mag: 1.16 },
+    { id: 'finding-predicted-star-hip-1', title: 'Fomalhaut', alt: 20, az: 150, mag: 1.16 },
     { id: 'finding-predicted-star-hip-2', title: 'Enif', alt: 40, az: 100, mag: 2.38 },
     { id: 'finding-predicted-star-hip-3', title: 'Faint', alt: 30, az: 120, mag: 3.21 },
     { id: 'finding-predicted-star-hip-4', title: 'Below', alt: -5, az: 120, mag: -1.4 },
-    { id: 'finding-predicted-saturn', title: 'Saturn (Predicted Ephemeris)', alt: 25, az: 140 },
+    { id: 'finding-predicted-saturn', title: 'Saturn', alt: 25, az: 140 },
     { id: 'finding-openngc-NGC104', title: '47 Tucanae', alt: 30, az: 160, mag: 4.1 },
   ];
 

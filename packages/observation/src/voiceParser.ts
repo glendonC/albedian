@@ -523,7 +523,7 @@ const PREDICTED_ID = /^finding-predicted-(?:star-)?(.+)$/;
  * A name stands first for the record the backend itself gives that name: the solved star of the generated name
  * table, a spoken alias of its IAU name, or the body or star a finding-predicted id spells out. Only a name no
  * record carries that way is read from what a finding's title and catalog row say: the whole title, the
- * title up to its bracket ("Moon" of "Moon (Predicted Ephemeris)"), the id after "finding_", and a Bayer designation
+ * title up to its bracket ("Vega" of "Vega (Alpha Lyrae)"), the id after "finding_", and a Bayer designation
  * or catalogue number of two words or more. So "the Moon" is the predicted Moon, and the Moon's measured beacon,
  * whose title only begins with the word, is reached by pointing at it or by its whole title. A one-word
  * designation ("bet", "pi", "51": the solver's abbreviation for a named star outside the pinned catalog) is not a

@@ -366,7 +366,7 @@
      "id": "finding-predicted-mars",
      "evidenceClass": "predicted",
      "name": "Mars",
-     "title": "Mars (Predicted Ephemeris)",
+     "title": "Mars",
      "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
      "skyPosition": {
       "raDeg": 228.80467622638065,
@@ -420,7 +420,7 @@
      "id": "finding-predicted-moon",
      "evidenceClass": "predicted",
      "name": "Moon",
-     "title": "Moon (Predicted Ephemeris)",
+     "title": "Moon",
      "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
      "skyPosition": {
       "raDeg": 326.4343270956605,
@@ -789,7 +789,7 @@
      "id": "finding-predicted-mars",
      "evidenceClass": "predicted",
      "name": "Mars",
-     "title": "Mars (Predicted Ephemeris)",
+     "title": "Mars",
      "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
      "skyPosition": {
       "raDeg": 228.80467622638065,
@@ -918,7 +918,7 @@
     {
      "id": "finding-predicted-jupiter",
      "evidenceClass": "predicted",
-     "title": "Jupiter (Predicted Ephemeris)",
+     "title": "Jupiter",
      "subtitle": "Predicted Planet \u00b7 5.655 AU \u00b7 Alt +30.8\u00b0",
      "skyPosition": {
       "raDeg": 172.1970714236331,
@@ -972,7 +972,7 @@
     {
      "id": "finding-predicted-mars",
      "evidenceClass": "predicted",
-     "title": "Mars (Predicted Ephemeris)",
+     "title": "Mars",
      "subtitle": "Predicted Planet \u00b7 1.364 AU \u00b7 Alt +44.0\u00b0",
      "skyPosition": {
       "raDeg": 157.88462404722438,
@@ -1026,7 +1026,7 @@
     {
      "id": "finding-predicted-moon",
      "evidenceClass": "predicted",
-     "title": "Moon (Predicted Ephemeris)",
+     "title": "Moon",
      "subtitle": "Predicted Moon \u00b7 0.002 AU \u00b7 Alt +28.0\u00b0",
      "skyPosition": {
       "raDeg": 175.10690844650009,
@@ -1470,7 +1470,7 @@
       "id": "finding-predicted-mars",
       "evidenceClass": "predicted",
       "name": "Mars",
-      "title": "Mars (Predicted Ephemeris)",
+      "title": "Mars",
       "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
       "skyPosition": {
        "raDeg": 228.80467622638065,
@@ -1524,7 +1524,7 @@
       "id": "finding-predicted-moon",
       "evidenceClass": "predicted",
       "name": "Moon",
-      "title": "Moon (Predicted Ephemeris)",
+      "title": "Moon",
       "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
       "skyPosition": {
        "raDeg": 326.4343270956605,
@@ -1897,7 +1897,7 @@
       "id": "finding-predicted-mars",
       "evidenceClass": "predicted",
       "name": "Mars",
-      "title": "Mars (Predicted Ephemeris)",
+      "title": "Mars",
       "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
       "skyPosition": {
        "raDeg": 228.80467622638065,
@@ -2106,7 +2106,7 @@
       "id": "finding-predicted-mars",
       "evidenceClass": "predicted",
       "name": "Mars",
-      "title": "Mars (Predicted Ephemeris)",
+      "title": "Mars",
       "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
       "skyPosition": {
        "raDeg": 228.80467622638065,
@@ -2160,7 +2160,7 @@
       "id": "finding-predicted-moon",
       "evidenceClass": "predicted",
       "name": "Moon",
-      "title": "Moon (Predicted Ephemeris)",
+      "title": "Moon",
       "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
       "skyPosition": {
        "raDeg": 326.4343270956605,
@@ -2606,7 +2606,7 @@
       "id": "finding-predicted-mars",
       "evidenceClass": "predicted",
       "name": "Mars",
-      "title": "Mars (Predicted Ephemeris)",
+      "title": "Mars",
       "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
       "skyPosition": {
        "raDeg": 228.80467622638065,
@@ -2660,7 +2660,7 @@
       "id": "finding-predicted-moon",
       "evidenceClass": "predicted",
       "name": "Moon",
-      "title": "Moon (Predicted Ephemeris)",
+      "title": "Moon",
       "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
       "skyPosition": {
        "raDeg": 326.4343270956605,
@@ -3056,7 +3056,7 @@
       "id": "finding-predicted-mars",
       "evidenceClass": "predicted",
       "name": "Mars",
-      "title": "Mars (Predicted Ephemeris)",
+      "title": "Mars",
       "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
       "skyPosition": {
        "raDeg": 228.80467622638065,
@@ -3110,7 +3110,7 @@
       "id": "finding-predicted-moon",
       "evidenceClass": "predicted",
       "name": "Moon",
-      "title": "Moon (Predicted Ephemeris)",
+      "title": "Moon",
       "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
       "skyPosition": {
        "raDeg": 326.4343270956605,
@@ -4085,7 +4085,7 @@
       "id": "finding-predicted-moon",
       "evidenceClass": "predicted",
       "name": "Moon",
-      "title": "Moon (Predicted Ephemeris)",
+      "title": "Moon",
       "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
       "skyPosition": {
        "raDeg": 326.4343270956605,
@@ -4270,7 +4270,7 @@
       "id": "finding-predicted-mars",
       "evidenceClass": "predicted",
       "name": "Mars",
-      "title": "Mars (Predicted Ephemeris)",
+      "title": "Mars",
       "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
       "skyPosition": {
        "raDeg": 228.80467622638065,

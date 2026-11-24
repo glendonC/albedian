@@ -374,7 +374,7 @@ export function createSyntheticUnresolvedSession(): ObservationSession {
     },
     {
       id: 'finding_pred_saturn', observationSolutionId: solutionId, evidenceClass: 'predicted',
-      title: 'Saturn (Predicted Ephemeris)', subtitle: 'Synthetic predicted position · test data',
+      title: 'Saturn', subtitle: 'Synthetic predicted position · test data',
       skyPosition: { raDeg: 348.12, decDeg: -7.45, uncertaintyArcsec: 1800 },
       evidence: { id: 'ev_pred_saturn', evidenceClass: 'predicted', verificationMethod: 'Synthetic test position: no ephemeris was computed', sourceAssetSha256: sourceSha256, limitations: [SYNTHETIC_EVIDENCE_NOTE], verifiedByIndependentHoldout: false },
     },

@@ -196,6 +196,21 @@ def test_the_body_table_holds_the_sun_the_moon_and_mercury_to_neptune() -> None:
         ephemeris.compute_solar_system_ephemerides("2031-08-30T03:01:00Z", 30.0, -40.0, bodies=("Pluto",))
 
 
+
+@pytest.mark.parametrize("topocentric", [True, False])
+def test_every_body_is_served_by_its_plain_name_the_class_in_its_evidence_class(topocentric: bool) -> None:
+    # Every name a person reads or hears for a Solar System body is the plain body name; the Predicted tag carries
+    # the class (the lead's ruling of 24 Nov 12:55; ephemeris-title-plain-1)
+    records = ephemeris.compute_solar_system_ephemerides(
+        "2031-08-30T03:01:00Z", 30.0, -40.0, bodies=ephemeris.BODY_NAMES, topocentric=topocentric
+    )
+    assert [record.name for record in records] == list(ephemeris.BODY_NAMES)
+    for record in records:
+        served = record.to_contract_dict(source_sha256=None)
+        assert record.title == record.name == served["title"]
+        assert served["evidenceClass"] == "predicted"
+
+
 @settings(max_examples=100, deadline=None)
 @given(when=instant, body=st.sampled_from(PLANETS), where=place)
 @example(when=datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc), body="Jupiter", where=(30.0, -40.0))

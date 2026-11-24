@@ -156,7 +156,7 @@ describe('a name yields to a brighter object or picked name (namebox-1, D20)', (
     };
     const moonPred: CelestialFinding = {
       ...moonTemplate,
-      title: 'Moon (Predicted Ephemeris)',
+      title: 'Moon',
       skyPosition: { ...moonTemplate.skyPosition!, raDeg: lower.raDeg, decDeg: lower.decDeg },
       catalogRef: undefined,
     };
@@ -176,7 +176,7 @@ describe('a name yields to a brighter object or picked name (namebox-1, D20)', (
 
     const withMoon = withPoseFindings([denebolaPred, moonPred]);
     const moonMarks = Object.fromEntries(revealMarks(withMoon, VIEW.w, VIEW.h).map((m) => [m.finding.title, m.name === null ? null : m.nameOnLeft ? 'left' : 'right']));
-    expect(moonMarks['Moon (Predicted Ephemeris)']).toBe('right');
+    expect(moonMarks['Moon']).toBe('right');
     expect(moonMarks['Denebola']).toBe('left');
 
     const withPlanetAndSirius = withPoseFindings([siriusPred, planetNoMag]);

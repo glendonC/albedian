@@ -71,7 +71,7 @@ describe('the early pose from the served predicted sky', () => {
 
   it('names no target by a catalogue number: its ring stays, unnamed', () => {
     const base = POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!;
-    const gaia = { ...base, id: 'finding-predicted-gaia-1', title: 'Gaia DR3 1621259036510505344 (Predicted Ephemeris)', catalogRef: { ...base.catalogRef!, objectType: 'star' as const, apparentMagnitude: 2 } };
+    const gaia = { ...base, id: 'finding-predicted-gaia-1', title: 'Gaia DR3 1621259036510505344', catalogRef: { ...base.catalogRef!, objectType: 'star' as const, apparentMagnitude: 2 } };
     expect(alignTargetOf(gaia)).toEqual({ name: '', magnitude: 2 });
   });
 

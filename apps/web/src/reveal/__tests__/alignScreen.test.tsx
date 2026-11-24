@@ -31,9 +31,9 @@ const target = (id: string, title: string, alt: number, az: number, mag?: number
     catalogRef: mag === undefined ? (/(mercury|venus|mars|jupiter|saturn|uranus|neptune)$/.test(id) ? { ...(template.catalogRef ?? {}), objectType: 'planet', apparentMagnitude: undefined } : undefined) : { ...(template.catalogRef ?? {}), apparentMagnitude: mag, objectType: 'star' },
   }) as CelestialFinding;
 const SKY = [
-  target('finding-predicted-star-hip-113368', 'Fomalhaut (Predicted Ephemeris)', 20, 150, 1.16),
+  target('finding-predicted-star-hip-113368', 'Fomalhaut', 20, 150, 1.16),
   target('finding-predicted-star-hip-107315', 'Enif', 40, 145, 2.38),
-  target('finding-predicted-saturn', 'Saturn (Predicted Ephemeris)', 25, 160),
+  target('finding-predicted-saturn', 'Saturn', 25, 160),
 ];
 /** The no-match fixture as a 3024 by 4032 phone photo with a 26 mm equivalent lens, and the targets above. */
 function unmatched(findings: CelestialFinding[] = SKY): ObservationSession {

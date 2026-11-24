@@ -887,7 +887,7 @@ def test_the_body_list_is_the_ephemeris_own_predicted_bodies() -> None:
     for finding in sample["findings"]:
         assert finding["title"] == by_id[finding["id"]].title
     # The app parser's test names a Sun written this way; no solution of the fixture holds one
-    assert by_id["finding-predicted-sun"].title == "Sun (Predicted Ephemeris)"
+    assert by_id["finding-predicted-sun"].title == "Sun"
 
 
 def test_the_app_parser_names_the_same_bodies_as_the_ephemeris() -> None:

@@ -774,7 +774,7 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
   });
 
   it('takes a body or star name as its predicted record, and the measured Moon by pointing or by its whole title', () => {
-    // The horizon solver's own titles since sky-4: "Bright Spot (Taken To Be The Moon)" and "Moon (Predicted Ephemeris)"
+    // The horizon solver's own titles: "Bright Spot (Taken To Be The Moon)" and, since ephemeris-title-plain-1, "Moon"
     const horizon = sessionOf('horizon_approximate', 'finding-predicted-hip-92855');
     expect(readingOf('select the Moon', horizon)).toEqual({ target: 'finding-predicted-moon' });
     expect(readingOf('select Bright Spot (Taken To Be The Moon)', horizon)).toEqual({ target: 'finding-observed-moon' });
@@ -782,7 +782,7 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
       target: 'finding-observed-moon',
     });
     // No solution of the fixture holds the Sun, which was below their horizon. The ephemeris writes every body as
-    // finding-predicted-<body>, "<Body> (Predicted Ephemeris)" (tests/integration/test_voice_named_targets.py
+    // finding-predicted-<body> titled by its plain name (tests/integration/test_voice_named_targets.py
     // checks the Sun's), so a Sun is made here from the Moon's record
     const moon = horizon.observationSolution!.findings.find((f) => f.id === 'finding-predicted-moon')!;
     const nunki = horizon.observationSolution!.findings.find((f) => f.id === 'finding-predicted-hip-92855')!;
@@ -790,7 +790,7 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
       ...['Sun', 'Venus', 'Mars', 'Jupiter'].map((body) => ({
         ...structuredClone(moon),
         id: `finding-predicted-${body.toLowerCase()}`,
-        title: `${body} (Predicted Ephemeris)`,
+        title: body,
       })),
       // A predicted star is "<name> (<Bayer designation>)" under finding-predicted-<its catalog id> (predicted_sky.py)
       { ...structuredClone(nunki), id: 'finding-predicted-star-vega', title: 'Vega (Alpha Lyrae)' },
