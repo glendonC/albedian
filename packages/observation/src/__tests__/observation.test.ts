@@ -7,10 +7,12 @@ import {
   ObservationSessionSchema,
   SourceAsset,
   MediaVariant,
+  refusalSentence,
 } from '@albedian/contracts';
 import {
   AUDIO_START_RESOLUTION_MS,
   FLIGHT_STANDOFF_PC,
+  PREDICTED_BODY_NAMES,
   computeStarAnchorNdc,
   returnCheckpointOf,
   createCameraCheckpoint,
@@ -24,6 +26,7 @@ import {
   transitionOrthogonalMachine,
   validateMediaTimelineSync,
 } from '../index';
+import { CATALOG_STAR_NAMES } from '../generated/catalogStarNames';
 import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions';
 
 describe('@albedian/observation: Golden Sessions & Core Property-Based Invariants', () => {
@@ -1145,4 +1148,153 @@ describe('@albedian/observation: space.enter stops one light year short of the s
     }
   });
 });
+
+describe('@albedian/observation: C37 plain consumer words when a finding action names an absent or unknown finding', () => {
+  function asPhoto(session: ObservationSession): ObservationSession {
+    if (!session.sourceAsset) return session;
+    const { fpsNumerator: _fn, fpsDenominator: _fd, ...restAsset } = session.sourceAsset;
+    return {
+      ...session,
+      activeVariantId: 'variant_original_empty',
+      processingGraphs: [],
+      processingAttempts: [],
+      mediaVariants: [],
+      sourceAsset: {
+        ...restAsset,
+        mediaKind: 'image',
+        durationMs: 0,
+        videoCodec: 'mjpeg',
+        audioStreams: [],
+      },
+    };
+  }
+
+  function fourActions(rev: number, findingId: string): AlbedianAction[] {
+    return [
+      { type: 'finding.select', requestId: 'req_sel', expectedViewRevision: rev, findingId },
+      { type: 'finding.describe', requestId: 'req_desc', expectedViewRevision: rev, findingId, fields: ['distance', 'evidence'] },
+      { type: 'space.enter', requestId: 'req_enter', expectedViewRevision: rev, findingId, distancePolicy: 'measured_or_estimated' },
+      { type: 'space.viewpoint', requestId: 'req_vp', expectedViewRevision: rev, targetFindingId: findingId, units: 'pc', offsetParsec: [1, 1, 1], trajectory: 'orbit' },
+    ];
+  }
+
+  it('reuses C33 sky_not_worked_out across photo and clip whenever the sky has not been worked out', () => {
+    const clipCalibrated = createSyntheticCalibratedSession();
+    const photoCalibrated = asPhoto(clipCalibrated);
+
+    for (const [media, base] of [['photo', photoCalibrated], ['video', clipCalibrated]] as const) {
+      const expected = refusalSentence({ kind: 'sky_not_worked_out' }, media);
+      const unworkedSessions: Array<[string, ObservationSession]> = [
+        ['missing solution', { ...base, observationSolution: undefined }],
+        ['unresolved status', { ...base, machines: { ...base.machines, calibration: 'unresolved' }, observationSolution: { ...base.observationSolution!, status: 'unresolved', findings: [] } }],
+        ['pending status', { ...base, machines: { ...base.machines, calibration: 'not_requested' }, observationSolution: { ...base.observationSolution!, status: 'pending', findings: [] } }],
+        ['ambiguous status', { ...base, machines: { ...base.machines, calibration: 'ambiguous' }, observationSolution: { ...base.observationSolution!, status: 'ambiguous', findings: [] } }],
+        ['unresolved machine', { ...base, machines: { ...base.machines, calibration: 'unresolved' }, observationSolution: { ...base.observationSolution!, status: 'predicted_only', findings: [] } }],
+      ];
+      for (const [label, session] of unworkedSessions) {
+        for (const action of fourActions(session.viewRevision, 'finding-predicted-star-sirius')) {
+          const { outcome } = dispatchAlbedianAction(session, action);
+          if (action.type === 'space.enter' && (!session.observationSolution || session.machines.calibration === 'unresolved' || session.observationSolution.status === 'unresolved')) {
+            expect(outcome, `${media} ${label} ${action.type}`).toMatchObject({ status: 'rejected', reason: 'unresolved_sky' });
+            continue;
+          }
+          expect(outcome, `${media} ${label} ${action.type}`).toMatchObject({
+            status: 'rejected',
+            reason: 'ambiguous_target',
+            explanation: expected,
+          });
+        }
+      }
+    }
+  });
+
+  it('reuses C35 not_in_this_sky for known star and ephemeris body IDs on worked-out skies across photo and clip', () => {
+    const clipCalibrated = { ...createSyntheticCalibratedSession(), observationSolution: { ...createSyntheticCalibratedSession().observationSolution!, findings: [] } };
+    const clipPredicted = { ...createSyntheticUnresolvedSession(), observationSolution: { ...createSyntheticUnresolvedSession().observationSolution!, findings: [] } };
+    const clipApproximate: ObservationSession = {
+      ...clipPredicted,
+      observationSolution: { ...clipPredicted.observationSolution!, status: 'approximate' },
+    };
+
+    for (const [statusLabel, clipSession] of [
+      ['calibrated', clipCalibrated],
+      ['approximate', clipApproximate],
+      ['predicted_only', clipPredicted],
+    ] as const) {
+      for (const [media, session] of [['photo', asPhoto(clipSession)], ['video', clipSession]] as const) {
+        const noun = media === 'video' ? 'clip' : 'photo';
+        const probes: Array<[string, string]> = [
+          ['finding-predicted-star-sirius', `Sirius was not found in this ${noun}'s sky.`],
+          ['finding-star-sirius', `Sirius was not found in this ${noun}'s sky.`],
+          ['finding-hip-60718', `Acrux was not found in this ${noun}'s sky.`],
+          ['finding-predicted-hip-60718', `Acrux was not found in this ${noun}'s sky.`],
+          ['finding-predicted-mars', `Mars was not found in this ${noun}'s sky.`],
+          ['finding-predicted-moon', `The Moon was not found in this ${noun}'s sky.`],
+          ['finding-predicted-sun', `The Sun was not found in this ${noun}'s sky.`],
+        ];
+        for (const [findingId, expected] of probes) {
+          for (const action of fourActions(session.viewRevision, findingId)) {
+            const { outcome } = dispatchAlbedianAction(session, action);
+            expect(outcome, `${statusLabel} ${media} ${action.type} ${findingId}`).toMatchObject({
+              status: 'rejected',
+              reason: 'ambiguous_target',
+              explanation: expected,
+            });
+          }
+        }
+      }
+    }
+
+    // Every row in CATALOG_STAR_NAMES (solved and predicted IDs) and PREDICTED_BODY_NAMES resolves to its exact C35 sentence
+    const photoWorkedOut = asPhoto(clipPredicted);
+    for (const [spoken, id, shown] of CATALOG_STAR_NAMES) {
+      const expected = refusalSentence({ kind: 'not_in_this_sky', said: spoken, name: shown }, 'photo');
+      for (const candidateId of [id, id.replace(/^finding-/, 'finding-predicted-')]) {
+        const { outcome } = dispatchAlbedianAction(photoWorkedOut, {
+          type: 'finding.describe',
+          requestId: 'req_table',
+          expectedViewRevision: photoWorkedOut.viewRevision,
+          findingId: candidateId,
+          fields: ['distance'],
+        });
+        expect(outcome, candidateId).toMatchObject({ status: 'rejected', reason: 'ambiguous_target', explanation: expected });
+      }
+    }
+    for (const [spoken, shown] of Object.entries(PREDICTED_BODY_NAMES)) {
+      const candidateId = `finding-predicted-${spoken}`;
+      const expected = refusalSentence({ kind: 'not_in_this_sky', said: spoken, name: shown }, 'photo');
+      const { outcome } = dispatchAlbedianAction(photoWorkedOut, {
+        type: 'finding.select',
+        requestId: 'req_body',
+        expectedViewRevision: photoWorkedOut.viewRevision,
+        findingId: candidateId,
+      });
+      expect(outcome, candidateId).toMatchObject({ status: 'rejected', reason: 'ambiguous_target', explanation: expected });
+    }
+  });
+
+  it('reuses C34 nameless sentence for any other unknown or stale findingId on a worked-out sky without leaking IDs', () => {
+    const clipSession = { ...createSyntheticCalibratedSession(), observationSolution: { ...createSyntheticCalibratedSession().observationSolution!, findings: [] } };
+    const photoSession = asPhoto(clipSession);
+
+    for (const [noun, session] of [['photo', photoSession], ['clip', clipSession]] as const) {
+      for (const staleId of ['finding-made-up', 'finding_stale_99', 'unknown_target_id']) {
+        for (const action of fourActions(session.viewRevision, staleId)) {
+          const { outcome } = dispatchAlbedianAction(session, action);
+          expect(outcome, `${noun} ${action.type} ${staleId}`).toMatchObject({
+            status: 'rejected',
+            reason: 'ambiguous_target',
+            explanation: `No finding in this ${noun} has that name.`,
+          });
+          if (outcome.status === 'rejected') {
+            expect(outcome.explanation).not.toContain(staleId);
+            expect(outcome.explanation).not.toContain('CelestialFinding');
+            expect(outcome.explanation).not.toContain('ObservationSolution');
+          }
+        }
+      }
+    }
+  });
+});
+
 

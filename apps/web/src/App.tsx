@@ -269,6 +269,7 @@ export const App: React.FC = () => {
       // The backend may read what the parser could not. Its reply applies to the session as it stands when
       // the reply arrives, through the reducer, which refuses an action that went stale meanwhile.
       const local = result.outcome.explanation;
+      const localReason = result.outcome.reason;
       void askVoiceBackend(utterance, result.session, pointer).then((reply) => {
         if (!reply) {
           refuse(local);
@@ -280,9 +281,14 @@ export const App: React.FC = () => {
           return;
         }
         const applied = applyVoiceBackendReply(sessionRef.current, reply);
-        setSession(applied.session);
+        // When both local parsing and the backend proposal reject as ambiguous_target, keep the local phrasing [verified: C37]
+        const keepLocal =
+          localReason === 'ambiguous_target' &&
+          applied.outcome?.status === 'rejected' &&
+          applied.outcome.reason === 'ambiguous_target';
+        setSession(keepLocal ? { ...applied.session, lastStatusBanner: local } : applied.session);
         const outcome = applied.outcome;
-        if (outcome?.status === 'rejected') refuse(outcome.explanation);
+        if (outcome?.status === 'rejected') refuse(keepLocal ? local : outcome.explanation);
         else if (outcome?.status === 'needs_input') refuse(outcome.question);
         else if (!outcome && reply.status === 'rejected') refuse(reply.explanation);
         else if (!outcome && reply.status === 'needs_input') refuse(reply.question);

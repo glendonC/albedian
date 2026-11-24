@@ -3,12 +3,14 @@ import {
   ActionOutcomeSchema,
   AlbedianAction,
   ObservationSession,
+  refusalSentence,
 } from '@albedian/contracts';
 import {
   formatDistanceWithUncertainty,
   getEpistemicBadgeDescriptor,
 } from '@albedian/evidence';
 import { arrivalDistanceText, flightEndOrigin } from './flight.js';
+import { CATALOG_STAR_NAMES } from './generated/catalogStarNames.js';
 import {
   computeCartesianParsecICRS,
   computeStarAnchorNdc,
@@ -25,6 +27,49 @@ import {
  */
 
 type RejectionReason = Extract<ActionOutcome, { status: 'rejected' }>['reason'];
+
+const PREDICTED_BODIES: Readonly<Record<string, string>> = {
+  sun: 'the Sun',
+  moon: 'the Moon',
+  venus: 'Venus',
+  mars: 'Mars',
+  jupiter: 'Jupiter',
+  saturn: 'Saturn',
+  uranus: 'Uranus',
+};
+
+const KNOWN_FINDING_NAMES: ReadonlyMap<string, { spoken: string; shown: string }> = (() => {
+  const byId = new Map<string, { spoken: string; shown: string }>();
+  for (const [spoken, id, shown] of CATALOG_STAR_NAMES) {
+    if (!byId.has(id)) byId.set(id, { spoken, shown });
+    if (id.startsWith('finding-')) {
+      const predictedId = `finding-predicted-${id.slice('finding-'.length)}`;
+      if (!byId.has(predictedId)) byId.set(predictedId, { spoken, shown });
+    }
+  }
+  for (const [spoken, shown] of Object.entries(PREDICTED_BODIES)) {
+    byId.set(`finding-predicted-${spoken}`, { spoken, shown });
+  }
+  return byId;
+})();
+
+/** Plain consumer refusal when a finding action names an absent or unknown finding [verified: UIUX-voiceyet2-READY.md C37]. */
+function missingFindingExplanation(base: ObservationSession, findingId: string): string {
+  const media = base.sourceAsset?.mediaKind === 'video' ? 'video' : 'photo';
+  const status = base.observationSolution?.status;
+  const workedOut =
+    base.machines.calibration !== 'unresolved' &&
+    (status === 'calibrated' || status === 'approximate' || status === 'predicted_only');
+  if (!workedOut) {
+    return refusalSentence({ kind: 'sky_not_worked_out' }, media);
+  }
+  const known = KNOWN_FINDING_NAMES.get(findingId);
+  if (known) {
+    return refusalSentence({ kind: 'not_in_this_sky', said: known.spoken, name: known.shown }, media);
+  }
+  const noun = media === 'video' ? 'clip' : 'photo';
+  return `No finding in this ${noun} has that name.`;
+}
 
 function rejectAction(
   session: ObservationSession,
@@ -199,7 +244,7 @@ export function dispatchAlbedianAction(
     case 'finding.select': {
       const finding = base.observationSolution?.findings.find((f) => f.id === action.findingId);
       if (!finding) {
-        return rejectAction(session, action.requestId, 'ambiguous_target', `CelestialFinding "${action.findingId}" does not exist in active ObservationSolution.`, ['Select a visible star or planet marker']);
+        return rejectAction(session, action.requestId, 'ambiguous_target', missingFindingExplanation(base, action.findingId), ['Select a visible star or planet marker']);
       }
       const badge = getEpistemicBadgeDescriptor(finding.evidenceClass);
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
@@ -223,7 +268,7 @@ export function dispatchAlbedianAction(
     case 'finding.describe': {
       const finding = base.observationSolution?.findings.find((f) => f.id === action.findingId);
       if (!finding) {
-        return rejectAction(session, action.requestId, 'ambiguous_target', `Cannot describe unknown finding "${action.findingId}".`, ['Select a finding first']);
+        return rejectAction(session, action.requestId, 'ambiguous_target', missingFindingExplanation(base, action.findingId), ['Select a finding first']);
       }
       const badge = getEpistemicBadgeDescriptor(finding.evidenceClass);
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
@@ -266,7 +311,7 @@ export function dispatchAlbedianAction(
       }
       const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
       if (!finding) {
-        return rejectAction(session, action.requestId, 'ambiguous_target', `Target finding "${action.findingId}" not found in active ObservationSolution.`, ['Select a catalog-matched star first']);
+        return rejectAction(session, action.requestId, 'ambiguous_target', missingFindingExplanation(base, action.findingId), ['Select a catalog-matched star first']);
       }
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
       if (finding.evidenceClass !== 'catalog_matched' || !finding.inferredDistancePc || !distInfo.canEnter3DSpace) {
@@ -307,7 +352,7 @@ export function dispatchAlbedianAction(
     case 'space.viewpoint': {
       const finding = base.observationSolution?.findings.find((f) => f.id === action.targetFindingId);
       if (!finding) {
-        return rejectAction(session, action.requestId, 'ambiguous_target', `Cannot shift viewpoint around unknown finding "${action.targetFindingId}".`, ['Select a catalog-matched star first']);
+        return rejectAction(session, action.requestId, 'ambiguous_target', missingFindingExplanation(base, action.targetFindingId), ['Select a catalog-matched star first']);
       }
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
       if (finding.evidenceClass !== 'catalog_matched' || !finding.inferredDistancePc || !distInfo.canEnter3DSpace) {

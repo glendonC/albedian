@@ -680,4 +680,127 @@ describe('asking about the photo on the laptop reveal', () => {
     expect(q(ANSWER)).toBeNull();
     expect(q('[data-testid="star-card"]')).not.toBeNull();
   });
+
+  it('shows plain C35 refusal on unmatched predicted_only upload when backend proposes an absent star (C37)', async () => {
+    const noMatch = { ...samples['horizon_predicted_only']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      solution: () => json(noMatch),
+      other: (url, init) =>
+        url === '/api/voice/command'
+          ? json({
+              status: 'proposed',
+              actionId: 'req-sirius',
+              proposedAction: {
+                type: 'finding.describe',
+                requestId: 'req-sirius',
+                expectedViewRevision: JSON.parse(String(init?.body)).context.viewRevision,
+                findingId: 'finding-predicted-star-sirius',
+                fields: ['distance', 'type', 'motion', 'evidence'],
+              },
+              visualStatus: 'Described Sirius.',
+            })
+          : undefined,
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-status"]')).not.toBeNull());
+    await typeAndSend('where is Sirius?');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+    expect(q('.reveal-answer__q')!.textContent).toBe('where is Sirius?');
+    expect(q('.reveal-answer__s')!.textContent).toBe("Sirius was not found in this photo's sky.");
+    expect(q('.reveal-answer__s')!.textContent).not.toContain('finding-predicted-star-sirius');
+    expect(q('.reveal-answer__s')!.textContent).not.toContain('Cannot describe unknown finding');
+  });
+
+  it('keeps local ambiguous_target refusal when backend also rejects as ambiguous_target, while showing C37 or non-ambiguous reducer refusals otherwise', async () => {
+    let mode: 'unknown_finding' | 'no_distance' = 'unknown_finding';
+    const observedOnly = solution.findings.find((f) => f.evidenceClass === 'observed')!;
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      other: (url, init) => {
+        if (url !== '/api/voice/command') return undefined;
+        const expectedViewRevision = JSON.parse(String(init?.body)).context.viewRevision;
+        if (mode === 'unknown_finding') {
+          return json({
+            status: 'proposed',
+            actionId: 'req-unknown',
+            proposedAction: {
+              type: 'finding.select',
+              requestId: 'req-unknown',
+              expectedViewRevision,
+              findingId: 'finding-made-up',
+            },
+            visualStatus: 'Selected unknown.',
+          });
+        }
+        return json({
+          status: 'proposed',
+          actionId: 'req-nodist',
+          proposedAction: {
+            type: 'space.enter',
+            requestId: 'req-nodist',
+            expectedViewRevision,
+            findingId: observedOnly.id,
+            distancePolicy: 'measured_or_estimated',
+          },
+          visualStatus: 'Entering space.',
+        });
+      },
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await typeAndSend('Take me to Zorblax');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+    expect(q('.reveal-answer__s')!.textContent).toBe('I did not understand "zorblax": no list of the app holds that word.');
+    expect(q('.reveal-answer__s')!.textContent).not.toContain('finding-made-up');
+
+    // When the backend resolves a real finding that fails space.enter on distance, keep the reducer's no_distance_estimate explanation
+    mode = 'no_distance';
+    calls.length = 0;
+    await typeAndSend('Take me to Zorblax');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await waitUntil(() => expect(q('.reveal-answer__s')?.textContent).toContain('distance'));
+  });
+
+  it('uses C37 reducer wording when local reason is no_grounded_answer and keeps local ambiguous_target wording on HUD status banner', async () => {
+    let targetId = 'finding-made-up';
+    const calls = await openAppAt('/?view=observatory', {
+      other: (url, init) =>
+        url === '/api/voice/command'
+          ? json({
+              status: 'proposed',
+              actionId: 'req-hud',
+              proposedAction: {
+                type: 'finding.describe',
+                requestId: 'req-hud',
+                expectedViewRevision: JSON.parse(String(init?.body)).context.viewRevision,
+                findingId: targetId,
+                fields: ['distance'],
+              },
+              visualStatus: 'Described target.',
+            })
+          : undefined,
+    });
+    await waitUntil(() => expect(q('[data-testid="voice-command-hud"]')).not.toBeNull());
+    const sendOnHud = async (words: string) => {
+      await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
+      const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, words);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await act(async () => (input.form as HTMLFormElement).requestSubmit());
+    };
+
+    // localReason === 'ambiguous_target' + backend ambiguous_target -> keeps local explanation on HUD
+    await sendOnHud('Take me to Zorblax');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await waitUntil(() => expect(q('[data-testid="voice-status-banner"]')?.textContent).toContain('I did not understand "zorblax": no list of the app holds that word.'));
+
+    // localReason === 'no_grounded_answer' + backend ambiguous_target -> shows C37 reducer explanation (C33 on empty pending session)
+    calls.length = 0;
+    targetId = 'finding-predicted-star-sirius';
+    await sendOnHud('Is that a plane?');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await waitUntil(() => expect(q('[data-testid="voice-status-banner"]')?.textContent).toContain('The sky in this photo has not been worked out, so nothing in it can be found by name.'));
+    expect(q('[data-testid="voice-status-banner"]')!.textContent).not.toContain('finding-predicted-star-sirius');
+  });
 });
