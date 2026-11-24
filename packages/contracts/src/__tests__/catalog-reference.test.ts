@@ -45,7 +45,13 @@ describe('@albedian/contracts: the catalog reference', () => {
   });
 
   it('parses the real references the Python side wrote, unchanged', () => {
-    expect(fixture.valid).toHaveLength(4);
+    expect(fixture.valid).toHaveLength(5);
+    expect(
+      CatalogReferenceSchema.safeParse({
+        ...fixture.valid[1],
+        bailerJonesDistancePc: { lower: 125.0, median: 131.6, upper: 139.0, method: 'geometric_bailer_jones_edr3' },
+      }).success
+    ).toBe(true);
     for (const reference of fixture.valid) {
       const parsed = CatalogReferenceSchema.safeParse(reference);
       expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);

@@ -159,7 +159,12 @@ export const CatalogReferenceSchema = z
         lower: z.number().positive().finite(),
         median: z.number().positive().finite(),
         upper: z.number().positive().finite(),
-        method: z.enum(['photogeometric_bailer_jones_edr3', 'geometric_parallax', 'ephemeris_au']),
+        method: z.enum([
+          'photogeometric_bailer_jones_edr3',
+          'geometric_bailer_jones_edr3',
+          'geometric_parallax',
+          'ephemeris_au',
+        ]),
       })
       .optional(),
     citation: z.string().min(1),

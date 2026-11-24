@@ -506,6 +506,8 @@ function describeCatalogDistance({ lower, median, upper, method }: DistanceEstim
   switch (method) {
     case 'photogeometric_bailer_jones_edr3':
       return `Bailer-Jones et al. (2021) photogeometric distance ${median.toFixed(1)} pc (16th to 84th percentile: ${range})`;
+    case 'geometric_bailer_jones_edr3':
+      return `Bailer-Jones et al. (2021) geometric distance ${median.toFixed(1)} pc (16th to 84th percentile: ${range})`;
     case 'geometric_parallax':
       return `Inverse-parallax distance ${median.toFixed(1)} pc (${range} from the parallax error)`;
     case 'ephemeris_au':

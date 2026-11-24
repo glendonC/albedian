@@ -735,6 +735,9 @@ describe('@albedian/evidence: licence and source strings', () => {
     expect(lastRecord(predicted(rigel('Gaia DR3', 'photogeometric_bailer_jones_edr3')))?.uncertaintyDescription).toBe(
       'Bailer-Jones et al. (2021) photogeometric distance 264.5 pc (16th to 84th percentile: 240.0 to 290.0 pc)'
     );
+    expect(lastRecord(predicted(rigel('Gaia DR3', 'geometric_bailer_jones_edr3')))?.uncertaintyDescription).toBe(
+      'Bailer-Jones et al. (2021) geometric distance 264.5 pc (16th to 84th percentile: 240.0 to 290.0 pc)'
+    );
     expect(lastRecord(predicted(rigel('Hipparcos', 'geometric_parallax')))?.uncertaintyDescription).toBe(
       'Inverse-parallax distance 264.5 pc (240.0 to 290.0 pc from the parallax error)'
     );

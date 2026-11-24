@@ -703,6 +703,7 @@
    "type": "choice",
    "values": [
     "photogeometric_bailer_jones_edr3",
+    "geometric_bailer_jones_edr3",
     "geometric_parallax",
     "ephemeris_au"
    ],

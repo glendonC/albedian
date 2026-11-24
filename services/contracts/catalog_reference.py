@@ -35,7 +35,12 @@ from services.contracts.wire import wire_int
 
 CATALOG_PROVIDERS = ("Gaia DR3", "Hipparcos", "JPL Horizons", "SIMBAD", "OpenNGC")
 CATALOG_OBJECT_TYPES = ("star", "planet", "moon", "deep_sky", "satellite_candidate")
-CATALOG_DISTANCE_METHODS = ("photogeometric_bailer_jones_edr3", "geometric_parallax", "ephemeris_au")
+CATALOG_DISTANCE_METHODS = (
+    "photogeometric_bailer_jones_edr3",
+    "geometric_bailer_jones_edr3",
+    "geometric_parallax",
+    "ephemeris_au",
+)
 # The one object type whose reference may leave the magnitude out, and the provider that names only that type
 MAGNITUDE_OPTIONAL_OBJECT_TYPE = "deep_sky"
 DEEP_SKY_ONLY_PROVIDER = "OpenNGC"

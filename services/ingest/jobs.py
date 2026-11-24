@@ -1324,8 +1324,10 @@ SOLVE_PRODUCER_FILES = (
 # Sun's core in the stack (AUDIT's sun-core verdict, note a), which a daytime clip lined up after its first frames
 # served as observed points; 25, the Sun's glare served as an observed finding (`finding-observed-glare`, Bright glare /
 # Taken to be the Sun, never called the Sun as observed) beside a Sun pose, with its C31 lower-bound limitation (clipped
-# or core-only unclipped, sky-6 (a))
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 25, SOLVE_PRODUCER_FILES)
+# or core-only unclipped, sky-6 (a)); 26, Bailer-Jones geometric distances (`geometric_bailer_jones_edr3`) named in
+# `CatalogReference.bailerJonesDistancePc`, which Gaia DR3 tile rows without a photogeometric prior store on their
+# `catalogRef` (catalogref-bj-geo-1)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 26, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

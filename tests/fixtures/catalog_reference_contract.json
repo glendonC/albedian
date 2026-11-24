@@ -15,6 +15,7 @@
   ],
   "distanceMethods": [
     "photogeometric_bailer_jones_edr3",
+    "geometric_bailer_jones_edr3",
     "geometric_parallax",
     "ephemeris_au"
   ],
@@ -67,6 +68,30 @@
       },
       "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
       "colorIndexBpRp": -0.14241743
+    },
+    {
+      "id": "gaia-dr3-5998019895874780928",
+      "provider": "Gaia DR3",
+      "releaseVersion": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 5998019895874780928",
+      "commonName": "Gaia DR3 5998019895874780928",
+      "bayerDesignation": "Eta Lupi",
+      "constellation": "Lup",
+      "objectType": "star",
+      "coordinateEpoch": "J2016.0",
+      "raDeg": 240.03043322009034,
+      "decDeg": -38.3968262013594,
+      "apparentMagnitude": 3.4080000000000004,
+      "properMotionRaMasYr": -17.59375,
+      "properMotionDecMasYr": -27.25,
+      "bailerJonesDistancePc": {
+        "lower": 124.72739771332375,
+        "median": 131.6436757055607,
+        "upper": 139.0130649482135,
+        "method": "geometric_bailer_jones_edr3"
+      },
+      "citation": "Catalog id, Gaia G magnitude and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, geometric.",
+      "colorIndexBpRp": -0.277
     },
     {
       "id": "openngc-NGC0224",

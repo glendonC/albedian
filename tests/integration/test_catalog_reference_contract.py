@@ -64,6 +64,19 @@ def _pinned(star_id: str) -> dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
+def _tile_gaia_geometric() -> dict[str, Any]:
+    """Eta Lupi (Gaia DR3 5998019895874780928), a real shipped L0 tile row carrying a Bailer-Jones geometric distance."""
+    import numpy as np
+    from services.science.phone_photo_solver import _get_tile_index
+
+    index = _get_tile_index()
+    (row,) = np.flatnonzero((~index.data["hip"]) & (index.data["sid"] == 5998019895874780928)).tolist()
+    star = index.to_catalog_star(row, float(index.data["ra0"][row]), float(index.data["dec0"][row]), index.epoch_jyear)
+    assert star is not None
+    return json.loads(json.dumps(star.to_catalog_reference_dict()))
+
+
+@lru_cache(maxsize=1)
 def _openngc_table() -> dict[str, Any]:
     return json.loads(OPENNGC.read_text(encoding="utf-8"))
 
@@ -95,6 +108,7 @@ def valid_samples() -> dict[str, dict[str, Any]]:
     return {
         "hipparcos": _pinned("star-vega"),
         "gaia": _pinned("star-meissa"),
+        "gaia_geometric": _tile_gaia_geometric(),
         "openngc": _openngc("NGC0224"),
         "openngc_no_magnitude": _openngc("IC0113"),
     }
@@ -262,7 +276,9 @@ def test_catalog_reference_fixture_is_current() -> None:
 
 
 def test_the_mirror_accepts_every_valid_sample_unchanged() -> None:
-    for sample in valid_samples().values():
+    samples = valid_samples()
+    assert samples["gaia_geometric"].get("bailerJonesDistancePc", {}).get("method") == "geometric_bailer_jones_edr3"
+    for sample in samples.values():
         parsed = CatalogReference.model_validate(sample)
         assert parsed.model_dump(by_alias=True, exclude_none=True) == sample
     # Both models are frozen so no caller can mutate a validated reference or distance in place

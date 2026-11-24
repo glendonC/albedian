@@ -64,10 +64,10 @@ CONTRACT_KEYS = {
     "properMotionRaMasYr", "properMotionDecMasYr", "radialVelocityKmS", "parallaxMas", "parallaxErrorMas",
     "bailerJonesDistancePc", "citation", "flamsteedNumber",
 }
-# The tile's distance kind, as the contract names its method; a Bailer-Jones geometric distance has no name there
+# The tile's distance kind, as the contract names its method
 METHOD_BY_KIND = {
     ct.DIST_KIND_BJ_PHOTOGEO: "photogeometric_bailer_jones_edr3",
-    ct.DIST_KIND_BJ_GEO: None,
+    ct.DIST_KIND_BJ_GEO: "geometric_bailer_jones_edr3",
     ct.DIST_KIND_PARALLAX_INVERSE: "geometric_parallax",
 }
 
