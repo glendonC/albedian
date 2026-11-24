@@ -189,7 +189,19 @@ export const RestoreCompare: React.FC<{
   useEffect(() => {
     const child = restoredClip.current;
     if (!clip || !clipParent || !child) return undefined;
-    return followParent(clipParent, child);
+    const stopFollow = followParent(clipParent, child);
+    const syncReady = () => {
+      if (child.playbackRate !== clipParent.playbackRate) child.playbackRate = clipParent.playbackRate;
+      if (child.loop !== clipParent.loop) child.loop = clipParent.loop;
+      if (Math.abs(child.currentTime - clipParent.currentTime) > 0) child.currentTime = clipParent.currentTime;
+      if (!clipParent.paused && child.paused) void Promise.resolve(child.play()).catch(() => {});
+    };
+    syncReady();
+    child.addEventListener('loadedmetadata', syncReady);
+    return () => {
+      child.removeEventListener('loadedmetadata', syncReady);
+      stopFollow();
+    };
   }, [clip, clipParent, src]);
   const box = useRef<HTMLDivElement>(null);
   const down = useRef<{ x: number; y: number; moved: boolean } | null>(null);
@@ -199,7 +211,7 @@ export const RestoreCompare: React.FC<{
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const zoomed = zoom.z > 1;
-  useEffect(() => afterPaint(() => setSplit(50)), [src]);
+  useEffect(() => afterPaint(() => setSplit(50)), []);
   useEffect(() => onZoomed?.(zoomed), [zoomed, onZoomed]);
 
   // Points in the frame's own pixels, whatever size it is drawn at
@@ -250,6 +262,11 @@ export const RestoreCompare: React.FC<{
     return () => el.removeEventListener('wheel', onWheel);
   });
 
+  const resetZoom = () => {
+    zoomRef.current = WHOLE;
+    setZoom(WHOLE);
+  };
+
   // Esc returns to the whole photo while zoomed in, before anything else hears it
   useEffect(() => {
     if (!zoomed) return undefined;
@@ -257,14 +274,14 @@ export const RestoreCompare: React.FC<{
       if (event.key !== 'Escape') return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      setZoom(WHOLE);
+      resetZoom();
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [zoomed]);
 
   const label = (edge: number) => () => {
-    if (split === edge) setZoom(WHOLE);
+    if (split === edge) resetZoom();
     else setSplit(edge);
   };
   const transform = `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})`;
@@ -300,6 +317,7 @@ export const RestoreCompare: React.FC<{
       data-hud-interactive="true"
       style={style}
       onPointerDown={(event) => {
+        if (event.button > 0) return;
         if ((event.target as Element).closest('.restore-compare__label')) return;
         box.current?.setPointerCapture?.(event.pointerId);
         down.current = { x: event.clientX, y: event.clientY, moved: false };
@@ -315,7 +333,9 @@ export const RestoreCompare: React.FC<{
           start.moved = true;
           start.x = event.clientX;
           start.y = event.clientY;
-          setZoom((current) => clamped({ z: current.z, tx: current.tx + to.x - from.x, ty: current.ty + to.y - from.y }));
+          const next = clamped({ z: zoomRef.current.z, tx: zoomRef.current.tx + to.x - from.x, ty: zoomRef.current.ty + to.y - from.y });
+          zoomRef.current = next;
+          setZoom(next);
           return;
         }
         setDrag(true);
@@ -487,17 +507,18 @@ export const RestorePhoneStopped: React.FC<{
  * ready restorations, one row each, newest first, with no heading: the time it was made, its size at the right, the
  * check on the one shown, and under each older one "Made by an earlier version of Albedian." A row pressed shows it.
  */
-export const RestoreVersions: React.FC<{ versions: readonly StoredRestoration[]; shownId: string; onShow: (id: string) => void }> = ({ versions, shownId, onShow }) => (
-  <ul className="restore-versions" data-testid="restore-versions">
-    {versions.map((version, i) => (
-      <li key={version.id}>
-        <button type="button" className="restore-versions__row" aria-pressed={version.id === shownId} onClick={() => onShow(version.id)}>
-          <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
-          <span className="restore-versions__size">{megabytes(version.byteSize)}</span>
-          <span className="restore-versions__mark">{version.id === shownId ? <LookIcon name="check" /> : null}</span>
-          {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
-        </button>
-      </li>
-    ))}
-  </ul>
-);
+export const RestoreVersions: React.FC<{ versions: readonly StoredRestoration[]; shownId: string; onShow: (id: string) => void }> = ({ versions, shownId, onShow }) =>
+  versions.length < 2 ? null : (
+    <ul className="restore-versions" data-testid="restore-versions">
+      {versions.map((version, i) => (
+        <li key={version.id}>
+          <button type="button" className="restore-versions__row" aria-pressed={version.id === shownId} onClick={() => onShow(version.id)}>
+            <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
+            <span className="restore-versions__size">{megabytes(version.byteSize)}</span>
+            <span className="restore-versions__mark">{version.id === shownId ? <LookIcon name="check" /> : null}</span>
+            {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );

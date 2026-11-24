@@ -128,6 +128,43 @@ describe('the list under Download at phone width (D36 item 5)', () => {
     expect(q('.restore-phone-versions')).toBeNull();
   });
 
+  it('supports 3 ready restorations scrolled at phone width, keeps the wipe split steady on switch, and exports each selected variant', async () => {
+    const EARLIEST = variant('var_0000000000000000', '2026-11-17T18:20:00Z', 13_500_000);
+    answer([EARLIEST, OLDER, NEWER]);
+    await showPhone();
+    expect(rows()).toHaveLength(3);
+    expect(rows().map((r) => r.querySelector('.restore-versions__older')?.textContent ?? null)).toEqual([
+      null,
+      'Made by an earlier version of Albedian.',
+      'Made by an earlier version of Albedian.',
+    ]);
+    const screen = q('[data-testid="reveal-photo"]') as HTMLElement;
+    screen.scrollTop = 112;
+    act(() => {
+      screen.dispatchEvent(new Event('scroll'));
+    });
+    expect(document.documentElement.style.getPropertyValue('--phone-scroll')).toBe('112px');
+
+    const compare = () => q('[data-testid="restore-compare"]') as HTMLElement;
+    for (let waited = 0; compare().style.getPropertyValue('--split') !== '50%'; waited += 10) {
+      if (waited >= 2000) throw new Error(`split stood at ${compare().style.getPropertyValue('--split')}`);
+      await act(async () => await new Promise((r) => setTimeout(r, 10)));
+    }
+    act(() => ([...container.querySelectorAll('.restore-compare__label')].find((b) => b.textContent === 'Restored') as HTMLButtonElement).click());
+    expect(compare().style.getPropertyValue('--split')).toBe('0%');
+
+    const hrefs: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      hrefs.push(this.getAttribute('href')!);
+    });
+    act(() => rows()[2]!.click());
+    for (let i = 0; i < 4; i++) await act(async () => await new Promise((r) => setTimeout(r, 20)));
+    expect(compare().style.getPropertyValue('--split')).toBe('0%');
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true']);
+    act(() => download().click());
+    expect(hrefs).toEqual([`/api/media/${sha}/variants/${EARLIEST.id}/export`]);
+  });
+
   it('sets the list under Download with the phone gutters and 44 px rows', () => {
     expect(declarationsOf('.restore-phone-versions')).toEqual({ position: 'absolute', left: '24px', right: '24px', top: '828px', 'padding-bottom': '40px' });
     expect(declarationsOf('.restore-phone-versions .restore-versions')).toEqual({ margin: '0' });

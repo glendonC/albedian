@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MediaVariantSchema, type UploadJob } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { madeAtWords, readRestorations } from '../../services/apiClient.js';
+import { RestoreVersions } from '../RestoreParts.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
@@ -137,9 +138,77 @@ describe('the list under Download (D36)', () => {
     expect(pressed()).toEqual(['true', 'false']);
   });
 
-  it('shows no list with one ready restoration', async () => {
+  it('shows no list with one ready restoration, including on RestoreVersions directly', async () => {
     answer([NEWER]);
     await showDone();
     expect(q('[data-testid="restore-versions"]')).toBeNull();
+    act(() =>
+      root.render(
+        createElement(RestoreVersions, {
+          versions: [{ id: NEWER.id, createdAtUTC: NEWER.createdAtUTC as string, byteSize: NEWER.byteSize as number, orientation: { quarterTurnsClockwise: 0, mirrored: false } }],
+          shownId: NEWER.id,
+          onShow: () => {},
+        })
+      )
+    );
+    expect(q('[data-testid="restore-versions"]')).toBeNull();
+  });
+
+  it('supports 3+ pipeline revisions (1.6 -> 1.7 -> 1.8), keeps the wipe split steady across version switches, and exports each selected variant', async () => {
+    const V16 = variant('var_0000000000000016', '2026-11-18T18:20:00Z', 13_800_000);
+    const V17 = {
+      ...variant('var_0000000000000017', '2026-11-19T18:20:00Z', 14_200_000),
+      displayOrientation: { quarterTurnsClockwise: 1, mirrored: false },
+    };
+    const V18 = variant(succeeded.variantId!, '2026-11-20T18:20:00Z', 14_600_000);
+    answer([V16, V17, V18]);
+    await showDone();
+
+    const compare = () => q('[data-testid="restore-compare"]') as HTMLElement;
+    for (let waited = 0; compare().style.getPropertyValue('--split') !== '50%'; waited += 10) {
+      if (waited >= 2000) throw new Error(`split stood at ${compare().style.getPropertyValue('--split')}`);
+      await act(async () => await new Promise((r) => setTimeout(r, 10)));
+    }
+
+    const rows = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    expect(rows()).toHaveLength(3);
+    expect(rows().map((r) => r.querySelector('.restore-versions__size')!.textContent)).toEqual(['14.6 MB', '14.2 MB', '13.8 MB']);
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+    expect(rows().map((r) => r.querySelector('.restore-versions__older')?.textContent ?? null)).toEqual([
+      null,
+      'Made by an earlier version of Albedian.',
+      'Made by an earlier version of Albedian.',
+    ]);
+
+    // Move the wipe to Restored (0%), then switch V18 -> V17 -> V16: --split must stay at 0%, never jump back to 50%
+    act(() => ([...container.querySelectorAll('.restore-compare__label')].find((b) => b.textContent === 'Restored') as HTMLButtonElement).click());
+    expect(compare().style.getPropertyValue('--split')).toBe('0%');
+
+    const saved: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.getAttribute('href')!);
+    });
+    const download = () => [...container.querySelectorAll('button')].find((b) => b.textContent === 'Download') as HTMLButtonElement;
+
+    act(() => rows()[1]!.click());
+    for (let i = 0; i < 4; i++) await act(async () => await new Promise((r) => setTimeout(r, 20)));
+    expect(compare().style.getPropertyValue('--split')).toBe('0%');
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    const picV17 = compare().querySelector('.restore-compare__pic img') as HTMLImageElement;
+    expect(picV17.getAttribute('src')).toBe(`/api/media/${sha}/variants/${V17.id}/file`);
+    expect(picV17.style.transform).toBe('rotate(90deg)');
+    act(() => download().click());
+
+    act(() => rows()[2]!.click());
+    for (let i = 0; i < 4; i++) await act(async () => await new Promise((r) => setTimeout(r, 20)));
+    expect(compare().style.getPropertyValue('--split')).toBe('0%');
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true']);
+    expect((compare().querySelector('.restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe(`/api/media/${sha}/variants/${V16.id}/file`);
+    act(() => download().click());
+
+    expect(saved).toEqual([
+      `/api/media/${sha}/variants/${V17.id}/export`,
+      `/api/media/${sha}/variants/${V16.id}/export`,
+    ]);
   });
 });

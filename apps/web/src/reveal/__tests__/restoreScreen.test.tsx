@@ -434,6 +434,28 @@ describe('D15: marks over the compare and zooming both pictures together (UIUX-r
     expect(layers()[0]!.style.transform).not.toBe('translate(0px, 0px) scale(1)');
     act(() => original.click());
     expect(layers()[0]!.style.transform).toBe('translate(0px, 0px) scale(1)');
+
+    // Secondary mouse button does not jump --split; Escape and second label press update zoomRef synchronously for immediate wheel ticks
+    act(() => {
+      compare().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 2, clientX: 100 }));
+    });
+    expect(compare().style.getPropertyValue('--split')).toBe('100%');
+
+    wheel(-400);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      compare().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100, clientX: 200, clientY: 300 }));
+    });
+    const afterEscAndOneStep = Number(/scale\(([\d.]+)\)/.exec(layers()[0]!.style.transform)![1]);
+    expect(afterEscAndOneStep).toBeCloseTo(Math.exp(100 * 0.0015), 6);
+
+    wheel(-400);
+    act(() => {
+      original.click();
+      compare().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100, clientX: 200, clientY: 300 }));
+    });
+    const afterLabelResetAndOneStep = Number(/scale\(([\d.]+)\)/.exec(layers()[0]!.style.transform)![1]);
+    expect(afterLabelResetAndOneStep).toBeCloseTo(Math.exp(100 * 0.0015), 6);
   });
 
   it('does not zoom or swallow wheel scroll when maxZoom is 1, and re-clamps zoom when the frame grows to real pixels', () => {

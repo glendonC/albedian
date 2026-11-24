@@ -130,10 +130,12 @@ export function useRestoration(
       try {
         const job = await startRestoration(sha256);
         if (stop.signal.aborted) return;
-        // The compare waits for the variant's turn, so a turned photo is never drawn sideways for a moment
+        // The compare waits for the variant's turn, and a gate refusal waits for its attempt's reason, so neither flashes half-read
         const shown = (record: UploadJob) => {
           const view = restorationOf(record, sha256, mediaKind);
-          if (!stop.signal.aborted && view.phase !== 'done') setRestoration(view);
+          if (!stop.signal.aborted && view.phase !== 'done' && !(record.state === 'rejected' && record.attemptId !== undefined)) {
+            setRestoration(view);
+          }
         };
         shown(job);
         const ended = job.state === 'queued' || job.state === 'running' ? await followJob(job, shown, { pollMs, signal: stop.signal }) : job;
@@ -144,12 +146,13 @@ export function useRestoration(
           if (!stop.signal.aborted) setRestoration({ ...view, orientation });
           return;
         }
-        setRestoration(view);
         if (ended.state === 'rejected' && ended.attemptId !== undefined) {
           const refusal = await readRefusal(sha256, ended.attemptId).catch(() => null);
           const sentence = refusal ? refusalSentence(refusal.rejection, refusal.unconfirmedPointCount, mediaKind) : null;
-          if (!stop.signal.aborted && sentence !== null) setRestoration(refused(ended, sentence, mediaKind));
+          if (!stop.signal.aborted) setRestoration(refused(ended, sentence, mediaKind));
+          return;
         }
+        setRestoration(view);
       } catch (err) {
         if (!stop.signal.aborted) setRestoration(stopped(null, failureReason(err)));
       }

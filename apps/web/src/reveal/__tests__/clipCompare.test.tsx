@@ -81,4 +81,58 @@ describe('the restored clip compared (D34)', () => {
       '.restore-compare.is-clip .restore-compare__label.is-right': { right: '400px' },
     });
   });
+
+  it('keeps the restored clip playing and aligned to the parent clock across D36 version switches and async loadedmetadata', async () => {
+    const media = JSON.parse(fs.readFileSync(path.resolve(here, '../../../../../tests/fixtures/media_contract.json'), 'utf8')) as {
+      valid: { MediaVariant: Array<Record<string, unknown>> };
+    };
+    const base = media.valid.MediaVariant.find((v) => v.kind === 'restoration')!;
+    const vOld = { ...base, id: 'var_0000000000000016', createdAtUTC: '2026-11-18T18:20:00Z', sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: `/api/media/${sha}/variants/var_0000000000000016/file` };
+    const vNew = { ...base, id: succeeded.variantId!, createdAtUTC: '2026-11-19T18:20:00Z', sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: `/api/media/${sha}/variants/${succeeded.variantId}/file` };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ variants: [vOld, vNew], attempts: [] }), { status: 200 }));
+
+    const parent = document.createElement('video');
+    parent.currentTime = 4.25;
+    parent.playbackRate = 1.5;
+    parent.loop = true;
+    Object.defineProperty(parent, 'paused', { value: false, configurable: true });
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+
+    show({
+      clipVideo: parent,
+      restoration: { phase: 'done', job: succeeded, variantUrl: `/api/media/${sha}/variants/${succeeded.variantId}/file`, orientation: { quarterTurnsClockwise: 0, mirrored: false } },
+    });
+    for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+
+    const restored = q('[data-testid="restore-compare"] .restore-compare__pic video') as HTMLVideoElement;
+    expect(restored.currentTime).toBeCloseTo(4.25, 6);
+    expect(restored.playbackRate).toBe(1.5);
+    expect(restored.loop).toBe(true);
+    expect(playSpy).toHaveBeenCalledTimes(1);
+
+    // Switch to older clip version while parent is playing: HTML5 load resets child.currentTime = 0 and paused = true
+    playSpy.mockClear();
+    const versionRows = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    expect(versionRows).toHaveLength(2);
+    act(() => {
+      restored.currentTime = 0;
+      versionRows[1]!.click();
+    });
+    expect(restored.getAttribute('src')).toBe(`/api/media/${sha}/variants/${vOld.id}/file`);
+    expect(restored.currentTime).toBeCloseTo(4.25, 6);
+    expect(playSpy).toHaveBeenCalledTimes(1);
+
+    // Pause parent at solved frame 5.0 s, simulate browser resource-load clobbering child.currentTime and playbackRate before loadedmetadata fires
+    Object.defineProperty(parent, 'paused', { value: true, configurable: true });
+    parent.currentTime = 5.0;
+    playSpy.mockClear();
+    restored.currentTime = 0;
+    restored.playbackRate = 1;
+    act(() => {
+      restored.dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(restored.currentTime).toBeCloseTo(5.0, 6);
+    expect(restored.playbackRate).toBe(1.5);
+    expect(playSpy).not.toHaveBeenCalled();
+  });
 });

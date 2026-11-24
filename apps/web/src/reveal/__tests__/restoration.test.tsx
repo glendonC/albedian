@@ -185,14 +185,27 @@ describe('useRestoration', () => {
     expect(latest.restoration).toMatchObject({ phase: 'stopped', sentence: 'Canceled' });
   });
 
-  it("reads a refused job's attempt for its reason and count, and says it, the photo unchanged, with no Try again", async () => {
+  it("reads a refused job's attempt for its reason and count, and says it without flashing an empty stopped alert first, the photo unchanged, with no Try again", async () => {
     const refused = restoration('rejected');
     const calls: string[] = [];
+    const seenStoppedSentences: Array<string | null> = [];
+    let releaseVariants!: () => void;
+    const gateHold = new Promise<void>((resolve) => {
+      releaseVariants = resolve;
+    });
+    const WatchProbe = ({ sha }: { sha: string }) => {
+      latest = useRestoration(sha, { pollMs: 0 });
+      if (latest.restoration.phase === 'stopped') {
+        seenStoppedSentences.push(latest.restoration.sentence);
+      }
+      return null;
+    };
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
       calls.push(url);
       if (url.endsWith('/restore')) return json(running, 202);
       if (url.endsWith('/variants')) {
+        await gateHold;
         return json({
           variants: [],
           attempts: [{ id: refused.attemptId, status: 'rejected', rejection: 'unconfirmed_points', gate: { unconfirmedPointCount: 2, passed: false } }],
@@ -200,13 +213,35 @@ describe('useRestoration', () => {
       }
       return json(refused);
     });
-    act(() => root.render(createElement(Probe, { sha: sha256 })));
+    act(() => root.render(createElement(WatchProbe, { sha: sha256 })));
     act(() => latest.start());
+    await until(() => calls.includes(`/api/media/${sha256}/variants`));
+    expect(phase()).toBe('working');
+    expect(seenStoppedSentences).toEqual([]);
+    act(() => releaseVariants());
     await until(() => phase() === 'stopped');
-    expect(calls).toContain(`/api/media/${sha256}/variants`);
+    expect(seenStoppedSentences).toEqual(['The restoration showed 2 points of light that are not in your photo, so it was not kept.']);
     expect(latest.restoration).toMatchObject({
       phase: 'stopped',
       sentence: 'The restoration showed 2 points of light that are not in your photo, so it was not kept.',
+      subline: 'Your photo is unchanged.',
+      canTryAgain: false,
+    });
+
+    // When /variants cannot be read or holds an unknown rejection code, the job still settles to stopped (refused) with sentence: null
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/restore')) return json(running, 202);
+      if (url.endsWith('/variants')) return new Response('unavailable', { status: 503 });
+      return json(refused);
+    });
+    act(() => root.render(createElement(Probe, { sha: 'c'.repeat(64) })));
+    act(() => latest.start());
+    await until(() => phase() === 'stopped');
+    expect(latest.restoration).toEqual({
+      phase: 'stopped',
+      job: refused,
+      sentence: null,
       subline: 'Your photo is unchanged.',
       canTryAgain: false,
     });
