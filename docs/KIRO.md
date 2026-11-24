@@ -4,6 +4,9 @@ This page records what Kiro did on Albedian, and what was done before Kiro led, 
 other. Every claim names its file, commit or verdict. Paths under `.lead/` and `.claude/` are the lead's local
 working files: git ignores them, so they are named here in code spans and are not in the repository.
 
+Everything under `.kiro/` is tracked: `.gitignore` names no path there, as the Kiroween rules ask, so a settings
+file Kiro writes there (such as `.kiro/settings/mcp.json`) must hold no key, token or password when it is committed.
+
 ## Before Kiro led (to 2026-11-09)
 
 - The `.kiro/` folder (8 specs with requirements, design and tasks; 5 steering files; 5 hooks in the

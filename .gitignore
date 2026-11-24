@@ -40,15 +40,6 @@ Thumbs.db
 # Internal ops files: local only, never committed
 docs/internal/
 
-# Kiro local IDE settings: machine-specific, not project config
-.kiro/settings/
-
-# NOTE: .kiro specs, steering, hooks, and agents ARE intentionally tracked.
-!/.kiro/specs/
-!/.kiro/steering/
-!/.kiro/hooks/
-!/.kiro/agents/
-
 # Claude Code session worktrees: full repo copies the desktop app manages, never committed
 .claude/worktrees/
 
