@@ -191,7 +191,7 @@
       "files": {
         "lod0": {
           "path": "emu/emu_lod0.glb",
-          "bytes": 4197792,
+          "bytes": 4195244,
           "triangles": 95516,
           "textureEdgeMax": 2048,
           "budgetBytes": 4253448,
@@ -199,7 +199,7 @@
         },
         "lod1": {
           "path": "emu/emu_lod1.glb",
-          "bytes": 1564396,
+          "bytes": 1561848,
           "triangles": 29564,
           "textureEdgeMax": 1024,
           "budgetBytes": 1593752,
@@ -207,7 +207,7 @@
         },
         "lod2": {
           "path": "emu/emu_lod2.glb",
-          "bytes": 624952,
+          "bytes": 622420,
           "triangles": 7492,
           "textureEdgeMax": 512,
           "budgetBytes": 636524,

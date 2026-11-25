@@ -538,7 +538,7 @@
     },
     {
       "path": "hangar/emu/emu_lod0.glb",
-      "sha256": "25e693e4cc6e794b65cfe6c16565278e588d80a3820980ffe1e02ff64fafedbf",
+      "sha256": "f1521a424b6105c34afd9fb7cd7cddd9665682e78a8f1957cbf4433611d2dfeb",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -547,13 +547,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft emu --out apps/web/public/models/hangar/emu",
-        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. Rigged and posed by the app: a skeleton of 14 bones added beside the mesh; the helmet, gloves, pack, chest controls and bearings each hang whole on one bone, and the suit's continuous fabric, boots to chest and each arm, is weighted to blend from one bone to the next just past each joint so it bends at hips, knees and elbows; three poses of the limbs for the app to blend, hovering as NASA filmed a free flight with knees a little bent and forearms forward, cruising with forearms down along the body and legs straight, and braking with knees up and forearms raised forward, the upper arms kept where NASA modelled them; at rest no vertex moves. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
+        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. Rigged and posed by the app: a skeleton of 14 bones added beside the mesh; the helmet, gloves, pack, chest controls and bearings each hang whole on one bone, and the suit's continuous fabric, boots to chest and each arm, is weighted to blend from one bone to the next just past each joint so it bends at hips and knees; three poses of the legs for the app to blend, hovering as NASA filmed a free flight with knees a little bent, cruising with legs straight, and braking with knees up, the arms kept where NASA modelled them, the hands on the pack's hand controllers; at rest no vertex moves. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb (3448904 bytes, SHA-256 4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/emu/emu_lod1.glb",
-      "sha256": "2c078eefd9824df047748bce9e9bee84ab98ef26d756d5e37fe781b816bcd2fc",
+      "sha256": "0bbd21bc9c7b6e78c395db32fee3b8323e06a01c38a2121364da57ec84ecdcaa",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -568,7 +568,7 @@
     },
     {
       "path": "hangar/emu/emu_lod2.glb",
-      "sha256": "d61289b1e78a417e91c2ff56654cb333ea566e73274afe852049adff7d25bd18",
+      "sha256": "919eddd2d271d1c51d95e9765416cccef858b9ade3975fb9c5d6acdc80b2ae7c",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "58f6206036579587c86ceca30cd2db96b336e09d952c538664f7730a546ad7c1",
+      "sha256": "0658768fd316d97d2de63f35827cffc5ac96c0737f18e0ae1ee4699390669246",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

@@ -29,26 +29,25 @@ PICKER_EDGE = 176  # the picker row's picture is 44 px; four times that for dens
 # after the build (x its left, y its back, z up); the build turns each the least way to point there from where its
 # parent left it. MOTION's design as the lead decided it (25 Nov 03:22, `.lead/kiro/reports/MOTION/craft-alive-
 # proposal.md`): the app leans the whole figure with speed (20 to 75 degrees), back on the brake and into a turn, so no
-# pose turns the pelvis; the poses move limbs only. Hover as NASA filmed a free flight (knees a little bent, forearms
-# forward), cruise (arms along the body: the forearms straightened down; legs straight), brake (knees up: thighs 35
-# degrees forward, knees 42 bent; forearms raised forward). The upper arms keep NASA's stance (version two, AUDIT-B's
+# pose turns the pelvis; the poses move the legs only. Hover as NASA filmed a free flight (knees a little bent), cruise
+# (legs straight), brake (knees up: thighs 35 degrees forward, knees 42 bent). The hands keep to the pack's two hand
+# controllers in every pose, as NASA filmed free flight (AUDIT-B's look note of 25 Nov: in a cruise that brought the
+# forearms down, the controllers, hard parts on the forearms and hands, folded down with them off the pack). The arms
+# keep NASA's stance; the upper arms could not turn in any case (version two, AUDIT-B's
 # verdict of 25 Nov): the shoulder's two bearing rings, hard parts the hard upper torso carries, reach 0.15 m down an
 # upper arm 0.19 m long, so a turn at the shoulder tilts them out of the fabric by its radius times the angle's sine
 # (5 to 8 cm in the first poses) [tested: .lanetools/ring_reach.py and rig_gaps.py]; the elbows, hips and knees are
 # fabric alone. No pose turns the helmet: it is fixed to the hard upper torso, so it hangs on the spine.
 SUIT_POSES = {
     "hover": {
-        "forearm.L": (0.12, -0.9, -0.42), "forearm.R": (-0.12, -0.9, -0.42),
         "thigh.L": (0.06, -0.2, -0.98), "thigh.R": (-0.06, -0.2, -0.98),
         "shin.L": (0.04, 0.2, -0.98), "shin.R": (-0.04, 0.2, -0.98),
     },
     "cruise": {
-        "forearm.L": (0.22, 0.18, -0.96), "forearm.R": (-0.22, 0.18, -0.96),
         "thigh.L": (0.07, 0.03, -1.0), "thigh.R": (-0.07, 0.03, -1.0),
         "shin.L": (0.05, 0.06, -1.0), "shin.R": (-0.05, 0.06, -1.0),
     },
     "brake": {
-        "forearm.L": (0.15, -0.95, -0.25), "forearm.R": (-0.15, -0.95, -0.25),
         "thigh.L": (0.1, -0.57, -0.82), "thigh.R": (-0.1, -0.57, -0.82),
         "shin.L": (0.02, 0.12, -0.99), "shin.R": (-0.02, 0.12, -0.99),
     },
