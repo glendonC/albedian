@@ -68,6 +68,8 @@ interface Gpu {
   bloom?: { program: WebGLProgram; vao: WebGLVertexArrayObject; uniforms: Record<string, WebGLUniformLocation | null> } | null;
   /** flight-stars-finish-one: the predicted sky's bloom and tone mapping for the flight's stars; none where three cannot take the context. */
   finish: FlightFinish | null;
+  /** flight-draw-once-one: how many frames the layer has drawn, so a frame scheduled for new tiles knows if one came first. */
+  draws: number;
   /** The tile and row of the star flown to, kept until the star or the tiles change. */
   pickedAt?: { star: ArrivalStar; tiles: number; at: { key: string; row: number } | null };
 }
@@ -102,7 +104,7 @@ function createGpu(canvas: HTMLCanvasElement, makeFinish: (canvas: HTMLCanvasEle
   const uniforms: Record<string, WebGLUniformLocation | null> = {};
   for (const name of UNIFORMS) uniforms[name] = gl.getUniformLocation(program, name);
   const finish = makeFinish(canvas, gl);
-  return { gl, program, uniforms, tiles: new Map(), finish };
+  return { gl, program, uniforms, tiles: new Map(), finish, draws: 0 };
 }
 
 /** The bloom's program and its quad (two triangles over the square the glow fills). */
@@ -218,6 +220,7 @@ function uploadTile(gpu: Gpu, tile: CatalogStarCoreTile, reference: Vec3, existi
  */
 function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number, gain = 1, bloom: ArrivalBloom | null = null, picked: ArrivalStar | null = null, finished = false): void {
   const { gl, program, uniforms } = gpu;
+  gpu.draws += 1;
   // A new star flown to rebases every tile on its place (the floating origin)
   const refKey = keyOfReference(camera.referencePc);
   for (const [key, entry] of gpu.tiles) {
@@ -559,6 +562,12 @@ export const FlightStarsLayer: React.FC<{
       return undefined;
     }
     gpu.current = made;
+    // flight-draw-once-one: tiles that come after the first are drawn once on the next frame, however many came
+    let frame = 0;
+    let drawsAtSchedule = 0;
+    let pendingFound: ArrivalStar | null = null;
+    const drawTiles = (g: Gpu, v: StarView, found: ArrivalStar | null) =>
+      drawFrame(g, v, canvas.current!, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, found ?? arrivalRef.current, !coneRef.current);
     const onTile = (tile: CatalogStarCoreTile) => {
       const g = gpu.current;
       const v = viewRef.current;
@@ -581,9 +590,25 @@ export const FlightStarsLayer: React.FC<{
         noDistanceOnScreen += t.noDistanceOnScreen;
       }
       setCounts({ stars, skySphere, noDistanceOnScreen });
-      drawFrame(g, v, canvas.current, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, found ?? arrivalRef.current, !coneRef.current);
-      setState('drawn');
-      toldStars.current?.(true);
+      if (g.draws === 0) {
+        // The first stars in the task that brings them, so Real sky's leave in the same paint
+        drawTiles(g, v, found);
+        setState('drawn');
+        toldStars.current?.(true);
+        return;
+      }
+      if (found) pendingFound = found;
+      if (frame) return;
+      drawsAtSchedule = g.draws;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const now = gpu.current;
+        const view = viewRef.current;
+        const shown = pendingFound;
+        pendingFound = null;
+        // Any draw since showed every tile uploaded so far
+        if (current && now && view && canvas.current && now.draws === drawsAtSchedule) drawTiles(now, view, shown);
+      });
     };
     void openTiles(onTile).then(
       (opened) => {
@@ -601,6 +626,7 @@ export const FlightStarsLayer: React.FC<{
     );
     return () => {
       current = false;
+      if (frame) cancelAnimationFrame(frame);
       source.current?.dispose();
       source.current = null;
       const g = gpu.current;

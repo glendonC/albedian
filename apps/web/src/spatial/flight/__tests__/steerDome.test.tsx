@@ -153,6 +153,9 @@ describe('the Milky Way while steering, drawn by the one frame loop', () => {
     // A frame drawn for a new size, and one for a tile that arrives later: neither draws the dome
     await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1400, viewportHeightPx: 900, openTiles, steering: false, onSkyDome })));
     await act(async () => deliver!({ ...tile, pix: 2 }));
+    // flight-draw-once-one: a later tile is drawn on the next frame, the last one asked for
+    const tileFrame = frames.pop()!;
+    await act(async () => tileFrame(performance.now()));
     const drawn = events.slice(after);
     expect(drawn.filter((e) => e.kind === 'stars').length).toBeGreaterThanOrEqual(2);
     expect(drawn.some((e) => e.kind === 'stars')).toBe(true);

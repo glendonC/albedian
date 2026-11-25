@@ -338,3 +338,63 @@ describe('FlightStarsLayer', () => {
   });
 });
 
+// flight-draw-once-one (DECIDED-BY-LEAD on LOOK's report of Go there's long frames): the first stars are drawn in the
+// task that brings them; tiles after that are drawn once on the next frame however many came, and not at all when a
+// draw of the layer already showed them.
+describe('FlightStarsLayer: the tiles after the first', () => {
+  let frames: FrameRequestCallback[];
+  beforeEach(() => {
+    frames = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => (frames.push(cb), frames.length));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  });
+
+  /** Two stars on the sky sphere far from the picked star (typed test data, not read from any catalog release). */
+  function farTile(pix: number): CatalogStarCoreTile {
+    return { ...tile(pix), directions: new Float32Array([...raDecToUnitVector(10, 10), ...raDecToUnitVector(11, 11)]), distancePc: new Float32Array([Number.NaN, Number.NaN]), flags: new Uint8Array([0, 0]) };
+  }
+
+  async function mounted() {
+    const { gl, calls } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    let deliver: ((t: CatalogStarCoreTile) => void) | null = null;
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      deliver = onTile;
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const session = there();
+    const render = (width: number) => act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: width, viewportHeightPx: 900, openTiles })));
+    await render(1440);
+    await act(async () => await Promise.resolve());
+    return { calls, deliver: (t: CatalogStarCoreTile) => act(async () => deliver!(t)), render };
+  }
+
+  it('draws the first tile in the task that brings it, then the tiles of one frame once, together', async () => {
+    const { calls, deliver } = await mounted();
+    await deliver(farTile(1));
+    expect(calls.drawArrays).toEqual([2]);
+    expect(frames).toHaveLength(0);
+    await act(async () => {
+      await deliver(farTile(2));
+      await deliver(farTile(3));
+    });
+    // Uploaded, not drawn: one frame asked for, for both
+    expect(calls.drawArrays).toEqual([2]);
+    expect(frames).toHaveLength(1);
+    await act(async () => frames.pop()!(performance.now()));
+    expect(calls.drawArrays).toEqual([2, 2, 2, 2]);
+  });
+
+  it('draws nothing more on that frame when another draw already showed the new tiles', async () => {
+    const { calls, deliver, render } = await mounted();
+    await deliver(farTile(1));
+    await deliver(farTile(2));
+    expect(frames).toHaveLength(1);
+    // A new window size draws every tile uploaded so far
+    await render(1400);
+    const drawn = calls.drawArrays.length;
+    expect(calls.drawArrays.slice(1)).toEqual([2, 2]);
+    await act(async () => frames.pop()!(performance.now()));
+    expect(calls.drawArrays).toHaveLength(drawn);
+  });
+});
