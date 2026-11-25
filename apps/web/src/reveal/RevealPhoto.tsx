@@ -49,8 +49,14 @@ export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colour
 
 /** How near the status column may come to In this photo before the legend gives way (refusedwrap-1, decided 20:44 on 22 Nov). */
 const LEGEND_CLEAR_PX = 24;
-/** Top of .reveal-card.is-phone in CSS px (reveal.css); marks with yPx > 469 sit behind the open phone card. */
-export const PHONE_CARD_TOP_PX = 469;
+/**
+ * Top of .reveal-card.is-phone in CSS px in a window this tall (reveal.css; phone-card-foot-one): the card stands 30 px
+ * above the window's foot, 345 high, up to the room under the top bar at 118; 469 in 844. Marks below it sit behind the
+ * open phone card.
+ */
+export function phoneCardTopPx(viewportHeightPx: number): number {
+  return Math.max(118, viewportHeightPx - 30 - 345);
+}
 
 /**
  * Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs; an answer
@@ -1275,7 +1281,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )
         )}
         {drawnMarks.map((mark) => {
-          const coveredByPhoneCard = phoneCardOpen && mark.yPx > PHONE_CARD_TOP_PX;
+          const coveredByPhoneCard = phoneCardOpen && mark.yPx > phoneCardTopPx(viewH);
           return (
             <button
               key={mark.finding.id}

@@ -635,7 +635,7 @@ describe("the predicted sky's rules are the record's", () => {
     expect(declarationsOf('.predsky.is-phone:has(.reveal-card)')).toEqual({ 'z-index': '31' });
     expect(declarationsOf('.predsky.is-phone:has(.reveal-card.is-leaving) ~ .ask-bar')).toEqual({ display: 'none' });
     expect(declarationsOf('.predsky.is-phone .predsky-status.is-above-card')).toEqual({
-      bottom: 'calc(100% - 453px)',
+      bottom: 'min(391px, calc(100% - 102px))',
       animation: 'none',
     });
   });

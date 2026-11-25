@@ -449,12 +449,14 @@ describe("the phone reveal's rules are the approved page's", () => {
   });
 
   it('sets the phone card as #p-pick does: 12 from the sides, 30 from the foot, its type and buttons at the phone sizes', () => {
-    // D18 (INTERIM): the approved height, its top at 469, the cautions scrolling inside its lower part, which fades
+    // D18 (INTERIM): the approved height, its top at 469 in 844, the cautions scrolling inside its lower part, which fades;
+    // by its foot (phone-card-foot-one), the same 345 up to the room under the bar
     expect(declarationsOf('.reveal-card.is-phone')).toEqual({
       left: '12px',
       right: '12px',
-      top: '469px',
+      top: 'auto',
       bottom: '30px',
+      height: 'min(345px, calc(100% - 148px))',
       width: 'auto',
       display: 'flex',
       'flex-direction': 'column',
@@ -481,7 +483,7 @@ describe("the phone reveal's rules are the approved page's", () => {
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__number b small')).toEqual({ 'font-size': '14px' });
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__label')).toEqual({ 'margin-top': '6px' });
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__source')).toEqual({ margin: '14px 0 0', 'padding-top': '0', 'border-top': '0' });
-    expect(declarationsOf('.reveal-card.is-phone .reveal-card__acts')).toEqual({ 'margin-top': '20px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__acts')).toEqual({ 'margin-top': '20px', 'flex-wrap': 'wrap' });
     expect(declarationsOf('.reveal-card.is-phone .reveal-card__acts .look-main, .reveal-card.is-phone .reveal-card__acts .look-second')).toEqual({
       '--look-h': 'var(--look-h-phone)',
       '--look-fs': 'var(--look-fs-phone)',

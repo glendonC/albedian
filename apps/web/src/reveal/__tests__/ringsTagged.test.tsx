@@ -306,7 +306,7 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
       return found;
     };
     expect(rule('.reveal-phone-estimate.is-above-card')).toEqual({
-      bottom: 'calc(100% - 453px)',
+      bottom: 'min(391px, calc(100% - 102px))',
       animation: 'none',
     });
     expect(rule('.reveal-phone-estimate.is-above-card::before')).toEqual(rule('.reveal-answer.is-phone::before'));

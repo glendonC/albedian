@@ -1641,8 +1641,11 @@
 .reveal-card.is-phone {
   left: 12px;
   right: 12px;
-  top: 469px;
+  /* phone-card-foot-one (UIUX-phone-textsize-READY.md item 4, DECIDED-BY-LEAD at the line stamped 02:11): a sheet standing by its foot, 30 px above the window's, never at a fixed top; the approved 345 px high (its
+     top at 469 in 844), up to the room under the top bar (from y 118); past that its body scrolls inside it */
+  top: auto;
   bottom: 30px;
+  height: min(345px, calc(100% - 148px));
   width: auto;
   display: flex;
   flex-direction: column;
@@ -1694,6 +1697,8 @@
 }
 .reveal-card.is-phone .reveal-card__acts {
   margin-top: 20px;
+  /* phone-card-foot-one (UIUX-phone-textsize-READY.md item 4, DECIDED-BY-LEAD at the line stamped 02:11): Go there's row wraps rather than passing the window's edge */
+  flex-wrap: wrap;
 }
 .reveal-card.is-phone .reveal-card__acts .look-main,
 .reveal-card.is-phone .reveal-card__acts .look-second {
@@ -2517,7 +2522,8 @@
 }
 
 .predsky.is-phone .predsky-status.is-above-card {
-  bottom: calc(100% - 453px);
+  /* phone-card-foot-one (UIUX-phone-textsize-READY.md item 4, DECIDED-BY-LEAD at the line stamped 02:11): 16 px above the card's top, wherever its foot stands it (453 in 844) */
+  bottom: min(391px, calc(100% - 102px));
   animation: none;
 }
 
@@ -2734,7 +2740,8 @@
    rings, the layer's Predicted block stands 16 px above StarCard (top 469 px) with D19's 44 px 82 percent black fade
    and no entrance */
 .reveal-phone-estimate.is-above-card {
-  bottom: calc(100% - 453px);
+  /* phone-card-foot-one (UIUX-phone-textsize-READY.md item 4, DECIDED-BY-LEAD at the line stamped 02:11): 16 px above the card's top, wherever its foot stands it (453 in 844) */
+  bottom: min(391px, calc(100% - 102px));
   animation: none;
 }
 .reveal-phone-estimate.is-above-card::before {
