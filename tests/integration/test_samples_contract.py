@@ -8,8 +8,8 @@ cut. Both languages read the one record: services/contracts/samples.py and packa
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
-import subprocess
 
 import pytest
 from pydantic import ValidationError
@@ -49,9 +49,9 @@ def test_the_solution_is_kept_on_this_machine_and_never_tracked() -> None:
     night = samples.load_samples()[0]
     for path in (night.solution.path, night.solution.sha256_path):
         assert path.startswith(".cache/samples/"), path
-    # The shared cache folder is ignored whole (in a worktree it is a link, which git does not look past)
-    ignored = subprocess.run(["git", "check-ignore", "--no-index", "-q", ".cache"], cwd=ROOT)
-    assert ignored.returncode == 0, ".cache must be ignored by git"
+    # The tracked .gitignore holds the cache folder whole, so a fresh clone (CI's) ignores it before it exists
+    rules = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert ".cache/" in rules or "/.cache" in rules
 
 
 @pytest.mark.parametrize(
@@ -70,3 +70,59 @@ def test_a_record_that_breaks_the_rules_is_refused(bad: dict) -> None:
     broken = {**raw, **{k: ({**raw[k], **v} if isinstance(v, dict) and isinstance(raw.get(k), dict) else v) for k, v in bad.items()}}
     with pytest.raises(ValidationError):
         samples.SampleNight.model_validate(broken)
+
+
+# The odd inputs both languages must answer alike (AUDIT's version two), held in a fixture the TypeScript test reads
+# (packages/contracts/src/__tests__/samples.test.ts); ALBEDIAN_UPDATE_SAMPLES_FIXTURE=1 writes it
+CASES_PATH = ROOT / "tests" / "fixtures" / "samples_contract.json"
+
+
+def _cases() -> list[dict]:
+    night = json.loads(samples.SAMPLES_PATH.read_text(encoding="utf-8"))["samples"][0]
+
+    def credit(url: str) -> dict:
+        return {**night, "credit": {**night["credit"], "sourceUrl": url}}
+
+    rows = [
+        ("the tracked record", night),
+        ("an address with a next-line character", credit("https://a\u0085b")),
+        ("an address with a byte-order mark", credit("https://a﻿b")),
+        ("an address with a space", credit("https://a b")),
+        ("an address with a tab", credit("https://a\tb")),
+        ("an address of printable ASCII", credit("https://example.org/a?b=c")),
+        ("a title of 150 astral characters (300 UTF-16 units)", {**night, "title": "\U0001f320" * 150}),
+        ("a title of 100 astral characters (200 UTF-16 units)", {**night, "title": "\U0001f320" * 100}),
+        ("a title of 201 ASCII characters", {**night, "title": "a" * 201}),
+        ("a title of 200 ASCII characters", {**night, "title": "a" * 200}),
+    ]
+
+    def accepted(value: dict) -> bool:
+        try:
+            samples.SampleNight.model_validate(value)
+        except ValidationError:
+            return False
+        return True
+
+    return [{"what": what, "value": value, "accepted": accepted(value)} for what, value in rows]
+
+
+def test_the_odd_inputs_are_answered_alike_and_held_in_the_shared_fixture() -> None:
+    cases = _cases()
+    verdicts = {case["what"]: case["accepted"] for case in cases}
+    assert verdicts == {
+        "the tracked record": True,
+        "an address with a next-line character": False,
+        "an address with a byte-order mark": False,
+        "an address with a space": False,
+        "an address with a tab": False,
+        "an address of printable ASCII": True,
+        "a title of 150 astral characters (300 UTF-16 units)": False,
+        "a title of 100 astral characters (200 UTF-16 units)": True,
+        "a title of 201 ASCII characters": False,
+        "a title of 200 ASCII characters": True,
+    }
+    text = json.dumps({"about": "first-use-sample-zero version two: odd inputs both languages answer alike", "cases": cases},
+                      indent=1, ensure_ascii=True) + "\n"
+    if os.environ.get("ALBEDIAN_UPDATE_SAMPLES_FIXTURE") == "1":
+        CASES_PATH.write_text(text, encoding="utf-8")
+    assert CASES_PATH.read_text(encoding="utf-8") == text, "regenerate with ALBEDIAN_UPDATE_SAMPLES_FIXTURE=1"

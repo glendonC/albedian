@@ -1,0 +1,255 @@
+{
+ "about": "first-use-sample-zero version two: odd inputs both languages answer alike",
+ "cases": [
+  {
+   "what": "the tracked record",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "Venus, Moon, Orion",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": true
+  },
+  {
+   "what": "an address with a next-line character",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "Venus, Moon, Orion",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://a\u0085b"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": false
+  },
+  {
+   "what": "an address with a byte-order mark",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "Venus, Moon, Orion",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://a\ufeffb"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": false
+  },
+  {
+   "what": "an address with a space",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "Venus, Moon, Orion",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://a b"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": false
+  },
+  {
+   "what": "an address with a tab",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "Venus, Moon, Orion",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://a\tb"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": false
+  },
+  {
+   "what": "an address of printable ASCII",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "Venus, Moon, Orion",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://example.org/a?b=c"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": true
+  },
+  {
+   "what": "a title of 150 astral characters (300 UTF-16 units)",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": false
+  },
+  {
+   "what": "a title of 100 astral characters (200 UTF-16 units)",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20\ud83c\udf20",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": true
+  },
+  {
+   "what": "a title of 201 ASCII characters",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": false
+  },
+  {
+   "what": "a title of 200 ASCII characters",
+   "value": {
+    "id": "night-rp-b-12",
+    "kind": "sample",
+    "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "photo": {
+     "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+     "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+     "bytes": 2496548,
+     "mimeType": "image/jpeg"
+    },
+    "credit": {
+     "author": "YagnKambariya",
+     "licence": "CC0",
+     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+    },
+    "solution": {
+     "path": ".cache/samples/rp-b-12/solution.json",
+     "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    }
+   },
+   "accepted": true
+  }
+ ]
+}

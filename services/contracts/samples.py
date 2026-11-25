@@ -10,16 +10,18 @@ from typing import Annotated, Literal
 
 from pydantic import Field, StringConstraints
 
-from services.contracts.wire import SHA256_HEX_PATTERN, WireInt, WireModel
+from services.contracts.wire import SHA256_HEX_PATTERN, WireInt, WireModel, wire_length
 
 SAMPLES_PATH = Path(__file__).resolve().parents[2] / "data" / "samples.json"
 SAMPLE_ID_PATTERN = r"^night-[a-z0-9-]{1,40}$"
 # The photo comes as the corpus photos come, kept in the shared cache git ignores; the solution only under .cache/samples
 PHOTO_PATH_PATTERN = r"^\.cache/real-photos/[a-z0-9-]{1,40}/[a-z0-9-]{1,40}\.(jpg|jpeg|png)$"
 SOLUTION_PATH_PATTERN = r"^\.cache/samples/[a-z0-9-]{1,40}/[a-z0-9.-]{1,60}$"
-HTTPS_URL = r"^https://[^\s]{1,300}$"
+# Printable ASCII only, so both languages read an address alike (no \s: JavaScript and the Rust regex hold different
+# spaces); lengths in UTF-16 code units, as Zod counts them (AUDIT, first-use-sample-zero version two)
+HTTPS_URL = r"^https://[!-~]{1,300}$"
 
-_Text = Annotated[str, StringConstraints(min_length=1, max_length=200)]
+_Text = wire_length(1, 200)
 
 
 class SamplePhoto(WireModel):
@@ -52,7 +54,7 @@ class SampleNight(WireModel):
 
 
 class SampleRecord(WireModel):
-    about: Annotated[str, StringConstraints(min_length=1, max_length=2000)]
+    about: wire_length(1, 2000)
     samples: Annotated[list[SampleNight], Field(min_length=1, max_length=8)]
 
 

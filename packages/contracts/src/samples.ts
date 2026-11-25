@@ -10,7 +10,8 @@ import { z } from 'zod';
 export const SAMPLE_ID_PATTERN = /^night-[a-z0-9-]{1,40}$/;
 const PHOTO_PATH_PATTERN = /^\.cache\/real-photos\/[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}\.(jpg|jpeg|png)$/;
 const SOLUTION_PATH_PATTERN = /^\.cache\/samples\/[a-z0-9-]{1,40}\/[a-z0-9.-]{1,60}$/;
-const HTTPS_URL = /^https:\/\/\S{1,300}$/;
+// Printable ASCII only, so both languages read an address alike; lengths are UTF-16 units on both sides
+const HTTPS_URL = /^https:\/\/[!-~]{1,300}$/;
 const text = z.string().min(1).max(200);
 
 export const SamplePhotoSchema = z

@@ -27,4 +27,12 @@ describe('@albedian/contracts: the sample night', () => {
   ])('refuses %s', (_label, change) => {
     expect(SampleNightSchema.safeParse({ ...record.samples[0], ...change }).success).toBe(false);
   });
+
+  it('answers the odd inputs as Python does (tests/fixtures/samples_contract.json, version two)', () => {
+    const fixture = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/samples_contract.json'), 'utf8')) as {
+      cases: Array<{ what: string; value: unknown; accepted: boolean }>;
+    };
+    expect(fixture.cases.length).toBeGreaterThanOrEqual(10);
+    for (const c of fixture.cases) expect(SampleNightSchema.safeParse(c.value).success, c.what).toBe(c.accepted);
+  });
 });
