@@ -368,10 +368,14 @@ struct StoppedScreen: View {
                             stoppedColumn
                         }
                         .frame(maxWidth: .infinity, minHeight: geometry.size.height - CGFloat(UnreachableFrame.top + UnreachableFrame.foot))
-                        .padding(.top, CGFloat(UnreachableFrame.top))
+                        .padding(.top, CGFloat(UnreachableFrame.top - Arrive.topBarFoot))
                         .padding(.bottom, CGFloat(UnreachableFrame.foot))
                     }
                     .scrollBounceBehavior(.basedOnSize)
+                    // largertext-scroll-edge-m (UIUX-scroll-under-controls-READY): the column scrolls on under the fixed top controls
+                    // with the system's scroll edge effect, automatic, so the controls stay distinct
+                    .scrollEdgeEffectStyle(.automatic, for: .top)
+                    .safeAreaBar(edge: .top) { TopBar { IconButton(icon: .close, label: "Close", action: model.close) } }
                     .opacity(columnRoom == nil ? 0 : 1)
                 } else {
                     ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
@@ -383,8 +387,10 @@ struct StoppedScreen: View {
                     }
                     MainButton(title: "Try again", icon: .send, action: model.tryAgainAfterStop).atBottom(Arrive.unreachableButtonsBottomGap)
                 }
-                IconButton(icon: .close, label: "Close", action: model.close)
-                    .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+                if !dynamicTypeSize.isAccessibilitySize {
+                    IconButton(icon: .close, label: "Close", action: model.close)
+                        .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+                }
             }
         }
         .ignoresSafeArea()

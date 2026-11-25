@@ -375,7 +375,7 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(after.contains("letframe=UnreachableFrame.size(screenWidth:width,screenHeight:Double(geometry.size.height),columnRoom:columnRoom??0)"))
         XCTAssertTrue(after.contains("unreachableColumn.hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}"),
                       "the column measured once, hidden")
-        XCTAssertTrue(after.contains("ScrollView{VStack(spacing:0){ShotPhoto(shot:model.shot,width:frame.width)unreachableColumn.padding(.top,CGFloat(UnreachableFrame.gap))}.frame(maxWidth:.infinity).padding(.top,CGFloat(UnreachableFrame.top)).padding(.bottom,CGFloat(UnreachableFrame.foot))}.scrollBounceBehavior(.basedOnSize).opacity(columnRoom==nil?0:1)"),
+        XCTAssertTrue(after.contains("ScrollView{VStack(spacing:0){ShotPhoto(shot:model.shot,width:frame.width)unreachableColumn.padding(.top,CGFloat(UnreachableFrame.gap))}.frame(maxWidth:.infinity).padding(.top,CGFloat(UnreachableFrame.top-Arrive.topBarFoot)).padding(.bottom,CGFloat(UnreachableFrame.foot))}.scrollBounceBehavior(.basedOnSize).scrollEdgeEffectStyle(.automatic,for:.top).safeAreaBar(edge:.top){TopBar{IconButton(icon:.again,label:,action:model.takeAgain)}}.opacity(columnRoom==nil?0:1)"),
                       "one scrolling column, the photo in its frame, nothing drawn before it is measured")
         XCTAssertTrue(after.contains("HStack(alignment:.firstTextBaseline,spacing:8){AlbedianIcon.unreachable.image(17)"), "the icon at the first line")
         XCTAssertTrue(after.contains(".multilineTextAlignment(.center)VStack(spacing:CGFloat(UnreachableFrame.betweenButtons)){MainButton("), "the lines centred, the buttons stacked")
@@ -394,7 +394,7 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(stopped.contains("stoppedColumn.hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}"))
         XCTAssertTrue(stopped.contains("ScrollView{VStack(spacing:0){ShotPhoto(shot:model.shot,width:frame.width)Spacer(minLength:CGFloat(UnreachableFrame.gap))stoppedColumn}.frame(maxWidth:.infinity,minHeight:geometry.size.height-CGFloat(UnreachableFrame.top+UnreachableFrame.foot))"),
                       "the block on the foot, growing upward, the photo above it in its frame")
-        XCTAssertTrue(stopped.contains(".scrollBounceBehavior(.basedOnSize).opacity(columnRoom==nil?0:1)"), "scrolls past the floor; nothing drawn before it is measured")
+        XCTAssertTrue(stopped.contains(".scrollBounceBehavior(.basedOnSize).scrollEdgeEffectStyle(.automatic,for:.top).safeAreaBar(edge:.top){TopBar{IconButton(icon:.close,label:,action:model.close)}}.opacity(columnRoom==nil?0:1)"), "scrolls past the floor; nothing drawn before it is measured")
         XCTAssertTrue(stopped.contains("VStack(spacing:16){ifletsentence=model.stoppedSentence{sentenceLine(sentence).frame(maxWidth:.infinity,alignment:.leading)}MainButton("),
                       "Try again 16 pt under the sentence, in the flow")
         XCTAssertTrue(stopped.contains("HStack(alignment:.firstTextBaseline,spacing:8){AlbedianIcon.warning.image(18)"), "the icon at the first line")
@@ -413,7 +413,7 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(connect.contains("ifdynamicTypeSize.isAccessibilitySize{ScrollView{VStack(alignment:.leading,spacing:0){Text("), "one column that scrolls")
         XCTAssertTrue(connect.contains(".title().fixedSize(horizontal:false,vertical:true)addressLabel.padding(.top,14)field(wraps:true).padding(.top,6)message.padding(.top,12)MainButton("),
                       "the title wrapping, then the label, the field, the line and Connect in the flow")
-        XCTAssertTrue(connect.contains("action:model.useTypedAddress).frame(maxWidth:.infinity).padding(.top,16)}.padding(.horizontal,CGFloat(Arrive.side)).padding(.top,118).padding(.bottom,34)}.scrollBounceBehavior(.basedOnSize)"))
+        XCTAssertTrue(connect.contains("action:model.useTypedAddress).frame(maxWidth:.infinity).padding(.top,16)}.padding(.horizontal,CGFloat(Arrive.side)).padding(.top,CGFloat(UnreachableFrame.top-Arrive.topBarFoot)).padding(.bottom,34)}.scrollBounceBehavior(.basedOnSize)"))
         XCTAssertTrue(connect.contains("text:$model.typedAddress,axis:.vertical)"), "the address wraps whole in the field")
         XCTAssertTrue(connect.contains("ifwraps{VStack(alignment:.leading,spacing:0){if!PairingKeeper.typedHasScheme(model.typedAddress){Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet)).fixedSize()}addressText(wraps:true)}"),
                       "the scheme grey first, on its own line, whole; the address wrapping under it at the field's width")
@@ -441,5 +441,43 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(home.contains("height:36,fontSize:15,action:model.showCredits).dynamicTypeSize(...DynamicTypeSize.accessibility1)"))
         XCTAssertTrue(home.contains("OutlinePill(title:KeptWords.pill(model.keptNotSent.count),height:36,fontSize:15,action:model.openKept).dynamicTypeSize(...DynamicTypeSize.accessibility1)"))
         XCTAssertTrue(home.contains("icon:.arrow,action:model.startAiming).atBottom(Arrive.mainBottomGap)"), "Start as every main button")
+    }
+
+    /// largertext-scroll-edge-m (UIUX-scroll-under-controls-READY, the lead's yes): where a column scrolls at accessibility sizes it
+    /// scrolls on under the fixed top controls and the status bar with the system's scroll edge effect at the top in its
+    /// automatic style, so the controls stay distinct; the back or close button keeps its 44 pt and its place.
+    func testEachScrollingColumnHasTheAutomaticTopScrollEdgeEffect() throws {
+        let screens = try code("Screens/CompanionScreens.swift").code
+        let after = try code("Screens/AfterSendScreens.swift").code
+        let effect = ".scrollBounceBehavior(.basedOnSize).scrollEdgeEffectStyle(.automatic,for:.top)"
+        for (name, declaration, file) in [("Connect", "struct ConnectScreen: View", screens),
+                                          ("Can't reach the laptop", "struct AfterShotScreen: View", screens),
+                                          ("the refusal", "struct StoppedScreen: View", after)] {
+            let body = compact(try body(of: declaration, in: file))
+            XCTAssertEqual(body.components(separatedBy: effect).count - 1, 1, name)
+            XCTAssertEqual(body.components(separatedBy: ".scrollBounceBehavior(").count - 1, 1, "\(name): one column")
+        }
+    }
+
+    /// largertext-scroll-edge-m, as ruled 25 Nov 00:53 (UIUX-scroll-under-controls-READY, the first way): at
+    /// accessibility sizes each scrolling column's back or close button stands in a top safe-area bar at its own size and
+    /// place (60 pt from the top, 20 pt in), so the system draws its scroll edge effect beneath it; the column starts
+    /// where it did, under the bar's foot; the floating button stands only at default sizes.
+    func testEachScrollingColumnsButtonStandsInATopBarAtAccessibilitySizes() throws {
+        let screens = compact(try code("Screens/CompanionScreens.swift").code)
+        let after = compact(try code("Screens/AfterSendScreens.swift").code)
+        XCTAssertTrue(screens.contains("staticvartopBarFoot:Double{topControls+44}"))
+        XCTAssertTrue(screens.contains("structTopBar<Content:View>:View{@ViewBuilderletcontent:Contentvarbody:someView{HStack(spacing:0){contentSpacer(minLength:0)}.padding(.leading,CGFloat(Arrive.edge)).padding(.top,CGFloat(Arrive.topControls))}}"),
+                      "the button at its own place in the bar")
+        let bar = ".scrollEdgeEffectStyle(.automatic,for:.top).safeAreaBar(edge:.top){TopBar{IconButton(icon:"
+        XCTAssertTrue(screens.contains(bar + ".back,label:,action:model.back)}}"), "Connect's back button in the bar")
+        XCTAssertTrue(screens.contains(bar + ".again,label:,action:model.takeAgain)}}"), "Take again in the bar")
+        XCTAssertTrue(after.contains(bar + ".close,label:,action:model.close)}}"), "the refusal's close in the bar")
+        XCTAssertEqual((screens + after).components(separatedBy: ".padding(.top,CGFloat(UnreachableFrame.top-Arrive.topBarFoot))").count - 1, 3,
+                       "each column starts under the bar's foot where it did")
+        XCTAssertTrue(screens.contains("if!dynamicTypeSize.isAccessibilitySize{IconButton(icon:.back,label:,action:model.back).atTop(Arrive.topControls,alignment:.leading)"))
+        XCTAssertTrue(screens.contains("ifarrived&&!stacked{IconButton(icon:.again,label:,action:model.takeAgain).atTop(Arrive.topControls,alignment:.leading)"))
+        XCTAssertTrue(after.contains("if!dynamicTypeSize.isAccessibilitySize{IconButton(icon:.close,label:,action:model.close).atTop(Arrive.topControls,alignment:.leading)"),
+                      "the floating buttons only at default sizes")
     }
 }

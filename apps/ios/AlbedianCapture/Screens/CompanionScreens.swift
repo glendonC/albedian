@@ -17,6 +17,24 @@ enum Arrive {
     static let titleSize = 40.0       // Credits, Connect to your laptop: Geist 300, line height 1.05, -0.045 em
     static let titleTracking = -0.045
     static let titleTop = 128.0
+    /// largertext-scroll-edge-m: a top bar's foot at accessibility sizes, the controls' top and their 44 pt
+    static var topBarFoot: Double { topControls + 44 }
+}
+
+/// largertext-scroll-edge-m (UIUX-scroll-under-controls-READY, ruled 25 Nov 00:53): at accessibility sizes a screen's back
+/// or close button stands in a top safe-area bar over its scrolling column, at its own size and place (60 pt from the top,
+/// 20 pt in), so the system draws its scroll edge effect beneath it as the column scrolls under.
+struct TopBar<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: 0) {
+            content
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, CGFloat(Arrive.edge))
+        .padding(.top, CGFloat(Arrive.topControls))
+    }
 }
 
 extension View {
@@ -449,16 +467,20 @@ struct AfterShotScreen: View {
                             unreachableColumn.padding(.top, CGFloat(UnreachableFrame.gap))
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, CGFloat(UnreachableFrame.top))
+                        .padding(.top, CGFloat(UnreachableFrame.top - Arrive.topBarFoot))
                         .padding(.bottom, CGFloat(UnreachableFrame.foot))
                     }
                     .scrollBounceBehavior(.basedOnSize)
+                    // largertext-scroll-edge-m (UIUX-scroll-under-controls-READY): the column scrolls on under the fixed top controls
+                    // with the system's scroll edge effect, automatic, so the controls stay distinct
+                    .scrollEdgeEffectStyle(.automatic, for: .top)
+                    .safeAreaBar(edge: .top) { TopBar { IconButton(icon: .again, label: "Take again", action: model.takeAgain) } }
                     .opacity(columnRoom == nil ? 0 : 1)
                     .transition(.words(reduceMotion: reduceMotion))
                 } else {
                     ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 }
-                if arrived {
+                if arrived && !stacked {
                     IconButton(icon: .again, label: "Take again", action: model.takeAgain)
                         .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                         .transition(.words(reduceMotion: reduceMotion))
@@ -544,10 +566,14 @@ struct ConnectScreen: View {
                             .padding(.top, 16)
                     }
                     .padding(.horizontal, CGFloat(Arrive.side))
-                    .padding(.top, 118)
+                    .padding(.top, CGFloat(UnreachableFrame.top - Arrive.topBarFoot))
                     .padding(.bottom, 34)
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                // largertext-scroll-edge-m (UIUX-scroll-under-controls-READY): the column scrolls on under the fixed top controls
+                // with the system's scroll edge effect, automatic, so the controls stay distinct
+                .scrollEdgeEffectStyle(.automatic, for: .top)
+                .safeAreaBar(edge: .top) { TopBar { IconButton(icon: .back, label: "Back", action: model.back) } }
             } else {
                 Lines(lines: ["Connect to your", "laptop"], font: AlbedianFont.light(Arrive.titleSize), size: Arrive.titleSize, lineHeight: 1.05, tracking: Arrive.titleTracking).title().atTop(Arrive.titleTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
                 addressLabel
@@ -560,8 +586,10 @@ struct ConnectScreen: View {
                     .atTop(336)
                 MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress).atTop(404)
             }
-            IconButton(icon: .back, label: "Back", action: model.back)
-                .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+            if !dynamicTypeSize.isAccessibilitySize {
+                IconButton(icon: .back, label: "Back", action: model.back)
+                    .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+            }
         }
         .ignoresSafeArea(.container)
         .onAppear { focused = true }
