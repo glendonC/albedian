@@ -394,6 +394,7 @@ CANDIDATE_SOURCE_CALIBRATED = (
     "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and "
     "passed the held-out check."
 )
+CANDIDATE_STAGES_SOLVED = "A pending solution names no candidate stage: no solver has run, so no stage was set to ask."
 NAMES_ITS_SOLVER = "Only a pending solution, or an unresolved one no solver reached, names no solver."
 REPORTS_ITS_QUALITY = "A calibrated or approximate solution reports the quality it was judged on."
 RESIDUAL_IS_REPORTED = "Held-out stars were paired, so their residual is reported."
@@ -1084,6 +1085,15 @@ class ObservationSolution(_Contract):
     pose_estimate: Optional[PoseEstimate] = None
     pointing_hint: Optional[PointingHint] = None
     candidate_source: Optional[CandidateSource] = None
+    # The outside programs a solve was set to ask for a first candidate once its own searches calibrated nothing
+    # (anet-setting-record-one): the opt-in stage on and usable, the program found and an index file in the person's
+    # folder. Present on every solve made with the stage on, whatever its status, and absent whenever it was off, so a
+    # record made with it off is the record made before the field. With the stage on, a stored solution that did not
+    # calibrate and does not name the program is solved again; a calibrated one never is. Never on a pending solution,
+    # which no solver has run on. No path, time or place is in it. It is a setting, not an event: no word a person
+    # reads may say on its strength that the outside program was tried; only candidateSource says a program gave the
+    # candidate (the lead's decision of 2026-11-25).
+    candidate_stages: Optional[_listed(Annotated[str, CANDIDATE_PROGRAM], 1, len(CANDIDATE_PROGRAMS))] = None
 
     @property
     def has_verified_wcs(self) -> bool:
@@ -1267,6 +1277,9 @@ def _solution_issues(solution: ObservationSolution) -> list[Issue]:
     # anet-stage-zero: an outside program's candidate is named only where it became a verified calibration
     if solution.candidate_source is not None and status != "calibrated":
         issues.append((("candidateSource",), CANDIDATE_SOURCE_CALIBRATED))
+    # anet-setting-record-one: a stage is named only on a solve some solver ran
+    if solution.candidate_stages is not None and status == "pending":
+        issues.append((("candidateStages",), CANDIDATE_STAGES_SOLVED))
     if status == "pending":
         if quality is not None:
             issues.append((("quality",), PENDING_HAS_NO_QUALITY))

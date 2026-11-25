@@ -38,7 +38,7 @@ from services.contracts.astronomy import parse_observation_solution
 from services.contracts.jobs import SOLVE_FAILURE_SENTENCES
 from services.contracts.alignment import PersonAlignment
 from services.contracts.pointing import PointingRecord
-from services.ingest.job_store import JobStore
+from services.ingest.job_store import JobStore, record_subject
 from services.ingest.runner import (
     JobContext,
     JobKind,
@@ -1570,6 +1570,10 @@ def _solve_after_detection(
         solution = replace(solution, warnings=[
             BLIND_OWN_CLIP_WORDS if words == BLIND_OWN_WORDS else clip_words(words) for words in solution.warnings
         ])
+    if anet is not None:
+        # A plain solve made with the opt-in stage on says so, whatever it found and wherever it ended, its bound
+        # included (anet-setting-record-one); off, the field is absent and the record is main's
+        solution = replace(solution, candidate_stages=(anet_stage.PROGRAM,))
     return solution
 
 
@@ -1710,7 +1714,9 @@ SOLVE_PRODUCER_FILES = (
 # calibrated phone solve by refine-2's refit under the same 3 px gate, the chain going on from a refit that does not
 # calibrate, any other solution restated block for block (bin-detect-v2, `services/science/binning.py`). The opt-in astrometry.net stage
 # (anet-stage-one, whose anet_stage.py joins the files): off, every record is the record main makes; on, a
-# calibration it makes names its candidateSource
+# calibration it makes names its candidateSource. A plain solve made with it on names it in candidateStages, and
+# with it on a stored plain solve that did not calibrate and does not name it is solved again on its next start
+# (anet-setting-record-one); off, records and the results check are main's
 SOLVE_PRODUCER = Producer("albedian.solve_chain", 31, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
@@ -1862,7 +1868,21 @@ def _solve_store_stage(asset: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def _solve_results_valid(store: JobStore, record: Mapping[str, Any]) -> bool:
-    return store.solution_of(dict(record)) is not None
+    solution = store.solution_of(dict(record))
+    return solution is not None and not _awaits_the_stage(record, solution)
+
+
+def _awaits_the_stage(record: Mapping[str, Any], solution: Mapping[str, Any]) -> bool:
+    """Whether a stored plain solve has not had the opt-in astrometry.net stage's turn that it would have now
+    (anet-setting-record-one): the stage is on, and the solution did not calibrate and does not name it in its
+    `candidateStages`, so it was made with the stage off. Its next start then solves it again, as one of an older
+    revision is. A calibrated solution, a solve from a person's alignment (the stage never runs there), one that
+    names the stage, and every one with the stage off stay as they are."""
+    if solution.get("status") == "calibrated" or record_subject(record) is not None:
+        return False
+    if anet_stage.PROGRAM in (solution.get("candidateStages") or ()):
+        return False
+    return anet_stage.settings_from_env() is not None
 
 
 SOLVE_KIND = JobKind(

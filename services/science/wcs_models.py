@@ -966,6 +966,8 @@ class ObservationSolution:
     pointing_hint: PointingHint | None = field(default=None, kw_only=True)
     # Where the calibration's first candidate came from, when an outside program gave it (anet-stage-zero)
     candidate_source: CandidateSource | None = field(default=None, kw_only=True)
+    # The outside programs the solve was set to ask, when the opt-in stage was on (anet-setting-record-one)
+    candidate_stages: tuple[str, ...] | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         # What the contract holds each of these to on its own: ids that are not empty, a real hash for the recording,
@@ -1014,6 +1016,13 @@ class ObservationSolution:
             raise ContractRefusal(hint_issues[0][1])
         if self.candidate_source is not None and self.status != "calibrated":
             raise ContractRefusal(contract.CANDIDATE_SOURCE_CALIBRATED)
+        if self.candidate_stages is not None:
+            if not 1 <= len(self.candidate_stages) <= len(contract.CANDIDATE_PROGRAMS):
+                raise ContractRefusal("A solve names from one to every outside program as its candidate stages.")
+            for program in self.candidate_stages:
+                require_contract_value(program, contract.CANDIDATE_PROGRAM, "A candidate stage's program")
+            if self.status == "pending":
+                raise ContractRefusal(contract.CANDIDATE_STAGES_SOLVED)
         if self.status == "pending":
             if self.quality is not None:
                 raise ContractRefusal("A pending solution has no quality: no solver has run, so nothing was counted.")
@@ -1140,6 +1149,8 @@ class ObservationSolution:
             result["pointingHint"] = self.pointing_hint.to_contract_dict()
         if self.candidate_source is not None:
             result["candidateSource"] = self.candidate_source.to_contract_dict()
+        if self.candidate_stages is not None:
+            result["candidateStages"] = list(self.candidate_stages)
         # Judged by the contract's own parser before it leaves: nothing is stored or served that the TypeScript
         # schema would refuse. A refusal names the path and the rule, never the value
         contract.parse_observation_solution(result)

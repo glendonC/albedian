@@ -231,6 +231,7 @@ SAYS = {
         "whose hint gives one."
     ),
     "hint_person_pose": "A pointing hint gives the roll and the field of view exactly when a person aligned it.",
+    "candidate_stages_solved": "A pending solution names no candidate stage: no solver has run, so no stage was set to ask.",
     "candidate_calibrated": (
         "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and "
         "passed the held-out check."
@@ -560,6 +561,11 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     # anet-stage-zero: a calibration whose first candidate came from astrometry.net, refined and verified by the
     # app's own check (the lead's decision of 2026-11-24 21:56)
     valid["calibrated_with_a_candidate_source"] = {**copy.deepcopy(valid["calibrated"]), "candidateSource": {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}}
+    # anet-setting-record-one: solves made with the opt-in stage on, one it calibrated and one that calibrated nothing,
+    # and one the app's own search calibrated with the stage on
+    valid["calibrated_with_a_candidate_source_and_its_stage"] = {**copy.deepcopy(valid["calibrated_with_a_candidate_source"]), "candidateStages": ["astrometry.net"]}
+    valid["unresolved_with_the_stage_on"] = {**copy.deepcopy(valid["unresolved_pixels_only"]), "candidateStages": ["astrometry.net"]}
+    valid["calibrated_with_the_stage_on"] = {**copy.deepcopy(valid["calibrated"]), "candidateStages": ["astrometry.net"]}
     return valid, {"rigel": rigel, "simulated": simulated, "predicted_star": predicted_star, "pose": pose, "hint": hint}
 
 
@@ -895,6 +901,19 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
     for base in ("predicted_only", "approximate", "ambiguous", "unresolved_pixels_only", "pending"):
         bad(f"candidate_source_on_{base}", base, f"a candidate's source named on a {base} solution", ["candidateSource"],
             put(["candidateSource"], {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}), says=(SAYS["candidate_calibrated"],))
+    # anet-setting-record-one: the stages a solve was set to ask, named only by the closed list, once a solver ran
+    bad("candidate_stages_on_pending", "pending", "a pending solution naming a candidate stage", ["candidateStages"],
+        put(["candidateStages"], ["astrometry.net"]), says=(SAYS["candidate_stages_solved"],))
+    bad("candidate_stages_empty", "unresolved_with_the_stage_on", "an empty list of candidate stages", ["candidateStages"],
+        put(["candidateStages"], []))
+    bad("candidate_stages_twice", "unresolved_with_the_stage_on", "the one outside program named twice", ["candidateStages"],
+        put(["candidateStages"], ["astrometry.net", "astrometry.net"]))
+    bad("candidate_stages_unknown_program", "unresolved_with_the_stage_on", "a program outside the closed list",
+        ["candidateStages.0"], put(["candidateStages"], ["solve-field"]))
+    bad("candidate_stages_a_path", "unresolved_with_the_stage_on", "a path where a program is named",
+        ["candidateStages.0"], put(["candidateStages"], ["/usr/local/bin/solve-field"]))
+    bad("candidate_stages_a_word", "unresolved_with_the_stage_on", "the setting as a word, not a list", ["candidateStages"],
+        put(["candidateStages"], "astrometry.net"))
     cases += _class_evidence_cases(valid)
     return cases
 

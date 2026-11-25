@@ -2074,6 +2074,13 @@
    "candidateSource": {
     "schema": "CandidateSource",
     "optional": true
+   },
+   "candidateStages": {
+    "rule": "candidateProgram",
+    "array": true,
+    "minItems": 1,
+    "maxItems": 1,
+    "optional": true
    }
   },
   "CelestialFinding": {
@@ -2546,7 +2553,8 @@
    "observerLocation": "observer_location",
    "poseEstimate": "pose_estimate",
    "pointingHint": "pointing_hint",
-   "candidateSource": "candidate_source"
+   "candidateSource": "candidate_source",
+   "candidateStages": "candidate_stages"
   },
   "CelestialFinding": {
    "observationSolutionId": "observation_solution_id",
@@ -5583,6 +5591,952 @@
     "version": "0.97",
     "indexFile": "index-4117.fits"
    }
+  },
+  "calibrated_with_a_candidate_source_and_its_stage": {
+   "id": "sol-primary",
+   "sourceAssetId": "synthetic-60ec5ffa64ba",
+   "sourceSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "AlbedianTriangleSolver",
+    "version": "1.0.0",
+    "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 9,
+    "heldOutPairCount": 7,
+    "heldOutInliers": 7,
+    "passedIndependentVerification": true,
+    "medianResidualPx": 0.11587699847517496,
+    "p95ResidualPx": 0.17208253668254564,
+    "medianResidualArcsec": 25.826808406472708
+   },
+   "findings": [
+    {
+     "id": "finding-star-betelgeuse",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Betelgeuse",
+     "subtitle": "Alpha Orionis \u00b7 152.7 pc [135.5 to 174.8 pc]",
+     "skyPosition": {
+      "raDeg": 88.792939,
+      "decDeg": 7.407064,
+      "uncertaintyArcsec": 29.15966773500778,
+      "altDeg": 67.36139235228273,
+      "azDeg": 184.04422995883968
+     },
+     "evidence": {
+      "id": "ev-finding-star-betelgeuse",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-betelgeuse",
+      "angularResidualArcsec": 29.15966773500778,
+      "pixelResidualPx": 0.13083051999639556,
+      "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+      ],
+      "verifiedByIndependentHoldout": true
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 401.63469853678794,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-betelgeuse",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 27989",
+      "commonName": "Betelgeuse",
+      "bayerDesignation": "Alpha Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 88.792939,
+      "decDeg": 7.407064,
+      "apparentMagnitude": 0.42,
+      "properMotionRaMasYr": 27.54,
+      "properMotionDecMasYr": 11.3,
+      "bailerJonesDistancePc": {
+       "lower": 135.50135501355012,
+       "median": 152.67175572519085,
+       "upper": 174.82517482517483,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 6.55,
+      "parallaxErrorMas": 0.83
+     },
+     "inferredDistancePc": {
+      "lower": 135.50135501355012,
+      "median": 152.67175572519085,
+      "upper": 174.82517482517483,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      3.189289086275172,
+      151.36415608441035,
+      19.68211584639134
+     ]
+    },
+    {
+     "id": "finding-star-rigel",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Rigel",
+     "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050116735294871,
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
+     },
+     "evidence": {
+      "id": "ev-finding-star-rigel",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-rigel",
+      "angularResidualArcsec": 13.050116735294871,
+      "pixelResidualPx": 0.05855188659926055,
+      "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+       "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999749220043,
+      "yPx": 496.1922052148446,
+      "flux": 1559.5237637354267,
+      "snr": 175.58584725889742,
+      "fwhmPx": 2.4316640154751417,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ]
+    },
+    {
+     "id": "finding-star-aldebaran",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Aldebaran",
+     "subtitle": "Alpha Tauri \u00b7 20.4 pc [20.1 to 20.8 pc]",
+     "skyPosition": {
+      "raDeg": 68.980163,
+      "decDeg": 16.509302,
+      "uncertaintyArcsec": 5.469360985633938,
+      "altDeg": 66.29830612813342,
+      "azDeg": 240.26777615689815
+     },
+     "evidence": {
+      "id": "ev-finding-star-aldebaran",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-aldebaran",
+      "angularResidualArcsec": 5.469360985633938,
+      "pixelResidualPx": 0.02453935169293505,
+      "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+       "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 705.8147632390451,
+      "yPx": 71.73707279185331,
+      "flux": 1228.0501801092073,
+      "snr": 150.13762925812367,
+      "fwhmPx": 2.4407639928199187,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-aldebaran",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 21421",
+      "commonName": "Aldebaran",
+      "bayerDesignation": "Alpha Tauri",
+      "constellation": "Taurus",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 68.980163,
+      "decDeg": 16.509302,
+      "apparentMagnitude": 0.86,
+      "properMotionRaMasYr": 63.45,
+      "properMotionDecMasYr": -188.94,
+      "bailerJonesDistancePc": {
+       "lower": 20.11667672500503,
+       "median": 20.43318348998774,
+       "upper": 20.759809009757113,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 48.94,
+      "parallaxErrorMas": 0.77
+     },
+     "inferredDistancePc": {
+      "lower": 20.11667672500503,
+      "median": 20.43318348998774,
+      "upper": 20.759809009757113,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      7.027045618939282,
+      18.287152938002276,
+      5.8065183050575735
+     ]
+    },
+    {
+     "id": "finding-obs-8",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #8",
+     "subtitle": "Unmatched sensor detection at (497.7, 463.9) px",
+     "skyPosition": {
+      "raDeg": 83.85414725345824,
+      "decDeg": -5.910429004647611,
+      "uncertaintyArcsec": 26.678314648168506
+     },
+     "evidence": {
+      "id": "ev-finding-obs-8",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 497.65634411617623,
+      "yPx": 463.8668606715595,
+      "flux": 649.8377236167338,
+      "snr": 85.4022440942146,
+      "fwhmPx": 2.3931928443755788,
+      "centroidUncertaintyPx": 0.03
+     }
+    },
+    {
+     "id": "finding-obs-11",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #11",
+     "subtitle": "Unmatched sensor detection at (478.4, 206.3) px",
+     "skyPosition": {
+      "raDeg": 83.78750632356328,
+      "decDeg": 9.932269384172518,
+      "uncertaintyArcsec": 27.027731245141556
+     },
+     "evidence": {
+      "id": "ev-finding-obs-11",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 478.4002357941819,
+      "yPx": 206.34021600060177,
+      "flux": 512.1986658907551,
+      "snr": 65.00331422290844,
+      "fwhmPx": 2.323596404474822,
+      "centroidUncertaintyPx": 0.035745814382737134
+     }
+    },
+    {
+     "id": "finding-obs-12",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #12",
+     "subtitle": "Unmatched sensor detection at (612.7, 301.1) px",
+     "skyPosition": {
+      "raDeg": 75.99770651024747,
+      "decDeg": 3.399927267154467,
+      "uncertaintyArcsec": 50.451266978283556
+     },
+     "evidence": {
+      "id": "ev-finding-obs-12",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 612.6632147381018,
+      "yPx": 301.1199909267462,
+      "flux": 74.69943459072265,
+      "snr": 11.296431111858528,
+      "fwhmPx": 2.196599918588441,
+      "centroidUncertaintyPx": 0.19445078687573641
+     }
+    },
+    {
+     "id": "finding-openngc-NGC1976",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "predicted",
+     "title": "Great Orion Nebula",
+     "subtitle": "Star cluster + Nebula \u00b7 Ori \u00b7 OpenNGC CC BY-SA 4.0",
+     "skyPosition": {
+      "raDeg": 83.818667,
+      "decDeg": -5.389667,
+      "uncertaintyArcsec": 0.15
+     },
+     "evidence": {
+      "id": "ev-finding-openngc-NGC1976",
+      "evidenceClass": "predicted",
+      "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "openngc-NGC1976",
+      "limitations": [
+       "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+       "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+       "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+       "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "catalogRef": {
+      "id": "openngc-NGC1976",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "NGC1976",
+      "commonName": "Great Orion Nebula",
+      "constellation": "Ori",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 83.818667,
+      "decDeg": -5.389667,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+      "apparentMagnitude": 4.0
+     }
+    },
+    {
+     "id": "finding-simulated-1",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "simulated",
+     "title": "Simulated point (hand-built contract sample)",
+     "subtitle": "Drawn at Rigel's catalog position",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 0.0
+     },
+     "evidence": {
+      "id": "ev-finding-simulated-1",
+      "evidenceClass": "simulated",
+      "verificationMethod": "Simulated; not measured in the image",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [
+    "3 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it), 1 with no star of the 18-star catalog within 8 px."
+   ],
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 84.00062397400546,
+    "crvalDecDeg": 6.000266120971371,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.06191145387476854,
+    "rotationDeg": 4.497922056159356,
+    "radialDistortionK1": -0.07383919598279215,
+    "radialDistortionK2": 0.23999999998672913,
+    "parity": -1,
+    "fovHorizontalDeg": 54.82866633850883,
+    "fovVerticalDeg": 32.52929993031985
+   },
+   "candidateSource": {
+    "program": "astrometry.net",
+    "version": "0.97",
+    "indexFile": "index-4117.fits"
+   },
+   "candidateStages": [
+    "astrometry.net"
+   ]
+  },
+  "unresolved_with_the_stage_on": {
+   "id": "sol-contract-unresolved",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "unresolved",
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 8,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 5,
+    "heldOutInliers": 0,
+    "medianResidualPx": 4.2,
+    "p95ResidualPx": 6.8,
+    "medianResidualArcsec": 520.0,
+    "passedIndependentVerification": false,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "matched",
+     "noiseLimits": [
+      "near_black_clip"
+     ]
+    }
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-unresolved",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [
+    "WCS solution did not pass independent held-out calibration gate."
+   ],
+   "candidateStages": [
+    "astrometry.net"
+   ]
+  },
+  "calibrated_with_the_stage_on": {
+   "id": "sol-primary",
+   "sourceAssetId": "synthetic-60ec5ffa64ba",
+   "sourceSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "AlbedianTriangleSolver",
+    "version": "1.0.0",
+    "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 9,
+    "heldOutPairCount": 7,
+    "heldOutInliers": 7,
+    "passedIndependentVerification": true,
+    "medianResidualPx": 0.11587699847517496,
+    "p95ResidualPx": 0.17208253668254564,
+    "medianResidualArcsec": 25.826808406472708
+   },
+   "findings": [
+    {
+     "id": "finding-star-betelgeuse",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Betelgeuse",
+     "subtitle": "Alpha Orionis \u00b7 152.7 pc [135.5 to 174.8 pc]",
+     "skyPosition": {
+      "raDeg": 88.792939,
+      "decDeg": 7.407064,
+      "uncertaintyArcsec": 29.15966773500778,
+      "altDeg": 67.36139235228273,
+      "azDeg": 184.04422995883968
+     },
+     "evidence": {
+      "id": "ev-finding-star-betelgeuse",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-betelgeuse",
+      "angularResidualArcsec": 29.15966773500778,
+      "pixelResidualPx": 0.13083051999639556,
+      "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+      ],
+      "verifiedByIndependentHoldout": true
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 401.63469853678794,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-betelgeuse",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 27989",
+      "commonName": "Betelgeuse",
+      "bayerDesignation": "Alpha Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 88.792939,
+      "decDeg": 7.407064,
+      "apparentMagnitude": 0.42,
+      "properMotionRaMasYr": 27.54,
+      "properMotionDecMasYr": 11.3,
+      "bailerJonesDistancePc": {
+       "lower": 135.50135501355012,
+       "median": 152.67175572519085,
+       "upper": 174.82517482517483,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 6.55,
+      "parallaxErrorMas": 0.83
+     },
+     "inferredDistancePc": {
+      "lower": 135.50135501355012,
+      "median": 152.67175572519085,
+      "upper": 174.82517482517483,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      3.189289086275172,
+      151.36415608441035,
+      19.68211584639134
+     ]
+    },
+    {
+     "id": "finding-star-rigel",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Rigel",
+     "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050116735294871,
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
+     },
+     "evidence": {
+      "id": "ev-finding-star-rigel",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-rigel",
+      "angularResidualArcsec": 13.050116735294871,
+      "pixelResidualPx": 0.05855188659926055,
+      "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+       "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999749220043,
+      "yPx": 496.1922052148446,
+      "flux": 1559.5237637354267,
+      "snr": 175.58584725889742,
+      "fwhmPx": 2.4316640154751417,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ]
+    },
+    {
+     "id": "finding-star-aldebaran",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Aldebaran",
+     "subtitle": "Alpha Tauri \u00b7 20.4 pc [20.1 to 20.8 pc]",
+     "skyPosition": {
+      "raDeg": 68.980163,
+      "decDeg": 16.509302,
+      "uncertaintyArcsec": 5.469360985633938,
+      "altDeg": 66.29830612813342,
+      "azDeg": 240.26777615689815
+     },
+     "evidence": {
+      "id": "ev-finding-star-aldebaran",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-aldebaran",
+      "angularResidualArcsec": 5.469360985633938,
+      "pixelResidualPx": 0.02453935169293505,
+      "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+       "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 705.8147632390451,
+      "yPx": 71.73707279185331,
+      "flux": 1228.0501801092073,
+      "snr": 150.13762925812367,
+      "fwhmPx": 2.4407639928199187,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-aldebaran",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 21421",
+      "commonName": "Aldebaran",
+      "bayerDesignation": "Alpha Tauri",
+      "constellation": "Taurus",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 68.980163,
+      "decDeg": 16.509302,
+      "apparentMagnitude": 0.86,
+      "properMotionRaMasYr": 63.45,
+      "properMotionDecMasYr": -188.94,
+      "bailerJonesDistancePc": {
+       "lower": 20.11667672500503,
+       "median": 20.43318348998774,
+       "upper": 20.759809009757113,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 48.94,
+      "parallaxErrorMas": 0.77
+     },
+     "inferredDistancePc": {
+      "lower": 20.11667672500503,
+      "median": 20.43318348998774,
+      "upper": 20.759809009757113,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      7.027045618939282,
+      18.287152938002276,
+      5.8065183050575735
+     ]
+    },
+    {
+     "id": "finding-obs-8",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #8",
+     "subtitle": "Unmatched sensor detection at (497.7, 463.9) px",
+     "skyPosition": {
+      "raDeg": 83.85414725345824,
+      "decDeg": -5.910429004647611,
+      "uncertaintyArcsec": 26.678314648168506
+     },
+     "evidence": {
+      "id": "ev-finding-obs-8",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 497.65634411617623,
+      "yPx": 463.8668606715595,
+      "flux": 649.8377236167338,
+      "snr": 85.4022440942146,
+      "fwhmPx": 2.3931928443755788,
+      "centroidUncertaintyPx": 0.03
+     }
+    },
+    {
+     "id": "finding-obs-11",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #11",
+     "subtitle": "Unmatched sensor detection at (478.4, 206.3) px",
+     "skyPosition": {
+      "raDeg": 83.78750632356328,
+      "decDeg": 9.932269384172518,
+      "uncertaintyArcsec": 27.027731245141556
+     },
+     "evidence": {
+      "id": "ev-finding-obs-11",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 478.4002357941819,
+      "yPx": 206.34021600060177,
+      "flux": 512.1986658907551,
+      "snr": 65.00331422290844,
+      "fwhmPx": 2.323596404474822,
+      "centroidUncertaintyPx": 0.035745814382737134
+     }
+    },
+    {
+     "id": "finding-obs-12",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #12",
+     "subtitle": "Unmatched sensor detection at (612.7, 301.1) px",
+     "skyPosition": {
+      "raDeg": 75.99770651024747,
+      "decDeg": 3.399927267154467,
+      "uncertaintyArcsec": 50.451266978283556
+     },
+     "evidence": {
+      "id": "ev-finding-obs-12",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 612.6632147381018,
+      "yPx": 301.1199909267462,
+      "flux": 74.69943459072265,
+      "snr": 11.296431111858528,
+      "fwhmPx": 2.196599918588441,
+      "centroidUncertaintyPx": 0.19445078687573641
+     }
+    },
+    {
+     "id": "finding-openngc-NGC1976",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "predicted",
+     "title": "Great Orion Nebula",
+     "subtitle": "Star cluster + Nebula \u00b7 Ori \u00b7 OpenNGC CC BY-SA 4.0",
+     "skyPosition": {
+      "raDeg": 83.818667,
+      "decDeg": -5.389667,
+      "uncertaintyArcsec": 0.15
+     },
+     "evidence": {
+      "id": "ev-finding-openngc-NGC1976",
+      "evidenceClass": "predicted",
+      "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "openngc-NGC1976",
+      "limitations": [
+       "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+       "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+       "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+       "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "catalogRef": {
+      "id": "openngc-NGC1976",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "NGC1976",
+      "commonName": "Great Orion Nebula",
+      "constellation": "Ori",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 83.818667,
+      "decDeg": -5.389667,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+      "apparentMagnitude": 4.0
+     }
+    },
+    {
+     "id": "finding-simulated-1",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "simulated",
+     "title": "Simulated point (hand-built contract sample)",
+     "subtitle": "Drawn at Rigel's catalog position",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 0.0
+     },
+     "evidence": {
+      "id": "ev-finding-simulated-1",
+      "evidenceClass": "simulated",
+      "verificationMethod": "Simulated; not measured in the image",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [
+    "3 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it), 1 with no star of the 18-star catalog within 8 px."
+   ],
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 84.00062397400546,
+    "crvalDecDeg": 6.000266120971371,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.06191145387476854,
+    "rotationDeg": 4.497922056159356,
+    "radialDistortionK1": -0.07383919598279215,
+    "radialDistortionK2": 0.23999999998672913,
+    "parity": -1,
+    "fovHorizontalDeg": 54.82866633850883,
+    "fovVerticalDeg": 32.52929993031985
+   },
+   "candidateStages": [
+    "astrometry.net"
+   ]
   }
  },
  "invalid": [
@@ -9238,6 +10192,125 @@
    ]
   },
   {
+   "name": "candidate_stages_on_pending",
+   "base": "pending",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "candidateStages"
+     ],
+     "value": [
+      "astrometry.net"
+     ]
+    }
+   ],
+   "reason": "a pending solution naming a candidate stage",
+   "paths": [
+    "candidateStages"
+   ],
+   "messages": [
+    "A pending solution names no candidate stage: no solver has run, so no stage was set to ask."
+   ]
+  },
+  {
+   "name": "candidate_stages_empty",
+   "base": "unresolved_with_the_stage_on",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "candidateStages"
+     ],
+     "value": []
+    }
+   ],
+   "reason": "an empty list of candidate stages",
+   "paths": [
+    "candidateStages"
+   ],
+   "messages": []
+  },
+  {
+   "name": "candidate_stages_twice",
+   "base": "unresolved_with_the_stage_on",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "candidateStages"
+     ],
+     "value": [
+      "astrometry.net",
+      "astrometry.net"
+     ]
+    }
+   ],
+   "reason": "the one outside program named twice",
+   "paths": [
+    "candidateStages"
+   ],
+   "messages": []
+  },
+  {
+   "name": "candidate_stages_unknown_program",
+   "base": "unresolved_with_the_stage_on",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "candidateStages"
+     ],
+     "value": [
+      "solve-field"
+     ]
+    }
+   ],
+   "reason": "a program outside the closed list",
+   "paths": [
+    "candidateStages.0"
+   ],
+   "messages": []
+  },
+  {
+   "name": "candidate_stages_a_path",
+   "base": "unresolved_with_the_stage_on",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "candidateStages"
+     ],
+     "value": [
+      "/usr/local/bin/solve-field"
+     ]
+    }
+   ],
+   "reason": "a path where a program is named",
+   "paths": [
+    "candidateStages.0"
+   ],
+   "messages": []
+  },
+  {
+   "name": "candidate_stages_a_word",
+   "base": "unresolved_with_the_stage_on",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "candidateStages"
+     ],
+     "value": "astrometry.net"
+    }
+   ],
+   "reason": "the setting as a word, not a list",
+   "paths": [
+    "candidateStages"
+   ],
+   "messages": []
+  },
+  {
    "name": "audit_j_observed_relabelled_catalog_matched_its_evidence_still_observed",
    "base": "calibrated",
    "patch": [
@@ -11376,10 +12449,10 @@
   ]
  },
  "keyCases": {
-  "levels": 307,
-  "dropped": 3629,
-  "refusedUnknown": 129,
-  "refusedWhenRenamed": 1426,
-  "leftOutWhenRenamed": 183
+  "levels": 405,
+  "dropped": 4804,
+  "refusedUnknown": 138,
+  "refusedWhenRenamed": 1834,
+  "leftOutWhenRenamed": 273
  }
 }

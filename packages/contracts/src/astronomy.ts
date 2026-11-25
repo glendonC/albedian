@@ -664,6 +664,20 @@ export const CandidateSourceSchema = z.object({
   indexFile: z.string().regex(INDEX_FILE_PATTERN),
 });
 export type CandidateSource = z.infer<typeof CandidateSourceSchema>;
+const CANDIDATE_STAGES_SOLVED = 'A pending solution names no candidate stage: no solver has run, so no stage was set to ask.';
+
+/**
+ * The outside programs a solve was set to ask for a first candidate once its own searches calibrated nothing
+ * (anet-setting-record-one): the opt-in stage on and usable, the program found and an index file in the person's
+ * folder. Present on every solve made with the stage on, whatever its status, and absent whenever it was off, so a
+ * record made with it off is the record made before the field. With the stage on, a stored solution that did not
+ * calibrate and does not name the program is solved again; a calibrated one never is. Never on a pending solution,
+ * which no solver has run on. No path, time or place is in it. It is a setting, not an event: no word a person
+ * reads may say on its strength that the outside program was tried; only candidateSource says a program gave the
+ * candidate (the lead's decision of 2026-11-25).
+ */
+export const CandidateStagesSchema = z.array(z.enum(CANDIDATE_PROGRAMS)).min(1).max(CANDIDATE_PROGRAMS.length);
+export type CandidateStages = z.infer<typeof CandidateStagesSchema>;
 
 /**
  * How a solve used the phone's pointing record (ios-capture-companion design component 6): the record's photo, what
@@ -807,6 +821,8 @@ export const ObservationSolutionSchema = z
     pointingHint: PointingHintSchema.optional(),
     // Where the calibration's first candidate came from, when an outside program gave it (anet-stage-zero)
     candidateSource: CandidateSourceSchema.optional(),
+    // The outside programs the solve was set to ask, when the opt-in stage was on (anet-setting-record-one)
+    candidateStages: CandidateStagesSchema.optional(),
   })
   .superRefine((solution, ctx) => {
     const quality = solution.quality;
@@ -873,6 +889,10 @@ export const ObservationSolutionSchema = z
     // anet-stage-zero: an outside program's candidate is named only where it became a verified calibration
     if (solution.candidateSource !== undefined && solution.status !== 'calibrated') {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['candidateSource'], message: CANDIDATE_SOURCE_CALIBRATED });
+    }
+    // anet-setting-record-one: a stage is named only on a solve some solver ran
+    if (solution.candidateStages !== undefined && solution.status === 'pending') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['candidateStages'], message: CANDIDATE_STAGES_SOLVED });
     }
     if (solution.status === 'pending') {
       if (quality !== undefined) {
