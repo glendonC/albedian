@@ -3010,3 +3010,35 @@
   line-height: 1.3;
   color: var(--look-ink);
 }
+
+/* phone-sideways-two (UIUX-phone-sideways-READY.md item 5, RULED at the lead's line stamped 06:27): on a phone held on its
+   side the star card is the foot sheet attached to the bottom edge only, centred, the upright sheet's 390 wide, as tall
+   as its content up to the window less the top bar's foot (12 + 44) and 8 px; its body scrolls inside under its tag row
+   and Close; Go there and Original pixels stay pinned at its foot on the sheet's colour, always inside; the foot's safe
+   area is kept. After every other phone card rule, so it wins in a short touch window and nowhere else. */
+@media (max-height: 500px) and (pointer: coarse) {
+  .reveal-card.is-phone {
+    left: calc(50% - 195px);
+    right: auto;
+    width: 390px;
+    bottom: 0;
+    height: auto;
+    max-height: calc(100% - 64px);
+    border-radius: 28px 28px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .reveal-card.is-phone .reveal-card__scroll {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .reveal-card.is-phone .reveal-card__acts {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin: 0;
+    padding: 12px 0 14px;
+    background: #111112;
+  }
+}
