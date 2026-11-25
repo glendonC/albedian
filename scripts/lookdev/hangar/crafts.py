@@ -220,6 +220,7 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "weld_m": 0.0001,
         "smooth_deg": 40.0,
+        "level_normals": {"smooth_deg": 70.0, "weighted": True},
         # NASA's file keeps its faces apart at shared corners (each quad with its own vertices), which left the
         # fabric and visor blocky and the decimation streaked: welded within 0.1 mm first.
         "lod_ratio": {"lod0": 0.45, "lod1": 0.15, "lod2": 0.05},
@@ -491,6 +492,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "weld_m": 0.0001,
         "smooth_deg": 40.0,
+        "level_normals": {"smooth_deg": 70.0, "weighted": True},
         "lod_ratio": {
             "lod0": 0.45,
             "lod1": 0.15,
@@ -541,6 +543,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "weld_m": 0.0001,
         "smooth_deg": 40.0,
+        "level_normals": {"smooth_deg": 70.0, "weighted": True},
         "lod_ratio": {
             "lod0": 0.45,
             "lod1": 0.15,
@@ -595,6 +598,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "weld_m": 0.0001,
         "smooth_deg": 40.0,
+        "level_normals": {"smooth_deg": 70.0, "weighted": True},
         "lod_ratio": {
             "lod0": 0.45,
             "lod1": 0.15,
@@ -646,6 +650,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "weld_m": 0.0001,
         "smooth_deg": 40.0,
+        "level_normals": {"smooth_deg": 70.0, "weighted": True},
         "lod_ratio": {
             "lod0": 0.45,
             "lod1": 0.15,

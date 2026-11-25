@@ -315,6 +315,104 @@ def test_the_blade_texture_ships_without_the_jpl_and_nasa_plates_at_every_level(
                 assert crop.size and crop.std(axis=(0, 1)).max() < 12, (name, level, image_name, (x0, y0, x1, y1))
 
 
+def _leaning_corner_share(path: Path, degrees: float) -> float:
+    """Share of triangle corner area whose shading normal leans more than `degrees` off its triangle's face normal."""
+    import numpy as np
+
+    data = path.read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20 : 20 + length])
+    blob = data[20 + length + 8 :]
+
+    def read(i: int, width: int) -> "np.ndarray":
+        acc = gltf["accessors"][i]
+        view = gltf["bufferViews"][acc["bufferView"]]
+        kind = {5123: np.uint16, 5125: np.uint32, 5126: np.float32}[acc["componentType"]]
+        offset = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+        return np.frombuffer(blob, kind, acc["count"] * width, offset).reshape(-1, width).astype(np.float64)
+
+    limit = np.cos(np.radians(degrees))
+    lean = total = 0.0
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            p, n = read(prim["attributes"]["POSITION"], 3), read(prim["attributes"]["NORMAL"], 3)
+            t = read(prim["indices"], 1).reshape(-1, 3).astype(np.int64)
+            face = np.cross(p[t[:, 1]] - p[t[:, 0]], p[t[:, 2]] - p[t[:, 0]])
+            area = 0.5 * np.linalg.norm(face, axis=1)
+            ok = area > 1e-12
+            face = face[ok] / (2 * area[ok, None])
+            for k in range(3):
+                lean += float(area[ok][np.einsum("ij,ij->i", n[t[ok, k]], face) < limit].sum()) / 3
+            total += float(area[ok].sum())
+    return lean / total
+
+
+def _area_weighted_share(path: Path, degrees: float) -> float:
+    """Share of corners whose normal lies within `degrees` of the area-weighted mean of the face normals of the corners
+    at the same position carrying the same normal (one smoothing group)."""
+    import numpy as np
+
+    data = path.read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20 : 20 + length])
+    blob = data[20 + length + 8 :]
+
+    def read(i: int, width: int) -> "np.ndarray":
+        acc = gltf["accessors"][i]
+        view = gltf["bufferViews"][acc["bufferView"]]
+        kind = {5123: np.uint16, 5125: np.uint32, 5126: np.float32}[acc["componentType"]]
+        offset = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+        return np.frombuffer(blob, kind, acc["count"] * width, offset).reshape(-1, width).astype(np.float64)
+
+    pos, nrm, face, area = [], [], [], []
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            p, n = read(prim["attributes"]["POSITION"], 3), read(prim["attributes"]["NORMAL"], 3)
+            t = read(prim["indices"], 1).reshape(-1, 3).astype(np.int64)
+            f = np.cross(p[t[:, 1]] - p[t[:, 0]], p[t[:, 2]] - p[t[:, 0]])
+            a = 0.5 * np.linalg.norm(f, axis=1)
+            ok = a > 1e-12
+            t, f, a = t[ok], f[ok] / (2 * a[ok, None]), a[ok]
+            for k in range(3):
+                pos.append(p[t[:, k]])
+                nrm.append(n[t[:, k]])
+                face.append(f)
+                area.append(a)
+    p, n, f, a = (np.concatenate(x) for x in (pos, nrm, face, area))
+    key = np.concatenate([np.round(p / 1e-5), np.round(n * 1000)], axis=1).astype(np.int64)
+    _, group = np.unique(key, axis=0, return_inverse=True)
+    group = group.reshape(-1)
+    acc = np.zeros((group.max() + 1, 3))
+    np.add.at(acc, group, f * a[:, None])
+    mean = acc / np.linalg.norm(acc, axis=1, keepdims=True)
+    return float((np.einsum("ij,ij->i", n, mean[group]) >= np.cos(np.radians(degrees))).mean())
+
+
+def test_a_suit_given_level_normals_shades_flat_panels_flat_at_every_level() -> None:
+    # UIUX's look gap seven on 24 Nov: at 3840 wide the EMU's backpack showed dark smears and hard facets, its sharp
+    # edges marked at 40 degrees before decimation and the coarse faces then smoothed across real corners (11 to 20.5
+    # percent of its corner area leaned over 30 degrees off its own face). Normals made again after each level's
+    # decimation and weighted by face area keep that under 5 percent at lod0 and lod1 (every suit's lod1 was 8 to 13.7)
+    # and under 10 percent at lod2, 5 percent of NASA's triangles, where fabric creases under 70 degrees are meant to be
+    # smoothed (20 to 27.5 before); no vertex or texture coordinate moves.
+    # The weighting itself: each corner's normal is the area-weighted mean of the face normals of its smoothing group
+    # (the corners at one position carrying one normal) within 2 degrees, for 99 to 100 percent of corners against 43
+    # to 46 percent without it; and the record's sentence says so.
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
+    suits = [name for name, recipe in CRAFTS.items() if recipe.get("level_normals")]
+    assert {"emu", "mercury_suit", "mark3", "aces", "gemini_suit"} <= set(suits)
+    for name in suits:
+        assert CRAFTS[name]["level_normals"]["weighted"] is True
+        sentence = record[f"hangar/{name}/{name}_lod0.glb"]["producedBy"]["changes"]
+        assert "weighted by the area of the faces around it, no vertex or texture moved" in sentence, (name, sentence)
+        for level in ("lod0", "lod1", "lod2"):
+            path = HANGAR_DIR / FACTS["models"][name]["files"][level]["path"]
+            share = _leaning_corner_share(path, 30.0)
+            assert share < (0.10 if level == "lod2" else 0.05), (name, level, round(share, 4))
+            matched = _area_weighted_share(path, 2.0)
+            assert matched >= 0.98, (name, level, round(matched, 4))
+
+
 @pytest.mark.parametrize("name", sorted(CRAFTS))
 def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str) -> None:
     recipe = CRAFTS[name]

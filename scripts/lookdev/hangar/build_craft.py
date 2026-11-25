@@ -253,7 +253,8 @@ CHANGES = {
         "with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's "
         "file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, "
         "faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle "
-        "and sharp beyond it."
+        "and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider "
+        "angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
     ),
     # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit")
     # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked")
@@ -270,7 +271,9 @@ CHANGES = {
         "built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping "
         "NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem "
         "covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals "
-        "made again, smooth within an angle and sharp beyond it."
+        "made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are "
+        "reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no "
+        "vertex or texture moved."
     ),
     # lod0 for photo texture, gold and silver foils, solar wings and three baked parts ("changes": "clementine")
     "lod0_clementine": (
@@ -706,6 +709,25 @@ def resized(img: bpy.types.Image, edge: int, suffix: str) -> bpy.types.Image:
     return copy
 
 
+def remake_normals(obj: bpy.types.Object, smooth_deg: float, weighted: bool) -> None:
+    """A level's normals made again after its triangles are reduced: smooth within `smooth_deg` and sharp beyond it, then
+    (with `weighted`) each corner's normal weighted by the area of the faces around it, sharp edges kept. No vertex,
+    texture coordinate or texture moves; only the normals change, and with them how many corners are split (UIUX's look
+    gap seven: the suits showed the facets of NASA's low-polygon file at 3840 wide)."""
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    if obj.data.has_custom_normals:
+        bpy.ops.mesh.customdata_custom_splitnormals_clear()
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(smooth_deg))
+    if weighted:
+        mod = obj.modifiers.new("weighted", "WEIGHTED_NORMAL")
+        mod.mode = "FACE_AREA"
+        mod.weight = 50
+        mod.keep_sharp = True
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+
+
 def drop_small_parts(obj: bpy.types.Object, metres: float) -> int:
     """Remove each loose part whose bounding box is under `metres` across: at a far level it covers under a pixel."""
     import bmesh
@@ -1131,6 +1153,9 @@ def main() -> None:
         if small:
             removed = drop_small_parts(obj, small)
             print(f"HANGAR {args.craft} {level} parts under {small} m removed {removed}")
+        if recipe.get("level_normals"):
+            remake_normals(obj, recipe["level_normals"]["smooth_deg"], recipe["level_normals"].get("weighted", False))
+            print(f"HANGAR {args.craft} {level} normals made again: {recipe['level_normals']}")
         export_level(obj, level, out / f"{args.craft}_{level}.glb")
         tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
         print(f"HANGAR {args.craft} {level} triangles {tris} of {tris0}")

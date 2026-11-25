@@ -66,7 +66,7 @@
   "files": [
     {
       "path": "hangar/aces/aces_lod0.glb",
-      "sha256": "c2c5b90f14868215581cd55818a341f3e360cc19dae60eeb9194f60d35fecff1",
+      "sha256": "bbe444df46cea94ce7748cb4d6add008fee9f6e504d4581d84fa76cb60e95806",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -75,13 +75,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft aces --out apps/web/public/models/hangar/aces",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Advanced%20Crew%20Escape%20Suit/Advanced%20Crew%20Escape%20Suit.glb (858408 bytes, SHA-256 6017772d557c30ea86e2e3a7651ad2089499f3d0c577b983467650616bfaebeb); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/aces/aces_lod1.glb",
-      "sha256": "e623fbfac01052c8bda95c2a8c99664a69e83d89e6179f481fdf43194dc82d7a",
+      "sha256": "1cbb4da407bdfd163b79324d2485cd001191b6e7605b466348b71e35a0a11d01",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -96,7 +96,7 @@
     },
     {
       "path": "hangar/aces/aces_lod2.glb",
-      "sha256": "6f401229f6b050f7b975a552de7b1bc36777512114b03e4c5dd1e7f47d941d1b",
+      "sha256": "418d14da9c53ffc452576d3b3f118b55815df8ad1109cd26aa211f3cda6d4d7b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -538,7 +538,7 @@
     },
     {
       "path": "hangar/emu/emu_lod0.glb",
-      "sha256": "b48ed61de56ee208f6e407dd973d1cd4dfdfad7c71a8ab7f583eafba42ab36e6",
+      "sha256": "31f20fbd3dc7ad1fd684e40c256d7237fc7cdc6eefe2700305a312aa9277c3d0",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -547,13 +547,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft emu --out apps/web/public/models/hangar/emu",
-        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb (3448904 bytes, SHA-256 4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/emu/emu_lod1.glb",
-      "sha256": "4382ebf0aa5a33e2e82be5cc6f433c75a55aa1998785ab1bddfcf040fb00089a",
+      "sha256": "d8ee807ab311616baa253140c4c091d76061c0fe95933fb34f798a0254cdf470",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -568,7 +568,7 @@
     },
     {
       "path": "hangar/emu/emu_lod2.glb",
-      "sha256": "078c3e41056fe86a4b823ca145ed6acdc2dcaf7f0624284b1be38c30ad51b231",
+      "sha256": "bf6b7bc88ca4d86e7e6385b8eb7c22b796b260d8bf3243309548c302b2cb59d3",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -656,7 +656,7 @@
     },
     {
       "path": "hangar/gemini_suit/gemini_suit_lod0.glb",
-      "sha256": "c0e694e5d6a842374a93ad858a4685ac96b479941238503ea099cf2dd20e1df4",
+      "sha256": "733d8fab12f87f6830bc6aebc152c916f12496b121a4a34320e9ba0a9c4124de",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -665,13 +665,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini_suit --out apps/web/public/models/hangar/gemini_suit",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini%20Spacesuit/Gemini%20Spacesuit.glb (2876516 bytes, SHA-256 972096ada3f5f4bfb54cd636e103f096f4ecf8d5bbc7dae40778c0185fa82266); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/gemini_suit/gemini_suit_lod1.glb",
-      "sha256": "1cc4de44135a2ce65d90d46dec504cafa766004d7367e95688aadf56d9a923bb",
+      "sha256": "059f99f8edfa987883dbd8d0a23aedba0d9654fc09445367a86eed1c66b4b977",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -686,7 +686,7 @@
     },
     {
       "path": "hangar/gemini_suit/gemini_suit_lod2.glb",
-      "sha256": "6433d29db28406b5f534719754e2827a71880d61b9b7955600fa4afdcf4530ae",
+      "sha256": "7986ada01f0cdcaa8c57fd37befc58a7eb8762ea8543d58066b3657bbb0c59f8",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "75fa1966411461a8e250c8fa826aef12856aa22fcc25fcf1021cae187bc72453",
+      "sha256": "205ed62022a98380531e0322a569ac5f32aa7ad4cfd32f78eb7f3bde1e85f936",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1142,7 +1142,7 @@
     },
     {
       "path": "hangar/mark3/mark3_lod0.glb",
-      "sha256": "c3236984b0ca0c02c7b97d3b4657a634962e6efb4f01858bd3bc64a78e736937",
+      "sha256": "24f83ffa45b706dd15bec196b2f6f9e82c26aff132b1db3af7d5218246b5bc30",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1151,13 +1151,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mark3 --out apps/web/public/models/hangar/mark3",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mark%20III%20Spacesuit/Mark%20III%20Spacesuit.glb (894092 bytes, SHA-256 885a4a83bd9d18f3886c8201845e384c0a9acb0cb487fb2897846d9f0438ab51); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/mark3/mark3_lod1.glb",
-      "sha256": "906f98cd06698f145c9b8431eebebec376daee80ada345582f7a1d51c7a2e365",
+      "sha256": "11f573e0391aac4fb40bd7e54e02f428c1ab2d18f0dfbb7714840d104f09e2f3",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1172,7 +1172,7 @@
     },
     {
       "path": "hangar/mark3/mark3_lod2.glb",
-      "sha256": "69b21d9d1c06eb4ac9ed4cfc94ca0a577a985b48b2e56ae3d092b4ef12eba3f0",
+      "sha256": "838321411e5981eec9f77a13117c288cfb7701835ca9e2f37b6e1aa252821682",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1260,7 +1260,7 @@
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod0.glb",
-      "sha256": "cc655f1a51c2a2e805c120044e0e54d8946acd709b49f99359552b926eb1bcbf",
+      "sha256": "bc8e5e4198c5bec4e6a91d5e891dfeeb47fa346dce736575ab3df434664bbe19",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1269,13 +1269,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mercury_suit --out apps/web/public/models/hangar/mercury_suit",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.glb (513884 bytes, SHA-256 406c835b4c91bb3f26e52ce5b79a7a1348cb2a22042744325e4be7826ecd7985); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod1.glb",
-      "sha256": "9fd4d6d828a54f2027b2da3ce0b40a94340e773c3e405ef9ab9ebd6a8cd782a4",
+      "sha256": "aa9c30d81bd9885d57b62cb3ad42c6bd386f406a38b309b1bbb84ccc69aa99e1",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1290,7 +1290,7 @@
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod2.glb",
-      "sha256": "e9b524592ea2b469c62094320e0de4964de81e40ee60198642e64d07d6ba3a83",
+      "sha256": "2daa4b30c05b1a4c676d385ac917dc1410c4c5228fb57b738a7f5511b4c8cee6",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

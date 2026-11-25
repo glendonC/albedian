@@ -191,21 +191,21 @@
       "files": {
         "lod0": {
           "path": "emu/emu_lod0.glb",
-          "bytes": 2784272,
+          "bytes": 2804752,
           "triangles": 102338,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "emu/emu_lod1.glb",
-          "bytes": 1041120,
+          "bytes": 1081100,
           "triangles": 34113,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "emu/emu_lod2.glb",
-          "bytes": 432584,
+          "bytes": 479792,
           "triangles": 11361,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
@@ -533,21 +533,21 @@
       "files": {
         "lod0": {
           "path": "mercury_suit/mercury_suit_lod0.glb",
-          "bytes": 1255552,
+          "bytes": 1277224,
           "triangles": 46310,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "mercury_suit/mercury_suit_lod1.glb",
-          "bytes": 448424,
+          "bytes": 477056,
           "triangles": 15436,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "mercury_suit/mercury_suit_lod2.glb",
-          "bytes": 173728,
+          "bytes": 196780,
           "triangles": 5142,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
@@ -590,21 +590,21 @@
       "files": {
         "lod0": {
           "path": "mark3/mark3_lod0.glb",
-          "bytes": 840140,
+          "bytes": 861520,
           "triangles": 30522,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "mark3/mark3_lod1.glb",
-          "bytes": 300248,
+          "bytes": 321948,
           "triangles": 10173,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "mark3/mark3_lod2.glb",
-          "bytes": 119048,
+          "bytes": 137820,
           "triangles": 3390,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
@@ -647,21 +647,21 @@
       "files": {
         "lod0": {
           "path": "aces/aces_lod0.glb",
-          "bytes": 987084,
+          "bytes": 1003020,
           "triangles": 30606,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "aces/aces_lod1.glb",
-          "bytes": 346132,
+          "bytes": 372980,
           "triangles": 10202,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "aces/aces_lod2.glb",
-          "bytes": 137348,
+          "bytes": 163512,
           "triangles": 3393,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
@@ -704,21 +704,21 @@
       "files": {
         "lod0": {
           "path": "gemini_suit/gemini_suit_lod0.glb",
-          "bytes": 1041848,
+          "bytes": 1061504,
           "triangles": 48751,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "gemini_suit/gemini_suit_lod1.glb",
-          "bytes": 358228,
+          "bytes": 386372,
           "triangles": 16249,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "gemini_suit/gemini_suit_lod2.glb",
-          "bytes": 132040,
+          "bytes": 154164,
           "triangles": 5410,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
