@@ -4,6 +4,7 @@ import { PANORAMA_GRADE } from '../sky/panoramaGrade.js';
 import { recordPanorama } from './skyPictureSwitch.js';
 import { GLOW_SIZE_PX, PLANET_WINDOWS } from '../sky/flightMilkyWay.js';
 import { loadPanoramaRegistration, sceneToPanoramaRows } from '../sky/skyRegistration.js';
+import { skyPictureSourceOf } from '../sky/skyPicture.js';
 import { BRUNETON_ATMO_LUT_URL } from '../volumetricSplatsAndLut.js';
 import type { EarthUniforms, MoonUniforms } from './cislunarRegime.js';
 import { glslFloat } from './glslFloat.js';
@@ -213,11 +214,14 @@ function textureLoading(textureLoader: THREE.TextureLoader) {
   };
 }
 
-/** The sky view's one picture, the registered Milky Way panorama: loaded on every visit. */
+/**
+ * The sky view's one picture, the registered Milky Way panorama: loaded on every visit, its half-side copy on a phone
+ * (sky-picture-phone-size-one; the dome places it through the registration's own size, so either copy lands alike).
+ */
 export function loadSkyViewTextures(textureLoader: THREE.TextureLoader, skyDomeUniforms: SkyDomeUniforms): void {
   const loadTex = textureLoading(textureLoader);
   const panorama = new Promise<THREE.Texture>((resolve) =>
-    loadTex('/textures/eso_milkyway_panorama.jpg', resolve)
+    loadTex(skyPictureSourceOf('/textures/eso_milkyway_panorama.jpg'), resolve)
   );
   const bound = Promise.all([loadPanoramaRegistration(), panorama]).then(
     ([registration, tex]) => {

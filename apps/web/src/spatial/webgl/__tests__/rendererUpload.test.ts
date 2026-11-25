@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { SKY_PICTURE_SLICE_ROWS } from '../../sky/skyPicture.js';
+import { PHONE_QUERY } from '../../../components/phoneSheet.js';
+import { SKY_PICTURE_SLICE_ROWS, forgetKeptSkyPictures } from '../../sky/skyPicture.js';
 import { elementGl, installSkyFakes, named, type FakeGl } from '../../sky/__tests__/skyPictureFakes.js';
 import { rendererUpload } from '../skyPictureSwitch.js';
 
@@ -10,7 +11,10 @@ import { rendererUpload } from '../skyPictureSwitch.js';
 
 const GLOW = '/textures/eso_milkyway_diffuse_6k.webp';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  forgetKeptSkyPictures();
+});
 
 function portal(rows = 450, width = 900) {
   const fakes = installSkyFakes({ pictureUrl: GLOW, pictureRows: rows, pictureWidth: width });
@@ -75,6 +79,17 @@ describe('the glow goes up into the portal\'s context', () => {
     expect(named(fakes.calls, 'texSubImage2D')).toHaveLength(1);
     expect(named(fakes.calls, 'generateMipmap')).toHaveLength(0);
     expect(fakes.bitmaps.filter((b) => b.kind === 'slice').every((b) => b.closed)).toBe(true);
+  });
+
+  it('reads the glow\'s half-side copy on a phone (sky-picture-phone-size-one)', async () => {
+    forgetKeptSkyPictures();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === PHONE_QUERY, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const fakes = installSkyFakes({ pictureUrl: '/textures/eso_milkyway_diffuse_3k.webp', pictureRows: 450, pictureWidth: 900 });
+    const gl = elementGl(fakes, {} as HTMLCanvasElement);
+    const upload = rendererUpload({ getContext: () => gl, state: { bindTexture: () => undefined } } as unknown as THREE.WebGLRenderer)!;
+    const out = await settled(fakes, upload(GLOW));
+    expect(out.texture).toBeDefined();
+    expect(fakes.fetched).toEqual(['/textures/eso_milkyway_diffuse_3k.webp']);
   });
 
   it('fails when the picture cannot be had, and there is nothing to upload into without a renderer', async () => {

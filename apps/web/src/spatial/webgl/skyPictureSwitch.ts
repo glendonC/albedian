@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SKY_PICTURE_URL, type SkyPicture } from '../sky/predictedSkyPicture.js';
-import { decodeSkyPicture } from '../sky/skyPicture.js';
+import { decodeSkyPicture, skyPictureSourceOf } from '../sky/skyPicture.js';
 import type { SkyDomeUniforms } from './skyDomeAndCinemaShader.js';
 
 export type { SkyPicture };
@@ -28,7 +28,8 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
 export function rendererUpload(renderer: THREE.WebGLRenderer | null): SkyPictureUpload | null {
   if (!renderer) return null;
   return async (url) => {
-    const picture = await decodeSkyPicture(url);
+    // On a phone the glow's half-side copy, as every other layer keeps there (sky-picture-phone-size-one)
+    const picture = await decodeSkyPicture(skyPictureSourceOf(url));
     const gl = renderer.getContext() as WebGL2RenderingContext;
     const texture = gl.createTexture();
     let at = 0;

@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { Timer } from 'three/webgpu';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PHONE_QUERY } from '../../components/phoneSheet.js';
 import { SparkPortalRenderer } from '../SparkPortalRenderer.js';
+import { forgetKeptSkyPictures } from '../sky/skyPicture.js';
 import { createEarthUniforms, createMoonUniforms } from '../webgl/cislunarRegime.js';
 import { createSkyDomeUniforms, loadLandingSceneTextures, loadSkyViewTextures } from '../webgl/skyDomeAndCinemaShader.js';
 import { CislunarWebGpuRenderer } from '../webgpu/CislunarWebGpuRenderer.js';
@@ -259,6 +261,16 @@ describe('which pictures load when', () => {
     const { urls, loader } = recordingLoader();
     loadSkyViewTextures(loader, createSkyDomeUniforms());
     expect(urls).toEqual(['/textures/eso_milkyway_panorama.jpg']);
+  });
+
+  it('the sky view loads the panorama\'s half-side copy on a phone (sky-picture-phone-size-one)', () => {
+    forgetKeptSkyPictures();
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === PHONE_QUERY, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const { urls, loader } = recordingLoader();
+    loadSkyViewTextures(loader, createSkyDomeUniforms());
+    forgetKeptSkyPictures();
+    expect(urls).toEqual(['/textures/eso_milkyway_panorama_3k.jpg']);
   });
 
   it('the landing scene loads the Earth, the Moon and the atmosphere table', () => {
