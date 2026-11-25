@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UNIT_QUATERNION_TOLERANCE } from './pointing.js';
 import {
   CalibrationMachineStateSchema,
   MediaMachineStateSchema,
@@ -22,6 +23,23 @@ import { ObservationSolutionSchema } from './astronomy.js';
 
 export const QuaternionSchema = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 export type QuaternionTuple = z.infer<typeof QuaternionSchema>;
+
+/**
+ * go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 02:45, A): where a sky the app draws from the catalog was looking when
+ * a request was made, so a flight can leave from that view and Back to Moment can return to it. The camera's turn in
+ * ICRS: a unit quaternion [x, y, z, w] taking the camera's own axes (x to the right, y up, looking along -z) to ICRS
+ * axes (x toward RA 0 and Dec 0, z toward the north celestial pole); and the vertical field of view in degrees, as
+ * SpatialViewState holds it. It records a view the app drew, never where a camera pointed.
+ */
+export const SkyViewSchema = z.object({
+  cameraQuaternionIcrs: z
+    .tuple([z.number().finite(), z.number().finite(), z.number().finite(), z.number().finite()])
+    .refine(([x, y, z_, w]) => Math.abs(Math.sqrt(x * x + y * y + z_ * z_ + w * w) - 1) <= UNIT_QUATERNION_TOLERANCE, {
+      message: 'The sky view turn is a unit quaternion.',
+    }),
+  fovVerticalDeg: z.number().min(1).max(140),
+});
+export type SkyView = z.infer<typeof SkyViewSchema>;
 
 export const CropTransformSchema = z.object({
   zoom: z.number().positive().max(20),
@@ -50,6 +68,9 @@ export const SpatialViewStateSchema = z.object({
   simulationEpochISO: z.string().min(4),
   // Absent when the recording carries no capture time; simulationEpochISO still holds the modeled sky's setting
   observationEpochISO: z.string().datetime().optional(),
+  // A sky drawn from the catalog this state was looking at (the predicted sky), kept in the checkpoint a flight leaves
+  // from, so the flight starts where the person was looking and Back to Moment returns them there; absent otherwise
+  skyView: SkyViewSchema.optional(),
   sceneScalePolicy: z.enum(['physical_euclidean', 'nonlinear_compressed']),
   activeOverlays: z.object({
     observedMarkers: z.boolean(),
@@ -108,6 +129,8 @@ export const ActionContextSchema = z.object({
   simulationEpochISO: z.string(),
   viewRevision: z.number().int().nonnegative(),
   reducedMotion: z.boolean(),
+  // While a sky drawn from the catalog is on screen (the predicted sky), where it looks; absent otherwise
+  skyView: SkyViewSchema.optional(),
 });
 export type ActionContext = z.infer<typeof ActionContextSchema>;
 
@@ -181,6 +204,8 @@ export const AlbedianActionSchema = z.discriminatedUnion('type', [
     expectedViewRevision: z.number().int().nonnegative(),
     findingId: z.string().min(1),
     distancePolicy: z.literal('measured_or_estimated'),
+    // The request's sky view, carried so the reducer can keep it in the departing checkpoint
+    skyView: SkyViewSchema.optional(),
   }),
   z.object({
     type: z.literal('space.viewpoint'),

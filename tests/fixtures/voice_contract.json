@@ -817,6 +817,22 @@
         "distancePolicy": "measured_or_estimated"
       },
       {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": {
+          "cameraQuaternionIcrs": [
+            0.5,
+            -0.5,
+            0.5,
+            0.5
+          ],
+          "fovVerticalDeg": 45
+        }
+      },
+      {
         "type": "space.viewpoint",
         "requestId": "req-sample-1",
         "expectedViewRevision": 3,
@@ -1925,6 +1941,111 @@
         "distancePolicy": "guessed"
       },
       "reason": "an unknown distance policy"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": null
+      },
+      "reason": "an optional sky view is absent, never null"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": {
+          "cameraQuaternionIcrs": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "fovVerticalDeg": 45
+        }
+      },
+      "reason": "a sky view turn is a unit quaternion"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": {
+          "cameraQuaternionIcrs": [
+            0,
+            0,
+            1
+          ],
+          "fovVerticalDeg": 45
+        }
+      },
+      "reason": "a sky view turn has four components"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": {
+          "cameraQuaternionIcrs": [
+            0.5,
+            -0.5,
+            0.5,
+            0.5
+          ],
+          "fovVerticalDeg": 0.5
+        }
+      },
+      "reason": "a sky view field under a degree"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": {
+          "cameraQuaternionIcrs": [
+            0.5,
+            -0.5,
+            0.5,
+            0.5
+          ],
+          "fovVerticalDeg": 141
+        }
+      },
+      "reason": "a sky view field over 140 degrees"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated",
+        "skyView": {
+          "fovVerticalDeg": 45
+        }
+      },
+      "reason": "a sky view says its turn"
     },
     {
       "schema": "AlbedianAction",

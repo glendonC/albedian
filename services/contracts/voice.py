@@ -44,6 +44,7 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from services.contracts.pointing import UNIT_QUATERNION_TOLERANCE
 from services.contracts.render_layer import EvidenceClass
 
 UTTERANCE_MAX_UTF16 = 2000
@@ -205,10 +206,30 @@ class FindingDescribe(_Action):
     ] = Field(alias="fields")
 
 
+class SkyView(_Model):
+    """Where a sky the app draws from the catalog was looking when a request was made (SkyViewSchema): the camera's
+    turn in ICRS as a unit quaternion [x, y, z, w] (camera x right, y up, looking along -z; ICRS x toward RA 0 and Dec 0,
+    z toward the north celestial pole) and the vertical field of view in degrees. A view the app drew, never where a
+    camera pointed."""
+
+    camera_quaternion_icrs: Annotated[list[Number], Field(min_length=4, max_length=4)]
+    fov_vertical_deg: Annotated[Number, Field(ge=1, le=140)]
+
+    @model_validator(mode="after")
+    def _unit(self) -> "SkyView":
+        x, y, z, w = self.camera_quaternion_icrs
+        # The same arithmetic, in the same order, as the Zod refinement
+        if abs(math.sqrt(x * x + y * y + z * z + w * w) - 1.0) > UNIT_QUATERNION_TOLERANCE:
+            raise ValueError("The sky view turn is a unit quaternion.")
+        return self
+
+
 class SpaceEnter(_Action):
     type: Literal["space.enter"]
     finding_id: Text
     distance_policy: Literal["measured_or_estimated"]
+    # The request's sky view, carried so the reducer can keep it in the departing checkpoint
+    sky_view: Optional[SkyView] = None
 
 
 class SpaceViewpoint(_Action):
@@ -1118,6 +1139,10 @@ def build_voice_samples() -> dict[str, Any]:
         fields=["distance", "type", "motion", "evidence", "behind_sightline"],
     )
     enter = act("space.enter", findingId="finding-star-vega", distancePolicy="measured_or_estimated")
+    sky_view = {"cameraQuaternionIcrs": [0.5, -0.5, 0.5, 0.5], "fovVerticalDeg": 45}
+    enter_from_sky = act(
+        "space.enter", findingId="finding-star-vega", distancePolicy="measured_or_estimated", skyView=sky_view
+    )
     viewpoint = act(
         "space.viewpoint", targetFindingId="finding-star-vega", units="pc", offsetParsec=[0.5, -1.25, 2], trajectory="orbit"
     )
@@ -1135,7 +1160,7 @@ def build_voice_samples() -> dict[str, Any]:
     actions = [
         restore, compare, seek, play, act("media.playback", playing=False), sky,
         act("sky.show", mode="predicted", observationSolutionId="sol-sample"),
-        select, describe, enter, viewpoint, epoch,
+        select, describe, enter, enter_from_sky, viewpoint, epoch,
         act("space.epoch", epochISO="-10000-01-01T00:00:00Z", yearCE=EPOCH_MIN_YEAR_CE),
         # An integral float is an integer, as it is to JavaScript
         act("space.epoch", epochISO="12000-01-01T00:00:00Z", yearCE=float(EPOCH_MAX_YEAR_CE)),
@@ -1304,6 +1329,12 @@ def build_voice_samples() -> dict[str, Any]:
     bad(action, _with(describe, ["fields"], []), "nothing to describe")
     bad(action, _with(describe, ["fields"], ["colour"]), "an unknown field to describe")
     bad(action, _with(enter, ["distancePolicy"], "guessed"), "an unknown distance policy")
+    bad(action, _with(enter_from_sky, ["skyView"], None), "an optional sky view is absent, never null")
+    bad(action, _with(enter_from_sky, ["skyView", "cameraQuaternionIcrs"], [0, 0, 0, 2]), "a sky view turn is a unit quaternion")
+    bad(action, _with(enter_from_sky, ["skyView", "cameraQuaternionIcrs"], [0, 0, 1]), "a sky view turn has four components")
+    bad(action, _with(enter_from_sky, ["skyView", "fovVerticalDeg"], 0.5), "a sky view field under a degree")
+    bad(action, _with(enter_from_sky, ["skyView", "fovVerticalDeg"], 141), "a sky view field over 140 degrees")
+    bad(action, {**enter_from_sky, "skyView": {"fovVerticalDeg": 45}}, "a sky view says its turn")
     bad(action, _with(viewpoint, ["offsetParsec"], [1, 2]), "an offset with two components")
     bad(action, _with(viewpoint, ["offsetParsec"], [1, 2, 3, 4]), "an offset with four components")
     bad(action, _with(viewpoint, ["units"], "ly"), "an offset not in parsecs")

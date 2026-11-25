@@ -33,6 +33,7 @@ from services.contracts.voice import (
     JAVASCRIPT_SPACES,
     QUESTION_MAX_UTF16,
     SAFE_INTEGER_MAX,
+    SkyView,
     action_issues,
     lower_case,
     refusal_sentence,
@@ -215,6 +216,8 @@ class ActionContext:
     reduced_motion: bool = False
     observer_lat: float | None = None
     observer_lon: float | None = None
+    # go-there-predicted-2: while a sky drawn from the catalog is on screen (the predicted sky), where it looks
+    sky_view: SkyView | None = None
 
     @property
     def has_observation_moment(self) -> bool:
@@ -240,6 +243,16 @@ class ActionContext:
             ptr = PointerContext.from_dict(ptr_raw)
         else:
             raise ValueError("recentPointer must be an object or null")
+        sky_key = "skyView" if "skyView" in data else "sky_view"
+        if sky_key not in data:
+            sky_view = None
+        elif isinstance(data[sky_key], SkyView):
+            sky_view = data[sky_key]
+        elif isinstance(data[sky_key], dict):
+            # The contract's own model: the same unit turn and field range as ActionContextSchema
+            sky_view = SkyView.model_validate(data[sky_key])
+        else:
+            raise ValueError("skyView must be an object, or absent")
         return cls(
             session_id=_optional_str(data, "sessionId", "session_id"),
             source_asset_id=_optional_str(data, "sourceAssetId", "source_asset_id"),
@@ -255,6 +268,7 @@ class ActionContext:
             reduced_motion=_bool_field(data, "reducedMotion", "reduced_motion", default=False),
             observer_lat=_optional_float(data, "observerLat", "observer_lat", minimum=-90.0, maximum=90.0),
             observer_lon=_optional_float(data, "observerLon", "observer_lon", minimum=-180.0, maximum=180.0),
+            sky_view=sky_view,
         )
 
 
