@@ -192,7 +192,10 @@ export function createGlobalPhotorealisticSkyDomeMesh(
   return new THREE.Mesh(skyGeo, skyMat);
 }
 
-/** A loader for the scenes' pictures: repeating across, clamped up and down, sRGB unless asked otherwise. */
+/**
+ * A loader for the scenes' pictures: repeating across, clamped up and down, sRGB unless asked otherwise; on a phone it
+ * reads a picture's recorded half-side copy where one is recorded (sky-picture-phone-size-one).
+ */
 function textureLoading(textureLoader: THREE.TextureLoader) {
   return (
     url: string,
@@ -200,7 +203,7 @@ function textureLoading(textureLoader: THREE.TextureLoader) {
     srgb = true
   ) => {
     textureLoader.load(
-      url,
+      skyPictureSourceOf(url),
       (tex) => {
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -221,7 +224,7 @@ function textureLoading(textureLoader: THREE.TextureLoader) {
 export function loadSkyViewTextures(textureLoader: THREE.TextureLoader, skyDomeUniforms: SkyDomeUniforms): void {
   const loadTex = textureLoading(textureLoader);
   const panorama = new Promise<THREE.Texture>((resolve) =>
-    loadTex(skyPictureSourceOf('/textures/eso_milkyway_panorama.jpg'), resolve)
+    loadTex('/textures/eso_milkyway_panorama.jpg', resolve)
   );
   const bound = Promise.all([loadPanoramaRegistration(), panorama]).then(
     ([registration, tex]) => {
