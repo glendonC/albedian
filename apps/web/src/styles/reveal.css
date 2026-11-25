@@ -3000,3 +3000,13 @@
 .reveal-hint.is-left {
   translate: calc(-100% - 14px) 14px;
 }
+
+/* first-use-hints-one, item four (UIUX-first-use-wow-READY.md, RULED at the lead's line stamped 03:22): "Drag to look
+   around." at the foot of the readout when the flight's camera rests, in the readout's own words' type; it words in
+   with the readout's words */
+.flight-readout__hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--look-ink);
+}

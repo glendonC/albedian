@@ -2021,3 +2021,53 @@ describe('the first hint: press a star', () => {
     expect(rules['text-shadow']).toBe('1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000, 0 0 2px #000');
   });
 });
+
+// first-use-hints-one, item four (UIUX-first-use-wow-READY.md, RULED 03:22): when the flight's camera comes to rest, one
+// hint at the foot of the readout, "Drag to look around."; it leaves at the first drag or key and does not come back
+describe('the second hint: drag to look around', () => {
+  const HINT = '[data-testid="drag-hint"]';
+  const flight = { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 };
+  const atRest = (phase: 'at_space' | 'phase_b_sky_to_space' = 'at_space') => {
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    return { ...session, selectedFindingId: rigel.id, spatialView: { ...session.spatialView, transitionPhase: phase } } as ObservationSession;
+  };
+  beforeEach(() => window.localStorage.clear());
+
+  for (const phone of [false, true])
+  it(`stands at the readout's foot once the camera rests, not while it travels${phone ? ', at phone width' : ''}`, () => {
+    show(atRest('phase_b_sky_to_space'), { flight, phone });
+    expect(q(HINT)).toBeNull();
+    show(atRest(), { flight, phone });
+    const hint = q(HINT)!;
+    expect(hint.textContent).toBe('Drag to look around.');
+    expect(hint.parentElement!.getAttribute('data-testid')).toBe('flight-readout');
+    expect(hint.parentElement!.lastElementChild).toBe(hint);
+  });
+
+  it('leaves at the first drag and does not come back', () => {
+    show(atRest(), { flight });
+    act(() => void window.dispatchEvent(new MouseEvent('pointermove', { buttons: 0 })));
+    expect(q(HINT)).not.toBeNull();
+    act(() => void window.dispatchEvent(new MouseEvent('pointermove', { buttons: 1 })));
+    expect(q(HINT)).toBeNull();
+    expect(window.localStorage.getItem('albedian.hint.dragLook')).toBe('used');
+    act(() => root.unmount());
+    root = createRoot(container);
+    show(atRest(), { flight });
+    expect(q(HINT)).toBeNull();
+  });
+
+  it('leaves at the first key that moves the view', () => {
+    show(atRest(), { flight });
+    act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift' })));
+    expect(q(HINT)).not.toBeNull();
+    act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' })));
+    expect(q(HINT)).toBeNull();
+  });
+
+  it('is not shown going back', () => {
+    show(atRest(), { flight, returning: true });
+    expect(q(HINT)).toBeNull();
+  });
+});

@@ -45,6 +45,7 @@ const STAR_CARD_LINES = 7;
 // motion record). While it is, the status waits for the marks; after, a view change brings it in at the words' delay.
 /** The first-use hints, each kept on the device once used (UIUX-first-use-wow-READY.md: never back once used). */
 const PRESS_HINT_KEY = 'albedian.hint.pressStar';
+const DRAG_HINT_KEY = 'albedian.hint.dragLook';
 function readHint(key: string): boolean {
   try {
     return typeof window !== 'undefined' && window.localStorage.getItem(key) === 'used';
@@ -620,6 +621,30 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     keepHint(PRESS_HINT_KEY);
     setPressHintUsed(true);
   }, [picked, pressHintUsed]);
+  // first-use-hints-one, item four: when the flight's camera rests, "Drag to look around." at the readout's foot; it
+  // leaves at the first drag (a pointer moved with a button held) or key that moves the view, kept used on the device
+  const [dragHintUsed, setDragHintUsed] = useState(() => readHint(DRAG_HINT_KEY));
+  const flightAtRest = there && phase === 'at_space' && !returning;
+  useEffect(() => {
+    if (!flightAtRest || dragHintUsed) return undefined;
+    const used = () => {
+      keepHint(DRAG_HINT_KEY);
+      setDragHintUsed(true);
+    };
+    const onMove = (event: Event) => {
+      if ((event as MouseEvent).buttons !== 0) used();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (/^(Arrow(Up|Down|Left|Right)|[wasdWASD])$/.test(event.key)) used();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [flightAtRest, dragHintUsed]);
+  const dragHintShown = flightAtRest && !dragHintUsed;
   const pressHintMark =
     pressHintUsed || arriving || there || skyShown || bareFrame || answer || picked !== null
       ? null
@@ -1441,6 +1466,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} phone={phone} />
               )}
             </>
+          )}
+          {dragHintShown && !answer && (
+            <p className="flight-readout__hint" data-testid="drag-hint">
+              Drag to look around.
+            </p>
           )}
         </section>
       )}
