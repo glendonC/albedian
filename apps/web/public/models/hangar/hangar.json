@@ -20,22 +20,22 @@
       "files": {
         "lod0": {
           "path": "voyager/voyager_lod0.glb",
-          "bytes": 1071624,
-          "triangles": 20378,
+          "bytes": 1057776,
+          "triangles": 19937,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "voyager/voyager_lod1.glb",
-          "bytes": 826672,
-          "triangles": 9512,
+          "bytes": 884996,
+          "triangles": 13696,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "voyager/voyager_lod2.glb",
-          "bytes": 303516,
-          "triangles": 2977,
+          "bytes": 531528,
+          "triangles": 10096,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
         },

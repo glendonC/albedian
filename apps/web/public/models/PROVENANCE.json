@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "c44917c48e6abb0a917b90985e26969b10fd8bf640a9efcceaf155e2f703f3a2",
+      "sha256": "b2a581c1b745e0f3020e52b41421ccf990ef28142256a07527b3cf361d804f2e",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2322,7 +2322,7 @@
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",
-      "sha256": "3c4abc4fc7399ac10fb12ecb4a750167d94ee57d4a81f4686b6d8ea3503c14a8",
+      "sha256": "834d497409d126cdcfd0d8eb2e1aabc891afe7845696d9a9e366087e95383b8e",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2337,7 +2337,7 @@
     },
     {
       "path": "hangar/voyager/voyager_lod1.glb",
-      "sha256": "81ecc6413e1e60891c19596719859074b7586a17f8ebe52618bc9b18aa40c69e",
+      "sha256": "bc9950249f5a4c632522c982300e8575cc13d6c6efa474f5f60bc394f1587a87",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2346,13 +2346,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
     {
       "path": "hangar/voyager/voyager_lod2.glb",
-      "sha256": "e21d3c83e4dc062355d674f10b5e44332476b15cbf5c95de83713a037c933258",
+      "sha256": "960b69df1313df41eed7e01962a7794b445d057ef96b838a1acdb777de0a0c4a",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2361,7 +2361,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
     },

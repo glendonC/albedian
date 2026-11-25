@@ -244,7 +244,7 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
     # largest 27 cm): a craft decimated part by part leaves out only the parts under its level's size, measured before
     # decimation, and every larger lod0 part still has corners in its place (its box grown by 1 cm) at every level.
     by_part = [name for name in FACTS["models"] if CRAFTS[name].get("decimate_by_part")]
-    assert "insight" in by_part
+    assert {"insight", "voyager"} <= set(by_part)
     for name in by_part:
         # the provenance sentence of a by-part level says hidden inner faces of bulky parts are left out
         assert CRAFTS[name].get("drop_hidden_faces") == ["lod1", "lod2"], name

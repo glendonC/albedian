@@ -72,6 +72,12 @@ CRAFTS: dict[str, dict] = {
             "tex_02_AO_dark": {"role": "painted", "base": (0.06, 0.06, 0.065), "roughness": 0.45, "occlusion_from_source": True},
         },
         # The hero shot frames this many metres around the origin (the dish's centre).
+        # The phone level kept 65 of the dish's 2,320 triangles and broke the RTG stack into discs under one collapse
+        # ratio (hangar-lod-audit-1): faces welded, then each loose part reduced on its own.
+        "weld_m": 0.0001,
+        "decimate_by_part": True,
+        "part_tris_per_m": {"lod1": 300, "lod2": 150},
+        "drop_hidden_faces": ["lod1", "lod2"],
         "body_radius_m": 2.2,
         "changes": "photo",
     },
