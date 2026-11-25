@@ -646,7 +646,7 @@ export const NOTES = [
   'Streams that are neither video nor audio were not copied.',
   'The lift was held by its maximum.',
   // A restored clip with no playback copy (playback-job-one version three, DECIDED-BY-LEAD 02:22 on 25 Nov): none passed
-  // its gate in the stored file's own format, or the copy could not be made; the restoration stands with its lossless file
+  // its gate in the stored file's own format, or the copy could not be made; the restoration stands with its restored file
   'No playback copy could be made within its gate, so this restoration has none.',
 ] as const;
 /** Why a colour field was assumed: one sentence per field and assumed value (design section 1). */

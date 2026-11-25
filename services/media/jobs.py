@@ -77,8 +77,9 @@ MEDIA_PRODUCER_FILES = (
 # them (bars-lossy-one); 15, a still's sky keeps 0.35 of its own finest noise less its star-shaped part, put in after
 # the lift and capped block by block where it would lift the gate's noise over its floor, or none where the gate
 # refuses it (fine-noise-floor-one); 16, a restored clip's playback copy beside its published variant, H.264 High
-# behind its own PSNR gate in the stored file's own format (playback-job-one)
-MEDIA_PRODUCER = Producer("albedian.restore", 16, MEDIA_PRODUCER_FILES)
+# behind its own PSNR gate in the stored file's own format (playback-job-one); 17, a 10-bit restored clip's playback copy
+# in its own bit depth, HEVC Main 10 (playback-tenbit-job; the number is the next free one in the order of passes)
+MEDIA_PRODUCER = Producer("albedian.restore", 17, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -561,9 +562,9 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
     write = _Stage(progress, "write", "bytes", None if copyable else size)
     write.add(size)
     playback = None
-    # Whether the copy's gate ran at every quality and refused it: the one case the restoration's record says so
-    # (DECIDED-BY-LEAD 04:47 on 25 Nov); a clip never tried (a 10-bit one, a stored format the gate does not measure
-    # in) or a copy that failed some other way records nothing
+    # Whether the copy's gate refused it (no quality passed, or a 10-bit copy's stream was not Main 10 at a level a
+    # decoder names): the one case the restoration's record says so (DECIDED-BY-LEAD 04:47 on 25 Nov); a clip never
+    # tried (a stored format the gate does not measure in) or a copy that failed some other way records nothing
     gate_refused = False
     if copyable:
         # A copy's failure never fails a restoration (DECIDED-BY-LEAD 02:22 and 04:47 on 25 Nov): any error or a time

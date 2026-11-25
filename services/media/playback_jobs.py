@@ -75,8 +75,8 @@ def stored_clip(variant_folder: Path) -> tuple[dict[str, Any], Path]:
 
 
 def copyable(stored: Path) -> bool:
-    """Whether the job can copy this restored clip at all: 8-bit H.264 as the restore stores it, in a stored format the
-    gate measures in as it is. Anything else (a 10-bit clip today) gets no job (REQ-JOB-10.4)."""
+    """Whether the job can copy this restored clip at all: 8-bit H.264 or 10-bit HEVC as the restore stores it, in a
+    stored format the gate measures in as it is. Anything else gets no job (REQ-JOB-10.4)."""
     try:
         probe = clip_io.probe_clip(stored)
         return clip_io.playback_copy_supported(probe.video) and clip_io.stored_pixel_format(stored) in clip_io.PLAYBACK_GATE_FORMATS

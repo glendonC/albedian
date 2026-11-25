@@ -37,8 +37,14 @@ def finished(client: TestClient, job: dict) -> dict:
     return job
 
 
-def clip(path: Path, *codec: str) -> bytes:
-    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", SKY, *codec, str(path)],
+TEN_BIT = ("-c:v", "libx265", "-x265-params", "log-level=error", "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1")
+# AUDIT-B's two 10-bit clips a keyframe interval of one frame reaches (playback-tenbit-job version two): one frame, and
+# three frames at 2 a second, as a slow night-sky timelapse is
+SLOW_SKY = "color=c=0x181818:s=96x64:r=2:d=1.5,noise=alls=14:allf=t"
+
+
+def clip(path: Path, *codec: str, source: str = SKY) -> bytes:
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", source, *codec, str(path)],
                           capture_output=True, stdin=subprocess.DEVNULL)
     assert made.returncode == 0, made.stderr[-400:]
     return path.read_bytes()
@@ -46,8 +52,8 @@ def clip(path: Path, *codec: str) -> bytes:
 
 @pytest.fixture(scope="module")
 def stored(tmp_path_factory):
-    """One store with an 8-bit and a 10-bit clip each restored ready: the client, the store root, and for each the
-    upload's hash, its folder and its variant id."""
+    """One store with an 8-bit clip and three 10-bit ones (at 30 frames a second, of one frame, and at 2 a second) each
+    restored ready: the client, the store root, and for each the upload's hash, its folder and its variant id."""
     base = tmp_path_factory.mktemp("firstneed")
     store_root = base / "store"
     uploads = IngestStore(store_root, max_bytes=200_000_000)
@@ -55,9 +61,9 @@ def stored(tmp_path_factory):
     app.dependency_overrides[ingest_router.get_ingest_store] = lambda: uploads
     done = {}
     with TestClient(app) as client:
-        for name, codec in (("eight", ("-c:v", "libx264", "-pix_fmt", "yuv420p")),
-                            ("ten", ("-c:v", "libx265", "-x265-params", "log-level=error", "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1"))):
-            data = clip(base / f"{name}.mp4", *codec)
+        for name, codec, source in (("eight", ("-c:v", "libx264", "-pix_fmt", "yuv420p"), SKY), ("ten", TEN_BIT, SKY),
+                                    ("ten_one", ("-frames:v", "1", *TEN_BIT), SKY), ("ten_slow", TEN_BIT, SLOW_SKY)):
+            data = clip(base / f"{name}.mp4", *codec, source=source)
             answer = client.post("/api/ingest", content=data, headers={"content-type": "video/mp4"})
             assert answer.status_code in (200, 201), answer.text
             sha = answer.json()["sourceAsset"]["sha256"]
@@ -124,10 +130,58 @@ def test_a_stored_gate_refusal_is_the_answer_under_its_own_revision_and_tried_ag
     assert finished(client, newer.json())["state"] == "succeeded"
 
 
-def test_a_clip_the_job_cannot_copy_is_refused_with_the_typed_answer_and_gets_no_job(stored) -> None:
-    client, store_root, done = stored
+def test_a_ten_bit_clip_gets_its_copy_at_first_need_in_its_own_bit_depth(stored) -> None:
+    client, _, done = stored
     sha, folder, vid = done["ten"]
     take_copy_away(folder, vid)
+    started = client.post(f"/api/media/{sha}/variants/{vid}/playback")
+    assert started.status_code == 202, started.text
+    assert finished(client, started.json())["state"] == "succeeded"
+    copy = client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"]["playbackCopy"]
+    assert copy["codecs"].startswith("hvc1.2.4.L")
+
+
+@pytest.mark.parametrize("name, frames", [("ten_one", 1), ("ten_slow", 3)])
+def test_a_ten_bit_clip_of_one_frame_or_a_slow_rate_is_restored_with_its_main_10_copy_and_gets_one_at_first_need(
+        stored, name: str, frames: int) -> None:
+    # playback-tenbit-job version two (AUDIT-B's verdict of 25 Nov): version one's encoder wrote Main 10 Intra here, the
+    # restoration kept no copy and said nothing, and every first-need job stopped on an internal error
+    client, _, done = stored
+    sha, folder, vid = done[name]
+    variant = folder / "variants" / vid
+    assert clip_io.probe_clip(variant / "variant.mp4").frame_count == frames
+    restored = json.loads((variant / "playback.json").read_bytes())
+    assert restored["codecs"].startswith("hvc1.2.4.L")
+    assert job_contract.PLAYBACK_GATE_REFUSED not in json.loads((variant / "attempt.json").read_bytes())["measured"]["notes"]
+    take_copy_away(folder, vid)
+    started = client.post(f"/api/media/{sha}/variants/{vid}/playback")
+    assert started.status_code == 202, started.text
+    ended = finished(client, started.json())
+    assert ended["state"] == "succeeded", ended
+    copy = client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"]["playbackCopy"]
+    assert copy["codecs"] == clip_io.hevc_codec_string(variant / "playback.mp4") and copy["codecs"].startswith("hvc1.2.4.L")
+
+
+def test_a_ten_bit_copy_whose_stream_is_not_main_10_ends_with_the_gates_sentence_never_an_internal_error(
+        stored, monkeypatch, tmp_path) -> None:
+    # The encoder as version one called it (keyint 1, Main 10 Intra): the job's answer is the gate's fixed sentence,
+    # which a later start answers without a new job, and nothing is placed
+    _, _, done = stored
+    sha, folder, vid = done["ten_one"]
+    take_copy_away(folder, vid)
+    monkeypatch.setattr(clip_io, "HEVC_MIN_KEYINT", 1, raising=False)
+    partials = [str(tmp_path / "encoded.part"), str(tmp_path / "playback.part")]
+    out = playback_jobs.playback_copy_in_child(str(folder), vid, partials, lambda *args: None, workers=1)
+    assert out == {"status": "failed", "failureReason": job_contract.PLAYBACK_GATE_REFUSED}
+    assert not (folder / "variants" / vid / "playback.json").exists() and list(tmp_path.iterdir()) == []
+
+
+def test_a_clip_the_job_cannot_copy_is_refused_with_the_typed_answer_and_gets_no_job(stored, monkeypatch) -> None:
+    client, store_root, done = stored
+    sha, folder, vid = done["eight"]
+    take_copy_away(folder, vid)
+    # A stored format the gate does not measure in, as the route sees it
+    monkeypatch.setattr(playback_jobs, "copyable", lambda stored_file: False)
     jobs_before = sorted(p.name for p in (folder / "jobs").iterdir())
     answer = client.post(f"/api/media/{sha}/variants/{vid}/playback")
     assert (answer.status_code, answer.json()) == (422, {"detail": job_contract.PLAYBACK_NOT_COPYABLE})

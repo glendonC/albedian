@@ -1079,18 +1079,21 @@ def lowest_psnr_in(copy: Path, stored: Path, pixel_format: str, frames: int) -> 
     bicubic scaler, the stored frames as they are), each frame's PSNR over all its samples, the lowest."""
     import subprocess
 
+    ten = pixel_format.endswith("10le")
+
     def raw(path: Path) -> np.ndarray:
         run = subprocess.run(["ffmpeg", "-hide_banner", "-v", "error", "-noautorotate", "-i", str(path), "-sws_flags", "bicubic",
                               "-pix_fmt", pixel_format, "-f", "rawvideo", "-"], capture_output=True, stdin=subprocess.DEVNULL)
         assert run.returncode == 0, run.stderr[-400:]
-        return np.frombuffer(run.stdout, dtype=np.uint8).reshape(frames, -1).astype(np.float64)
+        return np.frombuffer(run.stdout, dtype="<u2" if ten else np.uint8).reshape(frames, -1).astype(np.float64)
 
     a, b = raw(copy), raw(stored)
     mse = ((a - b) ** 2).mean(axis=1)
-    return float(min(10 * np.log10(255.0 ** 2 / m) for m in mse if m > 0))
+    peak = 1023.0 if ten else 255.0
+    return float(min(10 * np.log10(peak ** 2 / m) for m in mse if m > 0))
 
 
-@pytest.mark.parametrize("pixel_format", ["yuv420p", "yuvj420p", "yuv444p"])
+@pytest.mark.parametrize("pixel_format", ["yuv420p", "yuvj420p", "yuv444p", "yuv420p10le"])
 def test_the_playback_gate_measures_the_copy_in_the_stored_files_own_format(tmp_path, pixel_format: str) -> None:
     from services.media import clip_io
     stored = tmp_path / "stored.mp4"
@@ -1098,7 +1101,8 @@ def test_the_playback_gate_measures_the_copy_in_the_stored_files_own_format(tmp_
     probe = clip_io.probe_clip(stored)
     assert clip_io.stored_pixel_format(stored) == pixel_format and probe.frame_count == 30
     # The gate's own measure of one encode is the independent one, in the stored format
-    clip_io._encode_playback(stored, tmp_path / "one.encoded", tmp_path / "one.mp4", probe, None, 18, 1, 120)
+    clip_io._encode_playback(stored, tmp_path / "one.encoded", tmp_path / "one.mp4", probe, None, 18, 1, 120,
+                             pixel_format.endswith("10le"))
     gate_lowest = min(clip_io._psnr_frames(tmp_path / "one.mp4", stored, pixel_format, 120))
     assert gate_lowest == pytest.approx(lowest_psnr_in(tmp_path / "one.mp4", stored, pixel_format, 30), abs=0.05)
     made = clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, None, threads=1,
@@ -1111,20 +1115,30 @@ def test_the_playback_gate_measures_the_copy_in_the_stored_files_own_format(tmp_
         assert made is not None
         assert made.min_psnr_db == pytest.approx(lowest_psnr_in(made.path, stored, pixel_format, 30), abs=0.05)
         assert made.min_psnr_db >= contracts.PLAYBACK_COPY_MIN_PSNR_DB
+        # A keyframe at least every half second (15 frames at 30 a second), in either codec: packets flagged K
+        import subprocess
+        flags = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=flags,pts",
+                                "-of", "csv=p=0", str(made.path)], capture_output=True, text=True).stdout.split()
+        keys = sorted(int(entry.split(",")[0]) for entry in flags if "K" in entry.split(",")[-1])
+        assert len(keys) >= 2, flags
+        # Its own bit depth: H.264 High for 8 bits, HEVC Main 10 for 10, its string read from its own hvcC
+        if pixel_format.endswith("10le"):
+            assert made.codecs == clip_io.hevc_codec_string(made.path) and made.codecs.startswith("hvc1.2.4.L")
+        else:
+            assert made.codecs.startswith("avc1.64")
 
 
-def test_a_stored_format_the_gate_does_not_measure_in_gets_no_copy(tmp_path) -> None:
-    # 10-bit H.264 here (synthetic): the gate measures 8-bit planar Y'CbCr only, and a restoration stores no such file
-    import subprocess
+def test_a_stored_format_the_gate_does_not_measure_in_gets_no_copy(tmp_path, monkeypatch) -> None:
+    # The gate measures 8- and 10-bit planar Y'CbCr only; the probe refuses a clip over 10 bits before any copy, so a
+    # stored format outside the list is given here through the one reading the copy takes it from (synthetic clip)
     from services.media import clip_io
-    stored = tmp_path / "deep.mp4"
-    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", GATE_PATTERN, "-c:v", "libx264",
-                           "-qp", "0", "-pix_fmt", "yuv420p10le", str(stored)], capture_output=True, stdin=subprocess.DEVNULL)
-    assert made.returncode == 0, made.stderr[-400:]
-    assert clip_io.stored_pixel_format(stored) == "yuv420p10le"
-    assert clip_io.make_playback_copy(stored, tmp_path / "g.encoded", tmp_path / "g.mp4", clip_io.probe_clip(stored), None,
+    stored = tmp_path / "plain.mp4"
+    gate_clip(stored, "yuv420p")
+    probe = clip_io.probe_clip(stored)
+    monkeypatch.setattr(clip_io, "stored_pixel_format", lambda path: "yuv420p12le")
+    assert clip_io.make_playback_copy(stored, tmp_path / "g.encoded", tmp_path / "g.mp4", probe, None,
                                       threads=1, min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB) is None
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["deep.mp4"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["plain.mp4"]
 
 
 def restore_clip_in_child(tmp_path: Path, source: Path, extension: str = "mp4") -> tuple[dict, Path, Path]:
@@ -1202,9 +1216,9 @@ def test_a_clip_with_no_playback_copy_is_still_restored_and_says_so_only_where_t
     assert list((root / ".partial").iterdir()) == []
 
 
-def test_a_ten_bit_clip_is_restored_with_no_copy_and_no_word_of_a_gate_that_never_ran(tmp_path) -> None:
-    # AUDIT's verdict on version three: a 10-bit clip (stored as HEVC, as an iPhone's HDR clip is) is never copied and
-    # no gate measures it, so its record carries no note of one (synthetic: the clip fixture's sky in 10 bits)
+def test_a_ten_bit_clip_is_restored_with_its_copy_in_its_own_bit_depth(tmp_path) -> None:
+    # playback-tenbit-job (DECIDED-BY-LEAD 07:16 on 25 Nov): a 10-bit clip (stored as HEVC, as an iPhone's HDR clip is)
+    # gets its copy in HEVC Main 10, gated in its stored format, and no note (synthetic: the clip fixture's sky in 10 bits)
     import subprocess
     from services.media import clip_io
     source = tmp_path / "deep.mp4"
@@ -1212,11 +1226,150 @@ def test_a_ten_bit_clip_is_restored_with_no_copy_and_no_word_of_a_gate_that_neve
                            "-x265-params", "log-level=error", "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1", str(source)],
                           capture_output=True, stdin=subprocess.DEVNULL)
     assert made.returncode == 0, made.stderr[-400:]
-    assert not clip_io.playback_copy_supported(clip_io.probe_clip(source).video)
+    assert clip_io.playback_copy_supported(clip_io.probe_clip(source).video)
     out, folder, root = restore_clip_in_child(tmp_path, source)
     assert out["status"] == "ready", out
     stored = folder / "variants" / out["variantId"]
-    assert not (stored / "playback.mp4").exists() and not (stored / "playback.json").exists()
+    copy = json.loads((stored / "playback.json").read_bytes())
+    assert copy["codecs"] == clip_io.hevc_codec_string(stored / "playback.mp4") and copy["codecs"].startswith("hvc1.2.4.L")
+    assert copy["minPsnrDb"] >= contracts.PLAYBACK_COPY_MIN_PSNR_DB
+    variant = json.loads((stored / "variant.json").read_bytes())
+    contracts.MediaVariant.model_validate({**variant, "playbackCopy": copy})
     attempt = json.loads((stored / "attempt.json").read_bytes())
     assert NOTE_NO_COPY not in attempt["measured"]["notes"]
     assert list((root / ".partial").iterdir()) == []
+
+
+def test_a_ten_bit_copys_codec_string_is_read_from_its_own_stream_and_never_names_level_8_5(tmp_path) -> None:
+    # The RFC 6381 string from the hvcC box (synthetic streams): Main 10 at a level a decoder names, and none for an
+    # exact x265 stream, which reports level 8.5, nor for an 8-bit HEVC Main one
+    import subprocess
+    from services.media import clip_io
+
+    def hevc(name: str, *options: str) -> Path:
+        path = tmp_path / name
+        made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", GATE_PATTERN, "-c:v", "libx265",
+                               *options, "-tag:v", "hvc1", str(path)], capture_output=True, stdin=subprocess.DEVNULL)
+        assert made.returncode == 0, made.stderr[-400:]
+        return path
+
+    assert clip_io.hevc_codec_string(hevc("main10.mp4", "-x265-params", "log-level=error", "-crf", "18", "-pix_fmt",
+                                          "yuv420p10le")) == "hvc1.2.4.L30.90"
+    assert clip_io.hevc_codec_string(hevc("exact.mp4", "-x265-params", "log-level=error:lossless=1", "-pix_fmt", "yuv420p10le")) is None
+    assert clip_io.hevc_codec_string(hevc("main.mp4", "-x265-params", "log-level=error", "-pix_fmt", "yuv420p")) is None
+
+
+# playback-tenbit-job version two (AUDIT-B's verdict of 25 Nov): a 10-bit clip of one frame, or of fewer than 3 frames a
+# second, has a keyframe interval of one frame, and libx265 at keyint 1 writes Main 10 Intra, a Range Extensions profile
+# (hvc1.4) with no codec string the contract takes; the copy keeps Main 10 (synthetic clips, AUDIT-B's three rates)
+SLOW_CLIPS = [("one frame at 30 a second", "testsrc2=size=160x96:rate=30", 1),
+              ("two frames at 2 a second", "testsrc2=size=160x96:rate=2", 2),
+              ("five frames at 1 a second", "testsrc2=size=160x96:rate=1", 5)]
+TEN_BIT_EXACT = ("-c:v", "libx265", "-x265-params", "log-level=error:lossless=1", "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1")
+EIGHT_BIT_EXACT = ("-c:v", "libx264", "-qp", "0", "-preset", "ultrafast", "-pix_fmt", "yuv420p")
+
+
+def slow_clip(path: Path, source: str, frames: int, *codec: str) -> Path:
+    import subprocess
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", source, "-frames:v", str(frames),
+                           *codec, str(path)], capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+    return path
+
+
+def keyframes_in_order(path: Path) -> list[bool]:
+    """Whether each of the copy's video packets is a keyframe, in presentation order."""
+    import subprocess
+    lines = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts,flags", "-of",
+                            "csv=p=0", str(path)], capture_output=True, text=True).stdout.split()
+    return [key for _, key in sorted((int(line.split(",")[0]), "K" in line.split(",")[1]) for line in lines)]
+
+
+@pytest.mark.parametrize("why, source, frames", SLOW_CLIPS)
+def test_a_ten_bit_clip_of_one_frame_or_a_slow_rate_keeps_main_10_in_its_copy(tmp_path, why: str, source: str,
+                                                                               frames: int) -> None:
+    from services.media import clip_io
+    stored = slow_clip(tmp_path / "slow.mp4", source, frames, *TEN_BIT_EXACT)
+    probe = clip_io.probe_clip(stored)
+    assert probe.frame_count == frames and clip_io.keyframe_interval(probe) == 1
+    made = clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, None, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB)
+    assert made is not None, why
+    assert made.codecs == clip_io.hevc_codec_string(made.path) and made.codecs.startswith("hvc1.2.4.L")
+    assert re.fullmatch(contracts.MEDIA_PATTERNS["playbackCodecs"], made.codecs)
+    assert made.min_psnr_db == pytest.approx(lowest_psnr_in(made.path, stored, "yuv420p10le", frames), abs=0.05)
+    # Every frame is kept, the first a keyframe, and never two frames in a row without one
+    keys = keyframes_in_order(made.path)
+    assert len(keys) == frames and keys[0] and "FF" not in "".join("K" if k else "F" for k in keys), keys
+
+
+def test_an_eight_bit_clip_of_one_frame_keeps_h264_high_in_its_copy(tmp_path) -> None:
+    # The 8-bit path at a keyframe interval of one frame, beside the 10-bit one (synthetic clip)
+    from services.media import clip_io
+    stored = slow_clip(tmp_path / "one.mp4", SLOW_CLIPS[0][1], 1, *EIGHT_BIT_EXACT)
+    probe = clip_io.probe_clip(stored)
+    made = clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, None, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB)
+    assert made is not None and made.codecs.startswith("avc1.64")
+    assert re.fullmatch(contracts.MEDIA_PATTERNS["playbackCodecs"], made.codecs)
+    assert keyframes_in_order(made.path) == [True]
+
+
+def test_a_ten_bit_copy_whose_stream_is_not_main_10_is_refused_as_its_gate_refuses_never_as_an_internal_error(
+        tmp_path, monkeypatch) -> None:
+    # The encoder as version one called it (keyint 1): libx265 writes Main 10 Intra, and the copy is not kept, the
+    # answer the gate's refusal gives, with nothing left behind (synthetic one-frame clip)
+    from services.media import clip_io
+    stored = slow_clip(tmp_path / "one.mp4", SLOW_CLIPS[0][1], 1, *TEN_BIT_EXACT)
+    probe = clip_io.probe_clip(stored)
+    monkeypatch.setattr(clip_io, "HEVC_MIN_KEYINT", 1, raising=False)
+    assert clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, None, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB) is None
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["one.mp4"]
+
+
+def test_a_ten_bit_codec_string_is_read_only_from_an_hvc1_sample_entry(tmp_path) -> None:
+    # AUDIT-B's note: the string names hvc1, so the same Main 10 stream in an hev1 sample entry (its parameter sets in
+    # the samples, a form the copy is never written in) has none; in hvc1 it has one (synthetic streams)
+    import subprocess
+    from services.media import clip_io
+    strings = {}
+    for tag in ("hvc1", "hev1"):
+        path = tmp_path / f"{tag}.mp4"
+        made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", GATE_PATTERN, "-c:v", "libx265",
+                               "-x265-params", "log-level=error", "-crf", "18", "-pix_fmt", "yuv420p10le", "-tag:v", tag, str(path)],
+                              capture_output=True, stdin=subprocess.DEVNULL)
+        assert made.returncode == 0, made.stderr[-400:]
+        strings[tag] = clip_io.hevc_codec_string(path)
+    assert strings == {"hvc1": "hvc1.2.4.L30.90", "hev1": None}
+
+
+def test_a_ten_bit_copy_at_30_frames_a_second_still_has_a_keyframe_every_half_second(tmp_path) -> None:
+    # The floor of two frames reaches only a clip slower than 3 frames a second (synthetic clip, 30 frames at 30)
+    from services.media import clip_io
+    stored = slow_clip(tmp_path / "thirty.mp4", "testsrc2=size=160x96:rate=30", 30, *TEN_BIT_EXACT)
+    probe = clip_io.probe_clip(stored)
+    assert clip_io.keyframe_interval(probe) == 15
+    made = clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, None, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB)
+    assert made is not None
+    assert [i for i, key in enumerate(keyframes_in_order(made.path)) if key] == [0, 15]
+
+
+def test_an_hvcc_box_outside_its_sample_entry_names_no_codec_string(tmp_path) -> None:
+    # The same Main 10 file with its sample entry's size cut to its own header: the hvcC box after it is no longer in
+    # the entry, and nothing is named (synthetic stream, its bytes edited)
+    import subprocess
+    from services.media import clip_io
+    path = tmp_path / "main10.mp4"
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", GATE_PATTERN, "-c:v", "libx265",
+                           "-x265-params", "log-level=error", "-crf", "18", "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1", str(path)],
+                          capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+    assert clip_io.hevc_codec_string(path) == "hvc1.2.4.L30.90"
+    data = bytearray(path.read_bytes())
+    stsd = data.find(b"stsd")
+    data[stsd + 12:stsd + 16] = (8).to_bytes(4, "big")
+    cut = tmp_path / "cut.mp4"
+    cut.write_bytes(bytes(data))
+    assert clip_io.hevc_codec_string(cut) is None

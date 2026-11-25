@@ -1123,13 +1123,15 @@ class PlaybackCopy:
 
 
 def playback_copy_supported(video: VideoFormat) -> bool:
-    """Whether a copy is made: for a clip the restore stores as 8-bit H.264 (libx264). A 10-bit clip, stored as HEVC,
-    gets none yet [open: which High-family copy every browser draws for it]."""
-    return _encoder_for(video) == EIGHT_BIT_ENCODER
+    """Whether a copy is made: for a clip the restore stores as 8-bit H.264 (libx264), a copy in H.264 High; for one
+    it stores as 10-bit HEVC (libx265), a copy in HEVC Main 10, its own bit depth (playback-tenbit, DECIDED-BY-LEAD
+    07:16 on 25 Nov: nothing is turned to 8 bits unsaid)."""
+    return _encoder_for(video) in (EIGHT_BIT_ENCODER, TEN_BIT_ENCODER)
 
 
 def keyframe_interval(probe: ClipProbe) -> int:
-    """Frames in half a second at the clip's commonest frame gap, at least one."""
+    """Frames in half a second at the clip's commonest frame gap, at least one (one for a clip of one frame or of fewer
+    than 3 frames a second)."""
     gaps = Counter(b - a for a, b in zip(probe.frame_times, probe.frame_times[1:]))
     if not gaps:
         return 1
@@ -1141,7 +1143,49 @@ def keyframe_interval(probe: ClipProbe) -> int:
 # conversion, so the copy alone is brought to the stored file's format and the lossless frames are never cut down
 # (AUDIT's verdict on playback-job-one version two: lavfi had cut a 4:4:4 file's chroma to the copy's 4:2:0 before
 # comparing, 48 dB recorded where the stored format's own measure is 17). Any other stored format gets no copy.
-PLAYBACK_GATE_FORMATS = ("yuv420p", "yuvj420p", "yuv422p", "yuvj422p", "yuv444p", "yuvj444p")
+PLAYBACK_GATE_FORMATS = ("yuv420p", "yuvj420p", "yuv422p", "yuvj422p", "yuv444p", "yuvj444p",
+                         "yuv420p10le", "yuv422p10le", "yuv444p10le")
+# A 10-bit copy's levels a decoder names (HEVC general_level_idc, 1 to 6.2), never the 8.5 an exact x265 stream reports
+HEVC_LEVELS = (30, 60, 63, 90, 93, 120, 123, 150, 153, 156, 180, 183, 186)
+# The fewest frames from one keyframe to the next in a 10-bit copy: at a keyint of 1 libx265 marks the stream all-intra
+# and signals Main 10 Intra, a Range Extensions profile (general_profile_idc 4, hvc1.4.10) the contract's codec strings
+# do not take, where a clip of one frame or of fewer than 3 frames a second asks for one (AUDIT-B's verdict on
+# playback-tenbit-job, 25 Nov). At 2 the stream is Main 10 with a keyframe every second frame [tested 26 Nov: one frame
+# at 30 a second, two at 2, five and nine at 1, each the level one Main 10 string the tests pin, frames I P and
+# I B I B I; .lanetools/tenbit2/ in the EXPORT worktree]
+HEVC_MIN_KEYINT = 2
+# In an ISO BMFF sample description box (ISO/IEC 14496-12 8.5.2), counted from its type `stsd`: its version and flags,
+# its entry count, then its first entry's size and, here, its type, the entry that holds the stream's hvcC box
+STSD_ENTRY_TYPE_AT = 16
+
+
+def hevc_codec_string(path: Path) -> Optional[str]:
+    """The RFC 6381 codecs string of an MP4's HEVC Main 10 track, read from its hvcC box (ISO/IEC 14496-15 annex E):
+    `hvc1.2.4.L<level>` and its constraint bytes, trailing zero bytes left out; None when the file holds no such box
+    inside an `hvc1` sample entry (an `hev1` one is never named `hvc1`), or its stream is not Main 10 at a level a
+    decoder names."""
+    data = path.read_bytes()
+    at = data.find(b"hvcC")
+    if at < 0 or len(data) < at + 4 + 13:
+        return None
+    # The sample entry that holds it: the nearest sample description before it, whose first entry spans the box
+    stsd = data.rfind(b"stsd", 0, at)
+    if stsd < 0:
+        return None
+    entry_size = int.from_bytes(data[stsd + STSD_ENTRY_TYPE_AT - 4:stsd + STSD_ENTRY_TYPE_AT], "big")
+    entry_type = data[stsd + STSD_ENTRY_TYPE_AT:stsd + STSD_ENTRY_TYPE_AT + 4]
+    if entry_type != b"hvc1" or not at + 4 + 13 <= stsd + STSD_ENTRY_TYPE_AT - 4 + entry_size:
+        return None
+    box = data[at + 4:at + 4 + 13]
+    space, tier, idc = box[1] >> 6, (box[1] >> 5) & 1, box[1] & 0x1F
+    flags = int(f"{int.from_bytes(box[2:6], 'big'):032b}"[::-1], 2)
+    constraints = list(box[6:12])
+    level = box[12]
+    while constraints and constraints[-1] == 0:
+        constraints.pop()
+    if (space, tier, idc, flags) != (0, 0, 2, 4) or level not in HEVC_LEVELS:
+        return None
+    return f"hvc1.2.4.L{level}" + "".join(f".{c:X}" for c in constraints)
 
 
 def stored_pixel_format(stored: Path) -> Optional[str]:
@@ -1174,9 +1218,10 @@ def _psnr_frames(copy: Path, stored: Path, pixel_format: str, timeout_sec: float
 
 
 def _encode_playback(stored: Path, encoded: Path, out: Path, probe: ClipProbe, orientation: Optional[Mapping[str, Any]],
-                     crf: int, threads: int, timeout_sec: float) -> None:
+                     crf: int, threads: int, timeout_sec: float, ten_bit: bool = False) -> None:
     """One encode of the copy at `crf`, through `encoded` into `out`, both of which it creates and, on a failure,
-    removes."""
+    removes: H.264 High 4:2:0 for an 8-bit clip, HEVC Main 10 4:2:0 (`hvc1`) for a 10-bit one, a keyframe every half
+    second either way (a 10-bit one every HEVC_MIN_KEYINT frames at the least)."""
     bases = _stream_time_bases(stored, written_here=True)
     video_bases = [base for kind, base in bases if kind == "video"]
     if len(video_bases) != 1:
@@ -1184,9 +1229,9 @@ def _encode_playback(stored: Path, encoded: Path, out: Path, probe: ClipProbe, o
     claim = _Claim(encoded)
     try:
         command = ["ffmpeg", "-y", "-hide_banner", "-nostdin", "-nostats", "-loglevel", "error", "-noautorotate", "-copyts",
-                   "-i", _file_url(stored), "-map", "0:v:0", "-map", "0:a?", "-c:v", EIGHT_BIT_ENCODER, "-preset",
-                   PLAYBACK_PRESET, "-crf", str(crf), "-profile:v", "high", "-pix_fmt", "yuv420p", "-g",
-                   str(keyframe_interval(probe)), "-fps_mode", "passthrough", "-threads", str(max(1, threads)), "-c:a",
+                   "-i", _file_url(stored), "-map", "0:v:0", "-map", "0:a?", *_playback_video(crf, keyframe_interval(probe),
+                                                                                    ten_bit),
+                   "-fps_mode", "passthrough", "-threads", str(max(1, threads)), "-c:a",
                    "copy", "-map_metadata", "-1", "-video_track_timescale", str(video_bases[0].denominator),
                    "-movie_timescale", str(movie_timescale([b for _, b in bases])), "-movflags", "+faststart", "-f", "mp4",
                    _file_url(encoded)]
@@ -1203,21 +1248,33 @@ def _encode_playback(stored: Path, encoded: Path, out: Path, probe: ClipProbe, o
         raise
 
 
+def _playback_video(crf: int, gop: int, ten_bit: bool) -> list[str]:
+    """The copy's video encoder options, by the clip's bit depth."""
+    if ten_bit:
+        keyint = max(gop, HEVC_MIN_KEYINT)
+        return ["-c:v", TEN_BIT_ENCODER, "-preset", PLAYBACK_PRESET, "-crf", str(crf), "-profile:v", "main10", "-pix_fmt",
+                "yuv420p10le", "-tag:v", "hvc1", "-x265-params", f"log-level=error:keyint={keyint}:min-keyint={keyint}"]
+    return ["-c:v", EIGHT_BIT_ENCODER, "-preset", PLAYBACK_PRESET, "-crf", str(crf), "-profile:v", "high", "-pix_fmt",
+            "yuv420p", "-g", str(gop)]
+
+
 def make_playback_copy(stored: Path, encoded: Path, out: Path, probe: ClipProbe, orientation: Optional[Mapping[str, Any]],
                        *, threads: int, min_psnr_db: float, timeout_sec: float = FFPROBE_TIMEOUT_SEC) -> Optional[PlaybackCopy]:
-    """The playback copy of the restored clip at `stored` (8-bit H.264, as `playback_copy_supported` says), written to
-    `out` through `encoded`: its pixels as stored (no display matrix applied), the same display orientation, its frame
-    times and audio as stored, no metadata, the index first. Its gate: every frame's PSNR against `stored` at least
-    `min_psnr_db`, measured in the stored file's own pixel format, tried at each of PLAYBACK_CRFS in turn; when none
-    passes, or the stored format is not one the gate measures in as it is, nothing is kept and None is returned.
-    Neither `encoded` nor `out` may exist."""
+    """The playback copy of the restored clip at `stored` (8-bit H.264 or 10-bit HEVC, as `playback_copy_supported`
+    says), written to `out` through `encoded`: its pixels as stored (no display matrix applied), the same display
+    orientation, its frame times and audio as stored, no metadata, the index first. Its gate: every frame's PSNR
+    against `stored` at least `min_psnr_db`, measured in the stored file's own pixel format, tried at each of
+    PLAYBACK_CRFS in turn, and a 10-bit copy's stream HEVC Main 10 at a level a decoder names; when no quality passes,
+    the stream is not that, or the stored format is not one the gate measures in as it is, nothing is kept and None is
+    returned. Neither `encoded` nor `out` may exist."""
     for path in (stored, encoded, out):
         _file_url(path)
     pixel_format = stored_pixel_format(stored)
     if pixel_format not in PLAYBACK_GATE_FORMATS:
         return None
+    ten_bit = pixel_format.endswith("10le")
     for crf in PLAYBACK_CRFS:
-        _encode_playback(stored, encoded, out, probe, orientation, crf, threads, timeout_sec)
+        _encode_playback(stored, encoded, out, probe, orientation, crf, threads, timeout_sec, ten_bit)
         try:
             values = _psnr_frames(out, stored, pixel_format, timeout_sec)
             if len(values) != probe.frame_count:
@@ -1227,6 +1284,14 @@ def make_playback_copy(stored: Path, encoded: Path, out: Path, probe: ClipProbe,
             if lowest < min_psnr_db:
                 _remove(out)
                 continue
+            if ten_bit:
+                # A stream that is not Main 10 at a level a decoder names (a profile or a level the encoder chose for
+                # this clip) is the gate's refusal, never an internal error: a lower CRF changes neither
+                codecs = hevc_codec_string(out)
+                if codecs is None:
+                    _remove(out)
+                    return None
+                return PlaybackCopy(out, codecs, round(lowest, 2))
             stream = (_ffprobe(["-select_streams", "v:0", "-show_entries", "stream=profile,level"], out, written_here=True)
                       .get("streams") or [{}])[0]
             if stream.get("profile") != "High" or not isinstance(stream.get("level"), int) or not 0 < stream["level"] < 256:
