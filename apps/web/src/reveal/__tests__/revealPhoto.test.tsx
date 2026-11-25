@@ -12,7 +12,7 @@ import { SIDE_FADE, SourcePhotoStage } from '../../components/SourcePhotoStage.j
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { cornerPaths } from '../cornerPaths.js';
 import { leaderPath, revealMarks } from '../revealMarks.js';
-import { REAL_SKY_FADE_MS, REVEAL_ARRIVAL_MS, RevealPhoto } from '../RevealPhoto.js';
+import { REAL_SKY_FADE_MS, REVEAL_ARRIVAL_MS, RevealPhoto, pressHintMarkOf } from '../RevealPhoto.js';
 import { markArrivalRanks, revealMarks as marksOf } from '../revealMarks.js';
 import { MOTION_TOKENS } from '@albedian/design-system';
 import { blockLeaveMs, linesLeaveMs } from '../../hooks/useLeaving.js';
@@ -2011,6 +2011,50 @@ describe('the first hint: press a star', () => {
     }
   });
 
+  // AUDIT-C's test gaps T16 to T18: never a predicted ring, never an unnamed mark, never over an answer
+  it('hints a named matched ring only, none when no star matched, and none over an answer', () => {
+    vi.useFakeTimers();
+    try {
+      const session = calibrated();
+      show(session);
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      const hint = q(HINT) as HTMLElement;
+      const at = [hint.style.left, hint.style.top];
+      const under = [...container.querySelectorAll<HTMLElement>('button.reveal-mark')].find((b) => b.style.left === at[0] && b.style.top === at[1])!;
+      expect(under.getAttribute('data-evidence-class')).toBe('catalog_matched');
+      expect(under.querySelector('.reveal-mark__name')).not.toBeNull();
+      // With no matched star left, only predicted and observed marks, there is nothing to hint
+      const noNames = { ...session, observationSolution: { ...session.observationSolution!, findings: session.observationSolution!.findings.filter((f) => f.evidenceClass !== 'catalog_matched') } } as ObservationSession;
+      act(() => root.unmount());
+      root = createRoot(container);
+      show(noNames);
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      expect(q(HINT)).toBeNull();
+      // An answer in the card's place: no hint over the photo
+      act(() => root.unmount());
+      root = createRoot(container);
+      show(session, { answer: { heard: 'What is that?', sentence: 'Nothing in this photo\'s data answers that.', answer: null } });
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      expect(q(HINT)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // AUDIT-C's test gaps T16 and T18: never a predicted ring, never an unnamed star, never a deep-sky symbol, even brighter
+  it('chooses the brightest named matched star: never a brighter predicted ring, unnamed star or deep-sky symbol', () => {
+    const base = revealMarks(calibrated(), 1440, 900).find((m) => m.kind === 'catalog' && m.name !== null)!;
+    const mark = (over: Partial<typeof base>, mag: number, id: string) =>
+      ({ ...base, ...over, finding: { ...base.finding, id, catalogRef: { ...base.finding.catalogRef!, apparentMagnitude: mag } } }) as typeof base;
+    const matched = mark({}, 0.5, 'matched');
+    const fainter = mark({}, 1.5, 'fainter');
+    const planet = mark({ kind: 'predicted' }, -2.5, 'planet');
+    const unnamed = mark({ name: null }, -1.0, 'unnamed');
+    const nebula = mark({ deepSky: 'galaxy' as never }, -3.0, 'nebula');
+    expect(pressHintMarkOf([fainter, planet, unnamed, nebula, matched])!.finding.id).toBe('matched');
+    expect(pressHintMarkOf([planet, unnamed, nebula])).toBeNull();
+  });
+
   it('is drawn in the answer\'s question type with the title\'s rim, and takes no pointer', () => {
     const rules: Record<string, string> = {};
     postcss.parse(fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8')).walkRules((rule) => {
@@ -2069,5 +2113,20 @@ describe('the second hint: drag to look around', () => {
   it('is not shown going back', () => {
     show(atRest(), { flight, returning: true });
     expect(q(HINT)).toBeNull();
+  });
+
+  // Version two (AUDIT-C's D2): typing into a field moves no view, so a key typed there leaves the hint standing, as the
+  // flight's own key handlers skip typing targets
+  it('stays while a question is typed into a field', () => {
+    show(atRest(), { flight });
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    try {
+      act(() => void field.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true })));
+      expect(q(HINT)).not.toBeNull();
+      expect(window.localStorage.getItem('albedian.hint.dragLook')).toBeNull();
+    } finally {
+      field.remove();
+    }
   });
 });

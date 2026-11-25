@@ -43,6 +43,18 @@ export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
 const STAR_CARD_LINES = 7;
 // How long the reveal is arriving: its marks' span, then the status, In this photo and Ask out loud, 20 ms apart (the
 // motion record). While it is, the status waits for the marks; after, a view change brings it in at the words' delay.
+/**
+ * The mark the first hint stands beside (UIUX-first-use-wow-READY.md item two): the brightest named matched star; never a
+ * predicted ring, an unnamed star or a deep-sky symbol.
+ */
+export function pressHintMarkOf(marks: readonly RevealMark[]): RevealMark | null {
+  return (
+    [...marks]
+      .filter((mark) => mark.kind === 'catalog' && mark.name !== null && mark.deepSky === null)
+      .sort((a, b) => (a.finding.catalogRef?.apparentMagnitude ?? 99) - (b.finding.catalogRef?.apparentMagnitude ?? 99))[0] ?? null
+  );
+}
+
 /** The first-use hints, each kept on the device once used (UIUX-first-use-wow-READY.md: never back once used). */
 const PRESS_HINT_KEY = 'albedian.hint.pressStar';
 const DRAG_HINT_KEY = 'albedian.hint.dragLook';
@@ -635,6 +647,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       if ((event as MouseEvent).buttons !== 0) used();
     };
     const onKey = (event: KeyboardEvent) => {
+      // A key typed into a field moves no view (AUDIT-C's D2), as the flight's own key handlers skip typing targets
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
       if (/^(Arrow(Up|Down|Left|Right)|[wasdWASD])$/.test(event.key)) used();
     };
     window.addEventListener('pointermove', onMove);
@@ -648,9 +663,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const pressHintMark =
     pressHintUsed || arriving || there || skyShown || bareFrame || answer || picked !== null
       ? null
-      : (drawnMarks
-          .filter((mark) => mark.kind === 'catalog' && mark.name !== null && mark.deepSky === null)
-          .sort((a, b) => (a.finding.catalogRef?.apparentMagnitude ?? 99) - (b.finding.catalogRef?.apparentMagnitude ?? 99))[0] ?? null);
+      : pressHintMarkOf(drawnMarks);
   // Line it up yourself (D24), on the laptop's no-match reveal and at phone width alike, over the photo or clip itself
   const alignStart = useMemo(() => startPose(session), [session]);
   const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
