@@ -343,9 +343,11 @@ def test_the_sky_position_sentence_says_altitude_then_azimuth() -> None:
     up, around = finding["skyPosition"]["altDeg"], finding["skyPosition"]["azDeg"]
     assert up != around
     assert ask("where is Betelgeuse", None)["sentence"] == f"Betelgeuse was {up:.1f} degrees up, at azimuth {around:.1f} degrees."
-    ra = next(f for f in CALIBRATED["findings"] if f["id"] == "finding-obs-12")["skyPosition"]["raDeg"]
+    # With no place, both sky coordinates (position-words-one: right ascension alone was half a position)
+    position = next(f for f in CALIBRATED["findings"] if f["id"] == "finding-obs-12")["skyPosition"]
     assert ask("where in the sky is it", "finding-obs-12")["sentence"] == (
-        f"Observed Point Source #12 lies at right ascension {ra:.2f} degrees.")
+        f"Observed Point Source #12 lies at right ascension {position['raDeg']:.2f} degrees, "
+        f"declination {position['decDeg']:.2f} degrees.")
 
 
 def test_the_moon_sentence_says_the_lit_percent() -> None:

@@ -602,6 +602,12 @@ def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: d
             up, around = f"{number('altitude'):.1f}", f"{number('azimuth'):.1f}"
             return fitted(["altitude", "azimuth"], f"{name} was {up} degrees up, at azimuth {around} degrees.",
                           f"It was {up} degrees up, at azimuth {around} degrees.")
+        if "right_ascension" in by and "declination" in by:
+            # Both sky coordinates when no place is held: half a position is no position (UIUX-position-words-READY.md)
+            ra, dec = f"{number('right_ascension'):.2f}", f"{number('declination'):.2f}"
+            said = f"right ascension {ra} degrees, declination {dec} degrees."
+            return fitted(["right_ascension", "declination"], f"{name} lies at {said}", f"It lies at {said}",
+                          f"R{said[1:]}")
         if "right_ascension" in by:
             ra = f"{number('right_ascension'):.2f}"
             return fitted(["right_ascension"], f"{name} lies at right ascension {ra} degrees.",
@@ -643,7 +649,7 @@ def _numbers(*values: Any) -> bool:
 
 
 # The first words of a sentence that lower-case after the class words; a name keeps its capital
-_LOWERED_OPENERS = ("That ", "It ", "Its ", "The ", "This ")
+_LOWERED_OPENERS = ("That ", "It ", "Its ", "The ", "This ", "Right ascension ")
 
 
 def _class_worded(sentence: str, classes: set[str]) -> str | None:

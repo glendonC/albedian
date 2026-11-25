@@ -1,0 +1,68 @@
+{
+ "about": "A predicted star of the solve of the public corpus photo rp-b-01 (.cache/real-photos, data/downloads.json) on main 217982b9, titled by its Gaia DR3 id, as the upload path served it, for position-words-one.",
+ "findings": [
+  {
+   "id": "finding-predicted-gaia-dr3-1018776176872261248",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Gaia DR3 1018776176872261248",
+   "subtitle": "Predicted Star (UMa) \u00b7 13.5 pc \u00b7 Alt +7.6\u00b0 Az 18.5\u00b0 \u00b7 Above Horizon",
+   "skyPosition": {
+    "raDeg": 143.20330931849335,
+    "decDeg": 51.67339728894755,
+    "uncertaintyArcsec": 135.7457446526592,
+    "altDeg": 7.623333346375176,
+    "azDeg": 18.530243375732343
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-gaia-dr3-1018776176872261248",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-1018776176872261248",
+    "distanceUncertaintyNote": "Distance interval [13.5, 13.6] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Predicted from its Gaia DR3 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-1018776176872261248",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 1018776176872261248",
+    "commonName": "Gaia DR3 1018776176872261248",
+    "constellation": "UMa",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 143.20330931849335,
+    "decDeg": 51.67339728894755,
+    "apparentMagnitude": 3.072,
+    "properMotionRaMasYr": -942.5,
+    "properMotionDecMasYr": -542.0,
+    "bailerJonesDistancePc": {
+     "lower": 13.509908091061035,
+     "median": 13.54253603923309,
+     "upper": 13.574288598853725,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": 0.829
+   },
+   "inferredDistancePc": {
+    "lower": 13.509908091061035,
+    "median": 13.54253603923309,
+    "upper": 13.574288598853725,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -6.725083672559046,
+    5.03039957465246,
+    10.623964047865709
+   ]
+  }
+ ]
+}
