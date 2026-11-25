@@ -58,7 +58,7 @@ const SHARED_JSON = String.raw`
     "finding-star-aldebaran": ["Aldebaran"]
   },
   "unknown": [
-    "Andromeda", "the North Star", "the Orion Nebula", "Neptune", "Pluto", "the Pleiades", "Kepler-22b",
+    "Andromeda", "the North Star", "the Orion Nebula", "Sedna", "Pluto", "the Pleiades", "Kepler-22b",
     "the Crab Nebula", "the Milky Way", "Halley", "the Big Dipper", "the Ring Nebula"
   ],
   "scripts": ["\u0421\u0438\u0440\u0438\u0443\u0441", "\u5929\u72fc\u661f", "\u0627\u0644\u0642\u0645\u0631", "\u03a3\u03b5\u03bb\u03ae\u03bd\u03b7"],
@@ -343,7 +343,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
       ["what's behind the Crab Nebula", 'crab'],
       ['take me to the Milky Way', 'milky way'],
       ['how far is Kepler-22b?', 'kepler 22b'],
-      ['go to Neptune', 'neptune'],
+      ['go to Pluto', 'pluto'],
       // An everyday word is no evidence about the sky either (the auditor's sentences)
       ["that's so squiggly, how far is it?", 'squiggly'],
       ['what is that squiggly star?', 'squiggly'],

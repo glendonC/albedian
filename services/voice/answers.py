@@ -716,6 +716,9 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
         # catalog id wherever the IAU names file has no name. Up to its bracket, as the app parser reads a title
         # (packages/observation/src/voiceParser.ts spokenNamesOf), so "Moon (Predicted Ephemeris)" is "Moon"
         shown = title.split(" (")[0].strip() if isinstance(title, str) else ""
+        # The Moon and the Sun take their article in a sentence ("The Moon was 32.2 degrees up"; after the class
+        # words, "the Moon"), as the app's refusals name them; a planet takes none (body-identity-one)
+        shown = f"The {shown}" if shown in ("Moon", "Sun") else shown
         name = shown if shown else common if isinstance(common, str) else "It"
         for path in FINDING_PATHS[kind]:
             row = _row(path, finding=True)

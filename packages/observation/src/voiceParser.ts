@@ -290,6 +290,17 @@ export const PREDICTED_BODY_NAMES: Readonly<Record<string, string>> = {
   uranus: 'Uranus',
 };
 
+/**
+ * The planets the ephemeris computes (EPHEMERIS_BODIES in services/contracts/voice.py) that the predicted sky never
+ * lists (PREDICTED_BODIES in services/science/predicted_sky.py), each by the name a refusal writes for it: a name a
+ * person says that no photo's sky holds, so it is refused as not in this sky (C33), never as a word no list holds
+ * (body-identity-one). tests/integration/test_voice_named_targets.py keeps it equal to the two lists.
+ */
+export const UNPREDICTED_BODY_NAMES: Readonly<Record<string, string>> = {
+  mercury: 'Mercury',
+  neptune: 'Neptune',
+};
+
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -549,6 +560,7 @@ function spokenNamesOf(findings: readonly CelestialFinding[]): SpokenName[] {
   }
   // A body this solution holds is named below by its own record or its title; one it does not hold is missing
   for (const [spoken, shown] of Object.entries(PREDICTED_BODY_NAMES)) absent.set(spoken, shown);
+  for (const [spoken, shown] of Object.entries(UNPREDICTED_BODY_NAMES)) absent.set(spoken, shown);
   // A southern showpiece the solution draws (its OpenNGC row, as the backend mints its id) is that finding by every
   // name people say for it, "the Jewel Box" for the row titled "Herschel's Jewel Box" among them
   for (const [label, spokenNames] of Object.entries(UNBAKED_OBJECTS)) {

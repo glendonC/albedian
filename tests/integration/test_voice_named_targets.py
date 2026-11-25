@@ -983,3 +983,16 @@ def test_no_word_that_names_nothing_is_a_name() -> None:
     for word in names.EVERYDAY_WORD_NAMES:
         assert _reading(f"how far is {word}", SELECTED) != {"target": "finding-star-vega"}, word
         assert _reading(f"the {word}, how far is that one", SELECTED) == {"target": "finding-star-vega"}, word
+
+
+def test_the_app_parser_names_the_planets_the_predicted_sky_never_lists() -> None:
+    """body-identity-one: the ephemeris' bodies the predicted sky does not list (Mercury, Neptune) are names the app's
+    parser holds as not in this sky, so "where is Mercury" says the recorded not-found sentence."""
+    from services.contracts.voice import EPHEMERIS_BODIES
+
+    source = VOICE_PARSER_TS.read_text(encoding="utf-8")
+    start = source.index("const UNPREDICTED_BODY_NAMES")
+    listed = dict(re.findall(r"(\w+): '([^']+)'", source[start : source.index("};", start)]))
+    never = [body for body in EPHEMERIS_BODIES if body not in predicted_sky.PREDICTED_BODIES]
+    assert never == ["Mercury", "Neptune"]
+    assert listed == {body.lower(): body for body in never}
