@@ -38,8 +38,9 @@ from pydantic import ValidationError
 
 from pydantic import ValidationError
 
-from services.contracts.astronomy import SourceDetection, parse_observation_solution
+from services.contracts.astronomy import parse_observation_solution
 from services.contracts.ingest import format_utc
+from services.contracts.measured import MeasuredDetections
 from services.contracts.jobs import (JOB_PASS_LABELS, JOB_PASS_MAX, JOB_STAGE_UNITS, MEDIA_JOB_KINDS, PLAYBACK_JOB_KINDS,
                                      UploadJob)
 from services.ingest.job_store import (
@@ -838,11 +839,10 @@ class Runner:
         if isinstance(detections, (str, bytes)) or not isinstance(detections, Sequence):
             raise ValueError("measured detections are a list")
         try:
-            for detection in detections:
-                SourceDetection.model_validate(dict(detection))
+            payload = {"sourceAssetSha256": job.record["sourceAssetSha256"], "detections": [dict(d) for d in detections]}
+            MeasuredDetections.model_validate(payload)
         except (ValidationError, TypeError, ValueError):
-            raise ValueError("a measured detection is a sourceDetection") from None
-        payload = {"sourceAssetSha256": job.record["sourceAssetSha256"], "detections": [dict(d) for d in detections]}
+            raise ValueError("measured detections meet their contract (services/contracts/measured.py)") from None
         # Written whole beside the job's other partials, then put in place in one step; both go when the job ends
         target = self.store.partial(job.id, MEASURED_PARTIAL)
         scratch = self.store.partial(job.id, MEASURED_PARTIAL.replace(".json", "_next.json"))

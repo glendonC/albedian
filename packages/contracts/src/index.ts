@@ -4,6 +4,7 @@
 export * from './primitives.js';
 export * from './media.js';
 export * from './samples.js';
+export * from './measured.js';
 export * from './astronomy.js';
 export * from './designation.js';
 export * from './designation-tables.js';

@@ -1,0 +1,258 @@
+{
+ "about": "wait-detections-one: the measured route's payload, read alike",
+ "cases": [
+  {
+   "what": "the calibrated sample's detections",
+   "value": {
+    "sourceAssetSha256": "4f055db773c14698aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "detections": [
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 401.63469853678794,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999749220043,
+      "yPx": 496.1922052148446,
+      "flux": 1559.5237637354267,
+      "snr": 175.58584725889742,
+      "fwhmPx": 2.4316640154751417,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 705.8147632390451,
+      "yPx": 71.73707279185331,
+      "flux": 1228.0501801092073,
+      "snr": 150.13762925812367,
+      "fwhmPx": 2.4407639928199187,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 497.65634411617623,
+      "yPx": 463.8668606715595,
+      "flux": 649.8377236167338,
+      "snr": 85.4022440942146,
+      "fwhmPx": 2.3931928443755788,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 478.4002357941819,
+      "yPx": 206.34021600060177,
+      "flux": 512.1986658907551,
+      "snr": 65.00331422290844,
+      "fwhmPx": 2.323596404474822,
+      "centroidUncertaintyPx": 0.035745814382737134
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 612.6632147381018,
+      "yPx": 301.1199909267462,
+      "flux": 74.69943459072265,
+      "snr": 11.296431111858528,
+      "fwhmPx": 2.196599918588441,
+      "centroidUncertaintyPx": 0.19445078687573641
+     }
+    ]
+   },
+   "accepted": true
+  },
+  {
+   "what": "none measured",
+   "value": {
+    "sourceAssetSha256": "4f055db773c14698aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "detections": []
+   },
+   "accepted": true
+  },
+  {
+   "what": "an unknown key",
+   "value": {
+    "sourceAssetSha256": "4f055db773c14698aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "detections": [
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 401.63469853678794,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999749220043,
+      "yPx": 496.1922052148446,
+      "flux": 1559.5237637354267,
+      "snr": 175.58584725889742,
+      "fwhmPx": 2.4316640154751417,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 705.8147632390451,
+      "yPx": 71.73707279185331,
+      "flux": 1228.0501801092073,
+      "snr": 150.13762925812367,
+      "fwhmPx": 2.4407639928199187,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 497.65634411617623,
+      "yPx": 463.8668606715595,
+      "flux": 649.8377236167338,
+      "snr": 85.4022440942146,
+      "fwhmPx": 2.3931928443755788,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 478.4002357941819,
+      "yPx": 206.34021600060177,
+      "flux": 512.1986658907551,
+      "snr": 65.00331422290844,
+      "fwhmPx": 2.323596404474822,
+      "centroidUncertaintyPx": 0.035745814382737134
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 612.6632147381018,
+      "yPx": 301.1199909267462,
+      "flux": 74.69943459072265,
+      "snr": 11.296431111858528,
+      "fwhmPx": 2.196599918588441,
+      "centroidUncertaintyPx": 0.19445078687573641
+     }
+    ],
+    "extra": 1
+   },
+   "accepted": false
+  },
+  {
+   "what": "a short hash",
+   "value": {
+    "sourceAssetSha256": "abc",
+    "detections": [
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 401.63469853678794,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999749220043,
+      "yPx": 496.1922052148446,
+      "flux": 1559.5237637354267,
+      "snr": 175.58584725889742,
+      "fwhmPx": 2.4316640154751417,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 705.8147632390451,
+      "yPx": 71.73707279185331,
+      "flux": 1228.0501801092073,
+      "snr": 150.13762925812367,
+      "fwhmPx": 2.4407639928199187,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 497.65634411617623,
+      "yPx": 463.8668606715595,
+      "flux": 649.8377236167338,
+      "snr": 85.4022440942146,
+      "fwhmPx": 2.3931928443755788,
+      "centroidUncertaintyPx": 0.03
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 478.4002357941819,
+      "yPx": 206.34021600060177,
+      "flux": 512.1986658907551,
+      "snr": 65.00331422290844,
+      "fwhmPx": 2.323596404474822,
+      "centroidUncertaintyPx": 0.035745814382737134
+     },
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 612.6632147381018,
+      "yPx": 301.1199909267462,
+      "flux": 74.69943459072265,
+      "snr": 11.296431111858528,
+      "fwhmPx": 2.196599918588441,
+      "centroidUncertaintyPx": 0.19445078687573641
+     }
+    ]
+   },
+   "accepted": false
+  },
+  {
+   "what": "a detection with no position",
+   "value": {
+    "sourceAssetSha256": "4f055db773c14698aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "detections": [
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     }
+    ]
+   },
+   "accepted": false
+  },
+  {
+   "what": "a detection at a negative position",
+   "value": {
+    "sourceAssetSha256": "4f055db773c14698aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "detections": [
+     {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": -1.0,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
+      "centroidUncertaintyPx": 0.03
+     }
+    ]
+   },
+   "accepted": false
+  }
+ ]
+}
