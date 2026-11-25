@@ -39,6 +39,17 @@ public enum SolveState: Equatable, Sendable {
     case failed(SolveFailure)
 }
 
+extension SolveState {
+    /// Whether the laptop took the ask for this solve: it answered with a job for the photo (running, solved, or ended
+    /// without a solution). Before that, or after a failure before any job, the ask was not taken (kept-solve-retry-one).
+    public var laptopTookTheAsk: Bool {
+        switch self {
+        case .running, .solved, .failed(.jobDidNotSucceed): true
+        case .starting, .failed: false
+        }
+    }
+}
+
 /// Starts the laptop's solve of a stored photo and reads its result, each request on a connection of its own to the
 /// paired endpoint, through the one gate (`CaptureUploader.permits`): `POST /api/ingest/{sha256}/solve?wait=false`,
 /// which answers at once with the runner's job, then `GET /api/ingest/jobs/{id}` until the job ends, so the stages

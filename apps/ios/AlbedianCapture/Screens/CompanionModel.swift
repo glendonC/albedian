@@ -507,8 +507,15 @@ final class CompanionModel {
         screen = .waiting
         startEarlySky(address: address)
         solver.start(sha256: sha256, client: SolveClient(address: address),
-                     then: { [weak self] end in self?.solved(end, sha256: sha256, address: address) },
-                     each: { [weak self] state in self?.watchEarlySky(state, sha256: sha256, address: address) })
+                     then: { [weak self] end in
+                         if end.laptopTookTheAsk { self?.ledger.recordSolveTaken(sha256) }
+                         self?.solved(end, sha256: sha256, address: address)
+                     },
+                     each: { [weak self] state in
+                         // kept-solve-retry-one: the photo is done once the laptop took the ask for its solve
+                         if state.laptopTookTheAsk { self?.ledger.recordSolveTaken(sha256) }
+                         self?.watchEarlySky(state, sha256: sha256, address: address)
+                     })
     }
 
     /// The first running record that names the predicted sky's time asks the laptop for that sky, once.
@@ -774,21 +781,25 @@ extension CompanionModel {
         Task { @MainActor [weak self] in
             guard let self else { return }
             // kept-send-solves-one (DECIDED-BY-LEAD 24 Nov 18:28): each photo that goes has its solve asked for once, without
-            // waiting, so its result waits on the laptop where Open leads; nothing new on these screens
+            // waiting, so its result waits on the laptop where Open leads; nothing new on these screens.
+            // kept-solve-retry-one (DECIDED-BY-LEAD 24 Nov 18:54): a photo is done only once the laptop took its ask; else
+            // it stays counted, and the next counted send asks again without sending the photo again
             var lastTried: KeptShot?
-            let end = await KeptSend.run(queue, send: { sha in
+            let end = await KeptSend.run(queue, held: { self.ledger.state(of: $0) == .stored }, send: { sha in
                 guard let kept = self.load(sha) else { return nil }
                 lastTried = kept
                 let last = await uploader.send(photo: kept.photo, contentType: kept.contentType, recordWire: kept.recordWire) { _ in }
                 self.ledger.record(last, for: sha)
                 if case .solve? = SendEnd.after(last) { self.pairing.keep(address) }
                 return last
-            }, startSolve: { sha in _ = await solver.start(sha256: sha) },
-               progress: { gone in self.keptSending = (gone, queue.count) })
+            }, startSolve: { sha in
+                guard case .success = await solver.start(sha256: sha) else { return false }
+                self.ledger.recordSolveTaken(sha)
+                return true
+            }, progress: { done in self.keptSending = (done, queue.count) })
             self.keptSending = nil
             switch end {
-            case .allSent:
-                self.keptNotSent = []
+            case .allTried:
                 self.refreshKept()
                 self.showHome()
             case .stopped(let sha256, let last):

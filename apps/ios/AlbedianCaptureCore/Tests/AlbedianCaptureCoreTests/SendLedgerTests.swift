@@ -18,11 +18,19 @@ final class SendLedgerTests: XCTestCase {
 
     private let sha = String(repeating: "ab", count: 32)
 
+    /// kept-solve-retry-one: a send that went leaves the photo held on the laptop; it is done (sent) once the laptop took
+    /// the ask for its solve; both read back after a fresh start.
     func testASentCaptureIsReadBackAsSentAfterAFreshStart() throws {
         let ledger = SendLedger(folder: folder)
         XCTAssertNil(ledger.state(of: sha))
         ledger.record(.done(sha256: sha, photoAlreadyStored: false, recordAccepted: true), for: sha)
+        XCTAssertEqual(SendLedger(folder: folder).state(of: sha), .stored)
+        XCTAssertEqual(try String(contentsOf: folder.appendingPathComponent("\(sha).json"), encoding: .utf8),
+                       "{\"sha256\":\"\(sha)\",\"state\":\"stored\"}")
+        ledger.recordSolveTaken(sha)
         XCTAssertEqual(SendLedger(folder: folder).state(of: sha), .sent)
+        ledger.recordSolveTaken("not-a-hash")
+        XCTAssertFalse(((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).contains { $0.contains("not-a-hash") })
     }
 
     func testANotSentCaptureKeepsTheFailuresNameAndOnlyThat() throws {
@@ -79,8 +87,11 @@ final class SendLedgerTests: XCTestCase {
     func testTheCapturesNotYetSentAreThoseWithNoSentState() {
         let ledger = SendLedger(folder: folder)
         let a = String(repeating: "a", count: 63) + "1", b = String(repeating: "b", count: 64), c = String(repeating: "c", count: 64)
+        let d = String(repeating: "d", count: 64)
         ledger.record(.done(sha256: a, photoAlreadyStored: false, recordAccepted: true), for: a)
+        ledger.recordSolveTaken(a)
         ledger.record(.failed(.timedOut(phase: .photo)), for: b)
-        XCTAssertEqual(ledger.notSent(among: [a, b, c]), [b, c])
+        ledger.record(.done(sha256: d, photoAlreadyStored: false, recordAccepted: true), for: d)
+        XCTAssertEqual(ledger.notSent(among: [a, b, c, d]), [b, c, d], "held without its solve taken is not done")
     }
 }

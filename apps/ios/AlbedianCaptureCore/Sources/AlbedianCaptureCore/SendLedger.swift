@@ -6,8 +6,10 @@ import Foundation
 /// the laptop's words or any value from the photo or its record.
 public final class SendLedger: Sendable {
     public enum State: Equatable, Sendable {
-        /// The laptop's receipt named this photo: it holds it.
+        /// The laptop holds this photo and took the ask for its solve: done.
         case sent
+        /// The laptop's receipt named this photo, but its solve has not yet been asked for, or the ask was not taken.
+        case stored
         /// The last send did not reach that, and the failure's name (`reasonName`).
         case notSent(reason: String)
     }
@@ -29,7 +31,7 @@ public final class SendLedger: Sendable {
         case .waiting, .sending: return
         case .done(let stored, _, _):
             guard stored == sha256 else { return }
-            entry = JSONObject(["sha256": .string(sha256), "state": .string("sent")])
+            entry = JSONObject(["sha256": .string(sha256), "state": .string("stored")])
         case .failed(let failure):
             entry = JSONObject(["sha256": .string(sha256), "state": .string("not_sent"), "reason": .string(Self.reasonName(failure))])
         }
@@ -43,12 +45,20 @@ public final class SendLedger: Sendable {
               value["sha256"]?.stringValue == sha256 else { return nil }
         switch value["state"]?.stringValue {
         case "sent": return .sent
+        case "stored": return .stored
         case "not_sent": return value["reason"]?.stringValue.map { .notSent(reason: $0) }
         default: return nil
         }
     }
 
-    /// Of these photos, the ones the laptop is not known to hold, in the order given.
+    /// The laptop took the ask for this photo's solve: the photo is done (kept-solve-retry-one).
+    public func recordSolveTaken(_ sha256: String) {
+        guard PhotoHash.isContractHash(sha256) else { return }
+        try? files.makeFolder(folder)
+        try? files.write(JSONText.data(.object(JSONObject(["sha256": .string(sha256), "state": .string("sent")]))), to: url(sha256))
+    }
+
+    /// Of these photos, the ones not yet done (not held, or held without its solve taken), in the order given.
     public func notSent(among hashes: [String]) -> [String] { hashes.filter { state(of: $0) != .sent } }
 
     /// A failure's name, as kept: the case, and the status for a refusal or a redirect.
