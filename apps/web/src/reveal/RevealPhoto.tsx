@@ -129,6 +129,8 @@ const FLIGHT_LINES = {
   rings: 'Rings: the stars your photo matched.',
   milkyWay: FLIGHT_MILKY_WAY_LINE,
 } as const;
+/** The card's caution for a target whose catalog row gives no distance (13:03), in the readout's numbers' place (20:05). */
+const NO_DISTANCE_LINE = 'Its catalog row gives no distance, so none is shown.';
 import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { threeFigures, type FlightReadout } from './flightView.js';
 import { evidenceCounts, firstSentenceOf, revealStatus } from './revealStatus.js';
@@ -1276,6 +1278,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           {!answer && (
             <>
               <h1>{shownFlight.name}</h1>
+              {/* A number under a target's name is that target's or none (flight-readout-nodistance-one, ruled 20:09 on 24
+                  Nov): with no distance, the recorded line in the numbers' place and the camera's own distance apart, in
+                  the view's own word; free flight keeps from Earth only (D26 item 6) */}
+              {!freeFlight && shownFlight.toStarLy === null ? (
+                <>
+                  <p className="flight-readout__nodistance">{NO_DISTANCE_LINE}</p>
+                  <p className="flight-readout__view">{`Your view is ${threeFigures(shownFlight.fromEarthLy)} ly from Earth.`}</p>
+                </>
+              ) : (
               <div className="flight-readout__stats">
                 {shownFlight.toStarLy !== null && (
                   <div className="flight-readout__stat">
@@ -1294,6 +1305,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                   <span>from Earth</span>
                 </div>
               </div>
+              )}
               {!freeFlight && craft && picked && placeFinding(picked).kind === 'at_distance' && (
                 <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} phone={phone} />
               )}

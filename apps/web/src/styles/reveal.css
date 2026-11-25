@@ -1134,6 +1134,27 @@
   color: var(--look-ink-3);
 }
 
+/* flight-readout-nodistance-one (UIUX-flight-READY.md, the addition of 20:05, ruled 20:09): for a target with no
+   distance, the recorded line where the two numbers stand, after the same hairline, and the camera's own distance apart
+   under a second hairline 22 px below; both at 13 px, ink 66 percent */
+.flight-readout__nodistance {
+  margin: 30px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--look-hair);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--look-ink-2);
+}
+
+.flight-readout__view {
+  margin: 22px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--look-hair);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--look-ink-2);
+}
+
 /* Keyboard help (INTERIM: .lead/uiux/UIUX-keys-QUESTION.md; #kh-open in .cache/uiux/keys/screen/kh-open.html), with no
    movement until the MOTION record has the owner's yes */
 .keys-help {
@@ -1571,6 +1592,12 @@
 }
 .flight-readout.is-phone .flight-readout__stat span {
   margin-top: 6px;
+}
+/* The phone's no-distance line takes the numbers' own place, with no hairline, as they have none there (item 4) */
+.flight-readout.is-phone .flight-readout__nodistance {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 /* The no-match reveal at phone width (no-match, approved 2026-11-18, iPhone; #ump-photo): the sentence at 654 in 22 px,

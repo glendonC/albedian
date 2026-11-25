@@ -809,9 +809,64 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       ['1.00ly', 'to Rigel'],
       ['859ly', 'from Earth'],
     ]);
-    // A star with no position in space: only how far the camera is from Earth
-    show(session, { flight: { name: 'Rigel', toStarLy: null, fromEarthLy: 0 } });
-    expect([...q(READOUT)!.querySelectorAll('.flight-readout__stat span')].map((s) => s.textContent)).toEqual(['from Earth']);
+  });
+
+  // flight-readout-nodistance-one (UIUX-flight-READY.md, the addition of 20:05; DECIDED-BY-LEAD 20:09 on 24 Nov; FIELD saw
+  // Omega Centauri titled over the camera's own 391 ly): a number under a target's name is that target's or it is not
+  // shown there. With no distance, the recorded no-distance line stands where the two numbers stand, after the same
+  // hairline, and the camera's own distance apart under a second hairline, in the view's own word
+  const NO_DISTANCE = 'Its catalog row gives no distance, so none is shown.';
+  const omega = { name: 'Omega Centauri', toStarLy: null, fromEarthLy: 391.2 };
+  const readoutParts = () => [...q(READOUT)!.children].filter((el) => !el.matches('.look-tag, .flight-readout__tagrow, .flight-readout__note')).map((el) => [el.tagName.toLowerCase(), el.className, el.textContent]);
+
+  it("for a target with no distance: its name, the no-distance line in the numbers' place, then the view's own distance apart", () => {
+    const { session } = rigelPicked();
+    show(session, { flight: omega });
+    expect(q(READOUT)!.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(readoutParts()).toEqual([
+      ['h1', '', 'Omega Centauri'],
+      ['p', 'flight-readout__nodistance', NO_DISTANCE],
+      ['p', 'flight-readout__view', 'Your view is 391 ly from Earth.'],
+    ]);
+    // No number stands under the name: neither a distance to it nor the camera's under "from Earth"
+    expect(q(READOUT)!.querySelector('.flight-readout__stats')).toBeNull();
+    expect(q(READOUT)!.textContent).not.toContain('to Omega Centauri');
+    // The view's distance in the readout's three figures
+    show(session, { flight: { ...omega, fromEarthLy: 4.3218 } });
+    expect(q('.flight-readout__view')!.textContent).toBe('Your view is 4.32 ly from Earth.');
+  });
+
+  it('keeps the approved two numbers for a target with a distance, and from Earth only in free flight, whatever the target', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.43 } });
+    expect(q('.flight-readout__nodistance')).toBeNull();
+    expect(q('.flight-readout__view')).toBeNull();
+    expect(all(`${READOUT} .flight-readout__stat span`).map((s) => s.textContent)).toEqual(['to Rigel', 'from Earth']);
+    // Free flight has no star ahead (D26 item 6): from Earth only, as before, even from a target with no distance
+    show(session, { flight: omega, freeFlight: true });
+    expect(q('.flight-readout__nodistance')).toBeNull();
+    expect(all(`${READOUT} .flight-readout__stat span`).map((s) => s.textContent)).toEqual(['from Earth']);
+  });
+
+  it('on the phone, the same order under its tag row', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: omega, phone: true, viewportWidthPx: 390, viewportHeightPx: 844 });
+    const readout = q(READOUT)!;
+    expect(readout.className).toContain('is-phone');
+    expect(readout.querySelector('.flight-readout__stats')).toBeNull();
+    const nodistance = readout.querySelector('.flight-readout__nodistance')!;
+    const view = readout.querySelector('.flight-readout__view')!;
+    expect([nodistance.textContent, view.textContent]).toEqual([NO_DISTANCE, 'Your view is 391 ly from Earth.']);
+    expect(nodistance.compareDocumentPosition(view) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(readout.querySelector('.flight-readout__tagrow, .look-tag')!.compareDocumentPosition(nodistance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('sets the two lines as the record draws them: 13 px at ink 66 percent, each under a hairline, the second 22 px below the first', () => {
+    const line = { 'font-size': '13px', 'line-height': '18px', color: 'var(--look-ink-2)' };
+    expect(declarationsOf('.flight-readout__nodistance')).toEqual({ margin: '30px 0 0', 'padding-top': '20px', 'border-top': '1px solid var(--look-hair)', ...line });
+    expect(declarationsOf('.flight-readout__view')).toEqual({ margin: '22px 0 0', 'padding-top': '20px', 'border-top': '1px solid var(--look-hair)', ...line });
+    // The first takes the numbers' own place: their hairline and spacing on the laptop (30 and 20), none on the phone
+    expect(declarationsOf('.flight-readout.is-phone .flight-readout__nodistance')).toEqual({ 'margin-top': '0', 'padding-top': '0', 'border-top': '0' });
   });
 
   it('gives the readout\'s place to an answer while one shows', () => {
