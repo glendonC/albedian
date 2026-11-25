@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IngestReceipt, ObservationSolution } from '@albedian/contracts';
 import { HOME_SCREEN } from '../components/__tests__/homeEntry.js';
+import { FLIGHT_HALF_MS } from '../hooks/useCameraFlightAnimation.js';
 
 // Asking about the photo on the laptop reveal (ask, approved 2026-11-12): a question goes to the answer route of the
 // upload it is about, and its answer or refusal takes the card's place; a command stays with the app.
@@ -582,12 +583,25 @@ describe('asking about the photo on the laptop reveal', () => {
       await openAppAt(`/?upload=${sha256}`);
       await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
       await act(async () => (q(`[data-testid="reveal-mark-${rigel.id}"]`) as HTMLButtonElement).click());
+      // ask-flying-test-steady-one (LEAD ANSWER to WEB-UX 21:42 on 24 Nov): the flight's clock is held (its frames and
+      // performance.now), so "still flying" is a state the test sets by moving the clock, never a race with a loaded
+      // machine's wall clock; everything else keeps the real timers
+      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
       await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
-      // The second half of the flight: there, Back to Moment shown, the camera still travelling
-      await waitUntil(() => expect(q('[data-testid="flight-readout"]')).not.toBeNull());
+      // Halfway through the flight's second half: there, the readout and Back to Moment shown, the camera still travelling
+      await act(async () => void vi.advanceTimersByTime(FLIGHT_HALF_MS * 1.5));
+      await settle();
+      expect(q('[data-testid="flight-readout"]')).not.toBeNull();
       expect(q('.ask-bar__fly')).toBeNull();
+      // Two frames short of the end it is still flying
+      await act(async () => void vi.advanceTimersByTime(FLIGHT_HALF_MS * 0.5 - 40));
+      await settle();
+      expect(q('.ask-bar__fly')).toBeNull();
+      // Arrived: offered
+      await act(async () => void vi.advanceTimersByTime(80));
       await waitUntil(() => expect(q('.ask-bar__fly')).not.toBeNull());
     } finally {
+      vi.useRealTimers();
       delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
     }
   });
