@@ -204,6 +204,55 @@ describe("the viewport hands App the Restore button's own action", () => {
     expect(posts()).toHaveLength(1);
   });
 
+  // voice-restore-three (AUDIT-C's T8 and T9 on voice-restore-two, LEAD ANSWER to WEB-UX 19:42 on 24 Nov): tests only
+  const jobs = (JSON.parse(fs.readFileSync(path.resolve(here, '../../../../../tests/fixtures/job_contract.json'), 'utf8')) as { valid: Array<Record<string, unknown>> }).valid;
+  const restorationJob = (state: string) => structuredClone(jobs.find((job) => job.kind === 'restoration' && job.state === state)!);
+  /** The restore route answers with this job's record; anything else the viewport asks is not found. */
+  const answerRestoreWith = (state: string) =>
+    fetchSpy.mockImplementation(async (url, init) =>
+      String(url).endsWith('/restore') && (init as RequestInit | undefined)?.method === 'POST'
+        ? new Response(JSON.stringify(restorationJob(state)), { status: 200, headers: { 'content-type': 'application/json' } })
+        : new Response(JSON.stringify({ detail: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } })
+    );
+  const settle = async () => {
+    for (let i = 0; i < 8; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+  };
+
+  it('T8: a stop that can be tried again is tried again; a refusal that cannot (the same recording refused the same way) is not run again', async () => {
+    // A stop the button offers Try again for: the server stopped before the job finished
+    answerRestoreWith('interrupted');
+    const retryable = mount({});
+    act(() => void retryable.restoreNowRef.current!());
+    await settle();
+    let again = false;
+    act(() => {
+      again = retryable.restoreNowRef.current!();
+    });
+    expect(again).toBe(true);
+    expect(posts()).toHaveLength(2);
+    act(() => root.render(createElement('div')));
+    fetchSpy.mockClear();
+    // A refusal: deterministic, so no Try again, and voice does not run it again either
+    answerRestoreWith('rejected');
+    const refusedOnce = mount({});
+    act(() => void refusedOnce.restoreNowRef.current!());
+    await settle();
+    expect(posts()).toHaveLength(1);
+    let pressedAgain = true;
+    act(() => {
+      pressedAgain = refusedOnce.restoreNowRef.current!();
+    });
+    expect(pressedAgain).toBe(false);
+    expect(posts()).toHaveLength(1);
+  });
+
+  it('T9: gone from the screen, the viewport takes its press back out of App\'s ref', () => {
+    const { restoreNowRef } = mount({});
+    expect(restoreNowRef.current).toBeTypeOf('function');
+    act(() => root.render(createElement('div')));
+    expect(restoreNowRef.current).toBeNull();
+  });
+
   it('away from the recording (Real sky), where the button is not, it does nothing', () => {
     const base = createSyntheticCalibratedSession();
     const { restoreNowRef } = mount({ spatialView: { ...base.spatialView, mode: 'registered_sky' } } as Partial<ObservationSession>);
