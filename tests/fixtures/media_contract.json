@@ -5,7 +5,7 @@
     "semver": "^(?:0|[1-9][0-9]?)\\.(?:0|[1-9][0-9]?)\\.(?:0|[1-9][0-9]?)$",
     "variantUri": "^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/file$",
     "playbackUri": "^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/playback$",
-    "playbackCodecs": "^avc1\\.64[0-9A-F]{4}$",
+    "playbackCodecs": "^(?:avc1\\.64[0-9A-F]{4}|hvc1\\.2\\.4\\.L(?:30|60|63|90|93|120|123|150|153|156|180|183|186)(?:\\.[0-9A-F]{1,2}){0,6})$",
     "codecName": "^[a-z0-9_]{1,32}$"
   },
   "idPatterns": {
@@ -1225,6 +1225,7 @@
     "only a restored clip has a playback copy",
     "a playback copy is served at its own route",
     "a playback copy passed its gate",
+    "a playback copy keeps its clip's bit depth",
     "a PNG holds R'G'B' and a clip Y'CbCr",
     "the parts are of one source",
     "the variant, its graph and its attempt name each other",
@@ -1387,7 +1388,7 @@
       "__proto__"
     ],
     "value": "/Users/me/Pictures/IMG_0001.MOV",
-    "records": 2440
+    "records": 2483
   },
   "valid": {
     "RestoreRequest": [
@@ -3872,6 +3873,59 @@
           "chromaSubsampling": "420",
           "chromaSiting": "left",
           "assumptions": []
+        },
+        "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+        "createdAtUTC": "2031-05-02T19:20:07.500Z"
+      },
+      {
+        "id": "var_8e79aea0f1c18d52",
+        "kind": "restoration",
+        "sourceSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "sourceAssetId": "src_0a1b2c3d4e5f6071",
+        "graphId": "graph_8e79aea0f1c18d52",
+        "attemptId": "att_8e79aea0f1c18d52",
+        "sha256": "1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3",
+        "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file",
+        "byteSize": 52811776,
+        "mimeType": "video/quicktime",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "frameCount": 360,
+        "frameTimesSha256": "9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338"
+          }
+        ],
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 10,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        },
+        "playbackCopy": {
+          "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/playback",
+          "sha256": "0e7f7d7b0e829f7b7f7b55d37df84cffa59b27485b04ba703b10aa0b68602835",
+          "byteSize": 11534336,
+          "mimeType": "video/mp4",
+          "codecs": "hvc1.2.4.L93.90",
+          "minPsnrDb": 49.25
         },
         "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
         "createdAtUTC": "2031-05-02T19:20:07.500Z"
@@ -13979,6 +14033,238 @@
         "createdAtUTC": "2031-05-02T19:20:07.500Z"
       },
       "reason": "a playback copy that is no MP4",
+      "message": null
+    },
+    {
+      "schema": "MediaVariant",
+      "sample": {
+        "id": "var_8e79aea0f1c18d52",
+        "kind": "restoration",
+        "sourceSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "sourceAssetId": "src_0a1b2c3d4e5f6071",
+        "graphId": "graph_8e79aea0f1c18d52",
+        "attemptId": "att_8e79aea0f1c18d52",
+        "sha256": "1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3",
+        "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file",
+        "byteSize": 52811776,
+        "mimeType": "video/quicktime",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "frameCount": 360,
+        "frameTimesSha256": "9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338"
+          }
+        ],
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 8,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        },
+        "playbackCopy": {
+          "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/playback",
+          "sha256": "0e7f7d7b0e829f7b7f7b55d37df84cffa59b27485b04ba703b10aa0b68602835",
+          "byteSize": 11534336,
+          "mimeType": "video/mp4",
+          "codecs": "hvc1.2.4.L93.90",
+          "minPsnrDb": 49.25
+        },
+        "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+        "createdAtUTC": "2031-05-02T19:20:07.500Z"
+      },
+      "reason": "an 8-bit clip's copy in HEVC Main 10",
+      "message": "a playback copy keeps its clip's bit depth"
+    },
+    {
+      "schema": "MediaVariant",
+      "sample": {
+        "id": "var_8e79aea0f1c18d52",
+        "kind": "restoration",
+        "sourceSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "sourceAssetId": "src_0a1b2c3d4e5f6071",
+        "graphId": "graph_8e79aea0f1c18d52",
+        "attemptId": "att_8e79aea0f1c18d52",
+        "sha256": "1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3",
+        "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file",
+        "byteSize": 52811776,
+        "mimeType": "video/quicktime",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "frameCount": 360,
+        "frameTimesSha256": "9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338"
+          }
+        ],
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 10,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        },
+        "playbackCopy": {
+          "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/playback",
+          "sha256": "0e7f7d7b0e829f7b7f7b55d37df84cffa59b27485b04ba703b10aa0b68602835",
+          "byteSize": 11534336,
+          "mimeType": "video/mp4",
+          "codecs": "avc1.640028",
+          "minPsnrDb": 49.25
+        },
+        "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+        "createdAtUTC": "2031-05-02T19:20:07.500Z"
+      },
+      "reason": "a 10-bit clip's copy turned to 8-bit H.264",
+      "message": "a playback copy keeps its clip's bit depth"
+    },
+    {
+      "schema": "MediaVariant",
+      "sample": {
+        "id": "var_8e79aea0f1c18d52",
+        "kind": "restoration",
+        "sourceSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "sourceAssetId": "src_0a1b2c3d4e5f6071",
+        "graphId": "graph_8e79aea0f1c18d52",
+        "attemptId": "att_8e79aea0f1c18d52",
+        "sha256": "1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3",
+        "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file",
+        "byteSize": 52811776,
+        "mimeType": "video/quicktime",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "frameCount": 360,
+        "frameTimesSha256": "9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338"
+          }
+        ],
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 10,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        },
+        "playbackCopy": {
+          "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/playback",
+          "sha256": "0e7f7d7b0e829f7b7f7b55d37df84cffa59b27485b04ba703b10aa0b68602835",
+          "byteSize": 11534336,
+          "mimeType": "video/mp4",
+          "codecs": "hvc1.2.4.L255.90",
+          "minPsnrDb": 49.25
+        },
+        "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+        "createdAtUTC": "2031-05-02T19:20:07.500Z"
+      },
+      "reason": "a 10-bit copy at level 8.5, which no decoder names",
+      "message": null
+    },
+    {
+      "schema": "MediaVariant",
+      "sample": {
+        "id": "var_8e79aea0f1c18d52",
+        "kind": "restoration",
+        "sourceSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "sourceAssetId": "src_0a1b2c3d4e5f6071",
+        "graphId": "graph_8e79aea0f1c18d52",
+        "attemptId": "att_8e79aea0f1c18d52",
+        "sha256": "1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3",
+        "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file",
+        "byteSize": 52811776,
+        "mimeType": "video/quicktime",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "frameCount": 360,
+        "frameTimesSha256": "9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338"
+          }
+        ],
+        "colour": {
+          "model": "ycbcr",
+          "bitDepth": 10,
+          "range": "limited",
+          "matrix": "bt2020nc",
+          "transfer": "hlg",
+          "primaries": "bt2020",
+          "chromaSubsampling": "420",
+          "chromaSiting": "left",
+          "assumptions": []
+        },
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        },
+        "playbackCopy": {
+          "uri": "/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/playback",
+          "sha256": "0e7f7d7b0e829f7b7f7b55d37df84cffa59b27485b04ba703b10aa0b68602835",
+          "byteSize": 11534336,
+          "mimeType": "video/mp4",
+          "codecs": "hvc1.1.6.L93.B0",
+          "minPsnrDb": 49.25
+        },
+        "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+        "createdAtUTC": "2031-05-02T19:20:07.500Z"
+      },
+      "reason": "a copy in HEVC Main, 8 bits",
       "message": null
     },
     {

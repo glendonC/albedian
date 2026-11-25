@@ -86,9 +86,11 @@ MEDIA_PATTERNS = {
     "variantUri": r"^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/file$",
     # A restored clip's playback copy is served at a route of its own beside the variant's file (clip-display-copy)
     "playbackUri": r"^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/playback$",
-    # The playback copy's codec as RFC 6381 writes it: H.264 High profile only (profile_idc 100), which every browser
-    # the app meets draws [tested 24 Nov: Chrome on the Mac; MOBILE: Safari draws High and not High 4:4:4 Predictive]
-    "playbackCodecs": r"^avc1\.64[0-9A-F]{4}$",
+    # The playback copy's codec as RFC 6381 writes it: H.264 High profile (profile_idc 100) for an 8-bit clip, which
+    # every browser the app meets draws [tested 24 Nov: Chrome on the Mac; MOBILE: Safari draws High and not High 4:4:4
+    # Predictive], or HEVC Main 10 (profile_idc 2, its compatibility flags 4) at a level a decoder names (3 to 6.2, never
+    # the 8.5 an exact x265 stream reports) for a 10-bit clip, its own bit depth (playback-tenbit, DECIDED-BY-LEAD 07:16)
+    "playbackCodecs": r"^(?:avc1\.64[0-9A-F]{4}|hvc1\.2\.4\.L(?:30|60|63|90|93|120|123|150|153|156|180|183|186)(?:\.[0-9A-F]{1,2}){0,6})$",
     # A codec as ffprobe names it [proposed: lower-case letters, digits and underscore, at most 32]
     "codecName": r"^[a-z0-9_]{1,32}$",
 }
@@ -496,6 +498,7 @@ M_VARIANT_URI = "a variant is served at its own route"
 M_PLAYBACK_CLIP = "only a restored clip has a playback copy"
 M_PLAYBACK_URI = "a playback copy is served at its own route"
 M_PLAYBACK_GATE = "a playback copy passed its gate"
+M_PLAYBACK_DEPTH = "a playback copy keeps its clip's bit depth"
 M_VARIANT_COLOUR = "a PNG holds R'G'B' and a clip Y'CbCr"
 M_MANIFEST_SOURCE = "the parts are of one source"
 M_MANIFEST_IDS = "the variant, its graph and its attempt name each other"
@@ -521,7 +524,7 @@ REFINEMENT_MESSAGES = (
     M_MEASURED_NOISE, M_CHROMA_NOISE, M_FAILURE_SENTENCE, *(_attempt_fit(s) for s in ATTEMPT_STATUSES), M_READY_PASSED,
     M_REFUSED_IS_REJECTED, M_GATE_REJECTION, M_REJECTION_NAMED, M_NO_GATE_BEFORE, M_GATE_STARS_FOUND,
     M_ATTEMPT_TIMES, M_DISCLOSURE, M_SOURCE_ASSET, M_STILL, M_CLIP_TIMES, M_DISPLAY_COPY_STILL, M_VARIANT_URI,
-    M_PLAYBACK_CLIP, M_PLAYBACK_URI, M_PLAYBACK_GATE,
+    M_PLAYBACK_CLIP, M_PLAYBACK_URI, M_PLAYBACK_GATE, M_PLAYBACK_DEPTH,
     M_VARIANT_COLOUR, M_MANIFEST_SOURCE, M_MANIFEST_IDS, M_MANIFEST_READY, M_MANIFEST_DISCLOSURE, M_MANIFEST_GATE,
     M_MANIFEST_NOISE, M_MANIFEST_FRAMES, M_STILL_GATE, M_SOLUTION, M_CONVERTED_DISCLOSURE,
 )
@@ -1083,6 +1086,9 @@ class MediaVariant(_Record):
                 failures.append(M_PLAYBACK_URI)
             if copy.min_psnr_db < PLAYBACK_COPY_MIN_PSNR_DB:
                 failures.append(M_PLAYBACK_GATE)
+            # Nothing turned to 8 bits unsaid: H.264 High for an 8-bit clip, HEVC Main 10 for a 10-bit one
+            if copy.codecs.startswith("hvc1.") != (self.colour.bit_depth == 10):
+                failures.append(M_PLAYBACK_DEPTH)
         _refuse(failures)
         return self
 
@@ -1423,6 +1429,9 @@ def build_media_samples() -> dict[str, Any]:
                 frameTimesSha256=_label_hash("albedian synthetic frame times: black clip"), audioStreams=[],
                 colour=colour_clip),
     ]
+    # A 10-bit restored clip whose playback copy keeps its bit depth, HEVC Main 10 at level 3.1 (playback-tenbit)
+    variants.append({**variants[2], "colour": {**variants[2]["colour"], "bitDepth": 10},
+                     "playbackCopy": {**variants[2]["playbackCopy"], "codecs": "hvc1.2.4.L93.90"}})
 
     def manifest(variant_record: dict, graph: dict, attempt_record: dict, **fields: Any) -> dict[str, Any]:
         return {"format": EXPORT_MANIFEST_FORMAT, "formatVersion": EXPORT_MANIFEST_FORMAT_VERSION,
@@ -1554,6 +1563,7 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
     attempts, variants = valid["ProcessingAttempt"], valid["MediaVariant"]
     ready, ready_display, rejected, failed = attempts[0], attempts[1], attempts[4], attempts[9]
     still_variant, display_variant, clip_variant = variants[0], variants[1], variants[2]
+    deep_variant = variants[4]
     manifest, display_manifest, clip_manifest = (valid["ExportManifest"][i] for i in (0, 1, 2))
     export = valid["ExportArtifact"][0]
     tile = valid["GraphParameter"][6]
@@ -1822,6 +1832,11 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
     bad("MediaVariant", edit(clip_variant, ["playbackCopy", "codecs"], "avc1.F40028"),
         "a playback copy in High 4:4:4 Predictive, which Safari does not draw")
     bad("MediaVariant", edit(clip_variant, ["playbackCopy", "mimeType"], "video/quicktime"), "a playback copy that is no MP4")
+    # A playback copy in its clip's own bit depth (playback-tenbit): HEVC Main 10 at a named level for 10 bits only
+    bad("MediaVariant", edit(clip_variant, ["playbackCopy", "codecs"], "hvc1.2.4.L93.90"), "an 8-bit clip's copy in HEVC Main 10", M_PLAYBACK_DEPTH)
+    bad("MediaVariant", edit(deep_variant, ["playbackCopy", "codecs"], "avc1.640028"), "a 10-bit clip's copy turned to 8-bit H.264", M_PLAYBACK_DEPTH)
+    bad("MediaVariant", edit(deep_variant, ["playbackCopy", "codecs"], "hvc1.2.4.L255.90"), "a 10-bit copy at level 8.5, which no decoder names")
+    bad("MediaVariant", edit(deep_variant, ["playbackCopy", "codecs"], "hvc1.1.6.L93.B0"), "a copy in HEVC Main, 8 bits")
     bad("MediaVariant", edit(clip_variant, ["playbackCopy", "uri"], clip_variant["uri"]), "a playback copy at the lossless file's route")
     bad("MediaVariant", {**clip_variant, "playbackCopy": {**playback, "gopFrames": 15}}, "a playback copy with a field the contract has not")
     bad("MediaVariant", edit(clip_variant, ["colour"], png8), "a clip described as R'G'B'", M_VARIANT_COLOUR)

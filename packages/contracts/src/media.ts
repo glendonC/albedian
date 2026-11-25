@@ -390,9 +390,9 @@ export const MEDIA_PATTERNS = {
   variantUri: '^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/file$',
   // A restored clip's playback copy is served at a route of its own beside the variant's file (clip-display-copy)
   playbackUri: '^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/playback$',
-  // The playback copy's codec as RFC 6381 writes it: H.264 High profile only (profile_idc 100), which every browser
-  // the app meets draws [tested 24 Nov: Chrome on the Mac; MOBILE: Safari draws High and not High 4:4:4 Predictive]
-  playbackCodecs: '^avc1\\.64[0-9A-F]{4}$',
+  // The playback copy's codec as RFC 6381 writes it: H.264 High profile for an 8-bit clip, or HEVC Main 10 at a level a
+  // decoder names (3 to 6.2) for a 10-bit clip, its own bit depth (playback-tenbit, DECIDED-BY-LEAD 07:16)
+  playbackCodecs: '^(?:avc1\\.64[0-9A-F]{4}|hvc1\\.2\\.4\\.L(?:30|60|63|90|93|120|123|150|153|156|180|183|186)(?:\\.[0-9A-F]{1,2}){0,6})$',
   // A codec as ffprobe names it [proposed: lower-case letters, digits and underscore, at most 32]
   codecName: '^[a-z0-9_]{1,32}$',
 } as const;
@@ -803,6 +803,7 @@ const M = {
   playbackClip: 'only a restored clip has a playback copy',
   playbackUri: 'a playback copy is served at its own route',
   playbackGate: 'a playback copy passed its gate',
+  playbackDepth: "a playback copy keeps its clip's bit depth",
   variantColour: "a PNG holds R'G'B' and a clip Y'CbCr",
   manifestSource: 'the parts are of one source',
   manifestIds: 'the variant, its graph and its attempt name each other',
@@ -1227,6 +1228,8 @@ export const MediaVariantSchema = z
       if (still || variant.kind !== 'restoration') issue(['playbackCopy'], M.playbackClip);
       if (copy.uri !== playbackUri(variant.sourceSha256, variant.id)) issue(['playbackCopy', 'uri'], M.playbackUri);
       if (copy.minPsnrDb < PLAYBACK_COPY_MIN_PSNR_DB) issue(['playbackCopy', 'minPsnrDb'], M.playbackGate);
+      // Nothing turned to 8 bits unsaid: H.264 High for an 8-bit clip, HEVC Main 10 for a 10-bit one
+      if (copy.codecs.startsWith('hvc1.') !== (variant.colour.bitDepth === 10)) issue(['playbackCopy', 'codecs'], M.playbackDepth);
     }
   });
 export type MediaVariant = z.infer<typeof MediaVariantSchema>;
