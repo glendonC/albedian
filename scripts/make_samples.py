@@ -2,7 +2,9 @@
 """Make each sample night ready on this machine (first-use-sample-one, DECIDED-BY-LEAD 25 Nov 03:43): the photo
 fetched from its own recorded source (its entry in data/downloads.json, by scripts/fetch_download.py, size and
 SHA-256 checked), then the app's own solve of it, through the real upload path on a temporary store (never
-data/uploads), written whole to the cache with its SHA-256 beside it. A sample already whole is kept as it is.
+data/uploads), written whole to the cache with its SHA-256 and the producer that made it beside it. A sample already
+whole, made by this revision of the solve chain, is kept as it is; one made by another revision is made again, so the
+sample shows the solve an upload would get now.
 
 Usage, from the repository root:
     uv run python scripts/make_samples.py
@@ -27,6 +29,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from services.contracts.samples import SampleNight, load_samples  # noqa: E402
+# The solve chain's producer, read at load (its import sets the warnings its child processes inherit)
+from services.ingest.jobs import SOLVE_PRODUCER  # noqa: E402
 
 
 class SampleNotReady(Exception):
@@ -46,8 +50,18 @@ def fetch_photo(night: SampleNight, root: Path) -> None:
     subprocess.run([sys.executable, str(root / "scripts" / "fetch_download.py"), night.photo.download_path], cwd=root, check=True)
 
 
-def solve_photo(photo: Path) -> dict[str, Any]:
-    """The app's own solve of a photo, through the real upload path on a temporary store."""
+def current_producer() -> dict[str, Any]:
+    """The solve chain's own name and revision, as a solve job records them."""
+    return {"name": SOLVE_PRODUCER.name, "revision": SOLVE_PRODUCER.revision}
+
+
+def producer_path(night: SampleNight) -> str:
+    """Where the producer of the kept solve is written, beside it."""
+    return str(Path(night.solution.path).with_suffix(".producer.json"))
+
+
+def solve_photo(photo: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The app's own solve of a photo, through the real upload path on a temporary store, and its job's producer."""
     from fastapi.testclient import TestClient
 
     from services.api import create_app
@@ -72,14 +86,20 @@ def solve_photo(photo: Path) -> dict[str, Any]:
             solution = client.get(f"/api/ingest/{sha}/solution")
             if job["state"] != "succeeded" or solution.status_code != 200:
                 raise SampleNotReady("the sample's solve did not finish")
-            return solution.json()
+            return solution.json(), job["producer"]
         finally:
             job_runner.runner_for(store).shutdown()
 
 
 def _kept(night: SampleNight, root: Path) -> bool:
-    path, kept = root / night.solution.path, root / night.solution.sha256_path
-    return path.is_file() and kept.is_file() and _sha256(path) == kept.read_text(encoding="utf-8").strip()
+    path, kept, made_by = root / night.solution.path, root / night.solution.sha256_path, root / producer_path(night)
+    if not (path.is_file() and kept.is_file() and made_by.is_file()) or _sha256(path) != kept.read_text(encoding="utf-8").strip():
+        return False
+    try:
+        producer = json.loads(made_by.read_text(encoding="utf-8"))
+    except ValueError:
+        return False
+    return producer == current_producer()
 
 
 def make_ready(
@@ -87,7 +107,7 @@ def make_ready(
     root: Path = ROOT,
     *,
     fetch: Callable[[SampleNight, Path], None] = fetch_photo,
-    solve: Callable[[Path], dict[str, Any]] = solve_photo,
+    solve: Callable[[Path], tuple[dict[str, Any], dict[str, Any]]] = solve_photo,
 ) -> str:
     """'kept' when the sample's solve is already whole on this machine, 'made' once it has been made now."""
     if _kept(night, root):
@@ -97,13 +117,15 @@ def make_ready(
         fetch(night, root)
     if not photo.is_file() or photo.stat().st_size != night.photo.bytes or _sha256(photo) != night.photo.sha256:
         raise SampleNotReady("the sample photo on this machine is not the one its record names")
-    text = (json.dumps(solve(photo)) + "\n").encode("utf-8")
+    solution, producer = solve(photo)
+    text = (json.dumps(solution) + "\n").encode("utf-8")
     path = root / night.solution.path
     path.parent.mkdir(parents=True, exist_ok=True)
     part = path.with_name(path.name + ".part")
     part.write_bytes(text)
     os.replace(part, path)
     (root / night.solution.sha256_path).write_text(hashlib.sha256(text).hexdigest() + "\n", encoding="utf-8")
+    (root / producer_path(night)).write_text(json.dumps({"name": producer["name"], "revision": producer["revision"]}) + "\n", encoding="utf-8")
     return "made"
 
 

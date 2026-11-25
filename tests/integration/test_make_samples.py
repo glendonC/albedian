@@ -53,7 +53,7 @@ def test_it_fetches_the_photo_solves_it_and_keeps_the_solve_with_its_hash(root: 
     fetched: list[str] = []
     solved: list[bytes] = []
     night = _night(root)
-    said = make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, fetched), solve=lambda photo: solved.append(photo.read_bytes()) or SOLUTION)
+    said = make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, fetched), solve=lambda photo: solved.append(photo.read_bytes()) or (SOLUTION, make_samples.current_producer()))
     assert said == "made"
     assert fetched == [night.photo.download_path] and solved == [PHOTO]
     text = (root / night.solution.path).read_bytes()
@@ -73,16 +73,39 @@ def test_a_photo_that_is_not_the_recorded_one_is_never_solved(root: Path) -> Non
 
 def test_a_kept_solve_whose_hash_fails_is_made_again(root: Path) -> None:
     night = _night(root)
-    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: SOLUTION)
+    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, make_samples.current_producer()))
     (root / night.solution.path).write_text("{}", encoding="utf-8")
     again: list[bool] = []
-    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: again.append(True) or SOLUTION) == "made"
+    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: again.append(True) or (SOLUTION, make_samples.current_producer())) == "made"
     assert again == [True]
 
 
 def test_nothing_is_written_outside_the_cache(root: Path) -> None:
     night = _night(root)
-    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: SOLUTION)
+    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, make_samples.current_producer()))
     written = sorted(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file())
     assert all(p == "data/samples.json" or p.startswith(".cache/") for p in written), written
     assert not (root / "data" / "uploads").exists()
+
+
+def test_a_kept_solve_from_another_solve_revision_is_made_again(root: Path) -> None:
+    # AUDIT's note on first-use-sample-one: the sample shows the solve an upload would get now, so a solve kept from
+    # another revision of the solve chain is made again; one from this revision is kept
+    night = _night(root)
+    current = make_samples.current_producer()
+    made_by = {"name": current["name"], "revision": current["revision"]}
+    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, made_by)) == "made"
+    kept = root / make_samples.producer_path(night)
+    assert json.loads(kept.read_text(encoding="utf-8")) == made_by
+    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: pytest.fail("made again")) == "kept"
+    kept.write_text(json.dumps({**made_by, "revision": current["revision"] - 1}), encoding="utf-8")
+    again: list[bool] = []
+    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: again.append(True) or (SOLUTION, made_by)) == "made"
+    assert again == [True]
+
+
+def test_a_kept_solve_with_no_producer_beside_it_is_made_again(root: Path) -> None:
+    night = _night(root)
+    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, make_samples.current_producer()))
+    (root / make_samples.producer_path(night)).unlink()
+    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, make_samples.current_producer())) == "made"
