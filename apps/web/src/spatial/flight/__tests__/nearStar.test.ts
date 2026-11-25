@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import { steerCamera } from '@albedian/camera-rig';
 import {
-  AU_PC, AU_PER_LY, HANDOVER_SECONDS, HEAD_ON_COS, NEAR_STAR_TAU_S, NEAR_UNIT_BELOW_LY, SUN_ABSOLUTE_MAG,
+  AU_PC, AU_PER_LY, HANDOVER_SECONDS, HEAD_ON_RAD, NEAR_STAR_TAU_S, NEAR_UNIT_BELOW_LY, SUN_ABSOLUTE_MAG,
   handoverShare, headingRows, keptOutside, nearStarFloorPc, nearStarOf, nearStarStep, pacedSpeed, readoutDistance, startHandover, stepHandover, turnBetween, turnedRows,
 } from '../nearStar.js';
 import { steeringSpeedLine } from '../steering.js';
@@ -200,7 +200,13 @@ describe('nearStarStep: a steering frame paced by the star', () => {
     for (let i = 0; i < 120 * 60; i++) s = nearStarStep(s, 1000, none, 1 / 60, far);
     expect(len(sub(s.positionPc, at)) / fl).toBeLessThan(1e-6);
     expect(s.speedPcPerS).toBeLessThan(fl * 1e-6);
-    expect(HEAD_ON_COS).toBe(1 - 1e-12);
+    expect(HEAD_ON_RAD).toBe(1e-4);
+    // The free flight measured live reached the floor 3 microradians off: that holds too
+    const hair = 3e-6;
+    const hairRows: WcsCameraRows = { x: [1, 0, 0], y: [0, Math.cos(hair), -Math.sin(hair)], z: [0, Math.sin(hair), Math.cos(hair)] };
+    let hs = nearStarStep({ positionPc: [100, 120, 60 - fl], rows: hairRows }, 1000, none, 1 / 60, far);
+    for (let i = 0; i < 120 * 60; i++) hs = nearStarStep(hs, 1000, none, 1 / 60, far);
+    expect(len(sub(hs.positionPc, [100, 120, 60 - fl])) / fl).toBeLessThan(1e-6);
     // A look a thousandth of a radian off is no hair: it slides round the sphere, as the ruling's sliding says
     const off: WcsCameraRows = { x: [1, 0, 0], y: [0, Math.cos(1e-3), -Math.sin(1e-3)], z: [0, Math.sin(1e-3), Math.cos(1e-3)] };
     let o = nearStarStep({ positionPc: [100, 120, 60 - fl], rows: off }, 1000, none, 1 / 60, far);

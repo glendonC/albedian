@@ -140,12 +140,14 @@ export interface NearStep extends SteerState {
 }
 
 /**
- * A push into the floor this near straight at the star (its cosine; about 1.4 microradians, far under a pixel) holds the
- * craft where it stands on the sphere. Straight in is a balance the sliding would not keep: rounding alone, some
- * 1e-14 of the way off, would be pushed 4 percent wider each tenth of a second and after about a minute of W held the
- * craft would slide round the star and fly off.
+ * A push into the floor within this angle of straight at the star holds the craft where it stands on the sphere
+ * [proposed]. Straight in is a balance the sliding would not keep: a look any amount off is pushed wider each frame,
+ * e-fold every 2.5 s, so rounding alone (some 1e-14 of the way) slid a held craft round the star and away after about
+ * a minute of W, and a free flight that reached the floor 3 microradians off began to slide at once. A ten-thousandth
+ * of a radian (0.0057 degrees) holds every such hair; a turn the person makes slides it round, as ruled.
  */
-export const HEAD_ON_COS = 1 - 1e-12;
+export const HEAD_ON_RAD = 1e-4;
+const HEAD_ON_COS = Math.cos(HEAD_ON_RAD);
 
 /**
  * A steering frame at the set speed, paced by the star: no faster than its distance over 2.5 s, and moved back out to
