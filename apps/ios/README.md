@@ -85,9 +85,10 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
 - Night exposure (unit mobile-7): the capture button takes one photo at the format's longest exposure with the meter's
   light carried to it (`NightExposure.plan`, `CameraSession.shootLong`), shown on the approved hold-still screen
   (`Screens/HoldStillScreen.swift`): the length, the ring filling over the real exposure, the gyroscope's crosshair.
-- `AlbedianCapture/`: the app: two plain screens in the system's default style (the pipeline run by hand with sample
-  values, cancelling any in-flight upload when rebuilt, and `CaptureCheckScreen`), plus in `DEBUG` builds
-  `ControlsGallery` showing the approved controls together. `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,
+- `AlbedianCapture/`: the app, which opens on the approved home (the screens above). Only in a debug build, a launch
+  argument opens one of three plain screens in the system's default style instead: `-AlbedianOpenPipeline` (the
+  pipeline run by hand with sample values, cancelling any in-flight upload when rebuilt), `-AlbedianOpenCheck`
+  (`CaptureCheckScreen`) or `-AlbedianOpenControls` (`ControlsGallery`, the approved controls together). `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,
   `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds `Geist-Regular.ttf` and `Geist-SemiBold.ttf` (with `OFL.txt`),
   `Assets.xcassets/` holds the four Phosphor 2.1.1 regular icons (`arrow-right`, `x`, `paper-plane-tilt`,
   `arrow-counter-clockwise`), and `Notices/` bundles `Phosphor-LICENSE.txt`. `Sensors/`: `@MainActor` `CoreMotionSource`
