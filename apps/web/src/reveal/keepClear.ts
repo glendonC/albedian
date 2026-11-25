@@ -28,6 +28,8 @@ export const REVEAL_KEEP_CLEAR = [
   '.reveal-answer:not(.is-phone)',
   '.reveal-nav .look-views',
   '.reveal-credits',
+  // column-foot-fade-one (DECIDED-BY-LEAD 21:49): the laptop's legend, a block of words as the phone's counts block is
+  '.reveal-legend',
 ] as const;
 
 /** On the working screen: its column (the lead, the source line, Cancel and the rows) and the Sound circle. */
@@ -38,7 +40,7 @@ export const WORKING_KEEP_CLEAR = ['[data-testid="work-early"]', '.reveal-nav .s
  * top to the buttons' foot"), not by their own box: the phone's aligning block spans the whole screen and the phone's
  * refused block is taller than it, either of which, taken whole, would keep every ring and name off the photo.
  */
-export const KEEP_CLEAR_BLOCKS = ['[data-testid="reveal-status"]', '[data-testid="work-early"]', '[data-testid="reveal-phone-estimate"]', '.reveal-phone-counts', '.restore-phone-lead', '.restore-phone-why'] as const;
+export const KEEP_CLEAR_BLOCKS = ['[data-testid="reveal-status"]', '[data-testid="work-early"]', '[data-testid="reveal-phone-estimate"]', '.reveal-phone-counts', '.restore-phone-lead', '.restore-phone-why', '.reveal-legend'] as const;
 
 /** What a name keeps clear of at a place: the fade's reach where the place carries one, else the place itself. */
 export const nameClearOf = (place: Box): Box => place.fade ?? place;
@@ -57,6 +59,10 @@ export const FADE_REACH: ReadonlyArray<{ place: string; faded: string; reach: { 
   // The open answer carries the card's fade, and the views row the row's own (keepclear-answer-views-one)
   { place: '.reveal-answer:not(.is-phone)', faded: '.reveal-answer:not(.is-phone)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },
   { place: '.reveal-nav .look-views', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
+  // column-foot-fade-one (21:49): Real sky's column, the ask bar and the laptop's legend carry the same fade now
+  { place: "[data-testid='reveal-status'][data-moment='real-sky']", faded: ".reveal-status[data-moment='real-sky']:not(.is-phone)", reach: { left: 36, top: 44, right: 44, bottom: 44 } },
+  { place: '.ask-bar', faded: '.ask-bar:not(.is-phone)', reach: { left: 44, top: 44, right: 44, bottom: 32 } },
+  { place: '.reveal-legend', faded: '.reveal-legend', reach: { left: 36, top: 44, right: 44, bottom: 36 } },
 ];
 
 /** The fade's reach around a place kept clear, where the place carries one (FADE_REACH), on screen; else none. */

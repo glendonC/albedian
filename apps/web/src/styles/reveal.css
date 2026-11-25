@@ -558,7 +558,15 @@
   isolation: isolate;
 }
 
+/* column-foot-fade-one (UIUX-reveal-READY.md, the addition of 24 Nov 21:47, DECIDED-BY-LEAD 21:49, on WEB-UX's walk at
+   3840): Real sky's status column on the laptop joins the column fade, with the flight's and the predicted sky's reach;
+   the fade follows the column's box as it grows */
+.reveal-status[data-moment='real-sky']:not(.is-phone) {
+  isolation: isolate;
+}
+
 .reveal-status[data-moment='there']::before,
+.reveal-status[data-moment='real-sky']:not(.is-phone)::before,
 .predsky:not(.is-phone) .predsky-status::before {
   content: '';
   position: absolute;
@@ -623,6 +631,72 @@
   z-index: -1;
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.82) calc(100% - 44px), rgba(0, 0, 0, 0) 100%);
+}
+
+/* column-foot-fade-one (UIUX-reveal-READY.md, the addition of 24 Nov 21:47, DECIDED-BY-LEAD 21:49): the same fade on the
+   laptop behind the legend "In this photo" (36 px from the window's left and bottom edges, which close it; clearing over
+   44 px above and to the right), behind the ask bar (the window's bottom edge closing it, 32 px away; clearing over 44 px
+   above, left and right; the bar is fixed with its own z-index, so its body and blur stay as approved over it) and
+   behind the flight's pill row (36 px from the left and 32 from the bottom, those edges closing it; clearing over 44 px
+   above and to the right, and below too when it steps up onto its own row above the ask bar). No pill, tag or word
+   changes; no motion of its own */
+.reveal-legend,
+.flight-pills:not(.is-phone) {
+  isolation: isolate;
+}
+
+.reveal-legend::before {
+  content: '';
+  position: absolute;
+  left: -36px;
+  top: -44px;
+  right: -44px;
+  bottom: -36px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px);
+  mask-composite: intersect;
+}
+
+.ask-bar:not(.is-phone)::before {
+  content: '';
+  position: absolute;
+  left: -44px;
+  top: -44px;
+  right: -44px;
+  bottom: -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%), linear-gradient(to bottom, transparent 0, #000 44px);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%), linear-gradient(to bottom, transparent 0, #000 44px);
+  mask-composite: intersect;
+}
+
+.flight-pills:not(.is-phone)::before {
+  content: '';
+  position: absolute;
+  left: -36px;
+  top: -44px;
+  right: -44px;
+  bottom: -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px);
+  mask-composite: intersect;
+}
+
+.flight-pills[data-stepped]:not(.is-phone)::before {
+  bottom: -44px;
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
 }
 
 .reveal-answer__q {

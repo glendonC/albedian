@@ -68,7 +68,7 @@ const masked = (horizontal: string, vertical: string) => ({
 });
 const base = { content: "''", position: 'absolute', 'z-index': '-1', 'pointer-events': 'none' };
 
-const COLUMNS = ".reveal-status[data-moment='there']::before, .predsky:not(.is-phone) .predsky-status::before";
+const COLUMNS = ".reveal-status[data-moment='there']::before, .reveal-status[data-moment='real-sky']:not(.is-phone)::before, .predsky:not(.is-phone) .predsky-status::before";
 const READOUT = '.flight-readout:not(.is-phone)::before';
 const VIEWS = '.reveal-nav::before';
 const PHONE_TOP = '.reveal-phone-top::before';
@@ -194,9 +194,9 @@ describe("the fade's selectors are the elements the screens draw", () => {
     const start = poseSession(sample('horizon_predicted_only'));
     const sky = dispatchAlbedianAction(start, { type: 'sky.show', requestId: 'req_sky', expectedViewRevision: start.viewRevision, mode: 'predicted', observationSolutionId: start.observationSolution!.id }).session;
     act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, skyPose: () => null })));
-    expect(target(COLUMNS.split(', ')[1]!)).not.toBeNull();
+    expect(target(COLUMNS.split(', ')[2]!)).not.toBeNull();
     act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, skyPose: () => null, phone: true })));
-    expect(target(COLUMNS.split(', ')[1]!)).toBeNull();
+    expect(target(COLUMNS.split(', ')[2]!)).toBeNull();
     expect(container.querySelector('.predsky.is-phone .predsky-status')).not.toBeNull();
   });
 });
@@ -227,8 +227,10 @@ describe("names clear the fade's reach; rings keep the place's own box", () => {
       if (place.includes('reveal-status')) {
         el.className = 'reveal-status';
         el.dataset.testid = 'reveal-status';
-        el.dataset.moment = 'there';
+        el.dataset.moment = place.includes('real-sky') ? 'real-sky' : 'there';
       }
+      if (place.includes('ask-bar')) el.className = 'ask-bar';
+      if (place.includes('reveal-legend')) el.className = 'reveal-legend';
       if (place.includes('sound-control')) {
         const nav = document.createElement('div');
         nav.className = 'reveal-nav';
@@ -258,7 +260,8 @@ describe("names clear the fade's reach; rings keep the place's own box", () => {
     const ask = document.createElement('div');
     ask.className = 'ask-bar';
     ask.getBoundingClientRect = rect(500, 800, 900, 860);
-    expect(fadeOf(ask)).toBeUndefined();
+    // The ask bar carries its own fade since column-foot-fade-one (21:49)
+    expect(fadeOf(ask)).toEqual({ x0: 456, x1: 944, y0: 756, y1: 892 });
     card.className = 'reveal-card is-phone';
     expect(fadeOf(card)).toBeUndefined();
     expect(nameClearOf({ x0: 1, x1: 2, y0: 3, y1: 4 })).toEqual({ x0: 1, x1: 2, y0: 3, y1: 4 });
@@ -348,7 +351,7 @@ describe("names clear the fade's reach; rings keep the place's own box", () => {
       const byLeft = (x0: number) => boxes.find((b) => b.x0 === x0)!;
       expect(byLeft(1364).fade).toEqual({ x0: 1056, x1: 1440, y0: 0, y1: 114 });
       expect(byLeft(1088).fade).toEqual({ x0: 1044, x1: 1440, y0: 74, y1: 644 });
-      expect(byLeft(500).fade).toBeUndefined();
+      expect(byLeft(500).fade).toEqual({ x0: 456, x1: 944, y0: 756, y1: 892 });
     } finally {
       act(() => r.unmount());
       nav.remove();

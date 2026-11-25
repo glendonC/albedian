@@ -64,6 +64,8 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
         className={phone ? 'flight-pills is-phone' : 'flight-pills'}
         data-testid="flight-pills"
         data-hud-interactive="true"
+        // column-foot-fade-one: stepped up above the ask bar, the row's fade clears below it too (reveal.css)
+        data-stepped={!phone && bottomPx !== LAPTOP_PILLS_BOTTOM_PX ? '' : undefined}
         // D30 item 3 on the phone: one row at top 712, left 24, 10 apart, 44 px high; laptop: left 36, bottom 32 or stepped 16 px above .ask-bar
         style={phone ? { position: 'absolute', left: 24, right: 24, top: 712, display: 'flex', gap: 10, pointerEvents: 'auto' } : { position: 'absolute', left: LAPTOP_PILLS_LEFT_PX, bottom: bottomPx, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
       >
