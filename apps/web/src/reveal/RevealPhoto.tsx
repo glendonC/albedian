@@ -150,6 +150,11 @@ export interface RevealPhotoProps {
   /** Told the restored version the compare shows, or null, so the session holds what is on screen (voice-restore-one). */
   onShownRestoration?: (variant: MediaVariant | null) => void;
   /**
+   * Told the row pressed under Download, or null once it is let go on the recording, so the session's active variant
+   * is the version pressed and the moment saved on leaving carries it (checkpoint-version-one).
+   */
+  onPickVersion?: (id: string | null) => void;
+  /**
    * Told whenever the phone's restoration takes or frees the foot (its compare's Download, or its wait's Cancel), so
    * Ask out loud gives way to it.
    */
@@ -323,6 +328,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onCancelRestore,
   onAligningChange,
   onShownRestoration,
+  onPickVersion,
   onPhoneFootChange,
   cancelAligningToken = 0,
   onSolveFromHere,
@@ -618,9 +624,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // the row pressed until the compare is left; Download saves the one shown
   const doneVariant = restoration?.phase === 'done' ? restoration.job.variantId : undefined;
   const [pickedVersionState, setPickedVersionState] = useState<{ sha256: string; id: string } | null>(null);
-  const pickedVersion = asset && pickedVersionState !== null && pickedVersionState.sha256 === asset.sha256 ? pickedVersionState.id : null;
-  const setPickedVersion = (id: string | null) =>
-    setPickedVersionState(id !== null && asset ? { sha256: asset.sha256, id } : null);
+  // checkpoint-version-one (DECIDED-BY-LEAD 18:46 on 24 Nov): the row pressed is the session's active variant too, which
+  // the moment saved on leaving carries and Back to Moment restores, so an active variant that is one of these versions
+  // is the row pressed; a row pressed here shows at once
+  const sessionPick = versions.some((v) => v.id === session.activeVariantId) ? session.activeVariantId : null;
+  const pickedVersion = (asset && pickedVersionState !== null && pickedVersionState.sha256 === asset.sha256 ? pickedVersionState.id : null) ?? sessionPick;
+  const tellPick = useRef(onPickVersion);
+  tellPick.current = onPickVersion;
+  const setPickedVersion = (id: string) => {
+    setPickedVersionState(asset ? { sha256: asset.sha256, id } : null);
+    tellPick.current?.(id);
+  };
   useEffect(() => {
     setStoredVersions(null);
     // On the phone a photo's or clip's stored restorations are read at once (D10 item 5, D34)
@@ -636,9 +650,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       live = false;
     };
   }, [doneVariant, phoneMedia, asset?.sha256]);
+  // The compare left on the recording itself lets the row go, in the session too; left for the sky or 3D (skyShown holds
+  // the flight too) it is kept there
   useEffect(() => {
-    if (!compareOn) setPickedVersionState(null);
+    if (compareOn) return;
+    setPickedVersionState(null);
+    if (!skyShown && pickedVersion !== null) tellPick.current?.(null);
   }, [compareOn]);
+  // A moment returned to names its own version (or none): the session's wins over a row pressed here before
+  useEffect(() => {
+    setPickedVersionState(null);
+  }, [session.activeVariantId]);
   useEffect(() => {
     setPickedVersionState(null);
   }, [asset?.sha256]);

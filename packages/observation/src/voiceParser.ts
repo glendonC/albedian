@@ -16,7 +16,7 @@ import {
   refusalSentence,
 } from '@albedian/contracts';
 import { dispatchAlbedianAction } from './reducer.js';
-import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
+import { EMPTY_MEDIA_VARIANT_ID, EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
 import { CATALOG_STAR_NAMES, EVERYDAY_WORD_NAMES, NAME_CUE_VERBS } from './generated/catalogStarNames.js';
 import {
   anotherRequest,
@@ -1181,7 +1181,9 @@ const RULE_HANDLERS: Readonly<Record<string, (input: RuleInput) => VoiceParseRes
   },
   'ui.overlay': ({ base, fields }) => acted({ type: 'ui.overlay', ...base, ...fields }),
   'media.compare': ({ base, session }) => {
-    const originalVariant = session.mediaVariants[0]?.id ?? 'variant_original';
+    // A version is never compared with itself (checkpoint-version-one, decided by the lead 19:40 on 24 Nov): the original
+    // is the session's display copy of the recording, or no variant, so a compare with none to make is refused
+    const originalVariant = session.mediaVariants.find((v) => v.kind === 'display_copy' && v.sourceSha256 === session.sourceAsset?.sha256)?.id ?? EMPTY_MEDIA_VARIANT_ID;
     const restoredVariant = session.activeVariantId !== originalVariant ? session.activeVariantId : (session.mediaVariants[1]?.id ?? originalVariant);
     return acted({ type: 'media.compare', ...base, variantAId: originalVariant, variantBId: restoredVariant, preserveTime: true });
   },

@@ -37,7 +37,14 @@ describe('@albedian/observation voice state: no action decides the microphone', 
     for (const [type, utterance] of JOURNEY) {
       const parsed = parseUtteranceToAction(utterance, buildActionContext(session), session, { now: NOW });
       expect(parsed.action?.type, utterance).toBe(type);
-      const result = dispatchAlbedianAction(session, parsed.action!);
+      // This clip holds no display copy, so the parser names no original and its compare would be refused
+      // (checkpoint-version-one, decided by the lead 19:40 on 24 Nov); the step is the compare button's own, two of the
+      // session's variants, so the reducer's compare is still the one walked
+      const action =
+        parsed.action?.type === 'media.compare'
+          ? { ...parsed.action, variantAId: session.mediaVariants[0]!.id, variantBId: session.mediaVariants.at(-1)!.id }
+          : parsed.action!;
+      const result = dispatchAlbedianAction(session, action);
       expect(result.outcome.status, utterance).toBe('completed');
       session = result.session;
       expect(session.machines.voice, type).toBe(voice);

@@ -62,7 +62,7 @@ import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import { liveClipSec, useClipPlayback, withClipClock } from '../reveal/clipPlayback.js';
-import { withShownRestoration } from '../reveal/shownRestoration.js';
+import { withPickedVersion, withShownRestoration } from '../reveal/shownRestoration.js';
 import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
 
@@ -758,6 +758,8 @@ export const SpatialObservatoryViewport: React.FC<
                 shownRestorationId.current = now;
                 setSession((cur) => withShownRestoration(cur, variant, before));
               }}
+              // checkpoint-version-one: the row pressed is the session's active variant, so the moment left keeps it
+              onPickVersion={(id) => setSession((cur) => withPickedVersion(cur, id))}
               onPhoneFootChange={setPhoneFoot}
               cancelAligningToken={cancelAligningToken}
               onSelectFinding={onSelectFinding}
