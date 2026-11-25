@@ -7,8 +7,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MediaVariantSchema, type UploadJob } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
-import { madeAtWords, readRestorations } from '../../services/apiClient.js';
-import { RestoreVersions } from '../RestoreParts.js';
+import { NO_PLAYBACK_NOTE, madeAtWords, readRestorations } from '../../services/apiClient.js';
+import { NO_COPY_LINE, RestoreVersions } from '../RestoreParts.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
@@ -152,6 +152,68 @@ describe('the list under Download (D36)', () => {
       )
     );
     expect(q('[data-testid="restore-versions"]')).toBeNull();
+  });
+
+  it('keeps the row of a version no copy that plays here matched: no check, not pressable, its line under the earlier one (UIUX 02:25)', async () => {
+    const turned = { quarterTurnsClockwise: 0, mirrored: false } as const;
+    const row = (id: string, createdAtUTC: string, noCopy: boolean) => ({ id, createdAtUTC, byteSize: 14_000_000, orientation: turned, noCopy });
+    const shown: string[] = [];
+    const draw = (versions: ReturnType<typeof row>[], shownId: string) =>
+      act(() => root.render(createElement(RestoreVersions, { versions, shownId, onShow: (id: string) => shown.push(id) })));
+    draw([row('var_00000000000000b2', '2026-11-25T08:00:00Z', false), row('var_00000000000000b1', '2026-11-24T08:00:00Z', true)], 'var_00000000000000b1');
+    const rows = Array.from(container.querySelectorAll('.restore-versions__row')) as HTMLButtonElement[];
+    expect(rows.map((r) => [r.getAttribute('aria-pressed'), r.getAttribute('aria-disabled'), r.querySelector('.restore-versions__mark svg') !== null])).toEqual([
+      ['false', null, false],
+      ['false', 'true', false],
+    ]);
+    expect(Array.from(rows[1]!.querySelectorAll('.restore-versions__older')).map((s) => s.textContent)).toEqual([
+      'Made by an earlier version of Albedian.',
+      'No copy that plays here matched it closely enough, so it is not shown; Download saves it.',
+    ]);
+    act(() => rows[1]!.click());
+    act(() => rows[0]!.click());
+    expect(shown).toEqual(['var_00000000000000b2']);
+    // One ready restoration with no copy: the list stands with its row, so it says why nothing is shown
+    draw([row('var_00000000000000b3', '2026-11-25T09:00:00Z', true)], 'var_00000000000000b3');
+    expect(container.querySelectorAll('.restore-versions__row')).toHaveLength(1);
+    expect(container.querySelector('.restore-versions__older')!.textContent).toBe(NO_COPY_LINE);
+  });
+
+  it('never draws a version whose record says no copy met its gate: the older one is shown, and alone none is (the 22:19 ruling)', async () => {
+    // Its own attempt, whose notes say no copy met its gate (the samples otherwise share one)
+    const NOTED = { ...NEWER, attemptId: 'att_00000000000000a1' };
+    const noted = { id: NOTED.attemptId, measured: { notes: [NO_PLAYBACK_NOTE] } };
+    const listing = (variants: unknown[]) =>
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants, attempts: [noted] }), { status: 200 }));
+    listing([NOTED, OLDER]);
+    await showDone();
+    expect((q('[data-testid="restore-compare"] .restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe(`/api/media/${sha}/variants/${OLDER.id}/file`);
+    const rows = Array.from(container.querySelectorAll('.restore-versions__row'));
+    expect(rows.map((r) => r.getAttribute('aria-disabled'))).toEqual(['true', null]);
+    expect(rows.map((r) => r.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+    act(() => root.unmount());
+    vi.restoreAllMocks();
+    root = createRoot(container);
+    listing([NOTED]);
+    await showDone();
+    expect(q('[data-testid="restore-compare"]')).toBeNull();
+    expect(container.querySelectorAll('.restore-versions__row')).toHaveLength(1);
+    expect(container.querySelector('.restore-versions__older')!.textContent).toBe(NO_COPY_LINE);
+  });
+
+  it("plays a pressed version from its playback copy when the copy's route serves it (clip-display-copy)", async () => {
+    const clipTemplate = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.playbackCopy !== undefined)!;
+    const copyUri = `/api/media/${sha}/variants/${OLDER.id}/playback`;
+    const older = { ...clipTemplate, id: OLDER.id, createdAtUTC: OLDER.createdAtUTC, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: OLDER.uri, playbackCopy: { ...(clipTemplate.playbackCopy as Record<string, unknown>), uri: copyUri } };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      String(input) === copyUri
+        ? new Response('x', { status: 206, headers: { 'content-type': 'video/mp4' } })
+        : new Response(JSON.stringify({ variants: [older, NEWER], attempts: [] }), { status: 200 })
+    );
+    await showDone();
+    const rows = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    act(() => rows()[1]!.click());
+    expect((q('[data-testid="restore-compare"] .restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe(copyUri);
   });
 
   it('supports 3+ pipeline revisions (1.6 -> 1.7 -> 1.8), keeps the wipe split steady across version switches, and exports each selected variant', async () => {

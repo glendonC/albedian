@@ -14,6 +14,8 @@ import {
   UploadJobSchema,
   DisplayOrientationSchema,
   MediaVariantSchema,
+  NOTES,
+  VariantPlaybackCopySchema,
   type MediaVariant,
   type PersonAlignment,
   type DisplayOrientation,
@@ -641,6 +643,44 @@ export async function readVariantOrientation(sha256: string, variantId: string):
   return named === undefined ? { quarterTurnsClockwise: 0, mirrored: false } : DisplayOrientationSchema.parse(named);
 }
 
+/**
+ * Where a restored clip is played, when not from its lossless file (clip-display-copy, DECIDED-BY-LEAD 21:57 and 22:05
+ * on 24 Nov): its playback copy, H.264 High, which every browser the app meets draws. Only when the variant's record
+ * names one and its own route serves it: the route answers not found for a listed copy whose file is not the one its
+ * record names (AUDIT's note on playback-route-one), so its first byte is asked for before it is played. Null plays the
+ * lossless file as before; Download, the export and the evidence keep the lossless file in every case. A copy served
+ * once is the same file for the page's life (written once, never rewritten), so it is asked for once; one that is not
+ * served is asked again, since a copy may be made later.
+ */
+const playbackServed = new Set<string>();
+
+/**
+ * The fixed note a restored clip's record carries when no playback copy met its gate in the stored file's own format,
+ * or none could be made (playback-job-one version three, DECIDED-BY-LEAD 02:22 on 25 Nov): such a version is never
+ * drawn as restored here, and Download still saves it (UIUX-versionwait-READY.md, its addition stamped 02:22).
+ */
+export const NO_PLAYBACK_NOTE: string = NOTES[8];
+const notesNoCopy = (attempt: unknown): boolean => {
+  const notes = (attempt as { measured?: { notes?: unknown } } | null | undefined)?.measured?.notes;
+  return Array.isArray(notes) && notes.includes(NO_PLAYBACK_NOTE);
+};
+export async function playbackCopyUrl(record: unknown): Promise<string | null> {
+  const parsed = VariantPlaybackCopySchema.safeParse(record);
+  if (!parsed.success) return null;
+  const uri = parsed.data.uri;
+  if (playbackServed.has(uri)) return uri;
+  try {
+    const res = await fetch(uri, { headers: { range: 'bytes=0-0' } });
+    void res.body?.cancel().catch(() => {});
+    const served = res.status === 206 || (res.ok && (res.headers.get('content-type') ?? '').startsWith('video/mp4'));
+    if (!served) return null;
+  } catch {
+    return null;
+  }
+  playbackServed.add(uri);
+  return uri;
+}
+
 /** A ready restoration of the upload as the variants route lists it (D36). */
 export interface StoredRestoration {
   id: string;
@@ -649,24 +689,61 @@ export interface StoredRestoration {
   orientation: DisplayOrientation;
   /** The variant as the route lists it, which the session holds while it is shown (voice-restore-one). */
   variant?: MediaVariant;
+  /** A restored clip's playback copy as served (`playbackCopyUrl`), or null or absent for its lossless file. */
+  playbackUrl?: string | null;
+  /** Its record says no playback copy met its gate (NO_PLAYBACK_NOTE): it is listed and never drawn here. */
+  noCopy?: boolean;
 }
 
 /**
  * The upload's ready restorations, newest first (D36): the variants route stores a variant only once its gate passed,
- * so every restoration it lists is ready. Anything that is not a restoration of this upload is left out.
+ * so every restoration it lists is ready. Anything that is not a restoration of this upload is left out. A restored
+ * clip's playback copy is asked for as `playbackCopyUrl` says, all at once.
  */
 export async function readRestorations(sha256: string): Promise<StoredRestoration[]> {
   const res = await fetchAnswer(`/api/media/${sha256}/variants`);
   if (!res.ok) throw new Error(await serverReason(res));
-  const body = (await res.json()) as { variants?: unknown[] };
-  return (body.variants ?? [])
-    .flatMap((raw) => {
-      const parsed = MediaVariantSchema.safeParse(raw);
-      if (!parsed.success || parsed.data.kind !== 'restoration' || parsed.data.sourceSha256 !== sha256) return [];
-      const v = parsed.data;
-      return [{ id: v.id, createdAtUTC: v.createdAtUTC, byteSize: v.byteSize, orientation: v.displayOrientation ?? { quarterTurnsClockwise: 0, mirrored: false }, variant: v }];
-    })
-    .sort((a, b) => Date.parse(b.createdAtUTC) - Date.parse(a.createdAtUTC) || (a.id < b.id ? 1 : -1));
+  const body = (await res.json()) as { variants?: unknown[]; attempts?: unknown[] };
+  const attempts = new Map((body.attempts ?? []).flatMap((a) => (typeof (a as { id?: unknown })?.id === 'string' ? [[(a as { id: string }).id, a] as const] : [])));
+  const listed = (body.variants ?? []).flatMap((raw) => {
+    const parsed = MediaVariantSchema.safeParse(raw);
+    if (!parsed.success || parsed.data.kind !== 'restoration' || parsed.data.sourceSha256 !== sha256) return [];
+    return [parsed.data];
+  });
+  const restorations = await Promise.all(
+    listed.map(async (v): Promise<StoredRestoration> => ({
+      id: v.id,
+      createdAtUTC: v.createdAtUTC,
+      byteSize: v.byteSize,
+      orientation: v.displayOrientation ?? { quarterTurnsClockwise: 0, mirrored: false },
+      variant: v,
+      playbackUrl: v.playbackCopy === undefined ? null : await playbackCopyUrl(v.playbackCopy),
+      noCopy: v.playbackCopy === undefined && notesNoCopy(attempts.get(v.attemptId)),
+    }))
+  );
+  return restorations.sort((a, b) => Date.parse(b.createdAtUTC) - Date.parse(a.createdAtUTC) || (a.id < b.id ? 1 : -1));
+}
+
+/** Where a restored version is played: a restored clip's copy as served, else the variant's own file (a still's PNG). */
+export function restoredSource(sha256: string, version: Pick<StoredRestoration, 'id' | 'playbackUrl'>): string {
+  return version.playbackUrl ?? variantFileUrl(sha256, version.id);
+}
+
+/**
+ * How a ready variant is turned and where it is played, from its own record: `readVariantOrientation`'s turn, and a
+ * restored clip's playback copy as `playbackCopyUrl` says (null for the lossless file).
+ */
+export async function readVariantShown(
+  sha256: string,
+  variantId: string
+): Promise<{ orientation: DisplayOrientation; playbackUrl: string | null; noCopy: boolean }> {
+  const res = await fetchAnswer(`/api/media/${sha256}/variants/${encodeURIComponent(variantId)}`);
+  if (!res.ok) throw new Error(await serverReason(res));
+  const body = (await res.json()) as { variant?: { displayOrientation?: unknown; playbackCopy?: unknown }; attempt?: unknown };
+  const named = body.variant?.displayOrientation;
+  const orientation = named === undefined ? { quarterTurnsClockwise: 0, mirrored: false } : DisplayOrientationSchema.parse(named);
+  const copy = body.variant?.playbackCopy;
+  return { orientation, playbackUrl: copy === undefined ? null : await playbackCopyUrl(copy), noCopy: copy === undefined && notesNoCopy(body.attempt) };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

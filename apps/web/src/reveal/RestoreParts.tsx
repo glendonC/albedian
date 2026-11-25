@@ -560,16 +560,28 @@ export const RestorePhoneStopped: React.FC<{
  * ready restorations, one row each, newest first, with no heading: the time it was made, its size at the right, the
  * check on the one shown, and under each older one "Made by an earlier version of Albedian." A row pressed shows it.
  */
+/** The second line of a restored version no copy that plays here matched (UIUX-versionwait-READY.md, addition stamped 02:22). */
+export const NO_COPY_LINE = 'No copy that plays here matched it closely enough, so it is not shown; Download saves it.';
+
 export const RestoreVersions: React.FC<{ versions: readonly StoredRestoration[]; shownId: string; onShow: (id: string) => void }> = ({ versions, shownId, onShow }) =>
-  versions.length < 2 ? null : (
+  // D36: no list with one ready restoration, unless that one has no copy, so its row says why it is not shown
+  versions.length < 2 && !versions[0]?.noCopy ? null : (
     <ul className="restore-versions" data-testid="restore-versions">
       {versions.map((version, i) => (
         <li key={version.id}>
-          <button type="button" className="restore-versions__row" aria-pressed={version.id === shownId} onClick={() => onShow(version.id)}>
+          {/* A version with no copy keeps its row: no check, not pressable to show, its second line saying why */}
+          <button
+            type="button"
+            className="restore-versions__row"
+            aria-pressed={!version.noCopy && version.id === shownId}
+            aria-disabled={version.noCopy ? true : undefined}
+            onClick={() => !version.noCopy && onShow(version.id)}
+          >
             <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
             <span className="restore-versions__size">{megabytes(version.byteSize)}</span>
-            <span className="restore-versions__mark">{version.id === shownId ? <LookIcon name="check" /> : null}</span>
+            <span className="restore-versions__mark">{!version.noCopy && version.id === shownId ? <LookIcon name="check" /> : null}</span>
             {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
+            {version.noCopy && <span className="restore-versions__older">{NO_COPY_LINE}</span>}
           </button>
         </li>
       ))}

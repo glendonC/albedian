@@ -10,6 +10,8 @@ import { POSE, poseSession, sample } from '../../components/__tests__/poseSessio
 import type { AlignPose } from '../alignPose.js';
 import { phoneSlotCrop } from '../phoneSlot.js';
 import { UNCHANGED } from '../restoration.js';
+import { NO_COPY_LINE } from '../RestoreParts.js';
+import { NO_PLAYBACK_NOTE } from '../../services/apiClient.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
@@ -291,6 +293,32 @@ describe('phone-compare-assetkey-1', () => {
     act(() => again.click());
     expect(q('[data-testid="restore-compare"]')).toBeNull();
     expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Solve from here')).toBe(true);
+  });
+
+  it('draws no compare on the phone for a lone version whose record says no copy met its gate, its row standing (UIUX 02:25)', async () => {
+    const lone = { ...makeVariant(SHA_A, 'var_00000000000000a3', '2026-11-20T18:20:00Z'), attemptId: 'att_00000000000000a3' };
+    const attempts = [{ id: 'att_00000000000000a3', measured: { notes: [NO_PLAYBACK_NOTE] } }];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants: [lone], attempts }), { status: 200 }));
+    act(() =>
+      root.render(
+        createElement(RevealPhoto, {
+          session: calibratedFor(SHA_A),
+          onSelectFinding: () => {},
+          onHome: () => {},
+          viewportWidthPx: W,
+          viewportHeightPx: H,
+          phone: true,
+          onRestore: () => {},
+          onCancelRestore: () => {},
+          onShowPredictedSky: () => {},
+          onSolveFromHere: () => {},
+          restoration: { phase: 'idle' },
+        } as unknown as Parameters<typeof RevealPhoto>[0]),
+      ),
+    );
+    await flush();
+    expect(q('[data-testid="restore-compare"]')).toBeNull();
+    expect(container.querySelector('.restore-versions__older')?.textContent).toBe(NO_COPY_LINE);
   });
 
   it('resets pickedVersion and avoids cross-asset variant URLs when switching directly between two uploads that both stay in compareOn', async () => {

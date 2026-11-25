@@ -7,7 +7,7 @@ import { lockOnPlan } from './lockOn.js';
 import type { MediaVariant, ObservationSolution, PersonAlignment } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
-import { readRestorations, saveFromServer, variantExportUrl, variantFileUrl, type StoredRestoration } from '../services/apiClient.js';
+import { readRestorations, restoredSource, saveFromServer, variantExportUrl, type StoredRestoration } from '../services/apiClient.js';
 import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
@@ -629,7 +629,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   }, [phoneFoot]);
   useEffect(() => () => onPhoneFootChange?.(false), []);
   // D36 item 5: two or more ready restorations are listed under the phone's Download, reached by scrolling too
-  const phoneVersionsShown = phoneCompare && versions.length >= 2 && picked === null && !answer;
+  // D36 item 5, and with one ready restoration that has no copy, its row (UIUX-versionwait-READY.md, addition stamped 02:22)
+  const phoneVersionsShown = phoneCompare && (versions.length >= 2 || versions[0]?.noCopy === true) && picked === null && !answer;
   // The whole screen scrolls to Restore or to the list: the photo and Ask out loud move with it (as the no-match
   // screen's photo does)
   const phoneScroll = phoneRestoreOffered || phoneVersionsShown;
@@ -731,8 +732,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     setPickedVersionState(null);
   }, [asset?.sha256]);
-  const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
+  // The newest version that can be drawn here is shown first; one whose record says no copy met its gate never is
+  const shownVersionId = pickedVersion ?? versions.find((v) => !v.noCopy)?.id ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
+  const drawable = shownVersion ? !shownVersion.noCopy : !(restoration?.phase === 'done' && restoration.noCopy);
   // voice-restore-one: the restored version on screen, for the session, so "make the sky clearer" finds what is shown.
   // voice-compare-one version two (AUDIT-C's FAIL): away from the recording (the flight, Real sky, the sky leaving) the
   // version last shown stays the session's, so voice there answers what the session holds; on the recording, only the
@@ -748,12 +751,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     tellShown.current?.(shownRestoration);
   }, [shownRestoration?.id ?? null]);
   const phoneCompareSrc =
-    shownVersion && asset ? variantFileUrl(asset.sha256, shownVersion.id) : restoration?.phase === 'done' ? restoration.variantUrl : null;
+    !drawable ? null : shownVersion && asset ? restoredSource(asset.sha256, shownVersion) : restoration?.phase === 'done' ? restoration.variantUrl : null;
   const phoneCompareOrientation =
     shownVersion ? shownVersion.orientation : restoration?.phase === 'done' ? restoration.orientation : undefined;
   const ready = compareShown && restoration?.phase === 'done' ? shownVersionId : undefined;
   const versionsList =
-    ready !== undefined && versions.length >= 2 ? <RestoreVersions versions={versions} shownId={ready} onShow={setPickedVersion} /> : null;
+    ready !== undefined ? <RestoreVersions versions={versions} shownId={ready} onShow={setPickedVersion} /> : null;
   const downloadAction =
     ready !== undefined && asset ? (
       <>
@@ -1136,11 +1139,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
-      {compareShown && frame && restoration?.phase === 'done' && asset && (
+      {compareShown && drawable && frame && restoration?.phase === 'done' && asset && (
         <RestoreCompare
           key={asset.sha256}
           rect={frame}
-          src={shownVersion && shownVersion.id !== restoration.job.variantId ? variantFileUrl(asset.sha256, shownVersion.id) : restoration.variantUrl}
+          src={shownVersion && shownVersion.id !== restoration.job.variantId ? restoredSource(asset.sha256, shownVersion) : restoration.variantUrl}
           originalSrc={asset.uri}
           fade={SIDE_FADE}
           orientation={shownVersion && shownVersion.id !== restoration.job.variantId ? shownVersion.orientation : restoration.orientation}

@@ -153,6 +153,23 @@ describe('useRestoration', () => {
     expect(latest.restoration.phase === 'done' && latest.restoration.orientation).toEqual({ quarterTurnsClockwise: 1, mirrored: false });
   });
 
+  it("compares a restored clip from its playback copy when the copy's route serves it, else from its file (clip-display-copy)", async () => {
+    // Each case its own copy's address: a copy served once is kept as served for the page's life
+    const copyUri = (n: number) => `/api/media/${sha256}/variants/var_${String(n).padStart(16, '0')}/playback`;
+    for (const [status, n, shown] of [[206, 1, copyUri(1)], [404, 2, `/api/media/${sha256}/variants/${succeeded.variantId}/file`]] as const) {
+      const copy = { uri: copyUri(n), sha256: 'a'.repeat(64), byteSize: 7206845, mimeType: 'video/mp4', codecs: 'avc1.640028', minPsnrDb: 48.83 };
+      const answers = [json(running, 202), json(succeeded), json({ variant: { playbackCopy: copy } })];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        String(input) === copy.uri ? new Response(status === 206 ? 'x' : '{}', { status, headers: { 'content-type': status === 206 ? 'video/mp4' : 'application/json' } }) : answers.shift()!
+      );
+      act(() => root.render(createElement(Probe, { sha: sha256, mediaKind: 'video' })));
+      act(() => latest.start());
+      await until(() => phase() === 'done');
+      expect(latest.restoration.phase === 'done' && latest.restoration.variantUrl).toBe(shown);
+      vi.restoreAllMocks();
+    }
+  });
+
   it("stops with the server's own sentence when the start is refused", async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ detail: 'Restoring a clip is not built yet.' }, 501));
     act(() => root.render(createElement(Probe, { sha: sha256 })));

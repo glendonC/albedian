@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UploadJob } from '@albedian/contracts';
-import { followJob, readVariantOrientation, startRestoration, variantExportUrl, variantFileUrl } from '../services/apiClient';
+import { NO_PLAYBACK_NOTE, followJob, playbackCopyUrl, readRestorations, readVariantOrientation, readVariantShown, restoredSource, startRestoration, variantExportUrl, variantFileUrl } from '../services/apiClient';
 
 // The restoration's routes (restore-2b, restoration design sections 9 and 11): a restoration job started, joined or
 // returned at POST /api/media/{sha256}/restore, followed at GET /api/ingest/jobs/{id} once a second like a solve,
@@ -113,5 +113,105 @@ describe('variantExportUrl (D22; the lead, 07:25: EXPORT\'s restore-8)', () => {
   it('names the one stored zip of the variant and its manifest', () => {
     expect(variantExportUrl(sha256, 'var_7e6f5a4b3c2d1e0f')).toBe(`/api/media/${sha256}/variants/var_7e6f5a4b3c2d1e0f/export`);
     expect(variantExportUrl(sha256, 'var/x y')).toBe(`/api/media/${sha256}/variants/var%2Fx%20y/export`);
+  });
+});
+
+// clip-display-copy (DECIDED-BY-LEAD 21:57 and 22:05 on 24 Nov): a restored clip plays from its playback copy, H.264
+// High, which every browser the app meets draws, when its record names one and its own route serves it; the route
+// answers not found for a listed copy whose file is not the one its record names (AUDIT's note on playback-route-one).
+describe('the playback copy', () => {
+  const media = JSON.parse(fs.readFileSync(path.join(fixtures, 'media_contract.json'), 'utf8')) as { valid: { MediaVariant: Array<Record<string, unknown>> } };
+  const clip = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.playbackCopy !== undefined)!;
+  const vid = (n: number) => `var_${String(n).padStart(16, '0')}`;
+  const clipOf = (id: string, createdAtUTC: string) => ({
+    ...clip,
+    id,
+    createdAtUTC,
+    sourceSha256: sha256,
+    sourceAssetId: `src_${sha256.slice(0, 16)}`,
+    uri: `/api/media/${sha256}/variants/${id}/file`,
+    playbackCopy: { ...(clip.playbackCopy as Record<string, unknown>), uri: `/api/media/${sha256}/variants/${id}/playback` },
+  });
+  const served = (status: number) => new Response(status === 206 ? 'x' : JSON.stringify({ detail: 'that variant has no playback copy' }), {
+    status,
+    headers: { 'content-type': status === 206 ? 'video/mp4' : 'application/json' },
+  });
+
+  it('plays a clip from its copy when the copy is served, asking only its first byte, and only once', async () => {
+    const one = clipOf(vid(1), '2026-11-24T10:00:00Z');
+    const seen: Array<{ url: string; range: string | null }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      seen.push({ url, range: new Headers(init?.headers).get('range') });
+      return url.endsWith('/playback') ? served(206) : json({ variant: one, graph: {}, attempt: {} });
+    });
+    expect(await readVariantShown(sha256, vid(1))).toEqual({ orientation: (one as { displayOrientation?: unknown }).displayOrientation ?? { quarterTurnsClockwise: 0, mirrored: false }, playbackUrl: one.playbackCopy.uri, noCopy: false });
+    expect(seen).toEqual([
+      { url: `/api/media/${sha256}/variants/${vid(1)}`, range: null },
+      { url: one.playbackCopy.uri, range: 'bytes=0-0' },
+    ]);
+    // A copy served once is the same file for the page's life
+    expect(await playbackCopyUrl(one.playbackCopy)).toBe(one.playbackCopy.uri);
+    expect(seen).toHaveLength(2);
+  });
+
+  it('plays the lossless file where there is no copy, a copy its route does not serve, or no answer', async () => {
+    const none = { ...clipOf(vid(2), '2026-11-24T10:00:00Z') } as Record<string, unknown>;
+    delete none.playbackCopy;
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ variant: none, graph: {}, attempt: {} }));
+    expect((await readVariantShown(sha256, vid(2))).playbackUrl).toBeNull();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const refused = clipOf(vid(3), '2026-11-24T10:00:00Z');
+    fetcher.mockImplementation(async (input) => (String(input).endsWith('/playback') ? served(404) : json({ variant: refused, graph: {}, attempt: {} })));
+    expect((await readVariantShown(sha256, vid(3))).playbackUrl).toBeNull();
+    // Not served is asked again (a copy may be made later), and a JSON answer is not a copy
+    fetcher.mockImplementation(async () => json({ variants: [] }));
+    expect(await playbackCopyUrl(refused.playbackCopy)).toBeNull();
+    fetcher.mockImplementation(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    expect(await playbackCopyUrl(clipOf(vid(4), '2026-11-24T10:00:00Z').playbackCopy)).toBeNull();
+    // A record that is no copy is never asked for
+    fetcher.mockClear();
+    expect(await playbackCopyUrl({ uri: '/elsewhere' })).toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('lists each restored clip with its copy as served, and plays a version from it', async () => {
+    const newer = clipOf(vid(6), '2026-11-24T12:00:00Z');
+    const older = clipOf(vid(5), '2026-11-24T11:00:00Z');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/playback')) return served(url.includes(vid(6)) ? 206 : 404);
+      return json({ variants: [older, newer], attempts: [] });
+    });
+    const listed = await readRestorations(sha256);
+    expect(listed.map((r) => [r.id, r.playbackUrl])).toEqual([
+      [vid(6), newer.playbackCopy.uri],
+      [vid(5), null],
+    ]);
+    expect(restoredSource(sha256, listed[0]!)).toBe(newer.playbackCopy.uri);
+    expect(restoredSource(sha256, listed[1]!)).toBe(variantFileUrl(sha256, vid(5)));
+    // A still has no copy: its PNG, as before
+    expect(restoredSource(sha256, { id: vid(7) })).toBe(variantFileUrl(sha256, vid(7)));
+  });
+
+  it("says which versions' records carry the no-copy note, which are never drawn here (UIUX 02:25)", async () => {
+    expect(NO_PLAYBACK_NOTE).toBe('No playback copy could be made within its gate, so this restoration has none.');
+    const kept = clipOf(vid(9), '2026-11-24T13:00:00Z') as Record<string, unknown>;
+    delete kept.playbackCopy;
+    const plain = { ...kept, id: vid(8), uri: `/api/media/${sha256}/variants/${vid(8)}/file`, createdAtUTC: '2026-11-24T12:30:00Z', attemptId: 'att_0000000000000008' };
+    const noted = { ...kept, attemptId: 'att_0000000000000009' };
+    const attempt = (id: string, notes: string[]) => ({ id, measured: { notes } });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      String(input).endsWith('/variants')
+        ? json({ variants: [plain, noted], attempts: [attempt('att_0000000000000009', [NO_PLAYBACK_NOTE]), attempt('att_0000000000000008', [])] })
+        : json({ variant: noted, graph: {}, attempt: attempt('att_0000000000000009', [NO_PLAYBACK_NOTE]) })
+    );
+    expect((await readRestorations(sha256)).map((r) => [r.id, r.noCopy])).toEqual([
+      [vid(9), true],
+      [vid(8), false],
+    ]);
+    expect((await readVariantShown(sha256, vid(9))).noCopy).toBe(true);
   });
 });
