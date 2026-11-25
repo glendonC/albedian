@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Make each sample night ready on this machine (first-use-sample-one, DECIDED-BY-LEAD 25 Nov 03:43): the photo
+fetched from its own recorded source (its entry in data/downloads.json, by scripts/fetch_download.py, size and
+SHA-256 checked), then the app's own solve of it, through the real upload path on a temporary store (never
+data/uploads), written whole to the cache with its SHA-256 beside it. A sample already whole is kept as it is.
+
+Usage, from the repository root:
+    uv run python scripts/make_samples.py
+
+The solve is the app's own, so it takes as long as an upload's; nothing here is ever cut or tracked.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import time
+from typing import Any, Callable
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from services.contracts.samples import SampleNight, load_samples  # noqa: E402
+
+
+class SampleNotReady(Exception):
+    """A sample whose photo is not the recorded one, or whose solve could not be made."""
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def fetch_photo(night: SampleNight, root: Path) -> None:
+    """The corpus fetch of the one photo, from its own recorded source."""
+    subprocess.run([sys.executable, str(root / "scripts" / "fetch_download.py"), night.photo.download_path], cwd=root, check=True)
+
+
+def solve_photo(photo: Path) -> dict[str, Any]:
+    """The app's own solve of a photo, through the real upload path on a temporary store."""
+    from fastapi.testclient import TestClient
+
+    from services.api import create_app
+    from services.ingest import router as ingest_router
+    from services.ingest import runner as job_runner
+    from services.ingest.store import IngestStore
+
+    with tempfile.TemporaryDirectory() as folder:
+        store = IngestStore(Path(folder) / "store", max_bytes=256 * 1024 * 1024)
+        app = create_app()
+        app.dependency_overrides[ingest_router.get_ingest_store] = lambda: store
+        client = TestClient(app, base_url="http://127.0.0.1:8000")
+        try:
+            stored = client.post("/api/ingest", content=photo.read_bytes(), headers={"content-type": "image/jpeg", "x-albedian-filename": photo.name})
+            if stored.status_code not in (200, 201):
+                raise SampleNotReady("the sample photo was not stored")
+            sha = stored.json()["sourceAsset"]["sha256"]
+            job = client.post(f"/api/ingest/{sha}/solve?wait=false").json()
+            while job["state"] in ("queued", "running"):
+                time.sleep(1.0)
+                job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+            solution = client.get(f"/api/ingest/{sha}/solution")
+            if job["state"] != "succeeded" or solution.status_code != 200:
+                raise SampleNotReady("the sample's solve did not finish")
+            return solution.json()
+        finally:
+            job_runner.runner_for(store).shutdown()
+
+
+def _kept(night: SampleNight, root: Path) -> bool:
+    path, kept = root / night.solution.path, root / night.solution.sha256_path
+    return path.is_file() and kept.is_file() and _sha256(path) == kept.read_text(encoding="utf-8").strip()
+
+
+def make_ready(
+    night: SampleNight,
+    root: Path = ROOT,
+    *,
+    fetch: Callable[[SampleNight, Path], None] = fetch_photo,
+    solve: Callable[[Path], dict[str, Any]] = solve_photo,
+) -> str:
+    """'kept' when the sample's solve is already whole on this machine, 'made' once it has been made now."""
+    if _kept(night, root):
+        return "kept"
+    photo = root / night.photo.download_path
+    if not photo.is_file():
+        fetch(night, root)
+    if not photo.is_file() or photo.stat().st_size != night.photo.bytes or _sha256(photo) != night.photo.sha256:
+        raise SampleNotReady("the sample photo on this machine is not the one its record names")
+    text = (json.dumps(solve(photo)) + "\n").encode("utf-8")
+    path = root / night.solution.path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(path.name + ".part")
+    part.write_bytes(text)
+    os.replace(part, path)
+    (root / night.solution.sha256_path).write_text(hashlib.sha256(text).hexdigest() + "\n", encoding="utf-8")
+    return "made"
+
+
+def main() -> int:
+    for night in load_samples(ROOT / "data" / "samples.json"):
+        print(f"{night.id}: {make_ready(night)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
