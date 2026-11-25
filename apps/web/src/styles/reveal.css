@@ -3075,6 +3075,30 @@
     left: max(20px, env(safe-area-inset-left));
   }
 
+  .predsky.is-phone .predsky-status:not(.is-above-card) {
+    left: max(24px, env(safe-area-inset-left));
+    right: max(24px, env(safe-area-inset-right));
+    max-height: calc(100% - 152px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.82);
+  }
+
+  .predsky.is-phone .predsky-status:not(.is-above-card)::before {
+    content: none;
+  }
+
+  .predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-bottom: 8px;
+    margin-bottom: -8px;
+    background: var(--look-field);
+  }
+
   .predsky.is-phone .reveal-card.is-phone {
     left: auto;
     right: max(12px, env(safe-area-inset-right));

@@ -1,9 +1,15 @@
+// @vitest-environment jsdom
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postcss from 'postcss';
+import { dispatchAlbedianAction } from '@albedian/observation';
 import { describe, expect, it } from 'vitest';
+import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { LANDSCAPE_PHONE_QUERY } from '../../components/phoneSheet.js';
+import { PredictedSkyScreen } from '../PredictedSkyScreen.js';
 
 // phone-sideways-two (UIUX-phone-sideways-READY.md item 5, RULED at the lead's line stamped 06:27; Apple's sheet
 // attached to the bottom edge only in a compact-height window): on a phone held on its side the star card is the phone's
@@ -54,6 +60,55 @@ describe('the foot row on a phone held on its side', () => {
 describe('the predicted sky on a phone held on its side', () => {
   it('stands its top bar 12 px from the top inside the side inset', () => {
     expect(inSideways('.predsky-top')).toEqual({ top: '12px', left: 'max(20px, env(safe-area-inset-left))' });
+  });
+
+  // With no card, the status stands by its foot inside the side safe areas, capped 8 px under the top bar's foot
+  // (12 + 44 + 8 = 64; 64 + 88 = 152): taller than its room, it takes the pointer and scrolls inside itself (item 7)
+  // with the Predicted and Simulated tag row held at its top over field black, so both tags stay whole on every frame
+  it('stands the status under the top bar, scrollable by touch with its tag row held whole at its top', () => {
+    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card)')).toEqual({
+      left: 'max(24px, env(safe-area-inset-left))',
+      right: 'max(24px, env(safe-area-inset-right))',
+      'max-height': 'calc(100% - 152px)',
+      'overflow-x': 'hidden',
+      'overflow-y': 'auto',
+      'overscroll-behavior': 'contain',
+      'pointer-events': 'auto',
+      background: 'rgba(0, 0, 0, 0.82)',
+    });
+    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card)::before')).toEqual({ content: 'none' });
+    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags')).toEqual({
+      position: 'sticky',
+      top: '0',
+      'z-index': '1',
+      'padding-bottom': '8px',
+      'margin-bottom': '-8px',
+      background: 'var(--look-field)',
+    });
+    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card) > .look-tag')).toEqual({});
+
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const base = poseSession(sample('horizon_predicted_only'));
+    const sky = dispatchAlbedianAction(base, {
+      type: 'sky.show',
+      requestId: 'req_sideways_sky',
+      expectedViewRevision: base.viewRevision,
+      mode: 'predicted',
+      observationSolutionId: base.observationSolution!.id,
+    }).session;
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, phone: true })));
+      expect(host.querySelector('.predsky.is-phone .predsky-status:not(.is-above-card) > .look-tag')).toBeNull();
+      const heldTags = host.querySelector('.predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags');
+      expect(heldTags).not.toBeNull();
+      expect([...heldTags!.querySelectorAll('.look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
   });
 
   it('with a card open, stands the sheet at the trailing side and the status whole beside it, by the foot', () => {
