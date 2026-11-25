@@ -119,6 +119,13 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(rows(withFact('mars-odyssey', 'marsOrbit', false))).toEqual(['marsOrbit', null, '']);
     expect(rows(withFact('mars-odyssey', 'marsOrbit', true))).toEqual([null, 'No real travel time: Mars Odyssey has orbited Mars since 2001, relaying data from Mars landers.', 'around Mars']);
     expect([CRAFTS['mars-odyssey']!.name, CRAFT_CHOICES.find((c) => c.id === 'mars-odyssey')!.detail, none('mars-odyssey')]).toEqual(['Mars Odyssey', 'around Mars', 'No real travel time: Mars Odyssey has orbited Mars since 2001, relaying data from Mars landers.']);
+    // The 24 Nov 20:31 ruling (is-1): InSight on Mars as the Viking Lander, Ingenuity and Perseverance, its words waiting
+    // for both facts its sentence rests on, its landing and its mission's end, which ASSETS' entry carries (hangar-49)
+    expect(rows(withFact('insight', 'landedOnMars', false))).toEqual(['landedOnMars', null, '']);
+    expect(rows(withFact('insight', 'missionEnd', false))).toEqual(['missionEnd', null, '']);
+    expect(rows(withFact('insight', 'missionEnd', true))).toEqual([null, 'No real travel time: InSight landed in Elysium Planitia on Mars in 2018; its mission ended in 2022.', 'on Mars']);
+    expect(CRAFTS.insight!.factKeys).toEqual(expect.arrayContaining(['landedOnMars', 'missionEnd']));
+    expect([CRAFTS.insight!.name, CRAFT_CHOICES.find((c) => c.id === 'insight')!.detail, none('insight')]).toEqual(['InSight', 'on Mars', 'No real travel time: InSight landed in Elysium Planitia on Mars in 2018; its mission ended in 2022.']);
     // No craft of the hangar is left with neither a speed nor a sentence, but one the design lane ruled to wait on a fact
     expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c) && !awaitingFact(c)).map((c) => c.id)).toEqual([]);
     expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && !awaitingFact(c) && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);

@@ -117,6 +117,8 @@ function seenFromAbove(forward: Vec3, up: Vec3, deg: number): { readonly forward
  */
 /** The look from the front quarter on the left, level (the hangar's picture camera's view across, build_craft.py). */
 const FRONT_QUARTER: Vec3 = [0.55 / Math.hypot(0.55, 1), 0, -1 / Math.hypot(0.55, 1)];
+/** is-1: how far above InSight's front quarter the rest looks, chosen live beside its picture. */
+export const INSIGHT_ELEVATION_DEG = 0;
 
 /** The level look at a model's front (its -Z side toward the camera), turned `deg` toward its +X about the hangar's up. */
 function frontTurned(deg: number): Vec3 {
@@ -195,6 +197,11 @@ const REST_ATTITUDE: Readonly<Record<string, { readonly forward?: Vec3; readonly
   // upright on its six wheels (+Y up), from the front quarter on the left at 0 deg (as Deep Impact and the Viking Lander:
   // CRAFT_FRAMING yFraction 0.62 already looks ~9 deg down onto the top deck; 15 deg pitched the MMRTG above the UHF antenna)
   perseverance: { forward: FRONT_QUARTER, up: [0, 1, 0] },
+  // is-1 (UIUX-hangarpick-READY.md, ruled 24 Nov 20:31): a lander has no flight front, so standing on its three legs
+  // (+Y up), its two round arrays spread left and right, the instrument side (+Z: the wind and thermal shield, the heat
+  // probe, the stowed arm) toward the camera from the front quarter, INSIGHT_ELEVATION_DEG above, checked live against
+  // insight_picker.webp (.cache/uiux/built/is-1/); framed by its whole width, the arrays, as its picture shows it
+  insight: seenFromAbove(FRONT_QUARTER, [0, 1, 0], INSIGHT_ELEVATION_DEG),
   // cl-1 (the 23 Nov 11:07 ruling), checked live against clementine_picker.webp (.cache/uiux/built/cl-1/zoom.png):
   // upright gold-foil prism with thruster (-Z) up and high-gain dish (+Z) below, solar cell faces (+Y) toward the camera
   // turned 12 deg (0 deg extra elevation) so the two round ports sit front-left and the sensor housing sits right of the cone

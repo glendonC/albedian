@@ -54,6 +54,8 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   tdrs: 'near Earth',
   // The 24 Nov 05:48 ruling (mo-1): as MRO's, Mars Global Surveyor's and MAVEN's
   'mars-odyssey': 'around Mars',
+  // The 24 Nov 20:31 ruling (is-1): as the Viking Lander's, Ingenuity's and Perseverance's
+  insight: 'on Mars',
 };
 
 /**
@@ -67,7 +69,7 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
  * its lunar orbit (NASA's mission page), and the 23 Nov 11:37 ruling holds TDRS's until it names its geosynchronous
  * orbit (NASA's TDRS mission page).
  */
-const NEEDS_FACT: Readonly<Record<CraftId, string>> = {
+const NEEDS_FACT: Readonly<Record<CraftId, string | readonly string[]>> = {
   ibex: 'orbit',
   'deep-impact': 'tempel1Impact',
   'viking-lander': 'landedOnMars',
@@ -78,12 +80,16 @@ const NEEDS_FACT: Readonly<Record<CraftId, string>> = {
   clementine: 'lunarOrbit',
   tdrs: 'orbit',
   'mars-odyssey': 'marsOrbit',
+  // The 24 Nov 20:31 ruling (is-1): InSight's sentence rests on two facts, its landing on Mars and its mission's end
+  insight: ['landedOnMars', 'missionEnd'],
 };
 
 /** The fact this craft's words still wait for in the hangar's record, or none. */
 export function awaitingFact(craft: Craft): string | null {
-  const key = NEEDS_FACT[craft.id];
-  return key && !craft.factKeys.includes(key) ? key : null;
+  const keys = NEEDS_FACT[craft.id];
+  if (!keys) return null;
+  // The first of the facts its words rest on that the record does not carry yet
+  return (typeof keys === 'string' ? [keys] : keys).find((key) => !craft.factKeys.includes(key)) ?? null;
 }
 
 /** D35 item 5 and the 17:24 ruling: each named craft's sentence in place of a trip time, word for word. */
@@ -114,6 +120,7 @@ const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
   clementine: 'No real travel time: Clementine orbited the Moon in 1994 and then entered orbit around the Sun.',
   tdrs: 'No real travel time: TDRS orbits Earth in geosynchronous orbit, relaying data for space missions.',
   'mars-odyssey': 'No real travel time: Mars Odyssey has orbited Mars since 2001, relaying data from Mars landers.',
+  insight: 'No real travel time: InSight landed in Elysium Planitia on Mars in 2018; its mission ended in 2022.',
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */
