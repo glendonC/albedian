@@ -57,7 +57,8 @@ import { skyViewPicture } from '../spatial/sky/predictedSkyPicture.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
-import { canDrawRealSky, isRealSkyShown } from '../reveal/RealSkyLayer.js';
+import { canDrawRealSky, isRealSkyShown, prepareRealSky } from '../reveal/RealSkyLayer.js';
+import { prepareFlight } from '../spatial/flight/prepareFlight.js';
 import { flightReadout, isFlightShown } from '../reveal/flightView.js';
 import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import { ClipPlayer } from '../reveal/ClipPlayer.js';
@@ -497,6 +498,13 @@ export const SpatialObservatoryViewport: React.FC<
       if (restoreNowRef.current === press) restoreNowRef.current = null;
     };
   }, [restoreNowRef]);
+
+  // go-there-predicted-glow-one: on the predicted sky its flight's glow and programs are prepared at rest, as a photo's are
+  useEffect(() => {
+    if (!predictedSkyShown) return;
+    prepareRealSky(false);
+    prepareFlight();
+  }, [predictedSkyShown]);
 
   // go-there-predicted-2: while the predicted sky is on screen a request carries where it looks (the portal's pose)
   useEffect(() => {

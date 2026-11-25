@@ -1,4 +1,5 @@
-import { hasVerifiedWcs, orientedSize, type DisplayOrientation, type ObservationSession, type ObservationSolution } from '@albedian/contracts';
+import { hasVerifiedWcs, orientedSize, type DisplayOrientation, type ObservationSession, type ObservationSolution, type SkyView } from '@albedian/contracts';
+import { wcsOfSkyView } from '../spatial/flight/skyViewWcs.js';
 import { pixelToWorldWCS, raDecToUnitVector, type Vec3 } from '@albedian/camera-rig';
 import { sourcePhotoDisplayRect } from '../components/sourcePhotoRect.js';
 import { applyRows, panoramaUv, sceneToIcrsRows, transposeRows, type PanoramaRegistration } from '../spatial/sky/skyRegistration.js';
@@ -44,7 +45,19 @@ function verifiedSolve(session: ObservationSession, pose = false): ObservationSo
   return pose && solution.status === 'approximate' && solution.poseEstimate !== undefined ? solution : null;
 }
 
-/** The sky at a screen point, through the photo's frame and its verified solve; none without one. */
+/**
+ * go-there-predicted-glow-one (DECIDED-BY-LEAD 25 Nov 04:47): the predicted sky's view kept in the checkpoint a flight
+ * left from; the window is its WCS's pixel grid (skyViewWcs.ts), as the flight's stars are drawn through it.
+ */
+function keptSkyView(session: ObservationSession): SkyView | undefined {
+  const history = session.navigationHistory;
+  return history?.checkpoints[history.cursorIndex]?.spatialView.skyView;
+}
+
+/**
+ * The sky at a screen point, through the photo's frame and its verified solve; with `pose`, a pose estimate's WCS, or
+ * the window itself through a flight's kept sky view (the glow only); none without one.
+ */
 export function skyAtScreen(
   session: ObservationSession,
   xPx: number,
@@ -54,8 +67,12 @@ export function skyAtScreen(
   pose = false
 ): { raDeg: number; decDeg: number } | null {
   const solution = verifiedSolve(session, pose);
+  if (!solution) {
+    const view = pose ? keptSkyView(session) : undefined;
+    return view ? pixelToWorldWCS(xPx, yPx, wcsOfSkyView(view, viewportWidthPx, viewportHeightPx)) : null;
+  }
   const asset = session.sourceAsset;
-  if (!solution || !asset || !(asset.width > 0) || !(asset.height > 0)) return null;
+  if (!asset || !(asset.width > 0) || !(asset.height > 0)) return null;
   const orientation = asset.displayOrientation;
   const shown = orientedSize(asset.width, asset.height, orientation);
   const rect = sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, viewportWidthPx, viewportHeightPx, session.cropTransform);
@@ -100,10 +117,10 @@ export function realSkyGrid(
    * strip the move uncovers.
    */
   area: { x0: number; y0: number; widthPx: number; heightPx: number } = { x0: 0, y0: 0, widthPx: viewportWidthPx, heightPx: viewportHeightPx },
-  /** go-there-predicted-1: a pose estimate's WCS taken too (the flight's glow only). */
+  /** go-there-predicted-1 and -glow-one: a pose estimate's WCS, or a flight's kept sky view, taken too (the glow only). */
   pose = false
 ): RealSkyGrid | null {
-  if (!verifiedSolve(session, pose)) return null;
+  if (!verifiedSolve(session, pose) && !(pose && keptSkyView(session))) return null;
   const cols = Math.ceil(area.widthPx / stepPx) + 1;
   const rows = Math.ceil(area.heightPx / stepPx) + 1;
   const positions = new Float32Array(cols * rows * 2);

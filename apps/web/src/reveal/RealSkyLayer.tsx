@@ -251,12 +251,13 @@ let realSkyWarmed = false;
  * realsky-upload-one: starts the uploads of the photograph and of the flight's starless glow while the reveal is at rest,
  * before Real sky or Go there asks for them.
  */
-export function prepareRealSky(): void {
-  // The registration too where the pictures are kept, so a draw can use both in the frame that asks
-  void keptSkyPicture(REAL_SKY_PANORAMA_URL)
+export function prepareRealSky(photograph = true): void {
+  // The registration too where the pictures are kept, so a draw can use both in the frame that asks. On the predicted
+  // sky (go-there-predicted-glow-one) the glow alone: its flight never draws ESO's photograph
+  void keptSkyPicture(photograph ? REAL_SKY_PANORAMA_URL : FLIGHT_MILKY_WAY_URL)
     .then((picture) => (picture ? panoramaRegistrationOnce() : undefined))
     .catch(() => undefined);
-  prepareSkyPicture(FLIGHT_MILKY_WAY_URL);
+  if (photograph) prepareSkyPicture(FLIGHT_MILKY_WAY_URL);
   // Their programs, and the steering dome's over the same glow, linked once a page at rest too, so no first draw links
   if (realSkyWarmed) return;
   realSkyWarmed = warmPrograms([
