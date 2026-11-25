@@ -516,3 +516,142 @@ def test_the_routes_type_tables_name_the_types_the_contract_serves() -> None:
     # contract's types, the export's own check refuses what the manifest's contract check already refuses, and a type
     # added to the contract alone fails here before a route meets it
     assert set(variants.VARIANT_FILES) == set(variants.EXPORT_EXTENSIONS) == set(VARIANT_MIME_TYPES)
+
+
+# playback-route-one, version two (clip-display-copy; DECIDED-BY-LEAD 22:24 on 24 Nov; AUDIT's verdict on version one):
+# a restored clip's playback copy is recorded beside the variant's record in a file of its own, `playback.json`, never
+# by rewriting `variant.json`; the variant served (its own route and the listing) carries `playbackCopy` composed from
+# it at read time, and only when the composed record passes the contract (a restored clip, its own route, the gate);
+# the copy's file is sent only when its size and hash are the record's. Anything else: no copy, in the route's words.
+# The records here are planted by hand: a restored clip's variant record (fields from the contract's own clip sample,
+# ids of this store) beside the display copy the fixture made.
+NO_PLAYBACK = "that variant has no playback copy"
+PLAYBACK_BYTES = b"\x00\x00\x00\x18ftypisom" + bytes(range(256)) * 8
+CLIP_SAMPLE = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "media_contract.json").read_text())["valid"]["MediaVariant"][2]
+
+
+def clip_record(still: dict) -> dict:
+    """The stored still's variant record made a restored clip's, so the contract takes a playback copy on it."""
+    return {**{k: CLIP_SAMPLE[k] for k in ("mimeType", "width", "height", "durationMs", "frameCount", "frameTimesSha256",
+                                           "audioStreams", "colour")},
+            **{k: still[k] for k in ("id", "sourceSha256", "sourceAssetId", "graphId", "attemptId", "sha256", "uri",
+                                     "byteSize", "createdAtUTC")},
+            "kind": "restoration", "disclosure": CLIP_SAMPLE["disclosure"]}
+
+
+def playback_record(sha: str, vid: str, **changes) -> dict:
+    return {"uri": f"/api/media/{sha}/variants/{vid}/playback", "sha256": hashlib.sha256(PLAYBACK_BYTES).hexdigest(),
+            "byteSize": len(PLAYBACK_BYTES), "mimeType": "video/mp4", "codecs": "avc1.640028", "minPsnrDb": 49.25, **changes}
+
+
+@contextmanager
+def with_playback(folder: Path, vid: str, outside: Path, record: object, *, clip: bool = True, record_kind: str = "bytes",
+                  file_kind: str = "bytes", data: bytes = PLAYBACK_BYTES):
+    variant_dir = folder / "variants" / vid
+    still = json.loads((variant_dir / "variant.json").read_text())
+    shaped = clip_record(still) if clip else still
+    record_bytes = record if isinstance(record, bytes) else json.dumps(record).encode("utf-8")
+    with replaced(variant_dir / "variant.json", "bytes", outside, json.dumps(shaped).encode("utf-8")), \
+            planted(variant_dir / "playback.json", record_kind, outside, record_bytes), \
+            planted(variant_dir / "playback.mp4", file_kind, outside, data):
+        yield shaped
+
+
+def no_copy(client: TestClient, sha: str, vid: str) -> bool:
+    """No copy anywhere: the route answers its sentence, and the variant served carries none."""
+    answer = client.get(f"/api/media/{sha}/variants/{vid}/playback")
+    record = client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"]
+    listed_copy = [v for v in client.get(f"/api/media/{sha}/variants").json()["variants"] if v["id"] == vid]
+    return ((answer.status_code, answer.json()) == (404, {"detail": NO_PLAYBACK}) and "playbackCopy" not in record
+            and all("playbackCopy" not in v for v in listed_copy))
+
+
+def test_the_variant_served_carries_the_copy_recorded_beside_it_and_the_route_sends_it(stored) -> None:
+    client, sha, folder, job, outside = stored
+    vid = job["variantId"]
+    route = f"/api/media/{sha}/variants/{vid}/playback"
+    assert no_copy(client, sha, vid)
+    copy = playback_record(sha, vid)
+    with with_playback(folder, vid, outside, copy) as shaped:
+        # Composed at read time; the stored record is not rewritten
+        assert client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"] == {**shaped, "playbackCopy": copy}
+        assert json.loads((folder / "variants" / vid / "variant.json").read_text()) == shaped
+        assert [v["playbackCopy"] for v in client.get(f"/api/media/{sha}/variants").json()["variants"] if v["id"] == vid] == [copy]
+        whole = client.get(route)
+        assert whole.status_code == 200 and whole.content == PLAYBACK_BYTES
+        assert whole.headers["content-type"] == "video/mp4"
+        assert whole.headers["cache-control"] == "private, max-age=31536000, immutable"
+        assert (whole.headers["x-content-type-options"], whole.headers["content-disposition"]) == ("nosniff", "inline")
+        part = client.get(route, headers={"Range": "bytes=10-29"})
+        assert part.status_code == 206 and part.content == PLAYBACK_BYTES[10:30]
+    assert no_copy(client, sha, vid)
+
+
+@pytest.mark.parametrize("case", ["below the gate", "on a still's display copy", "a hash not the file's", "a size not the file's"])
+def test_a_copy_the_contract_or_its_file_refuses_is_no_copy(stored, case) -> None:
+    """AUDIT's three planted records, and a size that is not the file's."""
+    client, sha, folder, job, outside = stored
+    vid = job["variantId"]
+    copy = {"below the gate": playback_record(sha, vid, minPsnrDb=20.0),
+            "on a still's display copy": playback_record(sha, vid),
+            "a hash not the file's": playback_record(sha, vid, sha256="0" * 64),
+            "a size not the file's": playback_record(sha, vid, byteSize=len(PLAYBACK_BYTES) + 1)}[case]
+    with with_playback(folder, vid, outside, copy, clip=case != "on a still's display copy"):
+        if case.startswith("a ") and case.endswith("file's"):
+            # The record itself passes the contract and is served; its file is not the one it names
+            answer = client.get(f"/api/media/{sha}/variants/{vid}/playback")
+            assert (answer.status_code, answer.json()) == (404, {"detail": NO_PLAYBACK})
+        else:
+            assert no_copy(client, sha, vid)
+
+
+@pytest.mark.parametrize("record", [b'{"uri": ', b"[]", b"null", b"", "other-route", "unknown key"],
+                         ids=["cut", "list", "null", "empty", "uri", "key"])
+def test_a_copy_record_that_is_no_copy_of_this_variant_is_no_copy(stored, record) -> None:
+    client, sha, folder, job, outside = stored
+    vid = job["variantId"]
+    if record == "other-route":
+        record = playback_record(sha, vid, uri=f"/api/media/{sha}/variants/{vid}/file")
+    elif record == "unknown key":
+        record = {**playback_record(sha, vid), "gopFrames": 15}
+    with with_playback(folder, vid, outside, record):
+        assert no_copy(client, sha, vid)
+
+
+@pytest.mark.parametrize("which", ["record", "file"])
+@pytest.mark.parametrize("kind", ["link", "fifo", "folder"])
+def test_the_copy_and_its_record_are_never_read_through_a_link_or_waited_on(stored, which, kind) -> None:
+    client, sha, folder, job, outside = stored
+    vid = job["variantId"]
+    path = folder / "variants" / vid / ("playback.json" if which == "record" else "playback.mp4")
+    record_kind, file_kind = (kind, "bytes") if which == "record" else ("bytes", kind)
+    with with_playback(folder, vid, outside, playback_record(sha, vid), record_kind=record_kind, file_kind=file_kind), \
+            held_bound(path, kind):
+        answer = client.get(f"/api/media/{sha}/variants/{vid}/playback")
+        assert (answer.status_code, answer.json()) == (404, {"detail": NO_PLAYBACK})
+
+
+def test_the_copys_hash_is_taken_once_for_a_file_and_again_when_the_file_changes(stored, monkeypatch) -> None:
+    from services.media import router as media_router
+    client, sha, folder, job, outside = stored
+    vid = job["variantId"]
+    taken = []
+    real = media_router._file_digest
+    monkeypatch.setattr(media_router, "_file_digest", lambda handle: taken.append(1) or real(handle))
+    with with_playback(folder, vid, outside, playback_record(sha, vid)):
+        for _ in range(3):
+            assert client.get(f"/api/media/{sha}/variants/{vid}/playback", headers={"Range": "bytes=0-99"}).status_code == 206
+        assert len(taken) == 1
+    # Another file at the same name, the same size, other bytes: taken again, and refused
+    other = bytes(len(PLAYBACK_BYTES))
+    with with_playback(folder, vid, outside, playback_record(sha, vid), data=other):
+        answer = client.get(f"/api/media/{sha}/variants/{vid}/playback")
+        assert (answer.status_code, answer.json()) == (404, {"detail": NO_PLAYBACK})
+    assert len(taken) == 2
+
+
+def test_the_playback_route_answers_404_for_no_upload_no_variant_or_a_bad_id(stored) -> None:
+    client, sha, folder, job, outside = stored
+    assert client.get(f"/api/media/{'a' * 64}/variants/{job['variantId']}/playback").status_code == 404
+    assert client.get(f"/api/media/{sha}/variants/var_{'0' * 16}/playback").status_code == 404
+    assert client.get(f"/api/media/{sha}/variants/not-an-id/playback").status_code == 422

@@ -227,7 +227,9 @@ def list_variants(
         folder = _entered(store, sha256, "variants", vid)
         if folder is not None:
             named.append((vid, folder / "variant.json"))
-    stored = _listed(named, "createdAtUTC")
+    folders = {vid: path.parent for vid, path in named}
+    # Each served with its playback copy composed from the record beside it, when the contract takes it
+    stored = [_served_variant(folders[record["id"]], record) for record in _listed(named, "createdAtUTC")]
     folder = _entered(store, sha256, "attempts")
     attempts = [] if folder is None else _listed(
         ((path.stem, path) for path in sorted(folder.glob("att_*.json"))), "finishedAtUTC")
@@ -241,8 +243,8 @@ def get_variant(
     store: IngestStore = Depends(get_ingest_store),
 ) -> dict[str, Any]:
     """A stored variant's three records: the variant, the graph that made it and the attempt that passed its gate."""
-    _, (variant, graph, attempt) = _variant_records(JobStore(store), store, sha256, variant_id, VARIANT_RECORDS)
-    return {"variant": variant, "graph": graph, "attempt": attempt}
+    folder, (variant, graph, attempt) = _variant_records(JobStore(store), store, sha256, variant_id, VARIANT_RECORDS)
+    return {"variant": _served_variant(folder, variant), "graph": graph, "attempt": attempt}
 
 
 @router.get("/api/media/{sha256}/variants/{variant_id}/file", response_class=FileResponse)
@@ -267,6 +269,88 @@ def get_variant_file(
         path,
         os.fdopen(fd, "rb"),
         media_type=mime,
+        headers={
+            "Cache-Control": "private, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": "inline",
+        },
+    )
+
+
+# A restored clip's playback copy (clip-display-copy, DECIDED-BY-LEAD 21:57, 22:05 and 22:24 on 24 Nov): H.264 High,
+# which every browser the app meets draws, stored beside the lossless file as `playback.mp4`, its record beside the
+# variant's as `playback.json` (a stored record is never rewritten). The variant served carries `playbackCopy` composed
+# from that record at read time, and only when the composed record passes the contract; the export and its manifest
+# never name the copy, and the lossless file stays the variant's own file, its download and its evidence.
+PLAYBACK_FILE = "playback.mp4"
+PLAYBACK_RECORD = "playback.json"
+NO_PLAYBACK = "that variant has no playback copy"
+# The copy's hash, taken once per file: by its device, inode, size and modification time, so another file at the
+# name, or the same file changed, is hashed again. The files are written once, 0400, and never rewritten.
+_PLAYBACK_HASHED: dict[tuple[int, int, int, int], str] = {}
+_PLAYBACK_HASHED_MAX = 256
+
+
+def _playback_copy(folder: Path, variant: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """The variant's playback copy record as served, or None: none recorded, a record not read without a link or a
+    FIFO, no JSON object, or one the contract refuses on this variant (a restored clip only, its own route, past its
+    gate)."""
+    try:
+        copy = _record(folder / PLAYBACK_RECORD)
+        media_contract.MediaVariant.model_validate({**variant, "playbackCopy": copy})
+    except (FileNotFoundError, _Unreadable, ValidationError):
+        return None
+    return copy
+
+
+def _served_variant(folder: Path, variant: dict[str, Any]) -> dict[str, Any]:
+    copy = _playback_copy(folder, variant)
+    return variant if copy is None else {**variant, "playbackCopy": copy}
+
+
+def _file_digest(handle: BinaryIO) -> str:
+    """The SHA-256 of an open file, read from its start; the handle is left at its start."""
+    digest = hashlib.sha256()
+    handle.seek(0)
+    for block in iter(lambda: handle.read(READ_BLOCK), b""):
+        digest.update(block)
+    handle.seek(0)
+    return digest.hexdigest()
+
+
+@router.get("/api/media/{sha256}/variants/{variant_id}/playback", response_class=FileResponse)
+def get_variant_playback(
+    sha256: str = PathParameter(pattern=SHA256_PATTERN),
+    variant_id: str = PathParameter(pattern=VARIANT_PATTERN),
+    store: IngestStore = Depends(get_ingest_store),
+) -> FileResponse:
+    """A restored clip's playback copy, H.264 High, served as the variant's own file is: cached privately, never
+    sniffed, shown inline. 404 when the variant has none; the variant's file stays the lossless restoration."""
+    folder, (variant,) = _variant_records(JobStore(store), store, sha256, variant_id, ("variant.json",))
+    copy = _playback_copy(folder, variant)
+    if copy is None:
+        raise HTTPException(status_code=404, detail=NO_PLAYBACK)
+    path = folder / PLAYBACK_FILE
+    try:
+        fd = _open_unlinked(path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_PLAYBACK) from None
+    handle = os.fdopen(fd, "rb")
+    # The file is the one its record names: its size every time, its hash once per file (_PLAYBACK_HASHED)
+    facts = os.fstat(handle.fileno())
+    key = (facts.st_dev, facts.st_ino, facts.st_size, facts.st_mtime_ns)
+    hashed = _PLAYBACK_HASHED.get(key)
+    if facts.st_size != copy["byteSize"] or (hashed if hashed is not None else _file_digest(handle)) != copy["sha256"]:
+        handle.close()
+        raise HTTPException(status_code=404, detail=NO_PLAYBACK)
+    if key not in _PLAYBACK_HASHED:
+        if len(_PLAYBACK_HASHED) >= _PLAYBACK_HASHED_MAX:
+            _PLAYBACK_HASHED.pop(next(iter(_PLAYBACK_HASHED)))
+        _PLAYBACK_HASHED[key] = copy["sha256"]
+    return _OpenedFileResponse(
+        path,
+        handle,
+        media_type="video/mp4",
         headers={
             "Cache-Control": "private, max-age=31536000, immutable",
             "X-Content-Type-Options": "nosniff",

@@ -445,6 +445,50 @@
           }
         }
       },
+      "/api/media/{sha256}/variants/{variant_id}/playback": {
+        "get": {
+          "summary": "Get Variant Playback",
+          "description": "A restored clip's playback copy, H.264 High, served as the variant's own file is: cached privately, never\nsniffed, shown inline. 404 when the variant has none; the variant's file stays the lossless restoration.",
+          "operationId": "get_variant_playback_api_media__sha256__variants__variant_id__playback_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            },
+            {
+              "name": "variant_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^var_[0-9a-f]{16}$",
+                "title": "Variant Id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response"
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/media/{sha256}/variants/{variant_id}/export": {
         "get": {
           "summary": "Get Variant Export",
@@ -1661,6 +1705,15 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/media/{sha256}/variants/{variant_id}/playback",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_variant_playback",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
       "path": "/api/media/{sha256}/variants/{variant_id}/export",
       "methods": [
         "GET"
@@ -1857,6 +1910,7 @@
           "/api/media/{sha256}/variants": 0,
           "/api/media/{sha256}/variants/{variant_id}": 0,
           "/api/media/{sha256}/variants/{variant_id}/file": 0,
+          "/api/media/{sha256}/variants/{variant_id}/playback": 0,
           "/api/media/{sha256}/variants/{variant_id}/export": 0,
           "/api/media/{sha256}/variants/{variant_id}/manifest": 0,
           "/api/voice/command": 65536,
