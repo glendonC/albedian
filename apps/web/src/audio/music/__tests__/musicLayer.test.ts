@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { INSTRUMENTS, RECORDING, ambientBeats, barPitchSet, organAndPulse, type InstrumentDef, type RecordingAnalysis } from '../directions';
-import { MusicLayer, neededZones } from '../MusicLayer';
+import { MusicLayer, neededZones, recordingExcerpt } from '../MusicLayer';
 import { selectionNote, type MusicSelection } from '../selectionTone';
 import { MomentStore } from '../soundtrackMoment';
 import { SampleBank, chooseZone, playbackRate } from '../sampler';
@@ -43,7 +43,9 @@ class FakeNode {
   }
   connect(destination: unknown) { this.outputs.push(destination); return destination; }
   disconnect() { this.disconnected = true; }
-  start(time = 0) { this.starts.push(time); }
+  /** Each start's offset into its buffer, beside `starts`. */
+  readonly offsets: number[] = [];
+  start(time = 0, offset = 0) { this.starts.push(time); this.offsets.push(offset); }
   stop() {}
   setPeriodicWave() {}
 }
@@ -88,9 +90,12 @@ class FakeContext {
   createWaveShaper() { return this.make('shaper'); }
   createPeriodicWave() { return {}; }
   createBuffer(channels: number, length: number, sampleRate: number) { return fakeBuffer(length / sampleRate, sampleRate); }
+  /** How long a decoded file lasts, at a low rate so a whole recording stays small in the test. */
+  decodeSeconds = 8;
+  decodeRate = 48_000;
   async decodeAudioData(bytes: ArrayBuffer) {
     this.decoded.push(bytes.byteLength);
-    return fakeBuffer(8);
+    return fakeBuffer(this.decodeSeconds, this.decodeRate);
   }
   sources() { return this.nodes.filter((n) => n.kind === 'bufferSource' || n.kind === 'oscillator'); }
 }
@@ -307,12 +312,20 @@ describe('MusicLayer', () => {
     const layer = new MusicLayer({ setting: 'recording', sourcesBase: BASE, fetch });
     layer.setStars(STARS);
     const ctx = new FakeContext();
+    // The whole recording, as long as Signal to Noise (354.35 s), at a low rate
+    ctx.decodeSeconds = 354.35;
+    ctx.decodeRate = 1_000;
     await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
     expect(requests).toContain(`${BASE}recording-analysis.json`);
     expect(requests).toContain(BASE + RECORDING.file.split('/').map(encodeURIComponent).join('/'));
     // The recording starts at the measured downbeat, on the clock plus the lead
     const recording = ctx.nodes.find((n) => n.kind === 'bufferSource' && n.starts.length > 0)!;
     expect(recording.starts[0]).toBeGreaterThanOrEqual(10);
+    // music-crossing-3 (DECIDED-BY-LEAD 20:31 on 24 Nov): only the excerpt the piece plays is kept, from the downbeat
+    // for the excerpt's length and a 0.05 s tail, played from its own start, not the whole recording from 203 s
+    const excerptSec = RECORDING.bars * 4 * 0.8 + 1 + 0.05;
+    expect((recording.buffer as { duration: number }).duration).toBeCloseTo(Math.ceil(excerptSec * 1_000) / 1_000, 9);
+    expect(recording.offsets[0]).toBeCloseTo(0, 9);
     expect(layer.getStatus()).toMatchObject({ setting: 'recording', piece: 'recording', state: 'playing' });
   });
 
@@ -479,6 +492,36 @@ describe('MusicLayer playing the soundtrack', () => {
     expect(layer.getStatus()).toMatchObject({ moment: 'travel', piece: 'recording', state: 'playing', passes: 2 });
     const starts = ctx.sources().slice(sourcesBefore).flatMap((node) => node.starts);
     expect(Math.min(...starts)).toBeCloseTo(14.625, 9);
+  });
+
+  it('copies a recording excerpt sample for sample into a buffer of its own, the whole one left behind', () => {
+    const ctx = new FakeContext();
+    const whole = fakeBuffer(10, 1_000);
+    for (let c = 0; c < 2; c++) whole.getChannelData(c).forEach((_, i, data) => (data[i] = c * 10_000 + i));
+    const part = recordingExcerpt(ctx as unknown as BaseAudioContext, whole as unknown as AudioBuffer, 2.5, 1.25);
+    expect([part.length, part.sampleRate, part.numberOfChannels]).toEqual([1_250, 1_000, 2]);
+    for (let c = 0; c < 2; c++) expect(Array.from(part.getChannelData(c))).toEqual(Array.from(whole.getChannelData(c).slice(2_500, 3_750)));
+    // A window past the end keeps what there is
+    expect(recordingExcerpt(ctx as unknown as BaseAudioContext, whole as unknown as AudioBuffer, 9.5, 3).length).toBe(500);
+  });
+
+  it('decodes the recording once and keeps its excerpt for every later pass', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch({ analysis: ANALYSIS });
+    const layer = new MusicLayer({ setting: 'recording', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    ctx.decodeSeconds = 354.35;
+    ctx.decodeRate = 1_000;
+    await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    const first = ctx.nodes.find((n) => n.kind === 'bufferSource' && n.starts.length > 0)!.buffer;
+    const decodedBefore = ctx.decoded.length;
+    // The pin plays the recording again after its gap: from the same excerpt, decoded no more
+    await clockTo(ctx, 10.25 + RECORDING.bars * 4 * 0.8 + 2.5 + 61);
+    const sources = ctx.nodes.filter((n) => n.kind === 'bufferSource' && n.starts.length > 0 && (n.buffer as { duration: number }).duration < 100);
+    expect(sources.length).toBeGreaterThanOrEqual(2);
+    expect(sources.every((n) => n.buffer === first)).toBe(true);
+    expect(ctx.decoded.length).toBe(decodedBefore);
   });
 
   it('drops a pass still loading when the moment moves on, so only the new piece plays', async () => {

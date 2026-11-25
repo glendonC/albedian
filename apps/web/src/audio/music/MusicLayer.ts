@@ -66,6 +66,29 @@ export async function loadChapelImpulse(ctx: BaseAudioContext, fetchImpl: typeof
   return buffer;
 }
 
+/** A recording plays this much past its excerpt, so its last fade ends inside the buffer. */
+const RECORDING_TAIL_SEC = 0.05;
+
+/**
+ * The part of a decoded recording a piece plays, `fromSec` for `durationSec`, copied into a buffer of its own
+ * (music-crossing-3, DECIDED-BY-LEAD 20:31 on 24 Nov): the whole recording, 136 MB decoded for Signal to Noise, need
+ * not be kept for the 51 s the piece plays. A window past the end keeps what there is.
+ */
+export function recordingExcerpt(ctx: BaseAudioContext, whole: AudioBuffer, fromSec: number, durationSec: number): AudioBuffer {
+  const rate = whole.sampleRate;
+  const start = Math.max(0, Math.min(whole.length, Math.floor(fromSec * rate)));
+  const frames = Math.max(1, Math.min(whole.length - start, Math.ceil(durationSec * rate)));
+  const part = ctx.createBuffer(whole.numberOfChannels, frames, rate);
+  for (let c = 0; c < whole.numberOfChannels; c++) part.copyToChannel(whole.getChannelData(c).subarray(start, start + frames), c);
+  return part;
+}
+
+/** A recording's excerpt, and where in the recording it starts. */
+interface RecordingExcerpt {
+  readonly buffer: AudioBuffer;
+  readonly startsAtSec: number;
+}
+
 /** Fetches and decodes a recording from the sources folder. */
 export async function loadRecording(ctx: BaseAudioContext, sourcesBase: string, file: string, fetchImpl: typeof fetch = fetch): Promise<AudioBuffer> {
   const response = await fetchImpl(fileUrl(sourcesBase, file));
@@ -86,7 +109,9 @@ export function scheduleArrangement(
   bank: SampleBank,
   t0: number,
   room: AudioBuffer,
-  recording: AudioBuffer | null
+  recording: AudioBuffer | null,
+  /** Where in the recording `recording` starts: 0 for the whole recording, its excerpt's start otherwise. */
+  recordingStartsAtSec = 0
 ): ReadonlyMap<BusId, AudioNode> {
   const master = ctx.createGain();
   const glue = ctx.createDynamicsCompressor();
@@ -155,7 +180,7 @@ export function scheduleArrangement(
     fade.gain.linearRampToValueAtTime(0, t0 + rec.durationSec);
     source.connect(fade);
     fade.connect(busOf('recording'));
-    source.start(t0, rec.fromSec, rec.durationSec + 0.05);
+    source.start(t0, Math.max(0, rec.fromSec - recordingStartsAtSec), rec.durationSec + RECORDING_TAIL_SEC);
   }
 
   for (const e of arrangement.events) {
@@ -264,7 +289,8 @@ export class MusicLayer {
   private bank: SampleBank | null = null;
   private readonly rooms = new Map<Arrangement['room'], Promise<AudioBuffer>>();
   private analysis: Promise<RecordingAnalysis> | null = null;
-  private readonly recordings = new Map<string, Promise<AudioBuffer>>();
+  /** Each recording's excerpt, by file and window; the whole decoded recording is not kept (music-crossing-3). */
+  private readonly recordings = new Map<string, Promise<RecordingExcerpt>>();
   /** The layer's output into the engine's music input, while Audio is on. */
   private output: GainNode | null = null;
   /** The pass last scheduled, with its own gain under `output`. */
@@ -567,7 +593,7 @@ export class MusicLayer {
       const arrangement = await piece.arrange(this.stars, this.sources(base));
       await this.loadZones(neededZones(arrangement));
       await this.roomFor(ctx, arrangement.room);
-      if (arrangement.recording) await this.recordingFor(ctx, base, arrangement.recording.file);
+      if (arrangement.recording) await this.recordingFor(ctx, base, arrangement.recording);
     } catch {
       // Said by the pass's own fetch when the piece plays
     }
@@ -597,14 +623,14 @@ export class MusicLayer {
       const arrangement = await piece.arrange(this.stars, sources);
       await this.loadZones(neededZones(arrangement));
       const room = await this.roomFor(ctx, arrangement.room);
-      const recording = arrangement.recording ? await this.recordingFor(ctx, base, arrangement.recording.file) : null;
+      const recording = arrangement.recording ? await this.recordingFor(ctx, base, arrangement.recording) : null;
       // Nothing is scheduled on a context that is not running: it waits until it runs
       await this.untilRunning(ctx);
       if (token !== this.passToken || run !== this.run) return;
       const t0 = Math.max(atSec, ctx.currentTime + this.lead);
       const gain = ctx.createGain();
       gain.connect(output);
-      const buses = scheduleArrangement(ctx, gain, arrangement, this.bank!, t0, room, recording);
+      const buses = scheduleArrangement(ctx, gain, arrangement, this.bank!, t0, room, recording?.buffer ?? null, recording?.startsAtSec ?? 0);
       // The pass before ended on its own before the gap: let it go
       this.pass?.gain.disconnect();
       this.pass = { gain, piece: piece.id, arrangement, t0, dataBus: buses.get('data') ?? null };
@@ -735,14 +761,19 @@ export class MusicLayer {
     }
   }
 
-  private recordingFor(ctx: BaseAudioContext, base: string, file: string): Promise<AudioBuffer> {
-    let buffer = this.recordings.get(file);
-    if (!buffer) {
-      buffer = loadRecording(ctx, base, file, this.fetchImpl);
-      buffer.catch(() => this.recordings.delete(file));
-      this.recordings.set(file, buffer);
+  /** The excerpt `rec` plays, decoded once; the whole recording is let go as soon as the excerpt is copied. */
+  private recordingFor(ctx: BaseAudioContext, base: string, rec: NonNullable<Arrangement['recording']>): Promise<RecordingExcerpt> {
+    const key = `${rec.file}@${rec.fromSec}+${rec.durationSec}`;
+    let excerpt = this.recordings.get(key);
+    if (!excerpt) {
+      excerpt = loadRecording(ctx, base, rec.file, this.fetchImpl).then((whole) => ({
+        buffer: recordingExcerpt(ctx, whole, rec.fromSec, rec.durationSec + RECORDING_TAIL_SEC),
+        startsAtSec: Math.max(0, Math.min(whole.length, Math.floor(rec.fromSec * whole.sampleRate))) / whole.sampleRate,
+      }));
+      excerpt.catch(() => this.recordings.delete(key));
+      this.recordings.set(key, excerpt);
     }
-    return buffer;
+    return excerpt;
   }
 
   private roomFor(ctx: BaseAudioContext, room: Arrangement['room']): Promise<AudioBuffer> {
