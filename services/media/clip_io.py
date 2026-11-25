@@ -1052,7 +1052,7 @@ def read_display_orientation(path: Path, *, written_here: bool) -> Optional[dict
 
 
 def with_display_orientation(encoded: Path, out: Path, orientation: Optional[Mapping[str, Any]], *, container: str,
-                             _checked: bool = False) -> Path:
+                             _checked: bool = False, faststart: bool = False) -> Path:
     """The clip carrying `orientation`: `encoded` itself when there is none to carry, else `out`, a stream copy of
     every packet of `encoded` with the display matrix set on its input (an option given for the piped input of the
     encode does not reach the output [tested, design M14]). The orientation is read back through ingest's own reader;
@@ -1076,7 +1076,9 @@ def with_display_orientation(encoded: Path, out: Path, orientation: Optional[Map
                *display_arguments(orientation), "-i", _file_url(encoded), "-map", "0", "-c", "copy", "-map_metadata", "-1",
                "-video_track_timescale", str(video_bases[0].denominator), "-movie_timescale", str(movie_timescale([b for _, b in bases]))]
     try:
-        run = _run_quietly([*command, "-f", container, _file_url(out)], timeout=FFPROBE_TIMEOUT_SEC)
+        # The playback copy wants its index first (faststart); the lossless file is written as it always was
+        run = _run_quietly([*command, *(["-movflags", "+faststart"] if faststart else []), "-f", container, _file_url(out)],
+                           timeout=FFPROBE_TIMEOUT_SEC)
         # A status other than 0 is not read as the capability: the check (display_orientation_supported) found the
         # options in this ffmpeg and a matrix that reads back, so the pass failed for a cause not known here (a full
         # disk, a folder it cannot write), which is internal. A bound, a signal or a tool not started fail with their
@@ -1091,6 +1093,149 @@ def with_display_orientation(encoded: Path, out: Path, orientation: Optional[Map
         claim.release()
         raise
     return out
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# The playback copy of a restored clip (clip-display-copy, DECIDED-BY-LEAD 21:57 and 22:05 on 24 Nov)
+# ---------------------------------------------------------------------------------------------------------------
+
+# H.264 High at CRF 18, a keyframe every half second, the index first: an encoding every browser the app meets draws
+# [tested 24 Nov: Chrome on the Mac; MOBILE: Safari draws High and not the lossless High 4:4:4 Predictive]. veryfast
+# took 2.6 s for the public clip's 328 frames on two threads with its lowest frame at 48.7 dB (medium 7.6 s, 49.3 dB)
+# [tested, .lanetools/clipwait/presets.txt in the EXPORT worktree, load 72]
+PLAYBACK_PRESET = "veryfast"
+# Tried in turn until one passes the gate: a restored night sky passes at 18 (the public clip's lowest frame 48.7 dB),
+# grain that the restore keeps needs less loss (a synthetic noisy sky: 37.2 dB at 18, 43.3 at 12, 48.8 at 6, its copy
+# then 73 % of the lossless size) [tested 24 Nov, .lanetools/clipwait/crf_ladder.py in the EXPORT worktree]
+PLAYBACK_CRFS = (18, 12, 6)
+# A frame ffmpeg finds identical has an infinite PSNR; the record keeps a finite number [proposed: 100 dB]
+PLAYBACK_IDENTICAL_DB = 100.0
+
+
+@dataclass(frozen=True)
+class PlaybackCopy:
+    """A made playback copy that passed its gate: its file, its codec string as RFC 6381 writes it, and its lowest
+    frame's PSNR against the lossless file."""
+
+    path: Path
+    codecs: str
+    min_psnr_db: float
+
+
+def playback_copy_supported(video: VideoFormat) -> bool:
+    """Whether a copy is made: for a clip the restore stores as 8-bit H.264 (libx264). A 10-bit clip, stored as HEVC,
+    gets none yet [open: which High-family copy every browser draws for it]."""
+    return _encoder_for(video) == EIGHT_BIT_ENCODER
+
+
+def keyframe_interval(probe: ClipProbe) -> int:
+    """Frames in half a second at the clip's commonest frame gap, at least one."""
+    gaps = Counter(b - a for a, b in zip(probe.frame_times, probe.frame_times[1:]))
+    if not gaps:
+        return 1
+    gap_sec = gaps.most_common(1)[0][0] * probe.time_base
+    return max(1, round(Fraction(1, 2) / gap_sec))
+
+
+# The stored formats the gate measures in as they are: 8-bit planar Y'CbCr, which ffmpeg's psnr filter takes without a
+# conversion, so the copy alone is brought to the stored file's format and the lossless frames are never cut down
+# (AUDIT's verdict on playback-job-one version two: lavfi had cut a 4:4:4 file's chroma to the copy's 4:2:0 before
+# comparing, 48 dB recorded where the stored format's own measure is 17). Any other stored format gets no copy.
+PLAYBACK_GATE_FORMATS = ("yuv420p", "yuvj420p", "yuv422p", "yuvj422p", "yuv444p", "yuvj444p")
+
+
+def stored_pixel_format(stored: Path) -> Optional[str]:
+    """The stored clip's own pixel format, as ffprobe reads it from the file."""
+    stream = (_ffprobe(["-select_streams", "v:0", "-show_entries", "stream=pix_fmt"], stored, written_here=True)
+              .get("streams") or [{}])[0]
+    found = stream.get("pix_fmt")
+    return found if isinstance(found, str) else None
+
+
+def _psnr_frames(copy: Path, stored: Path, pixel_format: str, timeout_sec: float) -> list[float]:
+    """Each frame's PSNR (all planes) of `copy` against `stored`, in order, from ffmpeg's psnr filter, measured in the
+    stored file's own `pixel_format` (one of PLAYBACK_GATE_FORMATS): the copy is scaled to it (bicubic, its range
+    kept) and the stored frames go in as they are; neither is turned by its display matrix."""
+    if pixel_format not in PLAYBACK_GATE_FORMATS:
+        raise ClipError("internal")
+    graph = f"[0:v]scale=flags=bicubic,format={pixel_format}[copy];[copy][1:v]psnr=stats_file=-"
+    command = ["ffmpeg", "-hide_banner", "-nostdin", "-nostats", "-loglevel", "error", "-noautorotate", "-i", _file_url(copy),
+               "-noautorotate", "-i", _file_url(stored), "-lavfi", graph, "-f", "null", "-"]
+    run = _run_quietly(command, timeout=timeout_sec)
+    if tool_answer(run.end) != 0:
+        raise ClipError("internal")
+    values = []
+    for line in run.stdout.decode("ascii", "replace").splitlines():
+        found = [part for part in line.split() if part.startswith("psnr_avg:")]
+        if found:
+            value = found[0].split(":", 1)[1]
+            values.append(float("inf") if value == "inf" else float(value))
+    return values
+
+
+def _encode_playback(stored: Path, encoded: Path, out: Path, probe: ClipProbe, orientation: Optional[Mapping[str, Any]],
+                     crf: int, threads: int, timeout_sec: float) -> None:
+    """One encode of the copy at `crf`, through `encoded` into `out`, both of which it creates and, on a failure,
+    removes."""
+    bases = _stream_time_bases(stored, written_here=True)
+    video_bases = [base for kind, base in bases if kind == "video"]
+    if len(video_bases) != 1:
+        raise ClipError("internal")
+    claim = _Claim(encoded)
+    try:
+        command = ["ffmpeg", "-y", "-hide_banner", "-nostdin", "-nostats", "-loglevel", "error", "-noautorotate", "-copyts",
+                   "-i", _file_url(stored), "-map", "0:v:0", "-map", "0:a?", "-c:v", EIGHT_BIT_ENCODER, "-preset",
+                   PLAYBACK_PRESET, "-crf", str(crf), "-profile:v", "high", "-pix_fmt", "yuv420p", "-g",
+                   str(keyframe_interval(probe)), "-fps_mode", "passthrough", "-threads", str(max(1, threads)), "-c:a",
+                   "copy", "-map_metadata", "-1", "-video_track_timescale", str(video_bases[0].denominator),
+                   "-movie_timescale", str(movie_timescale([b for _, b in bases])), "-movflags", "+faststart", "-f", "mp4",
+                   _file_url(encoded)]
+        if tool_answer(_run_quietly(command, timeout=timeout_sec).end) != 0:
+            raise ClipError("internal")
+        if _form(orientation) is None:
+            os.rename(encoded, out)
+        else:
+            with_display_orientation(encoded, out, orientation, container="mp4", faststart=True)
+            _remove(encoded)
+    except BaseException:
+        claim.release()
+        _remove(out)
+        raise
+
+
+def make_playback_copy(stored: Path, encoded: Path, out: Path, probe: ClipProbe, orientation: Optional[Mapping[str, Any]],
+                       *, threads: int, min_psnr_db: float, timeout_sec: float = FFPROBE_TIMEOUT_SEC) -> Optional[PlaybackCopy]:
+    """The playback copy of the restored clip at `stored` (8-bit H.264, as `playback_copy_supported` says), written to
+    `out` through `encoded`: its pixels as stored (no display matrix applied), the same display orientation, its frame
+    times and audio as stored, no metadata, the index first. Its gate: every frame's PSNR against `stored` at least
+    `min_psnr_db`, measured in the stored file's own pixel format, tried at each of PLAYBACK_CRFS in turn; when none
+    passes, or the stored format is not one the gate measures in as it is, nothing is kept and None is returned.
+    Neither `encoded` nor `out` may exist."""
+    for path in (stored, encoded, out):
+        _file_url(path)
+    pixel_format = stored_pixel_format(stored)
+    if pixel_format not in PLAYBACK_GATE_FORMATS:
+        return None
+    for crf in PLAYBACK_CRFS:
+        _encode_playback(stored, encoded, out, probe, orientation, crf, threads, timeout_sec)
+        try:
+            values = _psnr_frames(out, stored, pixel_format, timeout_sec)
+            if len(values) != probe.frame_count:
+                raise ClipError("internal")
+            finite = [v for v in values if v != float("inf")]
+            lowest = min(finite) if finite else PLAYBACK_IDENTICAL_DB
+            if lowest < min_psnr_db:
+                _remove(out)
+                continue
+            stream = (_ffprobe(["-select_streams", "v:0", "-show_entries", "stream=profile,level"], out, written_here=True)
+                      .get("streams") or [{}])[0]
+            if stream.get("profile") != "High" or not isinstance(stream.get("level"), int) or not 0 < stream["level"] < 256:
+                raise ClipError("internal")
+            return PlaybackCopy(out, f"avc1.6400{stream['level']:02X}", round(lowest, 2))
+        except BaseException:
+            _remove(out)
+            raise
+    return None
 
 
 # ---------------------------------------------------------------------------------------------------------------

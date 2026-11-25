@@ -224,7 +224,8 @@
       "Points the original does not confirm were dissolved before the gate.",
       "Clipped regions were left out of the gate.",
       "Streams that are neither video nor audio were not copied.",
-      "The lift was held by its maximum."
+      "The lift was held by its maximum.",
+      "No playback copy could be made within its gate, so this restoration has none."
     ],
     "assumptionReasons": [
       {

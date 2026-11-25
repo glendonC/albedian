@@ -49,7 +49,7 @@ from services.media import colour as colour_math, decode, photo, png16
 # revision raises this too. Every graph and variant id hashes it: under one version for every revision, a photo
 # restored under revision 2 could not be restored again under 3, since the write refuses an id it holds (FIELD's
 # finding of 2026-11-19). Revisions 1 and 2 stored their variants under 1.0.0.
-PIPELINE_VERSION = "1.15.0"
+PIPELINE_VERSION = "1.16.0"
 # The version of each step this module writes [proposed: a step's own version, raised when what it does changes]
 STEP_VERSION = "1.0.0"
 # [decided 2026-11-11: REQ-RST-1.3, private files 0400 and folders 0700, matching services/ingest/store.py]
@@ -128,6 +128,15 @@ def _record_bytes(record: dict[str, Any]) -> bytes:
 VARIANT_FILES = {"image/png": "variant.png", "video/quicktime": "variant.mov", "video/mp4": "variant.mp4"}
 
 
+# A restored clip's playback copy, beside its lossless file in the variant's folder, and its record beside the variant's
+# (clip-display-copy; DECIDED-BY-LEAD 22:24 on 24 Nov: a stored record is never rewritten, one path for new and stored
+# restorations)
+PLAYBACK_FILE_NAME = "playback.mp4"
+PLAYBACK_RECORD_NAME = "playback.json"
+NAMES_ITS_COPY = "a variant's record never names its playback copy; the copy's record is its own file"
+NOT_ITS_FILE = "a playback copy is the file its record names"
+
+
 def variant_file_name(mime_type: str) -> str:
     """The name of a variant's file in its folder, from the variant record's `mimeType`."""
     return VARIANT_FILES[mime_type]
@@ -154,14 +163,43 @@ class StoredVariant:
     variant: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class PlaybackFile:
+    """A finished playback copy under the store root, and its `playbackCopy` record."""
+    record: dict[str, Any]
+    path: Path
+
+
+def place_playback(folder: Path, variant: dict[str, Any], playback: PlaybackFile) -> None:
+    """Put a restored clip's playback copy beside its lossless file in the variant's folder: the one writer of a copy,
+    for a variant being assembled and for one already published (a copy made after its restoration was stored). The
+    record must pass the contract composed with its variant, and the file must be the one it names; the file is moved
+    in, then its record written, each 0400 onto a name that must not exist yet, so a record is never there before its
+    file. Anything refused leaves the folder as it was."""
+    MediaVariant.model_validate({**variant, "playbackCopy": playback.record})
+    stored = folder / PLAYBACK_FILE_NAME
+    digest = _move_new(playback.path, stored)
+    try:
+        if (digest, stored.stat().st_size) != (playback.record["sha256"], playback.record["byteSize"]):
+            raise ValueError(NOT_ITS_FILE)
+        _write_new(folder / PLAYBACK_RECORD_NAME, _record_bytes(playback.record))
+    except BaseException:
+        stored.unlink()
+        raise
+    _fsync_folder(folder)
+
+
 def publish_variant(store_root: Path, source_folder: Path, file_bytes: Optional[bytes], records: dict[str, dict[str, Any]],
-                    *, file_path: Optional[Path] = None) -> StoredVariant:
+                    *, file_path: Optional[Path] = None, playback: Optional[PlaybackFile] = None) -> StoredVariant:
     """Assemble `variants/<variantId>/` under `<store_root>/.partial/` and rename it into place whole. `records` holds
     "variant", "graph" and "attempt"; the variant record's id names the folder, and its type names the file
     (`variant_file_name`). The file is `file_bytes`, or the finished file at `file_path` under the store root, moved in
-    (a clip). A variant of that id already in place is refused with FileExistsError, and the assembled folder is
-    removed, with the moved file in it."""
+    (a clip), and a restored clip's playback copy beside it (`place_playback`), so a new restoration and its copy
+    appear together. A variant of that id already in place is refused with FileExistsError, and the assembled folder
+    is removed, with the moved files in it."""
     variant = records["variant"]
+    if "playbackCopy" in variant:
+        raise ValueError(NAMES_ITS_COPY)
     name = variant["id"]
     variants = source_folder / "variants"
     _private_folder(variants)
@@ -180,6 +218,14 @@ def publish_variant(store_root: Path, source_folder: Path, file_bytes: Optional[
             _write_new(stored_file, file_bytes)
         else:
             _move_new(file_path, stored_file)
+        if playback is not None:
+            # A copy's failure never fails a restoration (DECIDED-BY-LEAD 04:47 on 25 Nov): a copy that cannot be
+            # placed is left out, `place_playback` having taken out what it moved, and the variant is published
+            # without it
+            try:
+                place_playback(assembled, variant, playback)
+            except Exception:
+                pass
         for key in ("variant", "graph", "attempt"):
             _write_new(assembled / f"{key}.json", _record_bytes(records[key]))
         _fsync_folder(assembled)

@@ -282,8 +282,8 @@ def get_variant_file(
 # variant's as `playback.json` (a stored record is never rewritten). The variant served carries `playbackCopy` composed
 # from that record at read time, and only when the composed record passes the contract; the export and its manifest
 # never name the copy, and the lossless file stays the variant's own file, its download and its evidence.
-PLAYBACK_FILE = "playback.mp4"
-PLAYBACK_RECORD = "playback.json"
+PLAYBACK_FILE = variants.PLAYBACK_FILE_NAME
+PLAYBACK_RECORD = variants.PLAYBACK_RECORD_NAME
 NO_PLAYBACK = "that variant has no playback copy"
 # The copy's hash, taken once per file: by its device, inode, size and modification time, so another file at the
 # name, or the same file changed, is hashed again. The files are written once, 0400, and never rewritten.

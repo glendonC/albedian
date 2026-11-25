@@ -578,7 +578,11 @@ def test_a_clips_export_is_one_stored_zip_of_its_stored_file_byte_for_byte_and_i
     assert manifest["variant"]["sha256"] == hashlib.sha256(exported).hexdigest()
     assert manifest["variant"]["byteSize"] == len(exported)
     records = client.get(f"/api/media/{sha}/variants/{vid}").json()
-    assert (manifest["variant"], manifest["graph"], manifest["attempt"]) == (records["variant"], records["graph"], records["attempt"])
+    # The manifest holds the stored records: the variant served carries its playback copy composed in, and the
+    # manifest never names the copy (DECIDED-BY-LEAD 22:24 on 24 Nov)
+    served = {key: value for key, value in records["variant"].items() if key != "playbackCopy"}
+    assert "playbackCopy" in records["variant"] and "playbackCopy" not in manifest["variant"]
+    assert (manifest["variant"], manifest["graph"], manifest["attempt"]) == (served, records["graph"], records["attempt"])
     alone = client.get(f"/api/media/{sha}/variants/{vid}/manifest")
     assert alone.status_code == 200 and alone.content == sidecar
     assert alone.headers["content-disposition"] == f'attachment; filename="Albedian restored clip.{extension}.json"'
@@ -848,3 +852,371 @@ def test_an_entry_that_changes_while_it_is_sent_stops_the_zip_before_its_directo
             for block in variants.stored_zip([entry], (2026, 11, 19, 0, 0, 0)):
                 sent.append(block)
         assert b"PK\x01\x02" not in b"".join(sent) and b"PK\x05\x06" not in b"".join(sent)
+
+
+# playback-job-one (clip-display-copy, DECIDED-BY-LEAD 21:57 and 22:05 on 24 Nov): a restored clip gets a playback copy
+# beside its lossless file, H.264 High with a keyframe every half second and its index first, kept only when every frame
+# is at least 45 dB of PSNR from the lossless file; the lossless file stays the variant's file, its download and its
+# evidence.
+def mp4_boxes(data: bytes) -> list[str]:
+    boxes, pos = [], 0
+    while pos + 8 <= len(data):
+        size, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        if size == 1:
+            size = struct.unpack(">Q", data[pos + 8:pos + 16])[0]
+        boxes.append(kind.decode("latin-1"))
+        if size < 8:
+            break
+        pos += size
+    return boxes
+
+
+def ffprobe_json(path: Path, *args: str) -> dict:
+    import subprocess
+    run = subprocess.run(["ffprobe", "-v", "error", *args, "-of", "json", str(path)], capture_output=True, stdin=subprocess.DEVNULL)
+    assert run.returncode == 0, run.stderr[-400:]
+    return json.loads(run.stdout)
+
+
+@pytest.mark.parametrize("extension", sorted(CLIP_TYPES))
+def test_a_restored_clip_has_a_playback_copy_every_browser_draws_beside_its_lossless_file(restored_clips, extension: str,
+                                                                                          tmp_path) -> None:
+    client, done = restored_clips
+    sha, folder, job = done[extension]
+    vid = job["variantId"]
+    records = client.get(f"/api/media/{sha}/variants/{vid}").json()
+    variant = records["variant"]
+    copy = variant["playbackCopy"]
+    assert copy["uri"] == f"/api/media/{sha}/variants/{vid}/playback" and copy["mimeType"] == "video/mp4"
+    assert media_jobs.NOTE_NO_PLAYBACK not in records["attempt"]["measured"]["notes"]
+    assert copy["minPsnrDb"] >= contracts.PLAYBACK_COPY_MIN_PSNR_DB
+    # The variant's own record never names the copy; the copy's record is its own file beside it, both 0400, and the
+    # variant served is the stored record with the copy composed in (DECIDED-BY-LEAD 22:24 on 24 Nov)
+    stored = folder / "variants" / vid
+    record = json.loads((stored / "variant.json").read_bytes())
+    assert "playbackCopy" not in record and variant == {**record, "playbackCopy": copy}
+    assert json.loads((stored / "playback.json").read_bytes()) == copy
+    assert all(os.stat(stored / name).st_mode & 0o777 == 0o400 for name in ("playback.json", "playback.mp4"))
+    served = client.get(copy["uri"])
+    assert served.status_code == 200 and served.headers["content-type"] == "video/mp4"
+    assert (hashlib.sha256(served.content).hexdigest(), len(served.content)) == (copy["sha256"], copy["byteSize"])
+    assert (stored / "playback.mp4").read_bytes() == served.content
+    # The index first, as a browser seeks soonest
+    boxes = mp4_boxes(served.content)
+    assert boxes.index("moov") < boxes.index("mdat"), boxes
+    local = tmp_path / "playback.mp4"
+    local.write_bytes(served.content)
+    stream = ffprobe_json(local, "-select_streams", "v:0", "-show_entries", "stream=profile,pix_fmt,level,nb_frames")["streams"][0]
+    assert (stream["profile"], stream["pix_fmt"]) == ("High", "yuv420p")
+    assert copy["codecs"] == f"avc1.6400{stream['level']:02X}"
+    assert int(stream["nb_frames"]) == variant["frameCount"]
+    # A keyframe at least every half second (15 frames at this clip's 30 a second)
+    keys = [i for i, f in enumerate(ffprobe_json(local, "-select_streams", "v:0", "-show_entries", "frame=key_frame")["frames"])
+            if f["key_frame"] == 1]
+    assert keys[0] == 0 and all(b - a <= 15 for a, b in zip(keys, keys[1:] + [variant["frameCount"]]))
+    # The lossless file is still the variant's own file and its export
+    lossless = client.get(f"/api/media/{sha}/variants/{vid}/file").content
+    assert hashlib.sha256(lossless).hexdigest() == variant["sha256"] != copy["sha256"]
+    archive, entries = unzip(client.get(f"/api/media/{sha}/variants/{vid}/export").content)
+    assert archive.read(entries[0].filename) == lossless and len(entries) == 2
+    # The export and its manifest never name the copy: an export is the same before and after one is made
+    assert not any(b"playback" in archive.read(entry.filename).lower() for entry in entries[1:])
+    assert not any("playback" in entry.filename.lower() for entry in entries)
+    # The write stage had no total while the copy was made: the web shows the time passed
+    write = next(s for s in job["stages"] if s["stage"] == "write")
+    assert write["total"] is None and write["done"] == variant["byteSize"] + copy["byteSize"]
+
+
+def test_a_restored_still_has_no_playback_copy(restored) -> None:
+    client, sha, folder, job = restored
+    vid = job["variantId"]
+    assert "playbackCopy" not in client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"]
+    answer = client.get(f"/api/media/{sha}/variants/{vid}/playback")
+    assert (answer.status_code, answer.json()) == (404, {"detail": "that variant has no playback copy"})
+    assert not (folder / "variants" / vid / "playback.mp4").exists()
+
+
+def test_a_playback_copy_below_its_gate_is_not_kept_and_one_above_it_keeps_the_display_orientation(restored_clips, tmp_path) -> None:
+    from services.media import clip_io
+    client, done = restored_clips
+    sha, folder, job = done["mp4"]
+    stored = tmp_path / "stored.mp4"
+    stored.write_bytes((folder / "variants" / job["variantId"] / "variant.mp4").read_bytes())
+    probe = clip_io.probe_clip(stored)
+    # A floor no lossy copy meets: no copy, nothing left behind
+    assert clip_io.make_playback_copy(stored, tmp_path / "a.encoded", tmp_path / "a.mp4", probe, None, threads=1, min_psnr_db=99) is None
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["stored.mp4"]
+    # The floor of the contract: a copy, turned as the lossless file is turned
+    turned = {"quarterTurnsClockwise": 1, "mirrored": False}
+    made = clip_io.make_playback_copy(stored, tmp_path / "b.encoded", tmp_path / "b.mp4", probe, turned, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB)
+    assert made is not None and made.path == tmp_path / "b.mp4" and not (tmp_path / "b.encoded").exists()
+    assert clip_io.read_display_orientation(made.path, written_here=True) == turned
+    assert made.min_psnr_db >= contracts.PLAYBACK_COPY_MIN_PSNR_DB and re.fullmatch(r"avc1\.64[0-9A-F]{4}", made.codecs)
+    assert clip_io.keyframe_interval(probe) == 15
+
+
+def test_a_playback_copy_keeps_the_lossless_files_own_pixels_and_turn_and_a_keyframe_every_half_second(tmp_path) -> None:
+    import subprocess
+    from services.media import clip_io
+    # Synthetic: two seconds of the clip fixture's dark sky at 30 a second, 96 by 64, lossless as the restore stores it,
+    # carrying a quarter turn in its display matrix
+    raw = tmp_path / "raw.mp4"
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", CLIP_SKY.replace("d=0.5", "d=2"),
+                           "-c:v", "libx264", "-crf", "0", "-pix_fmt", "yuv420p", str(raw)], capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+    turned = {"quarterTurnsClockwise": 1, "mirrored": False}
+    stored = clip_io.with_display_orientation(raw, tmp_path / "stored.mp4", turned, container="mp4")
+    probe = clip_io.probe_clip(stored)
+    copy = clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, turned, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB)
+    assert copy is not None
+    stream = ffprobe_json(copy.path, "-select_streams", "v:0", "-show_entries", "stream=width,height,nb_frames")["streams"][0]
+    # The pixels as the lossless file holds them (not turned by its matrix), the same turn in the copy's own matrix
+    assert (stream["width"], stream["height"], int(stream["nb_frames"])) == (96, 64, 60)
+    assert clip_io.read_display_orientation(copy.path, written_here=True) == turned
+    keys = [i for i, f in enumerate(ffprobe_json(copy.path, "-select_streams", "v:0", "-show_entries", "frame=key_frame")["frames"])
+            if f["key_frame"] == 1]
+    # A keyframe at least every half second: the encoder may place one sooner, never later
+    assert keys[0] == 0 and len(keys) >= 4 and all(b - a <= 15 for a, b in zip(keys, keys[1:] + [60]))
+    # Grain the restore keeps fails CRF 18's gate and is kept at a lower CRF of the ladder
+    assert copy.min_psnr_db >= contracts.PLAYBACK_COPY_MIN_PSNR_DB
+
+
+def test_a_variants_record_never_names_its_playback_copy(tmp_path) -> None:
+    source = tmp_path / "store" / "ab" / ("ab" * 32)
+    source.mkdir(parents=True, mode=0o700)
+    records = {"variant": {"id": "var_" + "1" * 16, "mimeType": "image/png", "playbackCopy": {}}, "graph": {}, "attempt": {}}
+    with pytest.raises(ValueError, match="never names its playback copy"):
+        variants.publish_variant(tmp_path / "store", source, b"png", records)
+    assert not (source / "variants" / ("var_" + "1" * 16)).exists()
+
+
+def test_a_copy_made_after_its_restoration_was_stored_is_placed_and_served_by_the_same_path(restored_clips, tmp_path) -> None:
+    """One path for new and stored restorations (DECIDED-BY-LEAD 22:24 on 24 Nov): the writer the job uses puts a copy
+    beside a variant already published, and the route serves it; each refusal leaves the folder as it was."""
+    client, done = restored_clips
+    sha, folder, job = done["mp4"]
+    vid = job["variantId"]
+    stored = folder / "variants" / vid
+    served = client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"]
+    copy, data = served["playbackCopy"], (stored / "playback.mp4").read_bytes()
+    variant = json.loads((stored / "variant.json").read_bytes())
+    aside = tmp_path / "aside.mp4"
+    os.rename(stored / "playback.mp4", aside)
+    os.rename(stored / "playback.json", tmp_path / "aside.json")
+    names = sorted(p.name for p in stored.iterdir())
+
+    def loose(name: str, content: bytes) -> Path:
+        path = tmp_path / name
+        path.write_bytes(content)
+        return path
+
+    try:
+        # As a restoration stored before the copy: no copy served
+        assert "playbackCopy" not in client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"]
+        assert client.get(copy["uri"]).status_code == 404
+        # A record the contract refuses on this variant: nothing moved
+        with pytest.raises(ValidationError):
+            variants.place_playback(stored, variant, variants.PlaybackFile({**copy, "minPsnrDb": 20}, aside))
+        assert aside.exists() and sorted(p.name for p in stored.iterdir()) == names
+        # A file that is not the one its record names: refused, the folder as it was
+        other = loose("other.mp4", data[:-1] + bytes([data[-1] ^ 1]))
+        with pytest.raises(ValueError, match="the file its record names"):
+            variants.place_playback(stored, variant, variants.PlaybackFile(copy, other))
+        assert sorted(p.name for p in stored.iterdir()) == names
+        # A record already at its name: refused, the moved file taken out again, the record never before its file
+        (stored / "playback.json").write_bytes(b"{}")
+        with pytest.raises(FileExistsError):
+            variants.place_playback(stored, variant, variants.PlaybackFile(copy, loose("early.mp4", data)))
+        (stored / "playback.json").unlink()
+        assert sorted(p.name for p in stored.iterdir()) == names
+        # A file at its name with no record (a placing cut short): refused, and no record written for it
+        (stored / "playback.mp4").write_bytes(data)
+        with pytest.raises(FileExistsError):
+            variants.place_playback(stored, variant, variants.PlaybackFile(copy, loose("late.mp4", data)))
+        assert not (stored / "playback.json").exists()
+        (stored / "playback.mp4").unlink()
+        assert sorted(p.name for p in stored.iterdir()) == names
+        # Placed: served as the job's own copy was, the variant's record untouched
+        variants.place_playback(stored, variant, variants.PlaybackFile(copy, aside))
+        assert client.get(f"/api/media/{sha}/variants/{vid}").json()["variant"] == served
+        answer = client.get(copy["uri"])
+        assert answer.status_code == 200 and answer.content == data
+        assert json.loads((stored / "variant.json").read_bytes()) == variant
+        # A second copy onto the first: refused, the first kept and served
+        again = loose("again.mp4", data)
+        with pytest.raises(FileExistsError):
+            variants.place_playback(stored, variant, variants.PlaybackFile(copy, again))
+        assert again.exists() and client.get(copy["uri"]).content == data
+    finally:
+        if not (stored / "playback.mp4").exists():
+            os.rename(aside, stored / "playback.mp4")
+        if not (stored / "playback.json").exists():
+            os.rename(tmp_path / "aside.json", stored / "playback.json")
+
+
+# playback-job-one version three (AUDIT's verdict on version two; DECIDED-BY-LEAD 02:22 on 25 Nov): the gate compares
+# the copy with the lossless frames in the stored file's own format, and a clip with no copy is still restored, its
+# record saying so. AUDIT's clip: ffmpeg's test pattern with pixel-scale colour detail (synthetic), stored lossless.
+GATE_PATTERN = "testsrc2=size=160x96:rate=30:duration=1"
+GATE_CHECKS = ("nullsrc=size=160x96:rate=30:duration=1,geq=lum='128':cb='if(mod(X+Y,2),40,216)'"
+               ":cr='if(mod(floor(X/2)+Y,2),216,40)',format=yuv444p")
+
+
+def gate_clip(path: Path, pixel_format: str) -> None:
+    import subprocess
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", GATE_PATTERN, "-f", "lavfi", "-i",
+                           GATE_CHECKS, "-filter_complex",
+                           f"[0:v]format=yuv444p[a];[1:v]format=yuv444p[b];[a][b]blend=all_mode=average,format={pixel_format}",
+                           "-c:v", "libx264", "-qp", "0", "-preset", "ultrafast", "-pix_fmt", pixel_format, str(path)],
+                          capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+
+
+def lowest_psnr_in(copy: Path, stored: Path, pixel_format: str, frames: int) -> float:
+    """An independent measure: both decoded to raw samples in the stored format (the copy brought to it by ffmpeg's
+    bicubic scaler, the stored frames as they are), each frame's PSNR over all its samples, the lowest."""
+    import subprocess
+
+    def raw(path: Path) -> np.ndarray:
+        run = subprocess.run(["ffmpeg", "-hide_banner", "-v", "error", "-noautorotate", "-i", str(path), "-sws_flags", "bicubic",
+                              "-pix_fmt", pixel_format, "-f", "rawvideo", "-"], capture_output=True, stdin=subprocess.DEVNULL)
+        assert run.returncode == 0, run.stderr[-400:]
+        return np.frombuffer(run.stdout, dtype=np.uint8).reshape(frames, -1).astype(np.float64)
+
+    a, b = raw(copy), raw(stored)
+    mse = ((a - b) ** 2).mean(axis=1)
+    return float(min(10 * np.log10(255.0 ** 2 / m) for m in mse if m > 0))
+
+
+@pytest.mark.parametrize("pixel_format", ["yuv420p", "yuvj420p", "yuv444p"])
+def test_the_playback_gate_measures_the_copy_in_the_stored_files_own_format(tmp_path, pixel_format: str) -> None:
+    from services.media import clip_io
+    stored = tmp_path / "stored.mp4"
+    gate_clip(stored, pixel_format)
+    probe = clip_io.probe_clip(stored)
+    assert clip_io.stored_pixel_format(stored) == pixel_format and probe.frame_count == 30
+    # The gate's own measure of one encode is the independent one, in the stored format
+    clip_io._encode_playback(stored, tmp_path / "one.encoded", tmp_path / "one.mp4", probe, None, 18, 1, 120)
+    gate_lowest = min(clip_io._psnr_frames(tmp_path / "one.mp4", stored, pixel_format, 120))
+    assert gate_lowest == pytest.approx(lowest_psnr_in(tmp_path / "one.mp4", stored, pixel_format, 30), abs=0.05)
+    made = clip_io.make_playback_copy(stored, tmp_path / "c.encoded", tmp_path / "c.mp4", probe, None, threads=1,
+                                      min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB)
+    if pixel_format == "yuv444p":
+        # Its chroma cut to 4:2:0, the copy is far from the lossless frames at every quality: no copy, nothing left
+        assert gate_lowest < contracts.PLAYBACK_COPY_MIN_PSNR_DB and made is None
+        assert not (tmp_path / "c.mp4").exists() and not (tmp_path / "c.encoded").exists()
+    else:
+        assert made is not None
+        assert made.min_psnr_db == pytest.approx(lowest_psnr_in(made.path, stored, pixel_format, 30), abs=0.05)
+        assert made.min_psnr_db >= contracts.PLAYBACK_COPY_MIN_PSNR_DB
+
+
+def test_a_stored_format_the_gate_does_not_measure_in_gets_no_copy(tmp_path) -> None:
+    # 10-bit H.264 here (synthetic): the gate measures 8-bit planar Y'CbCr only, and a restoration stores no such file
+    import subprocess
+    from services.media import clip_io
+    stored = tmp_path / "deep.mp4"
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", GATE_PATTERN, "-c:v", "libx264",
+                           "-qp", "0", "-pix_fmt", "yuv420p10le", str(stored)], capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+    assert clip_io.stored_pixel_format(stored) == "yuv420p10le"
+    assert clip_io.make_playback_copy(stored, tmp_path / "g.encoded", tmp_path / "g.mp4", clip_io.probe_clip(stored), None,
+                                      threads=1, min_psnr_db=contracts.PLAYBACK_COPY_MIN_PSNR_DB) is None
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["deep.mp4"]
+
+
+def restore_clip_in_child(tmp_path: Path, source: Path, extension: str = "mp4") -> tuple[dict, Path, Path]:
+    """One clip restored in this process as the job's child restores it, with the playback partials the job passes:
+    its result, its upload's folder and its store."""
+    root = tmp_path / "store"
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = root / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / f"original.{extension}"
+    original.write_bytes(source.read_bytes())
+    (root / ".partial").mkdir()
+    job_id = "job_" + "d" * 16
+    partials = [str(root / ".partial" / f"{job_id}-{name}.part")
+                for name in (f"clip_encoded.{extension}", f"variant.{extension}", "playback_encoded.mp4", "playback.mp4")]
+    facts = {"mimeType": "video/mp4", "durationMs": 500.0, "audioStreams": []}
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, job_id, {"kind": "restoration"},
+                                               None, facts, partials, lambda *args: None, workers=1)
+    return out, folder, root
+
+
+NOTE_NO_COPY = "No playback copy could be made within its gate, so this restoration has none."
+# Each way a clip ends with no copy, and whether its record says the gate refused one (DECIDED-BY-LEAD 04:47 on 25 Nov:
+# only where a copy was tried and its gate refused it)
+NO_COPY_CASES = [("no quality passes", True), ("the copy stops at its time limit", False),
+                 ("the copy raises anything else", False), ("the stored format is never measured", False),
+                 ("the format gets none", False), ("its record is refused", False),
+                 ("its record cannot be built", False), ("it cannot be placed", False)]
+
+
+@pytest.mark.parametrize("why, noted", NO_COPY_CASES)
+def test_a_clip_with_no_playback_copy_is_still_restored_and_says_so_only_where_the_gate_refused_it(
+        tmp_path, monkeypatch, why: str, noted: bool) -> None:
+    import subprocess
+    from services.media import clip_io
+    source = tmp_path / "sky.mp4"
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", CLIP_SKY, "-c:v", "libx264",
+                           "-pix_fmt", "yuv420p", str(source)], capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+
+    def raising(error):
+        def raise_it(*args, **kwargs):
+            raise error
+        return raise_it
+
+    def high_444(stored, encoded, out, *args, **kwargs):
+        # A made copy whose record the contract refuses (High 4:4:4 Predictive's codec string): no copy is placed
+        Path(out).write_bytes(b"made")
+        return clip_io.PlaybackCopy(Path(out), "avc1.F40028", 50.0)
+
+    if why == "no quality passes":
+        monkeypatch.setattr(media_jobs, "PLAYBACK_COPY_MIN_PSNR_DB", 99)
+    elif why == "the copy stops at its time limit":
+        monkeypatch.setattr(clip_io, "make_playback_copy", raising(clip_io.ClipError("time_limit")))
+    elif why == "the copy raises anything else":
+        monkeypatch.setattr(clip_io, "make_playback_copy", raising(ValueError("a psnr line this does not read")))
+    elif why == "the stored format is never measured":
+        monkeypatch.setattr(clip_io, "stored_pixel_format", lambda stored: "nv12")
+    elif why == "the format gets none":
+        monkeypatch.setattr(clip_io, "playback_copy_supported", lambda video: False)
+    elif why == "its record is refused":
+        monkeypatch.setattr(clip_io, "make_playback_copy", high_444)
+    elif why == "its record cannot be built":
+        monkeypatch.setattr(media_jobs, "playback_uri", raising(RuntimeError("the record could not be built")))
+    else:
+        monkeypatch.setattr(variants, "place_playback", raising(OSError("the store could not take the copy")))
+    out, folder, root = restore_clip_in_child(tmp_path, source)
+    assert out["status"] == "ready", out
+    stored = folder / "variants" / out["variantId"]
+    assert sorted(p.name for p in stored.iterdir()) == ["attempt.json", "graph.json", "variant.json", "variant.mp4"]
+    assert "playbackCopy" not in json.loads((stored / "variant.json").read_bytes())
+    attempt = json.loads((stored / "attempt.json").read_bytes())
+    contracts.ProcessingAttempt.model_validate(attempt)
+    assert attempt["measured"]["notes"].count(NOTE_NO_COPY) == (1 if noted else 0)
+    assert list((root / ".partial").iterdir()) == []
+
+
+def test_a_ten_bit_clip_is_restored_with_no_copy_and_no_word_of_a_gate_that_never_ran(tmp_path) -> None:
+    # AUDIT's verdict on version three: a 10-bit clip (stored as HEVC, as an iPhone's HDR clip is) is never copied and
+    # no gate measures it, so its record carries no note of one (synthetic: the clip fixture's sky in 10 bits)
+    import subprocess
+    from services.media import clip_io
+    source = tmp_path / "deep.mp4"
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", CLIP_SKY, "-c:v", "libx265",
+                           "-x265-params", "log-level=error", "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1", str(source)],
+                          capture_output=True, stdin=subprocess.DEVNULL)
+    assert made.returncode == 0, made.stderr[-400:]
+    assert not clip_io.playback_copy_supported(clip_io.probe_clip(source).video)
+    out, folder, root = restore_clip_in_child(tmp_path, source)
+    assert out["status"] == "ready", out
+    stored = folder / "variants" / out["variantId"]
+    assert not (stored / "playback.mp4").exists() and not (stored / "playback.json").exists()
+    attempt = json.loads((stored / "attempt.json").read_bytes())
+    assert NOTE_NO_COPY not in attempt["measured"]["notes"]
+    assert list((root / ".partial").iterdir()) == []

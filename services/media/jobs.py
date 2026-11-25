@@ -26,7 +26,8 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 import numpy as np
 
 from services.contracts.ingest import format_utc
-from services.contracts.media import DISCLOSURES, NOTES, MediaVariant, ProcessingAttempt, ProcessingGraph, variant_uri
+from services.contracts.media import (DISCLOSURES, NOTES, PLAYBACK_COPY_MIN_PSNR_DB, MediaVariant, ProcessingAttempt,
+                                      ProcessingGraph, playback_uri, variant_uri)
 from services.ingest.job_store import JobStore
 from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, Producer
 from services.media import (clip_frames, clip_io, decode, frame_pool, gate, noise, photo, spatial, stars, temporal, tone,
@@ -75,8 +76,9 @@ MEDIA_PRODUCER_FILES = (
 # (letterbox-2); 14, bars after a lossy encode keep up to one transform block of ringing next to the picture with
 # them (bars-lossy-one); 15, a still's sky keeps 0.35 of its own finest noise less its star-shaped part, put in after
 # the lift and capped block by block where it would lift the gate's noise over its floor, or none where the gate
-# refuses it (fine-noise-floor-one)
-MEDIA_PRODUCER = Producer("albedian.restore", 15, MEDIA_PRODUCER_FILES)
+# refuses it (fine-noise-floor-one); 16, a restored clip's playback copy beside its published variant, H.264 High
+# behind its own PSNR gate in the stored file's own format (playback-job-one)
+MEDIA_PRODUCER = Producer("albedian.restore", 16, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -186,7 +188,8 @@ def run_restoration(ctx: JobContext) -> KindResult:
                              ctx.asset.get("displayOrientation"))
     extension = variants.variant_file_name(str(ctx.asset.get("mimeType"))).rsplit(".", 1)[-1] \
         if ctx.asset.get("mimeType") in variants.VARIANT_FILES else "clip"
-    partials = (str(ctx.partial(f"clip_encoded.{extension}")), str(ctx.partial(f"variant.{extension}")))
+    partials = (str(ctx.partial(f"clip_encoded.{extension}")), str(ctx.partial(f"variant.{extension}")),
+                str(ctx.partial("playback_encoded.mp4")), str(ctx.partial(variants.PLAYBACK_FILE_NAME)))
     facts = {"mimeType": ctx.asset.get("mimeType"), "durationMs": ctx.asset.get("durationMs"),
              "audioStreams": list(ctx.asset.get("audioStreams") or [])}
     return _run_in_child(ctx, clip_restoration_in_child, *_paths(ctx), ctx.sha256, ctx.job_id, dict(ctx.request or {}),
@@ -311,6 +314,7 @@ CLIP_BOUND_FPS = 60
 NOTE_BLACK = NOTES[1]
 NOTE_REGISTRATION = NOTES[3]
 NOTE_STREAMS = NOTES[6]
+NOTE_NO_PLAYBACK = NOTES[8]
 
 
 def frame_times_sha256(time_base: Fraction, frame_times: Sequence[int]) -> str:
@@ -464,11 +468,12 @@ def clip_restoration_in_child(store_root: str, folder: str, original: str, sha25
     recorder = _Recorder(sha256, job_id, request, Path(folder), now)
     original_path = Path(original)
     encoded_path, variant_path = Path(partials[0]), Path(partials[1])
+    playback_paths = (Path(partials[2]), Path(partials[3])) if len(partials) > 3 else None
     if _sha256(original_path) != sha256:
         return recorder.failed(CHANGED)
     try:
         return _restore_clip(recorder, Path(store_root), original_path, request, orientation, facts, encoded_path,
-                             variant_path, progress, workers or frame_pool.default_workers())
+                             variant_path, progress, workers or frame_pool.default_workers(), playback_paths)
     except clip_io.ClipError as error:
         return recorder.failed(error.sentence)
     except clip_frames.ClipRefusal as refusal:
@@ -478,10 +483,24 @@ def clip_restoration_in_child(store_root: str, folder: str, original: str, sha25
     finally:
         _remove(encoded_path)
         _remove(variant_path)
+        for path in playback_paths or ():
+            _remove(path)
+
+
+def _playback_file(playback: Optional[clip_io.PlaybackCopy], sha256: str, vid: str) -> Optional[variants.PlaybackFile]:
+    """The made copy with its record, or None for no copy. `place_playback` checks the record through the contract at
+    the publish, and a copy it refuses is left out there (DECIDED-BY-LEAD 04:47 on 25 Nov)."""
+    if playback is None:
+        return None
+    record = {"uri": playback_uri(sha256, vid), "sha256": _file_sha256(playback.path),
+              "byteSize": playback.path.stat().st_size, "mimeType": "video/mp4", "codecs": playback.codecs,
+              "minPsnrDb": playback.min_psnr_db}
+    return variants.PlaybackFile(record, playback.path)
 
 
 def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, request: dict, orientation: Optional[dict],
-                  facts: dict, encoded_path: Path, variant_path: Path, progress: Callable[..., None], workers: int) -> dict:
+                  facts: dict, encoded_path: Path, variant_path: Path, progress: Callable[..., None], workers: int,
+                  playback_paths: Optional[tuple[Path, Path]] = None) -> dict:
     probe = clip_io.probe_clip(original_path)
     clip = clip_frames.clip_colour(probe.video)
     container = clip_io.container_for(str(facts.get("mimeType")))
@@ -536,8 +555,28 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
     if turned:
         _remove(encoded)
     size = stored.stat().st_size
-    write = _Stage(progress, "write", "bytes", size)
+    # The playback copy is written here too (clip-display-copy), its size not known before it is made: the stage has no
+    # total, so the web shows the time passed rather than a count that stands still
+    copyable = playback_paths is not None and clip_io.playback_copy_supported(probe.video)
+    write = _Stage(progress, "write", "bytes", None if copyable else size)
     write.add(size)
+    playback = None
+    # Whether the copy's gate ran at every quality and refused it: the one case the restoration's record says so
+    # (DECIDED-BY-LEAD 04:47 on 25 Nov); a clip never tried (a 10-bit one, a stored format the gate does not measure
+    # in) or a copy that failed some other way records nothing
+    gate_refused = False
+    if copyable:
+        # A copy's failure never fails a restoration (DECIDED-BY-LEAD 02:22 and 04:47 on 25 Nov): any error or a time
+        # limit in its encode, its gate or its record leaves no copy, and the restoration goes on with its lossless file
+        try:
+            if clip_io.stored_pixel_format(stored) in clip_io.PLAYBACK_GATE_FORMATS:
+                playback = clip_io.make_playback_copy(stored, playback_paths[0], playback_paths[1], probe, orientation,
+                                                      threads=workers, min_psnr_db=PLAYBACK_COPY_MIN_PSNR_DB)
+                gate_refused = playback is None
+            if playback is not None:
+                write.add(playback.path.stat().st_size)
+        except Exception:
+            playback = None
     check = clip_io.check_stored_clip(stored, original_path, probe, audio_hashes=[a["sha256"] for a in facts["audioStreams"]],
                                       display_orientation=orientation)
     if not check.passed:
@@ -574,6 +613,14 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
         return recorder.rejected(rejection, measured, gate_record)
     sha256 = recorder.sha256
     vid = variants.variant_id(sha256, "restoration", request)
+    # The copy's record is its own file beside the variant's, which never names it (DECIDED-BY-LEAD 22:24 on 24 Nov). A
+    # clip whose copy the gate refused at every quality says so in its record (DECIDED-BY-LEAD 02:22 and 04:47)
+    try:
+        copy = _playback_file(playback, sha256, vid)
+    except Exception:
+        copy = None
+    if gate_refused:
+        measured = {**measured, "notes": [*measured["notes"], NOTE_NO_PLAYBACK]}
     record = recorder.record("ready", variantId=vid, measured=measured, gate=gate_record)
     audio = [{**stream, "index": stored_probe.audio[k].index} for k, stream in enumerate(facts["audioStreams"])]
     variant = {
@@ -588,7 +635,7 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
         variant["displayOrientation"] = orientation
     MediaVariant.model_validate(variant)
     variants.publish_variant(store_root, recorder.folder, None, {"variant": variant, "graph": graph, "attempt": record},
-                             file_path=stored)
+                             file_path=stored, playback=copy)
     variants.keep_attempt(recorder.folder, record)
     return {"status": "ready", "attemptId": record["id"], "variantId": vid}
 

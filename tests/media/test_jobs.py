@@ -771,7 +771,10 @@ def test_a_clip_restored_by_the_job_keeps_its_original_frame_times_audio_and_las
     assert (stages["measure"]["done"], stages["measure"]["total"]) == (len(clip_frames.sample_indices(count)),) * 2
     for name in ("decode", "restore", "encode", "verify"):
         assert (stages[name]["done"], stages[name]["total"]) == (count, count), name
-    assert stages["write"]["done"] == stages["write"]["total"] == variant["byteSize"]
+    # The write stage: the lossless file's bytes and its playback copy's, with no total while the copy is made
+    # (playback-job-one), so the web shows the time passed
+    assert stages["write"]["total"] is None
+    assert stages["write"]["done"] == variant["byteSize"] + variant["playbackCopy"]["byteSize"]
     # P-RST-1: the original is untouched, and nothing changed outside variants/, attempts/ and jobs/
     assert original.stat().st_mode == mode and hashlib.sha256(original.read_bytes()).hexdigest() == digest
     assert snapshot(folder) == before
