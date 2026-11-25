@@ -292,6 +292,16 @@ describe("the moment-blind warning's words on screen (C22)", () => {
   it('shows the first sentence only, in each case of what was lent', () => {
     for (const screen of SCREENS) expect(onScreenWarning(`${screen} ${RECORD}`)).toBe(screen);
   });
+
+  // own-moment-fallback-1 (the words DECIDED-BY-LEAD 18:10 on 24 Nov; LEAD ANSWER to WEB-UX 19:03): the whole-sky
+  // search's words for the time and place the file itself holds, a photo's and a clip's (SOLVER's BLIND_OWN_WORDS and
+  // BLIND_OWN_CLIP_WORDS), each show their first sentence alone; the second stays in the record
+  it("shows a photo's and a clip's own-moment warning by its first sentence alone", () => {
+    const photo = "The stars alone lined this photo up; what is predicted on it is drawn for the photo's recorded capture time and place, which the stars do not confirm.";
+    const clip = "The stars alone lined this clip up; what is predicted on it is drawn for the clip's recorded capture time and place, which the stars do not confirm.";
+    expect(onScreenWarning(`${photo} ${RECORD}`)).toBe(photo);
+    expect(onScreenWarning(`${clip} ${RECORD}`)).toBe(clip);
+  });
 });
 
 // C21 (UIUX-skylinewords-READY.md), C23 (UIUX-sunwords-READY.md) and C32 (UIUX-moonposewords-READY.md): a pose's refusal,

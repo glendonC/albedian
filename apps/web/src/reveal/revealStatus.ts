@@ -53,6 +53,8 @@ const FIRST_SENTENCE_NOTES: readonly string[] = [
   "This clip's sky is so close to black that its faintest noise is cut off",
   // C22: the stars alone placed a photo whose moment the iPhone lent
   'The stars alone lined this photo up;',
+  // own-moment-fallback-1's clip noun (LEAD ANSWER to WEB-UX 19:03 on 24 Nov): a clip's opening, cut the same way
+  'The stars alone lined this clip up;',
   // C21 and C23: a pose's refusal says its reason first; its numbers, in a second sentence, stay in the record
   'The sky is not lined up over the picture: ',
   // C24 (UIUX-starplacewords-READY.md item 1): a predicted star's place caution, on its card; what its stated
