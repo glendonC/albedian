@@ -3,7 +3,11 @@ DECIDED-BY-LEAD at 13:25 on RESTORE-PHOTO's black-bar probe, and at 13:36 on RES
 
 A bar is a run of whole edge rows (top and bottom) or whole edge columns (left and right), each one code at or below
 black in every measure frame, on both opposite edges, where the row or column just past each run opens the picture:
-the median of its samples over the measure frames is above black. A black band on one edge only is no bar, and nor is
+the median of its samples over the measure frames is above black. A lossy encoder leaves a bar's rows next to the
+picture a code or a few off, its transform block's ringing: up to `TRANSFORM_BLOCK_PX` such rows between the run of one
+code and the row that opens the picture are counted with the bar, each at black by its median and flatter (a smaller
+spread over the measure frames) than that opening row [decided 2026-11-24 14:25 by the lead, bars-lossy-one: a statistic
+from the frame itself, the block named as the codec's, not tuned]. A black band on one edge only is no bar, and nor is
 a black sky that reaches the edge: the public sample clip's sky is black in its first 168 and last 120 columns, and
 cutting them left a darkest quarter on black that met C36 [tested 2026-11-24, RESTORE-CLIP letterbox-1]. The cost the
 lead accepted: a pad against a picture whose own edge is black sky is not found, so that picture is measured whole.
@@ -18,6 +22,10 @@ from dataclasses import dataclass
 from typing import Sequence
 
 import numpy as np
+
+# The transform block of the common codecs (the 8 x 8 DCT of JPEG, the largest of H.264's and the one its 4:2:0 chroma
+# rides on) [decided 2026-11-24 14:25 by the lead: "eight samples, named as the codec's block, not tuned"]
+TRANSFORM_BLOCK_PX = 8
 
 
 @dataclass(frozen=True)
@@ -69,13 +77,36 @@ def find_bars(planes: Sequence[np.ndarray], black: float, *, down: int = 1, acro
     columns = np.logical_and.reduce([(c.max(axis=0) == c.min(axis=0)) & (c.max(axis=0) <= black) for c in codes])
     height, width = codes[0].shape
 
+    def line(index: int, axis: int) -> np.ndarray:
+        return np.concatenate([c[index] if axis == 0 else c[:, index] for c in codes])
+
     def opens(index: int, axis: int) -> bool:
-        line = np.concatenate([c[index] if axis == 0 else c[:, index] for c in codes])
-        return bool(np.median(line) > black)
+        return bool(np.median(line(index, axis)) > black)
+
+    def spread(index: int, axis: int) -> int:
+        samples = line(index, axis)
+        return int(samples.max() - samples.min())
+
+    def through_ringing(run: int, axis: int, size: int, inward: int) -> int:
+        """The bar's whole size from one edge: its run of one code and the ringing rows after it, or 0 when no row
+        within one transform block of the run opens the picture past ringing that is flatter than that row."""
+        edge = 0 if inward > 0 else size - 1
+        for step in range(TRANSFORM_BLOCK_PX + 1):
+            index = edge + inward * (run + step)
+            if not 0 <= index < size:
+                return 0
+            if opens(index, axis):
+                opening = spread(index, axis)
+                ringing = (edge + inward * (run + k) for k in range(step))
+                return run + step if all(spread(r, axis) < opening for r in ringing) else 0
+        return 0
 
     def bars_on(flat: np.ndarray, axis: int, size: int, factor: int) -> tuple[int, int]:
         first, last = _edge_run(flat), _edge_run(flat[::-1])
-        if not (0 < first and 0 < last and first + last < size and opens(first, axis) and opens(size - 1 - last, axis)):
+        if not (0 < first and 0 < last and first + last < size):
+            return 0, 0
+        first, last = through_ringing(first, axis, size, 1), through_ringing(last, axis, size, -1)
+        if not (first and last and first + last < size):
             return 0, 0
         first, last = first - first % factor, last - last % factor
         return (first, last) if first and last else (0, 0)

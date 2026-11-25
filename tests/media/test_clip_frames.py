@@ -969,13 +969,18 @@ def test_bars_are_whole_edge_rows_or_columns_of_one_code_at_or_below_black_on_bo
     assert clip_frames.clip_bars(ten, _luma_only(ten, odd_ten)) == Bars(13, 11, 0, 0)
     # A row is a bar only if it is one code in every measure frame: one sample a code off ends the bar there
     broken = [f[0].copy() for f in _with_bars(limited, sky, top=24, bottom=24)]
-    # (row 20, mostly black, opens no picture, so the top has no bar and the clip none)
+    # (row 20 is no bar of one code; within one transform block of the picture it is the encoder's ringing, counted
+    # with the bar, bars-lossy-one)
     broken[3][20, 100] = 17
-    assert clip_frames.clip_bars(limited, _luma_only(limited, broken)) == Bars()
-    # and so does a sample a code under black: the row is still at or below black but no longer one code
+    assert clip_frames.clip_bars(limited, _luma_only(limited, broken)) == Bars(24, 24, 0, 0)
+    # and so does a sample a code under black, likewise ringing next to the picture
     under = [f[0].copy() for f in _with_bars(limited, sky, top=24, bottom=24)]
     under[2][171, 7] = 15
-    assert clip_frames.clip_bars(limited, _luma_only(limited, under)) == Bars()
+    assert clip_frames.clip_bars(limited, _luma_only(limited, under)) == Bars(24, 24, 0, 0)
+    # Further from the picture than one block, a sample off ends the bar where it is, and that row opens nothing
+    far = [f[0].copy() for f in _with_bars(limited, sky, top=24, bottom=24)]
+    far[1][12, 50] = 17
+    assert clip_frames.clip_bars(limited, _luma_only(limited, far)) == Bars()
     # 4:2:2 halves the columns only: odd rows are kept, odd columns are counted to the chroma grid
     wide = clip_frames.clip_colour(video("yuv422p", BT709_TV, width=192, height=192))
     wide_sky = _sky_frames(wide, sky_y=22.0, sigma=2.5, width=168, height=168)
@@ -998,18 +1003,19 @@ def test_bars_are_whole_edge_rows_or_columns_of_one_code_at_or_below_black_on_bo
             y[row - 1:row + 2, column - 1:column + 2] = 60
         starry.append(y)
     assert clip_frames.clip_bars(limited, _luma_only(limited, starry)) == Bars()
-    # and bars round a picture whose own top row is mostly black are no bars either
+    # Bars round a picture whose own top row is mostly black: that row opens nothing, but it is flatter than the row
+    # that does, so it is read as the bar's ringing (bars-lossy-one) and the bar is found, counted to the chroma grid
     dark_edge = [f[0].copy() for f in sky]
     for y in dark_edge:
         y[0, :120] = 16
     assert clip_frames.clip_bars(limited, _luma_only(limited, [np.pad(y, ((24, 24), (0, 0)), constant_values=16)
-                                                                for y in dark_edge])) == Bars()
+                                                                for y in dark_edge])) == Bars(24, 24, 0, 0)
     # and so is the far edge: a picture whose bottom row is mostly black
     dark_bottom = [f[0].copy() for f in sky]
     for y in dark_bottom:
         y[-1, :120] = 16
     assert clip_frames.clip_bars(limited, _luma_only(limited, [np.pad(y, ((24, 24), (0, 0)), constant_values=16)
-                                                                for y in dark_bottom])) == Bars()
+                                                                for y in dark_bottom])) == Bars(24, 24, 0, 0)
 
 
 @pytest.mark.parametrize("pix_fmt,tags,sky_y,sigma,bars", [
@@ -1142,6 +1148,34 @@ def test_each_frame_of_a_run_takes_back_its_own_bars_not_another_frames() -> Non
         assert np.array_equal(own.planes[0][168:], original[0][168:])
         assert np.array_equal(own.planes[1][:12], original[1][:12]) and np.array_equal(own.planes[2][84:], original[2][84:])
     assert not np.array_equal(restored[0].planes[0][:24], restored[1].planes[0][:24])
+
+
+@pytest.mark.parametrize("crf", [18, 23, 28])
+def test_a_letterboxed_clip_through_a_lossy_encoder_keeps_its_bars_found(tmp_path: Path, crf: int) -> None:
+    # bars-lossy-one: a noisy dark sky between 24-row bars at 16, through the job's own encoder at three rates. The
+    # bar's rows next to the picture ring by a code or a few; at most one transform block of them is counted with it,
+    # and a ringing row that already lifts above black is measured with the picture (the bar found up to a block short)
+    from fractions import Fraction
+
+    tags = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+    path = tmp_path / f"lossy_{crf}.mov"
+    with clip_io.ClipEncoder(path, clip_io.VideoFormat(192, 192, "yuv420p", tags), time_base=Fraction(1, 600),
+                             frame_times=[20 * k for k in range(8)], container="mov", crf=crf) as encoder:
+        for k in range(8):
+            rng = np.random.default_rng(401 + k)
+            y = np.clip(np.round(30.0 + rng.normal(0.0, 4.0, (192, 192))), 0, 255).astype(np.uint8)
+            y[:24], y[168:] = 16, 16
+            encoder.write((y, np.full((96, 96), 128, np.uint8), np.full((96, 96), 128, np.uint8)))
+        encoder.finish()
+    probe = clip_io.probe_clip(path)
+    clip = clip_frames.clip_colour(probe.video)
+    with clip_io.ClipDecoder(path, probe) as decoder:
+        frames = [tuple(np.array(p) for p in frame.planes) for frame in decoder]
+    found = clip_frames.clip_bars(clip, frames)
+    low = 24 - bars_rule.TRANSFORM_BLOCK_PX
+    assert low <= found.top <= 24 and low <= found.bottom <= 24 and not found.left and not found.right, found
+    measured = clip_frames.measure_clip(clip, frames)
+    assert measured.bars == found
 
 
 def test_the_pooled_measure_finds_the_stars_of_the_picture_inside_the_bars() -> None:
