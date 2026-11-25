@@ -241,7 +241,8 @@ def test_an_absence_is_said_as_no_finding_with_that_name() -> None:
 
 def test_a_name_too_long_to_say_is_said_as_what_the_thing_is() -> None:
     long = "Planet " + "x" * 85
-    sky = with_finding(RIGEL, ["catalogRef", "commonName"], long)
+    # The name is the title, the one the card shows (voice-star-name-2)
+    sky = with_finding(RIGEL, ["title"], long)
     sky = with_finding(RIGEL, ["catalogRef", "objectType"], "planet", sky)
     answer = ask("what is it", RIGEL, sky)
     assert answer["sentence"] == "That is a planet whose name is too long to say here."
@@ -361,10 +362,12 @@ def test_the_colour_sentences() -> None:
     assert ask("what colour is it", RIGEL, sky)["sentence"] == "Rigel is of spectral type B8Ia."
 
 
-def test_a_thing_with_no_name_is_said_as_its_kind() -> None:
+def test_a_thing_with_no_common_name_is_said_by_its_title() -> None:
+    # Every finding has a title, so the name never falls to the kind alone; the common-name field is not read for it
+    # (voice-star-name-2)
     sky = copy.deepcopy(CALIBRATED)
     del next(f for f in sky["findings"] if f["id"] == RIGEL)["catalogRef"]["commonName"]
-    assert ask("what is it", RIGEL, sky)["sentence"] == "That is a star."
+    assert ask("what is it", RIGEL, sky)["sentence"] == "That is Rigel."
 
 
 def test_every_refusal_carries_the_solutions_id() -> None:

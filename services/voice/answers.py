@@ -92,7 +92,9 @@ _REFUSING = re.compile(
 _CLAUSE_MARK = re.compile(r"[,;.!?]")
 # The quantities stated for a question about one finding, in this order, each from its path in the stored solution
 FINDING_PATHS: dict[str, tuple[tuple[str, ...], ...]] = {
-    "identity": (("catalogRef", "commonName"), ("catalogRef", "objectType")),
+    # The title, the one its card shows, never the common-name field, which holds the catalog id where the IAU names
+    # file has none (voice-star-name-2); a predicted body's title is its name
+    "identity": (("title",), ("catalogRef", "objectType")),
     "distance": (("catalogRef", "bailerJonesDistancePc", "median"), ("inferredDistancePc", "median")),
     "brightness": (("catalogRef", "apparentMagnitude"), ("sourceDetection", "snr")),
     "colour_temperature": (("catalogRef", "colorIndexBpRp"), ("catalogRef", "spectralType")),
@@ -561,6 +563,10 @@ def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: d
 
     if kind == "identity":
         thing = by.get("name", {}).get("text")
+        if isinstance(thing, str):
+            # Up to its bracket, as the app parser reads a title; the Moon and the Sun with their article
+            thing = thing.split(" (")[0].strip() or thing
+            thing = f"the {thing}" if thing in ("Moon", "Sun") else thing
         kind_word = by.get("object_type", {}).get("text", "").replace("_", " ")
         spoken = [q for q in ("name", "object_type") if q in by]
         long_form = f"That is a {kind_word} whose name is too long to say here." if kind_word else SENTENCE_TOO_LONG

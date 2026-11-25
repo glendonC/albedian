@@ -357,6 +357,11 @@
         "predicted": "predicted",
         "simulated": "simulated"
       },
+      "title": {
+        "catalog_matched": "catalog_matched",
+        "predicted": "predicted",
+        "simulated": "simulated"
+      },
       "ephemeris": {
         "observed": "predicted",
         "catalog_matched": "predicted",
@@ -510,6 +515,16 @@
         "quantity": "name",
         "unit": null,
         "rule": "catalog"
+      },
+      {
+        "path": [
+          "findings",
+          "*",
+          "title"
+        ],
+        "quantity": "name",
+        "unit": null,
+        "rule": "title"
       },
       {
         "path": [
@@ -1944,6 +1959,48 @@
       {
         "subject": {
           "kind": "finding",
+          "findingId": "finding-star-sample",
+          "evidenceClass": "catalog_matched"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample Star"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-predicted-moon",
+          "evidenceClass": "predicted"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Moon"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            12,
+            "title"
+          ]
+        }
+      },
+      {
+        "subject": {
+          "kind": "finding",
           "findingId": "finding-scene-sample",
           "evidenceClass": "simulated"
         },
@@ -2684,6 +2741,69 @@
             0,
             "catalogRef",
             "commonName"
+          ]
+        }
+      },
+      {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-star-grid",
+          "evidenceClass": "catalog_matched"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-predicted-grid",
+          "evidenceClass": "predicted"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-scene-grid",
+          "evidenceClass": "simulated"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "simulated",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
           ]
         }
       },
@@ -9816,6 +9936,56 @@
         }
       },
       "reason": "class b2 a stored catalog name stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-obs-1",
+          "evidenceClass": "observed"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample Star"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "class b2 an observed finding's title as its name"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-star-sample",
+          "evidenceClass": "catalog_matched"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample Star"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "class b2 a title stated observed"
     },
     {
       "schema": "AnswerStatement",
@@ -18128,6 +18298,519 @@
         }
       },
       "reason": "table findings/*/catalogRef/commonName about ephemeris_body stated simulated"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-obs-9",
+          "evidenceClass": "observed"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about observed stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-obs-9",
+          "evidenceClass": "observed"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about observed stated catalog_matched"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-obs-9",
+          "evidenceClass": "observed"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about observed stated predicted"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-obs-9",
+          "evidenceClass": "observed"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "simulated",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about observed stated simulated"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-star-grid",
+          "evidenceClass": "catalog_matched"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about catalog_matched stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-star-grid",
+          "evidenceClass": "catalog_matched"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about catalog_matched stated predicted"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-star-grid",
+          "evidenceClass": "catalog_matched"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "simulated",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about catalog_matched stated simulated"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-predicted-grid",
+          "evidenceClass": "predicted"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about predicted stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-predicted-grid",
+          "evidenceClass": "predicted"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about predicted stated catalog_matched"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-predicted-grid",
+          "evidenceClass": "predicted"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "simulated",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about predicted stated simulated"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-scene-grid",
+          "evidenceClass": "simulated"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about simulated stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-scene-grid",
+          "evidenceClass": "simulated"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about simulated stated catalog_matched"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "finding",
+          "findingId": "finding-scene-grid",
+          "evidenceClass": "simulated"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about simulated stated predicted"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "solution"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about solution stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "solution"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about solution stated catalog_matched"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "solution"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about solution stated predicted"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "solution"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "simulated",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about solution stated simulated"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "ephemeris_body",
+          "body": "Moon"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "observed",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about ephemeris_body stated observed"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "ephemeris_body",
+          "body": "Moon"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "catalog_matched",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about ephemeris_body stated catalog_matched"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "ephemeris_body",
+          "body": "Moon"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "predicted",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about ephemeris_body stated predicted"
+    },
+    {
+      "schema": "AnswerStatement",
+      "sample": {
+        "subject": {
+          "kind": "ephemeris_body",
+          "body": "Moon"
+        },
+        "quantity": "name",
+        "value": {
+          "kind": "text",
+          "text": "Sample"
+        },
+        "evidenceClass": "simulated",
+        "source": {
+          "kind": "solution_field",
+          "path": [
+            "findings",
+            0,
+            "title"
+          ]
+        }
+      },
+      "reason": "table findings/*/title about ephemeris_body stated simulated"
     },
     {
       "schema": "AnswerStatement",
@@ -40279,25 +40962,25 @@
       "sample": {
         "subject": {
           "kind": "finding",
-          "findingId": "finding-scene-sample",
-          "evidenceClass": "simulated"
+          "findingId": "finding-star-sample",
+          "evidenceClass": "catalog_matched"
         },
-        "quantity": "name",
+        "quantity": "constellation",
         "value": {
           "kind": "text",
-          "text": "Sample Scene Body"
+          "text": "Sample Star"
         },
-        "evidenceClass": "simulated",
+        "evidenceClass": "catalog_matched",
         "source": {
           "kind": "solution_field",
           "path": [
             "findings",
-            3,
+            0,
             "title"
           ]
         }
       },
-      "reason": "source a finding title as a name"
+      "reason": "source a title as a name in a quantity a title does not hold"
     },
     {
       "schema": "AnswerStatement",

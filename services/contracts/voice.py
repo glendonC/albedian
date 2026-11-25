@@ -734,6 +734,9 @@ CLASS_RULES: dict[str, dict[str, str]] = {
     "own_class": {"observed": "observed", "catalog_matched": "catalog_matched", "predicted": "predicted", "simulated": "simulated"},
     # A catalog value, from the catalog or from its copy in the solution
     "catalog": {"catalog_matched": "catalog_matched", "predicted": "predicted", "simulated": "simulated"},
+    # A finding's title, made from its catalog row (an IAU name, else a designation, else the catalog id) or from the
+    # ephemeris's own body name: not measured, so an observed finding's title states nothing (voice-star-name-2)
+    "title": {"catalog_matched": "catalog_matched", "predicted": "predicted", "simulated": "simulated"},
     # Computed by the ephemeris for the capture time and place
     "ephemeris": {"observed": "predicted", "catalog_matched": "predicted", "predicted": "predicted", "simulated": "simulated", "ephemeris_body": "predicted"},
     # What the solver measured of the photo as a whole
@@ -763,6 +766,7 @@ SOLUTION_FIELD_SOURCES: list[dict[str, Any]] = [
     _row(["findings", "*", "skyPosition", "azDeg"], "azimuth", "deg", "own_class"),
     _row(["findings", "*", "skyPosition", "uncertaintyArcsec"], "position_uncertainty", "arcsec", "own_class"),
     _row(["findings", "*", "catalogRef", "commonName"], "name", None, "catalog"),
+    _row(["findings", "*", "title"], "name", None, "title"),
     _row(["findings", "*", "catalogRef", "objectType"], "object_type", None, "catalog"),
     _row(["findings", "*", "catalogRef", "constellation"], "constellation", None, "catalog"),
     _row(["findings", "*", "catalogRef", "spectralType"], "spectral_type", None, "catalog"),
@@ -1626,6 +1630,9 @@ def build_answer_samples() -> dict[str, Any]:
     pose_end = say(solution, "pose_max_offset", number(180, "deg"), "predicted", field("poseEstimate", "maxCenterOffsetDeg"))
     drawn = say(simulated, "name", words("Sample Scene Body"), "simulated",
                 field("findings", 3, "catalogRef", "commonName"))
+    # A name from a finding's title, the one its card shows (voice-star-name-2)
+    titled = say(matched, "name", words("Sample Star"), "catalog_matched", field("findings", 0, "title"))
+    predicted_titled = say(predicted, "name", words("Moon"), "predicted", field("findings", 12, "title"))
     # The first auditor's control: a simulated finding's distance, stated simulated
     simulated_distance = say(simulated, "distance", number(10, "pc"), "simulated",
                              field("findings", 3, "inferredDistancePc", "median"))
@@ -1739,6 +1746,9 @@ def build_answer_samples() -> dict[str, Any]:
         ("b2 a catalog row stated observed", _with(magnitude, ["evidenceClass"], "observed")),
         ("b2 a stored catalog magnitude stated observed", _with(stored_magnitude, ["evidenceClass"], "observed")),
         ("b2 a stored catalog name stated observed", _with(name, ["evidenceClass"], "observed")),
+        # A title is no measurement: an observed finding's title states nothing, under any class
+        ("b2 an observed finding's title as its name", _with(_with(titled, ["subject"], observed), ["evidenceClass"], "observed")),
+        ("b2 a title stated observed", _with(titled, ["evidenceClass"], "observed")),
         ("b2 a stored catalog distance stated observed", _with(catalog_distance, ["evidenceClass"], "observed")),
         ("b2 a stored inferred distance stated observed", _with(star_distance, ["evidenceClass"], "observed")),
         ("b2 a stored catalog colour stated predicted", _with(stored_colour, ["evidenceClass"], "predicted")),
@@ -1952,7 +1962,7 @@ def build_answer_samples() -> dict[str, Any]:
         ("a body the ephemeris does not compute", below_distance, ["subject", "body"], "Pluto"),
         ("an ephemeris method from no list", body_distance, ["source", "method"], "sample method"),
         ("a catalog from no list", magnitude, ["source", "catalog"], "Sample Catalog"),
-        ("a finding title as a name", drawn, ["source", "path"], ["findings", 3, "title"]),
+        ("a title as a name in a quantity a title does not hold", titled, ["quantity"], "constellation"),
         ("a pose's centre altitude", zenith, ["source", "path"], ["poseEstimate", "centerAltDeg"]),
         ("a key past the table", star_distance, ["source", "path"], ["findings", 0, "inferredDistancePc", "median", "x"]),
         ("a key in place of an index", star_distance, ["source", "path"], ["findings", "0", "inferredDistancePc", "median"]),
@@ -2059,7 +2069,8 @@ def build_answer_samples() -> dict[str, Any]:
         observed_dec, declination, stored_dec, row_ra, body_ra, body_dec, position, simulated_altitude, observed_altitude,
         matched_altitude, simulated_ra,
         lit, new_moon, full_moon, phase_angle, opposite, phase_name, detected, matched_count, no_match, safe_count,
-        status, held_out, residual, residual_arcsec, pose, pose_end, drawn, simulated_distance, tiny_distance,
+        status, held_out, residual, residual_arcsec, pose, pose_end, drawn, titled, predicted_titled, simulated_distance,
+        tiny_distance,
         *grid_valid,
         *edge_valid,
     ]

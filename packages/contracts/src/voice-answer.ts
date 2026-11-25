@@ -177,6 +177,9 @@ export const CLASS_RULES = {
   own_class: { observed: 'observed', catalog_matched: 'catalog_matched', predicted: 'predicted', simulated: 'simulated' },
   // A catalog value, from the catalog or from its copy in the solution
   catalog: { catalog_matched: 'catalog_matched', predicted: 'predicted', simulated: 'simulated' },
+  // A finding's title, made from its catalog row (an IAU name, else a designation, else the catalog id) or from the
+  // ephemeris's own body name: not measured, so an observed finding's title states nothing (voice-star-name-2)
+  title: { catalog_matched: 'catalog_matched', predicted: 'predicted', simulated: 'simulated' },
   // Computed by the ephemeris for the capture time and place
   ephemeris: { observed: 'predicted', catalog_matched: 'predicted', predicted: 'predicted', simulated: 'simulated', ephemeris_body: 'predicted' },
   // What the solver measured of the photo as a whole
@@ -205,6 +208,7 @@ export const SOLUTION_FIELD_SOURCES = [
   { path: ['findings', '*', 'skyPosition', 'azDeg'], quantity: 'azimuth', unit: 'deg', rule: 'own_class' },
   { path: ['findings', '*', 'skyPosition', 'uncertaintyArcsec'], quantity: 'position_uncertainty', unit: 'arcsec', rule: 'own_class' },
   { path: ['findings', '*', 'catalogRef', 'commonName'], quantity: 'name', unit: null, rule: 'catalog' },
+  { path: ['findings', '*', 'title'], quantity: 'name', unit: null, rule: 'title' },
   { path: ['findings', '*', 'catalogRef', 'objectType'], quantity: 'object_type', unit: null, rule: 'catalog' },
   { path: ['findings', '*', 'catalogRef', 'constellation'], quantity: 'constellation', unit: null, rule: 'catalog' },
   { path: ['findings', '*', 'catalogRef', 'spectralType'], quantity: 'spectral_type', unit: null, rule: 'catalog' },
