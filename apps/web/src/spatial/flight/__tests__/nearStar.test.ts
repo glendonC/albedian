@@ -133,6 +133,11 @@ describe('the hand-over\'s heading', () => {
     r = startHandover({ positionPc: at, rows: ROWS }, star)!;
     const half = stepHandover(r, { positionPc: at, rows: ROWS }, star, HANDOVER_SECONDS / 2, false);
     expectRows(half.rows, turnedRows(ROWS, r.axis, r.angleRad / 2), 12);
+    // In two quarter steps, each the share's part of what is left: the look is half way to the star as in one step
+    const lookOff = (rows: WcsCameraRows) => Math.acos(Math.min(1, dot(rows.z, star.positionPc) / len(star.positionPc)));
+    const quarter = stepHandover(r, { positionPc: at, rows: ROWS }, star, HANDOVER_SECONDS / 4, false);
+    const thenHalf = stepHandover(quarter.handover!, { positionPc: at, rows: quarter.rows }, star, HANDOVER_SECONDS / 4, false);
+    expect(lookOff(thenHalf.rows) / lookOff(ROWS)).toBeCloseTo(0.5, 2);
     // No star, or the star dead ahead: no turn
     expect(startHandover({ positionPc: [0, 0, 0], rows: ROWS }, null)).toBeNull();
     expect(startHandover({ positionPc: [0, 0, 0], rows: ROWS }, { positionPc: [0, 0, 3], earthPc: 3, magnitude: 1 })).toBeNull();

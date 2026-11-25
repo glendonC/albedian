@@ -215,7 +215,7 @@ export function stepHandover(
   const left = turnBetween(state.rows, heading);
   const part = share >= 1 ? 1 : (share - h.made) / (1 - h.made);
   const turned = turnedRows(state.rows, left.axis, left.angleRad * part);
-  return { rows: share >= 1 ? heading : turned, handover: share >= 1 ? null : { ...h, seconds, made: share } };
+  return { rows: turned, handover: share >= 1 ? null : { ...h, seconds, made: share } };
 }
 
 /**

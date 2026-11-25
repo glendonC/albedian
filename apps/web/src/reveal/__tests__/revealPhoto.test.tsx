@@ -913,6 +913,19 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     ]);
   });
 
+  // near-star-flight-one (DECIDED-BY-LEAD 25 Nov 07:28, condition two): near the star the distance to it reads in
+  // astronomical units below a tenth of a light year, where two decimals of a light year would leave one figure
+  it('gives the distance to the star in astronomical units below a tenth of a light year (near-star-flight-one)', () => {
+    const { session } = rigelPicked();
+    const stats = () => [...q(READOUT)!.querySelectorAll('.flight-readout__stat')].map((s) => [s.querySelector('b')!.textContent, s.querySelector('span')!.textContent]);
+    show(session, { flight: { name: 'Rigel', toStarLy: 0.1, fromEarthLy: 859.43 } });
+    expect(stats()).toEqual([['0.10ly', 'to Rigel'], ['859ly', 'from Earth']]);
+    show(session, { flight: { name: 'Rigel', toStarLy: 0.05, fromEarthLy: 859.43 } });
+    expect(stats()).toEqual([['3,162AU', 'to Rigel'], ['859ly', 'from Earth']]);
+    show(session, { flight: { name: 'Rigel', toStarLy: 0.001, fromEarthLy: 859.43 } });
+    expect(stats()).toEqual([['63.2AU', 'to Rigel'], ['859ly', 'from Earth']]);
+  });
+
   // flight-readout-nodistance-one (UIUX-flight-READY.md, the addition of 20:05; DECIDED-BY-LEAD 20:09 on 24 Nov; FIELD saw
   // Omega Centauri titled over the camera's own 391 ly): a number under a target's name is that target's or it is not
   // shown there. With no distance, the recorded no-distance line stands where the two numbers stand, after the same

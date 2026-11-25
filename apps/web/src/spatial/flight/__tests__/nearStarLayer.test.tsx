@@ -7,7 +7,9 @@ import { raDecToUnitVector } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
-import { HANDOVER_SECONDS, NEAR_STAR_TAU_S, READOUT_EVERY_MS } from '../nearStar.js';
+import { HANDOVER_SECONDS, NEAR_STAR_TAU_S, READOUT_EVERY_MS, nearStarFloorPc } from '../nearStar.js';
+import { flightCameraOf } from '../flightFrame.js';
+import { STEER_START_SPEED_PC_S } from '../steering.js';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 
 // near-star-flight-one (DECIDED-BY-LEAD 25 Nov 07:28): on the real star layer, the steered flight heads at the star at
@@ -80,9 +82,28 @@ async function tick(rounds: number, ms = 1000 / 60) {
 /** The layer's own record of the pacing: distance to the star, its floor, the paced speed and the set speed. */
 const near = () => container.querySelector('[data-testid="flight-stars"]')!.getAttribute('data-near')!.split(' ').map(Number);
 
-async function steerFrom(reducedMotion: boolean, onSteer = vi.fn()) {
+/**
+ * A tile whose one star is the star flown to as its own catalog row would place it: a hundredth farther than the place
+ * flown to and a ten-thousandth of a radian off it (within arrival.ts's match), magnitude 2.
+ */
+function rowAtThePlace(): { tile: CatalogStarCoreTile; positionPc: [number, number, number] } {
+  const ref = flightCameraOf(there(false), 1440, 900)!.referencePc;
+  const d = Math.hypot(ref[0], ref[1], ref[2]);
+  const u = [ref[0] / d, ref[1] / d, ref[2] / d];
+  // Off the place by 1e-4 rad, about a perpendicular axis
+  const p = Math.abs(u[2]!) < 0.9 ? [-u[1]!, u[0]!, 0] : [0, -u[2]!, u[1]!];
+  const pn = Math.hypot(p[0]!, p[1]!, p[2]!);
+  const dir = [u[0]! + (1e-4 * p[0]!) / pn, u[1]! + (1e-4 * p[1]!) / pn, u[2]! + (1e-4 * p[2]!) / pn];
+  const directions = new Float32Array(dir);
+  const distancePc = new Float32Array([d * 1.01]);
+  const dn = Math.hypot(directions[0]!, directions[1]!, directions[2]!);
+  const positionPc: [number, number, number] = [(directions[0]! / dn) * distancePc[0]!, (directions[1]! / dn) * distancePc[0]!, (directions[2]! / dn) * distancePc[0]!];
+  return { tile: { ...tile, directions, distancePc, magnitude: new Float32Array([2]) }, positionPc };
+}
+
+async function steerFrom(reducedMotion: boolean, onSteer = vi.fn(), theTile: CatalogStarCoreTile = tile) {
   const openTiles: OpenFlightTiles = async (onTile) => {
-    onTile(tile);
+    onTile(theTile);
     return { setView: () => {}, dispose: () => {} };
   };
   const tree = (steering: boolean) => createElement(FlightStarsLayer, { session: there(reducedMotion), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, steering, onSteer });
@@ -139,5 +160,30 @@ describe('the flight near the star (near-star-flight-one)', () => {
     await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft' })));
     await tick(60);
     expect(onSteer.mock.calls.length).toBeLessThanOrEqual(Math.ceil(1000 / READOUT_EVERY_MS));
+  });
+
+  it('goes by the star\'s own row when it is found: aims at it, is paced by it, and reads the distance to it', async () => {
+    const row = rowAtThePlace();
+    const onSteer = await steerFrom(false, vi.fn(), row.tile);
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w' })));
+    await tick(600, 100);
+    const [d, floor] = near();
+    // The row's own floor, from its magnitude and distance, not the 1 AU of a place whose light is unknown
+    const earthPc = Math.hypot(...row.positionPc);
+    expect(floor! / nearStarFloorPc({ earthPc, magnitude: 2 })).toBeCloseTo(1, 6);
+    expect(d! / floor!).toBeCloseTo(1, 6);
+    // The readout's distance is to the row (at its floor), not to the place flown to (a hundredth of its distance away)
+    const last = onSteer.mock.calls.map(([r]) => r).filter(Boolean).at(-1) as { toStarPc: number };
+    expect(last.toStarPc / floor!).toBeCloseTo(1, 3);
+  });
+
+  it('flies the set speed when S brings it under the paced one', async () => {
+    await steerFrom(false);
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' })));
+    await tick(240);
+    const [, , paced, set] = near();
+    // Four seconds of S: a sixteenth of the start speed, under the distance over 2.5 s by then
+    expect(set! / (STEER_START_SPEED_PC_S / 16)).toBeCloseTo(1, 6);
+    expect(paced).toBe(set);
   });
 });
