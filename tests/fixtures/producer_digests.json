@@ -79,8 +79,9 @@
    "apps/web/public/catalog/deepsky/openngc.json",
    "services/science/record_hint.py",
    "services/science/person_hint.py",
-   "services/science/sun_pose.py"
+   "services/science/sun_pose.py",
+   "services/science/anet_stage.py"
   ],
-  "digest": "5b2aeb6caa9fedef96d9aab0c56e4c0cb1cd354df28b7b64cb26d46709f93def"
+  "digest": "bfa108951ed61a70f2bcd8533f2cba9828f5dd577ee9fbbdb0f839d2827275c3"
  }
 }

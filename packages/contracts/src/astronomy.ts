@@ -646,6 +646,8 @@ const HINT_MOMENT =
 export const CANDIDATE_PROGRAMS = ['astrometry.net'] as const;
 /** An astrometry.net index file named by its file name alone (index-4117.fits, index-5206-03.fits): never a path. */
 export const INDEX_FILE_PATTERN = /^index-[0-9]{4}(-[0-9]{2})?\.fits$/;
+/** The program's own version line as one word (0.97): letters, digits and . + _ -, so never a path or a sentence. */
+export const VERSION_LINE_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$/;
 const CANDIDATE_SOURCE_CALIBRATED =
   "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and passed the held-out check.";
 
@@ -658,7 +660,7 @@ const CANDIDATE_SOURCE_CALIBRATED =
  */
 export const CandidateSourceSchema = z.object({
   program: z.enum(CANDIDATE_PROGRAMS),
-  version: z.string().min(1),
+  version: z.string().regex(VERSION_LINE_PATTERN),
   indexFile: z.string().regex(INDEX_FILE_PATTERN),
 });
 export type CandidateSource = z.infer<typeof CandidateSourceSchema>;

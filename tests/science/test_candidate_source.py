@@ -63,6 +63,8 @@ def test_only_a_calibrated_solution_names_a_candidate_source(status: str) -> Non
 @pytest.mark.parametrize(("field", "value"), [
     ("program", "another.solver"),
     ("version", ""),
+    ("version", "/opt/homebrew/bin/solve-field"),
+    ("version", "0.97 (built here)"),
     ("index_file", "/opt/astrometry/index-4117.fits"),
     ("index_file", "index-4117"),
     ("index_file", "index-4117.fits\n"),

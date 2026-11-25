@@ -1163,7 +1163,7 @@ def build_fixture() -> dict[str, Any]:
             'A number JSON cannot carry is written {"$number": "NaN"}, {"$number": "Infinity"} or {"$number": "-Infinity"}.'
         ),
         "patterns": {"sha256": ingest.SHA256_HEX_PATTERN, "utcInstant": ingest.ZOD_DATETIME_PATTERN,
-                     "indexFile": contract.INDEX_FILE_PATTERN},
+                     "indexFile": contract.INDEX_FILE_PATTERN, "versionLine": contract.VERSION_LINE_PATTERN},
         # Read from services/science/solver.py, never retyped here
         "heldOutGate": {"minHeldOutInliers": least, "maxMedianResidualPx": most},
         "sweptFovToleranceDeg": contract.SWEPT_FOV_TOLERANCE_DEG,
@@ -1809,6 +1809,7 @@ def test_the_field_table_names_every_field_of_the_family() -> None:
     assert seen == set(contract.FAMILY)
     assert table["patterns"] == {
         "sha256": ingest.SHA256_HEX_PATTERN, "utcInstant": ingest.ZOD_DATETIME_PATTERN, "indexFile": contract.INDEX_FILE_PATTERN,
+        "versionLine": contract.VERSION_LINE_PATTERN,
     }
 
 
@@ -2648,7 +2649,7 @@ def test_a_pattern_rule_refuses_a_text_it_takes_with_a_line_break_before_or_afte
     pattern takes the texts it lists and refuses each of them with a line break before or after it, as Zod's anchors
     do (the Vitest file tries the same through each field that follows such a rule)."""
     patterned = [value for value in vars(contract).values() if isinstance(value, contract.TextRule) and value.pattern is not None]
-    assert {rule.name for rule in patterned} == {"sha256", "utcInstant", "indexFile"}
+    assert {rule.name for rule in patterned} == {"sha256", "utcInstant", "indexFile", "versionLine"}
     for rule in patterned:
         assert rule.accept, rule.name
         for text in rule.accept:

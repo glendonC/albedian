@@ -932,7 +932,7 @@ class CandidateSource:
 
     def __post_init__(self) -> None:
         require_contract_value(self.program, contract.CANDIDATE_PROGRAM, "A candidate source's program")
-        require_contract_value(self.version, contract.NON_EMPTY_TEXT, "A candidate source's version")
+        require_contract_value(self.version, contract.VERSION_LINE, "A candidate source's version")
         require_contract_value(self.index_file, contract.INDEX_FILE, "A candidate source's index file")
 
     def to_contract_dict(self) -> dict:

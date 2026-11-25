@@ -33,6 +33,7 @@ import {
   CANDIDATE_PROGRAMS,
   CandidateSourceSchema,
   INDEX_FILE_PATTERN,
+  VERSION_LINE_PATTERN,
   SWEPT_FOV_TOLERANCE_DEG,
   ScientificEvidenceSchema,
   SkyPositionSchema,
@@ -87,7 +88,7 @@ interface Case {
   messages: string[];
 }
 interface Fixture {
-  patterns: { sha256: string; utcInstant: string; indexFile: string };
+  patterns: { sha256: string; utcInstant: string; indexFile: string; versionLine: string };
   heldOutGate: { minHeldOutInliers: number; maxMedianResidualPx: number };
   sweptFovToleranceDeg: number;
   findingClassEvidence: Record<string, { source: string[]; must: Record<string, string>; mustNot: Record<string, string>; may: string[] }>;
@@ -263,6 +264,7 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     expect(fixture.rules['candidateProgram']!.values).toEqual([...CANDIDATE_PROGRAMS]);
     expect(fixture.rules['candidateProgram']!.values).toEqual(CandidateSourceSchema.shape.program.options);
     expect(fixture.patterns.indexFile).toBe(INDEX_FILE_PATTERN.source);
+    expect(fixture.patterns.versionLine).toBe(VERSION_LINE_PATTERN.source);
     expect(fixture.rules['catalogProvider']!.values).toEqual(referenceShape.provider.options);
     expect(fixture.rules['catalogObjectType']!.values).toEqual(referenceShape.objectType.options);
     expect(fixture.rules['catalogDistanceMethod']!.values).toEqual(referenceShape.bailerJonesDistancePc.unwrap().shape.method.options);

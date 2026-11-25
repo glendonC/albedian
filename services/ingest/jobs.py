@@ -17,7 +17,7 @@ over it, each at its own presentation time (`_decode_spread_frames`).
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from fractions import Fraction
 import json
 import math
@@ -76,7 +76,8 @@ from services.science.person_hint import person_hint, stored_axes_icrs
 from services.science.record_hint import RecordAttitude, RecordHint, record_attitude, record_hint
 from services.science.solver import angular_separation_deg
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
-from services.science.wcs_models import ObservationSolution, PointingHint
+from services.science import anet_stage
+from services.science.wcs_models import CandidateSource, ObservationSolution, PointingHint
 
 MAX_VIDEO_SOLVE_FRAMES = 8
 # The frames of a clip the head-worn Moon pose searches, spread over the whole clip (design component 6)
@@ -135,6 +136,12 @@ BLIND_OWN_WORDS = (
 BLIND_OWN_CLIP_WORDS = (
     "The stars alone lined this clip up; what is predicted on it is drawn for the clip's recorded capture time and "
     "place, which the stars do not confirm. " + _BLIND_SECOND
+)
+# The result's details line when a calibration's first candidate came from astrometry.net and the app's own held-out
+# check kept it (anet-stage-one; UIUX-anet-words-READY.md item 1, decided by the lead at 21:44 on 2026-11-24)
+ANET_WORDS = (
+    "The first possible match came from astrometry.net; the stars held back to check it landed where it put them, so "
+    "it was kept."
 )
 # C13 item 9 (.lead/uiux/UIUX-pointingwords-DECIDED-BY-LEAD.md, decided 2026-11-19 07:40)
 RECORD_NOT_USED = "The iPhone record stored with this photo belongs to another photo, so it was not used."
@@ -616,6 +623,7 @@ def _solve_chain(
     person_axes: Sequence[tuple[float, float]] | None = None,
     person_fov_deg: float | None = None,
     stored: tuple[np.ndarray, int, int, int] | None = None,
+    anet: Mapping[str, Any] | None = None,
     **chain: Any,
 ):
     """The searches (`_solve_chain_once`), with a pointing record's centre hint first when there is one; when the
@@ -643,7 +651,11 @@ def _solve_chain(
 
     A still searched binned (`stored`: its stored frame, the factor and the stored size) has each search's solution
     handed to the stored pixels where that search ends (`_StoredPixels`, bin-detect-v2), so every solution the chain
-    reads and returns is in the stored frame."""
+    reads and returns is in the stored frame.
+
+    With the opt-in astrometry.net stage on (`anet`), after all of these have calibrated nothing, its candidate through
+    the phone solver's own check (`_solve_from_anet`, anet-stage-one), handed to the stored pixels the same way."""
+    began = time.monotonic()
     phone_detections = _PhoneDetections(solve_image, chain.get("source_asset_id"))
     if chain.get("sha256") in _PREPARED_PHONE:
         phone_detections._found = _PREPARED_PHONE.pop(chain["sha256"])
@@ -687,7 +699,94 @@ def _solve_chain(
         )
         if whole.status == "calibrated":
             return replace(whole, warnings=[*whole.warnings, BLIND_OWN_WORDS])
+    if anet is not None:
+        # The opt-in astrometry.net stage, only now that the app's own searches calibrated nothing (anet-stage-one)
+        staged = _solve_from_anet(
+            solve_image, detections, width, height, on_event=on_event, anet=anet, moment_lent=moment_lent,
+            spent_s=time.monotonic() - began, phone_detections=phone_detections, to_stored=to_stored, **chain,
+        )
+        if staged is not None:
+            return staged
     return solution
+
+
+# What of the stage's bound its candidate's check keeps, past the program's own time [proposed: the check of a
+# candidate took at most 67.3 s on the 27 public photos astrometry.net solves, at loads up to 118]
+ANET_CHECK_SHARE_S = 30.0
+
+
+def _solve_from_anet(
+    solve_image: np.ndarray,
+    detections: list,
+    width: int,
+    height: int,
+    *,
+    on_event: Callable[..., None],
+    anet: Mapping[str, Any],
+    moment_lent: str | None,
+    spent_s: float,
+    phone_detections: Callable[[], list],
+    to_stored: "_StoredPixels | None" = None,
+    **chain: Any,
+) -> Any:
+    """astrometry.net's candidate through the phone solver's own check, or None when it gives none or the check
+    refuses it. The candidate stands in for the search's answer and nothing else changes: the same association,
+    refinement and held-out gate, the photo's own epoch, and with a time and a place no horizon cut on the stars (as
+    the whole-sky rerun has it). A calibration names its candidate's source and says so in its details, with the
+    moment's own words when the photo's time and place were there for the searches that found nothing."""
+    settings = anet_stage.AnetSettings(
+        solve_field=str(anet["solve_field"]), index_dir=str(anet["index_dir"]), limit_s=float(anet["limit_s"]),
+        program_limit_s=float(anet["program_limit_s"]),
+    )
+    budget = float(anet["bound_s"]) - spent_s - ANET_CHECK_SHARE_S
+    # A pass of its own on the working screen: the program's one step, then the check
+    on_event("solver", "phone_photo")
+    on_event("candidate", 0, 1)
+    found = anet_stage.find_candidate(solve_image, width, height, settings, fov_hint_deg=chain.get("fov_hint"), budget_s=budget)
+    on_event("candidate", 1, 1)
+    if found is None:
+        return None
+    obs, lat, lon = chain.get("obs_utc_iso"), chain.get("lat_deg"), chain.get("lon_deg")
+    has_moment = obs is not None and lat is not None and lon is not None
+    checked = _solve_phone_photo_with_candidate(
+        solve_image, phone_detections(), found.wcs, obs_utc_iso=obs, observer_lat=lat, observer_lon=lon,
+        camera_label=chain.get("camera_label"), source_asset_id=chain["source_asset_id"],
+        source_sha256=chain["sha256"], solution_id=chain["solution_id"], whole_sky=has_moment,
+    )
+    if checked.status == "calibrated" and to_stored is not None:
+        # A still searched binned: handed to its stored pixels as every phone search's is (bin-detect-v2)
+        checked = to_stored.phone(checked)
+    if checked.status != "calibrated":
+        return None
+    words = [ANET_WORDS]
+    if moment_lent:
+        words.append(BLIND_LENT_WORDS[moment_lent])
+    elif has_moment:
+        words.append(BLIND_OWN_WORDS)
+    source = CandidateSource(program=anet_stage.PROGRAM, version=found.version, index_file=found.index_file)
+    return _with_noise_words(replace(checked, candidate_source=source, warnings=[*checked.warnings, *words]), detections)
+
+
+def _solve_phone_photo_with_candidate(solve_image: np.ndarray, detections: list, candidate: Any, **solve: Any) -> Any:
+    """One phone solve whose search's answer is `candidate` (refine-2's `_preset_initial_wcs`): its field, both
+    lens models as the search's would be, and every step after the search as for any candidate."""
+    from services.science import phone_photo_solver as pps
+
+    return pps._solve_phone_photo_with(
+        solve_image, attitude_prior=pps._attitude_prior_takes, detections=detections,
+        fov_diagonal_deg=float(candidate.fov_diagonal_deg), _preset_initial_wcs=candidate, **solve,
+    )
+
+
+def _anet_for_job(limit_s: float) -> tuple[float, dict[str, Any] | None]:
+    """The search bound and the stage's settings for one job: with the stage off, the bound as it was and no stage;
+    on, the bound grown by the stage's own (`anet_stage.STAGE_LIMIT_S`), the most a photo that still fails waits
+    longer, and the settings the job's child takes."""
+    settings = anet_stage.settings_from_env()
+    if settings is None:
+        return limit_s, None
+    bound = limit_s + settings.limit_s
+    return bound, {**asdict(settings), "bound_s": bound}
 
 
 def _searched_from_the_horizon(chain: Mapping[str, Any], detections: list) -> bool:
@@ -1379,12 +1478,16 @@ def _solve_after_detection(
         _publish_early_sky(ctx.on_predicted_sky, asset, sha256, solution_id, pose_frames, record_sky)
         ctx.check_cancel()
     limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
+    # The opt-in astrometry.net stage grows the search's bound by its own, and only when it is on (anet-stage-one)
+    limit_s, anet = _anet_for_job(limit_s) if alignment is None else (limit_s, None)
     if ctx.remaining_s is not None:
         # The search keeps its own bound, and never runs past what is left of its job's
         limit_s = min(limit_s, ctx.remaining_s())
     # The search reads the frame it is given at that frame's own size: a binned still's, whose solutions the chain
     # hands to the stored pixels
     solve_width, solve_height = (width, height) if bin_k == 1 else (int(solve_image.shape[1]), int(solve_image.shape[0]))
+    if anet is not None:
+        chain_kwargs["anet"] = {**anet, "bound_s": limit_s}
     if _SOLVE_IN_PROCESS:
         if alongside is not None:
             alongside.wait()
@@ -1555,6 +1658,7 @@ SOLVE_PRODUCER_FILES = (
     "services/science/record_hint.py",
     "services/science/person_hint.py",
     "services/science/sun_pose.py",
+    "services/science/anet_stage.py",
 )
 # Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose field of
 # view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives in a matched or
@@ -1604,7 +1708,9 @@ SOLVE_PRODUCER_FILES = (
 # stored-pixel handover functions it adds, which the upload path does not call yet; 31, a still above 48 MP detected
 # and searched binned to at most 8 MP, each search handed to its stored pixels where it ends, in the chain: a
 # calibrated phone solve by refine-2's refit under the same 3 px gate, the chain going on from a refit that does not
-# calibrate, any other solution restated block for block (bin-detect-v2, `services/science/binning.py`)
+# calibrate, any other solution restated block for block (bin-detect-v2, `services/science/binning.py`). The opt-in astrometry.net stage
+# (anet-stage-one, whose anet_stage.py joins the files): off, every record is the record main makes; on, a
+# calibration it makes names its candidateSource
 SOLVE_PRODUCER = Producer("albedian.solve_chain", 31, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of

@@ -69,6 +69,8 @@ POINTING_HINT_SOURCES = ("record", "person")
 # file named by its file name alone (index-4117.fits, index-5206-03.fits), never a path
 CANDIDATE_PROGRAMS = ("astrometry.net",)
 INDEX_FILE_PATTERN = r"^index-[0-9]{4}(-[0-9]{2})?\.fits$"
+# The program's own version line as one word (0.97): letters, digits and . + _ -, so never a path or a sentence
+VERSION_LINE_PATTERN = r"^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$"
 MIN_SWEPT_WCS = 2
 MAX_SWEPT_WCS = 27
 # Rounding room when a swept WCS's field of view is compared with the nominal one's, in degrees [proposed: a
@@ -690,6 +692,13 @@ INDEX_FILE = TextRule(
     accept=("index-4117.fits", "index-4107.fits", "index-5206-03.fits"),
     refuse=("/opt/astrometry/index-4117.fits", "index-4117", "index-41170.fits", "index-4117.fits\n", "4117.fits", ""),
 )
+VERSION_LINE = TextRule(
+    "versionLine",
+    pattern=VERSION_LINE_PATTERN,
+    form="a program's version as one word, never a path",
+    accept=("0.97", "0.97-stand-in", "0.98+git.1", "2"),
+    refuse=("/opt/homebrew/bin/solve-field", "0.97 (built here)", "C:\\astrometry", "-0.97", ".97", "", "0.97\n"),
+)
 SHA256 = TextRule(
     "sha256",
     pattern=SHA256_HEX_PATTERN,
@@ -939,7 +948,7 @@ class CandidateSource(_Contract):
     the app's own association, refinement and held-out check's; no time, place or path is in it."""
 
     program: Annotated[str, CANDIDATE_PROGRAM]
-    version: NonEmptyText
+    version: Annotated[str, VERSION_LINE]
     index_file: Annotated[str, INDEX_FILE]
 
 
