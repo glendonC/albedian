@@ -5,13 +5,13 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SparkControls, SparkRenderer, SparkXr } from '@sparkjsdev/spark';
-import type { RenderLayerSet } from '@albedian/contracts';
+import type { RenderLayerSet, SkyView } from '@albedian/contracts';
 import { cameraSkyPose } from './cameraSkyPose.js';
 import type { CameraSkyPose, ShowcaseSceneKey } from './cosmosRenderer.js';
 import { WEBGL_EXPOSURE } from './frameFinishing.js';
 import { CatalogStarField, DEFAULT_LIMITING_MAGNITUDE, type CatalogStarFieldStats } from './catalogStars/index.js';
 import { webglRenderLayersFor } from './webglRenderLayers.js';
-import { ObserverSky, defaultObserverLook, localFrameQuaternionFor, observerHorizonVisible } from './observerPose.js';
+import { ObserverSky, defaultObserverLook, localFrameQuaternionFor, lookOfSkyView, observerHorizonVisible } from './observerPose.js';
 import { canvasCompassLabel, createObserverHorizon, disposeObserverHorizon } from './webgl/observerHorizon.js';
 import { centreOnCamera } from './skyMounts.js';
 import {
@@ -179,6 +179,8 @@ export class SparkPortalRenderer {
   }
 
   public lookAtSky(azDeg: number, altDeg: number, acrossDeg?: number): void { this.setLook((-azDeg * Math.PI) / 180, (altDeg * Math.PI) / 180); if (acrossDeg) this.targetFov = this.curFov = (360 / Math.PI) * Math.atan(Math.tan((acrossDeg * Math.PI) / 360) / this.camera.aspect); }
+  /** go-there-predicted-2: turn the sky view back to a kept sky view (observerPose.ts lookOfSkyView). */
+  public lookAtSkyView(view: SkyView): void { const l = lookOfSkyView(view, this.scene, this.regimeGroups.earth_capture, this.localFrame); this.setLook(l.yaw, clampLookPitch(l.pitch)); this.targetFov = this.curFov = view.fovVerticalDeg; }
   private setLook(yaw: number, pitch: number): void { Object.assign(this.lookTarget, { yaw, pitch, curYaw: yaw, curPitch: pitch }); }
 
   private lookAtDefault(): void {

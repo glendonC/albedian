@@ -78,7 +78,7 @@ function namelessParts(finding: CelestialFinding): { title: string; number: stri
   return { title: ref.provider, number };
 }
 
-export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | null = null, solution?: ObservationSolution): StarCardFacts {
+export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | null = null, solution?: ObservationSolution, onPredictedSky = false): StarCardFacts {
   const ref = finding.catalogRef;
   const deep = isDeepSky(finding);
   // A deep-sky object is titled by its own name or its NGC number (D23): never a nameless star's parts
@@ -134,7 +134,7 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
     // A nameless star's title and small line already say what the catalog line would
     sourceLine: ref && !nameless ? `${ref.releaseVersion} · ${ref.catalogSourceId}` : null,
     // go-there-predicted-1: a predicted star's Go there needs the photo's pose estimate to show its ring
-    canGoThere: findingCanEnterSpace(finding, solution),
+    canGoThere: findingCanEnterSpace(finding, solution, onPredictedSky),
     notes,
   };
 }

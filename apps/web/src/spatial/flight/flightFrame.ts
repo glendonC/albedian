@@ -11,6 +11,7 @@ import {
   type StarPlacement,
   type Vec3,
 } from '@albedian/camera-rig';
+import { wcsOfSkyView } from './skyViewWcs.js';
 import { sourcePixelToViewport, type PhotoCrop } from '../../components/sourcePhotoRect.js';
 import { distanceKindOf, type CatalogStarCoreTile } from '../catalogStars/tileCodec.js';
 import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
@@ -89,17 +90,47 @@ export interface FlightCamera {
  * (`poseProjection.ts` projectThroughPose), so a flight to a predicted star leaves from its ring and never from a claimed
  * pixel. None otherwise.
  */
+/**
+ * Where a flight's camera comes from: a verified solve's WCS, a pose estimate's nominal WCS (go-there-predicted-1), or
+ * the predicted sky's view kept in the checkpoint the flight left from (go-there-predicted-2); none otherwise.
+ */
+export function flightSourceOf(session: ObservationSession): 'verified' | 'pose' | 'sky_view' | null {
+  const solution = session.observationSolution;
+  if (!solution) return null;
+  if (solution.status === 'calibrated' && hasVerifiedWcs(solution)) return 'verified';
+  if (solution.status === 'approximate' && solution.poseEstimate !== undefined && solution.wcs !== undefined) return 'pose';
+  const history = session.navigationHistory;
+  return history?.checkpoints[history.cursorIndex]?.spatialView.skyView ? 'sky_view' : null;
+}
+
 export function flightCameraOf(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number): FlightCamera | null {
   const solution = session.observationSolution;
   const asset = session.sourceAsset;
   const verified = solution?.status === 'calibrated' && hasVerifiedWcs(solution);
   const posed = solution?.status === 'approximate' && solution.poseEstimate !== undefined;
-  if (!solution || !(verified || posed) || !solution.wcs) return null;
-  if (!asset || !(asset.width > 1) || !(asset.height > 1)) return null;
-  const storedToScreen = storedToScreenAffine(asset.width, asset.height, viewportWidthPx, viewportHeightPx, session.cropTransform, asset.displayOrientation);
+  // go-there-predicted-2: with neither, the flight leaves from the predicted sky's view, kept in the checkpoint it
+  // left from: a TAN WCS on the window, drawing each star where the predicted sky drew it
+  const history = session.navigationHistory;
+  const skyView = !verified && !posed ? history?.checkpoints[history.cursorIndex]?.spatialView.skyView : undefined;
+  if (!solution || !(verified || posed || skyView)) return null;
   const picked = solution.findings.find((f) => f.id === session.selectedFindingId);
   const pickedPlacement = picked ? placeFinding(picked) : null;
   const origin = session.spatialView?.observerOriginParsec ?? [0, 0, 0];
+  if (skyView) {
+    const identity = [1, 0, 0, 0, 1, 0] as const;
+    return {
+      wcs: wcsOfSkyView(skyView, viewportWidthPx, viewportHeightPx),
+      storedToScreen: identity,
+      screenToStored: identity,
+      viewportWidthPx,
+      viewportHeightPx,
+      observerPc: [origin[0], origin[1], origin[2]],
+      referencePc: pickedPlacement?.kind === 'at_distance' ? pickedPlacement.positionPc : [0, 0, 0],
+    };
+  }
+  if (!solution.wcs) return null;
+  if (!asset || !(asset.width > 1) || !(asset.height > 1)) return null;
+  const storedToScreen = storedToScreenAffine(asset.width, asset.height, viewportWidthPx, viewportHeightPx, session.cropTransform, asset.displayOrientation);
   return {
     wcs: solution.wcs,
     storedToScreen,

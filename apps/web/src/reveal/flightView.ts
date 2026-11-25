@@ -1,4 +1,5 @@
-import { hasVerifiedWcs, type ObservationSession } from '@albedian/contracts';
+import type { ObservationSession } from '@albedian/contracts';
+import { flightSourceOf } from '../spatial/flight/flightFrame.js';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { distancePc } from '@albedian/observation';
@@ -7,7 +8,8 @@ import { canDrawRealSky } from './RealSkyLayer.js';
 /**
  * Go there (fly, approved 2026-11-12): after a star card's Go there, the photo gives way to the real sky in the same
  * place, only the picked star's mark stays, and the readout takes the card's place. This screen shows for a photo with
- * a verified solve once the reducer has entered space toward the picked star, where the panorama can be drawn.
+ * a camera to leave from (a verified solve, a pose estimate, or the predicted sky's view kept in the checkpoint it
+ * left from) once the reducer has entered space toward the picked star, where the panorama can be drawn.
  */
 export function isFlightShown(session: ObservationSession): boolean {
   const solution = session.observationSolution;
@@ -18,8 +20,8 @@ export function isFlightShown(session: ObservationSession): boolean {
     session.spatialView?.mode === 'catalog_3d' &&
     (navigation === 'space' || navigation === 'transitioning') &&
     solution !== undefined &&
-    solution.status === 'calibrated' &&
-    hasVerifiedWcs(solution) &&
+    // A verified solve, a pose estimate (go-there-predicted-1) or the predicted sky's kept view (go-there-predicted-2)
+    flightSourceOf(session) !== null &&
     canDrawRealSky()
   );
 }

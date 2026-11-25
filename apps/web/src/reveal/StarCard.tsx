@@ -20,6 +20,8 @@ export interface StarCardProps {
   deepSky?: DeepSkyRow | null;
   /** go-there-predicted-1: the photo's solution, so a predicted star's Go there can read its pose estimate. */
   solution?: ObservationSolution;
+  /** go-there-predicted-2: the card stands on the predicted sky, whose own view a flight leaves from. */
+  onPredictedSky?: boolean;
   /** Let go: its lines are leaving (the motion record); it hears no keys or taps and takes no input meanwhile. */
   leaving?: boolean;
   /**
@@ -43,8 +45,8 @@ const typing = (target: EventTarget | null): boolean => {
  * catalog row, Go there (only for a star the app can fly to) and Original pixels, and at the foot its limitations,
  * always in view. Esc and a tap on empty sky close it; G goes there. Every word is the finding's (starCardFacts.ts).
  */
-export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null, leaving = false, inSky = false, solution }) => {
-  const facts = starCardFacts(finding, deepSky, solution);
+export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null, leaving = false, inSky = false, solution, onPredictedSky = false }) => {
+  const facts = starCardFacts(finding, deepSky, solution, onPredictedSky);
   const close = useRef(onClose);
   close.current = onClose;
   const goThere = useRef(onGoThere);

@@ -27,9 +27,19 @@ describe('findingCanEnterSpace', () => {
     }
   });
 
-  it('keeps a predicted sky with no pose closed (its card waits for go-there-predicted-2)', () => {
-    const predictedOnly = sample('horizon_predicted_only');
-    for (const f of flyablePredicted(predictedOnly)) expect(findingCanEnterSpace(f, predictedOnly)).toBe(false);
+  it('opens a flyable predicted star on the predicted sky, which the flight leaves from, and keeps it closed off it', () => {
+    // The pose fixture's stars with no pose estimate: a predicted-only sky whose rows carry catalog distances (the
+    // horizon_predicted_only sample holds no flyable star, so it proved nothing here)
+    const { poseEstimate: _pose, ...rest } = POSE;
+    const predictedOnly = { ...rest, status: 'predicted_only' } as ObservationSolution;
+    expect(flyablePredicted(predictedOnly).length).toBeGreaterThan(0);
+    for (const f of flyablePredicted(predictedOnly)) {
+      expect(findingCanEnterSpace(f, predictedOnly)).toBe(false);
+      expect(findingCanEnterSpace(f, predictedOnly, true)).toBe(true);
+      expect(askSuggestionsFor(f, predictedOnly, true)).toContain(TAKE_ME_THERE);
+    }
+    // The rule still refuses what it refuses there: a body of the solar system, a star with no catalog distance
+    for (const f of predictedOnly.findings.filter((x) => flightRefusal(x) !== null)) expect(findingCanEnterSpace(f, predictedOnly, true)).toBe(false);
   });
 
   it('refuses a star the rule refuses though its ring shows: an ephemeris distance, or no catalog reference', () => {

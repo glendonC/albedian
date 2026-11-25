@@ -195,6 +195,11 @@ class PointerContext:
         )
 
 
+def sky_view_of(ctx: "ActionContext") -> dict[str, Any]:
+    """go-there-predicted-2: the request's sky view as space.enter carries it on (as the TS parser does), or nothing."""
+    return {"skyView": ctx.sky_view.model_dump(by_alias=True)} if ctx.sky_view is not None else {}
+
+
 @dataclass(frozen=True)
 class ActionContext:
     """Multimodal session context for deictic resolution and revision checking."""
@@ -854,7 +859,9 @@ _RULE_HANDLERS: dict[str, Any] = {
     ),
     "finding.describe": lambda r, rule, f: r.about(rule, "finding.describe", lambda finding_id: {"findingId": finding_id, **f}),
     "space.enter": lambda r, rule, f: r.about(
-        rule, "space.enter", lambda finding_id: {"findingId": finding_id, "distancePolicy": "measured_or_estimated"}
+        rule,
+        "space.enter",
+        lambda finding_id: {"findingId": finding_id, "distancePolicy": "measured_or_estimated", **sky_view_of(r.ctx)},
     ),
     "finding.select": _select,
     "question.ask": _question,

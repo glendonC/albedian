@@ -7,6 +7,7 @@ import {
   ObservationSession,
   ObservationSolution,
   PersonAlignment,
+  SkyView,
   orientedSize,
 } from '@albedian/contracts';
 import { alignTargets, placedAtPose, type AlignedFrom, type AlignPose, type AlignStart } from './reveal/alignPose.js';
@@ -311,13 +312,16 @@ export const App: React.FC = () => {
   const clipClockRef = useRef<(() => number | null) | null>(null);
   // The Restore button's own action, handed over by the viewport: true when it could act (voice-restore-two)
   const restoreNowRef = useRef<(() => boolean) | null>(null);
+  // go-there-predicted-2: where the predicted sky is looking, handed over by the viewport while it is on screen
+  const skyViewRef = useRef<(() => SkyView | null) | null>(null);
 
   const runCommand = (utterance: string, modality: 'voice' | 'text' | 'pointer', pointer: ActionContext['recentPointer']) => {
     setAnswer(null);
     // While a clip plays, the clock is first set to its live time, so a command that leaves the recording saves the
     // frame on screen and Back to Moment returns the clip playing there (LEAD ANSWER to WEB-UX 15:35 on 24 Nov)
     const asked = withClipClock(sessionRef.current, clipClockRef.current?.() ?? null);
-    const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
+    const skyView = skyViewRef.current?.() ?? undefined;
+    const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer, skyView ? { skyView } : {});
     // Voice is direct manipulation (DECIDED-BY-LEAD 18:21 on 24 Nov): asking to restore does what the Restore button
     // does. Where the reducer finds no restored version on screen, the button's own action runs, and the compare shows
     // when it is ready; the sentence that none exists stands only where the button itself could do nothing.
@@ -363,7 +367,7 @@ export const App: React.FC = () => {
       // the reply arrives, through the reducer, which refuses an action that went stale meanwhile.
       const local = result.outcome.explanation;
       const localReason = result.outcome.reason;
-      void askVoiceBackend(utterance, result.session, pointer).then((reply) => {
+      void askVoiceBackend(utterance, result.session, pointer, skyView ? { skyView } : {}).then((reply) => {
         if (!reply) {
           refuse(local);
           return;
@@ -658,6 +662,7 @@ export const App: React.FC = () => {
         onRunUtterance={(utt, mod) => runUtterance(utt, mod)}
         clipClockRef={clipClockRef}
         restoreNowRef={restoreNowRef}
+        skyViewRef={skyViewRef}
         onSelectFinding={(id, coords) => handleSelectFinding(id, coords)}
         onPushToTalk={handlePushToTalk}
         onFileChosen={handleFileChosen}

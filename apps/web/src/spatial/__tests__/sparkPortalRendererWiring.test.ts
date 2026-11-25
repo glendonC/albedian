@@ -171,3 +171,24 @@ describe('the WebGL renderer returns to the sky view when the landing ends', () 
     expect(i.lookTarget).toMatchObject(turned);
   });
 });
+
+// go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 02:45): Back to Moment from the predicted sky's flight turns the sky view
+// back to the view it left from: the view a request read from the portal comes back as the same yaw, pitch and field
+describe('the WebGL renderer turns back to a kept sky view', () => {
+  it('takes the sky view it was looking at back exactly, under the observer\'s frame', async () => {
+    const { ICRS_TO_SCENE_QUATERNION } = await import('../catalogStars/field/icrsFrame.js');
+    const { skyViewOfPose } = await import('../flight/skyViewWcs.js');
+    const { r, i } = makeRenderer();
+    r.setObserverCoordinates(SITE.latDeg, SITE.lonDeg, CAPTURED_AT);
+    for (const [yaw, pitch, fov] of [[0.7, 0.45, 46], [-2.4, 1.1, 30], [3.0, -0.2, 64]] as const) {
+      // The view as a request reads it: the camera's world turn against the sky's, ICRS turned into the scene
+      const camera = i.localFrame.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ')));
+      const view = skyViewOfPose({ cameraWorldQuaternion: camera.toArray() as [number, number, number, number], icrsWorldQuaternion: ICRS_TO_SCENE_QUATERNION.toArray() as [number, number, number, number], fovDeg: fov })!;
+      r.lookAtSky(10, 20, 80);
+      r.lookAtSkyView(view);
+      const back = new THREE.Quaternion().setFromEuler(new THREE.Euler(i.lookTarget.pitch, i.lookTarget.yaw, 0, 'YXZ'));
+      expect(Math.abs(Math.abs(back.dot(new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ')))) - 1)).toBeLessThan(1e-12);
+      expect(r.getFovDeg()).toBe(Math.round(fov));
+    }
+  });
+});

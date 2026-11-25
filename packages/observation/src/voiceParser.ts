@@ -58,6 +58,8 @@ const QUESTION_MAX_UTF16 = 500;
 export interface VoiceParseOptions {
   /** Stands in for the clock, whose UTC year "N years ago" counts back from. */
   now?: Date;
+  /** go-there-predicted-2: where the predicted sky is looking, while it is on screen (the request's context). */
+  skyView?: ActionContext['skyView'];
 }
 
 export interface VoiceParseResult {
@@ -202,7 +204,9 @@ function namesWholeWord(normalizedUtterance: string, name: string): boolean {
  */
 export function buildActionContext(
   session: ObservationSession,
-  recentPointer?: ActionContext['recentPointer']
+  recentPointer?: ActionContext['recentPointer'],
+  // go-there-predicted-2: where the predicted sky is looking, while it is on screen
+  skyView?: ActionContext['skyView']
 ): ActionContext {
   return ActionContextSchema.parse({
     sessionId: session.id,
@@ -216,6 +220,7 @@ export function buildActionContext(
     simulationEpochISO: session.spatialView.simulationEpochISO,
     viewRevision: session.viewRevision,
     reducedMotion: session.reducedMotion,
+    ...(skyView ? { skyView } : {}),
   });
 }
 
@@ -1225,7 +1230,8 @@ const RULE_HANDLERS: Readonly<Record<string, (input: RuleInput) => VoiceParseRes
     })),
   'finding.describe': (input) => onTarget(input, (findingId) => ({ type: 'finding.describe', ...input.base, findingId, ...input.fields })),
   'space.enter': (input) =>
-    onTarget(input, (findingId) => ({ type: 'space.enter', ...input.base, findingId, distancePolicy: 'measured_or_estimated' })),
+    // go-there-predicted-2: the request's sky view goes on, so the flight can leave from it
+    onTarget(input, (findingId) => ({ type: 'space.enter', ...input.base, findingId, distancePolicy: 'measured_or_estimated', ...(input.context.skyView ? { skyView: input.context.skyView } : {}) })),
   'finding.select': (input) => {
     // The name rule: a thing the request names, or a ranking by measured brightness, is what it is about
     if (input.rule.match === 'name' && !BRIGHTEST_PATTERN.test(input.norm) && (input.howMany || input.named.present.length === 0)) return undefined;
@@ -1259,7 +1265,7 @@ export function executeVoiceOrTextCommand(
   outcome: ActionOutcome;
   voiceActionRecord: VoiceAction;
 } {
-  const context = buildActionContext(session, recentPointer);
+  const context = buildActionContext(session, recentPointer, options.skyView);
   const parsed = parseUtteranceToAction(utterance, context, session, options);
   const actionRecordId = `voice_act_${session.viewRevision}_${session.voiceActions.length + 1}`;
 

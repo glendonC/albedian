@@ -105,3 +105,29 @@ describe('threeFigures: the readout\'s numbers', () => {
     expect(threeFigures(15625.4)).toBe('15,625');
   });
 });
+
+// go-there-predicted-1 and -2: the there screen shows wherever the flight has a camera to leave from: a pose estimate's
+// nominal WCS, or the predicted sky's view kept in the checkpoint it left from; never a sky with neither
+describe('the there screen beyond a verified solve', () => {
+  const VIEW = { cameraQuaternionIcrs: [0.5, -0.5, 0.5, 0.5] as [number, number, number, number], fovVerticalDeg: 45 };
+  function predictedOnly(): ObservationSession {
+    const s = photo();
+    const { wcs: _wcs, ...rest } = s.observationSolution!;
+    return { ...s, machines: { ...s.machines, calibration: 'predicted_only' }, observationSolution: { ...rest, status: 'predicted_only', findings: rest.findings.map((f) => ({ ...f, evidenceClass: f.evidenceClass === 'catalog_matched' ? 'predicted' : f.evidenceClass })) } } as ObservationSession;
+  }
+  const enter = (s: ObservationSession, skyView?: typeof VIEW) => {
+    const star = s.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted' && f.inferredDistancePc && f.catalogRef)!;
+    return dispatchAlbedianAction(s, { type: 'space.enter', requestId: 'go', expectedViewRevision: s.viewRevision, findingId: star.id, distancePolicy: 'measured_or_estimated', ...(skyView ? { skyView } : {}) }).session;
+  };
+
+  it('shows for a flight that left the predicted sky with its view, and not without one', () => {
+    expect(isFlightShown(enter(predictedOnly(), VIEW))).toBe(true);
+    expect(isFlightShown(enter(predictedOnly()))).toBe(false);
+  });
+
+  it('shows for a flight from a pose estimate', () => {
+    const s = photo();
+    const posed = { ...s, observationSolution: { ...s.observationSolution!, status: 'approximate', poseEstimate: {}, findings: s.observationSolution!.findings.map((f) => ({ ...f, evidenceClass: f.evidenceClass === 'catalog_matched' ? 'predicted' : f.evidenceClass })) } } as unknown as ObservationSession;
+    expect(isFlightShown(enter(posed))).toBe(true);
+  });
+});

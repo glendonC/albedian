@@ -58,7 +58,7 @@ export async function askVoiceBackend(
   utterance: string,
   session: ObservationSession,
   recentPointer?: ActionContext['recentPointer'],
-  { timeoutMs = VOICE_BACKEND_TIMEOUT_MS }: { timeoutMs?: number } = {}
+  { timeoutMs = VOICE_BACKEND_TIMEOUT_MS, skyView }: { timeoutMs?: number; skyView?: ActionContext['skyView'] } = {}
 ): Promise<VoiceCommandResponse | null> {
   try {
     const unpointed = buildActionContext(session);
@@ -66,7 +66,7 @@ export async function askVoiceBackend(
     const payload = {
       utterance,
       context: {
-        ...buildActionContext(session, pointer),
+        ...buildActionContext(session, pointer, skyView),
         observerLat: session.sourceAsset?.observerLocation?.latDeg ?? null,
         observerLon: session.sourceAsset?.observerLocation?.lonDeg ?? null,
         observedAtUTC: session.sourceAsset?.capturedAtUTC ?? null,

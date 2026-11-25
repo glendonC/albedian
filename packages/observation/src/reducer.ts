@@ -6,6 +6,7 @@ import {
   FlightRefusalKind,
   ObservationSession,
   flightRefusal,
+  hasVerifiedWcs,
   refusalSentence,
 } from '@albedian/contracts';
 import {
@@ -406,7 +407,12 @@ export function dispatchAlbedianAction(
         return rejectAction(session, action.requestId, 'no_distance_estimate', flightRefusalExplanation(finding, refused ?? 'no_catalog_distance'), ['Select a catalog-matched star with a verified distance interval']);
       }
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
-      const nextHistory = pushCheckpointIfDepartingSource(base, `Checkpoint before entering 3D space toward ${finding.title}`);
+      // go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 02:45): from a sky with no verified WCS and no pose estimate (the
+      // predicted sky), the request's sky view is kept in the checkpoint the flight leaves from: the flight starts there
+      // and Back to Moment returns there
+      const fromSkyView = action.skyView && !hasVerifiedWcs(base.observationSolution) && base.observationSolution.poseEstimate === undefined;
+      const departing = fromSkyView ? { ...base, spatialView: { ...base.spatialView, skyView: action.skyView } } : base;
+      const nextHistory = pushCheckpointIfDepartingSource(departing, `Checkpoint before entering 3D space toward ${finding.title}`);
       const targetCoords = finding.cartesianParsecICRS ?? computeCartesianParsecICRS(finding.skyPosition.raDeg, finding.skyPosition.decDeg, finding.inferredDistancePc.median);
       const status = `Entered 3D Space · ${finding.title} (${distInfo.lightYearText}) · Catalog Geometry · Distance Estimates`;
       return completeAction(
@@ -560,8 +566,14 @@ export function dispatchAlbedianAction(
           ? named
           : (returnCheckpointOf(base) ?? base.navigationHistory.anchorMomentCheckpoint);
       const status = `Returned to Moment (${target.sourceTimeSec.toFixed(1)}s) · Audio & frame restored.`;
+      // go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 02:45): the predicted sky a flight left from comes back as it was,
+      // its view kept; the photo's moment stays the anchor, so Back to Moment on that sky goes on to the photo
+      const toSky = target.spatialView.skyView !== undefined && !savedOnRecording(target);
+      const kept = base.navigationHistory.checkpoints;
       return completeAction(
-        restoreSessionToCheckpoint(base, nextRev, target, true, [target], status),
+        toSky
+          ? restoreSessionToCheckpoint(base, nextRev, target, false, kept.slice(0, Math.max(0, kept.indexOf(target))), status)
+          : restoreSessionToCheckpoint(base, nextRev, target, true, [target], status),
         action.requestId,
         nextRev,
         'Returned to your original recorded moment.',

@@ -208,6 +208,7 @@ export const PredictedSkyScreen: React.FC<{
           originalPixels={false}
           onToggleOriginalPixels={() => {}}
           onGoThere={() => onGoThere?.(cardStar.id)}
+          onPredictedSky
           onClose={() => onCloseCard?.()}
           leaving={card.leaving}
           phone={phone}

@@ -8,7 +8,8 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import { hasVerifiedWcs, type ObservationSolution, type PersonAlignment, type RenderLayerSet } from '@albedian/contracts';
+import { hasVerifiedWcs, type ObservationSolution, type PersonAlignment, type RenderLayerSet, type SkyView } from '@albedian/contracts';
+import { skyViewOfPose } from '../spatial/flight/skyViewWcs.js';
 import type { AlignedFrom, AlignPose, AlignStart } from '../reveal/alignPose.js';
 import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import { useCameraFlightAnimation } from '../hooks/useCameraFlightAnimation.js';
@@ -79,6 +80,8 @@ export interface SpatialObservatoryViewportProps {
   clipClockRef?: React.MutableRefObject<(() => number | null) | null>;
   /** Where the Restore button's own action is handed to App, for asking to restore by voice (voice-restore-two). */
   restoreNowRef?: React.MutableRefObject<(() => boolean) | null>;
+  /** go-there-predicted-2: filled while the predicted sky is on screen with where it is looking. */
+  skyViewRef?: React.MutableRefObject<(() => SkyView | null) | null>;
   selectedFinding: CelestialFinding | null;
   discoveredMedia: DiscoveredMediaItem[];
   activeDiscoveredId: string | null;
@@ -162,6 +165,7 @@ export const SpatialObservatoryViewport: React.FC<
   setSession,
   clipClockRef,
   restoreNowRef,
+  skyViewRef,
   selectedFinding,
   discoveredMedia,
   activeDiscoveredId,
@@ -435,10 +439,13 @@ export const SpatialObservatoryViewport: React.FC<
   // D33's start (decided 13:23): the predicted sky opens facing D24's start, 30 degrees up (26 on the phone), once
   // each time it opens (the renderer's lookAtSky, added to SPATIAL's files with the lead's yes of 13:30)
   const skyStart = predictedSkyShown ? predictedSkyStart(session, phone) : null;
-  const skyStartKey = skyStart ? `${session.observationSolution?.id ?? ''}:${skyStart.azDeg}:${skyStart.altDeg}:${skyStart.acrossDeg}` : null;
+  // go-there-predicted-2: Back to Moment from a flight that left the predicted sky brings back the view it left from
+  const keptSkyView = predictedSkyShown ? session.spatialView.skyView : undefined;
+  const skyStartKey = skyStart ? `${session.observationSolution?.id ?? ''}:${skyStart.azDeg}:${skyStart.altDeg}:${skyStart.acrossDeg}:${keptSkyView ? keptSkyView.cameraQuaternionIcrs.join(',') : ''}` : null;
   useEffect(() => {
     if (!skyStart) return;
-    rendererRef.current?.lookAtSky?.(skyStart.azDeg, skyStart.altDeg, skyStart.acrossDeg);
+    if (keptSkyView && rendererRef.current?.lookAtSkyView) rendererRef.current.lookAtSkyView(keptSkyView);
+    else rendererRef.current?.lookAtSky?.(skyStart.azDeg, skyStart.altDeg, skyStart.acrossDeg);
   }, [skyStartKey, rendererGeneration]);
 
   // predsky-starless-one (18:04): the predicted sky's dome takes the starless glow and its catalog reaches 10.5; every
@@ -489,6 +496,19 @@ export const SpatialObservatoryViewport: React.FC<
       if (restoreNowRef.current === press) restoreNowRef.current = null;
     };
   }, [restoreNowRef]);
+
+  // go-there-predicted-2: while the predicted sky is on screen a request carries where it looks (the portal's pose)
+  useEffect(() => {
+    if (!skyViewRef || !predictedSkyShown) return undefined;
+    const read = () => {
+      const pose = rendererRef.current?.getCameraSkyPose?.();
+      return pose ? skyViewOfPose(pose) : null;
+    };
+    skyViewRef.current = read;
+    return () => {
+      if (skyViewRef.current === read) skyViewRef.current = null;
+    };
+  }, [skyViewRef, predictedSkyShown]);
 
   // While audio is on, the catalog stars in view sound and the camera turns the listener
   useEffect(() => {
@@ -636,7 +656,7 @@ export const SpatialObservatoryViewport: React.FC<
   const solution = session.observationSolution;
   const realSkyOpens = solution !== undefined && solution.status === 'calibrated' && hasVerifiedWcs(solution) && canDrawRealSky();
   const pickedFinding = solution?.findings.find((finding) => finding.id === session.selectedFindingId) ?? null;
-  const threeDOpens = pickedFinding !== null && findingCanEnterSpace(pickedFinding, session.observationSolution);
+  const threeDOpens = pickedFinding !== null && findingCanEnterSpace(pickedFinding, session.observationSolution, predictedSkyShown);
   const handleView = (view: string) => {
     if (view === 'sky' && realSkyOpens && !realSkyShown) showSky('measured');
     // Back to the photo from the sky: the saved moment, restored exactly

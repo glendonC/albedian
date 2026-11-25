@@ -419,6 +419,9 @@ def compose_action(
         action["fields"] = list(tool_input["fields"])
     elif tool_name == "space_enter":
         action["distancePolicy"] = "measured_or_estimated"
+        # go-there-predicted-2: the request's sky view goes on, as the rules parser carries it
+        if context.sky_view is not None:
+            action["skyView"] = context.sky_view.model_dump(by_alias=True)
     elif tool_name == "space_epoch":
         if ("yearCE" in tool_input) == ("yearsBeforeNow" in tool_input):
             return None

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { earthIcrfToBody, julianDateUtc } from './bodyOrientation.js';
 import { icrsToScene } from './catalogStars/CatalogStarField.js';
+import { ICRS_TO_SCENE_QUATERNION } from './catalogStars/field/icrsFrame.js';
+import type { SkyView } from '@albedian/contracts';
 import type { SpatialScaleRegime } from './SparkPortalRenderer.js';
 
 /**
@@ -175,4 +177,18 @@ export class ObserverSky {
     this.refreshedAtMs = nowMs;
     return this.frame;
   }
+}
+
+/**
+ * The portal's look (yaw and pitch, Euler YXZ, the view never rolls) that shows a kept sky view: its turn in ICRS taken
+ * into the camera's parent, the observer's frame. The sky is ICRS turned into the scene under `skyGroup`
+ * (catalogStars/field/tilePointsMesh.ts).
+ */
+export function lookOfSkyView(view: SkyView, scene: THREE.Object3D, skyGroup: THREE.Object3D, cameraParent: THREE.Object3D): { yaw: number; pitch: number } {
+  scene.updateMatrixWorld(true);
+  const icrsWorld = skyGroup.getWorldQuaternion(new THREE.Quaternion()).multiply(ICRS_TO_SCENE_QUATERNION);
+  const cameraWorld = icrsWorld.multiply(new THREE.Quaternion(...view.cameraQuaternionIcrs));
+  const local = cameraParent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(cameraWorld);
+  const e = new THREE.Euler().setFromQuaternion(local, 'YXZ');
+  return { yaw: e.y, pitch: e.x };
 }

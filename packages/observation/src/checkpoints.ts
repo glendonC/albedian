@@ -152,9 +152,13 @@ export function returnCheckpointOf(session: ObservationSession): CameraCheckpoin
   const history = session.navigationHistory;
   if (!history) return undefined;
   const assetId = session.sourceAsset?.id;
+  // go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 02:45): from a flight, the predicted sky it left from is the moment,
+  // its view kept in the checkpoint; on the predicted sky itself Back to Moment goes on to the photo
+  const flying = session.machines.navigation === 'space' || session.machines.navigation === 'transitioning';
   for (let i = Math.min(history.cursorIndex, history.checkpoints.length - 1); i >= 0; i--) {
     const checkpoint = history.checkpoints[i];
-    if (checkpoint && savedOnRecording(checkpoint) && checkpoint.sourceAssetId === assetId) return checkpoint;
+    const moment = checkpoint && (savedOnRecording(checkpoint) || (flying && checkpoint.spatialView.skyView !== undefined));
+    if (checkpoint && moment && checkpoint.sourceAssetId === assetId) return checkpoint;
   }
   return history.anchorMomentCheckpoint;
 }

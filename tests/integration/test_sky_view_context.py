@@ -41,3 +41,25 @@ def test_a_request_with_a_sky_view_the_contract_refuses_is_refused(bad: object) 
 def test_the_unit_tolerance_is_the_shared_one() -> None:
     inside = {**VIEW, "cameraQuaternionIcrs": [0, 0, 0, 1 + UNIT_QUATERNION_TOLERANCE / 2]}
     assert ActionContext.from_dict({"skyView": inside}).sky_view is not None
+
+
+CONTEXT = {"sessionId": "s-made-up", "sourceAssetId": "src_made-up", "viewRevision": 4, "calibrationState": "predicted_only", "selectedFindingId": "finding-star-vega"}
+
+
+def test_the_rules_carry_the_sky_view_onto_space_enter_as_the_ts_parser_does() -> None:
+    from services.voice.intent import parse_voice_intent
+
+    with_view = parse_voice_intent("take me there", {**CONTEXT, "skyView": VIEW}, "req-1", 4, current_year=2026)
+    assert with_view.action is not None and with_view.action["type"] == "space.enter"
+    assert with_view.action["skyView"] == VIEW
+    without = parse_voice_intent("take me there", CONTEXT, "req-1", 4, current_year=2026)
+    assert without.action is not None and "skyView" not in without.action
+
+
+def test_a_model_call_to_fly_carries_the_sky_view_on() -> None:
+    from services.voice import claude
+
+    action = claude.compose_action("space_enter", {"findingId": "finding-star-vega"}, ActionContext.from_dict({**CONTEXT, "skyView": VIEW}), "req-1", 4, current_year=2026)
+    assert action is not None and action["skyView"] == VIEW
+    plain = claude.compose_action("space_enter", {"findingId": "finding-star-vega"}, ActionContext.from_dict(CONTEXT), "req-1", 4, current_year=2026)
+    assert plain is not None and "skyView" not in plain
