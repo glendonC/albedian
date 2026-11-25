@@ -6,7 +6,7 @@ import dracoWrapperUrl from 'three/examples/jsm/libs/draco/gltf/draco_wasm_wrapp
 import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?url';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
-import { craftModelUrl, type Craft } from './crafts.js';
+import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene.js';
 import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, environmentIntensity, environmentRotationRows, keyLight, meteredExposure, seenSideKeyShare, skyFillRatio, skyIntegralOfPixels, type LightCandidate } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
@@ -269,6 +269,8 @@ export const FlightCraftLayer: React.FC<{
   candidatesRef.current = keyCandidates;
   const [state, setState] = useState<CraftState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  // craft-lod-one: the framed craft's span in device pixels picks its level, once a mount, never switched in flight
+  const [spanDevicePx] = useState(() => (framing?.diameterPx ?? CRAFT_FRAMING.diameterPx) * dpr);
   // The flight's one loader and its parsed models, by address, oldest first
   const loader = useRef<ModelLoader | null>(null);
   const models = useRef(new Map<string, Promise<CachedModel>>());
@@ -354,7 +356,7 @@ export const FlightCraftLayer: React.FC<{
       return undefined;
     }
     if (g.shown?.craft.id === craft.id) return undefined;
-    const url = craftModelUrl(craft, phone);
+    const url = craftModelUrl(craft, phone, spanDevicePx);
     const cache = models.current;
     let pending = cache.get(url);
     if (pending) {

@@ -29,6 +29,11 @@ export interface Craft {
   readonly modelUrl: string;
   /** The far or phone view's level (the hangar's lod2). */
   readonly phoneModelUrl: string;
+  /**
+   * craft-lod-one (DECIDED-BY-LEAD 18:27): the hangar's finest level (lod0), drawn when the framed craft spans
+   * CRAFT_FINE_SPAN_PX device pixels or more; none where the hangar lists no lod0.
+   */
+  readonly fineModelUrl?: string;
   /** The picker's picture. */
   readonly pictureUrl: string;
   /** In the model's own axes (the hangar's frame): the way the craft flies, and its up. */
@@ -233,6 +238,7 @@ export function craftsOfHangar(file: HangarFile, base = '/models/hangar/'): Craf
   if (!forward || !up) return [];
   return file.entries.flatMap((entry) => {
     const model = file.models[entry.model];
+    const lod0 = model?.files.lod0?.path;
     const lod1 = model?.files.lod1?.path;
     const lod2 = model?.files.lod2?.path ?? lod1;
     const picture = model?.files.picker?.path;
@@ -240,7 +246,7 @@ export function craftsOfHangar(file: HangarFile, base = '/models/hangar/'): Craf
     const t = entry.travel;
     const speed: CraftSpeed | null =
       t && t.relativeTo === 'Sun' && Number.isFinite(t.speedKmS) && t.speedKmS > 0 ? { kmS: t.speedKmS, relativeTo: 'the Sun', sourceUrl: t.page, asOf: t.asOf } : null;
-    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, speed, factKeys: (entry.facts ?? []).map((fact) => fact.key), frameByBodyRadiusM: FRAME_BY_BODY.has(entry.model) && model.bodyRadiusM && model.bodyRadiusM > 0 ? model.bodyRadiusM : null }];
+    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, ...(lod0 ? { fineModelUrl: base + lod0 } : {}), pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, speed, factKeys: (entry.facts ?? []).map((fact) => fact.key), frameByBodyRadiusM: FRAME_BY_BODY.has(entry.model) && model.bodyRadiusM && model.bodyRadiusM > 0 ? model.bodyRadiusM : null }];
   });
 }
 
@@ -249,9 +255,19 @@ export const HANGAR_CRAFTS: readonly Craft[] = craftsOfHangar(hangar as HangarFi
 
 export const CRAFTS: Readonly<Record<CraftId, Craft>> = Object.fromEntries(HANGAR_CRAFTS.map((craft) => [craft.id, craft]));
 
-/** The level a screen draws: the chase camera's on the laptop, the far or phone view's on the phone (the hangar's levels). */
-export function craftModelUrl(craft: Craft, phone: boolean): string {
-  return phone ? craft.phoneModelUrl : craft.modelUrl;
+/**
+ * craft-lod-one: the framed craft's span, in device pixels, from which the finest level is drawn: the laptop and the
+ * film at scale two frame a craft at 640 (320 CSS pixels), the laptop at scale one at 320.
+ */
+export const CRAFT_FINE_SPAN_PX = 600;
+
+/**
+ * The level a screen draws: on the phone the far level; elsewhere the finest where the framed craft spans
+ * CRAFT_FINE_SPAN_PX device pixels or more and the hangar has it, the chase camera's level below that.
+ */
+export function craftModelUrl(craft: Craft, phone: boolean, spanDevicePx = 0): string {
+  if (phone) return craft.phoneModelUrl;
+  return spanDevicePx >= CRAFT_FINE_SPAN_PX && craft.fineModelUrl ? craft.fineModelUrl : craft.modelUrl;
 }
 
 /** The craft a page address asks for (`?craft=voyager-1`), the interim way to choose one until the picker's record. */
