@@ -8,7 +8,7 @@ import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
-import { aliveFraming, aliveRotation, chaseAxes, rotatedAboutCentre, type AliveSignals } from './craftAlive.js';
+import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 
@@ -141,6 +141,8 @@ interface CachedModel {
 }
 
 interface CraftGpu {
+  /** craft-alive-shoulder-one: where the craft drawn last stands on screen, CSS pixels. */
+  lastBox?: { x0: number; y0: number; x1: number; y1: number } | null;
   renderer: CraftRenderer;
   scene: THREE.Scene;
   camera: THREE.Camera;
@@ -283,15 +285,20 @@ function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates
   // craft-alive-one: while steered, the craft seen from behind along its line of flight, framed to a third of the
   // frame's height and falling back with speed, then leaning and banking about its own centre (craftAlive.ts)
   const alive = steer?.alive && steer.craftRows ? steer.alive : null;
-  const seen = alive ? { ...shown.craft, modelForward: chaseAxes(shown.craft.flightForward, shown.craft.flightUp).forward, modelUp: chaseAxes(shown.craft.flightForward, shown.craft.flightUp).up } : shown.craft;
-  const frameNow = alive ? aliveFraming(framing ?? laptopCraftFraming(camera), alive) : framing;
+  // craft-alive-shoulder-one (DECIDED-BY-LEAD 25 Nov 06:40): over the shoulder, sized by its height to a third of the
+  // frame at rest and set at the chase's share of the width, the star ahead in the open side
+  const axes = alive ? chaseAxes(shown.craft.flightForward, shown.craft.flightUp) : null;
+  const seen = axes ? { ...shown.craft, modelForward: axes.forward, modelUp: axes.up } : shown.craft;
+  const frameNow = alive && axes ? aliveFraming(framing ?? laptopCraftFraming(camera), alive, { viewportWidthPx: camera.viewportWidthPx, diameterPerHeight: diameterPerHeight(shown.frameRadius, shown.cached.size, axes.up) }) : framing;
   const scene = craftSceneOf(camera, seen, shown.cached.centre, shown.cached.radius, steer, frameNow, shown.frameRadius);
   if (!scene) return false;
   if (gpu.holder.children.length !== 1 || gpu.holder.children[0] !== shown.cached.model) {
     gpu.holder.clear();
     gpu.holder.add(shown.cached.model);
   }
-  gpu.holder.matrix.fromArray(alive && steer?.craftRows ? rotatedAboutCentre(scene.modelMatrix, shown.cached.centre, aliveRotation(shown.craft.kind, steer.craftRows, alive)) : scene.modelMatrix);
+  const modelMatrix = alive && steer?.craftRows ? rotatedAboutCentre(scene.modelMatrix, shown.cached.centre, aliveRotation(shown.craft.kind, steer.craftRows, alive)) : scene.modelMatrix;
+  gpu.holder.matrix.fromArray(modelMatrix);
+  gpu.lastBox = screenBoxOf(modelMatrix, scene.clipMatrix, shown.cached.centre, shown.cached.size, camera.viewportWidthPx, camera.viewportHeightPx);
   gpu.holder.matrixWorldNeedsUpdate = true;
   gpu.camera.projectionMatrix.fromArray(scene.clipMatrix);
   gpu.camera.projectionMatrixInverse.copy(gpu.camera.projectionMatrix).invert();
@@ -367,7 +374,20 @@ export const FlightCraftLayer: React.FC<{
   const [leavingKey, setLeavingKey] = useState<number | null>(null);
   const switches = useRef(0);
   const [entering, setEntering] = useState(0);
-  const draw = (g: CraftGpu) => drawFrame(g, cameraRef.current, candidatesRef.current, steerRef.current ?? undefined, framingRef.current, canvas.current, outCanvas.current);
+  // craft-alive-shoulder-one: the layer says where the craft it drew last stands (x0,y0,x1,y1 in CSS pixels), and
+  // craft-alive-held-keys: which pose it drew, the chase's (seen from behind, alive) or the rest's
+  const root = useRef<HTMLDivElement>(null);
+  const tellDrawn = (g: CraftGpu, s: Steer | undefined) => {
+    const b = g.lastBox;
+    if (b) root.current?.setAttribute('data-box', [b.x0, b.y0, b.x1, b.y1].map((v) => v.toFixed(1)).join(','));
+    root.current?.setAttribute('data-pose', s?.alive && s.craftRows ? 'chase' : 'rest');
+  };
+  const draw = (g: CraftGpu): boolean => {
+    const s = steerRef.current ?? undefined;
+    const drawn = drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current);
+    if (drawn) tellDrawn(g, s);
+    return drawn;
+  };
 
   // One renderer, scene, camera, light and sky for the whole flight; on leaving, every model and the loader go too
   useEffect(() => {
@@ -500,7 +520,7 @@ export const FlightCraftLayer: React.FC<{
     if (!drawRef) return undefined;
     drawRef.current = (s) => {
       const g = gpu.current;
-      if (g && (g.shown || g.leaving)) drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current);
+      if (g && (g.shown || g.leaving) && drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current)) tellDrawn(g, s);
     };
     return () => {
       drawRef.current = null;
@@ -529,7 +549,7 @@ export const FlightCraftLayer: React.FC<{
   };
 
   return (
-    <div className="flight-craft" data-testid="flight-craft" data-craft={craft?.id ?? 'none'} data-state={state} data-framing={framing ? `${framing.xPx.toFixed(1)},${framing.yPx.toFixed(1)}` : undefined} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <div ref={root} className="flight-craft" data-testid="flight-craft" data-craft={craft?.id ?? 'none'} data-state={state} data-framing={framing ? `${framing.xPx.toFixed(1)},${framing.yPx.toFixed(1)}` : undefined} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <div ref={inFrame} className="flight-craft__in" style={{ position: 'absolute', inset: 0 }}>
         <canvas ref={canvas} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
       </div>

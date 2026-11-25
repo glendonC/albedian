@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
-import { ALIVE, ALIVE_AT_REST, ALIVE_TAU, aliveAsk, aliveFrame, aliveFraming, aliveRotation, axisRotation, chaseAxes, rolledRows, rotatedAboutCentre, speedShare, stepAlive } from '../craftAlive.js';
+import { ALIVE, ALIVE_AT_REST, ALIVE_TAU, aliveAsk, aliveFrame, aliveFraming, diameterPerHeight, screenBoxOf, capLead, maxLeadRad, aliveRotation, axisRotation, chaseAxes, rolledRows, rotatedAboutCentre, speedShare, stepAlive } from '../craftAlive.js';
 import { STEER_KEY_TURN_RAD_S, STEER_START_SPEED_PC_S } from '../steering.js';
 import { CRAFTS, HANGAR_CRAFTS } from '../crafts.js';
 import { dispatchAlbedianAction } from '@albedian/observation';
@@ -23,7 +23,7 @@ const ASK = { turnShare: 0, speedPcPerS: 1, startPcPerS: 1, braking: false, redu
 
 describe('the ruled numbers (MOTION craft-alive-proposal, DECIDED-BY-LEAD 03:22)', () => {
   it('are the proposal\'s, word for word', () => {
-    expect(ALIVE).toEqual({ suitLeanStartDeg: 20, suitLeanCruiseDeg: 75, suitBrakeDeg: -35, suitBankDeg: 30, craftBankDeg: 12, craftNoseLeadDeg: 6, fallBackAtCruise: 0.45, cameraRollShare: 0.35, chaseElevationDeg: 15 });
+    expect(ALIVE).toEqual({ suitLeanStartDeg: 20, suitLeanCruiseDeg: 75, suitBrakeDeg: -35, suitBankDeg: 30, craftBankDeg: 12, craftNoseLeadDeg: 6, fallBackAtCruise: 0.45, cameraRollShare: 0.35, chaseElevationDeg: 15, shoulderDeg: 35, chaseXShare: 0.4 });
     expect(ALIVE_TAU).toEqual({ bank: 0.15, speed: 0.4, brake: 0.2, cameraRoll: 0.3 });
   });
 });
@@ -129,9 +129,13 @@ describe('aliveFraming', () => {
 
 describe('chaseAxes', () => {
   it('looks along the line of flight from 15 degrees above, square, for every hangar craft', () => {
+    const behind = chaseAxes([0, 0, 1], [0, 1, 0], ALIVE.chaseElevationDeg, 0);
+    expect(angleDeg(behind.forward, [0, 0, 1])).toBeCloseTo(ALIVE.chaseElevationDeg, 9);
+    expect(behind.forward[1]).toBeLessThan(0);
+    // craft-alive-shoulder-one (06:40): then turned 35 degrees about the craft's up, over its shoulder
     const { forward, up } = chaseAxes([0, 0, 1], [0, 1, 0]);
-    expect(angleDeg(forward, [0, 0, 1])).toBeCloseTo(ALIVE.chaseElevationDeg, 9);
-    expect(forward[1]).toBeLessThan(0);
+    expect(angleDeg(forward, behind.forward)).toBeCloseTo(ALIVE.shoulderDeg, 9);
+    expect(up).toEqual(behind.up);
     expect(forward[0] * up[0] + forward[1] * up[1] + forward[2] * up[2]).toBeCloseTo(0, 12);
     for (const craft of HANGAR_CRAFTS) {
       expect(craft.flightForward, craft.id).toEqual([0, 0, 1]);
@@ -171,5 +175,44 @@ describe('the bank on screen, through the app\'s own steering axes', () => {
     // The camera rolls with the craft: its up tips the same way as the craft's top, so the bank shows less than it is
     const drawnUp = rolledRows(rows, turn(-1)).y as Vec3;
     expect(onScreen(drawnUp, rows)[0]).toBeLessThan(0);
+  });
+});
+
+describe('the over-the-shoulder framing (craft-alive-shoulder-one, DECIDED-BY-LEAD 06:40)', () => {
+  it('sizes the craft by its height: the framing\'s diameter per unit of its height on screen', () => {
+    // A box 2 wide, 4 high, 1 deep, its sphere radius 2.3: seen upright, its height is 4
+    expect(diameterPerHeight(2.3, [2, 4, 1], [0, 1, 0])).toBeCloseTo(4.6 / 4, 12);
+    // Tipped toward the camera its height on screen takes in some depth
+    expect(diameterPerHeight(2.3, [2, 4, 1], [0, Math.cos(0.3), Math.sin(0.3)])).toBeCloseTo(4.6 / (4 * Math.cos(0.3) + Math.sin(0.3)), 12);
+    expect(diameterPerHeight(2.3, [0, 0, 0], [0, 1, 0])).toBe(1);
+  });
+
+  it('frames a third of the frame\'s height of craft at 40 percent of the width, falling back with speed', () => {
+    const base = { xPx: 720, yPx: 558, diameterPx: 320, frameHeightPx: 900 };
+    expect(aliveFraming(base, ALIVE_AT_REST, { viewportWidthPx: 1440, diameterPerHeight: 1.5 })).toEqual({ ...base, xPx: 576, diameterPx: 450 });
+    expect(aliveFraming(base, { ...ALIVE_AT_REST, speed: 1 }, { viewportWidthPx: 1440, diameterPerHeight: 1.5 }).diameterPx).toBeCloseTo(247.5, 9);
+  });
+
+  it('reads the craft\'s box on screen through the drawn matrices', () => {
+    // Identity model, a projection that maps x, y straight to the clip (w = 1): the unit box at the origin spans the
+    // window's middle half
+    const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    expect(screenBoxOf(identity, identity, [0, 0, 0], [1, 1, 1], 200, 100)).toEqual({ x0: 50, y0: 25, x1: 150, y1: 75 });
+    const behind = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1];
+    expect(screenBoxOf(identity, behind, [0, 0, 0], [1, 1, 1], 200, 100)).toBeNull();
+  });
+});
+
+describe('the lead held within a quarter of the width (craft-alive-shoulder-one, DECIDED-BY-LEAD 06:55)', () => {
+  it('lets the chase fall behind the craft\'s heading by at most the angle a quarter of the width subtends', () => {
+    const max = maxLeadRad(1440, 1000);
+    expect(max).toBeCloseTo(Math.atan(360 / 1000), 12);
+    const craft: WcsCameraRows = { x: [Math.cos(0.8), 0, -Math.sin(0.8)], y: [0, 1, 0], z: [Math.sin(0.8), 0, Math.cos(0.8)] };
+    const capped = capLead(ROWS, craft, max);
+    expect(angleDeg(capped.z as Vec3, craft.z as Vec3)).toBeCloseTo((max * 180) / Math.PI, 9);
+    expect(capped.x[0] * capped.z[0] + capped.x[1] * capped.z[1] + capped.x[2] * capped.z[2]).toBeCloseTo(0, 12);
+    // Within the bound the chase is left as it is
+    const near: WcsCameraRows = { x: [Math.cos(0.1), 0, -Math.sin(0.1)], y: [0, 1, 0], z: [Math.sin(0.1), 0, Math.cos(0.1)] };
+    expect(capLead(ROWS, near, max)).toBe(ROWS);
   });
 });

@@ -9,7 +9,8 @@ import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
 import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf } from './flightFrame.js';
 import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
 import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, type ArrivalBloom, type ArrivalStar } from './arrival.js';
-import { FlightCraftLayer, prepareCraftSky } from './FlightCraftLayer.js';
+import type * as THREE from 'three';
+import { FlightCraftLayer, prepareCraftSky, type CraftRenderer } from './FlightCraftLayer.js';
 import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
 import { FlightDomeLayer, type DomeView } from '../sky/FlightDomeLayer.js';
 import { createFlightFinish, pickedRowOf, type FlightFinish } from './flightFinish.js';
@@ -19,7 +20,7 @@ import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
 import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
 import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steering.js';
-import { ALIVE_AT_REST, aliveAsk, aliveFrame, stepAlive, type AliveSignals } from './craftAlive.js';
+import { ALIVE_AT_REST, aliveAsk, aliveFrame, capLead, maxLeadRad, stepAlive, type AliveSignals } from './craftAlive.js';
 import { threeFigures } from '../../reveal/flightView.js';
 import { changeSpeed, followRows, steerCamera, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
@@ -325,6 +326,9 @@ export const FlightStarsLayer: React.FC<{
   makeFinish?: MakeFinish;
   /** While steering, told where the camera stands and how fast it flies, each frame; none when steering stops. */
   onSteer?: (state: { fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null) => void;
+  /** The craft layer's model loader and renderer, passed on (tests; the layer's own by default). */
+  craftLoad?: (url: string) => Promise<THREE.Group>;
+  makeCraftRenderer?: (canvas: HTMLCanvasElement) => CraftRenderer;
 }> = ({
   session,
   viewportWidthPx,
@@ -342,6 +346,8 @@ export const FlightStarsLayer: React.FC<{
   onSkyDome,
   onStarsDrawn,
   makeFinish,
+  craftLoad,
+  makeCraftRenderer,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
@@ -431,7 +437,11 @@ export const FlightStarsLayer: React.FC<{
       const prev = steerNow.current;
       if (prev) {
         const next = steerCamera(prev, input, dt);
-        const moved: SteerNow = { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase: followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }) };
+        // craft-alive-shoulder-one (06:55): the craft's lead from its framing point held within a quarter of the width
+        const cam = cameraRef.current;
+        const pxPerRad = cam ? Math.hypot(cam.storedToScreen[0], cam.storedToScreen[3]) / ((cam.wcs.scaleDegPerPx * Math.PI) / 180) : Infinity;
+        const chase = capLead(followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
+        const moved: SteerNow = { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase };
         alive.current = stepAlive(alive.current, aliveAsk(input.yawRadPerS, speedDirection, moved.speedPcPerS, reducedRef.current), dt);
         steerNow.current = moved;
         frameDraw.current?.(moved);
@@ -759,7 +769,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={keyCandidates} framing={craftPlace} phone={phone} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} drawRef={craftDraw} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={keyCandidates} framing={craftPlace} phone={phone} steer={steer ? aliveFrame(steerNow.current ?? steer, alive.current).craft : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
     </>
   );
 };

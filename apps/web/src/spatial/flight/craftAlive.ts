@@ -27,6 +27,10 @@ export const ALIVE = {
   cameraRollShare: 0.35,
   /** The camera looks from this far above the line of travel, degrees. */
   chaseElevationDeg: 15,
+  /** craft-alive-shoulder-one (DECIDED-BY-LEAD 25 Nov 06:40): the look turned this far about the craft's up, over its shoulder. */
+  shoulderDeg: 35,
+  /** The craft framed at this share of the window's width, the star ahead in the open side. */
+  chaseXShare: 0.4,
 } as const;
 
 /** The signals' time constants, seconds (first order, frame-rate independent). */
@@ -154,20 +158,83 @@ export function rolledRows(rows: WcsCameraRows, alive: AliveSignals): WcsCameraR
  * The chase view's framing: the craft fills a third of the frame's height at the start speed (LEAD ANSWER 01:53:
  * every craft, whatever its true size), and the camera falls back with speed to 55 percent of it at sixteen times.
  */
-export function aliveFraming(base: CraftFraming, alive: AliveSignals): CraftFraming {
+export function aliveFraming(base: CraftFraming, alive: AliveSignals, over?: { viewportWidthPx: number; diameterPerHeight: number }): CraftFraming {
   const frame = base.frameHeightPx ?? base.diameterPx * 3;
-  return { ...base, diameterPx: (frame / 3) * (1 - ALIVE.fallBackAtCruise * alive.speed) };
+  // craft-alive-shoulder-one: sized by its height (the framing's diameter per unit of the craft's height on screen) and
+  // set at the chase's share of the width, the star ahead in the open side
+  const perHeight = over?.diameterPerHeight ?? 1;
+  return { ...base, ...(over ? { xPx: ALIVE.chaseXShare * over.viewportWidthPx } : {}), diameterPx: (frame / 3) * perHeight * (1 - ALIVE.fallBackAtCruise * alive.speed) };
+}
+
+/**
+ * The framing's diameter per unit of the craft's height on screen in the chase: its bounding sphere's diameter over
+ * its box's extent along the chase's screen up (`up`, in the model's axes), so a framing of a third of the frame's
+ * height sizes the craft's height, not its sphere, to a third.
+ */
+export function diameterPerHeight(frameRadius: number, size: Vec3, up: Vec3): number {
+  const height = Math.abs(up[0]) * size[0] + Math.abs(up[1]) * size[1] + Math.abs(up[2]) * size[2];
+  return height > 0 ? (2 * frameRadius) / height : 1;
+}
+
+/**
+ * The craft's box on screen, CSS pixels: its model box (centred on `centre`, `size` across) through the drawn model
+ * matrix and the camera's clip matrix (both column-major), so a test or a measure reads where the craft stands.
+ */
+export function screenBoxOf(model: readonly number[], clip: readonly number[], centre: Vec3, size: Vec3, widthPx: number, heightPx: number): { x0: number; y0: number; x1: number; y1: number } | null {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const sx of [-0.5, 0.5]) for (const sy of [-0.5, 0.5]) for (const sz of [-0.5, 0.5]) {
+    const p = [centre[0] + sx * size[0], centre[1] + sy * size[1], centre[2] + sz * size[2], 1];
+    const w = [0, 1, 2, 3].map((i) => model[i]! * p[0]! + model[4 + i]! * p[1]! + model[8 + i]! * p[2]! + model[12 + i]! * p[3]!);
+    const c = [0, 1, 2, 3].map((i) => clip[i]! * w[0]! + clip[4 + i]! * w[1]! + clip[8 + i]! * w[2]! + clip[12 + i]! * w[3]!);
+    if (!(c[3]! > 0)) return null;
+    const x = ((c[0]! / c[3]! + 1) / 2) * widthPx;
+    const y = ((1 - c[1]! / c[3]!) / 2) * heightPx;
+    x0 = Math.min(x0, x);
+    x1 = Math.max(x1, x);
+    y0 = Math.min(y0, y);
+    y1 = Math.max(y1, y);
+  }
+  return { x0, y0, x1, y1 };
 }
 
 /**
  * The chase view's model axes: the craft seen from behind along its line of flight (the hangar's own frame), from
  * `ALIVE.chaseElevationDeg` above, the look and the screen's up turned together about the screen's horizontal axis.
  */
-export function chaseAxes(flightForward: Vec3, flightUp: Vec3, deg = ALIVE.chaseElevationDeg): { forward: Vec3; up: Vec3 } {
+export function chaseAxes(flightForward: Vec3, flightUp: Vec3, deg: number = ALIVE.chaseElevationDeg, shoulderDeg: number = ALIVE.shoulderDeg): { forward: Vec3; up: Vec3 } {
   const c = Math.cos((deg * Math.PI) / 180);
   const s = Math.sin((deg * Math.PI) / 180);
-  return {
-    forward: [c * flightForward[0] - s * flightUp[0], c * flightForward[1] - s * flightUp[1], c * flightForward[2] - s * flightUp[2]],
-    up: [s * flightForward[0] + c * flightUp[0], s * flightForward[1] + c * flightUp[1], s * flightForward[2] + c * flightUp[2]],
-  };
+  const f: Vec3 = [c * flightForward[0] - s * flightUp[0], c * flightForward[1] - s * flightUp[1], c * flightForward[2] - s * flightUp[2]];
+  const u: Vec3 = [s * flightForward[0] + c * flightUp[0], s * flightForward[1] + c * flightUp[1], s * flightForward[2] + c * flightUp[2]];
+  // craft-alive-shoulder-one: then turned about the craft's up, over its shoulder (MOTION's variant, ef24b4cd)
+  const a = (shoulderDeg * Math.PI) / 180;
+  const uxf: Vec3 = [u[1] * f[2] - u[2] * f[1], u[2] * f[0] - u[0] * f[2], u[0] * f[1] - u[1] * f[0]];
+  return { forward: [f[0] * Math.cos(a) + uxf[0] * Math.sin(a), f[1] * Math.cos(a) + uxf[1] * Math.sin(a), f[2] * Math.cos(a) + uxf[2] * Math.sin(a)], up: u };
+}
+
+/**
+ * craft-alive-shoulder-one (DECIDED-BY-LEAD 25 Nov 06:55): the craft's lead from its framing point held within a quarter
+ * of the window's width: the chase's look is let fall behind the craft's heading by at most `maxRad`, and the camera
+ * catches up after. The chase is turned toward the craft along their shortest rotation, about their common axis.
+ */
+export function capLead(chase: WcsCameraRows, craft: WcsCameraRows, maxRad: number): WcsCameraRows {
+  const cz = chase.z;
+  const kz = craft.z;
+  const cos = Math.max(-1, Math.min(1, cz[0] * kz[0] + cz[1] * kz[1] + cz[2] * kz[2]));
+  const angle = Math.acos(cos);
+  if (!(angle > maxRad) || !(maxRad >= 0)) return chase;
+  const ax: Vec3 = [cz[1] * kz[2] - cz[2] * kz[1], cz[2] * kz[0] - cz[0] * kz[2], cz[0] * kz[1] - cz[1] * kz[0]];
+  const n = Math.hypot(...ax);
+  if (!(n > 1e-12)) return craft;
+  const r = axisRotation([ax[0] / n, ax[1] / n, ax[2] / n], angle - maxRad);
+  const turnRow = (v: readonly number[]): Vec3 => [r[0]! * v[0]! + r[1]! * v[1]! + r[2]! * v[2]!, r[3]! * v[0]! + r[4]! * v[1]! + r[5]! * v[2]!, r[6]! * v[0]! + r[7]! * v[1]! + r[8]! * v[2]!];
+  return { x: turnRow(chase.x), y: turnRow(chase.y), z: turnRow(chase.z) };
+}
+
+/** The lag that puts the craft a quarter of the width from its framing point: the window's quarter over the focal length. */
+export function maxLeadRad(viewportWidthPx: number, screenPxPerRad: number): number {
+  return Math.atan(viewportWidthPx / 4 / screenPxPerRad);
 }
