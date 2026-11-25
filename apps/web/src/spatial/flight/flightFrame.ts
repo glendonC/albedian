@@ -22,11 +22,18 @@ import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
  * the sky sphere when it has none that can be used. Simulated: catalog geometry, never light the recording measured.
  */
 
-/** Stars the flight loads, by their magnitude seen from Earth: the catalog's layers to G 9.5 [proposed limit]. */
-export const FLIGHT_LOAD_LIMIT_MAG = 9.5;
+/**
+ * Stars the flight loads, by their magnitude seen from Earth: every shipped layer, to G 12, so a star that brightens as
+ * the camera nears can appear (DECIDED-BY-LEAD on LOOK's depth table, realsky-points-one).
+ */
+export const FLIGHT_LOAD_LIMIT_MAG = 12;
 
-/** Stars the flight draws, by their magnitude seen from the camera: the naked-eye limit the sky view also uses. */
-export const FLIGHT_DRAW_LIMIT_MAG = 6.5;
+/**
+ * Stars drawn, by their magnitude seen from the camera: one depth for the flight's start, Real sky and the predicted sky
+ * (DECIDED-BY-LEAD, realsky-points-one), so the three draw one sky star for star; 10.5, the depth the predicted sky was
+ * ruled at, until the lead rules the number on pictures at 10.5 and 12.
+ */
+export const FLIGHT_DRAW_LIMIT_MAG = 10.5;
 
 /** A 2D affine map, [a, b, c, d, e, f]: x' = a x + b y + c, y' = d x + e y + f. */
 export type Affine2 = readonly [number, number, number, number, number, number];

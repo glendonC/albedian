@@ -16,16 +16,17 @@ import { fileURLToPath } from 'node:url';
 // bare, and the approved rows, and none of the pieces that come after the solve.
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
-const sky = vi.hoisted(() => ({ drawn: true }));
+const sky = vi.hoisted(() => ({ drawn: true, points: false }));
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onPointsShown?: (shown: boolean) => void }) => {
       useEffect(() => {
         props.onDrawn?.(sky.drawn);
-      }, [props.onDrawn]);
+        props.onPointsShown?.(sky.points);
+      }, [props.onDrawn, props.onPointsShown]);
       return h('div', { className: 'real-sky', 'data-testid': 'real-sky', 'data-state': sky.drawn ? 'drawn' : 'loading' });
     },
   };
@@ -454,6 +455,7 @@ describe('the viewport shows the approved star card over the photo, above phone 
   beforeEach(() => {
     (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
     sky.drawn = true;
+    sky.points = false;
   });
   afterEach(() => {
     delete (window as unknown as Record<string, unknown>).matchMedia;
@@ -477,6 +479,15 @@ describe('the viewport shows the approved star card over the photo, above phone 
     }
     const pills = [...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
     expect(pills.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+  });
+
+  it('names what Real sky draws: the glow with the catalog\'s stars in the ruled words, and the photograph\'s own sentence where it shows (realsky-points-one)', () => {
+    const base = storedPhoto();
+    const residual = Math.max(1, Math.ceil((base.observationSolution!.quality!.medianResidualArcsec ?? base.observationSolution!.quality!.medianResidualPx! * base.observationSolution!.wcs!.scaleDegPerPx * 3600) / 60));
+    sky.points = true;
+    open({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    expect(q('[data-testid="reveal-status"] .look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(q('[data-testid="reveal-status"] .reveal-status__line')!.textContent).toBe(`ESO/S. Brunier's photograph with its own stars removed, and the Gaia and Hipparcos stars at their catalog places, placed by your photo's solve to within ${residual}\u2032. Not light your camera recorded.`);
   });
 
   it('draws Real sky on a phone too, in the phone reveal: the views with Real sky current, no header strip, no ask button and none of the old sky view\'s pieces', () => {

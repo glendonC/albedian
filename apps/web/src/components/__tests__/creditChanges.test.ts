@@ -68,10 +68,13 @@ const COPY =
   "before the frame's exposure of 3 (0.9 net before the AgX tone map).";
 
 // C29 (UIUX-webuxpieces-READY.md item 5, decided by the lead 12:59): the change noted and briefly described, after
-// Creative Commons' recommended practice, with the layer's own numbers
+// Creative Commons' recommended practice, with the layer's own numbers; realsky-points-one (ruled 20:35 and 20:37 on
+// 24 Nov): Real sky draws the starless copy, in the flight's form, and the photograph only where that cannot be
 const REAL_SKY =
-  'In Real sky: redrawn to line up with a photo the app has matched, its pixels otherwise unchanged, and darkened ' +
-  'beside the photo, up to 74 percent black (78 on a phone).';
+  'In Real sky, the copy made from it with its own stars removed is drawn in its place at its own level, ungraded, ' +
+  'with Venus and Jupiter filled from the copy around them, redrawn to line up with a photo the app has matched and ' +
+  "darkened beside the photo, up to 74 percent black (78 on a phone); where that copy or the catalog's stars cannot " +
+  'be drawn, the photograph itself, its pixels otherwise unchanged.';
 // milkyway-flight-one (ruled 16:18 on 24 Nov): the flight shows the starless copy instead, said here
 const FLIGHT =
   'In the flight, the copy made from it with its own stars removed is drawn in its place at its own level, ungraded, ' +

@@ -1185,8 +1185,30 @@
   opacity: 1;
 }
 
+/* realsky-points-one (DECIDED-BY-LEAD 24 Nov 20:35, B): at rest Real sky is the starless glow with the catalog's stars
+   once both have drawn, the layer fading in over them; the photograph is drawn only where either cannot be. The stars'
+   canvas adds its light to the glow under it (plus-lighter), and comes and goes with no fade of its own, so in flight it
+   leaves on the very frame the flight's own stars have drawn: no star drawn twice, no frame without stars */
+.real-sky.is-points .real-sky__glow.is-drawn {
+  opacity: 1;
+}
+
+.real-sky.is-points:not(.is-there) .real-sky__canvas {
+  opacity: 0;
+}
+
+.real-sky__stars {
+  opacity: 0;
+  mix-blend-mode: plus-lighter;
+}
+
+.real-sky__stars.is-shown {
+  opacity: 1;
+}
+
 .real-sky__canvas,
 .real-sky__glow,
+.real-sky__stars,
 .real-sky__shade {
   position: absolute;
   inset: 0;

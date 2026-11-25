@@ -132,6 +132,9 @@ const FLIGHT_LINES = {
 } as const;
 /** Real sky's sentence (reveal, approved): ESO's photograph placed through the solve, with the solve's residual. */
 const realSkySentence = (residualArcmin: number) => `ESO's photograph of this part of the sky, placed by your photo's solve to within ${residualArcmin}′. Not light your camera recorded.`;
+/** realsky-points-one (DECIDED-BY-LEAD 20:37): Real sky's sentence while it draws the glow with the catalog's stars. */
+const realSkyPointsSentence = (residualArcmin: number) =>
+  `ESO/S. Brunier's photograph with its own stars removed, and the Gaia and Hipparcos stars at their catalog places, placed by your photo's solve to within ${residualArcmin}′. Not light your camera recorded.`;
 
 /** The card's caution for a target whose catalog row gives no distance (13:03), in the readout's numbers' place (20:05). */
 const NO_DISTANCE_LINE = 'Its catalog row gives no distance, so none is shown.';
@@ -424,6 +427,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // ...and at a star the starless glow, told by the Real sky layer once it has drawn (AUDIT-D 18:18)
   const [glowDrawn, setGlowDrawn] = useState(false);
   const [glowFailed, setGlowFailed] = useState(false);
+  // realsky-points-one: whether Real sky draws the glow with the catalog's stars, and whether the flight's own stars have drawn
+  const [pointsShown, setPointsShown] = useState(false);
+  const [flightStarsDrawn, setFlightStarsDrawn] = useState(false);
   // flight-sky-line-state-one (DECIDED-BY-LEAD 21:56): in flight, the line of whichever sky is drawn
   const flightSkyKind = flightSkyLineOf({ steering, glowDrawn, domeDrawn, photographDrawn: skyDrawn, glowFailed });
   const flightResidual = flightSkyKind === 'photograph' && session.observationSolution ? realSkyResidualArcmin(session.observationSolution) : null;
@@ -896,7 +902,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
           {residual !== null && (
-            <p className="reveal-status__line">{realSkySentence(residual)}</p>
+            <p className="reveal-status__line">{pointsShown ? realSkyPointsSentence(residual) : realSkySentence(residual)}</p>
           )}
         </div>
       ) : status.kind === 'unmatched' ? (
@@ -1059,8 +1065,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     >
       {/* The room to scroll to Restore, 16 px under Ask out loud (D38 item 1) */}
       {phoneRestoreOffered && <div className="reveal-phone-room" aria-hidden="true" />}
-      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} onGlowDrawn={setGlowDrawn} onGlowFailed={setGlowFailed} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} onSkyDome={setDomeDrawn} />}
+      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} onGlowDrawn={setGlowDrawn} onGlowFailed={setGlowFailed} onPointsShown={setPointsShown} flightStarsDrawn={there && flightStarsDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} onSkyDome={setDomeDrawn} onStarsDrawn={setFlightStarsDrawn} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {leader.mounted && leaderShape && !earthOnly && (

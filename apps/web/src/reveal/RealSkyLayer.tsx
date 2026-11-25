@@ -6,6 +6,7 @@ import { heldPanoramaRegistration, panoramaRegistrationOnce } from '../spatial/s
 import { realSkyGrid } from './realSkyGrid.js';
 import { keptSkyPicture, keptSkyPictureNow, prepareSkyPicture, skyProgram, warmPrograms } from '../spatial/sky/skyPicture.js';
 import { FLIGHT_DOME_FRAGMENT, FLIGHT_DOME_VERTEX, FLIGHT_GLOW_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../spatial/sky/flightMilkyWay.js';
+import { RealSkyStars, type MakeRealSkyFinish, type OpenRealSkyTiles, type RealSkyStarsState } from '../spatial/sky/RealSkyStars.js';
 
 /** ESO's Milky Way panorama (eso0932a) as the app serves it, byte for byte as ESO's large file (textures/PROVENANCE.json). */
 export const REAL_SKY_PANORAMA_URL = '/textures/eso_milkyway_panorama.jpg';
@@ -91,7 +92,7 @@ export function phoneThereScrim(viewportHeightPx: number, readoutTopPx: number):
  * practice has it), with the layer's own numbers.
  */
 export function realSkyChanges(shade: Readonly<RealSkyShade> = REAL_SKY_SHADE): string {
-  return `In Real sky: redrawn to line up with a photo the app has matched, its pixels otherwise unchanged, and darkened beside the photo, up to ${Math.round(shade.edge * 100)} percent black (${Math.round(PHONE_REAL_SKY_SHADE.foot * 100)} on a phone).`;
+  return `In Real sky, the copy made from it with its own stars removed is drawn in its place at its own level, ungraded, with Venus and Jupiter filled from the copy around them, redrawn to line up with a photo the app has matched and darkened beside the photo, up to ${Math.round(shade.edge * 100)} percent black (${Math.round(PHONE_REAL_SKY_SHADE.foot * 100)} on a phone); where that copy or the catalog's stars cannot be drawn, the photograph itself, its pixels otherwise unchanged.`;
 }
 
 const VERTEX = `#version 300 es
@@ -293,22 +294,46 @@ export const RealSkyLayer: React.FC<{
   shift?: { readonly fullPx: readonly [number, number]; readonly nowPx: readonly [number, number] } | null;
   /** There on the phone: the readout's measured top, which D30's scrim rises to meet; the slot's shade without it. */
   readoutTopPx?: number | null;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, onGlowDrawn, onGlowFailed, phone = false, there = false, readoutTopPx = null, shift = null }) => {
+  /** realsky-points-one: told whether Real sky shows the glow with the catalog's stars (false for the photograph, or nothing). */
+  onPointsShown?: (shown: boolean) => void;
+  /** In flight: whether the flight's own stars have drawn, so Real sky's leave on that frame. */
+  flightStarsDrawn?: boolean;
+  /** Real sky's stars' tiles and finish: the catalog's and the flight's by default; a test may stand in. */
+  openStarTiles?: OpenRealSkyTiles;
+  makeStarFinish?: MakeRealSkyFinish;
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, onGlowDrawn, onGlowFailed, onPointsShown, flightStarsDrawn = false, openStarTiles, makeStarFinish, phone = false, there = false, readoutTopPx = null, shift = null }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
   const moving = shift !== null && (shift.fullPx[0] !== 0 || shift.fullPx[1] !== 0);
   const area = realSkyArea(viewportWidthPx, viewportHeightPx, moving ? shift!.fullPx : null);
-  // milkyway-flight-one: in flight the starless glow in a canvas of its own, asked for at the first Go there
+  // milkyway-flight-one: the starless glow in a canvas of its own; realsky-points-one: at rest too, under Real sky's stars
   const glowCanvas = useRef<HTMLCanvasElement>(null);
   const [glowState, setGlowState] = useState<LayerState | 'idle'>('idle');
-  const glowWanted = there || glowState !== 'idle';
+  // realsky-points-one (DECIDED-BY-LEAD 20:35, B): the catalog's stars over the glow, mounted at rest and kept through
+  // the flight; a layer first mounted by Go there leaves the stars to the flight, so nothing loads twice in the move
+  const starsMounted = useRef(!there);
+  if (!there) starsMounted.current = true;
+  const [starsState, setStarsState] = useState<RealSkyStarsState>('loading');
+  // The glow at Go there, and at rest once the stars have drawn (prepared at rest, it paints at once)
+  const glowWanted = there || starsState === 'drawn' || glowState !== 'idle';
+  // The glow with the stars once both have drawn; the photograph where either cannot be (no star drawn twice)
+  const pointsReady = starsMounted.current && glowState === 'drawn' && starsState === 'drawn';
+  const fellBack = !starsMounted.current || glowState === 'failed' || starsState === 'failed';
+  // What Real sky shows is drawn: at rest the glow with the stars, or the photograph once they cannot be; in flight as before
+  const drawn = there ? state === 'drawn' || glowState === 'drawn' : pointsReady || (state === 'drawn' && fellBack);
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
   // The reveal's status follows what is on screen (the auditor's verdict on unit-realsky-1)
   const told = useRef(onDrawn);
   told.current = onDrawn;
   useEffect(() => {
-    told.current?.(state === 'drawn');
-  }, [state]);
+    told.current?.(drawn);
+  }, [drawn]);
+  const toldPoints = useRef(onPointsShown);
+  toldPoints.current = onPointsShown;
+  useEffect(() => {
+    toldPoints.current?.(pointsReady);
+  }, [pointsReady]);
+  useEffect(() => () => toldPoints.current?.(false), []);
   useEffect(() => () => told.current?.(false), []);
   // milkyway-flight-one: in flight the photograph is hidden, so what the flight's line names is the glow (AUDIT-D 18:18)
   const toldGlow = useRef(onGlowDrawn);
@@ -371,7 +396,7 @@ export const RealSkyLayer: React.FC<{
   }, [glowWanted, session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx, area.x0, area.y0, area.widthPx, area.heightPx]);
 
   return (
-    <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}${glowState === 'drawn' ? ' is-glow-drawn' : glowState === 'failed' ? ' is-glow-failed' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
+    <div className={`real-sky${drawn && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}${pointsReady ? ' is-points' : ''}${glowState === 'drawn' ? ' is-glow-drawn' : glowState === 'failed' ? ' is-glow-failed' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas
         ref={canvas}
         className="real-sky__canvas"
@@ -387,6 +412,19 @@ export const RealSkyLayer: React.FC<{
           width={Math.round(area.widthPx * dpr)}
           height={Math.round(area.heightPx * dpr)}
           style={moving ? { left: area.x0, top: area.y0, width: area.widthPx, height: area.heightPx, transform: `translate(${shift!.nowPx[0]}px, ${shift!.nowPx[1]}px)` } : undefined}
+        />
+      )}
+      {starsMounted.current && (
+        <RealSkyStars
+          session={session}
+          viewportWidthPx={viewportWidthPx}
+          viewportHeightPx={viewportHeightPx}
+          area={area}
+          shown={pointsReady && !(there && flightStarsDrawn)}
+          style={moving ? { left: area.x0, top: area.y0, width: area.widthPx, height: area.heightPx, transform: `translate(${shift!.nowPx[0]}px, ${shift!.nowPx[1]}px)` } : undefined}
+          onState={setStarsState}
+          openTiles={openStarTiles}
+          makeFinish={makeStarFinish}
         />
       )}
       {rect && <div className="real-sky__shade" style={{ backgroundImage: phone ? (there && readoutTopPx !== null ? phoneThereScrim(viewportHeightPx, readoutTopPx) : phoneRealSkyShade(viewportHeightPx, { there })) : realSkyShade(rect, viewportWidthPx) }} />}

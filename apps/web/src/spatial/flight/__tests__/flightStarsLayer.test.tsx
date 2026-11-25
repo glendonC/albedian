@@ -136,6 +136,31 @@ describe('FlightStarsLayer', () => {
     for (let k = 0; k < 3; k++) expect(eye[k]).toBeCloseTo(o[k]! - ref[k]!, 9);
   });
 
+  it('says its stars have drawn in the very task that draws them, never when the catalog is unavailable, and no longer as it leaves (realsky-points-one)', async () => {
+    const { gl, calls } = recordingGl();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);
+    let deliver: ((t: CatalogStarCoreTile) => void) | null = null;
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      deliver = onTile;
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const told: Array<[boolean, number]> = [];
+    const onStarsDrawn = (drawn: boolean) => told.push([drawn, calls.drawArrays.length]);
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, onStarsDrawn })));
+    await act(async () => await Promise.resolve());
+    expect(told).toEqual([]);
+    await act(async () => deliver!(tile(1)));
+    // Told after the draw, in the same task: Real sky's stars leave in the render that paints the flight's
+    expect(told).toEqual([[true, 1]]);
+    act(() => root.unmount());
+    root = createRoot(container);
+    expect(told.at(-1)![0]).toBe(false);
+    const failed: boolean[] = [];
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles: () => Promise.reject(new Error('no catalog')), onStarsDrawn: (d: boolean) => failed.push(d) })));
+    await act(async () => await Promise.resolve());
+    expect(failed).not.toContain(true);
+  });
+
   it('draws again as the camera moves, with no re-upload while the star flown to stays the same', async () => {
     const { gl, calls } = recordingGl();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);

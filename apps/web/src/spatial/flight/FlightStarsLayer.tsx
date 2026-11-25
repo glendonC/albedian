@@ -315,6 +315,8 @@ export const FlightStarsLayer: React.FC<{
   onDragSky?: () => void;
   /** milkyway-flight-one: told true once the steering dome has drawn, false when steering stops. */
   onSkyDome?: (drawn: boolean) => void;
+  /** realsky-points-one: told true in the task that first draws the stars, false as the layer leaves; Real sky's stars leave on it. */
+  onStarsDrawn?: (drawn: boolean) => void;
   /** flight-stars-finish-one: makes the stars' finish; the predicted sky's bloom and tone mapping by default. */
   makeFinish?: MakeFinish;
   /** While steering, told where the camera stands and how fast it flies, each frame; none when steering stops. */
@@ -334,12 +336,16 @@ export const FlightStarsLayer: React.FC<{
   onDragSky,
   onSteer,
   onSkyDome,
+  onStarsDrawn,
   makeFinish,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
   const source = useRef<FlightTileSource | null>(null);
   const [state, setState] = useState<LayerState>('loading');
+  const toldStars = useRef(onStarsDrawn);
+  toldStars.current = onStarsDrawn;
+  useEffect(() => () => toldStars.current?.(false), []);
   const [counts, setCounts] = useState({ stars: 0, skySphere: 0, noDistanceOnScreen: 0 });
   const told = useRef(onNoDistanceCount);
   told.current = onNoDistanceCount;
@@ -577,6 +583,7 @@ export const FlightStarsLayer: React.FC<{
       setCounts({ stars, skySphere, noDistanceOnScreen });
       drawFrame(g, v, canvas.current, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, found ?? arrivalRef.current, !coneRef.current);
       setState('drawn');
+      toldStars.current?.(true);
     };
     void openTiles(onTile).then(
       (opened) => {

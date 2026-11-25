@@ -1,3 +1,4 @@
+import { FLIGHT_DRAW_LIMIT_MAG } from '../flight/flightFrame.js';
 import { DEFAULT_LIMITING_MAGNITUDE } from '../catalogStars/field/fieldTypes.js';
 import { REAL_SKY_PANORAMA_URL } from '../../reveal/RealSkyLayer.js';
 import { FLIGHT_MILKY_WAY_URL } from './flightMilkyWay.js';
@@ -14,9 +15,10 @@ import { FLIGHT_MILKY_WAY_URL } from './flightMilkyWay.js';
  * The faintest magnitude bin in which catalog stars stand out in ESO's panorama, at the predicted sky's grade, more
  * often than the same test off the stars (LOOK's measure of 24 Nov, every star to G 12: 9.5 to 10.5 shows at 82.9%
  * against 79.4% in the plane of the Galaxy and 35.9% against 24.9% off it; 10.5 to 12 at 82.4% against 81.2% and
- * 25.4% against 24.6%, no more than the control).
+ * 25.4% against 24.6%, no more than the control). Since realsky-points-one it is the one depth the three skies draw to,
+ * the flight's own constant (flightFrame.ts).
  */
-export const PREDICTED_SKY_LIMIT_MAG = 10.5;
+export const PREDICTED_SKY_LIMIT_MAG = FLIGHT_DRAW_LIMIT_MAG;
 
 /** Which picture the sky dome samples. */
 export type SkyPicture = 'photograph' | 'starless';
