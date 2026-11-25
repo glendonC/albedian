@@ -818,3 +818,121 @@ describe('asking about the photo on the laptop reveal', () => {
     expect(q('[data-testid="voice-status-banner"]')!.textContent).not.toContain('finding-predicted-star-sirius');
   });
 });
+
+// typed-refusal-kept-one (DECIDED-BY-LEAD 24 Nov 22:12, FIELD's break): the app parser's typed refusal is kept whenever
+// the backend's reply is itself a refusal or a question; the backend's words replace the app's only when the backend
+// proposes something. Over real solves of public corpus photos (tests/fixtures/rp_b_01_voice_solve.json, calibrated;
+// rp_b_06_voice_solve.json, predicted only, drawing no southern showpiece), with the backend's replies as the real route
+// words them (services/voice, rules parser, read from POST /api/voice/command on this branch)
+describe('a typed refusal is kept when the backend refuses too', () => {
+  const realSolve = (name: string): ObservationSolution => {
+    const solve = JSON.parse(fs.readFileSync(path.resolve(here, `../../../../tests/fixtures/${name}`), 'utf8')) as ObservationSolution;
+    return {
+      ...solve,
+      id: solutionId,
+      sourceAssetId: assetId,
+      sourceSha256: sha256,
+      findings: solve.findings.map((f) => ({
+        ...f,
+        observationSolutionId: solutionId,
+        sourceDetection: f.sourceDetection ? { ...f.sourceDetection, assetId } : undefined,
+        evidence: {
+          ...f.evidence,
+          ...(f.evidence.sourceAssetSha256 ? { sourceAssetSha256: sha256 } : {}),
+          ...(f.evidence.wcsSolutionId ? { wcsSolutionId: solutionId } : {}),
+        },
+      })),
+    } as ObservationSolution;
+  };
+  const notUnderstood = (said: string) => ({
+    status: 'rejected',
+    actionId: 'req-backend',
+    reason: 'ambiguous_target',
+    explanation: `I did not understand "${said}": no list of the app holds that word.`,
+    nextActions: ['Name a catalog star or planet, or point at one'],
+    refusal: { kind: 'not_understood', said },
+    interpretation: { parser: 'rules' },
+  });
+  const coalsackOutOfReach = {
+    status: 'rejected',
+    actionId: 'req-backend',
+    reason: 'no_grounded_answer',
+    explanation: "The Coalsack is in the app's deep-sky catalog (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+    nextActions: [],
+    refusal: { kind: 'deep_sky_out_of_reach', said: 'coalsack', name: 'the Coalsack', catalogRow: 'C099' },
+    interpretation: { parser: 'rules' },
+  };
+  const said = () => q('.reveal-answer__s')?.textContent;
+
+  it.each([
+    ['where is Mercury', 'mercury', 'Mercury'],
+    ['where is Neptune', 'neptune', 'Neptune'],
+  ])('%s over a calibrated photo: the app parser\'s sentence, not the backend\'s not understood', async (words, spoken, name) => {
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      solution: () => json(realSolve('rp_b_01_voice_solve.json')),
+      other: (url) => (url === '/api/voice/command' ? json(notUnderstood(spoken)) : undefined),
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await typeAndSend(words);
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await settle();
+    await waitUntil(() => expect(said()).toBe(`The app does not predict where ${name} is, so it cannot be found in this photo's sky.`));
+    expect(said()).not.toContain('did not understand');
+  });
+
+  it('an undrawn showpiece over a predicted-only photo: not in this sky, not the backend\'s out of reach', async () => {
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      solution: () => json(realSolve('rp_b_06_voice_solve.json')),
+      other: (url) => (url === '/api/voice/command' ? json(coalsackOutOfReach) : undefined),
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-status"]')).not.toBeNull());
+    await typeAndSend('where is the Coalsack');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await settle();
+    await waitUntil(() => expect(said()).toBe("The Coalsack was not found in this photo's sky."));
+    expect(said()).not.toContain('voice does not reach');
+  });
+
+  it('a question from the backend is no proposal either: the typed refusal stays', async () => {
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      solution: () => json(realSolve('rp_b_01_voice_solve.json')),
+      other: (url) =>
+        url === '/api/voice/command'
+          ? json({ status: 'needs_input', actionId: 'req-backend', question: 'Which planet do you mean?', choices: [], interpretation: { parser: 'rules' } })
+          : undefined,
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await typeAndSend('where is Mercury');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await settle();
+    await waitUntil(() => expect(said()).toBe("The app does not predict where Mercury is, so it cannot be found in this photo's sky."));
+  });
+
+  it('a backend proposal still wins: it is applied through the reducer, and no refusal shows', async () => {
+    const solve = realSolve('rp_b_01_voice_solve.json');
+    const star = solve.findings.find((f) => f.evidenceClass === 'catalog_matched')!;
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      solution: () => json(solve),
+      other: (url, init) =>
+        url === '/api/voice/command'
+          ? json({
+              status: 'proposed',
+              actionId: 'req-backend',
+              proposedAction: {
+                type: 'finding.select',
+                requestId: 'req-backend',
+                expectedViewRevision: JSON.parse(String(init?.body)).context.viewRevision,
+                findingId: star.id,
+              },
+              visualStatus: 'Checked finding.select; not applied',
+              interpretation: { parser: 'rules' },
+            })
+          : undefined,
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await typeAndSend('select zorblax');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await waitUntil(() => expect(q('[data-testid="star-card"]')).not.toBeNull());
+    expect(q(ANSWER)).toBeNull();
+  });
+});

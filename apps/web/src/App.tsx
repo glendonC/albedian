@@ -306,6 +306,13 @@ export const App: React.FC = () => {
           setSession((prev) => ({ ...prev, lastStatusBanner: VOICE_REPLY_PREVIOUS_PHOTO }));
           return;
         }
+        // The parser's typed refusal is kept whenever the backend's reply is itself a refusal or a question: the
+        // backend's words replace the app's only when it proposes something (DECIDED-BY-LEAD 24 Nov 22:12, FIELD's
+        // break: its not understood hid the app's own sentence for Mercury and for an undrawn showpiece)
+        if (reply.status !== 'proposed') {
+          refuse(local);
+          return;
+        }
         const applied = applyVoiceBackendReply(sessionRef.current, reply);
         // When both local parsing and the backend proposal reject as ambiguous_target, keep the local phrasing [verified: C37]
         const keepLocal =
@@ -316,8 +323,6 @@ export const App: React.FC = () => {
         const outcome = applied.outcome;
         if (outcome?.status === 'rejected') refuse(keepLocal ? local : outcome.explanation);
         else if (outcome?.status === 'needs_input') refuse(outcome.question);
-        else if (!outcome && reply.status === 'rejected') refuse(reply.explanation);
-        else if (!outcome && reply.status === 'needs_input') refuse(reply.question);
         if (applied.outcome?.status === 'completed') {
           audioBusRef.current?.playSelectionClick(isMuted);
           if (applied.flyToFindingId) animatePhaseAToPhaseBSpaceFlight(applied.flyToFindingId);

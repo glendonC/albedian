@@ -1,0 +1,254 @@
+{
+ "id": "sol_4f055db773c14698",
+ "sourceAssetId": "src_4f055db773c14698",
+ "sourceSha256": "4f055db773c14698f7bcd7f5db5e1165b9fe9bc7c2e03e9efed2f75a489ddc19",
+ "frameTimeSec": 0.0,
+ "revision": 1,
+ "status": "predicted_only",
+ "observedAtUTC": "2025-07-24T05:32:55.253Z",
+ "observerLocation": {
+  "latDeg": 32.53168055555555,
+  "lonDeg": -95.63342222222222
+ },
+ "solver": {
+  "name": "albedian.phone_photo_tile_solver",
+  "version": "1.0.0",
+  "catalogRelease": "Gaia DR3 + Hipparcos 2007 (G <= 12 tiles)"
+ },
+ "quality": {
+  "detectedCandidateCount": 31371,
+  "matchedInlierCount": 0,
+  "heldOutPairCount": 0,
+  "heldOutInliers": 0,
+  "passedIndependentVerification": false
+ },
+ "findings": [
+  {
+   "id": "finding-predicted-saturn",
+   "observationSolutionId": "sol_4f055db773c14698",
+   "evidenceClass": "predicted",
+   "title": "Saturn (Predicted Ephemeris)",
+   "subtitle": "Predicted Planet · 9.023 AU · Alt +13.6° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 2.2776359445722276,
+    "decDeg": -1.5675135724811333,
+    "uncertaintyArcsec": 111.74274573169706,
+    "altDeg": 13.633794309392243,
+    "azDeg": 100.66286685220956
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-saturn",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "4f055db773c14698f7bcd7f5db5e1165b9fe9bc7c2e03e9efed2f75a489ddc19",
+    "wcsSolutionId": "sol_4f055db773c14698",
+    "limitations": [
+     "Predicted with ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time, for the recorded capture time and place; not measured in the recording.",
+     "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+     "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +13.70 degrees, and the real air differs most near the horizon.",
+     "Its uncertainty, 111.7 arcsec, adds the method's documented worst error (97.2 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+     "The moment is UTC; TT comes from ERFA's leap-second table, and UT1 is taken as UTC, within 0.9 s."
+    ],
+    "verifiedByIndependentHoldout": false
+   }
+  },
+  {
+   "id": "finding-predicted-star-vega",
+   "observationSolutionId": "sol_4f055db773c14698",
+   "evidenceClass": "predicted",
+   "title": "Vega",
+   "subtitle": "Predicted Star (Lyr) · Alpha Lyrae · 3 Lyr · HR 7001 · HIP 91262 · 7.7 pc · Alt +79.5° Az 309.7° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 279.23656522735587,
+    "decDeg": 38.78572121963834,
+    "uncertaintyArcsec": 15.37840548024078,
+    "altDeg": 79.52602293899511,
+    "azDeg": 309.7073413347254
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-star-vega",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "4f055db773c14698f7bcd7f5db5e1165b9fe9bc7c2e03e9efed2f75a489ddc19",
+    "wcsSolutionId": "sol_4f055db773c14698",
+    "catalogReferenceId": "star-vega",
+    "distanceUncertaintyNote": "Distance interval [7.7, 7.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time and place; not measured in the recording.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "star-vega",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 91262",
+    "commonName": "Vega",
+    "bayerDesignation": "Alpha Lyrae",
+    "flamsteedNumber": 3,
+    "constellation": "Lyr",
+    "objectType": "star",
+    "coordinateEpoch": "J2025.6",
+    "raDeg": 279.23656522735587,
+    "decDeg": 38.78572121963834,
+    "apparentMagnitude": 0.08700000000000019,
+    "properMotionRaMasYr": 201.0,
+    "properMotionDecMasYr": 286.25,
+    "bailerJonesDistancePc": {
+     "lower": 7.6577219108902534,
+     "median": 7.678917470231446,
+     "upper": 7.700697371440189,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 7.6577219108902534,
+    "median": 7.678917470231446,
+    "upper": 7.700697371440189,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    0.9607667868249764,
+    -5.908060819573695,
+    4.81014740399688
+   ]
+  },
+  {
+   "id": "finding-predicted-hip-69673",
+   "observationSolutionId": "sol_4f055db773c14698",
+   "evidenceClass": "predicted",
+   "title": "Arcturus",
+   "subtitle": "Predicted Star (Boo) · Alpha Boötis · 16 Boo · HR 5340 · HIP 69673 · 11.3 pc · Alt +22.0° Az 279.2° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 213.90708270315898,
+    "decDeg": 19.168208828116455,
+    "uncertaintyArcsec": 15.469119335922056,
+    "altDeg": 21.95506919887275,
+    "azDeg": 279.2252037548914
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-hip-69673",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "4f055db773c14698f7bcd7f5db5e1165b9fe9bc7c2e03e9efed2f75a489ddc19",
+    "wcsSolutionId": "sol_4f055db773c14698",
+    "catalogReferenceId": "hip-69673",
+    "distanceUncertaintyNote": "Distance interval [11.2, 11.3] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time and place; not measured in the recording.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "hip-69673",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 69673",
+    "commonName": "Arcturus",
+    "bayerDesignation": "Alpha Boötis",
+    "flamsteedNumber": 16,
+    "constellation": "Boo",
+    "objectType": "star",
+    "coordinateEpoch": "J2025.6",
+    "raDeg": 213.90708270315898,
+    "decDeg": 19.168208828116455,
+    "apparentMagnitude": 0.11100000000000021,
+    "properMotionRaMasYr": -1093.0,
+    "properMotionDecMasYr": -2000.0,
+    "bailerJonesDistancePc": {
+     "lower": 11.189271081260868,
+     "median": 11.256412505761102,
+     "upper": 11.324782346291565,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 11.189271081260868,
+    "median": 11.256412505761102,
+    "upper": 11.324782346291565,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -8.824241650648542,
+    -5.931227817163225,
+    3.6959597362151535
+   ]
+  },
+  {
+   "id": "finding-predicted-star-altair",
+   "observationSolutionId": "sol_4f055db773c14698",
+   "evidenceClass": "predicted",
+   "title": "Altair",
+   "subtitle": "Predicted Star (Aql) · Alpha Aquilae · 53 Aql · HR 7557 · HIP 97649 · 5.1 pc · Alt +65.2° Az 160.3° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 297.6996799781559,
+    "decDeg": 8.871056617268291,
+    "uncertaintyArcsec": 15.392995377311676,
+    "altDeg": 65.20980826529308,
+    "azDeg": 160.32365681001966
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-star-altair",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "4f055db773c14698f7bcd7f5db5e1165b9fe9bc7c2e03e9efed2f75a489ddc19",
+    "wcsSolutionId": "sol_4f055db773c14698",
+    "catalogReferenceId": "star-altair",
+    "distanceUncertaintyNote": "Distance interval [5.1, 5.1] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time and place; not measured in the recording.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "star-altair",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 97649",
+    "commonName": "Altair",
+    "bayerDesignation": "Alpha Aquilae",
+    "flamsteedNumber": 53,
+    "constellation": "Aql",
+    "objectType": "star",
+    "coordinateEpoch": "J2025.6",
+    "raDeg": 297.6996799781559,
+    "decDeg": 8.871056617268291,
+    "apparentMagnitude": 0.827,
+    "properMotionRaMasYr": 536.0,
+    "properMotionDecMasYr": 385.25,
+    "bailerJonesDistancePc": {
+     "lower": 5.114978918613821,
+     "median": 5.129794882858577,
+     "upper": 5.14529785478638,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 5.114978918613821,
+    "median": 5.129794882858577,
+    "upper": 5.14529785478638,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    2.3559951073816574,
+    -4.4875703025697,
+    0.7910722935928338
+   ]
+  }
+ ],
+ "warnings": [
+  "A possible match was found, but the stars held back to check it did not land where it put them, so it was not kept.",
+  "This photo's sky is so close to black that its faintest noise is cut off, so some of the points counted may be that noise, not stars. On such a sky the detector finds more points on pure noise than its stated rate, so the count's false rate is not controlled.",
+  "The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.",
+  "The Sun was about 36 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight."
+ ]
+}

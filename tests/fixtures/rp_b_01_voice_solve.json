@@ -1,0 +1,1304 @@
+{
+ "id": "sol_2b38f0f6006832a3",
+ "sourceAssetId": "src_2b38f0f6006832a3",
+ "sourceSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+ "frameTimeSec": 0.0,
+ "revision": 1,
+ "status": "calibrated",
+ "observedAtUTC": "2026-01-08T14:08:02.443Z",
+ "observerLocation": {
+  "latDeg": -26.355211111111114,
+  "lonDeg": 153.06640555555558
+ },
+ "solver": {
+  "name": "albedian.phone_photo_tile_solver",
+  "version": "1.0.0",
+  "catalogRelease": "Gaia DR3 + Hipparcos 2007 (G <= 12 tiles)"
+ },
+ "quality": {
+  "detectedCandidateCount": 2025,
+  "matchedInlierCount": 43,
+  "heldOutPairCount": 42,
+  "heldOutInliers": 42,
+  "passedIndependentVerification": true,
+  "medianResidualPx": 1.5685215165705202,
+  "p95ResidualPx": 2.7321320611678477,
+  "medianResidualArcsec": 58.0830346396827
+ },
+ "findings": [
+  {
+   "id": "finding-obs-1",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "observed",
+   "title": "Observed Point Source #1",
+   "subtitle": "Unmatched sensor detection at (2789.0, 44.0) px",
+   "skyPosition": {
+    "raDeg": 166.9349754426693,
+    "decDeg": -70.84333624966096,
+    "uncertaintyArcsec": 58.09365749187808
+   },
+   "evidence": {
+    "id": "ev-finding-obs-1",
+    "evidenceClass": "observed",
+    "verificationMethod": "Measured in the image's pixels",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "limitations": [
+     "Unmatched sensor detection outside verified catalog inlier gate."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2789.015061713389,
+    "yPx": 44.01667352341355,
+    "flux": 15.81545898318395,
+    "snr": 508.25748188336325,
+    "fwhmPx": 3.283375902427101,
+    "centroidUncertaintyPx": 0.03
+   }
+  },
+  {
+   "id": "finding-obs-2",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "observed",
+   "title": "Observed Point Source #2",
+   "subtitle": "Unmatched sensor detection at (2878.1, 237.0) px",
+   "skyPosition": {
+    "raDeg": 171.1824016959453,
+    "decDeg": -72.23341394112938,
+    "uncertaintyArcsec": 58.09365749187808
+   },
+   "evidence": {
+    "id": "ev-finding-obs-2",
+    "evidenceClass": "observed",
+    "verificationMethod": "Measured in the image's pixels",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "limitations": [
+     "Unmatched sensor detection outside verified catalog inlier gate."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2878.081505343399,
+    "yPx": 237.00673159295127,
+    "flux": 15.776415175464686,
+    "snr": 459.7454310919989,
+    "fwhmPx": 3.2210219060724534,
+    "centroidUncertaintyPx": 0.03
+   }
+  },
+  {
+   "id": "finding-obs-3",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "observed",
+   "title": "Observed Point Source #3",
+   "subtitle": "Unmatched sensor detection at (2132.0, 28.0) px",
+   "skyPosition": {
+    "raDeg": 170.8967456973121,
+    "decDeg": -64.95062131728056,
+    "uncertaintyArcsec": 58.09365749187808
+   },
+   "evidence": {
+    "id": "ev-finding-obs-3",
+    "evidenceClass": "observed",
+    "verificationMethod": "Measured in the image's pixels",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "limitations": [
+     "Unmatched sensor detection outside verified catalog inlier gate."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2132.026462741464,
+    "yPx": 27.96516091283736,
+    "flux": 17.3347312562589,
+    "snr": 384.59014946857,
+    "fwhmPx": 3.29147065674212,
+    "centroidUncertaintyPx": 0.03
+   }
+  },
+  {
+   "id": "finding-gaia-dr3-5233836018668907776",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Gaia DR3 5233836018668907776",
+   "subtitle": "479.1 pc [459.9-501.2 pc]",
+   "skyPosition": {
+    "raDeg": 177.4857242491213,
+    "decDeg": -70.2257951458045,
+    "uncertaintyArcsec": 122.22530093280574,
+    "altDeg": 33.18500022980193,
+    "azDeg": 158.73820849525626
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-5233836018668907776",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-5233836018668907776",
+    "angularResidualArcsec": 122.22530093280574,
+    "pixelResidualPx": 3.3006714537506805,
+    "distanceUncertaintyNote": "Distance interval [459.9, 501.2] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2605.0471524603768,
+    "yPx": 419.9645392661695,
+    "flux": 17.621790933619,
+    "snr": 336.4105525247953,
+    "fwhmPx": 3.2825260725393157,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-5233836018668907776",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 5233836018668907776",
+    "commonName": "Gaia DR3 5233836018668907776",
+    "constellation": "Mus",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 177.4857242491213,
+    "decDeg": -70.2257951458045,
+    "apparentMagnitude": 4.52,
+    "properMotionRaMasYr": -8.109375,
+    "properMotionDecMasYr": -0.833984375,
+    "bailerJonesDistancePc": {
+     "lower": 459.89494527359216,
+     "median": 479.07113000307453,
+     "upper": 501.24054997902994,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude, color index (BP-RP) and radial velocity: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": 1.518,
+    "radialVelocityKmS": 13.0078125
+   },
+   "inferredDistancePc": {
+    "lower": 459.89494527359216,
+    "median": 479.07113000307453,
+    "upper": 501.24054997902994,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -161.92058254315845,
+    7.11002660457987,
+    -450.8218274141006
+   ]
+  },
+  {
+   "id": "finding-gaia-dr3-5236306071562633344",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Gaia DR3 5236306071562633344",
+   "subtitle": "42.3 pc [41.5-43.1 pc]",
+   "skyPosition": {
+    "raDeg": 176.39998539752767,
+    "decDeg": -66.72850717895544,
+    "uncertaintyArcsec": 97.33431287541343,
+    "altDeg": 34.42561602217385,
+    "azDeg": 154.773934474502
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-5236306071562633344",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-5236306071562633344",
+    "angularResidualArcsec": 97.33431287541343,
+    "pixelResidualPx": 2.6284949640249544,
+    "distanceUncertaintyNote": "Distance interval [41.5, 43.1] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2252.9795803013635,
+    "yPx": 318.0039147131273,
+    "flux": 19.33200431432617,
+    "snr": 334.32936135010283,
+    "fwhmPx": 3.3004093371502248,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-5236306071562633344",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 5236306071562633344",
+    "commonName": "Gaia DR3 5236306071562633344",
+    "constellation": "Mus",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 176.39998539752767,
+    "decDeg": -66.72850717895544,
+    "apparentMagnitude": 3.625,
+    "properMotionRaMasYr": -95.25,
+    "properMotionDecMasYr": 34.65625,
+    "bailerJonesDistancePc": {
+     "lower": 41.49538532449785,
+     "median": 42.315550971661644,
+     "upper": 43.120980521438,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude, color index (BP-RP) and radial velocity: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": 0.305,
+    "radialVelocityKmS": 12.28125
+   },
+   "inferredDistancePc": {
+    "lower": 41.49538532449785,
+    "median": 42.315550971661644,
+    "upper": 43.120980521438,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -16.685396782987553,
+    1.0497604558897744,
+    -38.87288761096625
+   ]
+  },
+  {
+   "id": "finding-hip-71860",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Alpha Lupi",
+   "subtitle": "142.5 pc [139.2-146.0 pc]",
+   "skyPosition": {
+    "raDeg": 220.4820922255659,
+    "decDeg": -47.38836984426227,
+    "uncertaintyArcsec": 32.88855325479639,
+    "altDeg": 8.236704295605065,
+    "azDeg": 139.4304013268779
+   },
+   "evidence": {
+    "id": "ev-finding-hip-71860",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "hip-71860",
+    "angularResidualArcsec": 32.88855325479639,
+    "pixelResidualPx": 0.8881492461445771,
+    "distanceUncertaintyNote": "Distance interval [139.2, 146.0] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 805.9303510978847,
+    "yPx": 2940.9862678816453,
+    "flux": 14.315465400817835,
+    "snr": 322.93787242305376,
+    "fwhmPx": 3.259915013182118,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "hip-71860",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 71860",
+    "commonName": "HIP 71860",
+    "bayerDesignation": "Alpha Lupi",
+    "constellation": "Lup",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 220.4820922255659,
+    "decDeg": -47.38836984426227,
+    "apparentMagnitude": 2.2300000000000004,
+    "properMotionRaMasYr": -20.9375,
+    "properMotionDecMasYr": -23.671875,
+    "bailerJonesDistancePc": {
+     "lower": 139.15221117103042,
+     "median": 142.46231588150178,
+     "upper": 145.9574494686746,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 139.15221117103042,
+    "median": 142.46231588150178,
+    "upper": 145.9574494686746,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -73.36118787799522,
+    -62.61672954366685,
+    -104.84651992653623
+   ]
+  },
+  {
+   "id": "finding-gaia-dr3-5842864786417716608",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Gamma Muscae",
+   "subtitle": "117.2 pc [113.3-120.7 pc]",
+   "skyPosition": {
+    "raDeg": 188.11549932975606,
+    "decDeg": -72.13303071870948,
+    "uncertaintyArcsec": 84.27632283409588,
+    "altDeg": 29.48032710477961,
+    "azDeg": 160.225165813093
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-5842864786417716608",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-5842864786417716608",
+    "angularResidualArcsec": 84.27632283409588,
+    "pixelResidualPx": 2.2758663785863953,
+    "distanceUncertaintyNote": "Distance interval [113.3, 120.7] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2757.9841961789193,
+    "yPx": 802.9808032174027,
+    "flux": 19.660908152311055,
+    "snr": 318.0933095802075,
+    "fwhmPx": 3.289058287372402,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-5842864786417716608",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 5842864786417716608",
+    "commonName": "Gaia DR3 5842864786417716608",
+    "bayerDesignation": "Gamma Muscae",
+    "constellation": "Mus",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 188.11549932975606,
+    "decDeg": -72.13303071870948,
+    "apparentMagnitude": 3.816,
+    "properMotionRaMasYr": -51.84375,
+    "properMotionDecMasYr": -5.6640625,
+    "bailerJonesDistancePc": {
+     "lower": 113.33161807169832,
+     "median": 117.24653045822969,
+     "upper": 120.72622358150424,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": -0.18
+   },
+   "inferredDistancePc": {
+    "lower": 113.33161807169832,
+    "median": 117.24653045822969,
+    "upper": 120.72622358150424,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -35.61192778216774,
+    -5.078156915543744,
+    -111.59189857006362
+   ]
+  },
+  {
+   "id": "finding-gaia-dr3-6125166320994675456",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Gaia DR3 6125166320994675456",
+   "subtitle": "80.5 pc [77.4-83.8 pc]",
+   "skyPosition": {
+    "raDeg": 182.9125387653571,
+    "decDeg": -52.36853610890402,
+    "uncertaintyArcsec": 64.62671982269511,
+    "altDeg": 32.57680844135563,
+    "azDeg": 137.245216055893
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-6125166320994675456",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-6125166320994675456",
+    "angularResidualArcsec": 64.62671982269511,
+    "pixelResidualPx": 1.7452325143840932,
+    "distanceUncertaintyNote": "Distance interval [77.4, 83.8] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 745.9928500388368,
+    "yPx": 485.99260713766455,
+    "flux": 19.75356317531703,
+    "snr": 299.85160659776443,
+    "fwhmPx": 3.3224879290550318,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-6125166320994675456",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 6125166320994675456",
+    "commonName": "Gaia DR3 6125166320994675456",
+    "constellation": "Cen",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 182.9125387653571,
+    "decDeg": -52.36853610890402,
+    "apparentMagnitude": 3.936,
+    "properMotionRaMasYr": -38.875,
+    "properMotionDecMasYr": -13.28125,
+    "bailerJonesDistancePc": {
+     "lower": 77.42128518857807,
+     "median": 80.50076361080629,
+     "upper": 83.78199018718486,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": -0.215
+   },
+   "inferredDistancePc": {
+    "lower": 77.42128518857807,
+    "median": 80.50076361080629,
+    "upper": 83.78199018718486,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -49.088677092356946,
+    -2.4974954934427753,
+    -63.752939065626286
+   ]
+  },
+  {
+   "id": "finding-gaia-dr3-5236290747119515008",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Mu Muscae",
+   "subtitle": "145.8 pc [143.7-147.7 pc]",
+   "skyPosition": {
+    "raDeg": 177.06111998377534,
+    "decDeg": -66.81502316692803,
+    "uncertaintyArcsec": 95.88869412228789,
+    "altDeg": 34.15200009798773,
+    "azDeg": 154.80359734451633
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-5236290747119515008",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-5236290747119515008",
+    "angularResidualArcsec": 95.88869412228789,
+    "pixelResidualPx": 2.589456299239246,
+    "distanceUncertaintyNote": "Distance interval [143.7, 147.7] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2255.9991460152437,
+    "yPx": 348.01966008237184,
+    "flux": 17.770310189714667,
+    "snr": 296.6817199264899,
+    "fwhmPx": 3.291981045321127,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-5236290747119515008",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 5236290747119515008",
+    "commonName": "Gaia DR3 5236290747119515008",
+    "bayerDesignation": "Mu Muscae",
+    "constellation": "Mus",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 177.06111998377534,
+    "decDeg": -66.81502316692803,
+    "apparentMagnitude": 4.117,
+    "properMotionRaMasYr": 30.34375,
+    "properMotionDecMasYr": -15.7109375,
+    "bailerJonesDistancePc": {
+     "lower": 143.72334841968163,
+     "median": 145.78068950562786,
+     "upper": 147.67684185440007,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude, color index (BP-RP) and radial velocity: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": 1.788,
+    "radialVelocityKmS": 36.6875
+   },
+   "inferredDistancePc": {
+    "lower": 143.72334841968163,
+    "median": 145.78068950562786,
+    "upper": 147.67684185440007,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -57.318503160102985,
+    2.9426267053760853,
+    -134.00723702955133
+   ]
+  },
+  {
+   "id": "finding-hip-61932",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Gamma Centauri",
+   "subtitle": "39.9 pc [39.5-40.4 pc]",
+   "skyPosition": {
+    "raDeg": 190.37728906606768,
+    "decDeg": -48.95982964372929,
+    "uncertaintyArcsec": 27.026336135679845,
+    "altDeg": 27.536101235030976,
+    "azDeg": 133.86677423269143
+   },
+   "evidence": {
+    "id": "ev-finding-hip-61932",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "hip-61932",
+    "angularResidualArcsec": 27.026336135679845,
+    "pixelResidualPx": 0.729841166286431,
+    "distanceUncertaintyNote": "Distance interval [39.5, 40.4] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 405.9848081200862,
+    "yPx": 978.9945303042612,
+    "flux": 20.54013699409574,
+    "snr": 288.30292187856753,
+    "fwhmPx": 3.303825767319737,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "hip-61932",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 61932",
+    "commonName": "HIP 61932",
+    "bayerDesignation": "Gamma Centauri",
+    "constellation": "Cen",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 190.37728906606768,
+    "decDeg": -48.95982964372929,
+    "apparentMagnitude": 2.146,
+    "properMotionRaMasYr": -185.75,
+    "properMotionDecMasYr": 5.7890625,
+    "bailerJonesDistancePc": {
+     "lower": 39.45355767881616,
+     "median": 39.902490236214206,
+     "upper": 40.35963644046446,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 39.45355767881616,
+    "median": 39.902490236214206,
+    "upper": 40.35963644046446,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -25.77094966715816,
+    -4.719295926021593,
+    -30.096430457225434
+   ]
+  },
+  {
+   "id": "finding-gaia-dr3-6127688772460862976",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Tau Centauri",
+   "subtitle": "41.1 pc [40.7-41.5 pc]",
+   "skyPosition": {
+    "raDeg": 189.4236521062922,
+    "decDeg": -48.54135419801578,
+    "uncertaintyArcsec": 40.718577005037176,
+    "altDeg": 28.09067490237478,
+    "azDeg": 133.28714705437454
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-6127688772460862976",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-6127688772460862976",
+    "angularResidualArcsec": 40.718577005037176,
+    "pixelResidualPx": 1.099597577033267,
+    "distanceUncertaintyNote": "Distance interval [40.7, 41.5] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 356.9941936720394,
+    "yPx": 913.9798462276292,
+    "flux": 19.643873986499944,
+    "snr": 286.2189044706351,
+    "fwhmPx": 3.307542348531192,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-6127688772460862976",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 6127688772460862976",
+    "commonName": "Gaia DR3 6127688772460862976",
+    "bayerDesignation": "Tau Centauri",
+    "constellation": "Cen",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 189.4236521062922,
+    "decDeg": -48.54135419801578,
+    "apparentMagnitude": 3.8499999999999996,
+    "properMotionRaMasYr": -186.125,
+    "properMotionDecMasYr": -6.7578125,
+    "bailerJonesDistancePc": {
+     "lower": 40.71972503007455,
+     "median": 41.10550612811751,
+     "upper": 41.470864360640974,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": 0.111
+   },
+   "inferredDistancePc": {
+    "lower": 40.71972503007455,
+    "median": 41.10550612811751,
+    "upper": 41.470864360640974,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -26.84782767822147,
+    -4.456016548757399,
+    -30.805854955291082
+   ]
+  },
+  {
+   "id": "finding-hip-61585",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Alpha Muscae",
+   "subtitle": "96.7 pc [95.7-97.8 pc]",
+   "skyPosition": {
+    "raDeg": 189.29509212272728,
+    "decDeg": -69.13565730190089,
+    "uncertaintyArcsec": 67.12890768008775,
+    "altDeg": 29.30071282598803,
+    "azDeg": 156.7621869204738
+   },
+   "evidence": {
+    "id": "ev-finding-hip-61585",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "hip-61585",
+    "angularResidualArcsec": 67.12890768008775,
+    "pixelResidualPx": 1.8128036307551452,
+    "distanceUncertaintyNote": "Distance interval [95.7, 97.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 2441.0187987962686,
+    "yPx": 852.9770063827699,
+    "flux": 19.978016861921745,
+    "snr": 281.62311375181724,
+    "fwhmPx": 3.298978450090823,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "hip-61585",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 61585",
+    "commonName": "HIP 61585",
+    "bayerDesignation": "Alpha Muscae",
+    "constellation": "Mus",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 189.29509212272728,
+    "decDeg": -69.13565730190089,
+    "apparentMagnitude": 2.6109999999999998,
+    "properMotionRaMasYr": -40.1875,
+    "properMotionDecMasYr": -12.796875,
+    "bailerJonesDistancePc": {
+     "lower": 95.67646192631382,
+     "median": 96.71637266500187,
+     "upper": 97.75628340368992,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 95.67646192631382,
+    "median": 96.71637266500187,
+    "upper": 97.75628340368992,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -33.993875142256414,
+    -5.563720627675214,
+    -90.37432271981564
+   ]
+  },
+  {
+   "id": "finding-gaia-dr3-6127435678627741824",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "catalog_matched",
+   "title": "Sigma Centauri",
+   "subtitle": "125.2 pc [121.9-128.7 pc]",
+   "skyPosition": {
+    "raDeg": 187.00956190499573,
+    "decDeg": -50.230733170660415,
+    "uncertaintyArcsec": 35.68839816936448,
+    "altDeg": 29.870719963429103,
+    "azDeg": 134.9646549738319
+   },
+   "evidence": {
+    "id": "ev-finding-gaia-dr3-6127435678627741824",
+    "evidenceClass": "catalog_matched",
+    "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "gaia-dr3-6127435678627741824",
+    "angularResidualArcsec": 35.68839816936448,
+    "pixelResidualPx": 0.9637585358244972,
+    "distanceUncertaintyNote": "Distance interval [121.9, 128.7] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+    "limitations": [
+     "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image.",
+     "Its brightness is the catalog's own Gaia G magnitude, not the usual V.",
+     "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it partly by construction; the check itself stands, as it measured this star before the refinement against a fit it had no part in."
+    ],
+    "verifiedByIndependentHoldout": true
+   },
+   "sourceDetection": {
+    "assetId": "src_2b38f0f6006832a3",
+    "frameTimeSec": 0.0,
+    "xPx": 523.9962759287139,
+    "yPx": 749.023771897678,
+    "flux": 18.80884531797048,
+    "snr": 279.6772290689691,
+    "fwhmPx": 3.284239808057768,
+    "centroidUncertaintyPx": 0.03
+   },
+   "catalogRef": {
+    "id": "gaia-dr3-6127435678627741824",
+    "provider": "Gaia DR3",
+    "releaseVersion": "Gaia DR3",
+    "catalogSourceId": "Gaia DR3 6127435678627741824",
+    "commonName": "Gaia DR3 6127435678627741824",
+    "bayerDesignation": "Sigma Centauri",
+    "constellation": "Cen",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 187.00956190499573,
+    "decDeg": -50.230733170660415,
+    "apparentMagnitude": 3.893,
+    "properMotionRaMasYr": -32.1875,
+    "properMotionDecMasYr": -13.171875,
+    "bailerJonesDistancePc": {
+     "lower": 121.89411116160373,
+     "median": 125.22758345971413,
+     "upper": 128.71562693808607,
+     "method": "photogeometric_bailer_jones_edr3"
+    },
+    "citation": "Catalog id, Gaia G magnitude and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+    "colorIndexBpRp": -0.273
+   },
+   "inferredDistancePc": {
+    "lower": 121.89411116160373,
+    "median": 125.22758345971413,
+    "upper": 128.71562693808607,
+    "method": "photogeometric_bailer_jones_edr3"
+   },
+   "cartesianParsecICRS": [
+    -79.50903100843023,
+    -9.775950782213119,
+    -96.2532723265235
+   ]
+  },
+  {
+   "id": "finding-openngc-NGC5139",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Omega Centauri",
+   "subtitle": "Globular Cluster · Cen · OpenNGC CC BY-SA 4.0",
+   "skyPosition": {
+    "raDeg": 201.691208,
+    "decDeg": -47.476861,
+    "uncertaintyArcsec": 0.15
+   },
+   "evidence": {
+    "id": "ev-finding-openngc-NGC5139",
+    "evidenceClass": "predicted",
+    "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "openngc-NGC5139",
+    "limitations": [
+     "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+     "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+     "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+     "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "openngc-NGC5139",
+    "provider": "OpenNGC",
+    "releaseVersion": "OpenNGC v20260501",
+    "catalogSourceId": "NGC5139",
+    "commonName": "Omega Centauri",
+    "constellation": "Cen",
+    "objectType": "deep_sky",
+    "coordinateEpoch": "J2000.0",
+    "raDeg": 201.691208,
+    "decDeg": -47.476861,
+    "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+    "apparentMagnitude": 5.33
+   }
+  },
+  {
+   "id": "finding-openngc-NGC4755",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Herschel's Jewel Box",
+   "subtitle": "Open Cluster · Cru · OpenNGC CC BY-SA 4.0",
+   "skyPosition": {
+    "raDeg": 193.4045,
+    "decDeg": -60.356306,
+    "uncertaintyArcsec": 0.15
+   },
+   "evidence": {
+    "id": "ev-finding-openngc-NGC4755",
+    "evidenceClass": "predicted",
+    "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "openngc-NGC4755",
+    "limitations": [
+     "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+     "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+     "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+     "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "openngc-NGC4755",
+    "provider": "OpenNGC",
+    "releaseVersion": "OpenNGC v20260501",
+    "catalogSourceId": "NGC4755",
+    "commonName": "Herschel's Jewel Box",
+    "constellation": "Cru",
+    "objectType": "deep_sky",
+    "coordinateEpoch": "J2000.0",
+    "raDeg": 193.4045,
+    "decDeg": -60.356306,
+    "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0"
+   }
+  },
+  {
+   "id": "finding-predicted-moon",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Moon (Predicted Ephemeris)",
+   "subtitle": "Predicted Moon · 0.003 AU · Alt +24.1° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 175.07266324166824,
+    "decDeg": 1.4816859474791835,
+    "uncertaintyArcsec": 158.32119319532748,
+    "altDeg": 24.05219669051975,
+    "azDeg": 75.54528793935867
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-moon",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "limitations": [
+     "Predicted with Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+     "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +24.09 degrees, and the real air differs most near the horizon.",
+     "Its uncertainty, 38.0 arcsec, adds the method's documented worst error (18.4 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 4.8 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+     "The moment is UTC; TT comes from ERFA's leap-second table, and UT1 is taken as UTC, within 0.9 s."
+    ],
+    "verifiedByIndependentHoldout": false
+   }
+  },
+  {
+   "id": "finding-predicted-jupiter",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Jupiter (Predicted Ephemeris)",
+   "subtitle": "Predicted Planet · 4.232 AU · Alt +41.5° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 111.64806953043558,
+    "decDeg": 22.205390380272426,
+    "uncertaintyArcsec": 231.453166826224,
+    "altDeg": 41.47893934612076,
+    "azDeg": 358.54826751859423
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-jupiter",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "limitations": [
+     "Predicted with ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+     "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +41.50 degrees, and the real air differs most near the horizon.",
+     "Its uncertainty, 111.1 arcsec, adds the method's documented worst error (96.6 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+     "The moment is UTC; TT comes from ERFA's leap-second table, and UT1 is taken as UTC, within 0.9 s."
+    ],
+    "verifiedByIndependentHoldout": false
+   }
+  },
+  {
+   "id": "finding-predicted-uranus",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Uranus (Predicted Ephemeris)",
+   "subtitle": "Predicted Planet · 18.848 AU · Alt +17.7° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 55.15920603886932,
+    "decDeg": 19.383549717775093,
+    "uncertaintyArcsec": 226.11109121881964,
+    "altDeg": 17.681798003590018,
+    "azDeg": 303.25329109270706
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-uranus",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "limitations": [
+     "Predicted with ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+     "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +17.73 degrees, and the real air differs most near the horizon.",
+     "Its uncertainty, 105.8 arcsec, adds the method's documented worst error (91.2 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+     "The moment is UTC; TT comes from ERFA's leap-second table, and UT1 is taken as UTC, within 0.9 s."
+    ],
+    "verifiedByIndependentHoldout": false
+   }
+  },
+  {
+   "id": "finding-predicted-star-sirius",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Sirius",
+   "subtitle": "Predicted Star (CMa) · Alpha Canis Majoris · 9 CMa · HR 2491 · HIP 32349 · 2.6 pc · Alt +75.5° Az 309.3° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 101.28303454269306,
+    "decDeg": -16.72495591177544,
+    "uncertaintyArcsec": 135.7585529281158,
+    "altDeg": 75.54596003288734,
+    "azDeg": 309.2953664869353
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-star-sirius",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "star-sirius",
+    "distanceUncertaintyNote": "Distance interval [2.6, 2.6] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "star-sirius",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 32349",
+    "commonName": "Sirius",
+    "bayerDesignation": "Alpha Canis Majoris",
+    "flamsteedNumber": 9,
+    "constellation": "CMa",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 101.28303454269306,
+    "decDeg": -16.72495591177544,
+    "apparentMagnitude": -1.088,
+    "properMotionRaMasYr": -546.0,
+    "properMotionDecMasYr": -1223.0,
+    "bailerJonesDistancePc": {
+     "lower": 2.6259936328105216,
+     "median": 2.636938493453466,
+     "upper": 2.64788335409641,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 2.6259936328105216,
+    "median": 2.636938493453466,
+    "upper": 2.64788335409641,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -0.49410688087635596,
+    2.4765796109020544,
+    -0.7588520536913003
+   ]
+  },
+  {
+   "id": "finding-predicted-hip-30438",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Canopus",
+   "subtitle": "Predicted Star (Car) · Alpha Carinae · HR 2326 · HIP 30438 · 94.8 pc · Alt +60.7° Az 201.3° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 95.98819554666053,
+    "decDeg": -52.69549342265467,
+    "uncertaintyArcsec": 135.69206502389991,
+    "altDeg": 60.70701718691291,
+    "azDeg": 201.32255834898737
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-hip-30438",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "hip-30438",
+    "distanceUncertaintyNote": "Distance interval [90.0, 100.1] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "hip-30438",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 30438",
+    "commonName": "Canopus",
+    "bayerDesignation": "Alpha Carinae",
+    "constellation": "Car",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 95.98819554666053,
+    "decDeg": -52.69549342265467,
+    "apparentMagnitude": -0.554,
+    "properMotionRaMasYr": 19.9375,
+    "properMotionDecMasYr": 23.234375,
+    "bailerJonesDistancePc": {
+     "lower": 90.01766466298778,
+     "median": 94.77635452629613,
+     "upper": 100.08191777314819,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 90.01766466298778,
+    "median": 94.77635452629613,
+    "upper": 100.08191777314819,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -5.992272565669777,
+    57.12587849708363,
+    -75.38755900497995
+   ]
+  },
+  {
+   "id": "finding-predicted-hip-71683",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Rigil Kentaurus",
+   "subtitle": "Predicted Star (Cen) · Alpha1 Centauri · HR 5459 · HIP 71683 · 1.3 pc · Alt +15.1° Az 151.3° · Above Horizon",
+   "skyPosition": {
+    "raDeg": 219.84749103853463,
+    "decDeg": -60.83055838215256,
+    "uncertaintyArcsec": 135.87900905643048,
+    "altDeg": 15.063561994599652,
+    "azDeg": 151.26719617990275
+   },
+   "evidence": {
+    "id": "ev-finding-predicted-hip-71683",
+    "evidenceClass": "predicted",
+    "verificationMethod": "Predicted for the given time and place; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "hip-71683",
+    "distanceUncertaintyNote": "Distance interval [1.3, 1.3] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+    "limitations": [
+     "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "Its brightness is the catalog's own Hipparcos Hp magnitude, not the usual V.",
+     "Placed in the sky for that moment and place, at sea level; near the horizon it sits a little low, since the air's bending of light is left out. Its stated uncertainty adds UT1 - UTC (up to 13.5 arcseconds), polar motion, its own parallax (left out of its place), the stored precision of its motion, and, for a row with no proper motion or radial velocity, the motion it may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "hip-71683",
+    "provider": "Hipparcos",
+    "releaseVersion": "Hipparcos 2007",
+    "catalogSourceId": "HIP 71683",
+    "commonName": "Rigil Kentaurus",
+    "bayerDesignation": "Alpha1 Centauri",
+    "constellation": "Cen",
+    "objectType": "star",
+    "coordinateEpoch": "J2026.0",
+    "raDeg": 219.84749103853463,
+    "decDeg": -60.83055838215256,
+    "apparentMagnitude": 0.137,
+    "properMotionRaMasYr": -3680.0,
+    "properMotionDecMasYr": 473.75,
+    "bailerJonesDistancePc": {
+     "lower": 1.3177334977174322,
+     "median": 1.3249515574620963,
+     "upper": 1.3320399287325926,
+     "method": "geometric_parallax"
+    },
+    "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+   },
+   "inferredDistancePc": {
+    "lower": 1.3177334977174322,
+    "median": 1.3249515574620963,
+    "upper": 1.3320399287325926,
+    "method": "geometric_parallax"
+   },
+   "cartesianParsecICRS": [
+    -0.4957943165248064,
+    -0.41377695422158506,
+    -1.1569240500041664
+   ]
+  },
+  {
+   "id": "finding-openngc-ESO056-115",
+   "observationSolutionId": "sol_2b38f0f6006832a3",
+   "evidenceClass": "predicted",
+   "title": "Large Magellanic Cloud",
+   "subtitle": "Galaxy · Dor · OpenNGC CC BY-SA 4.0",
+   "skyPosition": {
+    "raDeg": 80.89375,
+    "decDeg": -69.756111,
+    "uncertaintyArcsec": 120.47854916515367,
+    "altDeg": 42.73620148887905,
+    "azDeg": 194.6223508416374
+   },
+   "evidence": {
+    "id": "ev-finding-openngc-ESO056-115",
+    "evidenceClass": "predicted",
+    "verificationMethod": "OpenNGC catalog position placed for the recorded time and place by the predicted sky; not measured in the image",
+    "sourceAssetSha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+    "wcsSolutionId": "sol_2b38f0f6006832a3",
+    "catalogReferenceId": "openngc-ESO056-115",
+    "limitations": [
+     "Placed from its OpenNGC catalog centre (OpenNGC v20260501, J2000) for the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp, and place; not measured in the recording.",
+     "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+     "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+     "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+    ],
+    "verifiedByIndependentHoldout": false
+   },
+   "catalogRef": {
+    "id": "openngc-ESO056-115",
+    "provider": "OpenNGC",
+    "releaseVersion": "OpenNGC v20260501",
+    "catalogSourceId": "ESO056-115",
+    "commonName": "Large Magellanic Cloud",
+    "constellation": "Dor",
+    "objectType": "deep_sky",
+    "coordinateEpoch": "J2000.0",
+    "raDeg": 80.89375,
+    "decDeg": -69.756111,
+    "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+    "apparentMagnitude": 0.29
+   }
+  }
+ ],
+ "warnings": [
+  "The file names no time zone for its capture time: it was taken from the time zone at the photo's GPS position, which agrees with its GPS time stamp. The capture time is taken to be within 8 s, a second plus how far the camera's clock and the GPS time stamp differ, which can move the predicted sky by up to 120 arcsec; an old GPS fix can hide a wrong camera clock.",
+  "The Sun was about 41 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight."
+ ],
+ "wcs": {
+  "projection": "TAN",
+  "crvalRaDeg": 211.1529496085208,
+  "crvalDecDeg": -57.73308607279349,
+  "crpixX": 1511.5,
+  "crpixY": 2015.5,
+  "scaleDegPerPx": 0.010286232046135508,
+  "rotationDeg": 110.1901580338226,
+  "radialDistortionK1": 0.13362614266621697,
+  "radialDistortionK2": 0.0011369344063366785,
+  "parity": -1,
+  "fovHorizontalDeg": 30.373670040919347,
+  "fovVerticalDeg": 39.79338854448549
+ }
+}
