@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { PANORAMA_GRADE } from '../sky/panoramaGrade.js';
+import { recordPanorama } from './skyPictureSwitch.js';
+import { GLOW_SIZE_PX, PLANET_WINDOWS } from '../sky/flightMilkyWay.js';
 import { loadPanoramaRegistration, sceneToPanoramaRows } from '../sky/skyRegistration.js';
 import { BRUNETON_ATMO_LUT_URL } from '../volumetricSplatsAndLut.js';
 import type { EarthUniforms, MoonUniforms } from './cislunarRegime.js';
@@ -11,6 +13,8 @@ import { glslFloat } from './lupus3Grade.js';
 export interface SkyDomeUniforms {
   [uniform: string]: THREE.IUniform<unknown>;
   uMilkyWayTex: { value: THREE.Texture | null };
+  /** predsky-starless-one: 1 while the dome shows the starless glow, whose two planet windows are then filled. */
+  uFillPlanets: { value: number };
   uSceneToPanorama: { value: THREE.Matrix3 };
   uPanoramaOffsets: { value: THREE.Texture | null };
   uPanoramaGeometry: { value: THREE.Vector3 };
@@ -28,6 +32,7 @@ export interface CinemaOpticsUniforms {
 export function createSkyDomeUniforms(): SkyDomeUniforms {
   return {
     uMilkyWayTex: { value: null },
+    uFillPlanets: { value: 0 },
     // Set from eso0932a_registration.json before the panorama is bound (sky/skyRegistration.ts)
     uSceneToPanorama: { value: new THREE.Matrix3() },
     uPanoramaOffsets: { value: null },
@@ -115,6 +120,7 @@ export function createGlobalPhotorealisticSkyDomeMesh(
     `,
     fragmentShader: /* glsl */ `
       uniform sampler2D uMilkyWayTex;
+      uniform float uFillPlanets;
       uniform mat3 uSceneToPanorama;
       uniform sampler2D uPanoramaOffsets;
       uniform vec3 uPanoramaGeometry;
@@ -135,6 +141,27 @@ export function createGlobalPhotorealisticSkyDomeMesh(
         gradY.x = fract(gradY.x + 0.5) - 0.5;
       }
 
+      // predsky-starless-one: in the starless glow, Venus's and Jupiter's windows (the bake puts them back as
+      // photographed) filled from a ring of eight samples outside them, as the flight fills them (flightMilkyWay.ts)
+      const vec2 GLOW_SIZE = vec2(${GLOW_SIZE_PX.width.toFixed(1)}, ${GLOW_SIZE_PX.height.toFixed(1)});
+      const vec3 PLANETS[${PLANET_WINDOWS.length}] = vec3[${PLANET_WINDOWS.length}](${PLANET_WINDOWS.map((w) => `vec3(${(w.xPx / GLOW_SIZE_PX.width).toFixed(6)}, ${(1 - w.yPx / GLOW_SIZE_PX.height).toFixed(6)}, ${w.radiusPx.toFixed(1)})`).join(', ')});
+      vec3 fillPlanets(vec2 uv, vec3 base, vec2 gx, vec2 gy) {
+        for (int i = 0; i < ${PLANET_WINDOWS.length}; i++) {
+          vec2 c = PLANETS[i].xy;
+          float radiusPx = PLANETS[i].z;
+          vec2 dPx = vec2((fract(uv.x - c.x + 0.5) - 0.5) * GLOW_SIZE.x, (uv.y - c.y) * GLOW_SIZE.y);
+          if (length(dPx) <= radiusPx) {
+            vec3 sum = vec3(0.0);
+            for (int k = 0; k < 8; k++) {
+              float a = float(k) * 0.7853981633974483;
+              sum += textureGrad(uMilkyWayTex, c + vec2(cos(a), sin(a)) * 2.0 * radiusPx / GLOW_SIZE, gx, gy).rgb;
+            }
+            return sum / 8.0;
+          }
+        }
+        return base;
+      }
+
       void main() {
         vec3 dir = normalize(vSkyDir);
 
@@ -151,6 +178,7 @@ export function createGlobalPhotorealisticSkyDomeMesh(
         seamlessGrad(frameUv, mwGradX, mwGradY);
 
         vec3 mwCol = textureGrad(uMilkyWayTex, mwUv, mwGradX, mwGradY).rgb;
+        if (uFillPlanets > 0.5) mwCol = fillPlanets(mwUv, mwCol, mwGradX, mwGradY);
         vec3 cleanMw = max(vec3(0.0), mwCol - vec3(${grade.blackLevel}));
 
         // Deep velvet-obsidian cosmos + smooth Galactic Core dust-lane warmth (zero grainy JPEG noise)
@@ -193,7 +221,7 @@ export function loadSkyViewTextures(textureLoader: THREE.TextureLoader, skyDomeU
   const panorama = new Promise<THREE.Texture>((resolve) =>
     loadTex('/textures/eso_milkyway_panorama.jpg', resolve)
   );
-  void Promise.all([loadPanoramaRegistration(), panorama]).then(
+  const bound = Promise.all([loadPanoramaRegistration(), panorama]).then(
     ([registration, tex]) => {
       const { width, height, scale, bias, codes } = registration.offsetTable;
       const offsets = new THREE.DataTexture(codes, width, height, THREE.RGFormat, THREE.UnsignedByteType);
@@ -213,11 +241,18 @@ export function loadSkyViewTextures(textureLoader: THREE.TextureLoader, skyDomeU
       );
       skyDomeUniforms.uSceneToPanorama.value.set(...sceneToPanoramaRows(registration));
       skyDomeUniforms.uMilkyWayTex.value = tex;
+      return tex;
     },
-    (error: unknown) =>
-      console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error)
+    (error: unknown) => {
+      console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error);
+      return null;
+    }
   );
+  // predsky-starless-one: kept for the picture switch, which waits on it before it puts the starless glow on
+  recordPanorama(skyDomeUniforms, bound);
 }
+
+export { heardLimitOf, rendererUpload, setSkyPictureOf, type SkyPicture } from './skyPictureSwitch.js';
 
 /**
  * The landing scenes' pictures, which the sky view never draws: the Earth, the Moon, the atmosphere table and the

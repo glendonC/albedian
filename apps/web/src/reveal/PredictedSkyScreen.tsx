@@ -50,8 +50,10 @@ export const PredictedSkyScreen: React.FC<{
   onSelect?: (findingId: string) => void;
   onGoThere?: (findingId: string) => void;
   onCloseCard?: () => void;
-}> = ({ session, onHome, skyPose, phone = false, onSelect, onGoThere, onCloseCard }) => {
-  const words = predictedSkyWords(session);
+  /** predsky-starless-one: whether the dome shows the starless glow (its line says so only then). */
+  starless?: boolean;
+}> = ({ session, onHome, skyPose, phone = false, onSelect, onGoThere, onCloseCard, starless = false }) => {
+  const words = predictedSkyWords(session, starless);
   // The renderer's camera, followed frame by frame; a new pose only when it changed
   const [pose, setPose] = useState<CameraSkyPose | null>(null);
   useEffect(() => {

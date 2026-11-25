@@ -1,4 +1,5 @@
 import type { RenderLayerSet } from '@albedian/contracts';
+import type { SkyPicture } from './sky/predictedSkyPicture.js';
 
 /**
  * What the observatory viewport asks of a cosmos renderer. `SparkPortalRenderer` (WebGL2 and
@@ -52,6 +53,8 @@ export interface CosmosRenderer {
    * defaultObserverLook writes them; with acrossDeg, the field across the window at once (D33, ruled 17:05).
    */
   lookAtSky?(azDeg: number, altDeg: number, acrossDeg?: number): void;
+  /** predsky-starless-one (18:04): the sky dome's picture and the catalog's limit (the predicted sky: the starless glow to 10.5). */
+  setSkyPicture?(picture: SkyPicture, limitMag: number, onShown?: (shown: SkyPicture) => void): void;
   transitionToShowcaseScene(sceneKey: ShowcaseSceneKey, instant?: boolean): void;
   /** Holds the scene clock at `seconds` for matched snapshots; null runs it again. */
   holdClock(seconds: number | null): void;

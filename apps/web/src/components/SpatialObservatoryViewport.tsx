@@ -52,6 +52,7 @@ import { OpenWait } from '../reveal/OpenWait.js';
 import { earlyPoseOf, type PlacedTarget } from '../reveal/earlyPose.js';
 import { PredictedSkyScreen } from '../reveal/PredictedSkyScreen.js';
 import { isPredictedSkyShown, predictedSkyStart } from '../reveal/predictedSky.js';
+import { skyViewPicture } from '../spatial/sky/predictedSkyPicture.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
@@ -439,6 +440,14 @@ export const SpatialObservatoryViewport: React.FC<
     if (!skyStart) return;
     rendererRef.current?.lookAtSky?.(skyStart.azDeg, skyStart.altDeg, skyStart.acrossDeg);
   }, [skyStartKey, rendererGeneration]);
+
+  // predsky-starless-one (18:04): the predicted sky's dome takes the starless glow and its catalog reaches 10.5; every
+  // other view the photograph and the naked-eye limit; the line is worded from what the dome shows (21:51)
+  const [skyPictureShown, setSkyPictureShown] = useState<'photograph' | 'starless'>('photograph');
+  useEffect(() => {
+    const { picture, limitMag } = skyViewPicture(predictedSkyShown);
+    rendererRef.current?.setSkyPicture?.(picture, limitMag, setSkyPictureShown);
+  }, [predictedSkyShown, rendererGeneration]);
 
   // The header slider is the engine's master volume; the engine keeps it until audio starts
   useEffect(() => {
@@ -847,6 +856,7 @@ export const SpatialObservatoryViewport: React.FC<
           )}
           {predictedSkyShown && <PredictedSkyScreen
               session={session}
+              starless={skyPictureShown === 'starless'}
               onHome={() => setEntryStageActive(true)}
               skyPose={readSkyPose}
               phone={phone}

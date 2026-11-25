@@ -21,7 +21,12 @@ const CATALOG_STAR_VERTEX_SHADER = /* glsl */ `
         vGain = clamp(pow(rel, 0.18), 1.0, 3.5);
         vTint = aTint;
         vSpike = aMagnitude < 1.0 ? 1.0 : 0.0;
-        float size = clamp(1.9 * pow(rel, 0.3), 1.5, 22.0) * mix(1.0, 2.2, vSpike);
+        float grown = 1.9 * pow(rel, 0.3);
+        float size = clamp(grown, 1.5, 22.0) * mix(1.0, 2.2, vSpike);
+        // predsky-starless-one: below the 1.5 px floor the sprite keeps its size and gives up opacity for the area it
+        // was lent, so the light a faint star draws keeps following its magnitude (no floor lifts it); no star that
+        // grows past the floor (brighter than about 6.9) changes
+        vAlpha = vAlpha * min(1.0, (grown / 1.5) * (grown / 1.5));
         gl_PointSize = fade > 0.0 ? size * uPixelRatio : 0.0;
       }
     `;

@@ -17,7 +17,7 @@ import { centreOnCamera } from './skyMounts.js';
 import {
   createSkyDomeUniforms, createCinemaOpticsUniforms, createCinemaOpticsPass,
   createGlobalPhotorealisticSkyDomeMesh, loadLandingSceneTextures, loadSkyViewTextures,
-  type SkyDomeUniforms, type CinemaOpticsUniforms,
+  heardLimitOf, rendererUpload, setSkyPictureOf, type SkyPicture, type SkyDomeUniforms, type CinemaOpticsUniforms,
 } from './webgl/skyDomeAndCinemaShader.js';
 import {
   createEarthUniforms, createMoonUniforms, buildCislunarRegimeGroup,
@@ -413,13 +413,14 @@ export class SparkPortalRenderer {
   public getFovDeg(): number { return Math.round(this.targetFov); }
   public setLimitingMagnitude(mag: number): void { this.catalogStars?.setLimitingMagnitude(mag); }
   public getLimitingMagnitude(): number { return this.catalogStars?.getLimitingMagnitude() ?? DEFAULT_LIMITING_MAGNITUDE; }
+  public setSkyPicture(picture: SkyPicture, limitMag: number, onShown?: (shown: SkyPicture) => void): void { setSkyPictureOf(this, rendererUpload(this.renderer), this.skyDomeUniforms, this.catalogStars, picture, limitMag, onShown); }
   public getCatalogStarField(): CatalogStarField | null { return this.catalogStars; }
   public getCatalogStarStats(): CatalogStarFieldStats | null { return this.catalogStars?.getStats() ?? null; }
 
   public getCameraSkyPose(): CameraSkyPose | null {
     const sky = this.catalogStarMounts.find((m) => m.parent?.visible !== false);
     if (!sky || !this.catalogStars) return null;
-    return cameraSkyPose(this.camera, sky, this.catalogStars.getLimitingMagnitude());
+    return cameraSkyPose(this.camera, sky, heardLimitOf(this, this.catalogStars));
   }
 
   public nudgeMovement(dx: number, dy: number, dz: number): void {

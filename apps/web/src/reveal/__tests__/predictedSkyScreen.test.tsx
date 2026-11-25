@@ -30,6 +30,9 @@ vi.mock('../RealSkyLayer.js', async (importOriginal) => {
 });
 
 const skyLooks = vi.hoisted(() => [] as Array<[number, number, number | undefined]>);
+const skyPictures = vi.hoisted(() => [] as Array<[string, number]>);
+// What the stand-in's dome shows once asked: what was asked, unless a test makes the glow fail
+const domeShows = vi.hoisted(() => ({ value: null as string | null }));
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
     setObserverCoordinates() {}
@@ -53,6 +56,10 @@ vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
     }
     lookAtSky(azDeg: number, altDeg: number, acrossDeg?: number) {
       skyLooks.push([azDeg, altDeg, acrossDeg]);
+    }
+    setSkyPicture(picture: string, limitMag: number, onShown?: (shown: string) => void) {
+      skyPictures.push([picture, limitMag]);
+      onShown?.(domeShows.value ?? picture);
     }
   },
 }));
@@ -125,19 +132,19 @@ describe("the predicted sky's words", () => {
   });
 
   it("says the photo's heading, the disclosure with its new sentence, then the time, the place and the catalogues", () => {
-    expect(predictedSkyWords(predictedSky())).toEqual({
+    expect(predictedSkyWords(predictedSky(), true)).toEqual({
       heading: "The sky predicted for your photo's time and place.",
       note: 'Drawn or computed by the app; not measured in the source recording. Not lined up with your photo.',
-      milkyWay: "Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.",
+      milkyWay: "Milky Way: ESO/S. Brunier's photograph with its own stars removed, placed for your photo's time and place. Not light your camera recorded.",
       facts: ['2031-08-30 03:01 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3'],
     });
   });
 
   it("says your clip's for a clip", () => {
-    const words = predictedSkyWords(predictedSky('video'));
+    const words = predictedSkyWords(predictedSky('video'), true);
     expect(words.heading).toBe("The sky predicted for your clip's time and place.");
     expect(words.note).toBe('Drawn or computed by the app; not measured in the source recording. Not lined up with your clip.');
-    expect(words.milkyWay).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your clip's time and place. Not light your camera recorded.");
+    expect(words.milkyWay).toBe("Milky Way: ESO/S. Brunier's photograph with its own stars removed, placed for your clip's time and place. Not light your camera recorded.");
   });
 
   it("reads the time and place the solve predicted the sky for, so a time or place lent by the iPhone's record shows (13:04)", () => {
@@ -177,7 +184,7 @@ describe('the predicted sky in the app (laptop)', () => {
     // The 14:55 ruling (decided 13:08): the stars' Predicted tag, then the Milky Way's Simulated tag, and ESO's line
     expect([...status.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__sky', 'predsky-status__facts']);
     expect([...status.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
-    expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
+    expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph with its own stars removed, placed for your photo's time and place. Not light your camera recorded.");
     expect(status.querySelector('.predsky-status__lead')!.textContent).toBe("The sky predicted for your photo's time and place.");
     expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC', '30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
     expect(q('.ask-bar')).not.toBeNull();
@@ -201,6 +208,26 @@ describe('the predicted sky in the app (laptop)', () => {
     renderViewport(session);
     for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
     expect(skyLooks.at(-1)).toEqual([start.pose.azDeg, 30, 100]);
+  });
+
+  it('words the Milky Way line from what the dome shows: the photograph until the glow is on (predsky-starless-one, 21:51)', async () => {
+    expect(predictedSkyWords(predictedSky()).milkyWay).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
+    domeShows.value = 'photograph';
+    try {
+      renderViewport(predictedSky());
+      for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+      expect(skyPictures.at(-1)).toEqual(['starless', 10.5]);
+      expect(q('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
+    } finally {
+      domeShows.value = null;
+    }
+  });
+
+  it('asks the renderer for the starless glow and the catalog to 10.5 while the predicted sky shows (predsky-starless-one)', async () => {
+    skyPictures.length = 0;
+    renderViewport(predictedSky());
+    for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    expect(skyPictures.at(-1)).toEqual(['starless', 10.5]);
   });
 
   it('returns to the moment on Esc, as the There screen whose frame it takes does', () => {
@@ -244,7 +271,7 @@ describe('the predicted sky in the app (laptop)', () => {
       const status = screen.querySelector('.predsky-status')!;
       expect([...status.children].map((el) => el.className)).toEqual(['predsky-status__tags', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__sky', 'predsky-status__facts']);
       expect([...status.querySelectorAll('.predsky-status__tags > .look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
-      expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph, placed for your photo's time and place. Not light your camera recorded.");
+      expect(status.querySelector('.predsky-status__sky')!.textContent).toBe("Milky Way: ESO/S. Brunier's photograph with its own stars removed, placed for your photo's time and place. Not light your camera recorded.");
       // F2 (UIUX-tagphone-READY.md, decided 13:08): the block keeps the stars' catalogue line under the time and place
       expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W', 'Hipparcos 2007 · Gaia DR3']);
       expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);

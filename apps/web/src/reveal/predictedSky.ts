@@ -67,7 +67,7 @@ export function phoneFacts(words: PredictedSkyWords): string[] {
   return [...(values.length > 0 ? [values.join(' · ')] : []), ...catalogues];
 }
 
-export function predictedSkyWords(session: ObservationSession): PredictedSkyWords {
+export function predictedSkyWords(session: ObservationSession, starless = false): PredictedSkyWords {
   const asset = session.sourceAsset;
   const kind = asset?.mediaKind === 'video' ? 'clip' : 'photo';
   const facts: string[] = [];
@@ -80,7 +80,8 @@ export function predictedSkyWords(session: ObservationSession): PredictedSkyWord
   return {
     heading: `The sky predicted for your ${kind}'s time and place.`,
     note: `Drawn or computed by the app; not measured in the source recording. Not lined up with your ${kind}.`,
-    milkyWay: `Milky Way: ESO/S. Brunier's photograph, placed for your ${kind}'s time and place. Not light your camera recorded.`,
+    // predsky-starless-one: the line says what the dome shows: the copy with its stars removed once it is on, else the photograph
+    milkyWay: `Milky Way: ESO/S. Brunier's photograph${starless ? ' with its own stars removed' : ''}, placed for your ${kind}'s time and place. Not light your camera recorded.`,
     facts,
   };
 }

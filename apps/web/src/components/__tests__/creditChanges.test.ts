@@ -76,10 +76,14 @@ const REAL_SKY =
 const FLIGHT =
   'In the flight, the copy made from it with its own stars removed is drawn in its place at its own level, ungraded, ' +
   'with Venus and Jupiter filled from the copy around them; while you steer it is drawn on a sky turned with the camera.';
+// predsky-starless-one (ruled 18:04 on 24 Nov): the predicted sky shows the starless copy and the catalog to 10.5
+const PREDSKY =
+  "In the predicted sky, the copy made from it with its own stars removed is drawn in its place, placed and graded the " +
+  "same, and the catalog's stars are drawn in theirs down to magnitude 10.5.";
 
 describe('the Milky Way row states every change the app makes to the panorama, by kind', () => {
   it('says each change, where it is made: the home, the 3D view and the predicted sky, the copy the WebGPU renderer draws, Real sky and the flight', () => {
-    expect(CHANGES.eso0932a?.()).toEqual([HOME, SKY, COPY, REAL_SKY, FLIGHT]);
+    expect(CHANGES.eso0932a?.()).toEqual([HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY]);
     expect(realSkyChanges()).toBe(REAL_SKY);
     // Worded from the layer's own numbers
     expect(realSkyChanges({ edge: 0.6, near: 0.4, nearPx: 82 })).toContain('up to 60 percent black');
@@ -382,7 +386,7 @@ describe("a file a script made shows its record's own sentence on how it differs
   it('shows no further line when a record holds no such field, and shows the two eso0932a script sentences from disk today', () => {
     expect(fileOf('eso_milkyway_diffuse_6k.webp')?.producedBy.method).toBe('script');
     expect(recordChangeLines(withoutChanges(), 'eso0932a')).toEqual([]);
-    expect(milkyWay(withoutChanges()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT]]);
+    expect(milkyWay(withoutChanges()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY]]);
     const registration = fileOf('eso0932a_registration.json')!.producedBy;
     const starless = fileOf('eso_milkyway_diffuse_6k.webp')!.producedBy;
     expect(registration.method === 'script' && registration.changes).toBeTruthy();
@@ -392,14 +396,14 @@ describe("a file a script made shows its record's own sentence on how it differs
       starless.method === 'script' ? starless.changes : '',
     ];
     expect(recordChangeLines(today(), 'eso0932a')).toEqual(diskSentences);
-    expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, ...diskSentences]]);
+    expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY, ...diskSentences]]);
   });
 
   it("shows the field's sentence character for character once the record holds it, after the app's own lines", () => {
     const sentence = 'Stars removed and filled from their surroundings;  then  smoothed (5\u00d75), with odd spacing kept.';
     const loaded = withField('eso_milkyway_diffuse_6k.webp', sentence);
     expect(recordChangeLines(loaded, 'eso0932a')).toEqual([sentence]);
-    expect(milkyWay(loaded).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, sentence]]);
+    expect(milkyWay(loaded).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY, sentence]]);
     // Only a file a script made: a downloaded file's entry gives none, whatever it holds
     expect(recordChangeLines(withField('eso_milkyway_panorama.jpg', sentence), 'eso0932a')).toEqual([]);
     // Only for a source whose terms ask that changes be indicated: the copy's other sources give none
