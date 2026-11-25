@@ -16,14 +16,15 @@ public enum ControlStyle {
     }
 
     /// Ink (#f4f3ef) on black (#000000), with near-black (#0b0b0b) on a filled pill; the outline is ink at 88 percent,
-    /// a wash ink at 10 percent, secondary text 66 percent, quiet labels 44 percent and hairlines 14 percent.
+    /// a wash ink at 10 percent, secondary text 66 percent, quiet labels 48 percent and hairlines 14 percent.
     public static let field = Colour(hex: 0x000000)
     public static let ink = Colour(hex: 0xF4F3EF)
     public static let night = Colour(hex: 0x0B0B0B)
     public static let line = Colour(hex: 0xF4F3EF, opacity: 0.88)
     public static let wash = Colour(hex: 0xF4F3EF, opacity: 0.10)
     public static let inkSecondary = Colour(hex: 0xF4F3EF, opacity: 0.66)
-    public static let inkQuiet = Colour(hex: 0xF4F3EF, opacity: 0.44)
+    /// ink-quiet-m (DECIDED-BY-LEAD 24 Nov 23:32): 0.48, the least that measures the bar on the app's field, as the web's
+    public static let inkQuiet = Colour(hex: 0xF4F3EF, opacity: 0.48)
     public static let hairline = Colour(hex: 0xF4F3EF, opacity: 0.14)
 
     /// Apple's Human Interface Guidelines minimum hit target (44 pt), and the iPhone's one main action per screen

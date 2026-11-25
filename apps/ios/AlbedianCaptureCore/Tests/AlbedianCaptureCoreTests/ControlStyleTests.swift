@@ -23,7 +23,9 @@ final class ControlStyleTests: XCTestCase {
         XCTAssertEqual(hex(ControlStyle.inkSecondary), "f4f3ef")
         XCTAssertEqual(ControlStyle.inkSecondary.opacity, 0.66)
         XCTAssertEqual(hex(ControlStyle.inkQuiet), "f4f3ef")
-        XCTAssertEqual(ControlStyle.inkQuiet.opacity, 0.44)
+        // ink-quiet-m (DECIDED-BY-LEAD 24 Nov 23:32): the faint ink from 0.44 to 0.48, the least that measures the bar
+        // on the app's field, as the web's token
+        XCTAssertEqual(ControlStyle.inkQuiet.opacity, 0.48)
         XCTAssertEqual(hex(ControlStyle.hairline), "f4f3ef")
         XCTAssertEqual(ControlStyle.hairline.opacity, 0.14)
     }

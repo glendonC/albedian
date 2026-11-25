@@ -387,7 +387,7 @@ private struct AimLinesColumn: View {
     }
 }
 
-/// The one small line under the aiming preview: 12 pt, tabular figures, ink at 44 percent.
+/// The one small line under the aiming preview: 12 pt, tabular figures, ink at 48 percent.
 private struct AimLineText: View {
     let words: String
 

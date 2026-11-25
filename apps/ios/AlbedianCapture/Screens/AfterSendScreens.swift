@@ -267,7 +267,7 @@ private extension SkyMark {
     var swapKey: String { catalogSourceId ?? name }
 }
 
-/// D31 item 2: C13's source sentence 14 pt under the step row's line, 24 pt in from each side, 12 pt at ink 44 percent,
+/// D31 item 2: C13's source sentence 14 pt under the step row's line, 24 pt in from each side, 12 pt at ink 48 percent,
 /// line height 1.4; nothing when no early mark is drawn. On the lock-on's pass it stays at full until the early rings'
 /// last frame and leaves with the wait (the lead, 21 Nov 12:59, AUDIT-C's sweep item 5, as motion-43 did on the web).
 private struct EarlySource: View {
