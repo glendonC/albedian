@@ -482,6 +482,24 @@ def _decode_spread_frames(path: Path, asset: Mapping[str, Any]) -> list[tuple[fl
     return frames
 
 
+class _PhoneDetections:
+    """The phone solver's own detections of a chain's frame, made the first time a pass asks and the same list handed to
+    every later pass (detect-once-1, lever two of solve-wall-profile). `solve_phone_photo` given none detects the
+    frame itself, the same way at every call: the luma, over 255 for 8-bit codes, at frame time 0. So each pass after
+    the first gets the list it would have made, and a chain that never reaches the phone solver detects nothing."""
+
+    def __init__(self, image: np.ndarray, source_asset_id: str | None) -> None:
+        self._image, self._source_asset_id = image, source_asset_id
+        self._found: list | None = None
+
+    def __call__(self) -> list:
+        if self._found is None:
+            raw_luma = _to_luma_2d(self._image)
+            luma = raw_luma / 255.0 if (self._image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
+            self._found = detect_point_sources(luma, asset_id=self._source_asset_id, frame_time_sec=0.0)
+        return self._found
+
+
 def _solve_chain(
     solve_image: np.ndarray,
     detections: list,
@@ -516,25 +534,32 @@ def _solve_chain(
     never cost it a solve it gets alone either). It keeps the photo's moment for the stars' epoch and their altitudes.
 
     A solve from a person's alignment (`person_fov_deg`, with `person_axes` the pose in the stored frame) runs its own
-    searches instead (`_solve_person_chain`). It runs no unhinted search: the upload's plain solve is its own job."""
+    searches instead (`_solve_person_chain`). It runs no unhinted search: the upload's plain solve is its own job.
+
+    Every pass shares one phone-solver detection of the frame (`_PhoneDetections`)."""
+    phone_detections = _PhoneDetections(solve_image, chain.get("source_asset_id"))
     if person_fov_deg is not None:
         return _solve_person_chain(
             solve_image, detections, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
-            hint_radius_deg=hint_radius_deg, person_axes=person_axes, person_fov_deg=person_fov_deg, **chain,
+            hint_radius_deg=hint_radius_deg, person_axes=person_axes, person_fov_deg=person_fov_deg,
+            phone_detections=phone_detections, **chain,
         )
     solution = _solve_chain_once(
         solve_image, detections, width, height, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
-        hint_radius_deg=hint_radius_deg, triangle_radius_deg=triangle_radius_deg, **chain,
+        hint_radius_deg=hint_radius_deg, triangle_radius_deg=triangle_radius_deg, phone_detections=phone_detections,
+        **chain,
     )
     if solution.status == "calibrated":
         return solution
     if hint_ra_deg is not None:
-        unhinted = _solve_chain_once(solve_image, detections, width, height, on_event=on_event, **chain)
+        unhinted = _solve_chain_once(
+            solve_image, detections, width, height, on_event=on_event, phone_detections=phone_detections, **chain
+        )
         if unhinted.status == "calibrated":
             return unhinted
     if moment_lent:
         blind = _solve_chain_once(
-            solve_image, detections, width, height, on_event=on_event,
+            solve_image, detections, width, height, on_event=on_event, phone_detections=phone_detections,
             **{**chain, "obs_utc_iso": None, "lat_deg": None, "lon_deg": None},
         )
         if blind.status == "calibrated":
@@ -545,7 +570,10 @@ def _solve_chain(
                 observer_lon=chain.get("lon_deg"), warnings=[*blind.warnings, BLIND_LENT_WORDS[moment_lent]],
             )
     elif _searched_from_the_horizon(chain, detections):
-        whole = _solve_chain_once(solve_image, detections, width, height, on_event=on_event, whole_sky=True, **chain)
+        whole = _solve_chain_once(
+            solve_image, detections, width, height, on_event=on_event, whole_sky=True, phone_detections=phone_detections,
+            **chain,
+        )
         if whole.status == "calibrated":
             return replace(whole, warnings=[*whole.warnings, BLIND_OWN_WORDS])
     return solution
@@ -582,6 +610,7 @@ def _solve_person_chain(
     source_asset_id: str,
     sha256: str,
     solution_id: str,
+    phone_detections: Callable[[], list | None] | None = None,
     **_unused: Any,
 ):
     """The searches of a solve from a person's alignment (align-2w), in the order measured on public photos: the
@@ -605,9 +634,10 @@ def _solve_person_chain(
     steps.append({"fov_diagonal_deg": person_fov_deg})
     steps.append({"fov_candidates_deg": [person_fov_deg * k for k in PERSON_FOV_SWEEP]})
     solution = None
+    phone_detections = phone_detections or _PhoneDetections(solve_image, source_asset_id)
     for step in steps:
         on_event("solver", "phone_photo")
-        solution = solve_phone_photo(solve_image, **phone, **step)
+        solution = solve_phone_photo(solve_image, detections=phone_detections(), **phone, **step)
         if solution.status == "calibrated":
             break
     return _with_noise_words(solution, detections)
@@ -646,6 +676,7 @@ def _solve_chain_once(
     triangle_radius_deg: float | None = None,
     display_turns: int = 0,
     whole_sky: bool = False,
+    phone_detections: Callable[[], list | None] | None = None,
 ):
     """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child. A pointing
     record's centre hint (pointing-4) goes to each: the phone solver keeps rotations within `hint_radius_deg` of it,
@@ -666,10 +697,12 @@ def _solve_chain_once(
         whole_sky=whole_sky,
     )
     plate_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=triangle_radius_deg)
+    phone_detections = phone_detections or _PhoneDetections(solve_image, source_asset_id)
     if camera_meta:
         on_event("solver", "phone_photo")
         solution = solve_phone_photo(
             solve_image,
+            detections=phone_detections(),
             obs_utc_iso=obs_utc_iso,
             observer_lat=lat_deg,
             observer_lon=lon_deg,
@@ -686,6 +719,7 @@ def _solve_chain_once(
             on_event("solver", "phone_photo")
             solution = solve_phone_photo(
                 solve_image,
+                detections=phone_detections(),
                 obs_utc_iso=obs_utc_iso,
                 observer_lat=lat_deg,
                 observer_lon=lon_deg,
@@ -734,6 +768,7 @@ def _solve_chain_once(
             on_event("solver", "phone_photo")
             phone_sol = solve_phone_photo(
                 solve_image,
+                detections=phone_detections(),
                 obs_utc_iso=obs_utc_iso,
                 observer_lat=lat_deg,
                 observer_lon=lon_deg,
