@@ -7,8 +7,6 @@ import { Timer } from 'three/webgpu';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SparkPortalRenderer } from '../SparkPortalRenderer.js';
 import { createEarthUniforms, createMoonUniforms } from '../webgl/cislunarRegime.js';
-import { createNebulaUniforms } from '../webgl/deepSkyRegime.js';
-import { createPlanetarySkyUniforms } from '../webgl/planetarySurfaceRegime.js';
 import { createSkyDomeUniforms, loadLandingSceneTextures, loadSkyViewTextures } from '../webgl/skyDomeAndCinemaShader.js';
 import { CislunarWebGpuRenderer } from '../webgpu/CislunarWebGpuRenderer.js';
 import { WebGpuHost } from '../webgpu/WebGpuHost.js';
@@ -237,8 +235,9 @@ describe('CislunarWebGpuRenderer: drawing stops and starts its host loop', () =>
   });
 });
 
-// The landing scenes' pictures, which the sky view never draws, load when a landing scene first starts and not on every
-// visit; a renderer that is not drawing starts no landing scene, so under the home none loads (the lead's 04:30 answer)
+// The landing scene's pictures, which the sky view never draws, load when the landing scene first starts and not on
+// every visit; a renderer that is not drawing starts no landing scene, so under the home none loads (the lead's 04:30
+// answer)
 const LANDING_PICTURES = [
   '/textures/bruneton_atmo_lut.png',
   '/textures/earth_clouds_bluemarble2002_2k.jpg',
@@ -246,7 +245,6 @@ const LANDING_PICTURES = [
   '/textures/earth_height_etopo2022_4k.png',
   '/textures/earth_night_blackmarble_2016_8k.jpg',
   '/textures/earth_water_natural_earth_4k.png',
-  '/textures/eso1804a.jpg',
   '/textures/lro_moon_2k.jpg',
   '/textures/lro_moon_disp.jpg',
 ];
@@ -263,9 +261,9 @@ describe('which pictures load when', () => {
     expect(urls).toEqual(['/textures/eso_milkyway_panorama.jpg']);
   });
 
-  it('a landing scene loads the Earth, the Moon, the atmosphere table and the Lupus 3 photograph', () => {
+  it('the landing scene loads the Earth, the Moon and the atmosphere table', () => {
     const { urls, loader } = recordingLoader();
-    loadLandingSceneTextures(loader, createEarthUniforms(), createMoonUniforms(), createNebulaUniforms(), createPlanetarySkyUniforms(), '/textures/eso1804a.jpg');
+    loadLandingSceneTextures(loader, createEarthUniforms(), createMoonUniforms());
     expect([...urls].sort()).toEqual(LANDING_PICTURES);
   });
 });
@@ -286,7 +284,7 @@ describe('SparkPortalRenderer: no landing scene starts while it is not drawing',
     const { renderer, urls, regimes } = sparkWithLoader();
     renderer.setShowcaseMode(true);
     renderer.setDrawing(false);
-    renderer.transitionToShowcaseScene('black_hole', true);
+    renderer.transitionToShowcaseScene('cislunar', true);
     expect(regimes).toEqual([]);
     expect(urls).toEqual([]);
     renderer.setShowcaseMode(false);
@@ -299,9 +297,9 @@ describe('SparkPortalRenderer: no landing scene starts while it is not drawing',
     const { renderer, urls, regimes } = sparkWithLoader();
     renderer.setShowcaseMode(true);
     renderer.setDrawing(false);
-    renderer.transitionToShowcaseScene('black_hole', true);
+    renderer.transitionToShowcaseScene('cislunar', true);
     renderer.setDrawing(true);
-    expect(regimes).toEqual(['deep_sky']);
+    expect(regimes).toEqual(['cislunar']);
     expect([...urls].sort()).toEqual(LANDING_PICTURES);
   });
 
@@ -309,7 +307,7 @@ describe('SparkPortalRenderer: no landing scene starts while it is not drawing',
     const { renderer, urls, regimes } = sparkWithLoader();
     renderer.setShowcaseMode(true);
     renderer.setDrawing(false);
-    renderer.transitionToShowcaseScene('black_hole', true);
+    renderer.transitionToShowcaseScene('cislunar', true);
     renderer.setShowcaseMode(false);
     renderer.setShowcaseMode(true);
     renderer.setDrawing(true);
@@ -320,7 +318,7 @@ describe('SparkPortalRenderer: no landing scene starts while it is not drawing',
   it('does not start a scene held while the showcase was off', () => {
     const { renderer, urls, regimes } = sparkWithLoader();
     renderer.setDrawing(false);
-    renderer.transitionToShowcaseScene('black_hole', true);
+    renderer.transitionToShowcaseScene('cislunar', true);
     renderer.setDrawing(true);
     expect(regimes).toEqual([]);
     expect(urls).toEqual([]);
@@ -330,17 +328,17 @@ describe('SparkPortalRenderer: no landing scene starts while it is not drawing',
     const { renderer, urls, regimes } = sparkWithLoader();
     (renderer as unknown as { renderer: unknown }).renderer = null;
     renderer.setShowcaseMode(true);
-    renderer.transitionToShowcaseScene('black_hole', true);
-    expect(regimes).toEqual(['deep_sky']);
+    renderer.transitionToShowcaseScene('cislunar', true);
+    expect(regimes).toEqual(['cislunar']);
     expect(urls).toEqual([]);
   });
 
   it('loads the landing pictures once, when the first landing scene starts', () => {
     const { renderer, urls, regimes } = sparkWithLoader();
     renderer.setShowcaseMode(true);
-    renderer.transitionToShowcaseScene('black_hole', true);
-    renderer.transitionToShowcaseScene('supergiant', true);
-    expect(regimes).toEqual(['deep_sky', 'solar_neighborhood']);
+    renderer.transitionToShowcaseScene('cislunar', true);
+    renderer.transitionToShowcaseScene('cislunar', true);
+    expect(regimes).toEqual(['cislunar', 'cislunar']);
     expect([...urls].sort()).toEqual(LANDING_PICTURES);
   });
 });
@@ -352,8 +350,7 @@ describe('SparkPortalRenderer: the landing pictures are asked for in one place o
     const ask = source.indexOf('  private askLandingPictures(): void {');
     const askEnd = source.indexOf('\n  }\n', ask);
     expect(ask, 'askLandingPictures').toBeGreaterThan(-1);
-    // Found by its own name, so imported under it; reached another way (a namespace import) it is held by
-    // nebulaTextures.test.ts, which counts the black hole picture's loads
+    // Found by its own name, so imported under it
     expect(source, 'loadLandingSceneTextures imported under another name').not.toMatch(/\bloadLandingSceneTextures\s+as\b/);
     const loads = [...source.matchAll(/loadLandingSceneTextures\(/g)].map((m) => m.index!);
     expect(loads.filter((at) => at < ask || at > askEnd), 'a load outside askLandingPictures').toEqual([]);

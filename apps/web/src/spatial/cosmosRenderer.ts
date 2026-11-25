@@ -7,7 +7,7 @@ import type { SkyPicture } from './sky/predictedSkyPicture.js';
  * implements the same calls for the scenes ported to it so far.
  */
 
-export type ShowcaseSceneKey = 'cislunar' | 'black_hole' | 'supergiant' | 'saturn_horizon';
+export type ShowcaseSceneKey = 'cislunar';
 
 export type CosmosRendererKind = 'webgl-spark' | 'webgpu';
 

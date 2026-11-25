@@ -6,9 +6,7 @@ import { GLOW_SIZE_PX, PLANET_WINDOWS } from '../sky/flightMilkyWay.js';
 import { loadPanoramaRegistration, sceneToPanoramaRows } from '../sky/skyRegistration.js';
 import { BRUNETON_ATMO_LUT_URL } from '../volumetricSplatsAndLut.js';
 import type { EarthUniforms, MoonUniforms } from './cislunarRegime.js';
-import type { NebulaUniforms } from './deepSkyRegime.js';
-import type { PlanetarySkyUniforms } from './planetarySurfaceRegime.js';
-import { glslFloat } from './lupus3Grade.js';
+import { glslFloat } from './glslFloat.js';
 
 export interface SkyDomeUniforms {
   [uniform: string]: THREE.IUniform<unknown>;
@@ -255,16 +253,13 @@ export function loadSkyViewTextures(textureLoader: THREE.TextureLoader, skyDomeU
 export { heardLimitOf, rendererUpload, setSkyPictureOf, type SkyPicture } from './skyPictureSwitch.js';
 
 /**
- * The landing scenes' pictures, which the sky view never draws: the Earth, the Moon, the atmosphere table and the
- * Lupus 3 photograph. Loaded when a landing scene first starts, not on every visit.
+ * The landing scene's pictures, which the sky view never draws: the Earth, the Moon and the atmosphere table. Loaded
+ * when the landing scene first starts, not on every visit.
  */
 export function loadLandingSceneTextures(
   textureLoader: THREE.TextureLoader,
   earthUniforms: EarthUniforms,
-  moonUniforms: MoonUniforms,
-  nebulaUniforms: NebulaUniforms,
-  planetarySkyUniforms: PlanetarySkyUniforms,
-  lupus3Url: string
+  moonUniforms: MoonUniforms
 ): void {
   const loadTex = textureLoading(textureLoader);
   loadTex('/textures/earth_day_bluemarble_2004-03_base_8k.jpg', (t) => {
@@ -304,9 +299,6 @@ export function loadLandingSceneTextures(
     },
     false
   );
-  loadTex(lupus3Url, (t) => {
-    nebulaUniforms.uLupus3Tex.value = t;
-  });
   textureLoader.load(
     BRUNETON_ATMO_LUT_URL,
     (lutTex) => {
@@ -317,7 +309,6 @@ export function loadLandingSceneTextures(
       lutTex.colorSpace = THREE.NoColorSpace;
       lutTex.needsUpdate = true;
       earthUniforms.uBrunetonLutTex.value = lutTex;
-      planetarySkyUniforms.uBrunetonLutTex.value = lutTex;
     },
     undefined,
     () => {}

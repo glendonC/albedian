@@ -102,72 +102,6 @@ export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
 ]);
 
 /**
- * The deep-sky regime when it shows Sagittarius A* (landing scene 02). The black hole is a
- * hand-tuned composition, not a model of Sgr A*: rays bent by an approximate Schwarzschild march
- * cross a hand-set disk with noise structure and hand-picked colours, and rays that escape sample
- * ESO's photograph of the Lupus 3 star formation region (eso1804a, ESO/R. Colombari), a nearby
- * cloud, not what lies behind Sgr A* [inference].
- */
-export const BLACK_HOLE_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  { ...WEBGL_SKY, id: 'deep-sky.sky' },
-  { ...WEBGL_CATALOG_STARS, id: 'deep-sky.catalog-stars' },
-  {
-    id: 'deep-sky.black-hole',
-    kind: 'procedural',
-    title: 'Black hole',
-    evidenceClass: 'simulated',
-    disclosure:
-      "A modelled black hole, not Sgr A*'s data: approximate Schwarzschild light bending around a hand-set disk, over ESO's photograph of the nearby Lupus 3 cloud, not what lies behind Sgr A*.",
-    sources: ['ESO/R. Colombari, Star formation region Lupus 3 (eso1804a), CC BY 4.0 (file eso1804a.jpg)'],
-  },
-  WEBGL_CAMERA_OPTICS,
-]);
-
-/**
- * The deep-sky regime without the black hole: the same registered sky, catalog stars and optics,
- * and nothing else. No view enters it today; it is declared so that any view that does is
- * disclosed.
- */
-export const DEEP_SKY_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  { ...WEBGL_SKY, id: 'deep-sky.sky' },
-  { ...WEBGL_CATALOG_STARS, id: 'deep-sky.catalog-stars' },
-  WEBGL_CAMERA_OPTICS,
-]);
-
-/**
- * The solar-neighbourhood regime (landing scene 03, Betelgeuse): a modelled star and splats on a
- * Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), all placed around the
- * camera for composition. The star's colours are hand-picked for a red star; its surface is noise,
- * not an observation.
- */
-export const SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  { ...WEBGL_SKY, id: 'local.sky' },
-  { ...WEBGL_CATALOG_STARS, id: 'local.catalog-stars' },
-  {
-    id: 'local.star',
-    kind: 'procedural',
-    title: 'Star',
-    evidenceClass: 'simulated',
-    disclosure:
-      "A modelled star, not Betelgeuse's measured surface: cells, spots and bright ribbons from noise on a sphere with limb darkening, in hand-picked colours, not at its size or distance.",
-    sources: [],
-  },
-  {
-    id: 'local.bubble',
-    kind: 'dust_volume',
-    title: 'Local Bubble',
-    evidenceClass: 'simulated',
-    disclosure:
-      "Splats on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), placed around the star for composition, not at their true size or place; colour and opacity are for display.",
-    sources: [
-      "apps/web/public/models/local_bubble_oneill2024.glb, a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024) (no provenance record)",
-      'apps/web/public/models/lb_splats.json, baked by scripts/bake_bruneton_lut_and_splats.py',
-    ],
-  },
-  WEBGL_CAMERA_OPTICS,
-]);
-
-/**
  * The horizon, ground and compass points of the sky view (webgl/observerHorizon.ts), computed for
  * the recording's location at its capture time, or at the device's time now when it has none. Its
  * text is fixed, so no place, time or figure of the recording reaches the panel.
@@ -211,20 +145,16 @@ export const SKY_VIEW_WEBGL_RENDER_LAYERS = {
 export type ObserverTimeKind = 'capture' | 'now';
 
 /**
- * What a WebGL view shows: its regime, in the deep-sky regime whether the black hole is up, and in
- * the sky view the time its horizon is for, or none (null or absent) before a location is known.
+ * What a WebGL view shows: its regime, and in the sky view the time its horizon is for, or none (null or absent)
+ * before a location is known.
  */
 export interface WebglView {
   regime: SpatialScaleRegime;
-  blackHole: boolean;
   observerTime?: ObserverTimeKind | null;
 }
 
-/** Layers the WebGL renderer declares for a view; null where the view is not declared yet. */
+/** Layers the WebGL renderer declares for a view. */
 export function webglRenderLayersFor(view: WebglView): RenderLayerSet | null {
   if (view.regime === 'earth_capture') return SKY_VIEW_WEBGL_RENDER_LAYERS[view.observerTime ?? 'unplaced'];
-  if (view.regime === 'cislunar') return CISLUNAR_WEBGL_RENDER_LAYERS;
-  if (view.regime === 'deep_sky') return view.blackHole ? BLACK_HOLE_WEBGL_RENDER_LAYERS : DEEP_SKY_WEBGL_RENDER_LAYERS;
-  if (view.regime === 'solar_neighborhood') return SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS;
-  return null;
+  return CISLUNAR_WEBGL_RENDER_LAYERS;
 }

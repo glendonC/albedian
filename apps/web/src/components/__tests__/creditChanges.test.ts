@@ -8,8 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { AssetProvenanceRecordSchema } from '@albedian/contracts';
 import { CHANGES, creditRows, recordChangeLines, type LoadedRecord } from '../creditRows.js';
 import { homeBackdropChanges } from '../homeBackdrop.js';
-import { buildDeepSkyRegimeGroup, createNebulaUniforms } from '../../spatial/webgl/deepSkyRegime.js';
-import { LUPUS3_GRADE, LUPUS3_VIEW, glslFloat, lupus3Changes, lupus3SceneWords } from '../../spatial/webgl/lupus3Grade.js';
+import { glslFloat } from '../../spatial/webgl/glslFloat.js';
 import { createGlobalPhotorealisticSkyDomeMesh, createSkyDomeUniforms } from '../../spatial/webgl/skyDomeAndCinemaShader.js';
 import {
   LANDING_SKY_GAIN,
@@ -424,107 +423,7 @@ describe("a file a script made shows its record's own sentence on how it differs
   });
 });
 
-describe('the Lupus 3 row states what the black-hole scene does to the photograph, worded from its code', () => {
-  const material = () => {
-    const { blackHoleMeshes } = buildDeepSkyRegimeGroup(new THREE.Group(), createNebulaUniforms());
-    return (blackHoleMeshes[0] as THREE.Mesh).material as THREE.ShaderMaterial;
-  };
-  const WORDS =
-    "In the 3D view's black-hole scene it is stretched around the whole sky, bent around the modelled black hole and " +
-    'graded (black level 0.08, power 1.9, at 0.32 of its brightness and up to 2.85 times that near the photon ' +
-    'sphere), then dimmed behind the modelled disk, compressed by a Reinhard curve, vignetted and alpha-blended over ' +
-    'the sky dome and catalog stars by brightness times the vignette (dimming dark regions by the vignette squared and ' +
-    `letting the sky show through); then the whole finished frame is bloomed, ${OPTICS} and ${WEBGL_TONE_MAP}.`;
-  const SCENE =
-    'Over it the scene adds light of its own, a glow around the photon sphere and a horizontal flare, and it places ' +
-    'the photograph turned by about 6 degrees and tilted by about 9.';
-
-  it('says once, plainly, the light the scene adds and where it places the photograph, from the shader', () => {
-    expect(lupus3SceneWords()).toBe(SCENE);
-    expect(Object.entries(LUPUS3_VIEW).map(([name, value]) => [name, String(value)])).toEqual([
-      ['rollRad', '0.1'],
-      ['tiltRad', '0.165'],
-    ]);
-    const shader = material().fragmentShader;
-    expect(shader).toContain(`float tilt = ${glslFloat(LUPUS3_VIEW.tiltRad)};`);
-    expect(shader).toContain(`float cr = cos(-${glslFloat(LUPUS3_VIEW.rollRad)}), sr = sin(-${glslFloat(LUPUS3_VIEW.rollRad)});`);
-    expect(shader).toContain('ro = diskRot * (rollRot * ro);');
-    // The rays turned too, not only their origin: the roll and the tilt place the photograph
-    expect(shader).toContain('rd = normalize(diskRot * (rollRot * rd));');
-    expect(shader).toContain('float photonRing = exp(-pow((minR - 1.52 * rs) / 0.065, 2.0))');
-    expect(shader).toContain('accumDisk += vec3(1.65, 1.22, 0.72) * photonRing;');
-    expect(shader).toContain('accumDisk += vec3(1.15, 0.78, 0.42) * anamorphic;');
-    // Both added before the tone map, as the words say
-    expect(shader.indexOf('* anamorphic;')).toBeLessThan(shader.indexOf('vec3 finalBh = accumDisk'));
-    // Degrees from the radians, rounded
-    expect(lupus3SceneWords({ rollRad: Math.PI / 6, tiltRad: Math.PI / 4 })).toContain('turned by about 30 degrees and tilted by about 45');
-  });
-
-  it('holds the numbers the scene grades it by, in one place', () => {
-    expect(Object.entries(LUPUS3_GRADE).map(([name, value]) => [name, String(value)])).toEqual([
-      ['blackLevel', '0.08'],
-      ['power', '1.9'],
-      ['gain', '0.32'],
-      ['ringBoost', '1.85'],
-    ]);
-  });
-
-  it('words them, and the row shows the words', () => {
-    expect(lupus3Changes()).toBe(WORDS);
-    expect(CHANGES.eso1804a?.()).toEqual([WORDS, SCENE]);
-    // Other numbers give other words: each number in the sentence is read from the grade
-    expect(lupus3Changes({ blackLevel: 0.1, power: 2, gain: 0.5, ringBoost: 1 })).toContain(
-      '(black level 0.1, power 2, at 0.5 of its brightness and up to 2 times that near the photon sphere)'
-    );
-    expect(lupus3Changes({ ...LUPUS3_GRADE, ringBoost: 0.333 })).toContain('up to 1.333 times that');
-    // The most is said to three decimals at most
-    expect(lupus3Changes({ ...LUPUS3_GRADE, ringBoost: 2.0004 })).toContain('up to 3 times that');
-    expect(lupus3Changes({ ...LUPUS3_GRADE, ringBoost: 0.1 + 0.2 })).toContain('up to 1.3 times that');
-    expect(lupus3Changes(LUPUS3_GRADE, ['bloomed', 'tone-mapped (ACES at exposure 1.5)'])).toContain(
-      'then the whole finished frame is bloomed and tone-mapped (ACES at exposure 1.5).'
-    );
-  });
-
-  it('draws it as the words say: each phrase stands for a line of the shader and the WebGL composer, written from the same numbers', () => {
-    const shader = material().fragmentShader;
-    const g = LUPUS3_GRADE;
-    const lines: Array<[phrase: string, line: string]> = [
-      ['stretched around the whole sky', 'vec2 lensedUv = vec2(atan(vel.z, vel.x) / 6.28318 + 0.5, asin(clamp(vel.y, -1.0, 1.0)) / 3.14159 + 0.5);'],
-      ['bent around the modelled black hole', 'vec3 accel = -1.5 * rs * h2 * pos / pow(r, 5.0);'],
-      ['bent around the modelled black hole', 'vec3 bgNeb = texture2D(uLupus3Tex, lensedUv).rgb;'],
-      [`up to 2.85 times that near the photon sphere`, `float ringBoost = 1.0 + ${glslFloat(g.ringBoost)} * exp(-max(0.0, minR - 1.5 * rs) * 1.4);`],
-      [
-        'graded (black level 0.08, power 1.9, at 0.32 of its brightness',
-        `accumDisk += trans * pow(max(vec3(0.0), bgNeb - ${glslFloat(g.blackLevel)}), vec3(${glslFloat(g.power)})) * ${glslFloat(g.gain)} * ringBoost;`,
-      ],
-      ['dimmed behind the modelled disk', 'trans *= (1.0 - stepAlpha * 0.82);'],
-      ['compressed by a Reinhard curve', 'vec3 finalBh = accumDisk / (vec3(1.0) + accumDisk * 0.42);'],
-      ['vignetted', 'float vignette = smoothstep(1.45, 0.25, length(p * vec2(0.72, 0.95)));'],
-      ['vignetted', 'gl_FragColor = vec4(finalBh * vignette, outAlpha);'],
-      [
-        'alpha-blended over the sky dome and catalog stars by brightness times the vignette (dimming dark regions by the vignette squared and letting the sky show through)',
-        'float outAlpha = clamp((captured ? 0.98 : length(finalBh) * 1.65) * vignette, 0.0, 0.98);',
-      ],
-    ];
-    for (const [phrase, line] of lines) {
-      expect(lupus3Changes(), phrase).toContain(phrase);
-      expect(shader, phrase).toContain(line);
-    }
-    for (const step of webglFrameFinishingWords()) expect(lupus3Changes(), step).toContain(step);
-    // The shader is the one written before the numbers moved, character for character on the grading lines
-    expect(shader).toContain('accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * ringBoost;');
-    expect(shader).toContain('float ringBoost = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);');
-    // The photograph is sampled once, by the direction the bent ray leaves with, after the march
-    expect(count(shader, 'uLupus3Tex,')).toBe(1);
-    expect(shader.indexOf('vec3 bgNeb')).toBeGreaterThan(shader.indexOf('vel = nextVel;'));
-    // Blended over the sky drawn behind it
-    expect(material().transparent).toBe(true);
-    expect(material().blending).toBe(THREE.NormalBlending);
-    // The texture it samples is the Lupus 3 photograph
-    expect(read('src/spatial/SparkPortalRenderer.ts')).toContain("'/textures/eso1804a.jpg'");
-    expect(read('src/spatial/webgl/skyDomeAndCinemaShader.ts')).toMatch(/loadTex\(lupus3Url, \(t\) => \{\s*nebulaUniforms\.uLupus3Tex\.value = t;/);
-  });
-
+describe('the grade writes its numbers into GLSL', () => {
   it('writes a number as a GLSL float, always with a decimal point or an exponent', () => {
     const rows: Array<[number, string]> = [
       [0, '0.0'],

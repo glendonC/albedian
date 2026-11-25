@@ -42,7 +42,8 @@ function fragmentShaders(): Array<{ file: string; line: number; glsl: string }> 
 describe('WebGL fragment shaders', () => {
   it('finds the fragment shaders it checks, the WebGL Earth among them', () => {
     const shaders = fragmentShaders();
-    expect(shaders.length).toBeGreaterThan(5);
+    // Five since regimes-cut-one took the cut scenes' shaders
+    expect(shaders.length).toBeGreaterThanOrEqual(5);
     expect(shaders.some((s) => s.file === path.join('webgl', 'cislunarRegime.ts'))).toBe(true);
   });
 

@@ -1,11 +1,11 @@
 /**
- * Renderer-neutral port of `buildAnisotropicLocalBubbleSplatMesh` in
- * `apps/web/src/spatial/volumetricSplatsAndLut.ts` (which reads rows with `parseSplatRows`).
+ * Renderer-neutral port of the app's former `buildAnisotropicLocalBubbleSplatMesh`, cut from
+ * `apps/web/src/spatial/volumetricSplatsAndLut.ts` with the Betelgeuse scene (regimes-cut-one).
  *
- * The app's loader writes straight into a Spark `PackedSplats` (WebGL2 only). This port
+ * The app's loader wrote straight into a Spark `PackedSplats` (WebGL2 only). This port
  * applies the same per-splat rules to plain typed arrays so any WebGPU splat path
  * (three's `GaussianSplat` addon or `@sparkjsdev/radix`) can consume the identical splat set.
- * Keep the constants in lockstep with the app loader; `spike.test.ts` pins them.
+ * `spike.test.ts` pins its constants.
  *
  * Provenance of `/models/lb_splats.json` (14,281 rows, 14-tuples):
  * - x, y, z: Local Bubble surface geometry, O'Neill et al. 2024 (Harvard CfA).

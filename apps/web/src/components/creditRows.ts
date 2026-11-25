@@ -4,7 +4,6 @@ import { realSkyChanges } from '../reveal/RealSkyLayer.js';
 import { milkyWayInFlightChanges } from '../spatial/sky/flightMilkyWay.js';
 import { milkyWayInPredictedSkyChanges } from '../spatial/sky/predictedSkyPicture.js';
 import { milkyWay3dChanges, milkyWayCopyDrawn } from '../spatial/sky/panoramaGrade.js';
-import { lupus3Changes, lupus3SceneWords } from '../spatial/webgl/lupus3Grade.js';
 import { homeBackdropChanges } from './homeBackdrop.js';
 
 /**
@@ -48,7 +47,6 @@ export const CREDIT_ROWS = [
   { name: 'Eclipses', approved: false },
   { name: 'The Moon', approved: false },
   { name: 'The Earth', approved: false },
-  { name: 'Lupus 3 photograph', approved: false },
   { name: 'The Local Bubble', approved: false },
   { name: 'Spacecraft and spacesuit', approved: false },
   { name: 'Unicode character data', approved: false },
@@ -88,7 +86,6 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
   'nasa-blue-marble-2002-clouds': 'The Earth',
   'noaa-etopo-2022-60s': 'The Earth',
   'nasa-bmng-2004-03-base': 'The Earth',
-  eso1804a: 'Lupus 3 photograph',
   'oneill-2024-local-bubble': 'The Local Bubble',
   'nasa-3d-resources': 'Spacecraft and spacesuit',
   'nasa-science-mission-pages': 'Spacecraft and spacesuit',
@@ -103,13 +100,11 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
  * are [proposed]. The panorama: on the home, worded from the numbers that frame and shade it; in the 3D view, every
  * step of the one grade list both renderers read (sky/panoramaGrade.ts), with the placement and the whole frame's
  * finishing from its lists (spatial/frameFinishing.ts); the copy the WebGPU renderer draws, by the app's own steps,
- * how it differs being its record's (recordChangeLines). Lupus 3: worded from the black-hole
- * scene's grade, then the light the scene adds and where it places it. OpenNGC's terms ask to say that the data were
- * changed: openngc.json's record states how (recordChangeLines), so its own list here is empty.
+ * how it differs being its record's (recordChangeLines). OpenNGC's terms ask to say that the data were changed:
+ * openngc.json's record states how (recordChangeLines), so its own list here is empty.
  */
 export const CHANGES: Readonly<Record<string, () => readonly string[]>> = {
   eso0932a: () => [homeBackdropChanges(), milkyWay3dChanges(), milkyWayCopyDrawn(), realSkyChanges(), milkyWayInFlightChanges(), milkyWayInPredictedSkyChanges()],
-  eso1804a: () => [lupus3Changes(), lupus3SceneWords()],
   'openngc-v20260501-ngc': () => [],
   'openngc-v20260501-addendum': () => [],
 };

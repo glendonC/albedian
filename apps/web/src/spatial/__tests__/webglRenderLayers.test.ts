@@ -2,18 +2,11 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { RenderLayerSetSchema } from '@albedian/contracts';
-import {
-  BLACK_HOLE_WEBGL_RENDER_LAYERS,
-  CISLUNAR_WEBGL_RENDER_LAYERS,
-  DEEP_SKY_WEBGL_RENDER_LAYERS,
-  SKY_VIEW_WEBGL_RENDER_LAYERS,
-  SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS,
-  webglRenderLayersFor,
-} from '../webglRenderLayers.js';
+import { CISLUNAR_WEBGL_RENDER_LAYERS, SKY_VIEW_WEBGL_RENDER_LAYERS, webglRenderLayersFor } from '../webglRenderLayers.js';
+import { SCALE_REGIME_ORDER } from '../SparkPortalRenderer.js';
 import { CISLUNAR_RENDER_LAYERS } from '../webgpu/cislunar/cislunarLayers.js';
 
 const layer = (id: string) => CISLUNAR_WEBGL_RENDER_LAYERS.find((l) => l.id === id);
-const blackHoleLayer = (id: string) => BLACK_HOLE_WEBGL_RENDER_LAYERS.find((l) => l.id === id);
 
 describe('WebGL renderer: cislunar render layers', () => {
   it('declares every layer the default renderer draws in the cislunar regime, all simulated', () => {
@@ -61,140 +54,22 @@ describe('WebGL renderer: cislunar render layers', () => {
   });
 });
 
-describe('WebGL renderer: black hole view (landing scene 02)', () => {
-  it('declares every layer it draws, all simulated, the set piece as procedural', () => {
-    expect(RenderLayerSetSchema.safeParse(BLACK_HOLE_WEBGL_RENDER_LAYERS).success).toBe(true);
-    expect(BLACK_HOLE_WEBGL_RENDER_LAYERS.map((l) => l.kind)).toEqual([
-      'sky_background',
-      'catalog_stars',
-      'procedural',
-      'camera_optics',
-    ]);
-    expect(BLACK_HOLE_WEBGL_RENDER_LAYERS.map((l) => l.id)).toEqual([
-      'deep-sky.sky',
-      'deep-sky.catalog-stars',
-      'deep-sky.black-hole',
-      'post.camera-optics',
-    ]);
-    expect(BLACK_HOLE_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
-  });
-
-  it('says the black hole is a modelled composition over a photograph of a nearby cloud', () => {
-    const hole = blackHoleLayer('deep-sky.black-hole');
-    expect(hole?.disclosure).toMatch(/modelled/i);
-    expect(hole?.disclosure).toMatch(/Lupus 3/);
-    expect(hole?.disclosure).toMatch(/not what lies behind Sgr A\*/);
-    // ESO's credit line for eso1804a, worded as ESO requires
-    expect(hole?.sources.join(' ')).toMatch(/ESO\/R\. Colombari, Star formation region Lupus 3 \(eso1804a\)/);
-    // The decorative particles around it depicted nothing measured or modelled, so they are gone
-    expect(blackHoleLayer('deep-sky.particles')).toBeUndefined();
-  });
-
-  it('draws the same sky panorama, stars and optics as the cislunar view', () => {
-    const { id: _skyId, ...sky } = blackHoleLayer('deep-sky.sky')!;
-    const { id: _cislunarSkyId, ...cislunarSky } = layer('cislunar.sky')!;
-    expect(sky).toEqual(cislunarSky);
-    expect(blackHoleLayer('post.camera-optics')).toEqual(layer('post.camera-optics'));
-  });
-});
-
-describe('WebGL renderer: deep-sky view without the black hole', () => {
-  it('declares the sky, the catalog stars and the optics, all simulated, and nothing else', () => {
-    expect(RenderLayerSetSchema.safeParse(DEEP_SKY_WEBGL_RENDER_LAYERS).success).toBe(true);
-    expect(DEEP_SKY_WEBGL_RENDER_LAYERS.map((l) => l.id)).toEqual([
-      'deep-sky.sky',
-      'deep-sky.catalog-stars',
-      'post.camera-optics',
-    ]);
-    expect(DEEP_SKY_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
-  });
-});
-
-describe('WebGL renderer: Betelgeuse view (landing scene 03)', () => {
-  const local = (id: string) => SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS.find((l) => l.id === id);
-
-  it('declares every layer it draws, all simulated', () => {
-    expect(RenderLayerSetSchema.safeParse(SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS).success).toBe(true);
-    expect(SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS.map((l) => [l.id, l.kind])).toEqual([
-      ['local.sky', 'sky_background'],
-      ['local.catalog-stars', 'catalog_stars'],
-      ['local.star', 'procedural'],
-      ['local.bubble', 'dust_volume'],
-      ['post.camera-optics', 'camera_optics'],
-    ]);
-    expect(SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
-  });
-
-  it("says the star is modelled, not Betelgeuse's measured surface, size or distance", () => {
-    const star = local('local.star')?.disclosure ?? '';
-    expect(star).toMatch(/modelled star/i);
-    expect(star).toMatch(/not Betelgeuse's measured surface/);
-    expect(star).toMatch(/not at its size or distance/);
-  });
-
-  it("says the Local Bubble mesh's origin is unrecorded and the splats are placed for composition", () => {
-    const bubble = local('local.bubble');
-    expect(bubble?.disclosure).toMatch(/a Local Bubble mesh of unrecorded origin, named for O'Neill et al\. \(2024\)/);
-    expect(bubble?.sources.join(' ')).toMatch(/local_bubble_oneill2024\.glb.*no provenance record/);
-    expect(bubble?.disclosure).toMatch(/for composition, not at their true size or place/);
-  });
-
-  it('draws the same sky panorama, stars and optics as the cislunar view', () => {
-    const { id: _skyId, ...sky } = local('local.sky')!;
-    const { id: _cislunarSkyId, ...cislunarSky } = layer('cislunar.sky')!;
-    expect(sky).toEqual(cislunarSky);
-    expect(local('post.camera-optics')).toEqual(layer('post.camera-optics'));
-  });
-});
-
-describe('WebGL renderer: scene 03 draws no invented structure', () => {
-  const readWebglSources = () => {
-    const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
-    const solar = fs.readFileSync(fileURLToPath(new URL('../webgl/solarNeighborhoodRegime.ts', import.meta.url)), 'utf8');
-    const deepSky = fs.readFileSync(fileURLToPath(new URL('../webgl/deepSkyRegime.ts', import.meta.url)), 'utf8');
-    const planetary = fs.readFileSync(fileURLToPath(new URL('../webgl/planetarySurfaceRegime.ts', import.meta.url)), 'utf8');
-    return { renderer, solar, combined: `${renderer}\n${solar}\n${deepSky}\n${planetary}` };
-  };
-
-  it('builds no corona plane, ring or decorative particles around the star', () => {
-    const { solar, combined } = readWebglSources();
-    const start = solar.indexOf('export function buildSolarNeighborhoodRegimeGroup(');
-    const body = solar.slice(start, solar.indexOf('\nexport function ', start));
-    expect(start).toBeGreaterThan(0);
-    expect(body).not.toMatch(/RingGeometry|coronaMesh|plasmaRing|createDecorativeParticles/);
-    expect(combined).not.toMatch(/uCoronaInner/);
-  });
-
-  it('draws no decorative particles in any view, and keeps no colour only they read', () => {
-    const { combined } = readWebglSources();
-    expect(combined).not.toMatch(/createDecorativeParticles|DecorativeParticles/);
-    // uCoronaOuter tinted only the particles' outer shell; the star's rim mixes uWarmColor and uHotColor
-    expect(combined).not.toMatch(/uCoronaOuter/);
-  });
-
-  it('deletes the uncalled derivePlanetaryWorldDescriptor, descendToPlanetarySurface and the invented Sgr A* tidal ocean world', () => {
-    const { combined } = readWebglSources();
-    expect(combined).not.toMatch(
-      /derivePlanetaryWorldDescriptor|PlanetaryWorldDescriptor|descendToPlanetarySurface|gargantua_tidal_ocean|supergiant_silicate|Miller's Planet|Miller Analog|Kerr Metric|Time Dilation 1\.7/
-    );
-  });
-});
-
 describe('WebGL renderer: which view declares layers', () => {
-  it('declares the sky, cislunar, deep-sky and solar-neighbourhood views, until the planetary one is declared', () => {
-    expect(webglRenderLayersFor({ regime: 'earth_capture', blackHole: false })).toBe(SKY_VIEW_WEBGL_RENDER_LAYERS.unplaced);
-    expect(webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime: 'now' })).toBe(
-      SKY_VIEW_WEBGL_RENDER_LAYERS.now
-    );
-    expect(webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime: 'capture' })).toBe(
-      SKY_VIEW_WEBGL_RENDER_LAYERS.capture
-    );
-    expect(webglRenderLayersFor({ regime: 'cislunar', blackHole: false })).toBe(CISLUNAR_WEBGL_RENDER_LAYERS);
-    expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: true })).toBe(BLACK_HOLE_WEBGL_RENDER_LAYERS);
-    expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: false })).toBe(DEEP_SKY_WEBGL_RENDER_LAYERS);
-    expect(webglRenderLayersFor({ regime: 'solar_neighborhood', blackHole: false })).toBe(
-      SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS
-    );
-    expect(webglRenderLayersFor({ regime: 'planetary_surface', blackHole: false })).toBeNull();
+  it('declares the sky view and the Earth and Moon scene, the only two it has', () => {
+    expect(webglRenderLayersFor({ regime: 'earth_capture' })).toBe(SKY_VIEW_WEBGL_RENDER_LAYERS.unplaced);
+    expect(webglRenderLayersFor({ regime: 'earth_capture', observerTime: 'now' })).toBe(SKY_VIEW_WEBGL_RENDER_LAYERS.now);
+    expect(webglRenderLayersFor({ regime: 'earth_capture', observerTime: 'capture' })).toBe(SKY_VIEW_WEBGL_RENDER_LAYERS.capture);
+    expect(webglRenderLayersFor({ regime: 'cislunar' })).toBe(CISLUNAR_WEBGL_RENDER_LAYERS);
+  });
+});
+
+// regimes-cut-one (DECIDED-BY-LEAD 24 Nov 17:33): the three scenes nothing reached are cut, with their files
+describe('WebGL renderer: the scenes nothing reached are gone', () => {
+  it('has the sky view and the Earth and Moon scene only, and none of the cut scenes\' files', () => {
+    expect(SCALE_REGIME_ORDER).toEqual(['earth_capture', 'cislunar']);
+    for (const file of ['solarNeighborhoodRegime.ts', 'deepSkyRegime.ts', 'lupus3Grade.ts', 'planetarySurfaceRegime.ts', 'planetarySurface']) {
+      expect(fs.existsSync(fileURLToPath(new URL(`../webgl/${file}`, import.meta.url))), file).toBe(false);
+    }
+    expect(fs.existsSync(fileURLToPath(new URL('../../../public/textures/eso1804a.jpg', import.meta.url)))).toBe(false);
   });
 });

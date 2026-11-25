@@ -28,9 +28,6 @@ const WEBGL_SOURCES = [
   '../SparkPortalRenderer.ts',
   '../webgl/skyDomeAndCinemaShader.ts',
   '../webgl/cislunarRegime.ts',
-  '../webgl/solarNeighborhoodRegime.ts',
-  '../webgl/deepSkyRegime.ts',
-  '../webgl/planetarySurfaceRegime.ts',
   '../webgl/skyTargets.ts',
 ];
 const source = WEBGL_SOURCES.map((rel) =>

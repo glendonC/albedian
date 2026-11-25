@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { SparkControls, SparkRenderer, SparkXr, type SplatMesh } from '@sparkjsdev/spark';
+import { SparkControls, SparkRenderer, SparkXr } from '@sparkjsdev/spark';
 import type { RenderLayerSet } from '@albedian/contracts';
 import { cameraSkyPose } from './cameraSkyPose.js';
 import type { CameraSkyPose, ShowcaseSceneKey } from './cosmosRenderer.js';
@@ -24,35 +24,16 @@ import {
   type EarthUniforms, type MoonUniforms,
 } from './webgl/cislunarRegime.js';
 import {
-  createLocalBubbleUniforms, buildSolarNeighborhoodRegimeGroup, applyTargetAppearanceToUniforms,
-  type LocalBubbleUniforms,
-} from './webgl/solarNeighborhoodRegime.js';
-import { createNebulaUniforms, buildDeepSkyRegimeGroup, type NebulaUniforms } from './webgl/deepSkyRegime.js';
-import {
-  createPlanetarySkyUniforms, buildPlanetarySurfaceRegimeGroup, createPlanetaryTerrainSplatMesh,
-  type PlanetarySkyUniforms, type PlanetaryTerrainPalette,
-} from './webgl/planetarySurfaceRegime.js';
-import {
   clampLookPitch,
 } from './webgl/skyTargets.js';
 
-export type SpatialScaleRegime =
-  | 'earth_capture'
-  | 'cislunar'
-  | 'solar_neighborhood'
-  | 'deep_sky'
-  | 'planetary_surface';
+export type SpatialScaleRegime = 'earth_capture' | 'cislunar';
 
-export const SCALE_REGIME_ORDER: SpatialScaleRegime[] = [
-  'earth_capture', 'cislunar', 'solar_neighborhood', 'deep_sky', 'planetary_surface',
-];
+export const SCALE_REGIME_ORDER: SpatialScaleRegime[] = ['earth_capture', 'cislunar'];
 
 const REGIME_CAMERA_ANCHORS: Record<SpatialScaleRegime, THREE.Vector3> = {
   earth_capture: new THREE.Vector3(0, 0, 0),
   cislunar: new THREE.Vector3(0, 42, -160),
-  solar_neighborhood: new THREE.Vector3(0, 95, -380),
-  deep_sky: new THREE.Vector3(0, 150, -620),
-  planetary_surface: new THREE.Vector3(0, 210, -880),
 };
 
 export class SparkPortalRenderer {
@@ -71,25 +52,15 @@ export class SparkPortalRenderer {
   private regimeGroups: Record<SpatialScaleRegime, THREE.Group> = {
     earth_capture: new THREE.Group(),
     cislunar: new THREE.Group(),
-    solar_neighborhood: new THREE.Group(),
-    deep_sky: new THREE.Group(),
-    planetary_surface: new THREE.Group(),
   };
 
   private skyDomeUniforms: SkyDomeUniforms = createSkyDomeUniforms();
   private earthUniforms: EarthUniforms = createEarthUniforms();
   private moonUniforms: MoonUniforms = createMoonUniforms();
-  private nebulaUniforms: NebulaUniforms = createNebulaUniforms();
-  private localBubbleUniforms: LocalBubbleUniforms = createLocalBubbleUniforms();
-  private planetarySkyUniforms: PlanetarySkyUniforms = createPlanetarySkyUniforms();
   private cinemaOpticsUniforms: CinemaOpticsUniforms = createCinemaOpticsUniforms();
 
   private cislunarMoonMesh: THREE.Mesh | null = null;
   private cislunarEarthMesh: THREE.Mesh | null = null;
-  private betelgeuseMesh: THREE.Mesh | null = null;
-  private localBubbleCavityGroup: THREE.Group | null = null;
-  private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
-  private planetaryTerrainSplatMesh: SplatMesh | null = null;
   private catalogStars: CatalogStarField | null = null;
   private readonly catalogStarMounts: THREE.Group[] = [];
 
@@ -167,9 +138,6 @@ export class SparkPortalRenderer {
       this.localFrame.add(createGlobalPhotorealisticSkyDomeMesh(this.skyDomeUniforms));
       this.buildEarthCaptureWorld();
       this.buildCislunarWorld();
-      this.buildSolarNeighborhoodWorld();
-      this.buildDeepSkyWorld();
-      this.buildPlanetarySurfaceWorld();
       this.startLoop();
     } catch {
       this.renderer = null;
@@ -226,46 +194,6 @@ export class SparkPortalRenderer {
     this.cislunarMoonMesh = moonMesh;
   }
 
-  private buildSolarNeighborhoodWorld(): void {
-    const group = this.regimeGroups.solar_neighborhood;
-    this.addCatalogStarMount(group, 85.0);
-    const { betelgeuseMesh, cavityGroup } = buildSolarNeighborhoodRegimeGroup(group, this.localBubbleUniforms);
-    this.betelgeuseMesh = betelgeuseMesh;
-    this.localBubbleCavityGroup = cavityGroup;
-  }
-
-  private showDeepSkyBlackHole(visible: boolean): void {
-    for (const m of this.deepSkyBlackHoleMeshes) m.visible = visible;
-  }
-
-  private buildDeepSkyWorld(): void {
-    const group = this.regimeGroups.deep_sky;
-    this.addCatalogStarMount(group, 95.0);
-    this.deepSkyBlackHoleMeshes = buildDeepSkyRegimeGroup(group, this.nebulaUniforms).blackHoleMeshes;
-    this.showDeepSkyBlackHole(this.nebulaUniforms.uIsBlackHole.value > 0.5);
-  }
-
-  private buildPlanetarySurfaceWorld(): void {
-    const group = this.regimeGroups.planetary_surface;
-    this.addCatalogStarMount(group, 95.0);
-    const { terrainSplatMesh } = buildPlanetarySurfaceRegimeGroup(
-      group, this.planetarySkyUniforms, this.earthUniforms, this.moonUniforms
-    );
-    this.planetaryTerrainSplatMesh = terrainSplatMesh;
-  }
-
-  private rebuildPlanetaryTerrainSplats(palette: PlanetaryTerrainPalette): void {
-    const group = this.regimeGroups.planetary_surface;
-    if (this.planetaryTerrainSplatMesh) {
-      group.remove(this.planetaryTerrainSplatMesh);
-      this.planetaryTerrainSplatMesh.dispose();
-      this.planetaryTerrainSplatMesh = null;
-    }
-    const terrainSplatMesh = createPlanetaryTerrainSplatMesh(palette, this.planetarySkyUniforms);
-    group.add(terrainSplatMesh);
-    this.planetaryTerrainSplatMesh = terrainSplatMesh;
-  }
-
   private syncRegimeVisibility(): void {
     for (const r of SCALE_REGIME_ORDER) {
       this.regimeGroups[r].visible = r === this.activeRegime || this.flightState?.targetRegime === r;
@@ -284,9 +212,6 @@ export class SparkPortalRenderer {
 
       this.skyDomeUniforms.uTime.value = elapsed;
       this.earthUniforms.uTime.value = elapsed;
-      this.nebulaUniforms.uTime.value = elapsed;
-      this.localBubbleUniforms.uTime.value = elapsed;
-      this.planetarySkyUniforms.uTime.value = elapsed;
       this.cinemaOpticsUniforms.uTime.value = elapsed;
 
       // Without a capture time the sky view is for now, so the sky keeps turning with the clock
@@ -295,8 +220,6 @@ export class SparkPortalRenderer {
       const rotMult = this.heldClockSec !== null ? 0 : this.showcaseMode ? 3.2 : 1.0;
       if (this.cislunarMoonMesh) this.cislunarMoonMesh.rotation.y += 0.0005 * rotMult;
       if (this.cislunarEarthMesh) this.cislunarEarthMesh.rotation.y += 0.00018 * rotMult;
-      if (this.betelgeuseMesh) this.betelgeuseMesh.rotation.y += 0.0006 * rotMult;
-      if (this.localBubbleCavityGroup) this.localBubbleCavityGroup.rotation.y += 0.00045 * rotMult;
 
       if (this.showcaseMode && !this.flightState?.active) {
         this.lookTarget.yaw = Math.sin(elapsed * 0.42) * 0.095;
@@ -322,18 +245,15 @@ export class SparkPortalRenderer {
         this.camera.fov = this.curFov + warpArc * 16;
         this.camera.updateProjectionMatrix();
         this.cinemaOpticsUniforms.uWarpFactor.value = warpArc;
-        this.localBubbleUniforms.uWarpFactor.value = warpArc;
 
         if (this.flightState.progress >= 1) {
           const target = this.flightState.targetRegime;
           this.flightState = null;
           this.cinemaOpticsUniforms.uWarpFactor.value = 0;
-          this.localBubbleUniforms.uWarpFactor.value = 0;
           this.jumpToRegime(target);
         }
       } else {
         this.cinemaOpticsUniforms.uWarpFactor.value *= 0.85;
-        this.localBubbleUniforms.uWarpFactor.value *= 0.85;
         this.camera.rotation.y = this.lookTarget.curYaw;
         this.camera.rotation.x = this.lookTarget.curPitch;
         if (Math.abs(this.camera.fov - this.curFov) > 0.02) {
@@ -382,7 +302,7 @@ export class SparkPortalRenderer {
   private askLandingPictures(): void {
     if (this.landingPicturesAsked || !this.renderer) return;
     this.landingPicturesAsked = true;
-    loadLandingSceneTextures(this.textureLoader, this.earthUniforms, this.moonUniforms, this.nebulaUniforms, this.planetarySkyUniforms, '/textures/eso1804a.jpg');
+    loadLandingSceneTextures(this.textureLoader, this.earthUniforms, this.moonUniforms);
   }
 
   public dragLook(deltaPixelsX: number, deltaPixelsY: number): void {
@@ -392,12 +312,6 @@ export class SparkPortalRenderer {
     if (this.activeRegime === 'cislunar' && this.cislunarMoonMesh) {
       this.cislunarMoonMesh.rotation.y += deltaPixelsX * 0.004;
       this.cislunarMoonMesh.rotation.x = Math.max(-0.6, Math.min(0.6, this.cislunarMoonMesh.rotation.x + deltaPixelsY * 0.003));
-    } else if (this.activeRegime === 'solar_neighborhood') {
-      if (this.betelgeuseMesh) this.betelgeuseMesh.rotation.y += deltaPixelsX * 0.004;
-      if (this.localBubbleCavityGroup) {
-        this.localBubbleCavityGroup.rotation.y += deltaPixelsX * 0.0035;
-        this.localBubbleCavityGroup.rotation.x = Math.max(-0.6, Math.min(0.6, this.localBubbleCavityGroup.rotation.x + deltaPixelsY * 0.0025));
-      }
     }
   }
 
@@ -439,12 +353,6 @@ export class SparkPortalRenderer {
     this.lookTarget.pitch = clampLookPitch(this.lookTarget.pitch + dPitch);
   }
 
-  public setTargetAppearance(title: string, bpRp?: number, objectType?: string): void {
-    const isBh = applyTargetAppearanceToUniforms(title, bpRp, objectType, this.localBubbleUniforms);
-    this.nebulaUniforms.uIsBlackHole.value = isBh ? 1.0 : 0.0;
-    this.showDeepSkyBlackHole(isBh);
-  }
-
   public stepThroughPortal(direction: 1 | -1 = 1): void {
     const curIdx = SCALE_REGIME_ORDER.indexOf(this.activeRegime);
     const nextIdx = direction > 0 ? (curIdx + 1) % SCALE_REGIME_ORDER.length : Math.max(0, curIdx - 1);
@@ -480,8 +388,7 @@ export class SparkPortalRenderer {
   public showSkyView(): void { if (this.activeRegime !== 'earth_capture' || this.flightState) this.jumpToRegime('earth_capture'); }
 
   public getRenderLayers(): RenderLayerSet | null {
-    const blackHole = this.nebulaUniforms.uIsBlackHole.value > 0.5;
-    return webglRenderLayersFor({ regime: this.activeRegime, blackHole, observerTime: this.observer.frame ? this.observer.clock.kind : null });
+    return webglRenderLayersFor({ regime: this.activeRegime, observerTime: this.observer.frame ? this.observer.clock.kind : null });
   }
 
   public setShowcaseMode(enabled: boolean): void {
@@ -493,23 +400,10 @@ export class SparkPortalRenderer {
     // While no frame is drawn no landing scene starts, so none of its pictures loads behind the home
     if (!this.drawing) { this.heldScene = { sceneKey, instant }; return; }
     this.askLandingPictures();
-    let targetRegime: SpatialScaleRegime = 'cislunar';
-    if (sceneKey === 'black_hole') {
-      targetRegime = 'deep_sky';
-      this.setTargetAppearance('Sagittarius A* (Galactic Center)', 1.85, 'deep_sky');
-    } else if (sceneKey === 'supergiant') {
-      targetRegime = 'solar_neighborhood';
-      this.setTargetAppearance('Betelgeuse (α Orionis)', 1.85, 'star');
-    } else if (sceneKey === 'saturn_horizon') {
-      targetRegime = 'planetary_surface';
-      this.setTargetAppearance('Saturn', 0.9, 'planet');
-      this.rebuildPlanetaryTerrainSplats('titan_methane');
-    }
-    this.jumpToRegime(targetRegime);
+    this.jumpToRegime(sceneKey);
     if (!instant) {
       this.curFov = 61;
       this.cinemaOpticsUniforms.uWarpFactor.value = 0.48;
-      this.localBubbleUniforms.uWarpFactor.value = 0.48;
     }
   }
 
@@ -535,7 +429,6 @@ export class SparkPortalRenderer {
     if (typeof window !== 'undefined' && this.rafId) window.cancelAnimationFrame(this.rafId);
     this.timer.dispose();
     if (this.observerHorizon) disposeObserverHorizon(this.observerHorizon);
-    this.planetaryTerrainSplatMesh?.dispose();
     this.catalogStars?.dispose();
     this.sparkRenderer?.dispose();
     this.composer?.dispose();

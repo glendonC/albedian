@@ -43,7 +43,7 @@ vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
     resize() {}
     dispose() {}
     getRenderLayers() {
-      return webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime: stub.placed });
+      return webglRenderLayersFor({ regime: 'earth_capture', observerTime: stub.placed });
     }
     getCameraSkyPose() {
       return null;

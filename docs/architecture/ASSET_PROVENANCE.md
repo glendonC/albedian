@@ -20,16 +20,16 @@ subfolder. The format is a contract: `AssetProvenanceRecordSchema` in
   "formatVersion": 1,
   "sources": [
     {
-      "id": "eso1804a",
-      "title": "Star formation region Lupus 3",
-      "url": "https://www.eso.org/public/images/eso1804a/",
-      "version": "screen-size JPEG",
+      "id": "eso0932a",
+      "title": "The Milky Way panorama",
+      "url": "https://www.eso.org/public/images/eso0932a/",
+      "version": "Large JPEG, 6000x3000",
       "license": { "spdx": "CC-BY-4.0", "name": "Creative Commons Attribution 4.0 International", "url": "https://creativecommons.org/licenses/by/4.0/" },
-      "credit": "ESO/R. Colombari"
+      "credit": "ESO/S. Brunier"
     }
   ],
   "files": [
-    { "path": "eso1804a.jpg", "sha256": "...", "sources": ["eso1804a"], "producedBy": { "method": "downloaded-as-is" } }
+    { "path": "eso_milkyway_panorama.jpg", "sha256": "...", "sources": ["eso0932a"], "producedBy": { "method": "downloaded-as-is" } }
   ],
   "fileSets": []
 }
@@ -89,8 +89,8 @@ next bake deletes it.
 - **`models/PROVENANCE.json`**, written by `scripts/bake_local_bubble_mesh.py` on every bake and
   compared by its `--verify`, covers `local_bubble_oneill2024.glb` from O'Neill et al. (2024,
   ApJ 973, 136; Harvard Dataverse `doi:10.7910/DVN/INB1RB`, `CC0-1.0`).
-- **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a) and the ESO image behind the
-  black hole (eso1804a), downloaded as is and byte-identical to ESO's downloads; the two 1k
+- **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a), downloaded as is and
+  byte-identical to ESO's download; the two 1k
   SVS 4720 Moon maps, likewise; the 8k Moon colour map and the LOLA normal map, whose entries
   `scripts/bake_moon_maps.py` rewrites on every bake from two pinned SVS 4720 inputs; the Earth
   day and night maps, which

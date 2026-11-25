@@ -7,7 +7,7 @@ wrote from it, `apps/web/public/models/local_bubble_oneill2024.glb` (27,648 vert
 heliocentric Galactic Cartesian, 1 unit = 100 pc).
 
 One splat per mesh vertex, as a 14-number row [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity], the layout
-`apps/web/src/spatial/splatRows.ts` reads. Within each nside 48 cell the table rows whose nside 256 directions fall
+`apps/webgpu-spike/src/data/localBubble.ts` reads. Within each nside 48 cell the table rows whose nside 256 directions fall
 in it (19 to 36 finite rows, median 30) are averaged, as the mesh averages the shell distance:
 
 - centre: the mesh vertex itself, at the cell's mean peak distance d, written as the shortest decimal that reads back

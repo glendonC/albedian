@@ -1,13 +1,9 @@
-import * as THREE from 'three';
-import { PackedSplats, SplatMesh } from '@sparkjsdev/spark';
-import { parseSplatRows, type SplatRows } from './splatRows.js';
-
 export const BRUNETON_ATMO_LUT_URL = '/textures/bruneton_atmo_lut.png';
 
 /**
  * Reusable GLSL chunk providing `vec4 sampleBrunetonAtmoLut(sampler2D lutTex, float viewMu, float sunMu)`
  * for physical Bruneton & Neyret (2008) Rayleigh + Cornette-Shanks Mie + Chappuis Ozone limb and
- * horizon scattering in `buildCislunarWorld` and `buildPlanetarySurfaceWorld`.
+ * horizon scattering in `buildCislunarWorld`.
  *
  * - `viewMu` = cos(theta_v) in [-0.35, 1.0], mapped with signed-sqrt horizon concentration onto `u in [0, 1]`.
  * - `sunMu` = cos(theta_s) in [-1.0, 1.0], mapped onto `v = sunMu * 0.5 + 0.5 in [0, 1]`.
@@ -43,34 +39,3 @@ vec4 sampleBrunetonAtmoLut(sampler2D lutTex, float viewMu, float sunMu) {
   return mix(vec4(fallbackRgb, fallbackAlpha), lutSample, isLoaded);
 }
 `;
-
-/** Scene scale of the splat set. It scales positions only; footprints stay as baked. */
-const LOCAL_BUBBLE_POSITION_SCALE = 1.24;
-
-function splatMeshFromRows(rows: SplatRows): SplatMesh {
-  return new SplatMesh({
-    constructSplats: (splats: PackedSplats) => {
-      const center = new THREE.Vector3();
-      const scales = new THREE.Vector3();
-      const quat = new THREE.Quaternion();
-      const color = new THREE.Color();
-      for (let i = 0; i < rows.count; i++) {
-        center.fromArray(rows.centers, i * 3);
-        scales.fromArray(rows.scales, i * 3);
-        quat.fromArray(rows.quaternions, i * 4);
-        color.fromArray(rows.colors, i * 3);
-        splats.pushSplat(center, scales, quat, rows.opacities[i]!, color);
-      }
-    },
-  });
-}
-
-/**
- * Builds the Local Bubble splat mesh from `lb_splats.json`, one splat per row at the row's own
- * position. The positions are vertices of `local_bubble_oneill2024.glb`, a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024); colour,
- * footprint, orientation and opacity are presentation values from the bake, since the mesh has no
- * dust density or emission per point.
- */
-export function buildAnisotropicLocalBubbleSplatMesh(raw: unknown): SplatMesh {
-  return splatMeshFromRows(parseSplatRows(raw, LOCAL_BUBBLE_POSITION_SCALE, 0.01));
-}

@@ -179,6 +179,8 @@ Because TSL compiles to both backends, compute-only features can degrade on WebG
 
 ## 9. Custom shader audit: `SparkPortalRenderer.ts`
 
+[verified] Since regimes-cut-one, the WebGL renderer keeps only the sky view and the Earth and Moon scene: the modelled star, the black hole and the planetary surfaces audited below were reached by no control and are cut with their files. Their rows stand as the audit found them.
+
 In `SparkPortalRenderer.ts` and `catalogStars/CatalogStarField.ts`, the Gaia DR3 and Hipparcos star tiles (`catalogStars/`) serve all five sky mounts and the Earth shader uses NASA textures without procedural surface noise. The table below lists the GLSL programs audited for the migration (with notes where legacy passes or helpers were removed). Line numbers refer to `SparkPortalRenderer.ts` unless stated. [verified]
 
 | # | Program (line) | Instances | What it does | Verdict | Days |

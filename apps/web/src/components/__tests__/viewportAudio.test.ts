@@ -117,7 +117,7 @@ declare global {
 
 const noop = () => {};
 const session = { sourceAsset: { observerLocation: null } } as unknown as ObservationSession;
-const CISLUNAR_LAYERS = webglRenderLayersFor({ regime: 'cislunar', blackHole: false }) as RenderLayerSet;
+const CISLUNAR_LAYERS = webglRenderLayersFor({ regime: 'cislunar' }) as RenderLayerSet;
 
 let container: HTMLDivElement;
 let root: Root;
@@ -349,7 +349,7 @@ describe('the viewport while audio is on', () => {
     expect(skyAudio.setEvidenceClass).toHaveBeenLastCalledWith('catalog_matched');
 
     // The sky view declares its layers too (webglRenderLayers.ts), so its voices carry its star layer's class
-    stub.layers = webglRenderLayersFor({ regime: 'earth_capture', blackHole: false });
+    stub.layers = webglRenderLayersFor({ regime: 'earth_capture' });
     expect(stub.layers).not.toBeNull();
     act(() => stub.onRegimeChange?.('earth_capture'));
     expect(skyAudio.setEvidenceClass).toHaveBeenLastCalledWith('simulated');

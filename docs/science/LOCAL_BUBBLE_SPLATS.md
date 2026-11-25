@@ -22,7 +22,7 @@ footprints from tuned constants and one warm colour; that file was a provenance 
 ## What each value is
 
 Each row is `[x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity]` in heliocentric Galactic Cartesian
-coordinates, 1 unit = 100 pc, the layout `apps/web/src/spatial/splatRows.ts` reads. Within each of the 27,648 nside 48
+coordinates, 1 unit = 100 pc, the layout `apps/webgpu-spike/src/data/localBubble.ts` reads (the app's own reader went with the cut Betelgeuse scene). Within each of the 27,648 nside 48
 cells the table rows whose nside 256 directions fall in it, 19 to 36 finite rows (median 30) [tested], are averaged,
 as the mesh averages `d`.
 

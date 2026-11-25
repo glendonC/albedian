@@ -3,9 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The deep-sky regime keeps one ESO image: eso1804a, the Lupus 3 star formation region, behind the
- * modelled black hole. It was filed as "eso_lagoon_nebula.jpg", the name of an object it does not
- * show (the data lane matched it at eso.org). The Orion view is deleted: ESO's VISTA image of the
+ * The deep-sky regime and its modelled black hole are cut (regimes-cut-one, DECIDED-BY-LEAD 24 Nov 17:33), with
+ * eso1804a, the Lupus 3 photograph it drew behind the hole. The Orion view was deleted before: ESO's VISTA image of the
  * Orion Nebula (eso1006a) on a plane in front of the camera, not at its place on the sky, and
  * splats baked from a NASA model of another object (nasa_nebula_splats.json, provenance not
  * recorded). Neither file nor any code that drew or baked them remains.
@@ -17,15 +16,10 @@ const models = here('../../../public/models/');
 const renderer = read('../SparkPortalRenderer.ts');
 
 describe('deep-sky imagery', () => {
-  it('loads the Lupus 3 image for the black hole only; scene 03 never sampled it', () => {
-    // uDustTex was assigned eso1804a but bound to no material and declared in no shader
-    expect(renderer).not.toMatch(/uDustTex/);
-    expect(renderer.match(/eso1804a\.jpg/g)).toHaveLength(1);
-  });
-
-  it('keeps the Lupus 3 image under its ESO id, loaded by that name', () => {
-    expect(fs.existsSync(`${textures}eso1804a.jpg`)).toBe(true);
-    expect(renderer).toContain("'/textures/eso1804a.jpg'");
+  it('has no Lupus 3 image: no file, record or load, gone with the black-hole scene', () => {
+    expect(renderer).not.toMatch(/uDustTex|eso1804a|uLupus3Tex/);
+    expect(fs.existsSync(`${textures}eso1804a.jpg`)).toBe(false);
+    expect(read('../../../public/textures/PROVENANCE.json')).not.toMatch(/eso1804a/);
     expect(fs.readdirSync(textures).filter((f) => /lagoon|orion/i.test(f))).toEqual([]);
     expect(renderer).not.toMatch(/eso_(lagoon|orion)_nebula/);
   });

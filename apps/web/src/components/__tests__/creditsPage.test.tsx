@@ -152,7 +152,7 @@ describe('creditRows: rows by what a person sees, every source credited from the
   });
 
   it("states a change wherever a record's licence asks for one, worded from what the app does and from the records", () => {
-    expect(Object.keys(CHANGES).sort()).toEqual(['eso0932a', 'eso1804a', 'openngc-v20260501-addendum', 'openngc-v20260501-ngc']);
+    expect(Object.keys(CHANGES).sort()).toEqual(['eso0932a', 'openngc-v20260501-addendum', 'openngc-v20260501-ngc']);
     for (const id of Object.keys(CHANGES)) {
       const source = sources.find((s) => s.id === id)!;
       expect(source.license.conditions ?? '', id).toMatch(ASKS_FOR_CHANGES);
@@ -163,11 +163,9 @@ describe('creditRows: rows by what a person sees, every source credited from the
       // Every line of the block's shader/backdrop and record changes, in order, once
       expect(block?.changes, id).toEqual(combined);
     }
-    // The panorama's five and Lupus 3's two are held to the code by creditChanges.test.ts; OpenNGC comes from its record
+    // The panorama's are held to the code by creditChanges.test.ts; OpenNGC comes from its record
     expect(CHANGES.eso0932a!()).toHaveLength(6);
     expect(recordChangeLines(loaded, 'eso0932a')).toHaveLength(2);
-    expect(CHANGES.eso1804a!()).toHaveLength(2);
-    expect(recordChangeLines(loaded, 'eso1804a')).toEqual([]);
     expect(CHANGES['openngc-v20260501-ngc']!()).toEqual([]);
     expect(CHANGES['openngc-v20260501-addendum']!()).toEqual([]);
     const deepskyChanges = recordChangeLines(loaded, 'openngc-v20260501-ngc');
@@ -545,7 +543,7 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     const page = q('[data-testid="credits-page"]')!.textContent!;
     const asked = sources.filter((s) => /indicat|changed|acknowledg|\bcite\b/i.test(s.license.conditions ?? ''));
     // The sources the auditor named are among them
-    for (const id of ['eso0932a', 'eso1804a', 'openngc-v20260501-ngc', 'nasa-exoplanet-archive-pscomppars', 'iau-csn']) expect(asked.map((s) => s.id), id).toContain(id);
+    for (const id of ['eso0932a', 'openngc-v20260501-ngc', 'nasa-exoplanet-archive-pscomppars', 'iau-csn']) expect(asked.map((s) => s.id), id).toContain(id);
     for (const source of asked) {
       for (const line of [...(CHANGES[source.id]?.() ?? []), ...recordChangeLines(loaded, source.id)]) expect(page, source.id).toContain(line);
       if (source.acknowledgement) expect(page, source.id).toContain(source.acknowledgement);

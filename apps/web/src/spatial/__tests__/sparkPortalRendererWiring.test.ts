@@ -107,7 +107,7 @@ describe('the WebGL renderer places, clears and flies the sky view observer', ()
     expect(i.observerHorizon!.visible).toBe(true);
     const look = defaultObserverLook(SITE.latDeg);
     expect([i.lookTarget.yaw, i.lookTarget.pitch]).toEqual([look.yaw, look.pitch]);
-    r.jumpToRegime('deep_sky');
+    r.jumpToRegime('cislunar');
     expect(near(i.localFrame.quaternion, IDENTITY)).toBe(true);
     expect(i.observerHorizon!.visible).toBe(false);
   });
@@ -147,8 +147,8 @@ describe('the WebGL renderer places, clears and flies the sky view observer', ()
 });
 
 describe('the WebGL renderer returns to the sky view when the landing ends', () => {
-  it('leaves any landing scene for the sky view, with no modelled black hole or star in view', () => {
-    for (const scene of ['cislunar', 'black_hole', 'supergiant', 'saturn_horizon'] as const) {
+  it('leaves the landing scene for the sky view, with nothing procedural in view', () => {
+    for (const scene of ['cislunar'] as const) {
       const { r, regimes } = makeRenderer();
       r.transitionToShowcaseScene(scene, true);
       expect(regimes.at(-1)).not.toBe('earth_capture');

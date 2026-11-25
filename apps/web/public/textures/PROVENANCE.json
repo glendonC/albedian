@@ -17,20 +17,6 @@
       "note": "Released 2009-09-14 as the first image of ESO's GigaGalaxy Zoom project."
     },
     {
-      "id": "eso1804a",
-      "title": "Star formation region Lupus 3",
-      "url": "https://www.eso.org/public/images/eso1804a/",
-      "version": "Screen-size JPEG",
-      "license": {
-        "spdx": "CC-BY-4.0",
-        "name": "Creative Commons Attribution 4.0 International",
-        "url": "https://creativecommons.org/licenses/by/4.0/",
-        "conditions": "Under ESO's image use terms (https://www.eso.org/public/outreach/copyright/): the credit stays unaltered and clearly visible, and modifications must be indicated."
-      },
-      "credit": "ESO/R. Colombari",
-      "note": "Released 2018-01-31."
-    },
-    {
       "id": "nasa-svs-4720",
       "title": "CGI Moon Kit",
       "url": "https://svs.gsfc.nasa.gov/4720/",
@@ -240,17 +226,6 @@
         "changes": "Worked out from the panorama and the catalogue stars, with the photograph itself left untouched: its star images are found, and the direction its axes really point is fitted to them, with a vertical shift and a smooth correction for the stitching between frames, checked on stars held back from the fit; and a list of bright named stars, copied from the catalogue, is added with where the fit puts each and where it was found."
       },
       "note": "The panorama's registration to the catalog stars (docs/science/SKY_PANORAMA_REGISTRATION.md): a rotation from galactic plus a vertical offset, then a smoothed table of the remaining offsets, fitted to 5,021 isolated stars to magnitude 6 from the core tiles of layers 0 and 1, which it pins by one SHA-256, and checked on held-out stars. The panorama's pixels are not changed. `--verify` refits and compares byte for byte on the machine that made the file; tests/integration/test_sky_registration.py allows for platform rounding."
-    },
-    {
-      "path": "eso1804a.jpg",
-      "sha256": "6c6a82dabde929f26ee352ff8807547ba34ebf9dbe4879c8db33b258dac41dca",
-      "sources": [
-        "eso1804a"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "Byte-identical to https://cdn.eso.org/images/screen/eso1804a.jpg as downloaded on 2026-11-04. Formerly eso_lagoon_nebula.jpg, although it shows Lupus 3, not the Lagoon Nebula."
     },
     {
       "path": "lro_moon_2k.jpg",

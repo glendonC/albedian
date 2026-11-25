@@ -149,7 +149,7 @@ describe('observer pose: where the sky stands for a place and time', () => {
     expect(observerHorizonVisible({ regime: 'earth_capture', flying: false, placed: true })).toBe(true);
     expect(observerHorizonVisible({ regime: 'earth_capture', flying: false, placed: false })).toBe(false);
     expect(observerHorizonVisible({ regime: 'earth_capture', flying: true, placed: true })).toBe(false);
-    for (const regime of ['cislunar', 'solar_neighborhood', 'deep_sky', 'planetary_surface'] as const) {
+    for (const regime of ['cislunar'] as const) {
       expect(observerHorizonVisible({ regime, flying: false, placed: true }), regime).toBe(false);
     }
   });
@@ -158,7 +158,7 @@ describe('observer pose: where the sky stands for a place and time', () => {
     const frame = observerFrameQuaternion(observerAxes(SITE, JD));
     expect(localFrameQuaternionFor('earth_capture', frame).angleTo(frame)).toBeLessThan(1e-12);
     expect(localFrameQuaternionFor('earth_capture', null).angleTo(new THREE.Quaternion())).toBeLessThan(1e-12);
-    for (const regime of ['cislunar', 'solar_neighborhood', 'deep_sky', 'planetary_surface'] as const) {
+    for (const regime of ['cislunar'] as const) {
       expect(localFrameQuaternionFor(regime, frame).angleTo(new THREE.Quaternion()), regime).toBeLessThan(1e-12);
     }
   });
@@ -293,7 +293,7 @@ describe('the sky view discloses its layers, the horizon as predicted only when 
 
   it('declares the panorama, the catalog stars, the horizon and the optics once the sky view is placed', () => {
     for (const observerTime of ['now', 'capture'] as const) {
-      const layers = webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime });
+      const layers = webglRenderLayersFor({ regime: 'earth_capture', observerTime });
       expect(RenderLayerSetSchema.safeParse(layers).success).toBe(true);
       expect(layers!.map((l) => l.kind)).toEqual(['sky_background', 'catalog_stars', 'sky_overlay', 'camera_optics']);
       const horizon = layers!.find((l) => l.kind === 'sky_overlay')!;
@@ -308,7 +308,7 @@ describe('the sky view discloses its layers, the horizon as predicted only when 
 
   it('declares no horizon without a place, so the panel reads as a modelled scene', () => {
     for (const observerTime of [null, undefined]) {
-      const layers = webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime })!;
+      const layers = webglRenderLayersFor({ regime: 'earth_capture', observerTime })!;
       expect(RenderLayerSetSchema.safeParse(layers).success).toBe(true);
       expect(layers.map((l) => l.kind)).toEqual(['sky_background', 'catalog_stars', 'camera_optics']);
       expect(layers.every((l) => l.evidenceClass === 'simulated')).toBe(true);
@@ -317,7 +317,7 @@ describe('the sky view discloses its layers, the horizon as predicted only when 
 
   it("says whether the horizon is for the capture time or the device's time now", () => {
     const text = (observerTime: 'now' | 'capture') =>
-      webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime })!.find((l) => l.kind === 'sky_overlay')!
+      webglRenderLayersFor({ regime: 'earth_capture', observerTime })!.find((l) => l.kind === 'sky_overlay')!
         .disclosure;
     expect(text('now')).toMatch(/\bnow\b/);
     expect(text('now')).not.toMatch(/capture time/);
