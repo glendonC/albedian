@@ -228,11 +228,14 @@ describe('Real sky keeps a sky on every frame', () => {
   it('says the glow failed, so the photograph gives way as ruled, when the glow cannot be had', async () => {
     const fakes = installSkyFakes({ pictureUrl: FLIGHT_MILKY_WAY_URL, otherBody: registration, failFetch: true });
     stubCanvases(fakes);
-    await act(async () => root.render(at({ there: true })));
+    const onGlowFailed = vi.fn();
+    await act(async () => root.render(at({ there: true, onGlowFailed })));
     await act(async () => await fakes.frame(3));
     const layer = container.querySelector('.real-sky')!;
     expect(layer.classList.contains('is-glow-failed')).toBe(true);
     expect(layer.classList.contains('is-glow-drawn')).toBe(false);
+    // flight-sky-line-state-one: the reveal is told, so the photograph's line goes with it
+    expect(onGlowFailed).toHaveBeenLastCalledWith(true);
   });
 });
 

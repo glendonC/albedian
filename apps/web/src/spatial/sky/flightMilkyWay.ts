@@ -314,6 +314,19 @@ export function disposeFlightDome(gl: WebGL2RenderingContext, dome: FlightDomeGp
   gl.deleteTexture(dome.offsets);
 }
 
+/**
+ * flight-sky-line-state-one (DECIDED-BY-LEAD 21:56: a layer that is drawn has its line): the sky the flight's line
+ * names now: while steering the glow once the dome has drawn; at a star the glow once it has drawn, before that the
+ * photograph while it shows (it stays until the glow comes in, and leaves at once if the glow fails); none while
+ * nothing is drawn.
+ */
+export type FlightSkyLine = 'glow' | 'photograph' | null;
+export function flightSkyLineOf({ steering, glowDrawn, domeDrawn, photographDrawn, glowFailed }: { steering: boolean; glowDrawn: boolean; domeDrawn: boolean; photographDrawn: boolean; glowFailed: boolean }): FlightSkyLine {
+  if (steering) return domeDrawn ? 'glow' : null;
+  if (glowDrawn) return 'glow';
+  return photographDrawn && !glowFailed ? 'photograph' : null;
+}
+
 /** Whether the flight's Milky Way line stands: at a star once the starless glow has drawn, while steering once the dome has. */
 export function flightMilkyWayLineShown({ steering, glowDrawn, domeDrawn }: { steering: boolean; glowDrawn: boolean; domeDrawn: boolean }): boolean {
   return steering ? domeDrawn : glowDrawn;

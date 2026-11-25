@@ -23,7 +23,7 @@ import { RealSkyLayer, prepareRealSky } from './RealSkyLayer.js';
 import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
 import { arrivalShiftOf } from '../spatial/flight/arrival.js';
 import { prepareFlight } from '../spatial/flight/prepareFlight.js';
-import { FLIGHT_MILKY_WAY_LINE, flightMilkyWayLineShown } from '../spatial/sky/flightMilkyWay.js';
+import { FLIGHT_MILKY_WAY_LINE, flightSkyLineOf } from '../spatial/sky/flightMilkyWay.js';
 import { CraftPicker, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
 import { phoneCraftFraming } from '../spatial/flight/craftScene.js';
 import { CRAFT_PICKER_FOOT, craftSpeedSource } from '../spatial/flight/pilotReadout.js';
@@ -130,6 +130,9 @@ const FLIGHT_LINES = {
   rings: 'Rings: the stars your photo matched.',
   milkyWay: FLIGHT_MILKY_WAY_LINE,
 } as const;
+/** Real sky's sentence (reveal, approved): ESO's photograph placed through the solve, with the solve's residual. */
+const realSkySentence = (residualArcmin: number) => `ESO's photograph of this part of the sky, placed by your photo's solve to within ${residualArcmin}′. Not light your camera recorded.`;
+
 /** The card's caution for a target whose catalog row gives no distance (13:03), in the readout's numbers' place (20:05). */
 const NO_DISTANCE_LINE = 'Its catalog row gives no distance, so none is shown.';
 import { realSkyResidualArcmin } from './realSkyGrid.js';
@@ -420,6 +423,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const [domeDrawn, setDomeDrawn] = useState(false);
   // ...and at a star the starless glow, told by the Real sky layer once it has drawn (AUDIT-D 18:18)
   const [glowDrawn, setGlowDrawn] = useState(false);
+  const [glowFailed, setGlowFailed] = useState(false);
+  // flight-sky-line-state-one (DECIDED-BY-LEAD 21:56): in flight, the line of whichever sky is drawn
+  const flightSkyKind = flightSkyLineOf({ steering, glowDrawn, domeDrawn, photographDrawn: skyDrawn, glowFailed });
+  const flightResidual = flightSkyKind === 'photograph' && session.observationSolution ? realSkyResidualArcmin(session.observationSolution) : null;
+  const flightSkyLine = flightSkyKind === 'glow' ? FLIGHT_LINES.milkyWay : flightResidual !== null ? realSkySentence(flightResidual) : null;
   // Free flight has no star ahead, so the readout keeps "from Earth" only (D26 item 6)
   const shownFlight =
     flight && steering && steered
@@ -863,8 +871,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
               <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>
               {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
-              {/* The Milky Way line names the sky, so only once it has drawn (the dome while steering) */}
-              {flightMilkyWayLineShown({ steering, glowDrawn, domeDrawn }) && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
+              {/* The sky's line names what is drawn: the glow (the dome while steering), or the photograph until the glow comes */}
+              {flightSkyLine && <p className="reveal-status__line">{flightSkyLine}</p>}
               {/* While steering, D26 item 6's plain lines at 13 px, ink 66 percent */}
               {steering &&
                 STEER_LINES.map((line) => (
@@ -885,7 +893,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
           {residual !== null && (
-            <p className="reveal-status__line">{`ESO's photograph of this part of the sky, placed by your photo's solve to within ${residual}′. Not light your camera recorded.`}</p>
+            <p className="reveal-status__line">{realSkySentence(residual)}</p>
           )}
         </div>
       ) : status.kind === 'unmatched' ? (
@@ -1048,7 +1056,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     >
       {/* The room to scroll to Restore, 16 px under Ask out loud (D38 item 1) */}
       {phoneRestoreOffered && <div className="reveal-phone-room" aria-hidden="true" />}
-      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} onGlowDrawn={setGlowDrawn} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
+      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} onGlowDrawn={setGlowDrawn} onGlowFailed={setGlowFailed} phone={phone} there={there} readoutTopPx={phone && there ? readoutTopPx : null} shift={arrivalMove} />}
       {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} onSkyDome={setDomeDrawn} />}
       {rect && <PhotoCorners rect={rect} />}
 
@@ -1336,7 +1344,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                   FLIGHT_LINES.stars,
                   FLIGHT_LINES.rings,
                   ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
-                  ...(flightMilkyWayLineShown({ steering, glowDrawn, domeDrawn }) ? [FLIGHT_LINES.milkyWay] : []),
+                  ...(flightSkyLine ? [flightSkyLine] : []),
                   ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
                   ...(craft ? [CRAFT_PICKER_FOOT] : []),
                 ]

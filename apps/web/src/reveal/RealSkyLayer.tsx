@@ -280,6 +280,8 @@ export const RealSkyLayer: React.FC<{
   onDrawn?: (drawn: boolean) => void;
   /** In flight: told whether the starless glow is drawn, false while it loads, when it fails, and as the layer leaves. */
   onGlowDrawn?: (drawn: boolean) => void;
+  /** In flight: told whether the glow failed, so the photograph has left (flight-sky-line-state-one); false as it leaves. */
+  onGlowFailed?: (failed: boolean) => void;
   /** At phone width: the bands above and below the photo's slot shaded instead of the side columns. */
   phone?: boolean;
   /** There, after Go there: on the phone, the shade under the taller readout. */
@@ -291,7 +293,7 @@ export const RealSkyLayer: React.FC<{
   shift?: { readonly fullPx: readonly [number, number]; readonly nowPx: readonly [number, number] } | null;
   /** There on the phone: the readout's measured top, which D30's scrim rises to meet; the slot's shade without it. */
   readoutTopPx?: number | null;
-}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, onGlowDrawn, phone = false, there = false, readoutTopPx = null, shift = null }) => {
+}> = ({ session, rect, viewportWidthPx, viewportHeightPx, leaving = false, onDrawn, onGlowDrawn, onGlowFailed, phone = false, there = false, readoutTopPx = null, shift = null }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<LayerState>('loading');
   const moving = shift !== null && (shift.fullPx[0] !== 0 || shift.fullPx[1] !== 0);
@@ -315,6 +317,12 @@ export const RealSkyLayer: React.FC<{
     toldGlow.current?.(glowState === 'drawn');
   }, [glowState]);
   useEffect(() => () => toldGlow.current?.(false), []);
+  const toldGlowFailed = useRef(onGlowFailed);
+  toldGlowFailed.current = onGlowFailed;
+  useEffect(() => {
+    toldGlowFailed.current?.(glowState === 'failed');
+  }, [glowState]);
+  useEffect(() => () => toldGlowFailed.current?.(false), []);
 
   // A layout effect: a new size clears the canvas in this commit, so it is drawn again before the browser paints
   useLayoutEffect(() => {

@@ -20,8 +20,9 @@ const seen = vi.hoisted(() => ({
   onDragSky: undefined as (() => void) | undefined,
   onPressSky: undefined as (() => void) | undefined,
   scrimTopPx: undefined as number | null | undefined,
-  // The starless glow drawn in flight (milkyway-flight-one); false stands for one loading or failed
+  // The starless glow drawn in flight (milkyway-flight-one); false stands for one loading, or failed with glowFailed
   glow: true,
+  glowFailed: false,
 }));
 vi.mock('../FlightStarsLayer.js', async () => {
   const { createElement: h, useEffect } = await import('react');
@@ -44,12 +45,13 @@ vi.mock('../../../reveal/RealSkyLayer.js', async (importOriginal) => {
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onGlowDrawn?: (drawn: boolean) => void; there?: boolean; readoutTopPx?: number | null }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onGlowDrawn?: (drawn: boolean) => void; onGlowFailed?: (failed: boolean) => void; there?: boolean; readoutTopPx?: number | null }) => {
       seen.scrimTopPx = props.readoutTopPx;
       useEffect(() => {
         props.onDrawn?.(true);
         props.onGlowDrawn?.(seen.glow && props.there === true);
-      }, [props.onDrawn, props.onGlowDrawn, props.there]);
+        props.onGlowFailed?.(seen.glowFailed && props.there === true);
+      }, [props.onDrawn, props.onGlowDrawn, props.onGlowFailed, props.there]);
       return h('div', { 'data-testid': 'real-sky' });
     },
   };
@@ -222,7 +224,7 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     expect((q('[data-testid="flight-readout"]') as HTMLElement).style.visibility).toBe('');
   });
 
-  it('leaves the Milky Way line out of the details while the starless glow is not drawn (AUDIT-D 18:18)', () => {
+  it('names the photograph in the details while the starless glow loads (DECIDED-BY-LEAD 21:56)', () => {
     seen.glow = false;
     try {
       showPhone();
@@ -230,8 +232,24 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
       const lines = all('[data-testid="details-sheet"] li').map((li) => li.textContent);
       expect(lines.some((l) => l?.startsWith('Milky Way'))).toBe(false);
       expect(lines).toContain('Rings: the stars your photo matched.');
+      expect(lines.some((l) => l?.startsWith("ESO's photograph of this part of the sky, placed by your photo's solve to within"))).toBe(true);
     } finally {
       seen.glow = true;
+    }
+  });
+
+  it('names no sky in the details once the starless glow has failed, the photograph having given way', () => {
+    seen.glow = false;
+    seen.glowFailed = true;
+    try {
+      showPhone();
+      click(q('[data-testid="details-circle"]'));
+      const lines = all('[data-testid="details-sheet"] li').map((li) => li.textContent);
+      expect(lines.some((l) => l?.startsWith('Milky Way') || l?.startsWith("ESO's photograph"))).toBe(false);
+      expect(lines).toContain('Rings: the stars your photo matched.');
+    } finally {
+      seen.glow = true;
+      seen.glowFailed = false;
     }
   });
 

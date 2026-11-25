@@ -18,20 +18,21 @@ import { MOTION_TOKENS } from '@albedian/design-system';
 import { blockLeaveMs, linesLeaveMs } from '../../hooks/useLeaving.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
-const sky = vi.hoisted(() => ({ drawn: true, glow: true, readoutTopPx: undefined as number | null | undefined }));
+const sky = vi.hoisted(() => ({ drawn: true, glow: true, glowFailed: false, readoutTopPx: undefined as number | null | undefined }));
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
   const { createElement: h, useEffect } = await import('react');
   return {
     ...original,
-    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onGlowDrawn?: (drawn: boolean) => void; there?: boolean; readoutTopPx?: number | null }) => {
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void; onGlowDrawn?: (drawn: boolean) => void; onGlowFailed?: (failed: boolean) => void; there?: boolean; readoutTopPx?: number | null }) => {
       // The phone's sky band ends at the readout's top it is given (D30 item 1)
       sky.readoutTopPx = props.readoutTopPx;
       useEffect(() => {
         props.onDrawn?.(sky.drawn);
         // In flight the layer draws the starless glow, and says so (milkyway-flight-one)
         props.onGlowDrawn?.(sky.drawn && sky.glow && props.there === true);
-      }, [props.onDrawn, props.onGlowDrawn, props.there]);
+        props.onGlowFailed?.(sky.glowFailed && props.there === true);
+      }, [props.onDrawn, props.onGlowDrawn, props.onGlowFailed, props.there]);
       return h('div', { className: 'real-sky', 'data-testid': 'real-sky' });
     },
   };
@@ -758,7 +759,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="reveal-status"]')!.textContent).toContain('Milky Way: ESO/S. Brunier');
   });
 
-  it('leaves the Milky Way line out at a star while the starless glow is loading or has failed, the photograph drawn (AUDIT-D 18:18)', () => {
+  it('names the photograph at a star while the starless glow is loading, the photograph drawn (AUDIT-D 18:18; DECIDED-BY-LEAD 21:56)', () => {
     sky.glow = false;
     try {
       const { session } = rigelPicked();
@@ -767,8 +768,26 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       expect(status.getAttribute('data-moment')).toBe('there');
       expect(status.textContent).not.toContain('Milky Way');
       expect(status.textContent).toContain('Rings: the stars your photo matched.');
+      // A layer that is drawn has its line: the photograph shows until the glow comes, so its own line stands
+      expect(status.textContent).toContain("ESO's photograph of this part of the sky, placed by your photo's solve to within");
     } finally {
       sky.glow = true;
+    }
+  });
+
+  it('names no sky at a star when the starless glow has failed, since the photograph then gives way', () => {
+    sky.glow = false;
+    sky.glowFailed = true;
+    try {
+      const { session } = rigelPicked();
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+      const status = q('[data-testid="reveal-status"]')!;
+      expect(status.textContent).not.toContain('Milky Way');
+      expect(status.textContent).not.toContain("ESO's photograph");
+      expect(status.textContent).toContain('Rings: the stars your photo matched.');
+    } finally {
+      sky.glow = true;
+      sky.glowFailed = false;
     }
   });
 
