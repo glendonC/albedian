@@ -83,8 +83,9 @@ describe('placeSkyMarks: names by D20', () => {
 describe('predictedSkyMarks: the predicted stars through the renderer camera', () => {
   // The camera at the identity looks along ICRS -z, the south celestial pole, 60 degrees high
   const POLE: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: W / H, limitingMagnitude: 6 };
-  const star = (id: string, magnitude: number, decDeg: number, commonName?: string, evidenceClass: CelestialFinding['evidenceClass'] = 'predicted') =>
-    ({ ...POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!, id, evidenceClass, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { ...POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!.catalogRef!, apparentMagnitude: magnitude, commonName } }) as CelestialFinding;
+  // A predicted star titled by its name, as the solve titles one (its common name field the same, unless a test says)
+  const star = (id: string, magnitude: number, decDeg: number, title?: string, evidenceClass: CelestialFinding['evidenceClass'] = 'predicted', commonName: string | undefined = title) =>
+    ({ ...POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!, id, evidenceClass, ...(title !== undefined ? { title } : {}), skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { ...POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!.catalogRef!, apparentMagnitude: magnitude, commonName } }) as CelestialFinding;
   const sky = (findings: CelestialFinding[]): ObservationSolution => ({ ...POSE, findings });
 
   it('rings the predicted stars of magnitude 3.2 or brighter in view, brightest first, and names them by their proper name', () => {
@@ -103,6 +104,54 @@ describe('predictedSkyMarks: the predicted stars through the renderer camera', (
   it('draws no star behind the camera or out of view, and nothing that is not predicted', () => {
     const marks = predictedSkyMarks(sky([star('finding-predicted-star-n', 1, 80, 'North'), star('finding-predicted-star-m', 1, -85, 'Matched', 'catalog_matched')]), POLE, W, H);
     expect(marks).toEqual([]);
+  });
+
+  // predsky-mark-title-one (DECIDED-BY-LEAD 18:49 on 24 Nov, UIUX's read): a mark carries the card's title, in the
+  // title order the solve gives it (proper name, then Bayer, then Flamsteed), never a catalog number, as the matched marks
+  // do; the catalog reference's common name field does not name it
+  it("names a predicted star by its title: a Bayer designation whose common name field is its number gets its designation", () => {
+    const beta = star('finding-predicted-star-hip-68702', 0.6, -80, 'β Cen', 'predicted', '68702');
+    const flamsteed = star('finding-predicted-star-hip-104214', 1.5, -86, '61 Cyg', 'predicted', 'HIP 104214');
+    const marks = predictedSkyMarks(sky([beta, flamsteed]), POLE, W, H);
+    expect(marks.map((m) => [m.id, m.name])).toEqual([['finding-predicted-star-hip-68702', 'β Cen'], ['finding-predicted-star-hip-104214', '61 Cyg']]);
+  });
+
+  it('leaves a predicted star titled by its catalog number unlabelled, whatever its common name field holds', () => {
+    const numbered = (id: string, decDeg: number, number: string, commonName?: string) => {
+      const found = star(id, 1, decDeg, number, 'predicted', commonName);
+      return { ...found, catalogRef: { ...found.catalogRef!, catalogSourceId: number } } as CelestialFinding;
+    };
+    const marks = predictedSkyMarks(
+      sky([numbered('finding-predicted-star-hip-71683', -80, 'HIP 71683', 'Rigil Kentaurus'), numbered('finding-predicted-gaia-5', -86, 'Gaia DR3 5853498713190525696', 'Gaia DR3 5853498713190525696'), numbered('finding-predicted-star-hd-1', -84, 'HD 128620')]),
+      POLE,
+      W,
+      H
+    );
+    expect(marks).toHaveLength(3);
+    expect(marks.map((m) => [m.name, m.r])).toEqual([
+      [null, SKY_UNNAMED_RING_PX],
+      [null, SKY_UNNAMED_RING_PX],
+      [null, SKY_UNNAMED_RING_PX],
+    ]);
+  });
+
+  it('shows as many names as the fit rule allows: titles that would run into each other are left off as before', () => {
+    // Five bright stars close together near the pole, titled; the names fit where D20's rule says they fit
+    const field = sky([
+      star('finding-predicted-star-1', 0.1, -85.0, 'Alpha Crucis'),
+      star('finding-predicted-star-2', 0.6, -85.3, 'β Cen'),
+      star('finding-predicted-star-3', 1.0, -85.6, 'Gacrux'),
+      star('finding-predicted-star-4', 1.3, -85.9, 'δ Cru'),
+      star('finding-predicted-star-5', 2.8, -86.2, '61 Cyg'),
+    ]);
+    const marks = predictedSkyMarks(field, POLE, W, H);
+    expect(marks).toHaveLength(5);
+    // The same places through placeSkyMarks with the titles: the same names, the same count
+    const placed = placeSkyMarks(marks.map((m) => at(m.id, field.findings.find((f) => f.id === m.id)!.title, m.xPx, m.yPx)), W, H, 13);
+    expect(marks.map((m) => m.name)).toEqual(placed.map((m) => m.name));
+    const named = marks.filter((m) => m.name !== null).length;
+    expect(named).toBeGreaterThan(0);
+    expect(named).toBeLessThan(5);
   });
 
   it('is none without a pose the renderer gives', () => {

@@ -114,7 +114,9 @@ export function predictedSkyMarks(
       if (finding.evidenceClass !== 'predicted' || finding.catalogRef?.objectType !== 'star' || magnitude === undefined || magnitude > ALIGN_MAGNITUDE_LIMIT || !sky) return [];
       const onScreen = projectIcrsThroughPose(raDecToUnitVector(sky.raDeg, sky.decDeg), pose, widthPx, heightPx);
       if (!onScreen?.visible) return [];
-      return [{ id: finding.id, name: properName(finding.catalogRef?.commonName), xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];
+      // Named by the card's title, in the solve's title order (proper name, then Bayer, then Flamsteed), never a catalog
+      // number, as the matched marks are (predsky-mark-title-one, DECIDED-BY-LEAD 18:49 on 24 Nov)
+      return [{ id: finding.id, name: properName(finding.title), xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];
     })
     .sort((a, b) => a.magnitude - b.magnitude);
   return placeSkyMarks(stars, widthPx, heightPx, fontPx, clear, keepId);

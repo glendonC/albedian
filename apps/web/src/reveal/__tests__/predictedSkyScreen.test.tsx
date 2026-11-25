@@ -264,7 +264,7 @@ describe("D20's marks on the predicted sky (item 4)", () => {
     const base = predictedSky();
     const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
     const star = (id: string, magnitude: number, decDeg: number, commonName: string) =>
-      ({ ...template, id, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { id, provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: magnitude } }) as unknown as typeof template;
+      ({ ...template, id, title: commonName, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { id, provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: magnitude } }) as unknown as typeof template;
     const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star('finding-predicted-star-a', 0.5, -80, 'Alpha'), star('finding-predicted-star-b', 2, -86, 'Beta')] } } as ObservationSession;
     let pose: CameraSkyPose | null = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
     act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose })));
@@ -286,7 +286,7 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
     const base = predictedSky();
     const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
-    const star = { ...template, id: 'finding-predicted-star-a', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    const star = { ...template, id: 'finding-predicted-star-a', title: 'Alpha', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
     const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star] } } as ObservationSession;
     const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
     const picked: string[] = [];
@@ -319,7 +319,7 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     const { getMarkerVisualSpec } = await import('@albedian/design-system');
     const base = predictedSky();
     const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
-    const star = { ...template, id: 'finding-predicted-star-a', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    const star = { ...template, id: 'finding-predicted-star-a', title: 'Alpha', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
     const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star] } } as ObservationSession;
     const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
     const spoken = (isSelected: boolean) => getMarkerVisualSpec({ evidenceClass: 'predicted', title: 'Alpha', isSelected, isFocused: false, isHovered: false }).ariaDescription;
