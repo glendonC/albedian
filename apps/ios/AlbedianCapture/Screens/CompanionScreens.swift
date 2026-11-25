@@ -196,8 +196,9 @@ struct AimScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// largertext-m1: the room the column under the preview needs at most at accessibility sizes, measured once from
-    /// the most it can show (`AimFrame.mostLine`, `.mostCoach`), so the preview's frame never moves with the lines shown
-    @State private var columnRoom = 0.0
+    /// the most it can show (`AimFrame.mostLine`, `.mostCoach`), so the preview's frame never moves with the lines shown;
+    /// nil until measured
+    @State private var columnRoom: Double?
 
     var body: some View {
         GeometryReader { geometry in
@@ -248,8 +249,11 @@ struct AimScreen: View {
                     // above the column; at default sizes the screen's width, as before
                     let frame = AimFrame.size(screenWidth: Double(geometry.size.width),
                                               captureButtonTop: Double(geometry.size.height) - (Arrive.referenceHeight - 706 - 64) - 64,
-                                              columnRoom: dynamicTypeSize.isAccessibilitySize ? columnRoom : nil)
+                                              columnRoom: dynamicTypeSize.isAccessibilitySize ? (columnRoom ?? 0) : nil)
                     let width = frame.width
+                    // aim-first-frame-one (AUDIT-D's point on the wait): until that room is measured the preview, its rings,
+                    // tag and column are not drawn, so the first frame never shows the preview at a size it then leaves
+                    let measuring = dynamicTypeSize.isAccessibilitySize && columnRoom == nil
                     if dynamicTypeSize.isAccessibilitySize {
                         AimLinesColumn(line: AimFrame.mostLine, coach: AimFrame.mostCoach, hidden: 0, reduceMotion: true)
                             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
@@ -260,7 +264,7 @@ struct AimScreen: View {
                     CameraPreview(session: model.camera.session)
                         .frame(width: width, height: width * 4 / 3).clipped()
                         .atTop(Arrive.photoTop)
-                        .opacity(AimExit.opacity(.rest, hidden: hidden))
+                        .opacity(measuring ? 0 : AimExit.opacity(.rest, hidden: hidden))
                     // mobile-5: the overlay over the preview, the "Predicted" tag at top centre and the source line under it,
                     // redrawn with every frame while the laptop's marks are there
                     TimelineView(.animation) { _ in
@@ -324,6 +328,7 @@ struct AimScreen: View {
                                 .opacity(AimExit.opacity(.rest, hidden: hidden))
                             }
                         }
+                        .opacity(measuring ? 0 : 1)
                     }
                     // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's
                     CaptureButton(action: model.shoot).atBottom(Arrive.referenceHeight - 706 - 64)

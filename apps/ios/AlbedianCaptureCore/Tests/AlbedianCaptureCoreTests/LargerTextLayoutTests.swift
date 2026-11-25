@@ -148,8 +148,15 @@ final class LargerTextLayoutTests: XCTestCase {
     /// column can show, held at the first accessibility size as the column is, hidden, never from the lines shown.
     func testAimSizesItsFrameOnceFromTheMostTheColumnCanShow() throws {
         let aim = compact(try body(of: "struct AimScreen: View", in: try code("Screens/CompanionScreens.swift").code))
-        XCTAssertTrue(aim.contains("@StateprivatevarcolumnRoom=0.0"))
-        XCTAssertTrue(aim.contains("letframe=AimFrame.size(screenWidth:Double(geometry.size.width),captureButtonTop:Double(geometry.size.height)-(Arrive.referenceHeight-706-64)-64,columnRoom:dynamicTypeSize.isAccessibilitySize?columnRoom:nil)"))
+        XCTAssertTrue(aim.contains("@StateprivatevarcolumnRoom:Double?"), "no room until it is measured")
+        XCTAssertTrue(aim.contains("letframe=AimFrame.size(screenWidth:Double(geometry.size.width),captureButtonTop:Double(geometry.size.height)-(Arrive.referenceHeight-706-64)-64,columnRoom:dynamicTypeSize.isAccessibilitySize?(columnRoom??0):nil)"))
+        // aim-first-frame-one (AUDIT-D's point on the wait, the lead's yes): the preview, its rings, tag and column are
+        // drawn only once the room is measured, so the first frame at an accessibility size never shows the preview at
+        // a size it then leaves
+        XCTAssertTrue(aim.contains("letmeasuring=dynamicTypeSize.isAccessibilitySize&&columnRoom==nil"))
+        XCTAssertTrue(aim.contains("CameraPreview(session:model.camera.session).frame(width:width,height:width*4/3).clipped().atTop(Arrive.photoTop).opacity(measuring?0:AimExit.opacity(.rest,hidden:hidden))"),
+                      "the preview not drawn before the room is known")
+        XCTAssertEqual(aim.components(separatedBy: ".opacity(measuring?0:1)").count - 1, 1, "the overlay, its tag and the column not drawn before")
         XCTAssertTrue(aim.contains("letwidth=frame.width"))
         XCTAssertTrue(aim.contains("CameraPreview(session:model.camera.session).frame(width:width,height:width*4/3).clipped().atTop(Arrive.photoTop)"),
                       "the preview whole in the frame, centred across")
