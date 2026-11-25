@@ -9,7 +9,7 @@ import { placeFinding } from './flightFrame.js';
  * - the key is the brightest real source where the camera is, by the flight's own magnitude rule (a catalog magnitude
  *   moved by the inverse square law to the camera, flightStarShader.ts:50), over the candidates the flight gives and the
  *   Sun; it shines from that source's true direction, in its catalog tint (catalogStarTint) made linear;
- * - the only fill is the sky's own light: the catalog's summed starlight over the key's (SKY_INTEGRATED_MAG);
+ * - the fill is the sky's own light, held since craft-light-two at CRAFT_KEY_TO_FILL to one (craftLighting, below);
  * - the exposure is metered as a camera meters, on the side of the craft the camera sees, at the photographic middle
  *   grey, and nothing holds it down: beside a very bright star the star-lit rim may reach white, as a backlit subject's
  *   rim does in any photograph, and the tone map's own shoulder takes it (the lead dropped the cap at 16:08, since
@@ -40,13 +40,10 @@ export interface KeyLight {
 
 /** The Sun's absolute magnitude in Johnson V, Vega system: Willmer (2018), ApJS 236, 47 (arXiv 1804.07788), abstract. */
 export const SUN_ABSOLUTE_V_MAG = 4.81;
-/**
- * The served catalog's summed starlight to G 12 seen from Earth, as one magnitude [tested: .lanetools/sky_flux.mjs in the
- * LOOK lane, 3,087,892 stars]. A lower bound for the whole sky: fainter stars and unresolved light add more.
- */
-export const SKY_INTEGRATED_MAG = -6.39;
 /** The photographic middle grey a camera meters to (the 18 percent grey card). */
 export const MIDDLE_GREY = 0.18;
+/** The grey card's reflectance: since craft-light-two the meter is incident, placing this card, not a white surface, at middle grey. */
+export const GREY_CARD_ALBEDO = 0.18;
 /** three.js r187's ACES tone map multiplies colour by exposure over this before its curve (tonemapping_pars_fragment). */
 export const ACES_INPUT_SCALE = 0.6;
 
@@ -88,19 +85,16 @@ export function keyLight(cameraPc: Vec3, craftPc: Vec3, candidates: readonly Lig
   return best;
 }
 
-/** The sky's own light over the key's, both at the camera: the only fill. */
-export function skyFillRatio(keyMagnitude: number, skyMagnitude: number = SKY_INTEGRATED_MAG): number {
-  return 10 ** (-0.4 * (skyMagnitude - keyMagnitude));
-}
-
 /**
  * three.js toneMappingExposure for ACES, metered on the side the camera sees: its irradiance is the key's share on that
  * side (0 when the star is behind the craft) plus a quarter of the sky's light (a hemisphere's share of the whole sky),
- * and a white surface there lands at `meter`. No cap: a backlit rim may reach white.
+ * and a grey card there lands at `meter` (incident metering, DECIDED-BY-LEAD in craft-light-two: craft-light-one put a
+ * white surface there, as a reflected meter misreads a white subject, and left a white suit grey). No cap: a backlit rim
+ * may reach white.
  */
 export function meteredExposure({ keyOnSeenSide, fillRatio, meter = MIDDLE_GREY }: { keyOnSeenSide: number; fillRatio: number; meter?: number }): number {
   const seen = Math.max(0, keyOnSeenSide) + fillRatio / 4;
-  return (meter * ACES_INPUT_SCALE * Math.PI) / seen;
+  return (meter * ACES_INPUT_SCALE * Math.PI) / (GREY_CARD_ALBEDO * seen);
 }
 
 /** The star flown to as a key candidate: its place, catalog magnitude and colour; none without a place or magnitude. */
@@ -166,4 +160,91 @@ export function skyIntegralOfPixels(px: ArrayLike<number>, width: number, height
     }
   }
   return integral;
+}
+
+/** The rim's source: where the craft's sky is brightest, as a direction in ICRS, and the sky's colour there (linear). */
+export interface SkyRim {
+  readonly direction: Vec3;
+  readonly tint: Vec3;
+}
+
+/**
+ * craft-light-two (DECIDED-BY-LEAD: every light keeps a source the scene has): where the craft's sky is brightest, for
+ * the rim. The light-weighted mean direction of the sky's brightest pixels, the top `share` of the sphere by solid
+ * angle, in an equirectangular RGBA picture of the panorama's plate carree (row 0 at the north, u = 0.5 - lon / 2 pi),
+ * turned into ICRS through the registration (its offset table left out: it does not move a light); their mean colour in
+ * linear light, its largest channel 1. None for a sky with no light.
+ */
+export function brightestSkyDirection(px: ArrayLike<number>, width: number, height: number, registration: PanoramaRegistration, share = 0.01): SkyRim | null {
+  const n = width * height;
+  const lum = new Float64Array(n);
+  const solid = new Float64Array(height);
+  for (let y = 0; y < height; y++) solid[y] = Math.cos(Math.PI / 2 - ((y + 0.5) / height) * Math.PI) * (Math.PI / height) * ((2 * Math.PI) / width);
+  for (let i = 0; i < n; i++) lum[i] = 0.2126 * linearOfCode(px[4 * i]!) + 0.7152 * linearOfCode(px[4 * i + 1]!) + 0.0722 * linearOfCode(px[4 * i + 2]!);
+  const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => lum[b]! - lum[a]!);
+  const wanted = share * 4 * Math.PI;
+  let taken = 0;
+  const sum: [number, number, number] = [0, 0, 0];
+  const rgb: [number, number, number] = [0, 0, 0];
+  for (const i of order) {
+    if (taken >= wanted || !(lum[i]! > 0)) break;
+    const x = i % width;
+    const y = (i - x) / width;
+    const dO = solid[y]!;
+    taken += dO;
+    const lat = Math.PI / 2 - ((y + 0.5) / height) * Math.PI;
+    const lon = (0.5 - (x + 0.5) / width) * 2 * Math.PI;
+    const w = lum[i]! * dO;
+    sum[0] += w * Math.cos(lat) * Math.cos(lon);
+    sum[1] += w * Math.cos(lat) * Math.sin(lon);
+    sum[2] += w * Math.sin(lat);
+    rgb[0] += linearOfCode(px[4 * i]!) * dO;
+    rgb[1] += linearOfCode(px[4 * i + 1]!) * dO;
+    rgb[2] += linearOfCode(px[4 * i + 2]!) * dO;
+  }
+  const len = Math.hypot(sum[0], sum[1], sum[2]);
+  const top = Math.max(rgb[0], rgb[1], rgb[2]);
+  if (!(len > 0) || !(top > 0)) return null;
+  // The panorama's plate frame back to ICRS: the transpose of icrsToPanoramaRows
+  const r = icrsToPanoramaRows(registration);
+  const p: Vec3 = [sum[0] / len, sum[1] / len, sum[2] / len];
+  const direction: Vec3 = [r[0] * p[0] + r[3] * p[1] + r[6] * p[2], r[1] * p[0] + r[4] * p[1] + r[7] * p[2], r[2] * p[0] + r[5] * p[1] + r[8] * p[2]];
+  return { direction, tint: [rgb[0] / top, rgb[1] / top, rgb[2] / top] };
+}
+
+/** craft-light-two (DECIDED-BY-LEAD on LOOK's pictures): the key to fill ratio the craft is lit at, whatever the star. */
+export const CRAFT_KEY_TO_FILL = 4;
+/** craft-light-two: the Milky Way's brightest sky as the craft's second light, at this share of the key. */
+export const CRAFT_GALAXY_TO_KEY = 0.5;
+
+/** The craft's sky as a light: its linear light summed over the sphere, and where it is brightest. */
+export interface CraftSkyLight {
+  readonly integral: number;
+  readonly galaxy: SkyRim | null;
+}
+
+/** One frame's light on the craft besides the key: the sky's fill, the exposure, and the second light. */
+export interface CraftLighting {
+  readonly environmentIntensity: number;
+  readonly exposure: number;
+  /** From the Milky Way's brightest sky, in its colour, at its share of the key; none without that sky. */
+  readonly galaxy: { readonly direction: Vec3; readonly tint: Vec3; readonly intensity: number } | null;
+}
+
+/**
+ * craft-light-two (DECIDED-BY-LEAD: every light keeps a source the scene has; their balance set for the figure to read,
+ * the first-time person's wow deciding): the star stays the key; the Milky Way's brightest sky is a second light at
+ * CRAFT_GALAXY_TO_KEY of it, wherever it lies; the rest of the sky fills at CRAFT_KEY_TO_FILL to one (a surface facing
+ * the sky takes a quarter of its whole light, so the whole sky is held at 4 / CRAFT_KEY_TO_FILL of the key) in place of
+ * its physical level; and the meter counts every light on the side the camera sees, so nothing blows to white.
+ */
+export function craftLighting({ craftFromCameraM, keyDirection, sky }: { craftFromCameraM: Vec3; keyDirection: Vec3; sky: CraftSkyLight | null }): CraftLighting {
+  const fill = 4 / CRAFT_KEY_TO_FILL;
+  const galaxy = sky?.galaxy ? { direction: sky.galaxy.direction, tint: sky.galaxy.tint, intensity: CRAFT_GALAXY_TO_KEY } : null;
+  const seen = seenSideKeyShare(craftFromCameraM, keyDirection) + (galaxy ? galaxy.intensity * seenSideKeyShare(craftFromCameraM, galaxy.direction) : 0);
+  return {
+    environmentIntensity: sky ? environmentIntensity(fill, sky.integral) : 0,
+    exposure: meteredExposure({ keyOnSeenSide: seen, fillRatio: fill }),
+    galaxy,
+  };
 }

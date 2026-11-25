@@ -8,7 +8,7 @@ import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene.js';
-import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, environmentIntensity, environmentRotationRows, keyLight, meteredExposure, seenSideKeyShare, skyFillRatio, skyIntegralOfPixels, type LightCandidate } from './craftLight.js';
+import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 
 /**
@@ -20,6 +20,8 @@ import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
  * star flown to, that star, in its catalog tint; near Earth, the Sun), its only fill the sky's own light (the starless
  * glow scaled to the catalog's summed starlight), tone mapped with ACES and exposed for the side the camera sees at
  * middle grey (craftLight.ts). Nothing lights it that is not there.
+ * craft-light-two (DECIDED-BY-LEAD on LOOK's pictures): the sky fills at four to one whatever the star, the Milky Way's
+ * brightest sky is a second light at half the key, and the meter counts every light (craftLighting).
  *
  * craft-cache-one (DECIDED-BY-LEAD 15:59): one renderer and one model loader for the whole flight, each parsed model kept
  * by its address so a switch back draws at once, the oldest beyond MODEL_CACHE_SIZE and every one on leaving disposed
@@ -143,10 +145,12 @@ interface CraftGpu {
   camera: THREE.Camera;
   holder: THREE.Group;
   key: THREE.DirectionalLight;
-  /** The sky the craft takes its fill from, loading once a flight: its linear light summed over the sphere, or none. */
-  sky: Promise<number | null>;
-  /** That sum once a craft is drawn with it; none until then (no fill). */
-  skyIntegral: number | null;
+  /** craft-light-two: the second light, from the Milky Way's brightest sky. */
+  galaxy: THREE.DirectionalLight;
+  /** The sky the craft takes its fill from, loading once a flight: its light summed over the sphere and where it is brightest, or none. */
+  sky: Promise<CraftSkyLight | null>;
+  /** That light once a craft is drawn with it; none until then (no fill, no second light). */
+  skyLight: CraftSkyLight | null;
   /** The model drawn now and the craft it is drawn as, none while the incoming one loads. */
   shown: Shown | null;
   /** The craft framing out after a switch, drawn into its own canvas until its frame-out ends. */
@@ -169,6 +173,8 @@ interface CraftSkySource {
   readonly copy: HTMLCanvasElement;
   readonly integral: number;
   readonly rotation: THREE.Matrix4;
+  /** craft-light-two: where the sky is brightest, the second light's source. */
+  readonly galaxy: SkyRim | null;
 }
 
 /** The decoded sky, once a page: each flight builds its own environment from it but loads and sums it once. */
@@ -208,10 +214,12 @@ async function decodeCraftSky(): Promise<CraftSkySource> {
   if (!ctx) throw new Error('craft sky');
   ctx.drawImage(source, 0, 0, copy.width, copy.height);
   if ('close' in source) source.close();
-  const integral = skyIntegralOfPixels(ctx.getImageData(0, 0, copy.width, copy.height).data, copy.width, copy.height);
+  const pixels = ctx.getImageData(0, 0, copy.width, copy.height).data;
+  const integral = skyIntegralOfPixels(pixels, copy.width, copy.height);
+  const galaxy = brightestSkyDirection(pixels, copy.width, copy.height, registration);
   const r = environmentRotationRows(registration);
   const rotation = new THREE.Matrix4().set(r[0], r[1], r[2], 0, r[3], r[4], r[5], 0, r[6], r[7], r[8], 0, 0, 0, 0, 1);
-  return { copy, integral, rotation };
+  return { copy, integral, rotation, galaxy };
 }
 
 /** The sky the craft takes its fill from: the starless glow, turned to where the registration puts it, as a PMREM. */
@@ -232,8 +240,8 @@ export function prepareCraftSky(): void {
   craftSkySourceOnce().catch(() => undefined);
 }
 
-async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, alive: () => boolean): Promise<number | null> {
-  const { copy, integral, rotation } = await craftSkySourceOnce();
+async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, alive: () => boolean): Promise<CraftSkyLight | null> {
+  const { copy, integral, rotation, galaxy } = await craftSkySourceOnce();
   // craft-compile-one: the environment is built on a frame of its own, not in the task that mounts the layer at the pick
   await nextFrame();
   if (!alive()) return null;
@@ -245,7 +253,7 @@ async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, a
   pmrem.dispose();
   tex.dispose();
   scene.environmentRotation.setFromRotationMatrix(rotation);
-  return integral;
+  return { integral, galaxy };
 }
 
 /**
@@ -290,10 +298,18 @@ function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates
   gpu.key.position.copy(c).addScaledVector(new THREE.Vector3(...toKey), 10 * shown.cached.radius + 1);
   gpu.key.target.position.copy(c);
   gpu.key.target.updateMatrixWorld();
-  // The fill: the sky's own light against the key's; the exposure: metered on the side the camera sees
-  const fill = skyFillRatio(key.magnitude);
-  gpu.scene.environmentIntensity = gpu.skyIntegral ? environmentIntensity(fill, gpu.skyIntegral) : 0;
-  gpu.renderer.toneMappingExposure = meteredExposure({ keyOnSeenSide: seenSideKeyShare([c.x, c.y, c.z], toKey), fillRatio: fill });
+  // craft-light-two: the sky's fill at four to one, the Milky Way's brightest sky as a second light, the meter counting both
+  const look = craftLighting({ craftFromCameraM: [c.x, c.y, c.z], keyDirection: toKey, sky: gpu.skyLight });
+  gpu.scene.environmentIntensity = look.environmentIntensity;
+  gpu.renderer.toneMappingExposure = look.exposure;
+  gpu.galaxy.intensity = look.galaxy ? look.galaxy.intensity : 0;
+  if (look.galaxy) {
+    const g = look.galaxy;
+    gpu.galaxy.color.setRGB(g.tint[0], g.tint[1], g.tint[2], THREE.LinearSRGBColorSpace);
+    gpu.galaxy.position.copy(c).addScaledVector(new THREE.Vector3(g.direction[0], g.direction[1], g.direction[2]), 10 * shown.cached.radius + 1);
+    gpu.galaxy.target.position.copy(c);
+    gpu.galaxy.target.updateMatrixWorld();
+  }
   gpu.renderer.render(gpu.scene, gpu.camera);
   return true;
 }
@@ -370,10 +386,12 @@ export const FlightCraftLayer: React.FC<{
     scene.add(holder);
     const key = new THREE.DirectionalLight(0xffffff, 1);
     scene.add(key, key.target);
+    const galaxy = new THREE.DirectionalLight(0xffffff, 0);
+    scene.add(galaxy, galaxy.target);
     // A sky that fails (or a renderer that is not three's) leaves the craft lit by its key alone
     let alive = true;
     const sky = renderer instanceof THREE.WebGLRenderer ? loadCraftSky(renderer, scene, () => alive).catch(() => null) : Promise.resolve(null);
-    gpu.current = { renderer, scene, camera: cam, holder, key, sky, skyIntegral: null, shown: null, leaving: null, ready: new WeakMap() };
+    gpu.current = { renderer, scene, camera: cam, holder, key, galaxy, sky, skyLight: null, shown: null, leaving: null, ready: new WeakMap() };
     const cache = models.current;
     return () => {
       alive = false;
@@ -443,11 +461,11 @@ export const FlightCraftLayer: React.FC<{
     // The craft is drawn once both its model and the flight's sky are in
     // craft-compile-one: shown only once its programs and textures are made, so the frame-in is painted from its start
     Promise.all([pending, g.sky])
-      .then(([cached, skyIntegral]) => readyOnGpu(g, cached.model).then(() => [cached, skyIntegral] as const))
+      .then(([cached, skyLight]) => readyOnGpu(g, cached.model).then(() => [cached, skyLight] as const))
       .then(
-      ([cached, skyIntegral]) => {
+      ([cached, skyLight]) => {
         if (!current || gpu.current !== g) return;
-        g.skyIntegral = skyIntegral;
+        g.skyLight = skyLight;
         g.shown = { cached, craft, url, frameRadius: craftFrameRadiusM(craft, cached.size, cached.radius) };
         const drawn = draw(g);
         if (drawn) setEntering((n) => n + 1);

@@ -8,14 +8,15 @@ import type { Vec3 } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { FlightCraftLayer, type CraftRenderer } from '../FlightCraftLayer.js';
-import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, keyLight, meteredExposure, seenSideKeyShare, skyFillRatio, type LightCandidate } from '../craftLight.js';
+import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, keyLight, type LightCandidate } from '../craftLight.js';
 import { CRAFTS } from '../crafts.js';
 import { flightCameraOf } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
 
 // craft-light-one on craft-cache-one and steer-frame-one: each frame the one renderer draws, at a star or while steering,
 // lights the craft by the brightest real source where the camera is, in its catalog tint, tone maps with ACES and
-// exposes for the side the camera sees (craftLight.ts); a renderer that is not three's has no sky, so no fill.
+// exposes for the side the camera sees (craftLight.ts); a renderer that is not three's has no sky, so no fill and, since
+// craft-light-two, no second light (the Milky Way's brightest sky), which stands beside the key at 0 until a sky comes.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -37,6 +38,8 @@ interface Drawn {
   exposure: number | undefined;
   toneMapping: THREE.ToneMapping | undefined;
   environment: number;
+  /** craft-light-two: the second light's intensity (the Milky Way's brightest sky). */
+  galaxy: number;
 }
 
 /** A renderer stand-in that records, at each render, the key light, the exposure, the tone mapping and the fill. */
@@ -50,7 +53,8 @@ function recordingRenderer() {
       clear: () => {},
       dispose: () => {},
       render: (scene: THREE.Scene) => {
-        const key = scene.children.find((c) => (c as THREE.DirectionalLight).isDirectionalLight) as THREE.DirectionalLight;
+        const lights = scene.children.filter((c) => (c as THREE.DirectionalLight).isDirectionalLight) as THREE.DirectionalLight[];
+        const key = lights[0]!;
         const d = key.position.clone().sub(key.target.position).normalize();
         drawn.push({
           color: [key.color.r, key.color.g, key.color.b],
@@ -59,6 +63,7 @@ function recordingRenderer() {
           exposure: r.toneMappingExposure,
           toneMapping: r.toneMapping,
           environment: scene.environmentIntensity,
+          galaxy: lights[1]?.intensity ?? Number.NaN,
         });
       },
     };
@@ -78,7 +83,9 @@ function expectLitBy(d: Drawn, cameraPc: Vec3, candidates: readonly LightCandida
   d.color.forEach((c, k) => expect(c).toBeCloseTo(key.tint[k]!, 6));
   d.toKey.forEach((c, k) => expect(c).toBeCloseTo(key.direction[k]!, 6));
   expect(d.toneMapping).toBe(THREE.ACESFilmicToneMapping);
-  expect(d.exposure).toBeCloseTo(meteredExposure({ keyOnSeenSide: seenSideKeyShare(d.craftAt, key.direction), fillRatio: skyFillRatio(key.magnitude) }), 9);
+  // craft-light-two: with no sky (a renderer that is not three's) the meter counts the key and the ruled fill, and the second light is out
+  expect(d.exposure).toBeCloseTo(craftLighting({ craftFromCameraM: d.craftAt, keyDirection: key.direction, sky: null }).exposure, 9);
+  expect(d.galaxy).toBe(0);
 }
 
 let container: HTMLDivElement;

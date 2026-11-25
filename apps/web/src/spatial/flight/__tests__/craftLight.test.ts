@@ -4,13 +4,16 @@ import {
   CRAFT_SKY_SIZE,
   skyIntegralOfPixels,
   ACES_INPUT_SCALE,
+  GREY_CARD_ALBEDO,
   MIDDLE_GREY,
-  SKY_INTEGRATED_MAG,
+  CRAFT_GALAXY_TO_KEY,
+  CRAFT_KEY_TO_FILL,
+  craftLighting,
+  seenSideKeyShare,
   SUN_ABSOLUTE_V_MAG,
   keyLight,
   magnitudeAt,
   meteredExposure,
-  skyFillRatio,
   sunMagnitudeAt,
   type LightCandidate,
 } from '../craftLight.js';
@@ -18,7 +21,8 @@ import {
 /**
  * craft-light-one, ruled by the lead at 15:34 on 24 Nov (rule A): a craft's key light is the brightest real source where
  * the camera is, from its true direction with its catalog tint; its only fill is the sky's own light, the catalog's
- * summed starlight; the exposure is metered on the side the camera sees at the photographic middle grey 0.18.
+ * summed starlight; the exposure is metered on the side the camera sees at the photographic middle grey 0.18, since
+ * craft-light-two incident: a grey card there, not a white surface, lands at middle grey.
  */
 const LY_PC = 0.30660139;
 const unit = (raDeg: number, decDeg: number): [number, number, number] => {
@@ -75,12 +79,37 @@ describe('the key: the brightest real source where the camera is', () => {
   });
 });
 
-describe('the fill: only the sky’s own light', () => {
-  it('is the catalog’s summed starlight over the key’s', () => {
-    expect(SKY_INTEGRATED_MAG).toBe(-6.39);
-    expect(skyFillRatio(-12.43)).toBeCloseTo(10 ** (-0.4 * (-6.39 + 12.43)), 12);
-    expect(1 / skyFillRatio(-12.43)).toBeCloseTo(261, 0);
-    expect(skyFillRatio(-9.27)).toBeCloseTo(0.0705, 3);
+// craft-light-two (DECIDED-BY-LEAD on LOOK's pictures): the sky fills at four to one whatever the star, the Milky
+// Way's brightest sky is a second light at half the key wherever it lies, and the meter counts every light
+describe('the ruled look', () => {
+  const sky = { integral: 2.5, galaxy: { direction: [0, 0, 1] as const, tint: [1, 0.86, 0.85] as const } };
+  const acesInput = (exposure: number, irradiance: number) => (exposure * irradiance) / Math.PI / ACES_INPUT_SCALE;
+
+  it('holds the sky at four to one against the key, whatever the star', () => {
+    expect(CRAFT_KEY_TO_FILL).toBe(4);
+    const look = craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky });
+    // A surface facing the sky takes a quarter of its whole light: the whole sky at 4 / 4 of the key, spread over the sky's own sum
+    expect(look.environmentIntensity).toBeCloseTo(1 / 2.5, 12);
+    expect(craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky: null }).environmentIntensity).toBe(0);
+  });
+
+  it('lights the craft from the Milky Way\'s brightest sky at half the key, in its colour', () => {
+    expect(CRAFT_GALAXY_TO_KEY).toBe(0.5);
+    const look = craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky });
+    expect(look.galaxy).toEqual({ direction: [0, 0, 1], tint: [1, 0.86, 0.85], intensity: 0.5 });
+    expect(craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky: { integral: 2.5, galaxy: null } }).galaxy).toBeNull();
+  });
+
+  it('meters every light on the side the camera sees, so that side lands at middle grey and nothing more', () => {
+    // The camera looks along +z at the craft; the second light comes from the camera's side, the key from behind the craft
+    const at: [number, number, number] = [0, 0, 10];
+    const fromCameraSide = { integral: 2.5, galaxy: { direction: [0, 0, -1] as const, tint: [1, 1, 1] as const } };
+    const look = craftLighting({ craftFromCameraM: at, keyDirection: [0, 0, 1], sky: fromCameraSide });
+    const seen = seenSideKeyShare(at, [0, 0, 1]) + 0.5 * seenSideKeyShare(at, [0, 0, -1]) + 1 / 4;
+    expect(seenSideKeyShare(at, [0, 0, 1])).toBe(0);
+    expect(GREY_CARD_ALBEDO * acesInput(look.exposure, seen)).toBeCloseTo(MIDDLE_GREY, 12);
+    // Counting the second light lowers the exposure against a meter that left it out
+    expect(look.exposure).toBeLessThan(meteredExposure({ keyOnSeenSide: 0, fillRatio: 1 }));
   });
 });
 
@@ -89,39 +118,42 @@ describe('the exposure: metered on the side the camera sees', () => {
   const acesInput = (exposure: number, irradiance: number) => (exposure * irradiance) / Math.PI / ACES_INPUT_SCALE;
 
   it('puts the seen side at middle grey when the star is behind the craft', () => {
-    const fill = skyFillRatio(-9.27);
+    const fill = 0.0705;
     const e = meteredExposure({ keyOnSeenSide: 0, fillRatio: fill });
     expect(MIDDLE_GREY).toBe(0.18);
-    expect(acesInput(e, fill / 4)).toBeCloseTo(0.18, 12);
+    expect(GREY_CARD_ALBEDO).toBe(0.18);
+    // Incident: a grey card lands at middle grey, so a white surface lands at one
+    expect(GREY_CARD_ALBEDO * acesInput(e, fill / 4)).toBeCloseTo(0.18, 12);
+    expect(acesInput(e, fill / 4)).toBeCloseTo(1, 12);
   });
 
   // three r187's ACES curve reaches code 254 of 255 for white at this input
   const CODE_254_INPUT = 16;
 
   it('lets the meter win beside Hadar, where the star-lit rim goes past white (ruled 16:08: the cap is dropped)', () => {
-    const fill = skyFillRatio(-12.43);
+    const fill = 1 / 261;
     const e = meteredExposure({ keyOnSeenSide: 0, fillRatio: fill });
-    expect(acesInput(e, fill / 4)).toBeCloseTo(0.18, 12);
+    expect(GREY_CARD_ALBEDO * acesInput(e, fill / 4)).toBeCloseTo(0.18, 12);
     expect(acesInput(e, 1)).toBeGreaterThan(CODE_254_INPUT);
   });
 
   it('meters at middle grey even when the star only grazes the side the camera sees: no cap holds the exposure down', () => {
-    const fill = skyFillRatio(-12.43);
+    const fill = 1 / 261;
     const e = meteredExposure({ keyOnSeenSide: 0.002, fillRatio: fill });
-    expect(acesInput(e, 0.002 + fill / 4)).toBeCloseTo(MIDDLE_GREY, 12);
+    expect(GREY_CARD_ALBEDO * acesInput(e, 0.002 + fill / 4)).toBeCloseTo(MIDDLE_GREY, 12);
     expect(acesInput(e, 1)).toBeGreaterThan(CODE_254_INPUT);
   });
 
   it('meters a seen side the star half lights at middle grey', () => {
-    const fill = skyFillRatio(-12.43);
+    const fill = 1 / 261;
     const e = meteredExposure({ keyOnSeenSide: 0.5, fillRatio: fill });
-    expect(acesInput(e, 0.5 + fill / 4)).toBeCloseTo(MIDDLE_GREY, 12);
+    expect(GREY_CARD_ALBEDO * acesInput(e, 0.5 + fill / 4)).toBeCloseTo(MIDDLE_GREY, 12);
   });
 
   it('meters a well lit seen side beside a fainter star at middle grey', () => {
-    const fill = skyFillRatio(-9.27);
+    const fill = 0.0705;
     const e = meteredExposure({ keyOnSeenSide: 0.01, fillRatio: fill });
-    expect(acesInput(e, 0.01 + fill / 4)).toBeCloseTo(0.18, 12);
+    expect(GREY_CARD_ALBEDO * acesInput(e, 0.01 + fill / 4)).toBeCloseTo(0.18, 12);
   });
 });
 
