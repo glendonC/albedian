@@ -1,5 +1,6 @@
 import { ANSWER_SENTENCE_MAX_UTF16, hasVerifiedWcs, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { worldToPixelWCS } from '@albedian/camera-rig';
+import { isPredictedSkyShown } from './predictedSky.js';
 
 /**
  * outside-frame-words-one (DECIDED-BY-LEAD 24 Nov 20:09, UIUX-readout-nodistance-READY.md, FIELD's walk: asked to select
@@ -48,6 +49,9 @@ function spokenName(finding: CelestialFinding): string {
  * as the position words are: the name, else "it". Null when the object is not known to lie beyond the frame.
  */
 export function beyondFrameSentence(session: ObservationSession, finding: CelestialFinding): string | null {
+  // refusal-on-predsky-two (AUDIT's FAIL of refusal-on-predsky-one): the predicted sky holds the whole sky, so while it
+  // shows nothing is beyond it, and the photo it would speak of is not on screen
+  if (isPredictedSkyShown(session)) return null;
   if (liesBeyondTheFrame(session, finding) !== true) return null;
   const kind = session.sourceAsset?.mediaKind === 'video' ? 'clip' : 'photo';
   const rest = `lies beyond this ${kind}'s edges, so it has no mark on it.`;

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IngestReceipt, ObservationSolution } from '@albedian/contracts';
+import type { IngestReceipt, ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { HOME_SCREEN } from '../components/__tests__/homeEntry.js';
 import { FLIGHT_MS } from '../hooks/useCameraFlightAnimation.js';
 
@@ -477,6 +477,26 @@ describe('asking about the photo on the laptop reveal', () => {
       await waitUntil(() => expect(q(`${onSky} .reveal-answer__s`)!.textContent).toBe("Nothing in this photo's data answers that."));
       expect(q(`${onSky} .reveal-answer__q`)!.textContent).toBe('Is that a plane?');
       expect(asked.map((a) => a.question)).toEqual(['Is that a plane?']);
+      // refusal-on-predsky-two (UIUX-predsky-READY.md's addition for the lead's ask stamped 02:45): an answer given on the
+      // predicted sky belongs to that sky and leaves with it; the photo comes back with none, and none when the sky opens again
+      const backBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Back to Moment')!;
+      await act(async () => backBtn.click());
+      await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
+      await settle();
+      expect(q(ANSWER)).toBeNull();
+      const again = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Show predicted sky')!;
+      await act(async () => again.click());
+      await waitUntil(() => expect(q('[data-testid="predicted-sky"]')).not.toBeNull());
+      await settle();
+      expect(q(ANSWER)).toBeNull();
+      // So with a refusal: given on the sky, it leaves with the sky
+      await typeAndSend('Take me to Zorblax');
+      await waitUntil(() => expect(q(onSky)).not.toBeNull());
+      const backAgain = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Back to Moment')!;
+      await act(async () => backAgain.click());
+      await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
+      await settle();
+      expect(q(ANSWER)).toBeNull();
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }
@@ -502,6 +522,67 @@ describe('asking about the photo on the laptop reveal', () => {
     await settle();
     expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
     expect(q(ANSWER)).toBeNull();
+  });
+
+  // refusal-on-predsky-two (AUDIT's FAIL of refusal-on-predsky-one; the lead's line stamped 01:59): the predicted sky holds
+  // the whole sky, so nothing is beyond it: a voice select there of an object beyond the photo's frame opens its card, as
+  // on main before answers showed on the sky, with no beyond-frame sentence in the card's place
+  it('opens the card of an object beyond the photo on the predicted sky, and says nothing of the photo\'s edges there', async () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const full = { ...samples['pose_moon_level_head']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    const { liesBeyondTheFrame } = await import('../reveal/beyondFrame.js');
+    const probe = { sourceAsset: receipt.sourceAsset, observationSolution: full } as unknown as ObservationSession;
+    const beyond = full.findings.filter((f) => liesBeyondTheFrame(probe, f) === true);
+    expect(beyond.map((f) => f.title.split(' (')[0])).toEqual(['Uranus', 'Saturn']);
+    const solution = { ...full, findings: beyond } as ObservationSolution;
+    try {
+      await openAppAt(`/?upload=${sha256}`, { solution: () => json(solution) });
+      await waitUntil(() => expect(q('[data-testid="reveal-status"]')).not.toBeNull());
+      const showSkyBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Show predicted sky')!;
+      await act(async () => showSkyBtn.click());
+      await waitUntil(() => expect(q('[data-testid="predicted-sky"]')).not.toBeNull());
+      for (const name of ['Uranus', 'Saturn']) {
+        await typeAndSend(`Select ${name}`);
+        await settle();
+        await settle();
+        expect(q(ANSWER), name).toBeNull();
+        expect(q('[data-testid="predicted-sky"] .reveal-card')!.getAttribute('aria-label')!.startsWith(name), name).toBe(true);
+      }
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
+  // refusal-on-predsky-two: only what was given on the sky leaves with it; the photo's own answer is the photo's, as on
+  // main, so it is there again when the photo comes back from the sky
+  it("keeps the photo's own answer for the photo across a visit to the predicted sky", async () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const noMatch = { ...samples['horizon_predicted_only']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    try {
+      await openAppAt(`/?upload=${sha256}`, { solution: () => json(noMatch) });
+      await waitUntil(() => expect(q('[data-testid="reveal-status"]')).not.toBeNull());
+      await typeAndSend('Take me to Zorblax');
+      await waitUntil(() => expect(q(`[data-testid="reveal-photo"] ${ANSWER}`)).not.toBeNull());
+      const said = q(`${ANSWER} .reveal-answer__s`)!.textContent;
+      const showSkyBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Show predicted sky')!;
+      await act(async () => showSkyBtn.click());
+      await waitUntil(() => expect(q('[data-testid="predicted-sky"]')).not.toBeNull());
+      const backBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Back to Moment')!;
+      await act(async () => backBtn.click());
+      await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
+      await settle();
+      expect(q(`[data-testid="reveal-photo"] ${ANSWER} .reveal-answer__s`)!.textContent).toBe(said);
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
   });
 
   it('opens the phone reveal with Ask out loud over a pose-estimated sky too (d16phone-2)', async () => {

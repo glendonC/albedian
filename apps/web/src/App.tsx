@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionContext,
   AlbedianAction,
@@ -159,6 +159,21 @@ export const App: React.FC = () => {
   // and the predicted sky, a view a person speaks to like the others (refusal-on-predsky-one, UIUX-predsky-READY.md's addition)
   const revealOn = (s: ObservationSession) =>
     phone ? isPhoneRevealShown(s) || isPredictedSkyShown(s) : isSourcePhotoShown(s) || isRealSkyShown(s) || isFlightShown(s) || isPredictedSkyShown(s);
+  // refusal-on-predsky-two (UIUX-predsky-READY.md's addition for the lead's ask stamped 02:45): an answer or refusal given
+  // on the predicted sky belongs to that sky (its lit star, leader and class words) and leaves with it: never shown over
+  // the photo, gone once the sky is left (before the photo's first frame is painted); an answer brought onto the sky from
+  // the photo stays the photo's
+  const skyShown = isPredictedSkyShown(session);
+  const [skyAnswer, setSkyAnswer] = useState<typeof answer>(null);
+  useEffect(() => {
+    if (answer !== null && skyShown) setSkyAnswer(answer);
+  }, [answer]);
+  useLayoutEffect(() => {
+    if (skyShown || skyAnswer === null) return;
+    // Whatever stands now was given on the sky, or by the command that left it
+    setAnswer(null);
+    setSkyAnswer(null);
+  }, [skyShown, skyAnswer]);
   // What Try again needs: the file and its browser URL, and the receipt once the file is stored
   const inFlightRef = useRef<{ file: File; url: string; receipt: IngestReceipt | null } | null>(null);
 
