@@ -251,8 +251,13 @@ final class LargerTextLayoutTests: XCTestCase {
         let file = try code("Screens/AfterSendScreens.swift").code
         let wait = compact(try body(of: "struct WaitingScreen: View", in: file))
         XCTAssertTrue(wait.contains("@Environment(\\.dynamicTypeSize)privatevardynamicTypeSize"))
-        XCTAssertTrue(wait.contains("@StateprivatevarcolumnRoom=0.0"))
-        XCTAssertTrue(wait.contains("letframe=WaitFrame.size(screenWidth:Double(geometry.size.width),screenHeight:Double(geometry.size.height),columnRoom:dynamicTypeSize.isAccessibilitySize?columnRoom:nil)letwidth=frame.width"))
+        XCTAssertTrue(wait.contains("@StateprivatevarcolumnRoom:Double?"), "no room until it is measured")
+        XCTAssertTrue(wait.contains("letframe=WaitFrame.size(screenWidth:Double(geometry.size.width),screenHeight:Double(geometry.size.height),columnRoom:dynamicTypeSize.isAccessibilitySize?(columnRoom??0):nil)letwidth=frame.width"))
+        // AUDIT-D on largertext-wait-m: the photo, its rings and the row are drawn only once the room is measured, so the
+        // first frame at an accessibility size never shows the photo at a size it then leaves
+        XCTAssertTrue(wait.contains("letmeasuring=dynamicTypeSize.isAccessibilitySize&&columnRoom==nil"))
+        XCTAssertTrue(wait.contains("ShotPhoto(shot:model.shot,width:width).atTop(Arrive.photoTop).opacity(measuring?0:1)"))
+        XCTAssertEqual(wait.components(separatedBy: ".opacity(measuring?0:1)").count - 1, 5, "the photo, both ring layers and both rows")
         XCTAssertTrue(wait.contains("ifdynamicTypeSize.isAccessibilitySize{VStack(alignment:.leading,spacing:14){StepRow(name:WaitFrame.mostName,count:WaitFrame.mostCount,fraction:nil)EarlySource(sentence:WaitFrame.mostSentence)}.hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}}"),
                       "the room measured from the most the column can show, never shown")
         XCTAssertTrue(wait.contains("ShotPhoto(shot:model.shot,width:width).atTop(Arrive.photoTop)"), "the photo whole in the frame, centred across")

@@ -18,8 +18,9 @@ struct WaitingScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// largertext-wait-m: the room the row and its line need at most at accessibility sizes, measured once from the most
-    /// they can show (`WaitFrame.mostName`, `.mostCount`, `.mostSentence`), so the photo's frame never moves with them
-    @State private var columnRoom = 0.0
+    /// they can show (`WaitFrame.mostName`, `.mostCount`, `.mostSentence`), so the photo's frame never moves with them;
+    /// nil until measured
+    @State private var columnRoom: Double?
 
     var body: some View {
         GeometryReader { geometry in
@@ -27,8 +28,11 @@ struct WaitingScreen: View {
             // sizes the photo and its rings whole in a smaller 3:4 frame, centred across, as tall as what is left above the
             // row and its line; at default sizes the screen's width, as before
             let frame = WaitFrame.size(screenWidth: Double(geometry.size.width), screenHeight: Double(geometry.size.height),
-                                       columnRoom: dynamicTypeSize.isAccessibilitySize ? columnRoom : nil)
+                                       columnRoom: dynamicTypeSize.isAccessibilitySize ? (columnRoom ?? 0) : nil)
             let width = frame.width
+            // AUDIT-D on largertext-wait-m: until that room is measured the photo, its rings and the row are not drawn, so
+            // the first frame never shows the photo at a size it then leaves
+            let measuring = dynamicTypeSize.isAccessibilitySize && columnRoom == nil
             // D31: the early rings that fall inside the photo: the laptop's early sky when its job serves one (lockon-m5),
             // else the phone's own projection of its record; the source sentence stands only beside at least one
             let early = earlyPlaced(width: width, height: width * 4 / 3)
@@ -50,7 +54,7 @@ struct WaitingScreen: View {
                     .accessibilityHidden(true)
                     .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { columnRoom = $0 }
                 }
-                ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop).opacity(measuring ? 0 : 1)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
                 if earlyDrawn {
                     if let pass = model.lockOnPass {
@@ -59,10 +63,12 @@ struct WaitingScreen: View {
                                                                   widthPt: width, heightPt: width * 4 / 3),
                                     settled: model.lockOnSettled, width: width, height: width * 4 / 3)
                             .atTop(Arrive.photoTop)
+                            .opacity(measuring ? 0 : 1)
                     } else {
                         EarlyMarksLayer(placed: early, source: model.laptopEarly == nil ? "phone" : "laptop",
                                         width: width, height: width * 4 / 3)
                             .atTop(Arrive.photoTop)
+                            .opacity(measuring ? 0 : 1)
                     }
                 }
                 IconButton(icon: .close, label: "Close", action: model.close)
@@ -79,12 +85,14 @@ struct WaitingScreen: View {
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
+                    .opacity(measuring ? 0 : 1)
                 } else if let queued = model.queuedRow {
                     VStack(alignment: .leading, spacing: 14) {
                         StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
                         EarlySource(sentence: sentence)
                     }
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
+                    .opacity(measuring ? 0 : 1)
                 }
             }
             .onChange(of: earlyDrawn && model.laptopEarly == nil, initial: true) { _, phoneDrawn in
