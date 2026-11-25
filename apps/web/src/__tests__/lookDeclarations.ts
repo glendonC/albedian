@@ -198,6 +198,8 @@ export const LOOK_DECLARATIONS: ReadonlyArray<LookDeclaration> = [
   ['look.css', '.look-views__item', 'border', '1px solid var(--look-line)'],
   ['look.css', '.look-views__item', 'background', 'transparent'],
   ['look.css', '.look-views__item', 'color', 'var(--look-ink)'],
+  // views-pill-instant-one (ruled 21:18 on 24 Nov): the pill changes at once, the press's own motion kept
+  ['look.css', '.look-views__item', 'transition', 'transform var(--look-dur-press) var(--look-ease-standard)'],
   ['look.css', '.look-views__item + .look-views__item', 'margin-left', '-1px'],
   ['look.css', '.look-views__item:hover:not(:disabled):not(.is-current)', 'background', 'var(--look-wash)'],
   ['look.css', '.look-views__item.is-current', 'position', 'relative'],

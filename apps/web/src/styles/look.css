@@ -189,11 +189,15 @@
   display: inline-flex;
 }
 
+/* views-pill-instant-one (gap ten, DECIDED-BY-LEAD 21:18 on 24 Nov, on MOTION's four variants): the views pill changes
+   at once, its words and fill together in one frame, the press's own motion kept; an exception to the look's colour
+   duration, since every cross-fade measured left the pill unreadable for some frames */
 .look-views__item {
   padding: 0 20px;
   border: 1px solid var(--look-line);
   background: transparent;
   color: var(--look-ink);
+  transition: transform var(--look-dur-press) var(--look-ease-standard);
 }
 
 .look-views__item + .look-views__item {
