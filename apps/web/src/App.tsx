@@ -42,6 +42,7 @@ import { usePhoneLayout } from './reveal/usePhoneLayout.js';
 import { isSourcePhotoShown } from './components/sourcePhotoRect.js';
 import { isPhoneRevealShown } from './reveal/phoneSlot.js';
 import { beyondFrameSentence } from './reveal/beyondFrame.js';
+import { isPredictedSkyShown } from './reveal/predictedSky.js';
 import { isRealSkyShown } from './reveal/RealSkyLayer.js';
 import { isFlightShown } from './reveal/flightView.js';
 import { askVoiceAnswer, isQuestion } from './services/voiceAnswer.js';
@@ -155,7 +156,9 @@ export const App: React.FC = () => {
   }, []);
   // Where answers show: the laptop reveal, over the photo or over Real sky in the photo's frame or there; the phone's
   // reveal under its photo
-  const revealOn = (s: ObservationSession) => (phone ? isPhoneRevealShown(s) : isSourcePhotoShown(s) || isRealSkyShown(s) || isFlightShown(s));
+  // and the predicted sky, a view a person speaks to like the others (refusal-on-predsky-one, UIUX-predsky-READY.md's addition)
+  const revealOn = (s: ObservationSession) =>
+    phone ? isPhoneRevealShown(s) || isPredictedSkyShown(s) : isSourcePhotoShown(s) || isRealSkyShown(s) || isFlightShown(s) || isPredictedSkyShown(s);
   // What Try again needs: the file and its browser URL, and the receipt once the file is stored
   const inFlightRef = useRef<{ file: File; url: string; receipt: IngestReceipt | null } | null>(null);
 

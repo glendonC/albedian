@@ -57,7 +57,7 @@ export const FADE_REACH: ReadonlyArray<{ place: string; faded: string; reach: { 
   { place: '.predsky:not(.is-phone) .predsky-status', faded: '.predsky:not(.is-phone) .predsky-status', reach: { left: 36, top: 44, right: 44, bottom: 44 } },
   { place: '.reveal-nav .sound-control', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
   // The open answer carries the card's fade, and the views row the row's own (keepclear-answer-views-one)
-  { place: '.reveal-answer:not(.is-phone)', faded: '.reveal-answer:not(.is-phone)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },
+  { place: '.reveal-answer:not(.is-phone):not(.is-sky)', faded: '.reveal-answer:not(.is-phone):not(.is-sky)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },
   { place: '.reveal-nav .look-views', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
   // column-foot-fade-one (21:49): Real sky's column, the ask bar and the laptop's legend carry the same fade now
   { place: "[data-testid='reveal-status'][data-moment='real-sky']", faded: ".reveal-status[data-moment='real-sky']:not(.is-phone)", reach: { left: 36, top: 44, right: 44, bottom: 44 } },

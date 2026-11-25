@@ -448,9 +448,11 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
-  it('keeps a refusal given where the reveal is not shown from showing when the reveal comes back', async () => {
-    // Over D33's predicted sky (same photoKey, revealOn false) and over ?view=observatory before an upload opens
-    // (VoiceCommandHud, revealShown false), a refused command is not stored to appear when the reveal comes back
+  it('answers and refuses on the predicted sky in its card\'s place, and keeps a refusal given before an upload opens from showing later', async () => {
+    // refusal-on-predsky-one (UIUX-predsky-READY.md's addition for the lead's ask stamped 22:56): D33's predicted sky is
+    // a view a person speaks to like the others, so a question there goes to the answer route and its answer, or a
+    // refused command's sentence, stands in the card's place on the sky's card surface. Over ?view=observatory before an
+    // upload opens (VoiceCommandHud, revealShown false) a refused command is still not stored to appear later
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
       matches: query === '(prefers-reduced-motion: reduce)',
       addEventListener: () => {},
@@ -464,13 +466,17 @@ describe('asking about the photo on the laptop reveal', () => {
       await act(async () => showSkyBtn.click());
       await waitUntil(() => expect(q('[data-testid="predicted-sky"]')).not.toBeNull());
       expect(q('[data-testid="reveal-photo"]')).toBeNull();
+      const onSky = '[data-testid="predicted-sky"] > [data-testid="reveal-answer"].is-sky';
       await typeAndSend('Take me to Zorblax');
-      await settle();
-      const backBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Back to Moment')!;
-      await act(async () => backBtn.click());
-      await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
-      await settle();
-      expect(q(ANSWER)).toBeNull();
+      await waitUntil(() => expect(q(onSky)).not.toBeNull());
+      expect(q(`${onSky} .reveal-answer__q`)!.textContent).toBe('Take me to Zorblax');
+      expect(q(`${onSky} .reveal-answer__s`)!.textContent).not.toBe('');
+      expect(asked).toEqual([]);
+      // A question goes to the answer route, whose answer takes the refusal's place
+      await typeAndSend('Is that a plane?');
+      await waitUntil(() => expect(q(`${onSky} .reveal-answer__s`)!.textContent).toBe("Nothing in this photo's data answers that."));
+      expect(q(`${onSky} .reveal-answer__q`)!.textContent).toBe('Is that a plane?');
+      expect(asked.map((a) => a.question)).toEqual(['Is that a plane?']);
     } finally {
       delete (window as unknown as Record<string, unknown>).matchMedia;
     }

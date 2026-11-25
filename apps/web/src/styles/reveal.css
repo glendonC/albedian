@@ -560,12 +560,12 @@
    edge closing it (the card stands 32 px from it); no box, no edge line, and no motion of its own: it comes and goes
    with the card. The phone's sheet and the card on the predicted sky have their own ground */
 .reveal-card:not(.is-phone):not(.is-sky),
-.reveal-answer:not(.is-phone) {
+.reveal-answer:not(.is-phone):not(.is-sky) {
   isolation: isolate;
 }
 
 .reveal-card:not(.is-phone):not(.is-sky)::before,
-.reveal-answer:not(.is-phone)::before {
+.reveal-answer:not(.is-phone):not(.is-sky)::before {
   content: '';
   position: absolute;
   left: -44px;
@@ -2567,10 +2567,41 @@
   backdrop-filter: blur(12px);
 }
 
+/* refusal-on-predsky-one (UIUX-predsky-READY.md, the addition for the lead's ask stamped 22:56): the answer, or a
+   refusal's sentence, in the card's place on the predicted sky (left 1088, top 118, width 320 at 1440: the reveal's
+   answer place) on the same card surface, since this sky has no dark column behind it; at phone width in the card
+   sheet's place, on the sheet's own ground. No D19 fade under either (those are the photo's) */
+.reveal-answer.is-sky:not(.is-phone) {
+  box-sizing: border-box;
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid var(--look-hair);
+  background: rgba(16, 16, 18, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* The phone answer's darkening is the photo's lower edge: none on the sheet's own ground */
+.predsky .reveal-answer.is-phone::before {
+  content: none;
+}
+
+.predsky .reveal-answer.is-phone {
+  left: 12px;
+  right: 12px;
+  top: 469px;
+  bottom: 30px;
+  overflow-y: auto;
+  padding: 22px 20px 0;
+  border-radius: 28px;
+  background: #111112;
+  border: 1px solid var(--look-hair);
+}
+
 /* predsky-card-motion-1 (DECIDED-BY-LEAD 24 Nov, D14, D33, UIUX-tagphone-READY.md item D): while the phone StarCard
    stands or leaves on the predicted sky, .predsky.is-phone stacks above .ask-bar and .predsky-status steps 16 px above
    the sheet (top 469 px) with D19's 44 px 82 percent black fade, keeping Simulated and ESO's line at full opacity */
-.predsky.is-phone:has(.reveal-card) {
+.predsky.is-phone:has(.reveal-card, .reveal-answer) {
   z-index: 31;
 }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
+import { answerFindings, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec, resolveMotionTokens } from '@albedian/design-system';
 import { EvidenceTag, IconButton, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
@@ -8,6 +8,7 @@ import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable } from './deepSky.js';
 import { phoneFacts, predictedSkyWords } from './predictedSky.js';
 import { StarCard } from './StarCard.js';
+import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { fadeOf } from './keepClear.js';
 import { predictedSkyMarks, skyLeaderPath, type Box } from './predictedSkyMarks.js';
 
@@ -52,7 +53,14 @@ export const PredictedSkyScreen: React.FC<{
   onCloseCard?: () => void;
   /** predsky-starless-one: whether the dome shows the starless glow (its line says so only then). */
   starless?: boolean;
-}> = ({ session, onHome, skyPose, phone = false, onSelect, onGoThere, onCloseCard, starless = false }) => {
+  /**
+   * The answer to the last question, or a command's refusal (refusal-on-predsky-one, UIUX-predsky-READY.md's addition for
+   * the lead's ask stamped 22:56): in the card's place on this sky's card surface, or in the card sheet's place at phone
+   * width; an open card gives its place to it, and the star it names keeps its lit mark and its leader line.
+   */
+  answer?: ShownAnswer | null;
+  onCloseAnswer?: () => void;
+}> = ({ session, onHome, skyPose, phone = false, onSelect, onGoThere, onCloseCard, starless = false, answer = null, onCloseAnswer }) => {
   const words = predictedSkyWords(session, starless);
   // The renderer's camera, followed frame by frame; a new pose only when it changed
   const [pose, setPose] = useState<CameraSkyPose | null>(null);
@@ -82,8 +90,13 @@ export const PredictedSkyScreen: React.FC<{
     if (picked) setHeldStar(picked);
   }, [picked]);
   const cardStar = picked ?? heldStar;
-  const card = useLeaving(picked !== null, cardLeaveMs);
-  const phoneAboveCard = phone && card.mounted;
+  // An open card gives its place to the answer, as on the reveal
+  const card = useLeaving(picked !== null && answer === null, cardLeaveMs);
+  // The star the answer names is lit as a picked star is, with its leader line to the answer; a refusal lights none
+  const litId = answer?.answer ? (answerFindings(answer.answer)[0] ?? null) : null;
+  const shownId = answer ? litId : (picked?.id ?? null);
+  // On the phone the status steps above the answer as above the card sheet, whose place it takes
+  const phoneAboveCard = phone && (card.mounted || answer !== null);
   const deepSky = useDeepSkyTable(session.observationSolution?.findings.some(isDeepSky) === true);
   // The open card's box (ruled 17:05): rings and names under it are left out, the picked star's own mark stays.
   // Read untransformed offset geometry first so phone sheet-in translateY at frame 0 still clears the settled 469..814 px card area.
@@ -99,16 +112,30 @@ export const PredictedSkyScreen: React.FC<{
           : null;
     setCardBox(box);
   }, [card.mounted, cardStar?.id, phone, size.widthPx, size.heightPx]);
+  // The answer's box: rings and names under it are left out while it stands, as under the card (ruled 17:05)
+  const [answerBox, setAnswerBox] = useState<Box | null>(null);
+  useLayoutEffect(() => {
+    const el = answer ? document.querySelector<HTMLElement>('.predsky .reveal-answer') : null;
+    const r = el?.getBoundingClientRect();
+    setAnswerBox(
+      el && el.offsetWidth > 0 && el.offsetHeight > 0
+        ? { x0: el.offsetLeft, x1: el.offsetLeft + el.offsetWidth, y0: el.offsetTop, y1: el.offsetTop + el.offsetHeight }
+        : r && r.width > 0 && r.height > 0
+          ? { x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }
+          : null
+    );
+  }, [answer, phone, size.widthPx, size.heightPx]);
   // Names at 11 px on the phone, 13 on the laptop
   const fontPx = phone ? 11 : 13;
-  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, fontPx, [...clearOf(status.current), ...(cardBox ? [cardBox] : [])], picked?.id ?? null);
+  const clear = [...clearOf(status.current), ...(card.mounted && cardBox ? [cardBox] : []), ...(answer && answerBox ? [answerBox] : [])];
+  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, fontPx, clear, shownId);
   const facts = phone ? phoneFacts(words) : words.facts;
-  const pickedMark = picked && !phone ? (marks.find((m) => m.id === picked.id) ?? null) : null;
+  const pickedMark = shownId !== null && !phone ? (marks.find((m) => m.id === shownId) ?? null) : null;
   const leaderNow = pickedMark ? skyLeaderPath(pickedMark, size.widthPx, fontPx) : null;
   const [heldLeader, setHeldLeader] = useState<string | null>(leaderNow);
   useEffect(() => {
-    if (picked !== null) setHeldLeader(leaderNow);
-  }, [picked, leaderNow]);
+    if (shownId !== null) setHeldLeader(leaderNow);
+  }, [shownId, leaderNow]);
   const leaderD = leaderNow ?? heldLeader;
   const leader = useLeaving(leaderNow !== null, cardLeaveMs);
   return (
@@ -130,8 +157,8 @@ export const PredictedSkyScreen: React.FC<{
             key={`name:${mark.id}`}
             className={mark.nameOnLeft ? 'align-layer__name predsky-name is-left' : 'align-layer__name predsky-name'}
             // Heard as the reveal's marks are: the name, its evidence class and whether it is picked
-            aria-label={getMarkerVisualSpec({ evidenceClass: 'predicted', title: mark.name, isSelected: mark.id === picked?.id, isFocused: false, isHovered: false }).ariaDescription}
-            aria-pressed={mark.id === picked?.id}
+            aria-label={getMarkerVisualSpec({ evidenceClass: 'predicted', title: mark.name, isSelected: mark.id === shownId, isFocused: false, isHovered: false }).ariaDescription}
+            aria-pressed={mark.id === shownId}
             onClick={() => onSelect?.(mark.id)}
             style={mark.nameOnLeft ? { right: `${size.widthPx - (mark.xPx - mark.r - 4)}px`, top: `${mark.yPx}px` } : { left: `${mark.xPx + mark.r + 4}px`, top: `${mark.yPx}px` }}
           >
@@ -187,6 +214,7 @@ export const PredictedSkyScreen: React.FC<{
           inSky
         />
       )}
+      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} sky />}
     </div>
   );
 };

@@ -36,7 +36,9 @@ export const AnswerPanel: React.FC<{
   phone?: boolean;
   /** Its foot's distance from the screen's foot, where something it must not cover stands (UIUX-tagphone-READY.md item B). */
   footPx?: number | null;
-}> = ({ shown, solution, onClose, phone = false, footPx = null }) => {
+  /** On the predicted sky: on its card surface in the card's place, or in the card sheet's place at phone width (refusal-on-predsky-one). */
+  sky?: boolean;
+}> = ({ shown, solution, onClose, phone = false, footPx = null, sky = false }) => {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
@@ -51,7 +53,7 @@ export const AnswerPanel: React.FC<{
 
   const { heard, sentence, sub, answer } = shown;
   return (
-    <section className={phone ? 'reveal-answer is-phone' : 'reveal-answer'} data-testid="reveal-answer" aria-live="polite" style={footPx === null ? undefined : { bottom: `${footPx}px` }}>
+    <section className={`${phone ? 'reveal-answer is-phone' : 'reveal-answer'}${sky ? ' is-sky' : ''}`} data-testid="reveal-answer" aria-live="polite" style={footPx === null ? undefined : { bottom: `${footPx}px` }}>
       {heard !== '' && <p className="reveal-answer__q">{heard}</p>}
       <p className="reveal-answer__s">{sentence}</p>
       {sub !== undefined && <p className="reveal-answer__sub">{sub}</p>}

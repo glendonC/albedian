@@ -632,7 +632,7 @@ describe("the predicted sky's rules are the record's", () => {
   });
 
   it('stacks the phone predicted sky above AskBar while StarCard stands and steps .predsky-status 16 px above the sheet with D19 fade', () => {
-    expect(declarationsOf('.predsky.is-phone:has(.reveal-card)')).toEqual({ 'z-index': '31' });
+    expect(declarationsOf('.predsky.is-phone:has(.reveal-card, .reveal-answer)')).toEqual({ 'z-index': '31' });
     expect(declarationsOf('.predsky.is-phone:has(.reveal-card.is-leaving) ~ .ask-bar')).toEqual({ display: 'none' });
     expect(declarationsOf('.predsky.is-phone .predsky-status.is-above-card')).toEqual({
       bottom: 'min(391px, calc(100% - 102px))',
@@ -1011,5 +1011,118 @@ describe('predsky-card-motion-1: StarCard and leader leave timing, phone status 
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: prevW });
       Object.defineProperty(window, 'innerHeight', { configurable: true, value: prevH });
     }
+  });
+});
+
+// refusal-on-predsky-one (UIUX-predsky-READY.md, the addition for the lead's ask stamped 22:56): on the predicted sky a
+// question is answered there, as on every view; its answer, or a refusal's sentence, stands in the card's place on the
+// predicted sky's card surface (laptop) or in the card sheet's place (phone); an open card gives its place to it; the
+// star it names keeps its lit mark and its leader line; rings and names under its box are left out while it stands.
+describe('an answer and a refusal on the predicted sky stand in the card\'s place', () => {
+  const alphaSession = () => {
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const star = { ...template, id: 'finding-predicted-star-a', title: 'Alpha', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    return { ...base, observationSolution: { ...base.observationSolution!, findings: [star] } } as ObservationSession;
+  };
+  const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
+  const aboutAlpha = {
+    heard: 'How bright is Alpha?',
+    sentence: 'Predicted, not measured: Alpha shines at magnitude 0.5.',
+    answer: {
+      status: 'answered',
+      question: 'brightness',
+      observationSolutionId: 'sol',
+      sentence: 'Predicted, not measured: Alpha shines at magnitude 0.5.',
+      statements: [{ subject: { kind: 'finding', findingId: 'finding-predicted-star-a', evidenceClass: 'predicted' }, quantity: 'magnitude', value: { kind: 'number', amount: 0.5, unit: 'mag' }, evidenceClass: 'predicted', source: { kind: 'solution_field', path: ['findings', 0] } }],
+    },
+  } as never;
+  const refusal = { heard: 'Take me to Zorblax', sentence: "There's no Zorblax in this sky.", answer: null } as never;
+  const wait = () => act(async () => await new Promise((r) => setTimeout(r, 30)));
+
+  it("stands the answer in the card's place on the card surface, the card giving its place, the star it names lit with its leader", async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const session = alphaSession();
+    act(() => root.render(createElement(PredictedSkyScreen, { session: { ...session, selectedFindingId: 'finding-predicted-star-a' }, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop, answer: aboutAlpha, onCloseAnswer: noop } as never)));
+    await wait();
+    const shown = container.querySelector('.predsky > .reveal-answer')!;
+    expect(shown).not.toBeNull();
+    expect(shown.className).toBe('reveal-answer is-sky');
+    expect(shown.querySelector('.reveal-answer__q')!.textContent).toBe('How bright is Alpha?');
+    expect(shown.querySelector('.reveal-answer__s')!.textContent).toBe('Predicted, not measured: Alpha shines at magnitude 0.5.');
+    // The open card gives its place
+    expect(container.querySelector('.predsky .reveal-card')).toBeNull();
+    // The star it names keeps its lit mark and the leader line to the answer
+    expect(container.querySelector('.predsky svg.reveal-leader.is-predicted path')).not.toBeNull();
+    const alpha = [...container.querySelectorAll<HTMLButtonElement>('.predsky button.predsky-name')].find((b) => b.textContent === 'Alpha');
+    expect(alpha?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it("stands a refusal's sentence alone in the same place, with no star lit and no leader, even over an open card", async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    // The card was open on Alpha: the refusal takes its place and, as on the reveal, lights no star
+    act(() => root.render(createElement(PredictedSkyScreen, { session: { ...alphaSession(), selectedFindingId: 'finding-predicted-star-a' }, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop, answer: refusal, onCloseAnswer: noop } as never)));
+    await wait();
+    const shown = container.querySelector('.predsky > .reveal-answer.is-sky')!;
+    expect([...shown.querySelectorAll('p')].map((p) => p.textContent)).toEqual(['Take me to Zorblax', "There's no Zorblax in this sky."]);
+    expect(shown.querySelector('.reveal-answer__st')).toBeNull();
+    expect(container.querySelector('.predsky .reveal-card')).toBeNull();
+    expect(container.querySelector('.predsky svg.reveal-leader')).toBeNull();
+    const alpha = [...container.querySelectorAll<HTMLButtonElement>('.predsky button.predsky-name')].find((b) => b.textContent === 'Alpha');
+    expect(alpha?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it("leaves out the rings under the answer's box while it stands, the lit star's own mark kept", async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const session = alphaSession();
+    const rings = () => container.querySelectorAll('.predsky [data-testid="predicted-sky-rings"] circle').length;
+    act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop } as never)));
+    await wait();
+    expect(rings()).toBe(1);
+    // The answer's box over the whole window
+    const full = () => ({ left: 0, top: 0, right: innerWidth, bottom: innerHeight, x: 0, y: 0, width: innerWidth, height: innerHeight, toJSON: () => ({}) }) as DOMRect;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.matches('.reveal-answer') ? full() : ({ left: 0, top: 0, right: 0, bottom: 0, x: 0, y: 0, width: 0, height: 0, toJSON: () => ({}) } as DOMRect);
+    });
+    try {
+      act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop, answer: refusal, onCloseAnswer: noop } as never)));
+      await wait();
+      expect(rings()).toBe(0);
+      act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop, answer: aboutAlpha, onCloseAnswer: noop } as never)));
+      await wait();
+      expect(rings()).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("stands the answer in the card sheet's place at phone width, the status stepping above it as above the card", async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    act(() => root.render(createElement(PredictedSkyScreen, { session: alphaSession(), onHome: noop, skyPose: () => pose, onSelect: noop, onCloseCard: noop, onGoThere: noop, phone: true, answer: refusal, onCloseAnswer: noop } as never)));
+    await wait();
+    expect(container.querySelector('.predsky.is-phone > .reveal-answer')!.className).toBe('reveal-answer is-phone is-sky');
+    expect(container.querySelector('.predsky-status')!.classList.contains('is-above-card')).toBe(true);
+  });
+
+  it("draws the answer on the predicted sky's card surface (ruled 17:05) and the phone's in the card sheet's place, with no D19 fade under either", () => {
+    const decls = (selector: string) => {
+      const found: Record<string, string> = {};
+      postcss.parse(css).walkRules((rule) => {
+        if (rule.parent?.type !== 'root' || !rule.selectors.map((s) => s.replace(/\s+/g, ' ')).includes(selector)) return;
+        rule.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
+      });
+      return found;
+    };
+    // The same surface as the card's on this sky
+    const surface = decls('.reveal-card.is-sky');
+    expect(decls('.reveal-answer.is-sky:not(.is-phone)')).toEqual(surface);
+    const sheet = decls('.reveal-card.is-phone');
+    expect(decls('.predsky .reveal-answer.is-phone')).toEqual({ left: sheet.left, right: sheet.right, top: sheet.top, bottom: sheet.bottom, 'overflow-y': 'auto', padding: sheet.padding, 'border-radius': sheet['border-radius'], background: sheet.background, border: sheet.border });
+    // No fade under it on the sky: the reveal's backing and the phone's darkening are the photo's
+    expect(Object.keys(decls('.reveal-answer:not(.is-phone):not(.is-sky)::before'))).toContain('background');
+    expect(decls('.reveal-answer:not(.is-phone)::before')).toEqual({});
+    expect(Object.keys(decls('.reveal-answer.is-phone::before'))).toContain('background');
+    expect(decls('.predsky .reveal-answer.is-phone::before')).toEqual({ content: 'none' });
+    expect(decls('.predsky.is-phone:has(.reveal-card, .reveal-answer)')).toEqual({ 'z-index': '31' });
   });
 });

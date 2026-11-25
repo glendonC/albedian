@@ -140,7 +140,7 @@ describe('the fade behind the open card and the answer on the laptop', () => {
   };
 
   it("stands D19's values behind them: 82 percent black, clearing over 44 px to the left, top and bottom, closed at the window's right edge", () => {
-    const fade = rules()['.reveal-card:not(.is-phone):not(.is-sky)::before, .reveal-answer:not(.is-phone)::before'];
+    const fade = rules()['.reveal-card:not(.is-phone):not(.is-sky)::before, .reveal-answer:not(.is-phone):not(.is-sky)::before'];
     expect(fade).toEqual({
       content: "''",
       position: 'absolute',
@@ -160,7 +160,7 @@ describe('the fade behind the open card and the answer on the laptop', () => {
     expect(rules()['.reveal-card']!.right).toBe('32px');
     expect(rules()['.reveal-answer']!.right).toBe('32px');
     // Behind their words, inside their own stacking: no box and no edge line of its own
-    expect(rules()['.reveal-card:not(.is-phone):not(.is-sky), .reveal-answer:not(.is-phone)']).toEqual({ isolation: 'isolate' });
+    expect(rules()['.reveal-card:not(.is-phone):not(.is-sky), .reveal-answer:not(.is-phone):not(.is-sky)']).toEqual({ isolation: 'isolate' });
   });
 
   it('has no motion of its own: none in its own rule, only its block\'s entrance, and no transition', () => {

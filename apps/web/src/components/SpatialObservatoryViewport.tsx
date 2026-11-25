@@ -871,6 +871,8 @@ export const SpatialObservatoryViewport: React.FC<
                 if (title) onRunUtterance(`Take me to ${title}`, 'pointer');
               }}
               onCloseCard={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
+              answer={answer}
+              onCloseAnswer={onCloseAnswer}
             />}
           {!revealShown && !predictedSkyShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
             <CelestialMarkerOverlay
