@@ -410,20 +410,49 @@ struct ShotPhoto: View {
 struct AfterShotScreen: View {
     let model: CompanionModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Set once the screen is up, so Take again and Send word in 20 ms apart (MOTION-READY-iphone section 3)
     @State private var arrived = false
+    /// largertext-unreachable-m: the room the lines and the stacked buttons need at accessibility sizes, measured once
+    /// from them, hidden; nil until measured, and nothing of the column is drawn before
+    @State private var columnRoom: Double?
 
     var body: some View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
+            let stacked = model.unreachable && dynamicTypeSize.isAccessibilitySize
             ZStack {
-                ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                if stacked {
+                    // largertext-unreachable-m (UIUX-iphone-largertext-sweep-READY item 4, DECIDED-BY-LEAD 24 Nov 19:56):
+                    // one column: the photo whole and smaller, as tall as what is left above the lines and the stacked
+                    // buttons, never under 160 pt; past that the column scrolls; nothing wider than the screen
+                    let frame = UnreachableFrame.size(screenWidth: width, screenHeight: Double(geometry.size.height),
+                                                      columnRoom: columnRoom ?? 0)
+                    unreachableColumn
+                        .hidden()
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { columnRoom = $0 }
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ShotPhoto(shot: model.shot, width: frame.width)
+                            unreachableColumn.padding(.top, CGFloat(UnreachableFrame.gap))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, CGFloat(UnreachableFrame.top))
+                        .padding(.bottom, CGFloat(UnreachableFrame.foot))
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .opacity(columnRoom == nil ? 0 : 1)
+                    .transition(.words(reduceMotion: reduceMotion))
+                } else {
+                    ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                }
                 if arrived {
                     IconButton(icon: .again, label: "Take again", action: model.takeAgain)
                         .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                         .transition(.words(reduceMotion: reduceMotion))
                 }
-                if model.unreachable {
+                if model.unreachable && !stacked {
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
                             AlbedianIcon.unreachable.image(17).accessibilityHidden(true)
@@ -442,7 +471,7 @@ struct AfterShotScreen: View {
                     }
                     .atBottom(Arrive.unreachableButtonsBottomGap)
                     .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
-                } else if arrived {
+                } else if !model.unreachable && arrived {
                     MainButton(title: "Send", icon: .send, action: model.send).atBottom(Arrive.mainBottomGap)
                         .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
                 }
@@ -450,6 +479,30 @@ struct AfterShotScreen: View {
         }
         .ignoresSafeArea()
         .onAppear { arrived = true }
+    }
+
+    /// The lines and the stacked buttons at accessibility sizes: both lines wrapping, centred, the icon at the first
+    /// line (item 5's rule); Try again with its circle, then Change address 12 pt under it, each centred, 20 pt under
+    /// the lines; within the screen's 24 pt margins.
+    private var unreachableColumn: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    AlbedianIcon.unreachable.image(17).accessibilityHidden(true)
+                    Text("Can't reach the laptop").font(AlbedianFont.regular(17)).tracking(-0.01 * 17)
+                }
+                .foregroundStyle(Color(ControlStyle.ink))
+                Text("Your photo is kept on this phone.").font(AlbedianFont.regular(14)).tracking(-0.005 * 14)
+                    .foregroundStyle(Color(ControlStyle.inkSecondary))
+            }
+            .multilineTextAlignment(.center)
+            VStack(spacing: CGFloat(UnreachableFrame.betweenButtons)) {
+                MainButton(title: "Try again", icon: .send, action: model.send)
+                OutlinePill(title: "Change address", action: model.changeAddress)
+            }
+            .padding(.top, CGFloat(UnreachableFrame.linesToButtons))
+        }
+        .padding(.horizontal, CGFloat(ButtonGeometry.margin))
     }
 }
 

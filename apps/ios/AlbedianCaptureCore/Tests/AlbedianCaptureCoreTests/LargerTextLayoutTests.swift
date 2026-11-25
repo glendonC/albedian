@@ -319,4 +319,60 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(screens.contains("funcatBottom(_gap:Double)->someView{padding(.horizontal,CGFloat(ButtonGeometry.margin)).frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottom).padding(.bottom,CGFloat(gap))}"),
                       "a pill at a screen's foot within the margins")
     }
+
+    /// largertext-unreachable-m (UIUX-iphone-largertext-sweep-READY item 4, DECIDED-BY-LEAD 24 Nov 19:56): at
+    /// accessibility sizes the photo of Can't reach the laptop is whole in a smaller 3:4 frame from 118, centred, as tall
+    /// as what is left above the lines and the stacked buttons (16 pt under the photo, 34 pt kept at the foot), never
+    /// less than 160 pt tall, past which the column scrolls; at default sizes the screen's width, as before.
+    func testCantReachTheLaptopsPhotoGivesTheRoomDownToItsFloorAndThenTheColumnScrolls() {
+        XCTAssertEqual(UnreachableFrame.top, 118)
+        XCTAssertEqual(UnreachableFrame.gap, 16)
+        XCTAssertEqual(UnreachableFrame.linesToButtons, 20)
+        XCTAssertEqual(UnreachableFrame.betweenButtons, 12)
+        XCTAssertEqual(UnreachableFrame.foot, 34)
+        XCTAssertEqual(UnreachableFrame.floor, 160)
+        let normal = UnreachableFrame.size(screenWidth: 402, screenHeight: 874, columnRoom: nil)
+        XCTAssertEqual(normal.width, 402)
+        XCTAssertEqual(normal.height, 536)
+        let some = UnreachableFrame.size(screenWidth: 402, screenHeight: 874, columnRoom: 300)
+        XCTAssertEqual(some.height, 406, accuracy: 1e-9)
+        XCTAssertEqual(some.width, 304.5, accuracy: 1e-9)
+        XCTAssertFalse(UnreachableFrame.scrolls(screenHeight: 874, photoHeight: some.height, columnRoom: 300))
+        let tall = UnreachableFrame.size(screenWidth: 402, screenHeight: 874, columnRoom: 600)
+        XCTAssertEqual(tall.height, 160, "never less tall than the floor")
+        XCTAssertTrue(UnreachableFrame.scrolls(screenHeight: 874, photoHeight: tall.height, columnRoom: 600), "past it the column scrolls")
+        var g = SeededGenerator(seed: propertySeed())
+        for _ in 0..<2000 {
+            let width = g.double(in: 300...460), height = g.double(in: 560...1000)
+            let room = g.pick([0, g.double(in: 0...900), 5000])
+            let frame = UnreachableFrame.size(screenWidth: width, screenHeight: height, columnRoom: room)
+            let context = "\(width) \(height) \(room)"
+            XCTAssertEqual(frame.width * 4 / 3, frame.height, accuracy: 1e-9, context)
+            XCTAssertLessThanOrEqual(frame.width, width + 1e-9, context)
+            XCTAssertGreaterThanOrEqual(frame.height, min(UnreachableFrame.floor, width * 4 / 3) - 1e-9, context)
+            let left = height - UnreachableFrame.foot - room - UnreachableFrame.gap - UnreachableFrame.top
+            let scrolls = UnreachableFrame.scrolls(screenHeight: height, photoHeight: frame.height, columnRoom: room)
+            if left >= width * 4 / 3 { XCTAssertEqual(frame.width, width, accuracy: 1e-9, context); XCTAssertFalse(scrolls, context) }
+            else if left >= UnreachableFrame.floor { XCTAssertEqual(frame.height, left, accuracy: 1e-9, context); XCTAssertFalse(scrolls, context) }
+            else { XCTAssertEqual(frame.height, UnreachableFrame.floor, accuracy: 1e-9, context); XCTAssertTrue(scrolls, context) }
+        }
+    }
+
+    /// The screen at accessibility sizes: one scrolling column, the photo in that frame, then the two lines wrapping,
+    /// centred, the icon at the first line, then Try again and Change address stacked, each centred, within the margins;
+    /// the column measured once, hidden, and drawn only once measured. At default sizes the row stands as recorded.
+    func testCantReachTheLaptopStacksItsColumnAtAccessibilitySizes() throws {
+        let after = compact(try body(of: "struct AfterShotScreen: View", in: try code("Screens/CompanionScreens.swift").code))
+        XCTAssertTrue(after.contains("@StateprivatevarcolumnRoom:Double?"))
+        XCTAssertTrue(after.contains("letstacked=model.unreachable&&dynamicTypeSize.isAccessibilitySize"))
+        XCTAssertTrue(after.contains("letframe=UnreachableFrame.size(screenWidth:width,screenHeight:Double(geometry.size.height),columnRoom:columnRoom??0)"))
+        XCTAssertTrue(after.contains("unreachableColumn.hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}"),
+                      "the column measured once, hidden")
+        XCTAssertTrue(after.contains("ScrollView{VStack(spacing:0){ShotPhoto(shot:model.shot,width:frame.width)unreachableColumn.padding(.top,CGFloat(UnreachableFrame.gap))}.frame(maxWidth:.infinity).padding(.top,CGFloat(UnreachableFrame.top)).padding(.bottom,CGFloat(UnreachableFrame.foot))}.scrollBounceBehavior(.basedOnSize).opacity(columnRoom==nil?0:1)"),
+                      "one scrolling column, the photo in its frame, nothing drawn before it is measured")
+        XCTAssertTrue(after.contains("HStack(alignment:.firstTextBaseline,spacing:8){AlbedianIcon.unreachable.image(17)"), "the icon at the first line")
+        XCTAssertTrue(after.contains(".multilineTextAlignment(.center)VStack(spacing:CGFloat(UnreachableFrame.betweenButtons)){MainButton("), "the lines centred, the buttons stacked")
+        XCTAssertTrue(after.contains("action:model.changeAddress)}.padding(.top,CGFloat(UnreachableFrame.linesToButtons))}.padding(.horizontal,CGFloat(ButtonGeometry.margin))"))
+        XCTAssertTrue(after.contains("ifmodel.unreachable&&!stacked{"), "at default sizes the row as recorded")
+    }
 }
