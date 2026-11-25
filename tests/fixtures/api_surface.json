@@ -852,6 +852,49 @@
               }
             }
           }
+        },
+        "get": {
+          "summary": "Get Ingest Newest Solve Job",
+          "description": "The newest solve job of a stored upload, active or ended, as `GET /api/ingest/jobs/{job_id}` serves it (the live\nrecord while this server runs it): the attempt the receipt names as `solveJobId`. It starts nothing; a page that\nreloads during a solve finds its job from the file's hash alone (job-by-upload-one).",
+          "operationId": "get_ingest_newest_solve_job_api_ingest__sha256__solve_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "The file's SHA-256, 64 lowercase hex characters",
+                "title": "Sha256"
+              },
+              "description": "The file's SHA-256, 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Ingest Newest Solve Job Api Ingest  Sha256  Solve Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "/api/ingest/jobs/{job_id}": {
@@ -1714,6 +1757,15 @@
       ],
       "name": "cancel_ingest_job",
       "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}/solve",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_newest_solve_job",
+      "responseModel": "dict[str, typing.Any]",
       "includeInSchema": true
     },
     {

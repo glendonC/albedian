@@ -420,6 +420,25 @@ def cancel_ingest_job(job_id: str = _job_id_path(), store: IngestStore = Depends
     return JSONResponse(job, status_code=202 if outcome == "requested" else 200)
 
 
+NO_SOLVE_JOB = "no solve job is stored for that file"
+
+
+# Registered after the job routes, so `/api/ingest/jobs/{job_id}` is matched first as it always was
+@router.get("/api/ingest/{sha256}/solve")
+def get_ingest_newest_solve_job(
+    sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
+) -> dict[str, Any]:
+    """The newest solve job of a stored upload, active or ended, as `GET /api/ingest/jobs/{job_id}` serves it (the live
+    record while this server runs it): the attempt the receipt names as `solveJobId`. It starts nothing; a page that
+    reloads during a solve finds its job from the file's hash alone (job-by-upload-one)."""
+    if store.read_record(sha256) is None or store.original(sha256) is None:
+        raise HTTPException(status_code=404, detail="no file with that hash is stored")
+    newest = _solve_job(store, sha256)
+    if newest is None:
+        raise HTTPException(status_code=404, detail=NO_SOLVE_JOB)
+    return _job_or_404(store, newest["id"], runner_for(store).get)
+
+
 @router.get("/api/ingest/{sha256}/solution")
 def get_ingest_solution(
     sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
