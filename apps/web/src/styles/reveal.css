@@ -3033,6 +3033,13 @@
     mask-image: none;
   }
 
+  /* Item 3: the top bar 12 px from the top, inside the side safe areas */
+  .reveal-phone-top {
+    top: 12px;
+    left: max(20px, env(safe-area-inset-left));
+    right: max(20px, env(safe-area-inset-right));
+  }
+
   .reveal-card.is-phone .reveal-card__acts {
     position: sticky;
     bottom: 0;

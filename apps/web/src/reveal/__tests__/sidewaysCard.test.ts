@@ -25,6 +25,14 @@ const inSideways = (selector: string) => {
   return found;
 };
 
+describe('the top bar on a phone held on its side', () => {
+  // Item 3: the close circle at the leading top and the views pills at the trailing top, 12 px from the top (the island
+  // stands at the side, not the top), inside the side insets (62 px on the 17 Pro held sideways)
+  it('stands 12 px from the top, inside the side safe areas', () => {
+    expect(inSideways('.reveal-phone-top')).toEqual({ top: '12px', left: 'max(20px, env(safe-area-inset-left))', right: 'max(20px, env(safe-area-inset-right))' });
+  });
+});
+
 describe('the star card on a phone held on its side', () => {
   it('is a sheet on the bottom edge, centred, 390 wide, as tall as its content up to the window less 64 px', () => {
     expect(inSideways('.reveal-card.is-phone')).toEqual({
