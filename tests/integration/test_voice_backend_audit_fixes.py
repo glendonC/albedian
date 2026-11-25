@@ -429,8 +429,6 @@ def test_bayer_flamsteed_openngc_and_solar_system_targets_resolve_or_refuse_with
         ("where is the Orion Nebula?", "Great Orion Nebula"),
         ("how bright is M42?", "Great Orion Nebula"),
         ("how bright is NGC 1976?", "Great Orion Nebula"),
-        ("where is Mercury?", "Mercury"),
-        ("how far is Neptune?", "Neptune"),
         ("where is Pluto?", "Pluto"),
     ]
     for question, expected_name in absent_cases:
@@ -440,6 +438,16 @@ def test_bayer_flamsteed_openngc_and_solar_system_targets_resolve_or_refuse_with
             "unanswerable",
             "not_found_in_this_sky",
             f"No finding in this photo is named {expected_name}.",
+        ), (question, ans)
+    # Mercury and Neptune, which the predicted sky never places, are said as only what the app knows
+    # (unpredicted-body-one, tests/integration/test_voice_unpredicted_bodies.py)
+    for question, expected_name in (("where is Mercury?", "Mercury"), ("how far is Neptune?", "Neptune")):
+        ans = answers.answer_question(question, CALIBRATED, RIGEL)
+        contract.VOICE_ANSWER.validate_python(ans)
+        assert (ans["status"], ans["reason"], ans["sentence"]) == (
+            "unanswerable",
+            "not_found_in_this_sky",
+            f"The app does not predict where {expected_name} is, so it cannot be found in this photo's sky.",
         ), (question, ans)
 
     # Moon phase for another planet (Mercury, Neptune) refuses as outside_the_data, and two names across classes refuse as SENTENCE_TWO_NAMES

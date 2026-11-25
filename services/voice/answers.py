@@ -191,6 +191,10 @@ def refusal_sentence(reason: str, question: str | None = None, name: str | None 
     """The one sentence of a refusal, for its reason (the name no finding has, when there is one), naming the
     recording by its noun. The sky not worked out says no "yet": it is said while a solve runs and after one ended
     without a sky (C34)."""
+    if reason == "not_found_in_this_sky" and name in UNPREDICTED_BODIES:
+        # Only what the app knows, as the app parser's refusal says it (the contract's not_predicted sentence)
+        media = "video" if noun == "clip" else "photo"
+        return contract.refusal_sentence({"kind": "not_predicted", "said": lower_case(name), "name": name}, media)
     if reason == "not_found_in_this_sky":
         nameless = f"No finding in this {noun} has that name."
         said = f"No finding in this {noun} is named {name}." if name else nameless
@@ -279,6 +283,10 @@ class _MatchedTarget:
     is_moon: bool = False
 
 
+# The planets the ephemeris computes (contract EPHEMERIS_BODIES) that the predicted sky never places (PREDICTED_BODIES in
+# services/science/predicted_sky.py): an answer about one says the app does not predict where it is (DECIDED-BY-LEAD
+# 24 Nov 20:16). tests/integration/test_voice_unpredicted_bodies.py keeps it equal to the two lists.
+UNPREDICTED_BODIES: tuple[str, ...] = ("Mercury", "Neptune")
 _EXTRA_SOLAR_BODIES: tuple[tuple[str, str], ...] = (
     ("mercury", "Mercury"),
     ("neptune", "Neptune"),

@@ -443,9 +443,11 @@ def test_the_refusal_kinds_hold_the_leads_list() -> None:
         assert not spec["name"] or spec["said"] or kind in FLIGHT_REFUSAL_KINDS, kind
     # The flight's two refusals go out as no_distance_estimate, quote nothing said and name no catalog row
     assert {k for k, spec in kinds.items() if spec["reasons"] == ["no_distance_estimate"]} == FLIGHT_REFUSAL_KINDS
-    # The backend holds no photo: no kind that needs the photo's sky is the backend's
+    # The backend holds no photo: no kind that needs the photo's sky is the backend's, nor the one said in place of
+    # not_in_this_sky for a planet the predicted sky never places (its answer says that sentence itself)
     assert {k for k, spec in kinds.items() if not spec["backend"]} == {
-        "not_in_this_sky", "southern_cross_not_in_this_sky", "sky_not_worked_out", "nothing_in_view_sky_not_worked_out"}
+        "not_in_this_sky", "not_predicted", "southern_cross_not_in_this_sky", "sky_not_worked_out",
+        "nothing_in_view_sky_not_worked_out"}
 
 
 _REFUSAL_REPLY = {"status": "rejected", "actionId": "req-1", "reason": "ambiguous_target", "nextActions": [],

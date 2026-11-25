@@ -393,6 +393,10 @@ REFUSAL_KINDS: dict[str, dict[str, Any]] = {
     "not_understood": {"reasons": ["ambiguous_target"], "said": True, "name": False, "catalogRow": False, "backend": True},
     # A star or body the name tables know, not in this photo's sky
     "not_in_this_sky": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False},
+    # A planet the ephemeris computes that the app's predicted sky never places (Mercury, Neptune), said in place of
+    # not_in_this_sky and the app parser's as that kind is; the backend's answer says the same sentence
+    # (services/voice/answers.py UNPREDICTED_BODIES)
+    "not_predicted": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False},
     # A deep-sky object a catalogue holds, which voice cannot reach yet
     "deep_sky_out_of_reach": {"reasons": ["no_grounded_answer"], "said": True, "name": True, "catalogRow": True, "backend": True},
     # A sky name no catalogue of the app holds by name
@@ -517,6 +521,9 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
         return f'I did not understand "{said}": no list of the app holds that word.'
     if kind == "not_in_this_sky":
         return f"{_capitalized(name)} was not found in this {word}'s sky."
+    if kind == "not_predicted":
+        # UIUX-unpredicted-body-READY.md, DECIDED-BY-LEAD 24 Nov 20:16: only what the app knows, not the real sky
+        return f"The app does not predict where {_capitalized(name)} is, so it cannot be found in this {word}'s sky."
     if kind == "deep_sky_out_of_reach":
         return (
             f"{_capitalized(name)} is in the app's deep-sky catalog (OpenNGC {row}), but voice does not reach "
@@ -1178,6 +1185,8 @@ def build_voice_samples() -> dict[str, Any]:
         {"kind": "not_understood", "said": "\U0001d400" * 80 + " ..."},
         {"kind": "not_in_this_sky", "said": "vega", "name": "Vega"},
         {"kind": "not_in_this_sky", "said": "alpha centauri", "name": "Rigil Kentaurus"},
+        {"kind": "not_predicted", "said": "mercury", "name": "Mercury"},
+        {"kind": "not_predicted", "said": "neptune", "name": "Neptune"},
         {"kind": "deep_sky_out_of_reach", "said": "lmc", "name": "the Large Magellanic Cloud", "catalogRow": "ESO056-115"},
         {"kind": "deep_sky_out_of_reach", "said": "omega cen", "name": "Omega Centauri", "catalogRow": "NGC5139"},
         {"kind": "deep_sky_out_of_reach", "said": "coal sack", "name": "the Coalsack", "catalogRow": "C099"},
@@ -1399,7 +1408,8 @@ def build_voice_samples() -> dict[str, Any]:
     bad(reply, _with(out_of_reach, ["refusal", "name"], _DROP), "an object out of reach names what it is")
     bad(reply, _with(out_of_reach, ["refusal", "name"], "Somewhere Else"), "the sentence shows the name")
     bad(reply, _with(understood, ["refusal", "name"], "Zorblax"), "a word not understood stands for no name")
-    for kind in ("not_in_this_sky", "southern_cross_not_in_this_sky", "sky_not_worked_out", "nothing_in_view_sky_not_worked_out"):
+    for kind in ("not_in_this_sky", "not_predicted", "southern_cross_not_in_this_sky", "sky_not_worked_out",
+                 "nothing_in_view_sky_not_worked_out"):
         app_refusal = next(r for r in refusals if r["kind"] == kind)
         bad(reply, {**understood, "reason": REFUSAL_KINDS[kind]["reasons"][0], "explanation": refusal_sentence(app_refusal),
                     "refusal": app_refusal}, f"the backend holds no photo, so it never says {kind}")

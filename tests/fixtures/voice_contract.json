@@ -73,6 +73,15 @@
       "catalogRow": false,
       "backend": false
     },
+    "not_predicted": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": false,
+      "backend": false
+    },
     "deep_sky_out_of_reach": {
       "reasons": [
         "no_grounded_answer"
@@ -307,6 +316,42 @@
       },
       "media": "video",
       "sentence": "Rigil Kentaurus was not found in this clip's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_predicted",
+        "said": "mercury",
+        "name": "Mercury"
+      },
+      "media": "photo",
+      "sentence": "The app does not predict where Mercury is, so it cannot be found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_predicted",
+        "said": "mercury",
+        "name": "Mercury"
+      },
+      "media": "video",
+      "sentence": "The app does not predict where Mercury is, so it cannot be found in this clip's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_predicted",
+        "said": "neptune",
+        "name": "Neptune"
+      },
+      "media": "photo",
+      "sentence": "The app does not predict where Neptune is, so it cannot be found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_predicted",
+        "said": "neptune",
+        "name": "Neptune"
+      },
+      "media": "video",
+      "sentence": "The app does not predict where Neptune is, so it cannot be found in this clip's sky."
     },
     {
       "refusal": {
@@ -1495,6 +1540,16 @@
         "kind": "not_in_this_sky",
         "said": "alpha centauri",
         "name": "Rigil Kentaurus"
+      },
+      {
+        "kind": "not_predicted",
+        "said": "mercury",
+        "name": "Mercury"
+      },
+      {
+        "kind": "not_predicted",
+        "said": "neptune",
+        "name": "Neptune"
       },
       {
         "kind": "deep_sky_out_of_reach",
@@ -3418,6 +3473,27 @@
         }
       },
       "reason": "the backend holds no photo, so it never says not_in_this_sky"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The app does not predict where Mercury is, so it cannot be found in this photo's sky.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_predicted",
+          "said": "mercury",
+          "name": "Mercury"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says not_predicted"
     },
     {
       "schema": "VoiceCommandResponse",

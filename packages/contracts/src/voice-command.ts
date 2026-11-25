@@ -78,6 +78,10 @@ export const REFUSAL_KINDS = {
   not_understood: { reasons: ['ambiguous_target'], said: true, name: false, catalogRow: false, backend: true },
   // A star or body the name tables know, not in this photo's sky
   not_in_this_sky: { reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false },
+  // A planet the ephemeris computes that the app's predicted sky never places (Mercury, Neptune), said in place of
+  // not_in_this_sky and the app parser's as that kind is; the backend's answer says the same sentence
+  // (services/voice/answers.py UNPREDICTED_BODIES)
+  not_predicted: { reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false },
   // A deep-sky object a catalogue holds, which voice cannot reach yet
   deep_sky_out_of_reach: { reasons: ['no_grounded_answer'], said: true, name: true, catalogRow: true, backend: true },
   // A sky name no catalogue of the app holds by name
@@ -197,6 +201,9 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
       return `I did not understand "${said}": no list of the app holds that word.`;
     case 'not_in_this_sky':
       return `${capitalized(name)} was not found in this ${word}'s sky.`;
+    case 'not_predicted':
+      // UIUX-unpredicted-body-READY.md, DECIDED-BY-LEAD 24 Nov 20:16: only what the app knows, not the real sky
+      return `The app does not predict where ${capitalized(name)} is, so it cannot be found in this ${word}'s sky.`;
     case 'deep_sky_out_of_reach':
       return `${capitalized(name)} is in the app's deep-sky catalog (OpenNGC ${refusal.catalogRow ?? ''}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
     case 'no_named_row':

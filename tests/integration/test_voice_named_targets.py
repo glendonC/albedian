@@ -987,7 +987,8 @@ def test_no_word_that_names_nothing_is_a_name() -> None:
 
 def test_the_app_parser_names_the_planets_the_predicted_sky_never_lists() -> None:
     """body-identity-one: the ephemeris' bodies the predicted sky does not list (Mercury, Neptune) are names the app's
-    parser holds as not in this sky, so "where is Mercury" says the recorded not-found sentence."""
+    parser holds as names this sky lacks, so "where is Mercury" says the app does not predict where it is
+    (unpredicted-body-one, tests/integration/test_voice_unpredicted_bodies.py)."""
     from services.contracts.voice import EPHEMERIS_BODIES
 
     source = VOICE_PARSER_TS.read_text(encoding="utf-8")

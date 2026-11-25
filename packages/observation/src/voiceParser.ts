@@ -928,7 +928,9 @@ function whatIsNotHeld(
       const reason = context.calibrationState === 'unresolved' ? 'unresolved_sky' : 'ambiguous_target';
       return refused({ kind: 'sky_not_worked_out' }, reason, session);
     }
-    return refused({ kind: 'not_in_this_sky', said: missing.spoken, name: missing.shown }, 'ambiguous_target', session);
+    // A planet the predicted sky never places is said as only what the app knows (DECIDED-BY-LEAD 24 Nov 20:16)
+    const kind = Object.hasOwn(UNPREDICTED_BODY_NAMES, missing.spoken) ? 'not_predicted' : 'not_in_this_sky';
+    return refused({ kind, said: missing.spoken, name: missing.shown }, 'ambiguous_target', session);
   }
   if (unknown) return refused({ kind: 'not_understood', said: unknown }, 'ambiguous_target', session);
   return undefined;
