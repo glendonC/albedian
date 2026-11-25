@@ -70,7 +70,9 @@ const base = { content: "''", position: 'absolute', 'z-index': '-1', 'pointer-ev
 
 const COLUMNS = ".reveal-status[data-moment='there']::before, .reveal-status[data-moment='real-sky']:not(.is-phone)::before, .predsky:not(.is-phone) .predsky-status::before";
 const READOUT = '.flight-readout:not(.is-phone)::before';
-const VIEWS = '.reveal-nav::before';
+// fade-off-photo-one: the views row's fade stands over a drawn view or where no photo is (the modeled scene), never over
+// the photo at rest
+const VIEWS = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .reveal-nav::before, :root:not(:has(.reveal-photo)) .reveal-nav::before";
 const PHONE_TOP = '.reveal-phone-top::before';
 
 describe("D19's fade behind the laptop's columns, the flight's readout and the views row", () => {
@@ -101,7 +103,7 @@ describe("D19's fade behind the laptop's columns, the flight's readout and the v
     expect(rules()['.flight-readout']!.right).toBe('32px');
   });
 
-  it('stands behind the views row and the Sound circle, closed by the window above and to the right', () => {
+  it('stands behind the views row and the Sound circle over the drawn views, closed by the window above and to the right', () => {
     expect(rules()[VIEWS]).toEqual({
       ...base,
       left: '-44px',
@@ -210,7 +212,9 @@ describe("names clear the fade's reach; rings keep the place's own box", () => {
   it("sets each fade's reach as the stylesheet draws it", () => {
     const all = rules();
     for (const { faded, reach } of FADE_REACH) {
-      const key = Object.keys(all).find((k) => k.split(', ').includes(`${faded}::before`));
+      // A fade drawn only over some views (fade-off-photo-one: the legend's and the ask bar's, over the drawn views alone)
+      // keeps its reach there: its rule names the views first, then the faded block
+      const key = Object.keys(all).find((k) => k.split(', ').includes(`${faded}::before`) || k.endsWith(` ${faded}::before`));
       expect(key, faded).toBeDefined();
       const d = all[key!]!;
       expect([d.left, d.top, d.right, d.bottom], faded).toEqual([`-${reach.left}px`, `-${reach.top}px`, `-${reach.right}px`, `-${reach.bottom}px`]);

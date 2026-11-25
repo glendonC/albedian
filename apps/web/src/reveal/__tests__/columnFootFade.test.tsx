@@ -25,6 +25,18 @@ vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   };
 });
 
+// fade-off-photo-one (DECIDED-BY-LEAD on VIDEO's frame of the hero photo at rest, .lead/video/fade-over-moon-a74f11b0-vs-57e2a9f1.jpg:
+// the person's photograph comes first; no drawn fade hides the subject of the person's own photo, and a block over the
+// photograph is never a panel): the fades behind the legend and the ask bar come off the reveal at rest, as before batch
+// one hundred and twenty-five, and stay over the drawn views (Real sky; for the ask bar there and the predicted sky too).
+// The keep-clear rules for marks and names stand.
+const LEGEND_FADE = ".reveal-photo:has(.reveal-status[data-moment='real-sky']) .reveal-legend::before";
+const ASK_FADE = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .ask-bar:not(.is-phone)::before";
+// The views row's too (the lead's widening, on VIDEO's whole frame: its fade darkened the photo's top right corner); it
+// stays wherever no photo is under it, as on the modeled scene
+const VIEWS_DRAWN = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .reveal-nav::before";
+const VIEWS_NO_PHOTO = ":root:not(:has(.reveal-photo)) .reveal-nav::before";
+
 // column-foot-fade-one (UIUX-reveal-READY.md, the addition of 24 Nov 21:47; DECIDED-BY-LEAD 21:49, on WEB-UX's walk at
 // 3840): on the laptop, D19's fade (82 percent black under the block, clearing over 44 px beyond its open edges, the
 // window's edges closing the rest; no box, no edge line, no motion of its own) behind Real sky's status column, the
@@ -51,7 +63,7 @@ const rules = () => {
 /** The rule whose selector list holds this selector, and its declarations. */
 const ruleWith = (selector: string) => {
   const all = rules();
-  const key = Object.keys(all).find((k) => k.split(', ').includes(selector));
+  const key = Object.keys(all).find((k) => k === selector || k.split(', ').includes(selector));
   return key === undefined ? undefined : all[key];
 };
 const D19 = 'rgba(0, 0, 0, 0.82)';
@@ -71,8 +83,8 @@ describe("D19's fade behind Real sky's column, the legend, the ask bar and the f
     expect(ruleWith(".reveal-status[data-moment='real-sky']:not(.is-phone)")).toEqual({ isolation: 'isolate' });
   });
 
-  it("stands behind the legend, closed by the window's left and bottom edges, clearing over 44 px above and to the right", () => {
-    expect(ruleWith('.reveal-legend::before')).toEqual({
+  it("stands behind the legend over Real sky, closed by the window's left and bottom edges, clearing over 44 px above and to the right", () => {
+    expect(ruleWith(LEGEND_FADE)).toEqual({
       ...base,
       left: '-36px',
       top: '-44px',
@@ -85,8 +97,8 @@ describe("D19's fade behind Real sky's column, the legend, the ask bar and the f
     expect(rules()['.reveal-legend, .flight-pills:not(.is-phone)']).toEqual({ isolation: 'isolate' });
   });
 
-  it("stands behind the ask bar, closed by the window's bottom edge, clearing over 44 px above, left and right", () => {
-    expect(ruleWith('.ask-bar:not(.is-phone)::before')).toEqual({
+  it("stands behind the ask bar over the drawn views, closed by the window's bottom edge, clearing over 44 px above, left and right", () => {
+    expect(ruleWith(ASK_FADE)).toEqual({
       ...base,
       left: '-44px',
       top: '-44px',
@@ -125,6 +137,73 @@ describe("D19's fade behind Real sky's column, the legend, the ask bar and the f
         rule.walkDecls((d) => expect(sheet === motion ? /^transition/.test(d.prop) : /^(animation|transition)/.test(d.prop), rule.selector).toBe(false));
       });
     }
+  });
+});
+
+describe('no fade over the photo at rest: the legend, the ask bar and the views row stand on the photo without one', () => {
+  const fadeRules = () => {
+    const found: string[] = [];
+    postcss.parse(css).walkRules((rule) => {
+      for (const selector of rule.selectors) {
+        const s = selector.replace(/\s+/g, ' ').trim();
+        if (/::before$/.test(s) && /reveal-legend|ask-bar|reveal-nav/.test(s)) found.push(s);
+      }
+    });
+    return found;
+  };
+  const screen = (moment: string | null, predsky = false, withPhoto = true) => {
+    document.body.innerHTML = '';
+    const photo = document.createElement('div');
+    photo.className = withPhoto ? 'reveal-photo' : 'alb-observatory';
+    if (moment) {
+      const status = document.createElement('div');
+      status.className = 'reveal-status';
+      status.dataset.moment = moment;
+      photo.appendChild(status);
+    }
+    const legend = document.createElement('div');
+    legend.className = 'reveal-legend';
+    photo.appendChild(legend);
+    document.body.appendChild(photo);
+    if (predsky) {
+      const sky = document.createElement('div');
+      sky.className = 'predsky';
+      document.body.appendChild(sky);
+    }
+    const ask = document.createElement('div');
+    ask.className = 'ask-bar';
+    document.body.appendChild(ask);
+    const nav = document.createElement('div');
+    nav.className = 'reveal-nav';
+    document.body.appendChild(nav);
+    return { legend, ask, nav };
+  };
+  const faded = (el: Element) => fadeRules().filter((s) => el.matches(s.replace(/::before$/, '')));
+  afterEach(() => void (document.body.innerHTML = ''));
+
+  it('draws no fade behind the legend, the ask bar or the views row on the photo, whatever its status says', () => {
+    expect(fadeRules().length).toBeGreaterThan(0);
+    for (const moment of ['photo', 'unmatched', null]) {
+      const { legend, ask, nav } = screen(moment);
+      expect(faded(legend), String(moment)).toEqual([]);
+      expect(faded(ask), String(moment)).toEqual([]);
+      expect(faded(nav), String(moment)).toEqual([]);
+    }
+  });
+
+  it("keeps the views row's over Real sky, there and the predicted sky, and where no photo is under it", () => {
+    expect(faded(screen('real-sky').nav)).toEqual([VIEWS_DRAWN]);
+    expect(faded(screen('there').nav)).toEqual([VIEWS_DRAWN]);
+    expect(faded(screen(null, true).nav)).toEqual([VIEWS_DRAWN]);
+    expect(faded(screen(null, false, false).nav)).toEqual([VIEWS_NO_PHOTO]);
+  });
+
+  it('keeps both over Real sky, and the ask bar\'s over there and the predicted sky', () => {
+    const real = screen('real-sky');
+    expect(faded(real.legend)).toEqual([LEGEND_FADE]);
+    expect(faded(real.ask)).toEqual([ASK_FADE]);
+    expect(faded(screen('there').ask)).toEqual([ASK_FADE]);
+    expect(faded(screen(null, true).ask)).toEqual([ASK_FADE]);
   });
 });
 

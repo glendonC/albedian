@@ -604,8 +604,12 @@
    26 px from the window's top and 32 px from its right, so those edges close it and it clears over 44 px to the left
    and below; on the phone behind the whole top bar, clearing over 44 px below its foot. No box, no motion, the pills
    unchanged */
-/* The row is fixed with its own z-index, so it is its own stacking: the fade stands behind its pills */
-.reveal-nav::before {
+/* The row is fixed with its own z-index, so it is its own stacking: the fade stands behind its pills.
+   fade-off-photo-one (DECIDED-BY-LEAD: while the person's photograph shows, no D19 fade is drawn over it): over a drawn
+   view only, Real sky, there and the predicted sky, or where no photo is under the row (the modeled scene); never over
+   the photo at rest */
+:root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .reveal-nav::before,
+:root:not(:has(.reveal-photo)) .reveal-nav::before {
   content: '';
   position: absolute;
   left: -44px;
@@ -639,13 +643,18 @@
    above, left and right; the bar is fixed with its own z-index, so its body and blur stay as approved over it) and
    behind the flight's pill row (36 px from the left and 32 from the bottom, those edges closing it; clearing over 44 px
    above and to the right, and below too when it steps up onto its own row above the ask bar). No pill, tag or word
-   changes; no motion of its own */
+   changes; no motion of its own.
+   fade-off-photo-one (DECIDED-BY-LEAD on VIDEO's frame of the hero photo at rest: the person's photograph comes first;
+   no drawn fade hides the subject of the person's own photo, and a block over the photograph is never a panel): the
+   legend's and the ask bar's fades stand only over the drawn views, Real sky (and for the ask bar there and the
+   predicted sky), never over the photo at rest, where both stand as they did before batch one hundred and twenty-five;
+   the views row's likewise (above) */
 .reveal-legend,
 .flight-pills:not(.is-phone) {
   isolation: isolate;
 }
 
-.reveal-legend::before {
+.reveal-photo:has(.reveal-status[data-moment='real-sky']) .reveal-legend::before {
   content: '';
   position: absolute;
   left: -36px;
@@ -661,7 +670,7 @@
   mask-composite: intersect;
 }
 
-.ask-bar:not(.is-phone)::before {
+:root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .ask-bar:not(.is-phone)::before {
   content: '';
   position: absolute;
   left: -44px;
