@@ -379,6 +379,7 @@ async def start_ingest_solve_job(
 
 
 NO_PREDICTED_SKY = "no predicted sky is served for that job"
+NO_MEASURED = "no measured detections are served for that job"
 
 
 def _job_or_404(store: IngestStore, job_id: str, read: Any) -> Any:
@@ -413,6 +414,19 @@ def get_ingest_job_predicted_sky(
     if sky is None:
         raise HTTPException(status_code=404, detail=NO_PREDICTED_SKY)
     return sky
+
+
+@router.get("/api/ingest/jobs/{job_id}/measured")
+def get_ingest_job_measured(
+    job_id: str = _job_id_path(), store: IngestStore = Depends(get_ingest_store)
+) -> dict[str, Any]:
+    """The detections a running solve measured, published when its detect stage ended (each as an observed finding's
+    `sourceDetection` holds it, REQ-JOB-2.8), while the job runs and once its record names `measuredAtUTC`; 404
+    before that, after the job ends (its solution then holds them as observed) and for any other job."""
+    measured = runner_for(store).measured(job_id)
+    if measured is None:
+        raise HTTPException(status_code=404, detail=NO_MEASURED)
+    return measured
 
 
 @router.post("/api/ingest/jobs/{job_id}/cancel")

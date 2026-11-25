@@ -32,11 +32,13 @@ import os
 from pathlib import Path
 import threading
 import time
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from pydantic import ValidationError
 
-from services.contracts.astronomy import parse_observation_solution
+from pydantic import ValidationError
+
+from services.contracts.astronomy import SourceDetection, parse_observation_solution
 from services.contracts.ingest import format_utc
 from services.contracts.jobs import (JOB_PASS_LABELS, JOB_PASS_MAX, JOB_STAGE_UNITS, MEDIA_JOB_KINDS, PLAYBACK_JOB_KINDS,
                                      UploadJob)
@@ -171,6 +173,8 @@ class JobKind:
 
 # The partial a solve's early predicted sky is kept in while it runs (platform-10b)
 PREDICTED_SKY_PARTIAL = "predicted_sky.json"
+# The detections a solve measured, published at its detect stage's end (REQ-JOB-2.8, wait-detections-one)
+MEASURED_PARTIAL = "measured.json"
 
 _KINDS: dict[str, JobKind] = {}
 _KINDS_GUARD = threading.Lock()
@@ -283,6 +287,13 @@ class JobContext:
         record by the moment it was published. It is served while the job runs and goes with the job's partials;
         a solve that succeeds stores the same sky in its solution. ValueError for anything else."""
         self._runner._predicted_sky(self._job, solution)
+
+    def measured(self, detections: Sequence[Mapping[str, Any]]) -> None:
+        """Publishes the detections the solve measured, when its detect stage ends (REQ-JOB-2.8, wait-detections-one):
+        each as an observed finding's `sourceDetection` holds it, kept whole among the job's partial outputs and named
+        on the record by the moment it was published; served while the job runs, the solution holding them after.
+        ValueError for a media kind or anything that is not a list of detections."""
+        self._runner._measured(self._job, detections)
 
     def live(self) -> dict[str, Any]:
         """The job's record as a read would serve it now."""
@@ -820,6 +831,37 @@ class Runner:
         with self._cond:
             job.record = {**job.record, "predictedSkyAtUTC": format_utc(_now())}
         self._write(job, force=True, quiet=True)
+
+    def _measured(self, job: _Job, detections: Sequence[Mapping[str, Any]]) -> None:
+        if job.kind.name != "solve":
+            raise ValueError("only a solve publishes measured detections")
+        if isinstance(detections, (str, bytes)) or not isinstance(detections, Sequence):
+            raise ValueError("measured detections are a list")
+        try:
+            for detection in detections:
+                SourceDetection.model_validate(dict(detection))
+        except (ValidationError, TypeError, ValueError):
+            raise ValueError("a measured detection is a sourceDetection") from None
+        payload = {"sourceAssetSha256": job.record["sourceAssetSha256"], "detections": [dict(d) for d in detections]}
+        # Written whole beside the job's other partials, then put in place in one step; both go when the job ends
+        target = self.store.partial(job.id, MEASURED_PARTIAL)
+        scratch = self.store.partial(job.id, MEASURED_PARTIAL.replace(".json", "_next.json"))
+        scratch.write_text(json.dumps(payload), encoding="utf-8")
+        os.replace(scratch, target)
+        with self._cond:
+            job.record = {**job.record, "measuredAtUTC": format_utc(_now())}
+        self._write(job, force=True, quiet=True)
+
+    def measured(self, job_id: str) -> Optional[dict[str, Any]]:
+        """The detections a running solve of this process published at its detect stage's end, or None."""
+        with self._cond:
+            job = self._jobs.get(job_id)
+            if job is None or job.ended.is_set() or "measuredAtUTC" not in job.record:
+                return None
+        try:
+            return json.loads(self.store.partial(job_id, MEASURED_PARTIAL).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
 
     def predicted_sky(self, job_id: str) -> Optional[dict[str, Any]]:
         """The sky a running solve of this process published before its search ended, or None."""

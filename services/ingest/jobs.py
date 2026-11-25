@@ -60,7 +60,7 @@ from services.science.detector import (
     stack_rounding_noise,
     stack_video_frames_for_calibration,
 )
-from services.science.binning import bin_factor, bin_frame, in_stored_pixels
+from services.science.binning import _detection as _stored_detection, bin_factor, bin_frame, in_stored_pixels
 from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
@@ -1293,6 +1293,8 @@ class SolveContext:
     remaining_s: Optional[Callable[[], float]] = None
     # Told the sky predicted from a pose known before the search, as a contract dict (the lock-on, platform-10c)
     on_predicted_sky: Optional[Callable[[dict[str, Any]], None]] = None
+    # Told the detections it measured when its detect stage ends, each as a contract sourceDetection (REQ-JOB-2.8)
+    on_measured: Optional[Callable[[list[dict[str, Any]]], None]] = None
     record_moment: Optional[RecordMoment] = None
     record_unusable: bool = False
     # The person's alignment the job ran from (its record's request, align-2w); None for a plain solve
@@ -1364,6 +1366,7 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
                 alongside = _PhoneDetectionsAlongside(ctx, solve_image, asset["id"], prepared_key, limit_s)
             detections = detect_point_sources(detect_luma, asset_id=asset["id"])
             ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
+        _publish_measured(ctx.on_measured, detections, asset["id"], bin_k)
         ctx.check_cancel()
         return _solve_after_detection(ctx, asset, moment_hint, alignment, search, frames, media_kind, original, width,
                                       height, sha256, solve_image, detections, alongside, prepared_key, bin_k,
@@ -1372,6 +1375,22 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         # A job leaving early (a fault, a cancel, the bound) stops the phone detection and waits for it
         if alongside is not None:
             alongside.stop()
+
+
+def _publish_measured(
+    on_measured: Optional[Callable[[list[dict[str, Any]]], None]], detections: Any, asset_id: str, bin_k: int
+) -> None:
+    """The detections the solve measured, told once its detect stage ended (REQ-JOB-2.8, wait-detections-one): each in
+    the stored pixels, as binning restates them for the solution's observed findings (`in_stored_pixels`), as an
+    observed finding's `sourceDetection` holds it. An extra for the wait: any failure here publishes nothing and the
+    solve runs on as before."""
+    if on_measured is None:
+        return
+    try:
+        stored = detections if bin_k == 1 else [_stored_detection(detection, bin_k) for detection in detections]
+        on_measured([detection.to_contract_dict(asset_id=asset_id) for detection in stored])
+    except Exception:  # noqa: BLE001 - the measured list is an extra; the solve's own path is unchanged
+        return
 
 
 def _solve_after_detection(
@@ -1849,6 +1868,7 @@ def run_solve_kind(ctx: JobContext) -> KindResult:
         check_cancel=ctx.check_cancel,
         remaining_s=ctx.remaining_s,
         on_predicted_sky=ctx.predicted_sky,
+        on_measured=ctx.measured,
         record_moment=record_moment,
         record_unusable=record_unusable,
         alignment=ctx.request,

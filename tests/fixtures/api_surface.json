@@ -1078,6 +1078,51 @@
           }
         }
       },
+      "/api/ingest/jobs/{job_id}/measured": {
+        "get": {
+          "summary": "Get Ingest Job Measured",
+          "description": "The detections a running solve measured, published when its detect stage ended (each as an observed finding's\n`sourceDetection` holds it, REQ-JOB-2.8), while the job runs and once its record names `measuredAtUTC`; 404\nbefore that, after the job ends (its solution then holds them as observed) and for any other job.",
+          "operationId": "get_ingest_job_measured_api_ingest_jobs__job_id__measured_get",
+          "parameters": [
+            {
+              "name": "job_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^job_[0-9a-f]{16,64}$",
+                "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters",
+                "title": "Job Id"
+              },
+              "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Ingest Job Measured Api Ingest Jobs  Job Id  Measured Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/ingest/jobs/{job_id}/cancel": {
         "post": {
           "summary": "Cancel Ingest Job",
@@ -2005,6 +2050,15 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/ingest/jobs/{job_id}/measured",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_job_measured",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
       "path": "/api/ingest/jobs/{job_id}/cancel",
       "methods": [
         "POST"
@@ -2158,6 +2212,7 @@
           "/api/ingest/{sha256}/solve": 65536,
           "/api/ingest/jobs/{job_id}": 0,
           "/api/ingest/jobs/{job_id}/predicted-sky": 0,
+          "/api/ingest/jobs/{job_id}/measured": 0,
           "/api/ingest/jobs/{job_id}/cancel": 0,
           "/api/ingest/{sha256}/solution": 0,
           "/api/ingest/{sha256}/pointing": 65536,
