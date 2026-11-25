@@ -528,18 +528,68 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('.flight-readout__note')).toBeNull();
   });
 
-  it('says what the view is: the Simulated tag and the flight\'s lines, word for word (D27 item 4, decided 19 Nov)', () => {
+  // flight-column-one (UIUX-flight-READY.md's addition for the lead's ask stamped 01:02; DECIDED-BY-LEAD 01:05): through
+  // the whole flight the laptop's column stands as the phone's readout does: the Simulated tag with D27's first sentence
+  // and the tag's caret circle; every other line one press away, in place under the first sentence; closed on every new
+  // flight; nothing taken away by a timer
+  const caret = () => q('[data-testid="reveal-status"] [data-testid="column-caret"]') as HTMLButtonElement | null;
+  const columnLines = () => [...q('[data-testid="reveal-status"]')!.querySelectorAll('.reveal-status__line')].map((p) => p.textContent);
+
+  it('stands the Simulated tag, its caret circle and D27\'s first sentence alone through the flight, closed', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
     const status = q('[data-testid="reveal-status"]')!;
+    // The tag stays the column's own first child, so it stands at full from the first frame (the tag rule)
+    expect(status.firstElementChild!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(columnLines()).toEqual(['Drawn or computed by the app; not measured in the source recording.']);
+    expect(caret()!.getAttribute('aria-expanded')).toBe('false');
+    expect(caret()!.getAttribute('aria-label')).toBe('More details');
+    expect(caret()!.className).toBe('look-icon reveal-status__caret');
+    // The column opens downward under the first sentence (the record's item 2), so the closed caret points down, as
+    // the phone's points up toward its sheet
+    expect(caret()!.querySelector('svg')!.style.transform).toBe('rotate(180deg)');
+  });
+
+  it('opens the rest of D27\'s lines in place under the first sentence on the caret, word for word, and closes them again', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    act(() => caret()!.click());
+    expect(caret()!.getAttribute('aria-expanded')).toBe('true');
+    expect(caret()!.getAttribute('aria-label')).toBe('Fewer details');
+    expect(caret()!.className).toBe('look-icon is-on reveal-status__caret');
+    expect(caret()!.querySelector('svg')!.style.transform).toBe('');
+    const status = q('[data-testid="reveal-status"]')!;
     expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
     // No star layer draws here, so no star is counted and the count's sentence is left out
-    expect([...status.querySelectorAll('.reveal-status__line')].map((p) => p.textContent)).toEqual([
+    expect(columnLines()).toEqual([
       'Drawn or computed by the app; not measured in the source recording.',
       'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
       'Rings: the stars your photo matched.',
       "Milky Way: ESO/S. Brunier's photograph as seen from Earth, with its own stars removed.",
     ]);
+    act(() => caret()!.click());
+    expect(columnLines()).toEqual(['Drawn or computed by the app; not measured in the source recording.']);
+  });
+
+  it("draws the caret as the phone readout's circle, at the tag row's right: 36 px, its border at 30 percent, the caret at 15 px", () => {
+    const found: Record<string, string> = {};
+    postcss.parse(fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8')).walkRules((rule) => {
+      if (rule.selector === '.reveal-status__caret') rule.walkDecls((d) => void (found[d.prop] = d.value));
+    });
+    expect(found).toEqual({ position: 'absolute', top: '-4px', right: '0', width: '36px', height: '36px', 'justify-content': 'center', 'border-color': 'rgba(244, 243, 239, 0.3)', 'pointer-events': 'auto', '--look-ic': '15px' });
+  });
+
+  it('opens closed on every new flight, however the last one ended', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    act(() => caret()!.click());
+    expect(columnLines()).toHaveLength(4);
+    // Back to the photo, then a new flight
+    show(session);
+    expect(caret()).toBeNull();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    expect(caret()!.getAttribute('aria-expanded')).toBe('false');
+    expect(columnLines()).toHaveLength(1);
   });
 
   // UIUX-tagphone-READY.md item F1 (decided 13:08 on 21 Nov): while a craft is drawn the laptop's there line ends with D26's
@@ -548,10 +598,16 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
     const lines = () => [...q('[data-testid="reveal-status"]')!.querySelectorAll('.reveal-status__line')].map((p) => p.textContent);
+    // Behind the caret (flight-column-one): opened, the column holds it
+    act(() => caret()!.click());
     expect(lines()).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
     act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
     act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
     expect(lines().at(-1)).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+    // Closed, the craft's line waits behind the caret with the rest
+    act(() => caret()!.click());
+    expect(lines()).toEqual(['Drawn or computed by the app; not measured in the source recording.']);
+    act(() => caret()!.click());
     // Back to your own view: no craft is drawn, so no line
     act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
     const yours = [...container.querySelectorAll('[role="option"]')].find((o) => o.textContent?.startsWith('Your view')) as HTMLButtonElement;
@@ -633,7 +689,9 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       expect(q('[data-testid="reveal-leader"]')).toBeNull();
       expect(q(READOUT)).toBeNull();
       expect(q('[data-testid="craft-picker"]')).toBeNull();
-      // D28 item 7's lines, and item 6's readout in the readout's place
+      // D28 item 7's lines, and item 6's readout in the readout's place; the first stands, the rest behind the caret
+      expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).toEqual(['Drawn or computed by the app; not measured in the source recording.']);
+      act(() => caret()!.click());
       expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).toEqual([
         'Drawn or computed by the app; not measured in the source recording.',
         "Your photo's view: the part of the sky your photo holds, from its solve, out to its farthest matched star with a measured distance.",
@@ -663,6 +721,8 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     try {
       show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
       expect(q(READOUT)).toBeNull();
+      // Behind the caret (flight-column-one): opened, the column holds every line
+      act(() => caret()!.click());
       const status = q('[data-testid="reveal-status"]')!;
       expect(status.getAttribute('data-moment')).toBe('there');
       expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
@@ -772,6 +832,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
   it('says the Milky Way line with an answer open once the panorama has drawn', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+    act(() => caret()!.click());
     expect(q('[data-testid="reveal-status"]')!.textContent).toContain('Milky Way: ESO/S. Brunier');
   });
 
@@ -780,6 +841,8 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     try {
       const { session } = rigelPicked();
       show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+      // Behind the caret (flight-column-one): opened, the column holds every line
+      act(() => caret()!.click());
       const status = q('[data-testid="reveal-status"]')!;
       expect(status.getAttribute('data-moment')).toBe('there');
       expect(status.textContent).not.toContain('Milky Way');
@@ -797,6 +860,8 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     try {
       const { session } = rigelPicked();
       show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer });
+      // Behind the caret (flight-column-one): opened, the column holds every line
+      act(() => caret()!.click());
       const status = q('[data-testid="reveal-status"]')!;
       expect(status.textContent).not.toContain('Milky Way');
       expect(status.textContent).not.toContain("ESO's photograph");
@@ -816,6 +881,8 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       expect(status.getAttribute('data-moment')).toBe('there');
       expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
       const lines = () => [...q('[data-testid="reveal-status"]')!.querySelectorAll('.reveal-status__line')].map((p) => p.textContent);
+      // Behind the caret (flight-column-one): opened, the column holds every line
+      act(() => caret()!.click());
       expect(lines()).toEqual([
         'Drawn or computed by the app; not measured in the source recording.',
         'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',

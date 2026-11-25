@@ -130,6 +130,30 @@ const FLIGHT_LINES = {
   rings: 'Rings: the stars your photo matched.',
   milkyWay: FLIGHT_MILKY_WAY_LINE,
 } as const;
+/** The caret's path, as the phone readout's caret circle draws it (Phosphor's caret-up, as PilotPieces.tsx's CARET_UP). */
+const COLUMN_CARET_UP = 'M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z';
+
+/**
+ * flight-column-one (UIUX-flight-READY.md's addition for the lead's ask stamped 01:02; DECIDED-BY-LEAD 01:05): the tag's
+ * caret circle on the laptop's flight column, the approved icon-only circle as the phone readout's (D30 item 2). It
+ * opens the column's other lines in place under the first sentence, so it says expanded, not a dialog. The column opens
+ * downward, so the caret points down while closed and up while open (the phone's points up, toward its sheet).
+ */
+const ColumnCaret: React.FC<{ open: boolean; onToggle: () => void }> = ({ open, onToggle }) => (
+  <button
+    type="button"
+    className={`look-icon${open ? ' is-on' : ''} reveal-status__caret`}
+    data-testid="column-caret"
+    aria-label={open ? 'Fewer details' : 'More details'}
+    aria-expanded={open}
+    onClick={onToggle}
+  >
+    <svg className="look-i" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false" style={open ? undefined : { transform: 'rotate(180deg)' }}>
+      <path d={COLUMN_CARET_UP} />
+    </svg>
+  </button>
+);
+
 /** Real sky's sentence (reveal, approved): ESO's photograph placed through the solve, with the solve's residual. */
 const realSkySentence = (residualArcmin: number) => `ESO's photograph of this part of the sky, placed by your photo's solve to within ${residualArcmin}′. Not light your camera recorded.`;
 /** realsky-points-one (DECIDED-BY-LEAD 20:37): Real sky's sentence while it draws the glow with the catalog's stars. */
@@ -415,6 +439,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     if (!there || cone) setSteeringAsked(false);
   }, [there, cone]);
   const steering = there && !cone && (phone ? phoneSteering : steeringAsked || freeFlight);
+  // flight-column-one: the laptop's flight column opens closed on every new flight and stays as the person left it until
+  // closed or until the flight ends; nothing in it leaves on a timer
+  const [columnOpen, setColumnOpen] = useState(false);
+  useEffect(() => {
+    if (!there) setColumnOpen(false);
+  }, [there]);
   // Your photo's view ends the phone's steering, as it ends the laptop's (no Autopilot left offered where nothing steers)
   useEffect(() => {
     if (phone && cone && phoneSteering) onEndPhoneSteer?.();
@@ -866,22 +896,33 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         // finishes loading, and through a Back to Moment return); the Milky Way line waits for the glow, or the dome while steering, below
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
+          {/* flight-column-one: the tag, its caret and D27's first sentence stand through the whole flight; every other line
+              one press away, in place under the first sentence */}
+          <ColumnCaret open={columnOpen} onToggle={() => setColumnOpen((open) => !open)} />
           {cone ? (
             <>
               <p className="reveal-status__line">{CONE_LINES.spec}</p>
-              <p className="reveal-status__line">{CONE_LINES.view}</p>
-              <p className="reveal-status__line">{CONE_LINES.stars}</p>
-              {ringsMatched && <p className="reveal-status__line">{CONE_LINES.rings}</p>}
-              {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
+              {columnOpen && (
+                <>
+                  <p className="reveal-status__line">{CONE_LINES.view}</p>
+                  <p className="reveal-status__line">{CONE_LINES.stars}</p>
+                  {ringsMatched && <p className="reveal-status__line">{CONE_LINES.rings}</p>}
+                  {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
+                </>
+              )}
             </>
           ) : (
             <>
               <p className="reveal-status__line">{FLIGHT_LINES.spec}</p>
-              <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
-              {ringsMatched && <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>}
-              {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
-              {/* The sky's line names what is drawn: the glow (the dome while steering), or the photograph until the glow comes */}
-              {flightSkyLine && <p className="reveal-status__line">{flightSkyLine}</p>}
+              {columnOpen && (
+                <>
+                  <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
+                  {ringsMatched && <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>}
+                  {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
+                  {/* The sky's line names what is drawn: the glow (the dome while steering), or the photograph until the glow comes */}
+                  {flightSkyLine && <p className="reveal-status__line">{flightSkyLine}</p>}
+                </>
+              )}
               {/* While steering, D26 item 6's plain lines at 13 px, ink 66 percent */}
               {steering &&
                 STEER_LINES.map((line) => (
@@ -891,7 +932,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 ))}
               {/* While a craft is drawn (outside the cone view), D26's own line names its models' source
                   (UIUX-tagphone-READY.md item F1); the phone keeps it in its details sheet */}
-              {craft && <p className="reveal-status__line">{CRAFT_PICKER_FOOT}</p>}
+              {columnOpen && craft && <p className="reveal-status__line">{CRAFT_PICKER_FOOT}</p>}
             </>
           )}
         </div>

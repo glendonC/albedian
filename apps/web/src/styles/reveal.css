@@ -267,6 +267,20 @@
   outline-offset: var(--look-focus-offset);
 }
 
+/* flight-column-one: the flight column's caret circle at the tag row's right, the approved icon-only circle as the
+   phone readout's (36 px, its border at 30 percent, the caret at 15 px), centred on the 28 px tag */
+.reveal-status__caret {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  border-color: rgba(244, 243, 239, 0.3);
+  pointer-events: auto;
+  --look-ic: 15px;
+}
+
 /* What the solve found, in its own counts; a sky lined up by an estimate leads with the Predicted tag */
 .reveal-status {
   position: absolute;

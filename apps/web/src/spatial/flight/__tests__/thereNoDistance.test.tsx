@@ -69,6 +69,9 @@ function statusLines(count: number): string[] {
       })
     );
   });
+  // flight-column-one: the laptop's column holds its lines behind the tag's caret, one press away
+  const caret = container.querySelector<HTMLButtonElement>('[data-testid="column-caret"]');
+  if (caret?.getAttribute('aria-expanded') === 'false') act(() => caret.click());
   return [...container.querySelectorAll('[data-testid="reveal-status"] .reveal-status__line')].map((p) => p.textContent ?? '');
 }
 
