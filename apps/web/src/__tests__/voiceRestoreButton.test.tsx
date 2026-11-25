@@ -88,6 +88,14 @@ describe('asking to restore does what the Restore button does', () => {
     expect(seen.props.answer).toBeNull();
   });
 
+  it('"show the restored version" asks the same as "make the sky clearer" (voice-show-restored-one, FIELD\'s walk)', () => {
+    load(recording('image'));
+    ask('show the restored version');
+    expect(seen.props.session.voiceActions.at(-1)!.proposedAction?.type).toBe('media.restore');
+    expect(pressed).toHaveBeenCalledTimes(1);
+    expect(seen.props.answer).toBeNull();
+  });
+
   it('a clip: the same', () => {
     load(recording('video'));
     ask('make the sky clearer');

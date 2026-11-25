@@ -1,5 +1,5 @@
 {
- "about": "answers-3b v4: the every-word property both parsers are held to over the voice command grammar (packages/contracts/src/data/voice-command-grammar.json). The bases: every phrase of every rule that changes the scene (every rule but a question, the rest and a describingActions rule) that acts in the fixture's view (Rigel selected in a solved sky), a gap said with gapFill, a seek with secondsAfter, the code-read rules by codeRead. With the unknown word at every place of a base, no sentence changes the scene; with each unchanging word before or after a base (but a whole-sentence rule's, which is the request word for word), the sentence does what the base does. counts: bases, unknown-word sentences, unchanging-word sentences. The kept cases are exact lists, each with why. Read by tests/integration/test_voice_grammar.py and packages/observation/src/__tests__/voiceParser.commandGrammar.test.ts. counts are per side: the app holds the recording's variants, so its bases add the 14 compare phrases the backend refuses for want of them (missing_source).",
+ "about": "answers-3b v4: the every-word property both parsers are held to over the voice command grammar (packages/contracts/src/data/voice-command-grammar.json). The bases: every phrase of every rule that changes the scene (every rule but a question, the rest and a describingActions rule) that acts in the fixture's view (Rigel selected in a solved sky), a gap said with gapFill, a seek with secondsAfter, the code-read rules by codeRead. With the unknown word at every place of a base, no sentence changes the scene; with each unchanging word before or after a base (but a whole-sentence rule's, which is the request word for word), the sentence does what the base does. counts: bases, unknown-word sentences, unchanging-word sentences. The kept cases are exact lists, each with why. Read by tests/integration/test_voice_grammar.py and packages/observation/src/__tests__/voiceParser.commandGrammar.test.ts. counts are per side: the app holds the recording's variants, so its bases add the 16 compare phrases the backend refuses for want of them (missing_source).",
  "unknown": "zq",
  "gapFill": "the",
  "secondsAfter": " 5 seconds",
@@ -9,14 +9,14 @@
  },
  "counts": {
   "backend": [
-   177,
-   662,
-   12800
+   189,
+   719,
+   13760
   ],
   "app": [
-   191,
-   718,
-   13760
+   205,
+   789,
+   14880
   ]
  },
  "actsWithAnUnknownWord": [],
