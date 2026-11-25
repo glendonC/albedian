@@ -373,7 +373,8 @@ def test_the_route_speaks_full_constellation_names_for_iau_and_serpens_codes_whi
     for code, common in (("Cru", "Acrux"), ("Se1", "Messier 5"), ("Se2", "Eagle Nebula")):
         sky = {**copy.deepcopy(SOLUTIONS["plate_calibrated"]), "sourceSha256": SHA, "sourceAssetId": f"src_{SHA[:16]}"}
         finding = next(f for f in sky["findings"] if f["id"] == "finding-star-rigel")
-        finding["catalogRef"]["commonName"] = common
+        # The voice names a finding by its title, the one its card shows (voice-star-name-1)
+        finding["catalogRef"]["commonName"] = finding["title"] = common
         finding["catalogRef"]["constellation"] = code
         (store.folder(SHA) / "solution.json").write_text(json.dumps(sky), encoding="utf-8")
         answer = _ask(client, "what constellation is it in", "finding-star-rigel")

@@ -488,7 +488,8 @@ def test_every_iau_code_serpens_half_and_latin_name_is_spoken_as_its_full_latin_
         assert answer["sentence"] == f"Rigel is in {latin}.", (stored, answer)
         assert [s["value"]["text"] for s in answer["statements"]] == [stored]
 
-        long_name = with_finding(RIGEL, ["catalogRef", "commonName"], "S" * 80, matched)
+        # A title too long to say with the constellation (the voice names a finding by its title, voice-star-name-1)
+        long_name = with_finding(RIGEL, ["title"], "S" * 80, with_finding(RIGEL, ["catalogRef", "commonName"], "S" * 80, matched))
         short = ask("what constellation is it in", RIGEL, long_name)
         assert short["sentence"] == f"It is in {latin}.", (stored, short)
         assert [s["value"]["text"] for s in short["statements"]] == [stored]

@@ -553,8 +553,11 @@ def _sentence(kind: str, statements: list[dict[str, Any]], name: str, finding: d
         return by[quantity]["amount"]
 
     def fitted(spoken: list[str], *choices: str) -> tuple[str, list[str]]:
-        return next((c for c in choices if contract.utf16_length(c) <= contract.ANSWER_SENTENCE_MAX_UTF16),
-                    SENTENCE_TOO_LONG), spoken
+        # The first form that fits with the class words its spoken values take already on (the answer adds them):
+        # a name short enough alone but not with "Predicted, not measured: " gives way to the form after it
+        classes = {s["evidenceClass"] for s in statements if s["quantity"] in spoken}
+        fits = [c for c in choices if contract.utf16_length(c) <= contract.ANSWER_SENTENCE_MAX_UTF16]
+        return next((c for c in fits if _class_worded(c, classes) is not None), fits[0] if fits else SENTENCE_TOO_LONG), spoken
 
     if kind == "identity":
         thing = by.get("name", {}).get("text")
@@ -637,17 +640,24 @@ def _numbers(*values: Any) -> bool:
 _LOWERED_OPENERS = ("That ", "It ", "Its ", "The ", "This ")
 
 
-def with_class_words(sentence: str, classes: set[str]) -> str:
-    """The sentence with the words that say a spoken value is predicted or simulated (simulated first: a drawn
-    thing is drawn, whatever else), when they fit; else the shortest form that still says so."""
+def _class_worded(sentence: str, classes: set[str]) -> str | None:
+    """The sentence with the words that say a spoken value is predicted or simulated (simulated first: a drawn thing
+    is drawn, whatever else), the sentence itself when it takes none, or None when they do not fit with it."""
     for evidence in ("simulated", "predicted"):
         if evidence in classes:
             body = sentence[0].lower() + sentence[1:] if sentence.startswith(_LOWERED_OPENERS) else sentence
             said = CLASS_WORDS[evidence] + body
-            if contract.utf16_length(said) <= contract.ANSWER_SENTENCE_MAX_UTF16:
-                return said
-            return CLASS_WORDS[evidence] + "the value is in the answer's statements."
+            return said if contract.utf16_length(said) <= contract.ANSWER_SENTENCE_MAX_UTF16 else None
     return sentence
+
+
+def with_class_words(sentence: str, classes: set[str]) -> str:
+    """The sentence with its class words when they fit; else the shortest form that still says so."""
+    worded = _class_worded(sentence, classes)
+    if worded is not None:
+        return worded
+    evidence = "simulated" if "simulated" in classes else "predicted"
+    return CLASS_WORDS[evidence] + "the value is in the answer's statements."
 
 
 def answer_question(question: str, solution: dict[str, Any] | None, selected: str | None = None, *,
@@ -702,7 +712,11 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
         subject = {"kind": "finding", "findingId": finding["id"], "evidenceClass": finding["evidenceClass"]}
         common = _get(finding, ("catalogRef", "commonName"))
         title = finding.get("title")
-        name = common if isinstance(common, str) else title if isinstance(title, str) else "It"
+        # The finding by its title, the one its card shows (DECIDED-BY-LEAD 24 Nov 18:46): the common-name field holds the
+        # catalog id wherever the IAU names file has no name. Up to its bracket, as the app parser reads a title
+        # (packages/observation/src/voiceParser.ts spokenNamesOf), so "Moon (Predicted Ephemeris)" is "Moon"
+        shown = title.split(" (")[0].strip() if isinstance(title, str) else ""
+        name = shown if shown else common if isinstance(common, str) else "It"
         for path in FINDING_PATHS[kind]:
             row = _row(path, finding=True)
             statement = _statement(subject, row, _get(finding, path), ["findings", index, *path]) if row else None
