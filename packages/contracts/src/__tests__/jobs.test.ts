@@ -15,6 +15,8 @@ import {
   JOB_PROGRESS_UNITS,
   JOB_SPAN_MAX_SEC,
   JOB_STAGE_UNITS,
+  PLAYBACK_FAILURE_SENTENCES,
+  PLAYBACK_NOT_COPYABLE,
   SOLVE_FAILURE_SENTENCES,
   UPLOAD_JOB_STAGES,
   UPLOAD_JOB_OPTIONAL_FIELDS,
@@ -35,6 +37,7 @@ interface JobFixture {
   stageUnits: Record<string, Record<string, string[]>>;
   limits: { passMax: number; spanMaxSec: number };
   messages: string[];
+  playbackNotCopyable: string;
   valid: unknown[];
   invalid: { schema: 'UploadJob'; sample: unknown; reason: string; message: string }[];
   edges: { what: string; sample: unknown; accepted: boolean }[];
@@ -70,7 +73,11 @@ describe('@albedian/contracts: the upload job record', () => {
       units: [...JOB_PROGRESS_UNITS],
       passLabels: [...JOB_PASS_LABELS],
       solveFailureSentences: [...SOLVE_FAILURE_SENTENCES],
+      playbackFailureSentences: [...PLAYBACK_FAILURE_SENTENCES],
     });
+    // The playback copy's (REQ-JOB-10): its own failures, and the route's typed answer for a clip it cannot copy
+    expect(fixture.playbackNotCopyable).toBe(PLAYBACK_NOT_COPYABLE);
+    expect(PLAYBACK_FAILURE_SENTENCES).toContain(INTERRUPTED_SENTENCE);
     expect(fixture.stageUnits).toEqual(JOB_STAGE_UNITS);
     expect(fixture.limits).toEqual({ passMax: JOB_PASS_MAX, spanMaxSec: JOB_SPAN_MAX_SEC });
     expect(fixture.messages).toEqual(Object.values(JOB_MESSAGES));

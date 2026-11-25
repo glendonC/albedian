@@ -126,20 +126,28 @@ def _constrained_fields(root: type[BaseModel]) -> dict[tuple[str, str], dict[str
     return found
 
 
-def _owner(path: list[Any], root: type[BaseModel] = UploadJob) -> tuple[str, str]:
+def _owner(path: list[Any], root: type[BaseModel] = UploadJob, sample: Any = None) -> tuple[str, str]:
     """The model and wire name an edge's path ends on, found by walking the models' own field types; a path that ends
-    on a list's index names the list's items."""
+    on a list's index names the list's items. Of a union of models (a job's request), the one whose fields name every
+    key the sample's object there holds, when a sample is given (a playback copy's request beside a restoration's)."""
     item = isinstance(path[-1], int)
     walk, last = (path[:-2], path[-2] + "[]") if item else (path[:-1], path[-1])
     model: Any = root
-    for key in [k for k in walk if not isinstance(k, int)]:
+    node = sample
+    for key in walk:
+        node = node[key] if node is not None else None
+        if isinstance(key, int):
+            continue
         field = next(f for n, f in model.model_fields.items() if (f.alias or n) == key)
+        keys = set(node) if isinstance(node, dict) else None
         stack, model = [field.annotation], None
         while stack:
             kind = stack.pop()
             if isinstance(kind, type) and issubclass(kind, BaseModel):
-                model = kind
-                break
+                if keys is None or keys <= {f.alias or n for n, f in kind.model_fields.items()}:
+                    model = kind
+                    break
+                continue
             stack.extend(get_args(kind))
         assert model is not None, path
     return model.__name__, last
@@ -164,7 +172,7 @@ def edge_gaps(root: type[BaseModel], edges: list[dict[str, Any]], unreachable: d
     gaps: list[str] = []
     by_field: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for edge in edges:
-        by_field.setdefault(_owner(edge["path"], root), []).append(edge)
+        by_field.setdefault(_owner(edge["path"], root, edge["sample"]), []).append(edge)
     for field, option in _constrained_fields(root).items():
         rows = by_field.get(field, [])
         values = {True: [_value_at(e["sample"], e["path"]) for e in rows if e["accepted"]],
@@ -320,15 +328,18 @@ READING: list[tuple[list[tuple[str, str]], Any]] = [
       ("REQ-JOB-4.5", "No result of a `canceled` job SHALL ever be served.")],  # its result ids
      lambda g, st, has: ("solutionId" not in has or st == "succeeded") and ("variantId" not in has or st == "succeeded")
      and ("attemptId" not in has or st in ("succeeded", "rejected", "failed"))
-     and (st != "succeeded" or ({"solutionId"} <= has if g == "solve" else {"attemptId", "variantId"} <= has))
+     and (st != "succeeded" or ({"solutionId"} <= has if g == "solve" else {"variantId"} <= has if g == "playback"
+                               else {"attemptId", "variantId"} <= has))
      and (st != "rejected" or "attemptId" in has)),
+    ([("REQ-JOB-10.1", "A `playback_copy` job SHALL make the playback copy of one restored clip already stored, the variant its request names (`{kind: \"playback_copy\", variantId}`), and SHALL have no graph and no attempt of its own; a `succeeded` one SHALL name that `variantId`."), ("design 3.8", "The playback copy (`playback_copy`, REQ-JOB-10) is a group of its own: it always has `request`, never `graphId`, `attemptId`, `solutionId` or `inputSpan`, and a `succeeded` one has the `variantId` its request names.")],  # the playback copy's own fields
+     lambda g, st, has: g != "playback" or ("request" in has and not {"graphId", "attemptId", "solutionId", "inputSpan"} & has)),
     ([("design 3.8", "Per kind: `solutionId` and `inputSpan` only for solve; `graphId`, `attemptId`, `variantId` "
                      "only for the media kinds, which require `request` and `graphId`, with `request.kind` equal to "
                      "the job's kind; a solve's `request`, when it has one, is the person's alignment it ran from "
                      "(align-2c, D24's Solve from here), kept from its creation.")],
      lambda g, st, has: (g == "solve" or not {"solutionId", "inputSpan"} & has)
-     and (g == "media" or not {"graphId", "attemptId", "variantId"} & has)
-     and (g == "solve" or {"request", "graphId"} <= has)),
+     and (g in ("media", "playback") or not {"graphId", "attemptId", "variantId"} & has)
+     and (g != "media" or {"request", "graphId"} <= has)),
     ([("REQ-JOB-2.2", "WHILE a job is `queued`, THE served record SHALL say how many jobs are ahead of it in its "
                       "group's queue in this process, counted at the moment of the answer, and this count SHALL never "
                       "be stored."),
@@ -371,6 +382,9 @@ READING: list[tuple[list[tuple[str, str]], Any]] = [
 REJECTED_SOLVE_EXISTS = False
 ERRORS_BY_STATE = {"failed": "failure", "interrupted": "interrupted"}
 OTHER_SENTENCES: list[tuple[str, str]] = [
+    ("REQ-JOB-10.2", "A playback copy whose gate refuses it at every quality SHALL end `failed` with the sentence \"No playback "
+                     "copy could be made within its gate, so this restoration has none.\"; a `playback_copy` job SHALL never "
+                     "end `rejected`, since it keeps no attempt."),
     ("REQ-JOB-3.7", "`rejected` SHALL be a terminal state for kinds whose work ends in a check that can refuse (the "
                     "display copy's comparison and the restoration's gate); the solve never ends `rejected`."),
     ("REQ-JOB-3.2", "Such a `running` job SHALL become `interrupted` with the plain reason \"The server stopped before "
@@ -483,7 +497,7 @@ def test_the_table_takes_exactly_what_the_requirements_allow() -> None:
     wrong = []
     for group, rows in jobs.JOB_STATE_TABLE.items():
         for state, row in rows.items():
-            if group == "solve" and state == "rejected":
+            if group in ("solve", "playback") and state == "rejected":
                 assert (row is None) is not REJECTED_SOLVE_EXISTS
                 continue
             assert row["errors"] == ERRORS_BY_STATE.get(state, "none"), (group, state)

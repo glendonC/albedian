@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PersonAlignmentSchema } from './alignment.js';
-import { FAILURE_SENTENCES, JOB_ID_PATTERN, MEDIA_ID_PATTERNS, RestoreRequestSchema, fillsAnyTemplate } from './media.js';
+import { FAILURE_SENTENCES, JOB_ID_PATTERN, MEDIA_ID_PATTERNS, NOTES, RestoreRequestSchema, fillsAnyTemplate } from './media.js';
 import { SHA256_HEX_PATTERN, wireInt, wireNumber, wireUtcInstant } from './wire.js';
 
 /**
@@ -17,8 +17,10 @@ import { SHA256_HEX_PATTERN, wireInt, wireNumber, wireUtcInstant } from './wire.
  * reads, and replaces it once the runner writes every record (upload jobs tasks 4 and 5).
  */
 
-export const JOB_KINDS = ['solve', 'display_copy', 'restoration'] as const;
+export const JOB_KINDS = ['solve', 'display_copy', 'restoration', 'playback_copy'] as const;
 export const MEDIA_JOB_KINDS = ['display_copy', 'restoration'] as const;
+/** A stored restoration's playback copy made at first need (playback-firstneed, REQ-JOB-10): a group of its own. */
+export const PLAYBACK_JOB_KINDS = ['playback_copy'] as const;
 export const UPLOAD_JOB_STATES = ['queued', 'running', 'succeeded', 'rejected', 'failed', 'canceled', 'interrupted'] as const;
 export const JOB_PROGRESS_UNITS = ['bytes', 'frames', 'candidates', 'steps'] as const;
 type Unit = (typeof JOB_PROGRESS_UNITS)[number];
@@ -28,6 +30,7 @@ export const JOB_STAGE_UNITS: Record<Kind, Record<string, readonly Unit[]>> = {
   solve: { store: ['bytes'], decode: ['frames'], detect: ['frames'], solve: ['candidates', 'steps'], verify: ['steps'] },
   display_copy: { decode: ['frames'], encode: ['frames'], write: ['bytes'], verify: ['frames'] },
   restoration: { decode: ['frames'], measure: ['frames'], restore: ['frames'], encode: ['frames'], write: ['bytes'], verify: ['frames'] },
+  playback_copy: { encode: ['frames'], verify: ['frames'], write: ['bytes'] },
 };
 export const UPLOAD_JOB_STAGES = [
   'store', 'decode', 'detect', 'solve', 'verify', 'encode', 'write', 'measure', 'restore',
@@ -54,6 +57,18 @@ export const SOLVE_FAILURE_SENTENCES = [
   'The original changed while the job ran.',
   INTERRUPTED_SENTENCE,
 ] as const;
+/** The only text a failed playback copy stores (REQ-JOB-10.2): the gate's refusal in the restoration note's words. */
+export const PLAYBACK_GATE_REFUSED: string = NOTES[8];
+export const PLAYBACK_FAILURE_SENTENCES = [
+  PLAYBACK_GATE_REFUSED,
+  'The playback copy stopped at its time limit.',
+  'The playback copy stopped on an internal error.',
+  "The job's result could not be stored.",
+  'The restored clip changed while its copy was made.',
+  INTERRUPTED_SENTENCE,
+] as const;
+/** The route's typed answer for a restored clip the job cannot copy at all: no job is made for it (REQ-JOB-10.4). */
+export const PLAYBACK_NOT_COPYABLE = 'No playback copy is made for a clip stored this way yet.';
 export const JOB_PATTERNS = {
   jobId: JOB_ID_PATTERN,
   sha256: SHA256_HEX_PATTERN,
@@ -79,6 +94,7 @@ export const JOB_MESSAGES = {
   failure: 'a failure is one of the fixed sentences its kind and state allow',
   interrupted: 'an interrupted job says the server stopped',
   predictedSky: "a predicted sky time lies within the job's run",
+  playbackVariant: 'a playback copy job names the variant it copies',
 } as const;
 const M = JOB_MESSAGES;
 
@@ -89,7 +105,7 @@ const M = JOB_MESSAGES;
  * only on a job that started) or `with_start` (required on a job that started, forbidden on one that did not). `workStages` is a stage other than those its kind writes at creation. `errors` names
  * the failure sentences the state allows. A group with no row for a state cannot be in it.
  */
-export const JOB_PRE_RUN_STAGES: Record<Kind, readonly string[]> = { solve: ['store'], display_copy: [], restoration: [] };
+export const JOB_PRE_RUN_STAGES: Record<Kind, readonly string[]> = { solve: ['store'], display_copy: [], restoration: [], playback_copy: [] };
 export const JOB_STATE_FIELDS = [
   'startedAtUTC', 'finishedAtUTC', 'error', 'solutionId', 'attemptId', 'variantId', 'inputSpan',
   'cancelRequestedAtUTC', 'queueAhead', 'producer', 'request', 'graphId', 'workStages', 'predictedSkyAtUTC',
@@ -109,7 +125,7 @@ export const jobStateRow = (letters: string, errors: JobStateRow['errors']): Job
   return { fields: Object.fromEntries(JOB_STATE_FIELDS.map((field, i) => [field, RULES[codes[i]!]!])) as JobStateRow['fields'], errors };
 };
 //                    start fin  err  sol  att  var  span cancel queue prod req graph work sky
-export const JOB_STATE_TABLE: Record<'solve' | 'media', Record<State, JobStateRow | null>> = {
+export const JOB_STATE_TABLE: Record<'solve' | 'media' | 'playback', Record<State, JobStateRow | null>> = {
   solve: {
     queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    E   F     F    F', 'none'),
     running:     jobStateRow('R    F    F    F    F    F    E    S      F     A    E   F     E    S', 'none'),
@@ -128,8 +144,19 @@ export const JOB_STATE_TABLE: Record<'solve' | 'media', Record<State, JobStateRo
     canceled:    jobStateRow('E    R    F    F    F    F    F    A      F     A    R   R     S    F', 'none'),
     interrupted: jobStateRow('R    R    R    F    F    F    F    S      F     A    R   R     E    F', 'interrupted'),
   },
+  // The playback copy: its request always, no graph and no attempt, a variant on success, never rejected
+  playback: {
+    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    R   F     F    F', 'none'),
+    running:     jobStateRow('R    F    F    F    F    F    F    S      F     A    R   F     E    F', 'none'),
+    succeeded:   jobStateRow('R    R    F    F    F    R    F    S      F     A    R   F     E    F', 'none'),
+    rejected:    null,
+    failed:      jobStateRow('R    R    R    F    F    F    F    S      F     A    R   F     E    F', 'failure'),
+    canceled:    jobStateRow('E    R    F    F    F    F    F    A      F     A    R   F     S    F', 'none'),
+    interrupted: jobStateRow('R    R    R    F    F    F    F    S      F     A    R   F     E    F', 'interrupted'),
+  },
 };
-export const jobGroup = (kind: Kind): 'solve' | 'media' => ((MEDIA_JOB_KINDS as readonly string[]).includes(kind) ? 'media' : 'solve');
+export const jobGroup = (kind: Kind): 'solve' | 'media' | 'playback' =>
+  (MEDIA_JOB_KINDS as readonly string[]).includes(kind) ? 'media' : (PLAYBACK_JOB_KINDS as readonly string[]).includes(kind) ? 'playback' : 'solve';
 export const stateAllows = (rule: Rule, present: boolean, started: boolean): boolean =>
   ({ required: present, forbidden: !present, either: true, started: started || !present, with_start: present === started })[rule];
 
@@ -164,6 +191,11 @@ export const JobInputSpanSchema = z
     if (span.endSec < span.startSec) ctx.addIssue({ code: z.ZodIssueCode.custom, message: M.span });
   });
 
+/** A playback copy job's request: the restored clip's variant it copies. */
+export const PlaybackCopyRequestSchema = z
+  .object({ kind: z.literal('playback_copy'), variantId: pattern(MEDIA_ID_PATTERNS.variant) })
+  .strict();
+
 const UploadJobShape = {
     id: pattern(JOB_ID_PATTERN),
     sourceAssetSha256: pattern(SHA256_HEX_PATTERN),
@@ -177,7 +209,7 @@ const UploadJobShape = {
     error: z.string().optional(),
     producer: JobProducerSchema.optional(),
     // A media job's request, or the person's alignment a solve ran from (align-2c, D24's Solve from here)
-    request: z.union([RestoreRequestSchema, PersonAlignmentSchema]).optional(),
+    request: z.union([RestoreRequestSchema, PlaybackCopyRequestSchema, PersonAlignmentSchema]).optional(),
     graphId: pattern(MEDIA_ID_PATTERNS.graph).optional(),
     attemptId: pattern(MEDIA_ID_PATTERNS.attempt).optional(),
     variantId: pattern(MEDIA_ID_PATTERNS.variant).optional(),
@@ -198,10 +230,11 @@ export const UploadJobSchema = z
   .strict()
   .superRefine((job, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
-    const media = (MEDIA_JOB_KINDS as readonly string[]).includes(job.kind);
+    const group = jobGroup(job.kind);
+    const media = group === 'media';
     const started = job.startedAtUTC !== undefined;
     const finished = job.finishedAtUTC !== undefined;
-    const stateRow = JOB_STATE_TABLE[jobGroup(job.kind)][job.state];
+    const stateRow = JOB_STATE_TABLE[group][job.state];
     const present = Object.fromEntries(
       Object.entries(UploadJobShape).filter(([, schema]) => schema.isOptional())
         .map(([name]) => [name, (job as Record<string, unknown>)[name] !== undefined]),
@@ -216,8 +249,15 @@ export const UploadJobSchema = z
     if ((start !== undefined && start < created) || (end !== undefined && end < (start ?? created))) fail(M.times);
     if (job.request !== undefined) {
       const request = job.request as Record<string, unknown>;
-      const ofKind = media ? request.kind === job.kind : request.source === 'person';
+      const ofKind = media
+        ? request.kind === job.kind
+        : group === 'playback'
+          ? request.kind === 'playback_copy' && typeof request.variantId === 'string'
+          : request.source === 'person';
       if (!ofKind) fail(M.requestKind);
+      if (group === 'playback' && request.kind === 'playback_copy' && job.variantId !== undefined && job.variantId !== request.variantId) {
+        fail(M.playbackVariant);
+      }
     }
     const order = Object.keys(JOB_STAGE_UNITS[job.kind]);
     if (job.stages.some((stage) => !order.includes(stage.stage))) {
@@ -227,7 +267,7 @@ export const UploadJobSchema = z
       if (places.some((place, i) => i > 0 && place <= places[i - 1]!)) fail(M.stageOrder);
       if (job.stages.some((stage) => !JOB_STAGE_UNITS[job.kind][stage.stage]!.includes(stage.unit))) fail(M.stageUnit);
     }
-    if (media && job.stages.some((stage) => stage.pass !== undefined)) fail(M.passKind);
+    if (group !== 'solve' && job.stages.some((stage) => stage.pass !== undefined)) fail(M.passKind);
     if (job.cancelRequestedAtUTC !== undefined && start !== undefined) {
       const cancel = Date.parse(job.cancelRequestedAtUTC);
       if (cancel < start || (end !== undefined && cancel > end)) fail(M.cancel);
@@ -241,7 +281,9 @@ export const UploadJobSchema = z
     if (job.error !== undefined && allowed === 'failure') {
       const fixed = media
         ? fillsAnyTemplate(job.error, FAILURE_SENTENCES)
-        : (SOLVE_FAILURE_SENTENCES as readonly string[]).includes(job.error);
+        : group === 'playback'
+          ? (PLAYBACK_FAILURE_SENTENCES as readonly string[]).includes(job.error)
+          : (SOLVE_FAILURE_SENTENCES as readonly string[]).includes(job.error);
       if (!fixed || job.error === INTERRUPTED_SENTENCE) fail(M.failure);
     }
   });

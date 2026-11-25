@@ -201,6 +201,13 @@ answer as if it were current.
      place, as today (`tests/integration/test_solution_text_holds_no_place_or_time.py`,
      `tests/integration/test_no_place_or_time_in_urls.py`); the start-up sweep SHALL log counts only.
 
+### REQ-JOB-10: A stored restoration's playback copy, made at first need
+- **Acceptance Criteria:** [decided 2026-11-25 04:47 by the lead, playback-firstneed]
+  1. A `playback_copy` job SHALL make the playback copy of one restored clip already stored, the variant its request names (`{kind: "playback_copy", variantId}`), and SHALL have no graph and no attempt of its own; a `succeeded` one SHALL name that `variantId`.
+  2. A playback copy whose gate refuses it at every quality SHALL end `failed` with the sentence "No playback copy could be made within its gate, so this restoration has none."; a `playback_copy` job SHALL never end `rejected`, since it keeps no attempt.
+  3. Such a refusal SHALL be answered again without a new job only while the playback step's revision is the one that made it, so a new encoder or gate tries again; the job store keeps what it keeps, and a refusal it no longer holds is tried again.
+  4. A restored clip the job cannot copy at all SHALL be refused by the route with a typed answer, and SHALL never get a job.
+
 ## Properties to test (derived from the requirements)
 
 Python properties use hypothesis, TS properties fast-check; each runs under 20 seeds before a unit is ready, with rare

@@ -29,11 +29,14 @@ from pydantic import Field, StringConstraints, model_validator
 
 from services.contracts.ingest import JOB_ID_PATTERN
 from services.contracts.alignment import PersonAlignment
-from services.contracts.media import FAILURE_SENTENCES, MEDIA_ID_PATTERNS, RestoreRequest, fills_any_template
+from services.contracts.media import FAILURE_SENTENCES, MEDIA_ID_PATTERNS, NOTES, RestoreRequest, fills_any_template
 from services.contracts.wire import MAX_SAFE_INTEGER, SHA256_HEX_PATTERN, UtcInstant, WireInt, WireModel, WireNumber
 
-JOB_KINDS = ("solve", "display_copy", "restoration")
+JOB_KINDS = ("solve", "display_copy", "restoration", "playback_copy")
 MEDIA_JOB_KINDS = ("display_copy", "restoration")
+# A stored restoration's playback copy made at first need (playback-firstneed, DECIDED-BY-LEAD 04:47 on 25 Nov): a group
+# of its own, since it has no graph and no attempt; the job store's own record is the memory of a gate's refusal
+PLAYBACK_JOB_KINDS = ("playback_copy",)
 UPLOAD_JOB_STATES = ("queued", "running", "succeeded", "rejected", "failed", "canceled", "interrupted")
 PROGRESS_UNITS = ("bytes", "frames", "candidates", "steps")
 # Each kind's stages in order, with the units each may report (design 3.8; the media kinds' from the restoration spec)
@@ -43,6 +46,8 @@ JOB_STAGE_UNITS: dict[str, dict[str, tuple[str, ...]]] = {
     "display_copy": {"decode": ("frames",), "encode": ("frames",), "write": ("bytes",), "verify": ("frames",)},
     "restoration": {"decode": ("frames",), "measure": ("frames",), "restore": ("frames",), "encode": ("frames",),
                     "write": ("bytes",), "verify": ("frames",)},
+    # The copy's encode counted in the clip's frames (UIUX's "142 of 328"), its gate frame by frame, then its bytes placed
+    "playback_copy": {"encode": ("frames",), "verify": ("frames",), "write": ("bytes",)},
 }
 JOB_STAGES = tuple(dict.fromkeys(stage for stages in JOB_STAGE_UNITS.values() for stage in stages))
 # The solve chain's passes (design 3.4) [proposed: a closed list, not the pattern design 3.8 first gave]
@@ -71,6 +76,21 @@ SOLVE_FAILURE_SENTENCES = (
     "The original changed while the job ran.",
     INTERRUPTED_SENTENCE,
 )
+# The only text a failed playback copy stores: the gate's refusal in the restoration note's own words (its job's record
+# is that refusal's memory, answered again only under the playback step's revision that made it), its time limit, an
+# internal error, its result not stored, the restored clip changed under it, and the server stopping
+PLAYBACK_GATE_REFUSED = NOTES[8]
+PLAYBACK_FAILURE_SENTENCES = (
+    PLAYBACK_GATE_REFUSED,
+    "The playback copy stopped at its time limit.",
+    "The playback copy stopped on an internal error.",
+    "The job's result could not be stored.",
+    "The restored clip changed while its copy was made.",
+    INTERRUPTED_SENTENCE,
+)
+# The route's typed answer for a restored clip the job cannot copy at all (a 10-bit clip today, or a stored format the
+# gate does not measure in): no job is made for it (DECIDED-BY-LEAD 04:47 on 25 Nov)
+PLAYBACK_NOT_COPYABLE = "No playback copy is made for a clip stored this way yet."
 JOB_PATTERNS = {
     "jobId": JOB_ID_PATTERN,
     "sha256": SHA256_HEX_PATTERN,
@@ -95,8 +115,9 @@ M_CANCEL = "a cancel time lies within the job's run"
 M_FAILURE = "a failure is one of the fixed sentences its kind and state allow"
 M_INTERRUPTED = "an interrupted job says the server stopped"
 M_PREDICTED_SKY = "a predicted sky time lies within the job's run"
+M_PLAYBACK_VARIANT = "a playback copy job names the variant it copies"
 JOB_MESSAGES = (M_DONE, M_SPAN, M_STATE, M_TIMES, M_REQUEST_KIND, M_STAGE_KIND, M_STAGE_ORDER, M_STAGE_UNIT, M_PASS_KIND,
-                M_CANCEL, M_FAILURE, M_INTERRUPTED, M_PREDICTED_SKY)
+                M_CANCEL, M_FAILURE, M_INTERRUPTED, M_PREDICTED_SKY, M_PLAYBACK_VARIANT)
 
 # What each state may and must hold, for each group of kinds, read from the requirements: a job is queued until it gets
 # a slot and started from then (REQ-JOB-2.1), with a queue count only while queued (2.2); a stage that did not run is
@@ -115,7 +136,8 @@ JOB_MESSAGES = (M_DONE, M_SPAN, M_STATE, M_TIMES, M_REQUEST_KIND, M_STAGE_KIND, 
 # (required on a job that started, forbidden on one that did not). "workStages" is a
 # stage other than those its kind writes at creation. "errors" names the failure sentences the state allows: none, the
 # kind's failures but the interrupted one, or the interrupted one alone. A group with no row for a state cannot be in it.
-JOB_PRE_RUN_STAGES: dict[str, tuple[str, ...]] = {"solve": ("store",), "display_copy": (), "restoration": ()}
+JOB_PRE_RUN_STAGES: dict[str, tuple[str, ...]] = {"solve": ("store",), "display_copy": (), "restoration": (),
+                                                  "playback_copy": ()}
 JOB_STATE_FIELDS = ("startedAtUTC", "finishedAtUTC", "error", "solutionId", "attemptId", "variantId", "inputSpan",
                     "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages",
                     "predictedSkyAtUTC")
@@ -140,6 +162,17 @@ _STATE_ROWS: dict[str, dict[str, Optional[tuple[str, str]]]] = {
         "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   R     S    F", "none"),
         "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   R     E    F", "interrupted"),
     },
+    # A playback copy: its request always (the variant it copies), no graph and no attempt; a succeeded one names its
+    # variant; a gate's refusal is a failure with its fixed sentence, so it is never rejected
+    "playback": {
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   F     F    F", "none"),
+        "running":     ("R    F    F    F    F    F    F    S      F     A    R   F     E    F", "none"),
+        "succeeded":   ("R    R    F    F    F    R    F    S      F     A    R   F     E    F", "none"),
+        "rejected":    None,
+        "failed":      ("R    R    R    F    F    F    F    S      F     A    R   F     E    F", "failure"),
+        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   F     S    F", "none"),
+        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   F     E    F", "interrupted"),
+    },
 }
 
 
@@ -158,7 +191,7 @@ JOB_STATE_TABLE: dict[str, dict[str, Optional[dict[str, Any]]]] = {
 
 
 def job_group(kind: str) -> str:
-    return "media" if kind in MEDIA_JOB_KINDS else "solve"
+    return "media" if kind in MEDIA_JOB_KINDS else "playback" if kind in PLAYBACK_JOB_KINDS else "solve"
 
 
 def state_allows(rule: str, present: bool, started: bool) -> bool:
@@ -218,6 +251,12 @@ class JobInputSpan(WireModel):
         return self
 
 
+class PlaybackCopyRequest(WireModel):
+    """A playback copy job's request: the restored clip's variant it copies."""
+    kind: Literal["playback_copy"]
+    variant_id: _pattern(MEDIA_ID_PATTERNS["variant"])
+
+
 def _instant(text: Optional[str]) -> Optional[datetime]:
     return None if text is None else datetime.fromisoformat(text.replace("Z", "+00:00"))
 
@@ -235,7 +274,7 @@ class UploadJob(WireModel):
     error: Optional[str] = None
     producer: Optional[JobProducer] = None
     # A media job's request, or the person's alignment a solve ran from (align-2c, D24's Solve from here)
-    request: Optional[Union[RestoreRequest, PersonAlignment]] = None
+    request: Optional[Union[RestoreRequest, PlaybackCopyRequest, PersonAlignment]] = None
     graph_id: Optional[_pattern(MEDIA_ID_PATTERNS["graph"])] = None
     attempt_id: Optional[_pattern(MEDIA_ID_PATTERNS["attempt"])] = None
     variant_id: Optional[_pattern(MEDIA_ID_PATTERNS["variant"])] = None
@@ -250,8 +289,9 @@ class UploadJob(WireModel):
     @model_validator(mode="after")
     def _fits_its_state_and_kind(self) -> "UploadJob":
         failures: list[str] = []
-        media = self.kind in MEDIA_JOB_KINDS
-        row = JOB_STATE_TABLE[job_group(self.kind)][self.state]
+        group = job_group(self.kind)
+        media = group == "media"
+        row = JOB_STATE_TABLE[group][self.state]
         present = {field.alias or name: getattr(self, name) is not None
                    for name, field in type(self).model_fields.items() if not field.is_required()}
         present["workStages"] = any(stage.stage not in JOB_PRE_RUN_STAGES[self.kind] for stage in self.stages)
@@ -263,9 +303,13 @@ class UploadJob(WireModel):
             failures.append(M_TIMES)
         if self.request is not None and not (
             isinstance(self.request, RestoreRequest) and self.request.kind == self.kind if media
+            else isinstance(self.request, PlaybackCopyRequest) if group == "playback"
             else isinstance(self.request, PersonAlignment)
         ):
             failures.append(M_REQUEST_KIND)
+        if (group == "playback" and isinstance(self.request, PlaybackCopyRequest) and self.variant_id is not None
+                and self.variant_id != self.request.variant_id):
+            failures.append(M_PLAYBACK_VARIANT)
         order = list(JOB_STAGE_UNITS[self.kind])
         if any(stage.stage not in order for stage in self.stages):
             failures.append(M_STAGE_KIND)
@@ -275,7 +319,7 @@ class UploadJob(WireModel):
                 failures.append(M_STAGE_ORDER)
             if any(stage.unit not in JOB_STAGE_UNITS[self.kind][stage.stage] for stage in self.stages):
                 failures.append(M_STAGE_UNIT)
-        if media and any(stage.pass_ is not None for stage in self.stages):
+        if group != "solve" and any(stage.pass_ is not None for stage in self.stages):
             failures.append(M_PASS_KIND)
         cancel = _instant(self.cancel_requested_at_utc)
         if cancel is not None and start is not None and (cancel < start or (end is not None and cancel > end)):
@@ -287,7 +331,9 @@ class UploadJob(WireModel):
         if self.error is not None and allowed == "interrupted" and self.error != INTERRUPTED_SENTENCE:
             failures.append(M_INTERRUPTED)
         if self.error is not None and allowed == "failure":
-            fixed = fills_any_template(self.error, FAILURE_SENTENCES) if media else self.error in SOLVE_FAILURE_SENTENCES
+            fixed = (fills_any_template(self.error, FAILURE_SENTENCES) if media
+                     else self.error in PLAYBACK_FAILURE_SENTENCES if group == "playback"
+                     else self.error in SOLVE_FAILURE_SENTENCES)
             if not fixed or self.error == INTERRUPTED_SENTENCE:
                 failures.append(M_FAILURE)
         _refuse(failures)
@@ -392,6 +438,28 @@ def build_job_samples() -> dict[str, Any]:
     display = {**media_base, "kind": "display_copy", "request": {"kind": "display_copy"}, "state": "running",
                "startedAtUTC": started, "stages": [{"stage": "decode", "unit": "frames", "done": 1, "total": 1}],
                "cancelRequestedAtUTC": "2031-05-02T19:20:30Z"}
+    # A stored restoration's playback copy made at first need (playback-firstneed), in each of its states
+    copy_variant = "var_7e6f5a4b3c2d1e0f"
+    copy_base = {"id": "job_7e6f5a4b3c2d1e0f9a8b7c6e", "sourceAssetSha256": sha, "kind": "playback_copy",
+                 "createdAtUTC": created, "request": {"kind": "playback_copy", "variantId": copy_variant},
+                 "producer": {"name": "albedian.playback", "revision": 1}}
+    copy_stages = [{"stage": "encode", "unit": "frames", "done": 328, "total": 328},
+                   {"stage": "verify", "unit": "frames", "done": 328, "total": 328},
+                   {"stage": "write", "unit": "bytes", "done": 7206845, "total": None}]
+    playback = {
+        "queued": {**copy_base, "state": "queued", "stages": [], "queueAhead": 0},
+        "running": {**copy_base, "state": "running", "startedAtUTC": started,
+                    "stages": [{"stage": "encode", "unit": "frames", "done": 142, "total": 328}]},
+        "succeeded": {**copy_base, "state": "succeeded", "startedAtUTC": started, "finishedAtUTC": finished,
+                      "stages": copy_stages, "variantId": copy_variant},
+        "failed": {**copy_base, "state": "failed", "startedAtUTC": started, "finishedAtUTC": finished,
+                   "stages": copy_stages[:2], "error": PLAYBACK_GATE_REFUSED},
+        "canceled": {**copy_base, "state": "canceled", "startedAtUTC": started, "finishedAtUTC": finished,
+                     "cancelRequestedAtUTC": "2031-05-02T19:20:04Z", "stages": copy_stages[:1]},
+        "interrupted": {**copy_base, "state": "interrupted", "startedAtUTC": started, "finishedAtUTC": finished,
+                        "error": INTERRUPTED_SENTENCE, "stages": copy_stages[:1]},
+    }
+    playback = {state: _fit_producer(record) for state, record in playback.items()}
     # A job that started and names no producer: a fault, as every job that started records its producer
     unproduced = {key: value for key, value in solve["canceled"].items() if key != "producer"}
     # A restoration the server stopped, and jobs canceled before they started (only their creation's stages)
@@ -414,7 +482,7 @@ def build_job_samples() -> dict[str, Any]:
     succeeded_with_sky = {**solve["succeeded"], "predictedSkyAtUTC": sky_at}
     valid = [*solve.values(), *media.values(), display, interrupted_media, canceled_queued_solve,
              canceled_queued_media, interrupted_after_cancel, rejected_after_cancel, running_with_sky,
-             succeeded_with_sky, *aligned]
+             succeeded_with_sky, *aligned, *playback.values()]
 
     invalid: list[dict[str, Any]] = []
 
@@ -497,6 +565,24 @@ def build_job_samples() -> dict[str, Any]:
     bad(_with(media["succeeded"], ["predictedSkyAtUTC"], sky_at), "a predicted sky on a media job", M_STATE)
     bad(_with(running_with_sky, ["predictedSkyAtUTC"], "2031-05-02T19:20:01Z"), "a predicted sky before the start", M_PREDICTED_SKY)
     bad(_with(succeeded_with_sky, ["predictedSkyAtUTC"], "2031-05-02T19:20:42Z"), "a predicted sky after the finish", M_PREDICTED_SKY)
+    # The playback copy's own (playback-firstneed): its request, the variant it names, no graph, no attempt, never
+    # rejected, and only its own sentences
+    bad(_with(playback["succeeded"], ["variantId"], "var_0a1b2c3d4e5f6071"), "a playback copy names another variant than it copies", M_PLAYBACK_VARIANT)
+    bad(_with(playback["running"], ["request"], {"kind": "restoration"}), "a playback copy's request is never a restoration's", M_REQUEST_KIND)
+    bad(_with(media["succeeded"], ["request"], {"kind": "playback_copy", "variantId": copy_variant}), "a restoration's request is never a playback copy's", M_REQUEST_KIND)
+    bad(_with(solve["queued"], ["request"], {"kind": "playback_copy", "variantId": copy_variant}), "a solve's request is never a playback copy's", M_REQUEST_KIND)
+    bad(_with(playback["running"], ["request"], _DROP), "a playback copy names its request", M_STATE)
+    bad(_with(playback["running"], ["graphId"], "graph_7e6f5a4b3c2d1e0f"), "a playback copy has no graph", M_STATE)
+    bad(_with(playback["succeeded"], ["attemptId"], "att_7e6f5a4b3c2d1e0f"), "a playback copy has no attempt", M_STATE)
+    bad(_with(playback["succeeded"], ["variantId"], _DROP), "a succeeded playback copy names its variant", M_STATE)
+    bad(_with(playback["failed"], ["state"], "rejected"), "a playback copy is never rejected", M_STATE)
+    bad(_with(playback["failed"], ["error"], "The file could not be decoded."), "a media sentence on a playback copy", M_FAILURE)
+    bad(_with(playback["failed"], ["error"], "The decoder could not read the file."), "a solve sentence on a playback copy", M_FAILURE)
+    bad(_with(playback["failed"], ["error"], INTERRUPTED_SENTENCE), "a failed playback copy giving the interrupted sentence", M_FAILURE)
+    bad(_with(media["failed"], ["error"], PLAYBACK_GATE_REFUSED), "a playback copy's sentence on a restoration", M_FAILURE)
+    bad(_with(playback["running"], ["stages", 0, "stage"], "decode"), "a stage of another kind on a playback copy", M_STAGE_KIND)
+    bad(_with(playback["succeeded"], ["stages"], list(reversed(copy_stages))), "a playback copy's stages out of order", M_STAGE_ORDER)
+    bad(_with(playback["running"], ["stages", 0, "pass"], {"number": 1, "label": "triangle"}), "a playback stage with a pass", M_PASS_KIND)
 
     # Edge samples: each bound, pattern and closed list just inside (valid) and just outside (refused), from one table
     def nudge_down(value: float) -> float:
@@ -551,6 +637,11 @@ def build_job_samples() -> dict[str, Any]:
          ["The decoder could not read the file", "", INTERRUPTED_SENTENCE]),
         ("media failure", media["failed"], ["error"], ["The file could not be decoded.", "This ffmpeg cannot do what this file needs: reading a tiled HEIC."],
          ["The file could not be decoded", "This ffmpeg cannot do what this file needs: ."]),
+        ("playback failure", playback["failed"], ["error"], [x for x in PLAYBACK_FAILURE_SENTENCES if x != INTERRUPTED_SENTENCE],
+         ["The playback copy stopped at its time limit", "", INTERRUPTED_SENTENCE, PLAYBACK_NOT_COPYABLE]),
+        ("playback request kind", playback["running"], ["request", "kind"], ["playback_copy"], ["Playback_copy", "playback", ""]),
+        ("playback request variant", playback["running"], ["request", "variantId"], ["var_" + hexes[:16]],
+         ["var_" + hexes[:15], "var_" + hexes[:17], "graph_" + hexes[:16]]),
     ]
     edges: list[dict[str, Any]] = []
     for what, base, path, accepted, refused in edge_table:
@@ -584,14 +675,16 @@ def build_job_samples() -> dict[str, Any]:
                                   "stages": [{"stage": name, "unit": JOB_STAGE_UNITS[kind][name][0], "done": 1, "total": 1}
                                              for name in stage_names]}
         sentence = INTERRUPTED_SENTENCE if row is not None and row["errors"] == "interrupted" else (
-            "The decoder could not read the file." if kind == "solve" else "The file could not be decoded.")
+            "The decoder could not read the file." if kind == "solve" else PLAYBACK_GATE_REFUSED if kind == "playback_copy"
+            else "The file could not be decoded.")
         values = {"startedAtUTC": started, "finishedAtUTC": finished, "error": sentence,
                   "solutionId": "sol_0a1b2c3d4e5f6071", "attemptId": "att_7e6f5a4b3c2d1e0f",
                   "variantId": "var_7e6f5a4b3c2d1e0f", "inputSpan": span, "cancelRequestedAtUTC": "2031-05-02T19:20:04Z",
                   "queueAhead": 0, "producer": producer, "predictedSkyAtUTC": "2031-05-02T19:20:20Z",
                   "request": ({"format": "albedian.person-alignment", "formatVersion": 1, "source": "person",
                                "centerAltDeg": 41.5, "centerAzDeg": 128.25, "rollDeg": -6.0, "fovDiagonalDeg": 68.5}
-                              if kind == "solve" else {"kind": "restoration", "exposureEv": 1.5} if kind != "display_copy"
+                              if kind == "solve" else {"kind": kind, "variantId": "var_7e6f5a4b3c2d1e0f"}
+                              if kind == "playback_copy" else {"kind": "restoration", "exposureEv": 1.5} if kind != "display_copy"
                               else {"kind": kind}),
                   "graphId": "graph_7e6f5a4b3c2d1e0f"}
         for field in JOB_STATE_FIELDS:
@@ -662,7 +755,9 @@ def build_job_samples() -> dict[str, Any]:
         "patterns": JOB_PATTERNS,
         "enums": {"kinds": list(JOB_KINDS), "states": list(UPLOAD_JOB_STATES), "stages": list(JOB_STAGES),
                   "units": list(PROGRESS_UNITS), "passLabels": list(JOB_PASS_LABELS),
-                  "solveFailureSentences": list(SOLVE_FAILURE_SENTENCES)},
+                  "solveFailureSentences": list(SOLVE_FAILURE_SENTENCES),
+                  "playbackFailureSentences": list(PLAYBACK_FAILURE_SENTENCES)},
+        "playbackNotCopyable": PLAYBACK_NOT_COPYABLE,
         "stageUnits": {kind: {stage: list(units) for stage, units in stages.items()} for kind, stages in JOB_STAGE_UNITS.items()},
         "limits": {"passMax": JOB_PASS_MAX, "spanMaxSec": JOB_SPAN_MAX_SEC},
         "stateFields": list(JOB_STATE_FIELDS),
