@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlightAndRestoreHud } from '../../components/FlightAndRestoreHud.js';
 import { FLIGHT_STANDOFF_PC, distancePc } from '@albedian/observation';
 import { MOTION_TOKENS } from '@albedian/design-system';
-import { FLIGHT_HALF_MS, flightEase, useCameraFlightAnimation } from '../useCameraFlightAnimation.js';
+import { FLIGHT_MS, FLIGHT_TRAVEL_START_MS, flightCurve, useCameraFlightAnimation } from '../useCameraFlightAnimation.js';
 import { isFlightShown } from '../../reveal/flightView.js';
 
 /**
@@ -170,43 +170,86 @@ describe('Go There flies to one light year short of the star', () => {
   });
 });
 
-describe('the flight keeps the motion record: two halves of 750 ms on NASA\'s Eyes\' ease-out quart', () => {
-  it('takes each half from the motion tokens', () => {
-    expect(FLIGHT_HALF_MS).toBe(MOTION_TOKENS.cameraHalfMs);
-    expect(FLIGHT_HALF_MS).toBe(750);
+// flight-anim-one (DECIDED-BY-LEAD 24 Nov, MOTION-goto-curve-PROPOSAL.md candidate A; MOTION-READY-web.md section 2):
+// one move each way, one progress over the two camera halves on MapLibre flyTo's defaultEasing, the photo becoming the
+// sky on its first half with the camera still, the travel on its second half in log distance
+/** An independent solve of cubic-bezier(0.25, 0.1, 0.25, 1) at x, by bisection on the curve's x(t). */
+function referenceEase(x: number): number {
+  const b = (p1: number, p2: number, t: number) => 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (b(0.25, 0.25, mid) < x) lo = mid;
+    else hi = mid;
+  }
+  return b(0.1, 1, lo);
+}
+
+describe('the flight is one move: two camera halves on MapLibre flyTo\'s curve', () => {
+  it('lasts the two camera halves of the motion tokens, 1500 ms', () => {
+    expect(FLIGHT_MS).toBe(2 * MOTION_TOKENS.cameraHalfMs);
+    expect(FLIGHT_MS).toBe(1500);
   });
 
-  it('eases each half as 1 - (1 - t)^4, from rest to rest', () => {
-    expect(flightEase(0)).toBe(0);
-    expect(flightEase(1)).toBe(1);
-    expect(flightEase(0.5)).toBeCloseTo(0.9375, 10);
-    expect(flightEase(0.25)).toBeCloseTo(1 - 0.75 ** 4, 10);
-    expect(flightEase(-1)).toBe(0);
-    expect(flightEase(2)).toBe(1);
-    for (let t = 0; t < 1; t += 0.05) expect(flightEase(t + 0.05)).toBeGreaterThanOrEqual(flightEase(t));
+  it('eases as cubic-bezier(0.25, 0.1, 0.25, 1), from rest to rest', () => {
+    expect(flightCurve(0)).toBe(0);
+    expect(flightCurve(1)).toBe(1);
+    expect(flightCurve(-1)).toBe(0);
+    expect(flightCurve(2)).toBe(1);
+    for (let x = 0.05; x < 1; x += 0.05) expect(flightCurve(x)).toBeCloseTo(referenceEase(x), 4);
+    for (let x = 0; x < 0.95; x += 0.05) expect(flightCurve(x + 0.05)).toBeGreaterThan(flightCurve(x));
   });
 
-  it('is in the first half until 750 ms and in the second until 1500 ms, then arrives', () => {
-    const phases = flyThrough(base, target.id, queueFrames(), base, [700, 800, 1499, 1500]).map((s) => s.spatialView.transitionPhase);
-    // the first frame runs at once, then the four frames at 700, 800, 1499 and 1500 ms
+  it('starts the travel where the curve reaches half its progress, 440 ms in', () => {
+    expect(Math.round(FLIGHT_TRAVEL_START_MS)).toBe(440);
+    expect(flightCurve(FLIGHT_TRAVEL_START_MS / FLIGHT_MS)).toBeCloseTo(0.5, 6);
+  });
+
+  it('becomes the sky until the travel starts, travels until 1500 ms, then arrives', () => {
+    const phases = flyThrough(base, target.id, queueFrames(), base, [400, 480, 1499, 1500]).map((s) => s.spatialView.transitionPhase);
+    // the first frame runs at once, then the four frames at 400, 480, 1499 and 1500 ms
     expect(phases).toEqual(['phase_a_photo_to_sky', 'phase_a_photo_to_sky', 'phase_b_sky_to_space', 'phase_b_sky_to_space', 'at_space']);
   });
 
-  it('reports each half\'s progress on that curve', () => {
-    const states = flyThrough(base, target.id, queueFrames(), base, [375, 1125, 60_000]);
-    expect(states[1]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
-    expect(states[2]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
+  it('holds the camera still while the photo becomes the sky, so the picked star stays where it was', () => {
+    const states = flyThrough(base, target.id, queueFrames(), base, [100, 250, 400, 60_000]);
+    const start = base.spatialView.observerOriginParsec;
+    for (const s of states.slice(0, 4)) {
+      expect(s.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
+      expect(s.spatialView.observerOriginParsec).toEqual(start);
+    }
+  });
+
+  it('reports the progress of each part on the one curve', () => {
+    const states = flyThrough(base, target.id, queueFrames(), base, [300, 1000, 60_000]);
+    expect(states[1]!.spatialView.transitionProgress).toBeCloseTo(referenceEase(300 / 1500) / 0.5, 3);
+    expect(states[2]!.spatialView.transitionProgress).toBeCloseTo((referenceEase(1000 / 1500) - 0.5) / 0.5, 3);
+  });
+
+  it('travels in log distance: the distance to the star falls by the same ratio for the same progress', () => {
+    const states = flyThrough(base, target.id, queueFrames(), base, [700, 1000, 1300, 60_000]);
+    const start = base.spatialView.observerOriginParsec;
+    const end = states.at(-1)!.spatialView.observerOriginParsec;
+    const d0 = distancePc(start, targetPc);
+    const d1 = distancePc(end, targetPc);
+    for (const [i, s] of states.slice(1, 4).entries()) {
+      // the travel's own progress at 700, 1000 and 1300 ms, from the independent curve (transitionProgress is rounded)
+      const q = (referenceEase([700, 1000, 1300][i]! / 1500) - 0.5) / 0.5;
+      expect(s.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
+      expect(distancePc(s.spatialView.observerOriginParsec, targetPc) / (d0 * (d1 / d0) ** q)).toBeCloseTo(1, 3);
+    }
   });
 });
 
-// The there screen (the readout with its Simulated disclosure, Back to Moment, Fly on your own) shows from the second
-// half's first frame, not from the press: its motion counts from then (motion.css's there rules, AskBar's rest), so
-// the record's 750 and 1500 ms fall where it says. If this changes, those timings change with it.
-describe('the there screen shows from the flight\'s second half', () => {
-  it('is not shown in the first half, and is shown from the second half\'s first frame to the arrival', () => {
+// The there screen (the readout with its Simulated disclosure, Back to Moment, Fly on your own) shows from the travel's
+// first frame, not from the press: its motion counts from then (motion.css's there rules, AskBar's rest), so the record's
+// 440 and 1500 ms fall where it says. If this changes, those timings change with it.
+describe('the there screen shows from the travel\'s first frame', () => {
+  it('is not shown while the photo becomes the sky, and is shown from the travel\'s first frame to the arrival', () => {
     vi.stubGlobal('WebGL2RenderingContext', class {});
     try {
-      const states = flyThrough(base, target.id, queueFrames(), base, [700, 750, 1499, 1500]);
+      const states = flyThrough(base, target.id, queueFrames(), base, [400, 450, 1499, 1500]);
       expect(states.map((s) => [s.spatialView.transitionPhase, isFlightShown(s)])).toEqual([
         ['phase_a_photo_to_sky', false],
         ['phase_a_photo_to_sky', false],
@@ -220,9 +263,9 @@ describe('the there screen shows from the flight\'s second half', () => {
   });
 });
 
-// The motion record (MOTION-READY-web.md, "Go there (A = 0)", Back to Moment): the second half reversed (750 ms, the
-// camera from where it is back to where the flight began), then the first half reversed (750 ms, the registered sky
-// back to the photo), each on the flight's own ease-out quart, and only then the reducer's restore of the
+// The motion record (MOTION-READY-web.md, "Go there (A = 0)", Back to Moment, one move since flight-anim-one): the
+// flight's one curve reversed over the same 1500 ms, the travel back first (the camera from where it is to where the
+// flight began, in log distance), then the registered sky back to the photo, and only then the reducer's restore of the
 // CameraCheckpoint, unchanged; under reduced motion the restore at once, with no travel.
 describe('Back to Moment flies the flight backwards, then restores the checkpoint', () => {
   /** There after Go there, through the reducer (space.enter saves the moment first). */
@@ -277,32 +320,45 @@ describe('Back to Moment flies the flight backwards, then restores the checkpoin
     expect(frames).toHaveLength(0);
   });
 
-  it('flies the second half back, then the first, and restores only at the end, once', () => {
+  it('travels back until the curve reaches half its progress, 440 ms in, then turns the sky back to the photo', () => {
+    // flown to its end (1500 ms), so the shared camera is free for the next press
+    const { seen } = returnThrough(thereSession(false), queueFrames(), [430, 450, 1500]);
+    const [before, after] = [seen[1]!.states.at(-1)!, seen[2]!.states.at(-1)!];
+    expect(1 - referenceEase(430 / 1500)).toBeGreaterThan(0.5);
+    expect(before.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
+    expect(before.spatialView.transitionProgress).toBeCloseTo((1 - referenceEase(430 / 1500) - 0.5) / 0.5, 3);
+    expect(after.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
+    expect(after.spatialView.transitionProgress).toBeCloseTo((1 - referenceEase(450 / 1500)) / 0.5, 3);
+  });
+
+  it('flies the same curve reversed, the travel back first, then the sky back to the photo, and restores only at the end, once', () => {
     const there = thereSession(false);
     const home = returnCheckpointOf(there)!.spatialView.observerOriginParsec;
     const from = there.spatialView.observerOriginParsec;
-    const { seen, restored } = returnThrough(there, queueFrames(), [300, 1200, 1499, 1500]);
-    // The first frame at once: the second half at its start, the camera where it is
+    const { seen, restored } = returnThrough(there, queueFrames(), [300, 900, 1499, 1500]);
+    // The first frame at once: the travel at its end, the camera where it is
     const first = seen[0]!.states.at(-1)!;
     expect(first.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
     expect(first.spatialView.transitionProgress).toBe(1);
     expect(first.spatialView.observerOriginParsec).toEqual(from);
-    // 300 ms: the camera on its way back, eased
+    // 300 ms: on its way back, u = 1 - curve(0.2), in log distance to the star
     const b = seen[1]!.states.at(-1)!;
+    const u = 1 - referenceEase(300 / 1500);
     expect(b.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
     expect(b.machines.navigation).toBe('space');
-    expect(b.spatialView.transitionProgress).toBeCloseTo(1 - flightEase(300 / FLIGHT_HALF_MS), 3);
-    const share = distancePc(from, b.spatialView.observerOriginParsec) / distancePc(from, home);
-    expect(share).toBeCloseTo(flightEase(300 / FLIGHT_HALF_MS), 3);
-    // 1200 ms: back at the flight's start, the registered sky going back to the photo
+    expect(b.spatialView.transitionProgress).toBeCloseTo((u - 0.5) / 0.5, 3);
+    const dHome = distancePc(home, targetPc);
+    const dFrom = distancePc(from, targetPc);
+    expect(distancePc(b.spatialView.observerOriginParsec, targetPc) / (dHome * (dFrom / dHome) ** ((u - 0.5) / 0.5))).toBeCloseTo(1, 3);
+    // 900 ms: back at the flight's start, the registered sky going back to the photo
     const a = seen[2]!.states.at(-1)!;
     expect(a.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
     expect(a.spatialView.mode).toBe('registered_sky');
     expect(a.machines.navigation).toBe('sky_registered');
     expect(a.spatialView.observerOriginParsec).toEqual(home);
     expect(a.spatialView.lockedAnchorNdc).toEqual([0.2, -0.1]);
-    expect(a.spatialView.transitionProgress).toBeCloseTo(1 - flightEase((1200 - FLIGHT_HALF_MS) / FLIGHT_HALF_MS), 3);
-    // Not restored before both halves; restored once at 1500 ms
+    expect(a.spatialView.transitionProgress).toBeCloseTo((1 - referenceEase(900 / 1500)) / 0.5, 3);
+    // Not restored before the move ends; restored once at 1500 ms
     expect(seen.slice(0, 4).map((x) => x.restored)).toEqual([0, 0, 0, 0]);
     expect(seen[4]!.restored).toBe(1);
     expect(restored).toHaveLength(1);

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { MOTION_TOKENS } from '@albedian/design-system';
 import { AskBar } from '../AskBar.js';
+import { FLIGHT_MS, FLIGHT_REST_MS, FLIGHT_TRAVEL_START_MS } from '../../hooks/useCameraFlightAnimation.js';
 
 // Asking on the laptop reveal (ask, approved 2026-11-12: "Ask out loud" alone, filling while it listens, the words as
 // heard with the unsettled one at 42 percent; typed, decided the same night: the keyboard button and the 440 px field;
@@ -352,9 +353,9 @@ describe('Back to Moment arrives when the camera is at rest', () => {
     expect(container.querySelector('.ask-bar > .look-main')!.textContent).toBe('Back to Moment');
   });
 
-  // Back to Moment mounts with the there screen, as the flight's second half begins (isFlightShown), so the camera
-  // is still one half later: 1500 ms after the press
-  it('words in once the camera rests, one half after the there screen arrives, and loads the motion with the bar', () => {
+  // Back to Moment mounts with the there screen, as the flight's travel begins (isFlightShown, 440 ms after the press
+  // since flight-anim-one), so the camera is still the travel's remainder later: 1500 ms after the press
+  it('words in once the camera rests, the travel\'s remainder after the there screen arrives, and loads the motion with the bar', () => {
     let found: Record<string, string> = {};
     postcss.parse(motionCss).walkRules((rule) => {
       if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar > .look-main' && rule.parent?.type === 'root') {
@@ -363,8 +364,24 @@ describe('Back to Moment arrives when the camera is at rest', () => {
         });
       }
     });
-    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both' });
+    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--ask-bar-rest) both' });
     expect(fs.readFileSync(path.resolve(here, '../AskBar.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
+  });
+
+  it('carries the rest on the bar: the travel\'s remainder, 1060 ms, and 0 under reduced motion', () => {
+    expect(FLIGHT_REST_MS).toBe(Math.round(FLIGHT_MS - FLIGHT_TRAVEL_START_MS));
+    expect(FLIGHT_REST_MS).toBe(1060);
+    show({ onBack: () => {} });
+    expect((q('.ask-bar') as HTMLElement).style.getPropertyValue('--ask-bar-rest')).toBe('1060ms');
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+    try {
+      act(() => root.unmount());
+      root = createRoot(container);
+      show({ onBack: () => {} });
+      expect((q('.ask-bar') as HTMLElement).style.getPropertyValue('--ask-bar-rest')).toBe('0ms');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -402,8 +419,8 @@ describe('at Go there, Ask out loud leaves and comes back as the motion record s
       expect(asks()).toHaveLength(2);
       act(() => vi.advanceTimersByTime(1));
       expect(asks()).toHaveLength(0);
-      // there arrives as the second half begins: the camera rests one half later
-      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs - MOTION_TOKENS.wordsOutMs - 1));
+      // there arrives as the travel begins: the camera rests the travel's remainder later
+      act(() => vi.advanceTimersByTime(FLIGHT_REST_MS - MOTION_TOKENS.wordsOutMs - 1));
       expect(asks()).toHaveLength(0);
       act(() => vi.advanceTimersByTime(1));
       expect(asks().map((el) => el.classList.contains('is-back'))).toEqual([true, true]);
