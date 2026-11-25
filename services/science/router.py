@@ -27,6 +27,7 @@ from services.science.catalog import (
     propagate_directions_batch,
 )
 from services.science.catalog_model import CatalogStar
+from services.science.designations import star_title
 from services.science.ephemeris import (
     BODY_NAMES,
     DEFAULT_BODIES,
@@ -529,6 +530,8 @@ def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, An
             "id": st.id,
             "evidenceClass": "predicted",
             "commonName": st.common_name,
+            # The title order the cards use, so the phone names a star as the laptop does (sky-context-title-zero)
+            "title": star_title(st),
             "constellation": st.constellation,
             "provider": st.provider,
             "releaseVersion": st.release_version,

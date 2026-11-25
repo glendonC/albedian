@@ -31,6 +31,7 @@ from services.science.catalog import (
     icrs_to_altaz,
     propagate_directions_batch,
 )
+from services.science.designations import star_title
 from services.science.phone_photo_solver import _get_tile_index
 
 ROUTE = "/api/science/sky-context"
@@ -133,6 +134,7 @@ def test_its_ephemeris_brightness_sun_and_tile_star_rows_are_exact(whole: dict[s
         assert star["decDeg"] == pytest.approx(float(dec[0]), abs=1e-9)
         assert star["commonName"] == tile_star.common_name
         assert star.get("bayerDesignation") == tile_star.bayer_designation
+        assert star["title"] == star_title(tile_star)
 
 
 def test_a_stars_position_is_the_unrefracted_topocentric_one(whole: dict[str, Any]) -> None:
@@ -440,3 +442,14 @@ def test_tile_pool_skips_rows_missing_proper_motion_or_outside_contract_bounds(m
         assert [s.id for s in stars] == ["hip-900008"]
     finally:
         sci_router._sky_context_tile_pool.cache_clear()
+
+
+def test_every_star_is_titled_as_its_card_is_and_never_by_a_number_where_it_has_a_designation(whole: dict[str, Any]) -> None:
+    # sky-context-title-zero: the phone names a ring as the laptop's card does (the title order); a star with no IAU
+    # name whose Bayer designation the baked tables give is titled by it, not by the number its commonName holds
+    unnamed = [s for s in whole["stars"] if s["commonName"] == s["catalogSourceId"]]
+    designated = [s for s in unnamed if "bayerDesignation" in s]
+    assert designated, "the whole reply holds stars with a Bayer designation and no IAU name"
+    assert all(s["title"] == s["bayerDesignation"] for s in designated)
+    assert all(s["title"] == s["commonName"] for s in whole["stars"] if s["commonName"] != s["catalogSourceId"])
+

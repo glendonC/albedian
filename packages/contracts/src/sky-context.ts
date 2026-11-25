@@ -107,6 +107,7 @@ export const SKY_CONTEXT_RULES = {
   positionIsSkyPosition: "A body's raDeg, decDeg, altDeg and azDeg are its skyPosition's.",
   distanceIsInferred: "A body's distancePc is its inferredDistancePc median.",
   idsOfName: "A body's id and its evidence's id are made from its name.",
+  titleOrder: "A star's title is its commonName where that is not its catalogSourceId, else its bayerDesignation where it has one.",
   sunBandOfAltitude:
     "The Sun's band is the USNO band of its altDeg: day above -50 arcminutes, civil twilight down to -6 degrees, nautical down to -12, astronomical down to -18, night below.",
 } as const;
@@ -246,6 +247,9 @@ export const SkyContextStarSchema = z
     id: id(),
     evidenceClass: z.literal('predicted'),
     commonName: name(),
+    // The title a card shows, by the title order (designations.star_title): the IAU name, else the Bayer designation,
+    // else the Flamsteed designation, else the catalog id (sky-context-title-zero)
+    title: name(),
     // Absent for a star the baked designations do not give one (catalog-1-v2); never null
     bayerDesignation: name().optional(),
     constellation: name(),
@@ -277,6 +281,9 @@ export const SkyContextStarSchema = z
       return broken(ctx, 'lightTravelOfDistance');
     if (s.astrophysics !== undefined && (s.provider !== 'Gaia DR3' || s.astrophysics.catalogSourceId !== s.catalogSourceId))
       return broken(ctx, 'astrophysicsOfGaia');
+    // A Flamsteed designation or the catalog id, where neither name is held, is the route's to give
+    if (s.commonName !== s.catalogSourceId ? s.title !== s.commonName : s.bayerDesignation !== undefined && s.title !== s.bayerDesignation)
+      return broken(ctx, 'titleOrder');
   });
 export type SkyContextStar = z.infer<typeof SkyContextStarSchema>;
 

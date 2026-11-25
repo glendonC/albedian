@@ -59,6 +59,7 @@
   "positionIsSkyPosition": "A body's raDeg, decDeg, altDeg and azDeg are its skyPosition's.",
   "distanceIsInferred": "A body's distancePc is its inferredDistancePc median.",
   "idsOfName": "A body's id and its evidence's id are made from its name.",
+  "titleOrder": "A star's title is its commonName where that is not its catalogSourceId, else its bayerDesignation where it has one.",
   "sunBandOfAltitude": "The Sun's band is the USNO band of its altDeg: day above -50 arcminutes, civil twilight down to -6 degrees, nautical down to -12, astronomical down to -18, night below."
  },
  "bases": {
@@ -88,6 +89,7 @@
      "id": "star-castor",
      "evidenceClass": "predicted",
      "commonName": "Castor",
+     "title": "Castor",
      "bayerDesignation": "Alpha Geminorum",
      "constellation": "Gemini",
      "provider": "Hipparcos",
@@ -125,6 +127,7 @@
      "id": "star-vega",
      "evidenceClass": "predicted",
      "commonName": "Vega",
+     "title": "Vega",
      "bayerDesignation": "Alpha Lyrae",
      "constellation": "Lyra",
      "provider": "Hipparcos",
@@ -162,6 +165,7 @@
      "id": "star-sheliak",
      "evidenceClass": "predicted",
      "commonName": "Sheliak",
+     "title": "Sheliak",
      "bayerDesignation": "Beta Lyrae",
      "constellation": "Lyra",
      "provider": "Gaia DR3",
@@ -217,6 +221,7 @@
      "id": "star-sulafat",
      "evidenceClass": "predicted",
      "commonName": "Sulafat",
+     "title": "Sulafat",
      "bayerDesignation": "Gamma Lyrae",
      "constellation": "Lyra",
      "provider": "Gaia DR3",
@@ -256,6 +261,7 @@
      "id": "star-phecda",
      "evidenceClass": "predicted",
      "commonName": "Phecda",
+     "title": "Phecda",
      "bayerDesignation": "Gamma Ursae Majoris",
      "constellation": "Ursa Major",
      "provider": "Hipparcos",
@@ -293,6 +299,7 @@
      "id": "star-megrez",
      "evidenceClass": "predicted",
      "commonName": "Megrez",
+     "title": "Megrez",
      "bayerDesignation": "Delta Ursae Majoris",
      "constellation": "Ursa Major",
      "provider": "Gaia DR3",
@@ -548,6 +555,7 @@
      "id": "star-vega",
      "evidenceClass": "predicted",
      "commonName": "Vega",
+     "title": "Vega",
      "bayerDesignation": "Alpha Lyrae",
      "constellation": "Lyra",
      "provider": "Hipparcos",
@@ -585,6 +593,7 @@
      "id": "star-sheliak",
      "evidenceClass": "predicted",
      "commonName": "Sheliak",
+     "title": "Sheliak",
      "bayerDesignation": "Beta Lyrae",
      "constellation": "Lyra",
      "provider": "Gaia DR3",
@@ -640,6 +649,7 @@
      "id": "star-sulafat",
      "evidenceClass": "predicted",
      "commonName": "Sulafat",
+     "title": "Sulafat",
      "bayerDesignation": "Gamma Lyrae",
      "constellation": "Lyra",
      "provider": "Gaia DR3",
@@ -679,6 +689,7 @@
      "id": "star-phecda",
      "evidenceClass": "predicted",
      "commonName": "Phecda",
+     "title": "Phecda",
      "bayerDesignation": "Gamma Ursae Majoris",
      "constellation": "Ursa Major",
      "provider": "Hipparcos",
@@ -716,6 +727,7 @@
      "id": "star-megrez",
      "evidenceClass": "predicted",
      "commonName": "Megrez",
+     "title": "Megrez",
      "bayerDesignation": "Delta Ursae Majoris",
      "constellation": "Ursa Major",
      "provider": "Gaia DR3",
@@ -1192,6 +1204,7 @@
       "id": "star-castor",
       "evidenceClass": "predicted",
       "commonName": "Castor",
+      "title": "Castor",
       "bayerDesignation": "Alpha Geminorum",
       "constellation": "Gemini",
       "provider": "Hipparcos",
@@ -1229,6 +1242,7 @@
       "id": "star-vega",
       "evidenceClass": "predicted",
       "commonName": "Vega",
+      "title": "Vega",
       "bayerDesignation": "Alpha Lyrae",
       "constellation": "Lyra",
       "provider": "Hipparcos",
@@ -1266,6 +1280,7 @@
       "id": "star-sheliak",
       "evidenceClass": "predicted",
       "commonName": "Sheliak",
+      "title": "Sheliak",
       "bayerDesignation": "Beta Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -1321,6 +1336,7 @@
       "id": "star-sulafat",
       "evidenceClass": "predicted",
       "commonName": "Sulafat",
+      "title": "Sulafat",
       "bayerDesignation": "Gamma Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -1360,6 +1376,7 @@
       "id": "star-phecda",
       "evidenceClass": "predicted",
       "commonName": "Phecda",
+      "title": "Phecda",
       "bayerDesignation": "Gamma Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Hipparcos",
@@ -1397,6 +1414,7 @@
       "id": "star-megrez",
       "evidenceClass": "predicted",
       "commonName": "Megrez",
+      "title": "Megrez",
       "bayerDesignation": "Delta Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Gaia DR3",
@@ -1656,6 +1674,7 @@
       "id": "star-vega",
       "evidenceClass": "predicted",
       "commonName": "Vega",
+      "title": "Vega",
       "bayerDesignation": "Alpha Lyrae",
       "constellation": "Lyra",
       "provider": "Hipparcos",
@@ -1693,6 +1712,7 @@
       "id": "star-sheliak",
       "evidenceClass": "predicted",
       "commonName": "Sheliak",
+      "title": "Sheliak",
       "bayerDesignation": "Beta Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -1748,6 +1768,7 @@
       "id": "star-sulafat",
       "evidenceClass": "predicted",
       "commonName": "Sulafat",
+      "title": "Sulafat",
       "bayerDesignation": "Gamma Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -1787,6 +1808,7 @@
       "id": "star-phecda",
       "evidenceClass": "predicted",
       "commonName": "Phecda",
+      "title": "Phecda",
       "bayerDesignation": "Gamma Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Hipparcos",
@@ -1824,6 +1846,7 @@
       "id": "star-megrez",
       "evidenceClass": "predicted",
       "commonName": "Megrez",
+      "title": "Megrez",
       "bayerDesignation": "Delta Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Gaia DR3",
@@ -2030,6 +2053,7 @@
       "id": "star-castor",
       "evidenceClass": "predicted",
       "commonName": "Castor",
+      "title": "Castor",
       "bayerDesignation": "Alpha Geminorum",
       "constellation": "Gemini",
       "provider": "Hipparcos",
@@ -2067,6 +2091,7 @@
       "id": "star-vega",
       "evidenceClass": "predicted",
       "commonName": "Vega",
+      "title": "Vega",
       "bayerDesignation": "Alpha Lyrae",
       "constellation": "Lyra",
       "provider": "Hipparcos",
@@ -2328,6 +2353,7 @@
       "id": "star-castor",
       "evidenceClass": "predicted",
       "commonName": "Castor",
+      "title": "Castor",
       "bayerDesignation": "Alpha Geminorum",
       "constellation": "Gemini",
       "provider": "Hipparcos",
@@ -2365,6 +2391,7 @@
       "id": "star-vega",
       "evidenceClass": "predicted",
       "commonName": "Vega",
+      "title": "Vega",
       "bayerDesignation": "Alpha Lyrae",
       "constellation": "Lyra",
       "provider": "Hipparcos",
@@ -2402,6 +2429,7 @@
       "id": "star-sheliak",
       "evidenceClass": "predicted",
       "commonName": "Sheliak",
+      "title": "Sheliak",
       "bayerDesignation": "Beta Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -2457,6 +2485,7 @@
       "id": "star-sulafat",
       "evidenceClass": "predicted",
       "commonName": "Sulafat",
+      "title": "Sulafat",
       "bayerDesignation": "Gamma Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -2496,6 +2525,7 @@
       "id": "star-phecda",
       "evidenceClass": "predicted",
       "commonName": "Phecda",
+      "title": "Phecda",
       "bayerDesignation": "Gamma Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Hipparcos",
@@ -2533,6 +2563,7 @@
       "id": "star-megrez",
       "evidenceClass": "predicted",
       "commonName": "Megrez",
+      "title": "Megrez",
       "bayerDesignation": "Delta Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Gaia DR3",
@@ -2779,6 +2810,7 @@
       "id": "star-castor",
       "evidenceClass": "predicted",
       "commonName": "Castor",
+      "title": "Castor",
       "bayerDesignation": "Alpha Geminorum",
       "constellation": "Gemini",
       "provider": "Hipparcos",
@@ -2816,6 +2848,7 @@
       "id": "star-vega",
       "evidenceClass": "predicted",
       "commonName": "Vega",
+      "title": "Vega",
       "bayerDesignation": "Alpha Lyrae",
       "constellation": "Lyra",
       "provider": "Hipparcos",
@@ -2853,6 +2886,7 @@
       "id": "star-sheliak",
       "evidenceClass": "predicted",
       "commonName": "Sheliak",
+      "title": "Sheliak",
       "bayerDesignation": "Beta Lyrae",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
@@ -2908,6 +2942,7 @@
       "id": "star-sulafat",
       "evidenceClass": "predicted",
       "commonName": "Sulafat",
+      "title": "Sulafat",
       "constellation": "Lyra",
       "provider": "Gaia DR3",
       "catalogSourceId": "Gaia DR3 2043823929421342848",
@@ -2946,6 +2981,7 @@
       "id": "star-phecda",
       "evidenceClass": "predicted",
       "commonName": "Phecda",
+      "title": "Phecda",
       "bayerDesignation": "Gamma Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Hipparcos",
@@ -2983,6 +3019,1415 @@
       "id": "star-megrez",
       "evidenceClass": "predicted",
       "commonName": "Megrez",
+      "title": "Megrez",
+      "bayerDesignation": "Delta Ursae Majoris",
+      "constellation": "Ursa Major",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 1575287046603605888",
+      "raDeg": 183.856553,
+      "decDeg": 57.032617,
+      "altDeg": 45.594104393957686,
+      "azDeg": 334.3941439424924,
+      "aboveHorizon": true,
+      "mag": 3.31,
+      "properMotionRaMasYr": 104.11,
+      "properMotionDecMasYr": 7.3,
+      "distancePc": {
+       "lower": 24.690784,
+       "median": 24.79358,
+       "upper": 24.907433,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       -13.461160944696132,
+       -0.9074354693681093,
+       20.801329671593596
+      ],
+      "lightTravel": {
+       "distancePc": 24.79358,
+       "lightYears": 80.86584243015166,
+       "lightMinutes": 42532198.48456257,
+       "lightSeconds": 2551931909.0737543,
+       "description": "80.9 light-years",
+       "formatted": "80.9 light-years"
+      },
+      "bpRp": 0.26148772,
+      "radialVelocityKmS": -12.387454,
+      "astrophysics": {
+       "catalogSourceId": "Gaia DR3 1575287046603605888",
+       "limitations": [
+        "GSP-Phot and FLAME values are model fits to Gaia's BP/RP spectra, photometry and parallax, not measurements of this star; their papers describe their reach and limits."
+       ],
+       "teffK": {
+        "value": 8298.0,
+        "method": "Gaia DR3 GSP-Phot",
+        "lower": 8288.0,
+        "upper": 8337.0,
+        "interval": "16th to 84th percentile"
+       },
+       "luminositySolar": {
+        "value": 23.12064790175595,
+        "method": "Gaia DR3 FLAME",
+        "lower": 22.803420720004187,
+        "upper": 23.38837238659355,
+        "interval": "16th to 84th percentile"
+       },
+       "radiusSolar": {
+        "value": 2.326514608421498,
+        "method": "Derived: Stefan-Boltzmann from the GSP-Phot temperature and FLAME luminosity, Tsun 5772 K",
+        "derived": true,
+        "lower": 2.2889327962643184,
+        "upper": 2.345595717485358,
+        "interval": "span of the two percentile intervals"
+       },
+       "citations": [
+        "Gaia DR3 GSP-Phot (Andrae et al. 2023, doi:10.1051/0004-6361/202243462)",
+        "Gaia DR3 FLAME (Creevey et al. 2023, doi:10.1051/0004-6361/202243688; Fouesneau et al. 2023, doi:10.1051/0004-6361/202243919)"
+       ]
+      },
+      "releaseVersion": "Gaia DR3"
+     }
+    ],
+    "ephemerides": [
+     {
+      "id": "finding-predicted-mars",
+      "evidenceClass": "predicted",
+      "name": "Mars",
+      "title": "Mars",
+      "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
+      "skyPosition": {
+       "raDeg": 228.80467622638065,
+       "decDeg": -16.27174365079576,
+       "uncertaintyArcsec": 74.96350729431806,
+       "altDeg": 51.92244879490417,
+       "azDeg": 162.05934338563966
+      },
+      "inferredDistancePc": {
+       "lower": 3.856748175246234e-06,
+       "median": 3.858028659572971e-06,
+       "upper": 3.859309143899709e-06,
+       "method": "ephemeris_au"
+      },
+      "cartesianParsecICRS": [
+       -2.4392223175475414e-06,
+       -2.7867600915540048e-06,
+       -1.080993901826618e-06
+      ],
+      "evidence": {
+       "id": "ev-ephem-mars",
+       "evidenceClass": "predicted",
+       "verificationMethod": "ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time",
+       "distanceUncertaintyNote": "Topocentric distance 0.795776 AU, between 0.795511 and 0.796040 AU from the method's error bounds",
+       "limitations": [
+        "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+        "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+        "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +51.94 degrees, and the real air differs most near the horizon.",
+        "Its uncertainty, 75.0 arcsec, adds the method's documented worst error (60.4 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+        "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "raDeg": 228.80467622638065,
+      "decDeg": -16.27174365079576,
+      "altDeg": 51.92244879490417,
+      "azDeg": 162.05934338563966,
+      "aboveHorizon": true,
+      "distanceAu": 0.7957755339625638,
+      "distancePc": 3.858028659572971e-06,
+      "lightTravel": {
+       "distancePc": 3.858028659572971e-06,
+       "lightYears": 1.2583206526691068e-05,
+       "lightMinutes": 6.618263304778434,
+       "lightSeconds": 397.09579828670604,
+       "description": "6.6 light-minutes",
+       "formatted": "6.6 light-minutes"
+      }
+     },
+     {
+      "id": "finding-predicted-moon",
+      "evidenceClass": "predicted",
+      "name": "Moon",
+      "title": "Moon",
+      "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
+      "skyPosition": {
+       "raDeg": 326.4343270956605,
+       "decDeg": -8.714301238766776,
+       "uncertaintyArcsec": 42.59469242363787,
+       "altDeg": -20.717217486977177,
+       "azDeg": 91.82611362125431
+      },
+      "inferredDistancePc": {
+       "lower": 1.2128846666647029e-08,
+       "median": 1.2130165663817831e-08,
+       "upper": 1.2131484660988636e-08,
+       "method": "ephemeris_au"
+      },
+      "cartesianParsecICRS": [
+       9.990812682628542e-09,
+       -6.629255563029191e-09,
+       -1.8378116476778323e-09
+      ],
+      "evidence": {
+       "id": "ev-ephem-moon",
+       "evidenceClass": "predicted",
+       "verificationMethod": "Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time",
+       "distanceUncertaintyNote": "Topocentric distance 0.002502 AU, between 0.002502 and 0.002502 AU from the method's error bounds",
+       "limitations": [
+        "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+        "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+        "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -20.07 degrees, and the real air differs most near the horizon.",
+        "Its uncertainty, 42.6 arcsec, adds the method's documented worst error (18.2 arcsec here), 0.01 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.0 for a place up to 9 km above sea level, 1 for polar motion, and 4.7 for the time scale.",
+        "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "raDeg": 326.4343270956605,
+      "decDeg": -8.714301238766776,
+      "altDeg": -20.717217486977177,
+      "azDeg": 91.82611362125431,
+      "aboveHorizon": false,
+      "distanceAu": 0.002502026270392566,
+      "distancePc": 1.2130165663817831e-08,
+      "lightTravel": {
+       "distancePc": 1.2130165663817831e-08,
+       "lightYears": 3.95633089381174e-08,
+       "lightMinutes": 0.020808717969092227,
+       "lightSeconds": 1.2485230781455336,
+       "description": "1.25 light-seconds",
+       "formatted": "1.25 light-seconds"
+      }
+     }
+    ],
+    "constellationEdges": [
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-vega",
+      "toStarId": "star-sheliak"
+     },
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-sheliak",
+      "toStarId": "star-sulafat"
+     },
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-sulafat",
+      "toStarId": "star-vega"
+     },
+     {
+      "constellation": "Ursa Major",
+      "fromStarId": "star-phecda",
+      "toStarId": "star-megrez"
+     }
+    ],
+    "predictedSkyBrightness": {
+     "skyBrightnessMagArcsec2": 21.6,
+     "darkSkyMagArcsec2": 21.6,
+     "lunarVeilDeltaMag": 0.0,
+     "skyBrightnessNanoLamberts": 78.07,
+     "lunarScatteredNanoLamberts": 0.0,
+     "airmass": 1.0,
+     "illuminationFraction": 0.0888,
+     "lunarPhaseName": "Waning Crescent",
+     "sepFromMoonDeg": 110.72,
+     "target": "zenith",
+     "targetAltDeg": 90.0,
+     "moonAltDeg": -20.72,
+     "evidenceClass": "predicted",
+     "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model",
+     "limitations": [
+      "Predicted for the time and place; not measured in any image.",
+      "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, site values the model needs and nothing measured here; light pollution is not modelled."
+     ]
+    },
+    "sun": {
+     "altDeg": -47.73332301004936,
+     "band": "night",
+     "evidenceClass": "predicted",
+     "method": "ERFA eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time",
+     "limitations": [
+      "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+      "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+      "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -47.09 degrees, and the real air differs most near the horizon.",
+      "Its uncertainty, 14.9 arcsec, adds the method's documented worst error (0.0 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.3 for the time scale.",
+      "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+     ]
+    }
+   }
+  },
+  {
+   "name": "a reply with a star that has no IAU name, titled by its Bayer designation",
+   "kind": "reply",
+   "body": {
+    "format": "albedian.sky-context",
+    "formatVersion": 1,
+    "observedAtUTC": "2031-03-20T12:00:00Z",
+    "observerLocation": {
+     "latDeg": 20.0,
+     "lonDeg": -140.0
+    },
+    "filters": {
+     "aboveHorizonOnly": false
+    },
+    "convention": {
+     "frame": "topocentric_sea_level",
+     "azimuth": "true_north_through_east",
+     "altitude": "apparent_airless"
+    },
+    "stars": [
+     {
+      "id": "star-castor",
+      "evidenceClass": "predicted",
+      "commonName": "Castor",
+      "title": "Castor",
+      "bayerDesignation": "Alpha Geminorum",
+      "constellation": "Gemini",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 36850",
+      "raDeg": 113.649428,
+      "decDeg": 31.888276,
+      "altDeg": -0.48459988532498244,
+      "azDeg": 304.34250949618337,
+      "aboveHorizon": false,
+      "mag": 1.58,
+      "properMotionRaMasYr": -191.45,
+      "properMotionDecMasYr": -145.19,
+      "distancePc": {
+       "lower": 14.734050390452335,
+       "median": 15.595757953836555,
+       "upper": 16.564518800728838,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       -5.311905368388362,
+       12.12993674414313,
+       8.238686915706255
+      ],
+      "lightTravel": {
+       "distancePc": 15.595757953836555,
+       "lightYears": 50.86655921709295,
+       "lightMinutes": 26753775.48582221,
+       "lightSeconds": 1605226529.1493325,
+       "description": "50.9 light-years",
+       "formatted": "50.9 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-vega",
+      "evidenceClass": "predicted",
+      "commonName": "HIP 91262",
+      "title": "Alpha Lyrae",
+      "bayerDesignation": "Alpha Lyrae",
+      "constellation": "Lyra",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 91262",
+      "raDeg": 279.234735,
+      "decDeg": 38.783689,
+      "altDeg": 34.184578636435006,
+      "azDeg": 56.012173349003916,
+      "aboveHorizon": true,
+      "mag": 0.03,
+      "properMotionRaMasYr": 200.94,
+      "properMotionDecMasYr": 286.23,
+      "distancePc": {
+       "lower": 7.657554177195803,
+       "median": 7.678722260615834,
+       "upper": 7.700007700007702,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       0.9605810211407515,
+       -5.90810970574253,
+       4.809812819893541
+      ],
+      "lightTravel": {
+       "distancePc": 7.678722260615834,
+       "lightYears": 25.04464237886816,
+       "lightMinutes": 13172480.105589498,
+       "lightSeconds": 790348806.3353698,
+       "description": "25.0 light-years",
+       "formatted": "25.0 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-sheliak",
+      "evidenceClass": "predicted",
+      "commonName": "Sheliak",
+      "title": "Sheliak",
+      "bayerDesignation": "Beta Lyrae",
+      "constellation": "Lyra",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 2090687795056051328",
+      "raDeg": 282.519979,
+      "decDeg": 33.362667,
+      "altDeg": 31.337021375038695,
+      "azDeg": 62.341909127197255,
+      "aboveHorizon": true,
+      "mag": 3.52,
+      "properMotionRaMasYr": 1.55,
+      "properMotionDecMasYr": -4.46,
+      "distancePc": {
+       "lower": 263.0956,
+       "median": 276.21762,
+       "upper": 289.68326,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       50.010875583599294,
+       -225.2128100380065,
+       151.9021925997481
+      ],
+      "lightTravel": {
+       "distancePc": 276.21762,
+       "lightYears": 900.9013839611508,
+       "lightMinutes": 473838091.9082069,
+       "lightSeconds": 28430285514.492413,
+       "description": "901 light-years",
+       "formatted": "901 light-years"
+      },
+      "bpRp": 0.21071863,
+      "radialVelocityKmS": -29.482485,
+      "astrophysics": {
+       "catalogSourceId": "Gaia DR3 2090687795056051328",
+       "limitations": [
+        "GSP-Phot and FLAME values are model fits to Gaia's BP/RP spectra, photometry and parallax, not measurements of this star; their papers describe their reach and limits."
+       ],
+       "teffK": {
+        "value": 17700.0,
+        "method": "Gaia DR3 GSP-Phot",
+        "lower": 14991.0,
+        "upper": 18256.0,
+        "interval": "16th to 84th percentile"
+       },
+       "citations": [
+        "Gaia DR3 GSP-Phot (Andrae et al. 2023, doi:10.1051/0004-6361/202243462)"
+       ]
+      },
+      "releaseVersion": "Gaia DR3"
+     },
+     {
+      "id": "star-sulafat",
+      "evidenceClass": "predicted",
+      "commonName": "Sulafat",
+      "title": "Sulafat",
+      "bayerDesignation": "Gamma Lyrae",
+      "constellation": "Lyra",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 2043823929421342848",
+      "raDeg": 284.735929,
+      "decDeg": 32.689557,
+      "altDeg": 29.423806085548513,
+      "azDeg": 62.91437270893213,
+      "aboveHorizon": true,
+      "mag": 3.25,
+      "properMotionRaMasYr": -3.05,
+      "properMotionDecMasYr": 1.08,
+      "distancePc": {
+       "lower": 193.15596,
+       "median": 203.35674,
+       "upper": 211.9433,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       43.53368942088882,
+       -165.5176208145176,
+       109.83031816732016
+      ],
+      "lightTravel": {
+       "distancePc": 203.35674,
+       "lightYears": 663.2609769928071,
+       "lightMinutes": 348848743.4591368,
+       "lightSeconds": 20930924607.548206,
+       "description": "663 light-years",
+       "formatted": "663 light-years"
+      },
+      "bpRp": 0.23184443,
+      "radialVelocityKmS": -19.554564,
+      "releaseVersion": "Gaia DR3"
+     },
+     {
+      "id": "star-phecda",
+      "evidenceClass": "predicted",
+      "commonName": "Phecda",
+      "title": "Phecda",
+      "bayerDesignation": "Gamma Ursae Majoris",
+      "constellation": "Ursa Major",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 58001",
+      "raDeg": 178.457697,
+      "decDeg": 53.69476,
+      "altDeg": 45.19212129093408,
+      "azDeg": 327.9649229312413,
+      "aboveHorizon": true,
+      "mag": 2.44,
+      "properMotionRaMasYr": 107.91,
+      "properMotionDecMasYr": 11.02,
+      "distancePc": {
+       "lower": 25.246149962130776,
+       "median": 25.50369803621525,
+       "upper": 25.76655501159495,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       -15.094934573869933,
+       0.406427624871837,
+       20.552770623903164
+      ],
+      "lightTravel": {
+       "distancePc": 25.50369803621525,
+       "lightYears": 83.1819376944657,
+       "lightMinutes": 43750371.94978118,
+       "lightSeconds": 2625022316.986871,
+       "description": "83.2 light-years",
+       "formatted": "83.2 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-megrez",
+      "evidenceClass": "predicted",
+      "commonName": "Megrez",
+      "title": "Megrez",
+      "bayerDesignation": "Delta Ursae Majoris",
+      "constellation": "Ursa Major",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 1575287046603605888",
+      "raDeg": 183.856553,
+      "decDeg": 57.032617,
+      "altDeg": 45.594104393957686,
+      "azDeg": 334.3941439424924,
+      "aboveHorizon": true,
+      "mag": 3.31,
+      "properMotionRaMasYr": 104.11,
+      "properMotionDecMasYr": 7.3,
+      "distancePc": {
+       "lower": 24.690784,
+       "median": 24.79358,
+       "upper": 24.907433,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       -13.461160944696132,
+       -0.9074354693681093,
+       20.801329671593596
+      ],
+      "lightTravel": {
+       "distancePc": 24.79358,
+       "lightYears": 80.86584243015166,
+       "lightMinutes": 42532198.48456257,
+       "lightSeconds": 2551931909.0737543,
+       "description": "80.9 light-years",
+       "formatted": "80.9 light-years"
+      },
+      "bpRp": 0.26148772,
+      "radialVelocityKmS": -12.387454,
+      "astrophysics": {
+       "catalogSourceId": "Gaia DR3 1575287046603605888",
+       "limitations": [
+        "GSP-Phot and FLAME values are model fits to Gaia's BP/RP spectra, photometry and parallax, not measurements of this star; their papers describe their reach and limits."
+       ],
+       "teffK": {
+        "value": 8298.0,
+        "method": "Gaia DR3 GSP-Phot",
+        "lower": 8288.0,
+        "upper": 8337.0,
+        "interval": "16th to 84th percentile"
+       },
+       "luminositySolar": {
+        "value": 23.12064790175595,
+        "method": "Gaia DR3 FLAME",
+        "lower": 22.803420720004187,
+        "upper": 23.38837238659355,
+        "interval": "16th to 84th percentile"
+       },
+       "radiusSolar": {
+        "value": 2.326514608421498,
+        "method": "Derived: Stefan-Boltzmann from the GSP-Phot temperature and FLAME luminosity, Tsun 5772 K",
+        "derived": true,
+        "lower": 2.2889327962643184,
+        "upper": 2.345595717485358,
+        "interval": "span of the two percentile intervals"
+       },
+       "citations": [
+        "Gaia DR3 GSP-Phot (Andrae et al. 2023, doi:10.1051/0004-6361/202243462)",
+        "Gaia DR3 FLAME (Creevey et al. 2023, doi:10.1051/0004-6361/202243688; Fouesneau et al. 2023, doi:10.1051/0004-6361/202243919)"
+       ]
+      },
+      "releaseVersion": "Gaia DR3"
+     }
+    ],
+    "ephemerides": [
+     {
+      "id": "finding-predicted-mars",
+      "evidenceClass": "predicted",
+      "name": "Mars",
+      "title": "Mars",
+      "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
+      "skyPosition": {
+       "raDeg": 228.80467622638065,
+       "decDeg": -16.27174365079576,
+       "uncertaintyArcsec": 74.96350729431806,
+       "altDeg": 51.92244879490417,
+       "azDeg": 162.05934338563966
+      },
+      "inferredDistancePc": {
+       "lower": 3.856748175246234e-06,
+       "median": 3.858028659572971e-06,
+       "upper": 3.859309143899709e-06,
+       "method": "ephemeris_au"
+      },
+      "cartesianParsecICRS": [
+       -2.4392223175475414e-06,
+       -2.7867600915540048e-06,
+       -1.080993901826618e-06
+      ],
+      "evidence": {
+       "id": "ev-ephem-mars",
+       "evidenceClass": "predicted",
+       "verificationMethod": "ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time",
+       "distanceUncertaintyNote": "Topocentric distance 0.795776 AU, between 0.795511 and 0.796040 AU from the method's error bounds",
+       "limitations": [
+        "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+        "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+        "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +51.94 degrees, and the real air differs most near the horizon.",
+        "Its uncertainty, 75.0 arcsec, adds the method's documented worst error (60.4 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+        "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "raDeg": 228.80467622638065,
+      "decDeg": -16.27174365079576,
+      "altDeg": 51.92244879490417,
+      "azDeg": 162.05934338563966,
+      "aboveHorizon": true,
+      "distanceAu": 0.7957755339625638,
+      "distancePc": 3.858028659572971e-06,
+      "lightTravel": {
+       "distancePc": 3.858028659572971e-06,
+       "lightYears": 1.2583206526691068e-05,
+       "lightMinutes": 6.618263304778434,
+       "lightSeconds": 397.09579828670604,
+       "description": "6.6 light-minutes",
+       "formatted": "6.6 light-minutes"
+      }
+     },
+     {
+      "id": "finding-predicted-moon",
+      "evidenceClass": "predicted",
+      "name": "Moon",
+      "title": "Moon",
+      "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
+      "skyPosition": {
+       "raDeg": 326.4343270956605,
+       "decDeg": -8.714301238766776,
+       "uncertaintyArcsec": 42.59469242363787,
+       "altDeg": -20.717217486977177,
+       "azDeg": 91.82611362125431
+      },
+      "inferredDistancePc": {
+       "lower": 1.2128846666647029e-08,
+       "median": 1.2130165663817831e-08,
+       "upper": 1.2131484660988636e-08,
+       "method": "ephemeris_au"
+      },
+      "cartesianParsecICRS": [
+       9.990812682628542e-09,
+       -6.629255563029191e-09,
+       -1.8378116476778323e-09
+      ],
+      "evidence": {
+       "id": "ev-ephem-moon",
+       "evidenceClass": "predicted",
+       "verificationMethod": "Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time",
+       "distanceUncertaintyNote": "Topocentric distance 0.002502 AU, between 0.002502 and 0.002502 AU from the method's error bounds",
+       "limitations": [
+        "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+        "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+        "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -20.07 degrees, and the real air differs most near the horizon.",
+        "Its uncertainty, 42.6 arcsec, adds the method's documented worst error (18.2 arcsec here), 0.01 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.0 for a place up to 9 km above sea level, 1 for polar motion, and 4.7 for the time scale.",
+        "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "raDeg": 326.4343270956605,
+      "decDeg": -8.714301238766776,
+      "altDeg": -20.717217486977177,
+      "azDeg": 91.82611362125431,
+      "aboveHorizon": false,
+      "distanceAu": 0.002502026270392566,
+      "distancePc": 1.2130165663817831e-08,
+      "lightTravel": {
+       "distancePc": 1.2130165663817831e-08,
+       "lightYears": 3.95633089381174e-08,
+       "lightMinutes": 0.020808717969092227,
+       "lightSeconds": 1.2485230781455336,
+       "description": "1.25 light-seconds",
+       "formatted": "1.25 light-seconds"
+      }
+     }
+    ],
+    "constellationEdges": [
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-vega",
+      "toStarId": "star-sheliak"
+     },
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-sheliak",
+      "toStarId": "star-sulafat"
+     },
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-sulafat",
+      "toStarId": "star-vega"
+     },
+     {
+      "constellation": "Ursa Major",
+      "fromStarId": "star-phecda",
+      "toStarId": "star-megrez"
+     }
+    ],
+    "predictedSkyBrightness": {
+     "skyBrightnessMagArcsec2": 21.6,
+     "darkSkyMagArcsec2": 21.6,
+     "lunarVeilDeltaMag": 0.0,
+     "skyBrightnessNanoLamberts": 78.07,
+     "lunarScatteredNanoLamberts": 0.0,
+     "airmass": 1.0,
+     "illuminationFraction": 0.0888,
+     "lunarPhaseName": "Waning Crescent",
+     "sepFromMoonDeg": 110.72,
+     "target": "zenith",
+     "targetAltDeg": 90.0,
+     "moonAltDeg": -20.72,
+     "evidenceClass": "predicted",
+     "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model",
+     "limitations": [
+      "Predicted for the time and place; not measured in any image.",
+      "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, site values the model needs and nothing measured here; light pollution is not modelled."
+     ]
+    },
+    "sun": {
+     "altDeg": -47.73332301004936,
+     "band": "night",
+     "evidenceClass": "predicted",
+     "method": "ERFA eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time",
+     "limitations": [
+      "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+      "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+      "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -47.09 degrees, and the real air differs most near the horizon.",
+      "Its uncertainty, 14.9 arcsec, adds the method's documented worst error (0.0 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.3 for the time scale.",
+      "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+     ]
+    }
+   }
+  },
+  {
+   "name": "a reply with a star that has neither, titled by its catalog id",
+   "kind": "reply",
+   "body": {
+    "format": "albedian.sky-context",
+    "formatVersion": 1,
+    "observedAtUTC": "2031-03-20T12:00:00Z",
+    "observerLocation": {
+     "latDeg": 20.0,
+     "lonDeg": -140.0
+    },
+    "filters": {
+     "aboveHorizonOnly": false
+    },
+    "convention": {
+     "frame": "topocentric_sea_level",
+     "azimuth": "true_north_through_east",
+     "altitude": "apparent_airless"
+    },
+    "stars": [
+     {
+      "id": "star-castor",
+      "evidenceClass": "predicted",
+      "commonName": "Castor",
+      "title": "Castor",
+      "bayerDesignation": "Alpha Geminorum",
+      "constellation": "Gemini",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 36850",
+      "raDeg": 113.649428,
+      "decDeg": 31.888276,
+      "altDeg": -0.48459988532498244,
+      "azDeg": 304.34250949618337,
+      "aboveHorizon": false,
+      "mag": 1.58,
+      "properMotionRaMasYr": -191.45,
+      "properMotionDecMasYr": -145.19,
+      "distancePc": {
+       "lower": 14.734050390452335,
+       "median": 15.595757953836555,
+       "upper": 16.564518800728838,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       -5.311905368388362,
+       12.12993674414313,
+       8.238686915706255
+      ],
+      "lightTravel": {
+       "distancePc": 15.595757953836555,
+       "lightYears": 50.86655921709295,
+       "lightMinutes": 26753775.48582221,
+       "lightSeconds": 1605226529.1493325,
+       "description": "50.9 light-years",
+       "formatted": "50.9 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-vega",
+      "evidenceClass": "predicted",
+      "commonName": "HIP 91262",
+      "title": "HIP 91262",
+      "constellation": "Lyra",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 91262",
+      "raDeg": 279.234735,
+      "decDeg": 38.783689,
+      "altDeg": 34.184578636435006,
+      "azDeg": 56.012173349003916,
+      "aboveHorizon": true,
+      "mag": 0.03,
+      "properMotionRaMasYr": 200.94,
+      "properMotionDecMasYr": 286.23,
+      "distancePc": {
+       "lower": 7.657554177195803,
+       "median": 7.678722260615834,
+       "upper": 7.700007700007702,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       0.9605810211407515,
+       -5.90810970574253,
+       4.809812819893541
+      ],
+      "lightTravel": {
+       "distancePc": 7.678722260615834,
+       "lightYears": 25.04464237886816,
+       "lightMinutes": 13172480.105589498,
+       "lightSeconds": 790348806.3353698,
+       "description": "25.0 light-years",
+       "formatted": "25.0 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-sheliak",
+      "evidenceClass": "predicted",
+      "commonName": "Sheliak",
+      "title": "Sheliak",
+      "bayerDesignation": "Beta Lyrae",
+      "constellation": "Lyra",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 2090687795056051328",
+      "raDeg": 282.519979,
+      "decDeg": 33.362667,
+      "altDeg": 31.337021375038695,
+      "azDeg": 62.341909127197255,
+      "aboveHorizon": true,
+      "mag": 3.52,
+      "properMotionRaMasYr": 1.55,
+      "properMotionDecMasYr": -4.46,
+      "distancePc": {
+       "lower": 263.0956,
+       "median": 276.21762,
+       "upper": 289.68326,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       50.010875583599294,
+       -225.2128100380065,
+       151.9021925997481
+      ],
+      "lightTravel": {
+       "distancePc": 276.21762,
+       "lightYears": 900.9013839611508,
+       "lightMinutes": 473838091.9082069,
+       "lightSeconds": 28430285514.492413,
+       "description": "901 light-years",
+       "formatted": "901 light-years"
+      },
+      "bpRp": 0.21071863,
+      "radialVelocityKmS": -29.482485,
+      "astrophysics": {
+       "catalogSourceId": "Gaia DR3 2090687795056051328",
+       "limitations": [
+        "GSP-Phot and FLAME values are model fits to Gaia's BP/RP spectra, photometry and parallax, not measurements of this star; their papers describe their reach and limits."
+       ],
+       "teffK": {
+        "value": 17700.0,
+        "method": "Gaia DR3 GSP-Phot",
+        "lower": 14991.0,
+        "upper": 18256.0,
+        "interval": "16th to 84th percentile"
+       },
+       "citations": [
+        "Gaia DR3 GSP-Phot (Andrae et al. 2023, doi:10.1051/0004-6361/202243462)"
+       ]
+      },
+      "releaseVersion": "Gaia DR3"
+     },
+     {
+      "id": "star-sulafat",
+      "evidenceClass": "predicted",
+      "commonName": "Sulafat",
+      "title": "Sulafat",
+      "bayerDesignation": "Gamma Lyrae",
+      "constellation": "Lyra",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 2043823929421342848",
+      "raDeg": 284.735929,
+      "decDeg": 32.689557,
+      "altDeg": 29.423806085548513,
+      "azDeg": 62.91437270893213,
+      "aboveHorizon": true,
+      "mag": 3.25,
+      "properMotionRaMasYr": -3.05,
+      "properMotionDecMasYr": 1.08,
+      "distancePc": {
+       "lower": 193.15596,
+       "median": 203.35674,
+       "upper": 211.9433,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       43.53368942088882,
+       -165.5176208145176,
+       109.83031816732016
+      ],
+      "lightTravel": {
+       "distancePc": 203.35674,
+       "lightYears": 663.2609769928071,
+       "lightMinutes": 348848743.4591368,
+       "lightSeconds": 20930924607.548206,
+       "description": "663 light-years",
+       "formatted": "663 light-years"
+      },
+      "bpRp": 0.23184443,
+      "radialVelocityKmS": -19.554564,
+      "releaseVersion": "Gaia DR3"
+     },
+     {
+      "id": "star-phecda",
+      "evidenceClass": "predicted",
+      "commonName": "Phecda",
+      "title": "Phecda",
+      "bayerDesignation": "Gamma Ursae Majoris",
+      "constellation": "Ursa Major",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 58001",
+      "raDeg": 178.457697,
+      "decDeg": 53.69476,
+      "altDeg": 45.19212129093408,
+      "azDeg": 327.9649229312413,
+      "aboveHorizon": true,
+      "mag": 2.44,
+      "properMotionRaMasYr": 107.91,
+      "properMotionDecMasYr": 11.02,
+      "distancePc": {
+       "lower": 25.246149962130776,
+       "median": 25.50369803621525,
+       "upper": 25.76655501159495,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       -15.094934573869933,
+       0.406427624871837,
+       20.552770623903164
+      ],
+      "lightTravel": {
+       "distancePc": 25.50369803621525,
+       "lightYears": 83.1819376944657,
+       "lightMinutes": 43750371.94978118,
+       "lightSeconds": 2625022316.986871,
+       "description": "83.2 light-years",
+       "formatted": "83.2 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-megrez",
+      "evidenceClass": "predicted",
+      "commonName": "Megrez",
+      "title": "Megrez",
+      "bayerDesignation": "Delta Ursae Majoris",
+      "constellation": "Ursa Major",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 1575287046603605888",
+      "raDeg": 183.856553,
+      "decDeg": 57.032617,
+      "altDeg": 45.594104393957686,
+      "azDeg": 334.3941439424924,
+      "aboveHorizon": true,
+      "mag": 3.31,
+      "properMotionRaMasYr": 104.11,
+      "properMotionDecMasYr": 7.3,
+      "distancePc": {
+       "lower": 24.690784,
+       "median": 24.79358,
+       "upper": 24.907433,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       -13.461160944696132,
+       -0.9074354693681093,
+       20.801329671593596
+      ],
+      "lightTravel": {
+       "distancePc": 24.79358,
+       "lightYears": 80.86584243015166,
+       "lightMinutes": 42532198.48456257,
+       "lightSeconds": 2551931909.0737543,
+       "description": "80.9 light-years",
+       "formatted": "80.9 light-years"
+      },
+      "bpRp": 0.26148772,
+      "radialVelocityKmS": -12.387454,
+      "astrophysics": {
+       "catalogSourceId": "Gaia DR3 1575287046603605888",
+       "limitations": [
+        "GSP-Phot and FLAME values are model fits to Gaia's BP/RP spectra, photometry and parallax, not measurements of this star; their papers describe their reach and limits."
+       ],
+       "teffK": {
+        "value": 8298.0,
+        "method": "Gaia DR3 GSP-Phot",
+        "lower": 8288.0,
+        "upper": 8337.0,
+        "interval": "16th to 84th percentile"
+       },
+       "luminositySolar": {
+        "value": 23.12064790175595,
+        "method": "Gaia DR3 FLAME",
+        "lower": 22.803420720004187,
+        "upper": 23.38837238659355,
+        "interval": "16th to 84th percentile"
+       },
+       "radiusSolar": {
+        "value": 2.326514608421498,
+        "method": "Derived: Stefan-Boltzmann from the GSP-Phot temperature and FLAME luminosity, Tsun 5772 K",
+        "derived": true,
+        "lower": 2.2889327962643184,
+        "upper": 2.345595717485358,
+        "interval": "span of the two percentile intervals"
+       },
+       "citations": [
+        "Gaia DR3 GSP-Phot (Andrae et al. 2023, doi:10.1051/0004-6361/202243462)",
+        "Gaia DR3 FLAME (Creevey et al. 2023, doi:10.1051/0004-6361/202243688; Fouesneau et al. 2023, doi:10.1051/0004-6361/202243919)"
+       ]
+      },
+      "releaseVersion": "Gaia DR3"
+     }
+    ],
+    "ephemerides": [
+     {
+      "id": "finding-predicted-mars",
+      "evidenceClass": "predicted",
+      "name": "Mars",
+      "title": "Mars",
+      "subtitle": "Predicted Planet \u00b7 0.796 AU \u00b7 Alt +51.9\u00b0",
+      "skyPosition": {
+       "raDeg": 228.80467622638065,
+       "decDeg": -16.27174365079576,
+       "uncertaintyArcsec": 74.96350729431806,
+       "altDeg": 51.92244879490417,
+       "azDeg": 162.05934338563966
+      },
+      "inferredDistancePc": {
+       "lower": 3.856748175246234e-06,
+       "median": 3.858028659572971e-06,
+       "upper": 3.859309143899709e-06,
+       "method": "ephemeris_au"
+      },
+      "cartesianParsecICRS": [
+       -2.4392223175475414e-06,
+       -2.7867600915540048e-06,
+       -1.080993901826618e-06
+      ],
+      "evidence": {
+       "id": "ev-ephem-mars",
+       "evidenceClass": "predicted",
+       "verificationMethod": "ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time",
+       "distanceUncertaintyNote": "Topocentric distance 0.795776 AU, between 0.795511 and 0.796040 AU from the method's error bounds",
+       "limitations": [
+        "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+        "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+        "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +51.94 degrees, and the real air differs most near the horizon.",
+        "Its uncertainty, 75.0 arcsec, adds the method's documented worst error (60.4 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+        "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "raDeg": 228.80467622638065,
+      "decDeg": -16.27174365079576,
+      "altDeg": 51.92244879490417,
+      "azDeg": 162.05934338563966,
+      "aboveHorizon": true,
+      "distanceAu": 0.7957755339625638,
+      "distancePc": 3.858028659572971e-06,
+      "lightTravel": {
+       "distancePc": 3.858028659572971e-06,
+       "lightYears": 1.2583206526691068e-05,
+       "lightMinutes": 6.618263304778434,
+       "lightSeconds": 397.09579828670604,
+       "description": "6.6 light-minutes",
+       "formatted": "6.6 light-minutes"
+      }
+     },
+     {
+      "id": "finding-predicted-moon",
+      "evidenceClass": "predicted",
+      "name": "Moon",
+      "title": "Moon",
+      "subtitle": "Predicted Moon \u00b7 0.003 AU \u00b7 Alt -20.7\u00b0",
+      "skyPosition": {
+       "raDeg": 326.4343270956605,
+       "decDeg": -8.714301238766776,
+       "uncertaintyArcsec": 42.59469242363787,
+       "altDeg": -20.717217486977177,
+       "azDeg": 91.82611362125431
+      },
+      "inferredDistancePc": {
+       "lower": 1.2128846666647029e-08,
+       "median": 1.2130165663817831e-08,
+       "upper": 1.2131484660988636e-08,
+       "method": "ephemeris_au"
+      },
+      "cartesianParsecICRS": [
+       9.990812682628542e-09,
+       -6.629255563029191e-09,
+       -1.8378116476778323e-09
+      ],
+      "evidence": {
+       "id": "ev-ephem-moon",
+       "evidenceClass": "predicted",
+       "verificationMethod": "Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time",
+       "distanceUncertaintyNote": "Topocentric distance 0.002502 AU, between 0.002502 and 0.002502 AU from the method's error bounds",
+       "limitations": [
+        "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+        "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+        "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -20.07 degrees, and the real air differs most near the horizon.",
+        "Its uncertainty, 42.6 arcsec, adds the method's documented worst error (18.2 arcsec here), 0.01 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.0 for a place up to 9 km above sea level, 1 for polar motion, and 4.7 for the time scale.",
+        "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "raDeg": 326.4343270956605,
+      "decDeg": -8.714301238766776,
+      "altDeg": -20.717217486977177,
+      "azDeg": 91.82611362125431,
+      "aboveHorizon": false,
+      "distanceAu": 0.002502026270392566,
+      "distancePc": 1.2130165663817831e-08,
+      "lightTravel": {
+       "distancePc": 1.2130165663817831e-08,
+       "lightYears": 3.95633089381174e-08,
+       "lightMinutes": 0.020808717969092227,
+       "lightSeconds": 1.2485230781455336,
+       "description": "1.25 light-seconds",
+       "formatted": "1.25 light-seconds"
+      }
+     }
+    ],
+    "constellationEdges": [
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-vega",
+      "toStarId": "star-sheliak"
+     },
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-sheliak",
+      "toStarId": "star-sulafat"
+     },
+     {
+      "constellation": "Lyra",
+      "fromStarId": "star-sulafat",
+      "toStarId": "star-vega"
+     },
+     {
+      "constellation": "Ursa Major",
+      "fromStarId": "star-phecda",
+      "toStarId": "star-megrez"
+     }
+    ],
+    "predictedSkyBrightness": {
+     "skyBrightnessMagArcsec2": 21.6,
+     "darkSkyMagArcsec2": 21.6,
+     "lunarVeilDeltaMag": 0.0,
+     "skyBrightnessNanoLamberts": 78.07,
+     "lunarScatteredNanoLamberts": 0.0,
+     "airmass": 1.0,
+     "illuminationFraction": 0.0888,
+     "lunarPhaseName": "Waning Crescent",
+     "sepFromMoonDeg": 110.72,
+     "target": "zenith",
+     "targetAltDeg": 90.0,
+     "moonAltDeg": -20.72,
+     "evidenceClass": "predicted",
+     "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model",
+     "limitations": [
+      "Predicted for the time and place; not measured in any image.",
+      "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, site values the model needs and nothing measured here; light pollution is not modelled."
+     ]
+    },
+    "sun": {
+     "altDeg": -47.73332301004936,
+     "band": "night",
+     "evidenceClass": "predicted",
+     "method": "ERFA eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time",
+     "limitations": [
+      "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+      "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+      "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to -47.09 degrees, and the real air differs most near the horizon.",
+      "Its uncertainty, 14.9 arcsec, adds the method's documented worst error (0.0 arcsec here), 0.00 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.3 for the time scale.",
+      "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 8 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+     ]
+    }
+   }
+  },
+  {
+   "name": "a reply with a star that has neither, titled by a Flamsteed designation",
+   "kind": "reply",
+   "body": {
+    "format": "albedian.sky-context",
+    "formatVersion": 1,
+    "observedAtUTC": "2031-03-20T12:00:00Z",
+    "observerLocation": {
+     "latDeg": 20.0,
+     "lonDeg": -140.0
+    },
+    "filters": {
+     "aboveHorizonOnly": false
+    },
+    "convention": {
+     "frame": "topocentric_sea_level",
+     "azimuth": "true_north_through_east",
+     "altitude": "apparent_airless"
+    },
+    "stars": [
+     {
+      "id": "star-castor",
+      "evidenceClass": "predicted",
+      "commonName": "Castor",
+      "title": "Castor",
+      "bayerDesignation": "Alpha Geminorum",
+      "constellation": "Gemini",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 36850",
+      "raDeg": 113.649428,
+      "decDeg": 31.888276,
+      "altDeg": -0.48459988532498244,
+      "azDeg": 304.34250949618337,
+      "aboveHorizon": false,
+      "mag": 1.58,
+      "properMotionRaMasYr": -191.45,
+      "properMotionDecMasYr": -145.19,
+      "distancePc": {
+       "lower": 14.734050390452335,
+       "median": 15.595757953836555,
+       "upper": 16.564518800728838,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       -5.311905368388362,
+       12.12993674414313,
+       8.238686915706255
+      ],
+      "lightTravel": {
+       "distancePc": 15.595757953836555,
+       "lightYears": 50.86655921709295,
+       "lightMinutes": 26753775.48582221,
+       "lightSeconds": 1605226529.1493325,
+       "description": "50.9 light-years",
+       "formatted": "50.9 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-vega",
+      "evidenceClass": "predicted",
+      "commonName": "HIP 91262",
+      "title": "3 Lyrae",
+      "constellation": "Lyra",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 91262",
+      "raDeg": 279.234735,
+      "decDeg": 38.783689,
+      "altDeg": 34.184578636435006,
+      "azDeg": 56.012173349003916,
+      "aboveHorizon": true,
+      "mag": 0.03,
+      "properMotionRaMasYr": 200.94,
+      "properMotionDecMasYr": 286.23,
+      "distancePc": {
+       "lower": 7.657554177195803,
+       "median": 7.678722260615834,
+       "upper": 7.700007700007702,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       0.9605810211407515,
+       -5.90810970574253,
+       4.809812819893541
+      ],
+      "lightTravel": {
+       "distancePc": 7.678722260615834,
+       "lightYears": 25.04464237886816,
+       "lightMinutes": 13172480.105589498,
+       "lightSeconds": 790348806.3353698,
+       "description": "25.0 light-years",
+       "formatted": "25.0 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-sheliak",
+      "evidenceClass": "predicted",
+      "commonName": "Sheliak",
+      "title": "Sheliak",
+      "bayerDesignation": "Beta Lyrae",
+      "constellation": "Lyra",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 2090687795056051328",
+      "raDeg": 282.519979,
+      "decDeg": 33.362667,
+      "altDeg": 31.337021375038695,
+      "azDeg": 62.341909127197255,
+      "aboveHorizon": true,
+      "mag": 3.52,
+      "properMotionRaMasYr": 1.55,
+      "properMotionDecMasYr": -4.46,
+      "distancePc": {
+       "lower": 263.0956,
+       "median": 276.21762,
+       "upper": 289.68326,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       50.010875583599294,
+       -225.2128100380065,
+       151.9021925997481
+      ],
+      "lightTravel": {
+       "distancePc": 276.21762,
+       "lightYears": 900.9013839611508,
+       "lightMinutes": 473838091.9082069,
+       "lightSeconds": 28430285514.492413,
+       "description": "901 light-years",
+       "formatted": "901 light-years"
+      },
+      "bpRp": 0.21071863,
+      "radialVelocityKmS": -29.482485,
+      "astrophysics": {
+       "catalogSourceId": "Gaia DR3 2090687795056051328",
+       "limitations": [
+        "GSP-Phot and FLAME values are model fits to Gaia's BP/RP spectra, photometry and parallax, not measurements of this star; their papers describe their reach and limits."
+       ],
+       "teffK": {
+        "value": 17700.0,
+        "method": "Gaia DR3 GSP-Phot",
+        "lower": 14991.0,
+        "upper": 18256.0,
+        "interval": "16th to 84th percentile"
+       },
+       "citations": [
+        "Gaia DR3 GSP-Phot (Andrae et al. 2023, doi:10.1051/0004-6361/202243462)"
+       ]
+      },
+      "releaseVersion": "Gaia DR3"
+     },
+     {
+      "id": "star-sulafat",
+      "evidenceClass": "predicted",
+      "commonName": "Sulafat",
+      "title": "Sulafat",
+      "bayerDesignation": "Gamma Lyrae",
+      "constellation": "Lyra",
+      "provider": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 2043823929421342848",
+      "raDeg": 284.735929,
+      "decDeg": 32.689557,
+      "altDeg": 29.423806085548513,
+      "azDeg": 62.91437270893213,
+      "aboveHorizon": true,
+      "mag": 3.25,
+      "properMotionRaMasYr": -3.05,
+      "properMotionDecMasYr": 1.08,
+      "distancePc": {
+       "lower": 193.15596,
+       "median": 203.35674,
+       "upper": 211.9433,
+       "method": "photogeometric_bailer_jones_edr3"
+      },
+      "cartesianParsecICRS": [
+       43.53368942088882,
+       -165.5176208145176,
+       109.83031816732016
+      ],
+      "lightTravel": {
+       "distancePc": 203.35674,
+       "lightYears": 663.2609769928071,
+       "lightMinutes": 348848743.4591368,
+       "lightSeconds": 20930924607.548206,
+       "description": "663 light-years",
+       "formatted": "663 light-years"
+      },
+      "bpRp": 0.23184443,
+      "radialVelocityKmS": -19.554564,
+      "releaseVersion": "Gaia DR3"
+     },
+     {
+      "id": "star-phecda",
+      "evidenceClass": "predicted",
+      "commonName": "Phecda",
+      "title": "Phecda",
+      "bayerDesignation": "Gamma Ursae Majoris",
+      "constellation": "Ursa Major",
+      "provider": "Hipparcos",
+      "catalogSourceId": "HIP 58001",
+      "raDeg": 178.457697,
+      "decDeg": 53.69476,
+      "altDeg": 45.19212129093408,
+      "azDeg": 327.9649229312413,
+      "aboveHorizon": true,
+      "mag": 2.44,
+      "properMotionRaMasYr": 107.91,
+      "properMotionDecMasYr": 11.02,
+      "distancePc": {
+       "lower": 25.246149962130776,
+       "median": 25.50369803621525,
+       "upper": 25.76655501159495,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       -15.094934573869933,
+       0.406427624871837,
+       20.552770623903164
+      ],
+      "lightTravel": {
+       "distancePc": 25.50369803621525,
+       "lightYears": 83.1819376944657,
+       "lightMinutes": 43750371.94978118,
+       "lightSeconds": 2625022316.986871,
+       "description": "83.2 light-years",
+       "formatted": "83.2 light-years"
+      },
+      "releaseVersion": "Hipparcos 2007"
+     },
+     {
+      "id": "star-megrez",
+      "evidenceClass": "predicted",
+      "commonName": "Megrez",
+      "title": "Megrez",
       "bayerDesignation": "Delta Ursae Majoris",
       "constellation": "Ursa Major",
       "provider": "Gaia DR3",
@@ -3719,6 +5164,138 @@
    ]
   },
   {
+   "name": "a star with no title",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "drop": true
+    }
+   ]
+  },
+  {
+   "name": "a star with neither an IAU name nor a Bayer designation and no title",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "commonName"
+     ],
+     "value": "HIP 91262"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "bayerDesignation"
+     ],
+     "drop": true
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "drop": true
+    }
+   ]
+  },
+  {
+   "name": "a null title",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "name": "an empty title",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": ""
+    }
+   ]
+  },
+  {
+   "name": "a named star titled by its Bayer designation",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": "Alpha Lyrae"
+    }
+   ],
+   "message": "A star's title is its commonName where that is not its catalogSourceId, else its bayerDesignation where it has one."
+  },
+  {
+   "name": "a named star titled by its catalog id",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": "HIP 91262"
+    }
+   ],
+   "message": "A star's title is its commonName where that is not its catalogSourceId, else its bayerDesignation where it has one."
+  },
+  {
+   "name": "a star with no IAU name titled by its catalog id though it has a Bayer designation",
+   "kind": "reply",
+   "base": "reply",
+   "changes": [
+    {
+     "path": [
+      "stars",
+      1,
+      "commonName"
+     ],
+     "value": "HIP 91262"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": "HIP 91262"
+    }
+   ],
+   "message": "A star's title is its commonName where that is not its catalogSourceId, else its bayerDesignation where it has one."
+  },
+  {
    "name": "a star with no releaseVersion",
    "kind": "reply",
    "base": "reply",
@@ -4153,6 +5730,7 @@
       "id": "star-castor",
       "evidenceClass": "predicted",
       "commonName": "Castor",
+      "title": "Castor",
       "bayerDesignation": "Alpha Geminorum",
       "constellation": "Gemini",
       "provider": "Hipparcos",
@@ -4219,6 +5797,7 @@
       "id": "star-vega",
       "evidenceClass": "predicted",
       "commonName": "Vega",
+      "title": "Vega",
       "bayerDesignation": "Alpha Lyrae",
       "constellation": "Lyra",
       "provider": "Hipparcos",
@@ -5629,6 +7208,14 @@
       "commonName"
      ],
      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
    ]
   },
@@ -5643,6 +7230,14 @@
       "stars",
       1,
       "commonName"
+     ],
+     "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
      ],
      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
@@ -5661,6 +7256,14 @@
       "commonName"
      ],
      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83c\udf0c"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83c\udf0c"
     }
    ]
   },
@@ -5675,6 +7278,14 @@
       "stars",
       1,
       "commonName"
+     ],
+     "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83c\udf0c"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
      ],
      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83c\udf0c"
     }
@@ -5693,6 +7304,14 @@
       "commonName"
      ],
      "value": "V"
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
+     ],
+     "value": "V"
     }
    ]
   },
@@ -5707,6 +7326,14 @@
       "stars",
       1,
       "commonName"
+     ],
+     "value": ""
+    },
+    {
+     "path": [
+      "stars",
+      1,
+      "title"
      ],
      "value": ""
     }
