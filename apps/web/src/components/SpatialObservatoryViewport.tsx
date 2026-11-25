@@ -744,7 +744,7 @@ export const SpatialObservatoryViewport: React.FC<
       {/* The home (arrive, 2026-11-12) shows until a photo is chosen; it covers the canvas, as a photo does */}
       {/* The page opened at an upload's address: the app's black with the logo until its records are read, then the logo
           alone over the photo while it frames in; at phone width the black alone */}
-      {(opening || photoEntering) && <OpenWait black={opening} phone={phone} />}
+      {(opening || (photoEntering && !arrival)) && <OpenWait black={opening} phone={phone} />}
 
       {entryStageActive && !opening && (
         <HomeScreen
@@ -771,6 +771,7 @@ export const SpatialObservatoryViewport: React.FC<
             onFrameMismatch={setPhotoFrameMismatch}
             bare
             dimmed={arrival.failure !== null}
+            entering={photoEntering}
             endsMask={phoneWorking ? slotMask : undefined}
           />
           <WorkingScreen

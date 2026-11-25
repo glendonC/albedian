@@ -3,7 +3,7 @@ import path from 'node:path';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ObservationSessionSchema, type IngestReceipt, type ObservationSolution } from '@albedian/contracts';
-import { openStoredUpload, readStoredReceipt, uploadAddressed } from '../services/openUpload';
+import { openStoredUpload, readNewestSolveJob, readStoredReceipt, uploadAddressed } from '../services/openUpload';
 
 // The address that opens one stored upload: ?upload=<sha256> (64 lowercase hex; anything else is ignored). It opens
 // that upload's stored reveal through GET /api/ingest/{sha256} and its solution route: no upload, no new solve. A
@@ -208,5 +208,40 @@ describe('readStoredReceipt: the stored receipt, as the server gave it', () => {
     const other = 'b'.repeat(64);
     server({ receipt: () => json({ ...receipt, sourceAsset: { ...receipt.sourceAsset, sha256: other, id: `src_${other.slice(0, 16)}`, uri: `/api/ingest/${other}/original` } }) });
     expect(await readStoredReceipt(sha256)).toBeNull();
+  });
+});
+
+// open-direct-two: the upload's newest solve job, read by its hash (PLATFORM's job-by-upload-one), and nothing else
+describe('readNewestSolveJob: the newest solve job of a stored upload, or none', () => {
+  const job = (hash: string) => ({ id: `job_${hash.slice(0, 16)}`, sourceAssetSha256: hash, state: 'running', createdAtUTC: '2026-01-19T05:31:00Z', startedAtUTC: '2026-01-19T05:31:01Z', stages: [] });
+  const answering = (answer: () => Response) => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(`${init?.method ?? 'GET'} ${String(input)}`);
+      return answer();
+    }));
+    return calls;
+  };
+  afterEach(() => void vi.unstubAllGlobals());
+
+  it('reads the route with a GET, starting nothing, and gives its record', async () => {
+    const calls = answering(() => json(job(sha256)));
+    expect((await readNewestSolveJob(sha256))?.state).toBe('running');
+    expect(calls).toEqual([`GET /api/ingest/${sha256}/solve`]);
+  });
+
+  it('gives none when no job was started, for a record naming another file, or one that is no job record', async () => {
+    answering(() => json({ detail: 'no solve job is stored for that file' }, 404));
+    expect(await readNewestSolveJob(sha256)).toBeNull();
+    answering(() => json(job('b'.repeat(64))));
+    expect(await readNewestSolveJob(sha256)).toBeNull();
+    answering(() => json({ state: 'running' }));
+    expect(await readNewestSolveJob(sha256)).toBeNull();
+  });
+
+  it('makes no request for a value that is not a sha256', async () => {
+    const calls = answering(() => json(job(sha256)));
+    expect(await readNewestSolveJob('../x')).toBeNull();
+    expect(calls).toEqual([]);
   });
 });

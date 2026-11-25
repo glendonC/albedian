@@ -333,6 +333,144 @@ describe('a page opened at an upload\'s address, until the reveal is ready', () 
   });
 });
 
+// open-direct-two (UIUX-opendirect-READY.md item 2, on PLATFORM's job-by-upload-one route: GET /api/ingest/{sha256}/solve
+// gives the upload's newest solve job in the job record's shape, 404 when none was started): an upload with no stored
+// solution whose solve is still running opens on the working rows, as the record's step 3, and follows that job to its
+// reveal; one whose solve stopped opens on the stopped screen (D2), whose Try again is the same solve of the stored
+// file. Nothing is started by opening: the route is a read. With no job at all, the home after the black, as before.
+describe("a page opened at the address of an upload whose solve has not ended, or stopped", () => {
+  const jobId = `job_${sha256.slice(0, 16)}`;
+  const record = (state: string, extra: Record<string, unknown> = {}) => ({
+    id: jobId,
+    sourceAssetSha256: sha256,
+    state,
+    createdAtUTC: '2026-01-19T05:31:00Z',
+    startedAtUTC: '2026-01-19T05:31:01Z',
+    stages: [
+      { stage: 'store', unit: 'bytes', done: 2_382_523, total: 2_382_523 },
+      { stage: 'decode', unit: 'frames', done: 1, total: 1 },
+      { stage: 'solve', unit: 'candidates', done: 120, total: 400 },
+    ],
+    ...extra,
+  });
+  /** The app at the upload's address on a server whose answers `route` gives; every request it made, with its method. */
+  async function openWith(route: (method: string, url: string) => Response | undefined) {
+    window.history.replaceState({}, '', `/?upload=${sha256}`);
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === '/api/media/discover') return json({ items: [] });
+        const method = init?.method ?? 'GET';
+        calls.push(`${method} ${url}`);
+        if (method === 'GET' && url === `/api/ingest/${sha256}`) return json(receipt);
+        return route(method, url) ?? json({ detail: 'not found' }, 404);
+      })
+    );
+    await act(async () => {
+      root.render(createElement(App));
+    });
+    return calls;
+  }
+  const noSolution = () => json({ detail: 'no solution is stored for that file' }, 404);
+
+  it('opens a running solve on the working rows after the black, never the home, and follows it to the reveal', async () => {
+    let done = false;
+    const calls = await openWith((method, url) => {
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solution`) return done ? json(solution) : noSolution();
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solve`) return json(record('running'));
+      if (method === 'GET' && url === `/api/ingest/jobs/${jobId}`) {
+        done = true;
+        return json(record('succeeded', { finishedAtUTC: '2026-01-19T05:31:09Z', solutionId }));
+      }
+      return undefined;
+    });
+    await waitUntil(() => expect(q('[data-testid="working-screen"]')).not.toBeNull());
+    expect(q(HOME_SCREEN)).toBeNull();
+    // The record's step 3: the photo frames in under the working rows, whose own logo stands, so no wait is left over it
+    expect(q('[data-testid="source-photo-stage"]')!.classList.contains('is-entering')).toBe(true);
+    expect(q('[data-testid="open-wait"]')).toBeNull();
+    // The photo stands in its reveal place under the rows, the size line the stored file's own
+    expect((q('[data-testid="source-photo-stage"] img') as HTMLImageElement).getAttribute('src')).toBe(`/api/ingest/${sha256}/original`);
+    expect(q('[data-testid="working-screen"] .work-size')!.textContent).toContain('3024 × 4032');
+    // Followed to its end, then the reveal
+    for (let waited = 0; !q('[data-testid="reveal-marks"]') && waited < 4000; waited += 50) await act(async () => await new Promise((r) => setTimeout(r, 50)));
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+    expect(q('[data-testid="working-screen"]')).toBeNull();
+    expect(q(HOME_SCREEN)).toBeNull();
+    // Read only: nothing was started or sent
+    expect(calls.some((call) => call.startsWith('POST'))).toBe(false);
+    expect(calls).toContain(`GET /api/ingest/${sha256}/solve`);
+  });
+
+  it('opens a stopped solve on the stopped screen, whose Try again starts the same solve of the stored file', async () => {
+    const calls = await openWith((method, url) => {
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solution`) return noSolution();
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solve`) return json(record('failed', { finishedAtUTC: '2026-01-19T05:31:09Z', error: 'The sky solve for your photo stopped before it finished.' }));
+      if (method === 'POST' && url === `/api/ingest/${sha256}/solve?wait=false`) return json(record('queued', { startedAtUTC: undefined }));
+      return undefined;
+    });
+    await waitUntil(() => expect(q('[data-testid="working-screen"] [role="alert"]')).not.toBeNull());
+    expect(q(HOME_SCREEN)).toBeNull();
+    expect(q('[data-testid="working-screen"]')!.textContent).toContain('The sky solve for your photo stopped before it finished.');
+    expect(calls.some((call) => call.startsWith('POST'))).toBe(false);
+    const tryAgain = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Try again')!;
+    await act(async () => tryAgain.click());
+    await waitUntil(() => expect(calls).toContain(`POST /api/ingest/${sha256}/solve?wait=false`));
+  });
+
+  it('cancels the running solve it opened on, with the working screen\'s Cancel', async () => {
+    const calls = await openWith((method, url) => {
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solution`) return noSolution();
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solve`) return json(record('running'));
+      if (method === 'GET' && url === `/api/ingest/jobs/${jobId}`) return json(record('running'));
+      if (method === 'POST' && url === `/api/ingest/jobs/${jobId}/cancel`) return json(record('running', { cancelRequestedAtUTC: '2026-01-19T05:31:05Z' }));
+      return undefined;
+    });
+    // The record it opened on is told at once: Cancel stands with the rows, before the first read of the job (a second)
+    await waitUntil(() => expect(q('[data-testid="working-screen"]')).not.toBeNull());
+    expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Cancel')).toBe(true);
+    expect(calls).not.toContain(`GET /api/ingest/jobs/${jobId}`);
+    await act(async () => [...container.querySelectorAll('button')].find((b) => b.textContent === 'Cancel')!.click());
+    await waitUntil(() => expect(calls).toContain(`POST /api/ingest/jobs/${jobId}/cancel`));
+  });
+
+  it('keeps the black until the browser has decoded the photo, so it frames in whole under the rows', async () => {
+    let decoded: () => void = () => {};
+    const decoding = new Promise<void>((resolve) => (decoded = resolve));
+    const decode = vi.fn(() => decoding);
+    Object.defineProperty(HTMLImageElement.prototype, 'decode', { value: decode, configurable: true, writable: true });
+    try {
+      await openWith((method, url) => {
+        if (method === 'GET' && url === `/api/ingest/${sha256}/solution`) return noSolution();
+        if (method === 'GET' && url === `/api/ingest/${sha256}/solve`) return json(record('running'));
+        if (method === 'GET' && url === `/api/ingest/jobs/${jobId}`) return json(record('running'));
+        return undefined;
+      });
+      await waitUntil(() => expect(decode).toHaveBeenCalled());
+      await settle();
+      expect(q('[data-testid="open-wait"]')!.classList.contains('is-black')).toBe(true);
+      expect(q('[data-testid="working-screen"]')).toBeNull();
+      decoded();
+      await waitUntil(() => expect(q('[data-testid="working-screen"]')).not.toBeNull());
+    } finally {
+      delete (HTMLImageElement.prototype as unknown as Record<string, unknown>).decode;
+    }
+  });
+
+  it('lands on the home after the black when no solve was ever started, as before', async () => {
+    const calls = await openWith((method, url) => {
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solution`) return noSolution();
+      if (method === 'GET' && url === `/api/ingest/${sha256}/solve`) return json({ detail: 'no solve job is stored for that file' }, 404);
+      return undefined;
+    });
+    await waitUntil(() => expect(q(HOME_SCREEN)).not.toBeNull());
+    expect(q('[data-testid="working-screen"]')).toBeNull();
+    expect(calls).toEqual([`GET /api/ingest/${sha256}`, `GET /api/ingest/${sha256}/solution`, `GET /api/ingest/${sha256}/solve`]);
+  });
+});
+
 // Solve from here on an upload opened by its address (as the iPhone's Open leads here): the tab has no upload of its
 // own, so the solve is sent with the stored receipt, whose hints are the stored photo's recorded moment and place (the
 // receipt contract checks each against the asset); a solve that cannot start shows the decided failed job, never a

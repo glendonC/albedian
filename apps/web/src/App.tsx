@@ -26,11 +26,14 @@ import {
   cancelJob,
   failureReason,
   fetchDiscoveredMedia,
+  followStoredSolve,
   solveStoredUpload,
   uploadAndSolveMedia,
+  type FollowedJob,
+  type SolveOptions,
   type UploadEvent,
 } from './services/apiClient.js';
-import { openStoredUpload, readStoredReceipt, storedPhotoDecoded, uploadAddressed } from './services/openUpload.js';
+import { openAddressedUpload, readStoredReceipt, storedPhotoDecoded, uploadAddressed } from './services/openUpload.js';
 import { solveStoppedSentence } from './services/skyLayerWords.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
@@ -189,17 +192,24 @@ export const App: React.FC = () => {
     const sha256 = uploadAddressed(window.location.search);
     if (sha256 === null) return undefined;
     let left = false;
-    void openStoredUpload(sha256)
+    // open-direct-two: with no stored solution, the upload's newest solve job, running or stopped, opens on the working
+    // rows or the stopped screen (resumeStoredSolve below); with neither, the home after the black
+    void openAddressedUpload(sha256)
       .then(async (opened) => {
-        if (opened?.sourceAsset) await storedPhotoDecoded(opened.sourceAsset.uri, opened.sourceAsset.mediaKind);
+        if (opened?.kind === 'reveal' && opened.session.sourceAsset) await storedPhotoDecoded(opened.session.sourceAsset.uri, opened.session.sourceAsset.mediaKind);
+        if (opened?.kind === 'job') await storedPhotoDecoded(`/api/ingest/${sha256}/original`, opened.receipt.sourceAsset.mediaKind);
         return opened;
       })
       .then((opened) => {
         if (left) return;
         setOpening(false);
         if (opened === null || latestChoiceRef.current !== null) return;
-        setSession(opened);
-        setUploadedMediaUrl(opened.sourceAsset?.uri ?? null);
+        if (opened.kind === 'job') {
+          resumeStoredSolve(opened.receipt, opened.job);
+          return;
+        }
+        setSession(opened.session);
+        setUploadedMediaUrl(opened.session.sourceAsset?.uri ?? null);
       });
     return () => {
       left = true;
@@ -527,6 +537,35 @@ export const App: React.FC = () => {
     };
     solveHereAgainRef.current = send;
     send();
+  };
+
+  // open-direct-two (UIUX-opendirect-READY.md item 2): an upload opened by its address whose solve has not ended, or has
+  // stopped, shows the working rows or the stopped screen from its newest job, followed to its end as a solve this tab
+  // started; opening starts nothing. Try again is the same solve of the stored file, started again
+  const resumeStoredSolve = (receipt: IngestReceipt, job: FollowedJob) => {
+    const asset = receipt.sourceAsset;
+    const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
+    const localObjectUrl = `/api/ingest/${asset.sha256}/original`;
+    latestChoiceRef.current = null;
+    setUploadedMediaUrl(localObjectUrl);
+    setArrival({ fileName: asset.title, byteSize: asset.byteSize ?? 0, stored: true, widthPx: shown.widthPx, heightPx: shown.heightPx, job: null, failure: null });
+    const follow = (run: (options: SolveOptions) => Promise<unknown>) => {
+      const token = ++solveHereRef.current;
+      void run({
+        localObjectUrl,
+        onSessionUpdate: (next) => {
+          if (solveHereRef.current === token) setSession(next);
+        },
+        onEvent: (event) => {
+          if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
+        },
+      });
+    };
+    follow((options) => followStoredSolve(receipt, job, options));
+    solveHereAgainRef.current = () => {
+      setArrival((prev) => (prev ? { ...prev, job: null, failure: null } : prev));
+      follow((options) => solveStoredUpload(receipt, options));
+    };
   };
 
   // Try again: the same solve of the stored file, or the same file sent again when it never reached the server

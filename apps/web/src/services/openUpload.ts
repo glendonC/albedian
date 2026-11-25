@@ -1,5 +1,5 @@
 import { IngestReceiptSchema, ObservationSolutionSchema, type IngestReceipt, type ObservationSession } from '@albedian/contracts';
-import { buildSessionFromIngestReceipt } from './apiClient.js';
+import { buildSessionFromIngestReceipt, parseFollowedJob, type FollowedJob } from './apiClient.js';
 
 /**
  * The address that opens one stored upload: `?upload=<sha256>`. The iPhone's Open leads here after the laptop has
@@ -41,6 +41,46 @@ export async function readStoredReceipt(sha256: string): Promise<IngestReceipt |
   if (!SHA256.test(sha256)) return null;
   const receipt = IngestReceiptSchema.safeParse(await readJson(`/api/ingest/${sha256}`));
   return receipt.success && receipt.data.sourceAsset.sha256 === sha256 ? receipt.data : null;
+}
+
+/**
+ * The newest solve job of a stored upload (PLATFORM's job-by-upload-one: `GET /api/ingest/{sha256}/solve`, the job
+ * record's shape; a read that starts nothing), or null when none was started, nothing is stored, the value is no sha256
+ * or the answer is not a solve job's record. It never throws.
+ */
+export async function readNewestSolveJob(sha256: string): Promise<FollowedJob | null> {
+  if (!SHA256.test(sha256)) return null;
+  const body = await readJson(`/api/ingest/${sha256}/solve`);
+  if (body === undefined) return null;
+  try {
+    const job = parseFollowedJob(body);
+    return job.sourceAssetSha256 === sha256 ? job : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What a page opened at an upload's address can show (open-direct-one and two, UIUX-opendirect-READY.md): its reveal
+ * when a solution is stored; its newest solve job, running or stopped, with the receipt, when none is; null when it is
+ * not stored, has neither, or an answer does not fit its contract. Reads only: the receipt, the solution, then the job.
+ */
+export type AddressedUpload =
+  | { kind: 'reveal'; session: ObservationSession }
+  | { kind: 'job'; receipt: IngestReceipt; job: FollowedJob };
+export async function openAddressedUpload(sha256: string): Promise<AddressedUpload | null> {
+  const receipt = await readStoredReceipt(sha256);
+  if (receipt === null) return null;
+  const solution = ObservationSolutionSchema.safeParse(await readJson(`/api/ingest/${sha256}/solution`));
+  if (solution.success && solution.data.sourceSha256 === sha256) {
+    try {
+      return { kind: 'reveal', session: buildSessionFromIngestReceipt(receipt, { localObjectUrl: `/api/ingest/${sha256}/original`, solution: solution.data }) };
+    } catch {
+      return null;
+    }
+  }
+  const job = await readNewestSolveJob(sha256);
+  return job === null ? null : { kind: 'job', receipt, job };
 }
 
 /**

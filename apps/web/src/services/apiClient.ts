@@ -758,15 +758,6 @@ export async function solveStoredUpload(
   };
 
   const sha256 = receipt.sourceAsset.sha256;
-  // The lock-on (D25): once a running record names the sky predicted from an early pose, it is read once and told; a
-  // read that fails tells nothing, so the working screen stays as approved
-  let earlyRead = false;
-  const tellEarly = async (record: FollowedJob) => {
-    if (earlyRead || record.state !== 'running' || !('predictedSkyAtUTC' in record) || record.predictedSkyAtUTC === undefined) return;
-    earlyRead = true;
-    const sky = await readPredictedSky(record.id).catch(() => null);
-    if (sky) options?.onEvent?.({ kind: 'early', solution: sky });
-  };
   let job: FollowedJob;
   try {
     const solveRes = await fetchAnswer(
@@ -786,6 +777,56 @@ export async function solveStoredUpload(
   } catch (err) {
     return solveDidNotFinish(err, null);
   }
+  return followSolve(receipt, job, ingestedSession, solveDidNotFinish, filename, options);
+}
+
+/**
+ * Follows a stored upload's solve job the app did not start (open-direct-two: the newest job of an upload opened by its
+ * address, read from `GET /api/ingest/{sha256}/solve`) exactly as solveStoredUpload follows the one it starts: every
+ * record told, the early sky read once, and the solution loaded into the session once it succeeded. It starts nothing
+ * and never throws: a solve that does not finish returns the stored session with the reason.
+ */
+export async function followStoredSolve(
+  receipt: IngestReceipt,
+  job: FollowedJob,
+  options?: SolveOptions,
+  filename: string = receipt.sourceAsset.title
+): Promise<ObservationSession> {
+  const ingestedSession = buildSessionFromIngestReceipt(receipt, { localObjectUrl: options?.localObjectUrl });
+  options?.onSessionUpdate?.(ingestedSession);
+  const solveDidNotFinish = (err: unknown, at: FollowedJob | null): ObservationSession => {
+    const stored = ObservationSessionSchema.parse({
+      ...ingestedSession,
+      machines: { ...ingestedSession.machines, calibration: 'not_requested' },
+      lastStatusBanner: `Stored "${filename}", but the sky solve did not finish: ${failureReason(err)}.`,
+    });
+    options?.onSessionUpdate?.(stored);
+    options?.onEvent?.({ kind: 'failed', sentence: solveStoppedSentence(receipt.sourceAsset), job: at });
+    return stored;
+  };
+  return followSolve(receipt, job, ingestedSession, solveDidNotFinish, filename, options);
+}
+
+/** The part of a stored solve after its job is known: followed to its end, then its sky, its stop or its reason. */
+async function followSolve(
+  receipt: IngestReceipt,
+  started: FollowedJob,
+  ingestedSession: ObservationSession,
+  solveDidNotFinish: (err: unknown, job: FollowedJob | null) => ObservationSession,
+  filename: string,
+  options?: SolveOptions
+): Promise<ObservationSession> {
+  const sha256 = receipt.sourceAsset.sha256;
+  let job = started;
+  // The lock-on (D25): once a running record names the sky predicted from an early pose, it is read once and told; a
+  // read that fails tells nothing, so the working screen stays as approved
+  let earlyRead = false;
+  const tellEarly = async (record: FollowedJob) => {
+    if (earlyRead || record.state !== 'running' || !('predictedSkyAtUTC' in record) || record.predictedSkyAtUTC === undefined) return;
+    earlyRead = true;
+    const sky = await readPredictedSky(record.id).catch(() => null);
+    if (sky) options?.onEvent?.({ kind: 'early', solution: sky });
+  };
   options?.onEvent?.({ kind: 'job', job });
   await tellEarly(job);
   const pollMs = options?.pollMs ?? JOB_POLL_MS;
