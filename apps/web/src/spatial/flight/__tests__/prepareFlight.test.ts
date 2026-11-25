@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX } from '../flightStarShader.js';
 import { FLIGHT_CONTEXT_ATTRIBUTES, forgetFlightWarm, issueFinishPrograms, prepareFlight } from '../prepareFlight.js';
+import { CRAFT_SKY_URL } from '../craftLight.js';
 import type { createFlightFinish } from '../flightFinish.js';
 import { forgetKeptSkyPictures } from '../../sky/skyPicture.js';
 import { FakeOffscreenCanvas, installSkyFakes, named } from '../../sky/__tests__/skyPictureFakes.js';
@@ -90,6 +91,13 @@ describe('prepareFlight', () => {
     expect((fakes.contexts[0]!.canvas as unknown as FakeOffscreenCanvas).attributes).toEqual(FLIGHT_CONTEXT_ATTRIBUTES);
     expect(named(fakes.calls, 'shaderSource').map((c) => c.args[1])).toEqual([FLIGHT_STAR_VERTEX, FLIGHT_STAR_FRAGMENT, ARRIVAL_BLOOM_VERTEX, ARRIVAL_BLOOM_FRAGMENT, 'bloom vertex', 'bloom fragment']);
     expect(named(fakes.calls, 'linkProgram')).toHaveLength(3);
+  });
+
+  it('reads no picture: the craft\'s sky waits for the flight at rest (craft-compile-one, the lead\'s 00:18 line)', async () => {
+    const fakes = installSkyFakes({ pictureUrl: '/x', parallelDoneAt: 1 });
+    prepareFlight(threeLike);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fakes.fetched.filter((u) => u === CRAFT_SKY_URL || u.startsWith('/textures/'))).toHaveLength(0);
   });
 
   it('matches the star layer context attributes', async () => {

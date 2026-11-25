@@ -66,9 +66,55 @@ export interface CraftRenderer {
   /** Set on three's renderer (ACES and the metered exposure); a stand-in may leave them be. */
   toneMapping?: THREE.ToneMapping;
   toneMappingExposure?: number;
+  /** craft-compile-one: three's own asynchronous compile, and one texture's upload; a stand-in may have neither. */
+  compileAsync?(scene: THREE.Object3D, camera: THREE.Camera, targetScene?: THREE.Scene | null): Promise<unknown>;
+  initTexture?(texture: THREE.Texture): void;
 }
 
 const makeWebGlRenderer = (canvas: HTMLCanvasElement): CraftRenderer => new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: true });
+
+/** The textures a model's materials hold, each once. */
+function texturesOf(model: THREE.Object3D): THREE.Texture[] {
+  const found = new Set<THREE.Texture>();
+  model.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (!material) continue;
+      for (const value of Object.values(material)) if (value instanceof THREE.Texture) found.add(value);
+    }
+  });
+  return [...found];
+}
+
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+/**
+ * craft-compile-one (DECIDED-BY-LEAD 22:31: a craft's first load never stops the page): what a new model needs on the
+ * GPU is made before it is shown, so no frame waits for it: its programs compiled by three's own asynchronous compile
+ * against the flight's scene (its lights and environment, so the programs are the ones its draws use; the browser's
+ * parallel compile where it has one), then its textures uploaded one a frame. A renderer without these (a test's
+ * stand-in) shows it at once, as before; a compile that fails leaves the first draw to compile, as before.
+ */
+function readyOnGpu(g: CraftGpu, model: THREE.Object3D): Promise<void> {
+  const r = g.renderer;
+  if (!r.compileAsync && !r.initTexture) return Promise.resolve();
+  let ready = g.ready.get(model);
+  if (!ready) {
+    ready = (async () => {
+      if (r.compileAsync) await r.compileAsync(model, g.camera, g.scene).catch(() => undefined);
+      if (r.initTexture) {
+        for (const texture of texturesOf(model)) {
+          await nextFrame();
+          r.initTexture(texture);
+        }
+      }
+      await nextFrame();
+    })();
+    g.ready.set(model, ready);
+  }
+  return ready;
+}
 
 /** Frees what a model holds on the GPU: its geometry, its materials and their textures. */
 export function disposeModel(model: THREE.Object3D): void {
@@ -105,6 +151,8 @@ interface CraftGpu {
   shown: Shown | null;
   /** The craft framing out after a switch, drawn into its own canvas until its frame-out ends. */
   leaving: Shown | null;
+  /** craft-compile-one: each model made ready on this renderer once, before it is first shown. */
+  ready: WeakMap<THREE.Object3D, Promise<void>>;
 }
 
 interface Shown {
@@ -167,12 +215,27 @@ async function decodeCraftSky(): Promise<CraftSkySource> {
 }
 
 /** The sky the craft takes its fill from: the starless glow, turned to where the registration puts it, as a PMREM. */
-async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, alive: () => boolean): Promise<number | null> {
+/** The decoded and summed sky, once a page; a failure is asked again next time. */
+function craftSkySourceOnce(): Promise<CraftSkySource> {
   craftSkySource ??= decodeCraftSky().catch((error: unknown) => {
     craftSkySource = null;
     throw error;
   });
-  const { copy, integral, rotation } = await craftSkySource;
+  return craftSkySource;
+}
+
+/**
+ * craft-compile-one: the craft's sky decoded, copied and summed while the reveal is at rest (its copy into a canvas and
+ * its sum were 19 to 25 ms of the first craft's pick), so the first craft of a flight only builds its environment.
+ */
+export function prepareCraftSky(): void {
+  craftSkySourceOnce().catch(() => undefined);
+}
+
+async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, alive: () => boolean): Promise<number | null> {
+  const { copy, integral, rotation } = await craftSkySourceOnce();
+  // craft-compile-one: the environment is built on a frame of its own, not in the task that mounts the layer at the pick
+  await nextFrame();
   if (!alive()) return null;
   const tex = new THREE.CanvasTexture(copy);
   tex.mapping = THREE.EquirectangularReflectionMapping;
@@ -310,7 +373,7 @@ export const FlightCraftLayer: React.FC<{
     // A sky that fails (or a renderer that is not three's) leaves the craft lit by its key alone
     let alive = true;
     const sky = renderer instanceof THREE.WebGLRenderer ? loadCraftSky(renderer, scene, () => alive).catch(() => null) : Promise.resolve(null);
-    gpu.current = { renderer, scene, camera: cam, holder, key, sky, skyIntegral: null, shown: null, leaving: null };
+    gpu.current = { renderer, scene, camera: cam, holder, key, sky, skyIntegral: null, shown: null, leaving: null, ready: new WeakMap() };
     const cache = models.current;
     return () => {
       alive = false;
@@ -378,7 +441,10 @@ export const FlightCraftLayer: React.FC<{
     trimCache(g);
     setState('loading');
     // The craft is drawn once both its model and the flight's sky are in
-    Promise.all([pending, g.sky]).then(
+    // craft-compile-one: shown only once its programs and textures are made, so the frame-in is painted from its start
+    Promise.all([pending, g.sky])
+      .then(([cached, skyIntegral]) => readyOnGpu(g, cached.model).then(() => [cached, skyIntegral] as const))
+      .then(
       ([cached, skyIntegral]) => {
         if (!current || gpu.current !== g) return;
         g.skyIntegral = skyIntegral;

@@ -9,7 +9,7 @@ import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
 import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf } from './flightFrame.js';
 import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
 import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, type ArrivalBloom, type ArrivalStar } from './arrival.js';
-import { FlightCraftLayer } from './FlightCraftLayer.js';
+import { FlightCraftLayer, prepareCraftSky } from './FlightCraftLayer.js';
 import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
 import { FlightDomeLayer, type DomeView } from '../sky/FlightDomeLayer.js';
 import { createFlightFinish, pickedRowOf, type FlightFinish } from './flightFinish.js';
@@ -369,6 +369,13 @@ export const FlightStarsLayer: React.FC<{
   }, [session.observationSolution, session.selectedFindingId]);
   const [orbit, setOrbit] = useState<ConeOrbit>(CONE_ORBIT_START);
   // Each time the cone view opens it starts beside the cone (D28 item 8)
+  // craft-compile-one (the lead's 00:18 line): the craft's sky decoded and summed once the flight is at rest, before any
+  // craft is picked (or by the pick itself if it comes first), never on the reveal, nor during the move
+  const atRest = session.spatialView?.transitionPhase === 'at_space';
+  useEffect(() => {
+    if (atRest) prepareCraftSky();
+  }, [atRest]);
+
   useEffect(() => {
     if (cone) setOrbit(CONE_ORBIT_START);
   }, [cone]);
