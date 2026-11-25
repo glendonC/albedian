@@ -2979,3 +2979,24 @@
 .restore-phone-stopped.is-clip .restore-phone-why {
   bottom: calc(100% - 576px);
 }
+
+/* first-use-hints-one, item two (UIUX-first-use-wow-READY.md, RULED at the lead's line stamped 03:22): "Press a star to
+   open it." beside the brightest named matched ring, under its name, in the answer's question type, at full ink with the
+   legend title's rim (words-on-photo-one) so it reads over the photo; it takes no pointer, so the ring stays pressable */
+.reveal-hint {
+  position: absolute;
+  margin: 0;
+  translate: 14px 14px;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--look-ink);
+  text-shadow: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000, 0 0 2px #000;
+  pointer-events: none;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.reveal-hint.is-left {
+  translate: calc(-100% - 14px) 14px;
+}

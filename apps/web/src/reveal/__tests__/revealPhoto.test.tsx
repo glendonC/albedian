@@ -1938,3 +1938,86 @@ describe('the views row and the phone readout at the flight\'s seams', () => {
     expect(rules['.flight-readout > *']!.animation).toContain('calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger))');
   });
 });
+
+// first-use-hints-one, item two (UIUX-first-use-wow-READY.md, RULED at the lead's line stamped 03:22): after the reveal
+// settles one hint stands beside the brightest named matched star's ring, "Press a star to open it."; it leaves the
+// moment any star is picked (a ring pressed, or a star named by voice or typing, which picks it), never on a timer,
+// and does not come back once used (kept on the device)
+describe('the first hint: press a star', () => {
+  const HINT = '[data-testid="reveal-hint"]';
+  beforeEach(() => window.localStorage.clear());
+
+  it('stands beside the brightest named matched ring once the reveal has arrived, and not before', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated());
+      expect(q(HINT)).toBeNull();
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      const hint = q(HINT) as HTMLElement;
+      expect(hint.textContent).toBe('Press a star to open it.');
+      const named = [...container.querySelectorAll<HTMLElement>('button.reveal-mark')].filter((b) => b.querySelector('.reveal-mark__name') && b.getAttribute('data-evidence-class') === 'catalog_matched');
+      const session = calibrated();
+      const magOf = (b: HTMLElement) => session.observationSolution!.findings.find((f) => `reveal-mark-${f.id}` === b.getAttribute('data-testid'))!.catalogRef!.apparentMagnitude!;
+      const brightest = named.sort((a, b) => magOf(a) - magOf(b))[0]!;
+      expect([hint.style.left, hint.style.top]).toEqual([brightest.style.left, brightest.style.top]);
+      // Over the photo at rest, never a control
+      expect(hint.tagName).toBe('P');
+      expect(hint.getAttribute('aria-hidden')).toBeNull();
+      // Not on a timer: still there long after
+      act(() => vi.advanceTimersByTime(60_000));
+      expect(q(HINT)).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves the moment a star is picked, and does not come back, even on a fresh reveal', () => {
+    vi.useFakeTimers();
+    try {
+      const session = calibrated();
+      show(session);
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      expect(q(HINT)).not.toBeNull();
+      const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+      show({ ...session, selectedFindingId: rigel.id } as ObservationSession);
+      expect(q(HINT)).toBeNull();
+      expect(window.localStorage.getItem('albedian.hint.pressStar')).toBe('used');
+      show(session);
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      expect(q(HINT)).toBeNull();
+      act(() => root.unmount());
+      root = createRoot(container);
+      show(session);
+      act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+      expect(q(HINT)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stands only on the photo at rest: not over Real sky, there, an answer or the bare photo', () => {
+    vi.useFakeTimers();
+    try {
+      const session = calibrated();
+      for (const extra of [{ realSky: true }, { originalPixels: true }]) {
+        act(() => root.unmount());
+        root = createRoot(container);
+        show(session, extra);
+        act(() => vi.advanceTimersByTime(REVEAL_ARRIVAL_MS));
+        expect(q(HINT), JSON.stringify(extra)).toBeNull();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('is drawn in the answer\'s question type with the title\'s rim, and takes no pointer', () => {
+    const rules: Record<string, string> = {};
+    postcss.parse(fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8')).walkRules((rule) => {
+      if (rule.selector === '.reveal-hint') rule.walkDecls((d) => void (rules[d.prop] = d.value.replace(/\s+/g, ' ')));
+    });
+    expect(rules['font-size']).toBe('14px');
+    expect(rules['pointer-events']).toBe('none');
+    expect(rules['text-shadow']).toBe('1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000, 0 0 2px #000');
+  });
+});

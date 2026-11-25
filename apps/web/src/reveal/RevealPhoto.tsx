@@ -43,6 +43,23 @@ export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
 const STAR_CARD_LINES = 7;
 // How long the reveal is arriving: its marks' span, then the status, In this photo and Ask out loud, 20 ms apart (the
 // motion record). While it is, the status waits for the marks; after, a view change brings it in at the words' delay.
+/** The first-use hints, each kept on the device once used (UIUX-first-use-wow-READY.md: never back once used). */
+const PRESS_HINT_KEY = 'albedian.hint.pressStar';
+function readHint(key: string): boolean {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(key) === 'used';
+  } catch {
+    return false;
+  }
+}
+function keepHint(key: string): void {
+  try {
+    window.localStorage.setItem(key, 'used');
+  } catch {
+    // A browser that keeps nothing shows the hint again next time; nothing else depends on it
+  }
+}
+
 export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
 /** The arrival that locks on (D25): the travel, the matched marks' colour at rest, then the words as after the marks. */
 export const LOCK_ON_ARRIVAL_MS = MOTION_TOKENS.frameInMs + MOTION_TOKENS.colourMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
@@ -594,6 +611,21 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // compare, at every width, only the matched marks are drawn; predicted marks show, with their tag, wherever the
   // compare is not on screen, so no predicted layer stands without its tag
   const drawnMarks = compareOn ? marks.filter((mark) => mark.kind !== 'predicted') : marks;
+  // first-use-hints-one, item two (UIUX-first-use-wow-READY.md, RULED 03:22): once the reveal has arrived, one hint
+  // beside the brightest named matched star's ring; it leaves the moment a star is picked (pressed, or named by voice or
+  // typing), never on a timer, and once used it is kept on the device so it never comes back
+  const [pressHintUsed, setPressHintUsed] = useState(() => readHint(PRESS_HINT_KEY));
+  useEffect(() => {
+    if (picked === null || pressHintUsed) return;
+    keepHint(PRESS_HINT_KEY);
+    setPressHintUsed(true);
+  }, [picked, pressHintUsed]);
+  const pressHintMark =
+    pressHintUsed || arriving || there || skyShown || bareFrame || answer || picked !== null
+      ? null
+      : (drawnMarks
+          .filter((mark) => mark.kind === 'catalog' && mark.name !== null && mark.deepSky === null)
+          .sort((a, b) => (a.finding.catalogRef?.apparentMagnitude ?? 99) - (b.finding.catalogRef?.apparentMagnitude ?? 99))[0] ?? null);
   // Line it up yourself (D24), on the laptop's no-match reveal and at phone width alike, over the photo or clip itself
   const alignStart = useMemo(() => startPose(session), [session]);
   const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
@@ -1314,6 +1346,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           );
         })}
       </div>
+      )}
+
+      {pressHintMark && (
+        <p
+          className={pressHintMark.nameOnLeft ? 'reveal-hint is-left' : 'reveal-hint'}
+          data-testid="reveal-hint"
+          style={{ left: `${pressHintMark.xPx}px`, top: `${pressHintMark.yPx}px` }}
+        >
+          Press a star to open it.
+        </p>
       )}
 
       {/* The compare's Original and Restored, above the marks and under the answer and the star card */}
