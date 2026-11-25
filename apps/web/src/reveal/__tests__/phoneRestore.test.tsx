@@ -217,9 +217,9 @@ describe('the restoration working at phone width (D38 item 2)', () => {
 
 describe("D38's rules are rp-rest's and rp-scroll's", () => {
   it('sets Restore at 832, the screen scrolling, and Ask out loud moving with it', () => {
-    expect(declarationsOf('.restore-phone-rest')).toEqual({ position: 'absolute', left: '0', right: '0', top: '832px', display: 'flex', 'justify-content': 'center' });
+    expect(declarationsOf('.restore-phone-rest')).toEqual({ position: 'absolute', left: '0', right: '0', top: 'calc(100% - 12px)', display: 'flex', 'justify-content': 'center' });
     expect(declarationsOf('.reveal-photo.is-phone.is-scroll')).toEqual({ 'overflow-y': 'auto', 'overscroll-behavior': 'contain', 'pointer-events': 'auto' });
-    expect(declarationsOf('.reveal-phone-room')).toEqual({ position: 'absolute', left: '0', top: '0', width: '1px', height: '936px', 'pointer-events': 'none' });
+    expect(declarationsOf('.reveal-phone-room')).toEqual({ position: 'absolute', left: '0', top: '0', width: '1px', height: 'calc(100% + 92px)', 'pointer-events': 'none' });
     expect(declarationsOf(':root[data-phone-scroll] .ask-bar.is-phone')).toEqual({ translate: '0 calc(-1 * var(--phone-scroll, 0px))' });
   });
 });

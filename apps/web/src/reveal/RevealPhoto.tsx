@@ -34,7 +34,7 @@ import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
-import { PHONE_SLOT, phoneSlotRect } from './phoneSlot.js';
+import { phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
@@ -379,7 +379,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const frame = sessionPhotoRect(framed, viewW, viewH);
   // There, the frame's corners leave with the photo (fly, approved)
   // At phone width the corners mark the slot over Real sky only (reveal, approved, iPhone 1 and 2)
-  const rect = bareFrame || there || !corners || (phone && !skyShown) || !frame ? null : phone ? phoneSlotRect(frame, viewW) : frame;
+  const rect = bareFrame || there || !corners || (phone && !skyShown) || !frame ? null : phone ? phoneSlotRect(frame, viewW, viewH) : frame;
   // The layer stays a moment after leaving the sky, so it fades out as it faded in
   const [skyMounted, setSkyMounted] = useState(skyShown);
   useEffect(() => {
@@ -561,7 +561,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       estBox && estBox.height > 0
         ? viewH - estBox.top + 16
         : phoneClip
-          ? viewH - (PHONE_SLOT.topPx + PHONE_SLOT.heightPx)
+          ? viewH - (phoneSlotIn(viewH).topPx + phoneSlotIn(viewH).heightPx)
           : null;
     if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
   });
@@ -1138,7 +1138,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <RestoreCompare
           key={asset.sha256}
           rect={frame}
-          slot={phoneSlotRect(frame, viewW)}
+          slot={phoneSlotRect(frame, viewW, viewH)}
           src={phoneCompareSrc}
           originalSrc={asset.uri}
           orientation={phoneCompareOrientation}
@@ -1156,7 +1156,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           else if (fullScale > 1) setAlignZoom({ u: (xPx - frame.leftPx) / frame.widthPx, v: (yPx - frame.topPx) / frame.heightPx });
         };
         // Inside the photo's own frame on screen (the phone's slot), the point at its centre, the frame always covered
-        const box = phone ? phoneSlotRect(frame, viewW) : clippedToView(frame, viewW, viewH);
+        const box = phone ? phoneSlotRect(frame, viewW, viewH) : clippedToView(frame, viewW, viewH);
         const widthPx = frame.widthPx * fullScale;
         const heightPx = frame.heightPx * fullScale;
         const clamp = (at: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, at));

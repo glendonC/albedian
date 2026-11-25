@@ -97,7 +97,7 @@ describe('predicted rings on the photo carry their tag from the first frame', ()
       });
       return found;
     };
-    expect(rule('.reveal-phone-estimate')).toEqual({ position: 'absolute', left: '24px', right: '24px', bottom: 'calc(100% - 756px)', display: 'flex', 'flex-direction': 'column', 'align-items': 'flex-start', 'pointer-events': 'none' });
+    expect(rule('.reveal-phone-estimate')).toEqual({ position: 'absolute', left: '24px', right: '24px', bottom: '88px', display: 'flex', 'flex-direction': 'column', 'align-items': 'flex-start', 'pointer-events': 'none' });
     expect(rule('.reveal-phone-estimate__source')).toEqual({ margin: '8px 0 0', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-2)' });
     expect(rule('.reveal-phone-estimate .reveal-phone-counts')).toEqual({ 'margin-top': '14px' });
     // No entrance: nothing in the motion record animates the block or anything in it. It is named only inside :has(), as

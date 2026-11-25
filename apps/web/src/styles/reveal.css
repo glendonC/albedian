@@ -1459,7 +1459,8 @@
 .clip-player.is-phone {
   left: 24px;
   right: 24px;
-  top: 676px;
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, at 676 in 844 */
+  top: calc(100% - 168px);
   bottom: auto;
   width: auto;
   transform: none;
@@ -1514,7 +1515,8 @@
 .reveal-phone-counts__big {
   position: absolute;
   left: 24px;
-  top: 660px;
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, at 660 in 844 */
+  top: calc(100% - 184px);
   margin: 0;
   display: flex;
   align-items: center;
@@ -1530,7 +1532,8 @@
 .reveal-phone-counts__more {
   position: absolute;
   left: 24px;
-  top: 714px;
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, at 714 in 844 */
+  top: calc(100% - 130px);
   margin: 0;
   display: flex;
   gap: 16px;
@@ -1547,7 +1550,8 @@
   position: absolute;
   left: 24px;
   right: 24px;
-  bottom: calc(100% - 756px);
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, the foot at 756 in 844 */
+  bottom: 88px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1582,7 +1586,8 @@
   left: 24px;
   right: 24px;
   top: auto;
-  bottom: calc(100% - 756px);
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, the foot at 756 in 844 */
+  bottom: 88px;
   width: auto;
 }
 /* D19, decided by the lead: the foot 16 pt above Ask out loud; over the photo's lower edge it darkens behind the words to
@@ -1621,7 +1626,8 @@
 
 /* Ask out loud at phone width: alone, at the phone's size, centred at 772 (#p-answer .go) */
 .ask-bar.is-phone {
-  top: 772px;
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, at 772 in 844: Ask out loud and Back to Moment are never below the window */
+  top: calc(100% - 72px);
   bottom: auto;
 }
 .ask-bar.is-phone .look-main,
@@ -2051,7 +2057,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 832px;
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, at 832 in 844, reached by the screen's scroll */
+  top: calc(100% - 12px);
   display: flex;
   justify-content: center;
 }
@@ -2065,7 +2072,8 @@
   left: 0;
   top: 0;
   width: 1px;
-  height: 936px;
+  /* phone-foot-one (UIUX-phone-textsize-READY.md item 2, DECIDED-BY-LEAD at the line stamped 00:31): from the window's own foot, 936 in 844 */
+  height: calc(100% + 92px);
   pointer-events: none;
 }
 :root[data-phone-scroll] .ask-bar.is-phone {
@@ -2708,7 +2716,8 @@
    nothing sits behind or collides with the player and its time chip (y 651 to 720); words stand above y 638 with D19's
    44 px 82 percent black fade, and the actions begin at y 772 */
 .reveal-phone-estimate.is-clip {
-  bottom: calc(100% - 638px);
+  /* phone-foot-one: at the clip slot's foot, which rises with a shorter window's (638 in 844 and taller) */
+  bottom: max(206px, calc(100% - 638px));
 }
 .reveal-phone-estimate.is-clip::before {
   content: '';

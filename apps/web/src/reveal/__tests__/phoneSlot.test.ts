@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { sourcePhotoDisplayRect } from '../../components/sourcePhotoRect.js';
-import { PHONE_SLOT, phoneEndsMask, phoneSlotCrop, phoneSlotRect } from '../phoneSlot.js';
+import { PHONE_SLOT, phoneEndsMask, phoneSlotCrop, phoneSlotIn, phoneSlotRect } from '../phoneSlot.js';
 
 // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1): the photo spans the width at 390 by 520 from y 118,
 // covering that slot, its top and bottom edges fading over 40 pt. The slot is written as the crop the photo stage and
@@ -23,17 +23,19 @@ describe('phoneSlotCrop: the photo covering the slot', () => {
     fc.assert(
       fc.property(fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 320, max: 480 }), fc.integer({ min: 640, max: 960 }), (w, h, viewW, viewH) => {
         const rect = sourcePhotoDisplayRect(w, h, viewW, viewH, phoneSlotCrop(w, h, viewW, viewH));
+        // The slot in this window (phone-foot-one): its foot rises with a window shorter than 844
+        const slot = phoneSlotIn(viewH);
         const tol = 1e-6;
         expect(rect.leftPx).toBeLessThanOrEqual(tol);
         expect(rect.leftPx + rect.widthPx).toBeGreaterThanOrEqual(viewW - tol);
-        expect(rect.topPx).toBeLessThanOrEqual(PHONE_SLOT.topPx + tol);
-        expect(rect.topPx + rect.heightPx).toBeGreaterThanOrEqual(PHONE_SLOT.topPx + PHONE_SLOT.heightPx - tol);
+        expect(rect.topPx).toBeLessThanOrEqual(slot.topPx + tol);
+        expect(rect.topPx + rect.heightPx).toBeGreaterThanOrEqual(slot.topPx + slot.heightPx - tol);
         // One side fits exactly: the photo is as small as covering allows
         const fitsWidth = Math.abs(rect.widthPx - viewW) < 1e-6;
-        const fitsHeight = Math.abs(rect.heightPx - PHONE_SLOT.heightPx) < 1e-6;
+        const fitsHeight = Math.abs(rect.heightPx - slot.heightPx) < 1e-6;
         expect(fitsWidth || fitsHeight).toBe(true);
         expect(rect.leftPx + rect.widthPx / 2).toBeCloseTo(viewW / 2, 6);
-        expect(rect.topPx + rect.heightPx / 2).toBeCloseTo(PHONE_SLOT.topPx + PHONE_SLOT.heightPx / 2, 6);
+        expect(rect.topPx + rect.heightPx / 2).toBeCloseTo(slot.topPx + slot.heightPx / 2, 6);
       }),
       SEED
     );
@@ -55,17 +57,19 @@ describe('phoneSlotCrop: the photo covering the slot', () => {
     fc.assert(
       fc.property(fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 320, max: 480 }), fc.integer({ min: 640, max: 960 }), (w, h, viewW, viewH) => {
         const rect = sourcePhotoDisplayRect(w, h, viewW, viewH, phoneSlotCrop(w, h, viewW, viewH, 'video'));
+        // The slot in this window (phone-foot-one): its foot rises with a window shorter than 844
+        const slot = phoneSlotIn(viewH);
         const tol = 1e-6;
         expect(rect.leftPx).toBeGreaterThanOrEqual(-tol);
         expect(rect.leftPx + rect.widthPx).toBeLessThanOrEqual(viewW + tol);
-        expect(rect.topPx).toBeGreaterThanOrEqual(PHONE_SLOT.topPx - tol);
-        expect(rect.topPx + rect.heightPx).toBeLessThanOrEqual(PHONE_SLOT.topPx + PHONE_SLOT.heightPx + tol);
+        expect(rect.topPx).toBeGreaterThanOrEqual(slot.topPx - tol);
+        expect(rect.topPx + rect.heightPx).toBeLessThanOrEqual(slot.topPx + slot.heightPx + tol);
         const fitsWidth = Math.abs(rect.widthPx - viewW) < 1e-5;
-        const fitsHeight = Math.abs(rect.heightPx - PHONE_SLOT.heightPx) < 1e-5;
+        const fitsHeight = Math.abs(rect.heightPx - slot.heightPx) < 1e-5;
         expect(fitsWidth || fitsHeight).toBe(true);
         expect(rect.widthPx / rect.heightPx).toBeCloseTo(w / h, 5);
         expect(rect.leftPx + rect.widthPx / 2).toBeCloseTo(viewW / 2, 5);
-        expect(rect.topPx + rect.heightPx / 2).toBeCloseTo(PHONE_SLOT.topPx + PHONE_SLOT.heightPx / 2, 5);
+        expect(rect.topPx + rect.heightPx / 2).toBeCloseTo(slot.topPx + slot.heightPx / 2, 5);
       }),
       SEED
     );

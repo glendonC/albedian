@@ -8,6 +8,20 @@ import { revealStatus } from './revealStatus.js';
  */
 export const PHONE_SLOT = { topPx: 118, heightPx: 520 };
 
+/** The window height the phone's reveal was drawn at (iPhone 1: 390 by 844). */
+export const PHONE_DESIGN_HEIGHT_PX = 844;
+
+/**
+ * The slot in a window this tall (phone-foot-one; UIUX-phone-textsize-READY.md item 2; DECIDED-BY-LEAD at the line
+ * stamped 00:31): the foot block under the photo stands by its foot from the window's own foot, so in a shorter window
+ * the photo gives the room, its slot's foot rising with the window's; in a taller one the slot keeps its 520 and the
+ * foot block moves down from it. 390 by 520 from y 118 at 844.
+ */
+export function phoneSlotIn(viewportHeightPx: number): { topPx: number; heightPx: number } {
+  const shorter = Math.min(0, viewportHeightPx - PHONE_DESIGN_HEIGHT_PX);
+  return { topPx: PHONE_SLOT.topPx, heightPx: Math.max(0, PHONE_SLOT.heightPx + shorter) };
+}
+
 /**
  * Whether the phone's reveal shows (on a phone): over a photo or clip with a verified solve or a frame-gated pose
  * estimate (D16, UIUX-clipphone-READY.md section 3; UIUX-tagphone-READY.md item A) [verified].
@@ -39,12 +53,13 @@ export function phoneSlotCrop(
   mediaKind?: 'image' | 'video'
 ): PhotoCrop {
   const fitted = fitSourceToViewport(shownWidthPx, shownHeightPx, viewportWidthPx, viewportHeightPx);
+  const slot = phoneSlotIn(viewportHeightPx);
   const w = Math.max(1, shownWidthPx);
   const h = Math.max(1, shownHeightPx);
-  const scale = mediaKind === 'video' ? Math.min(viewportWidthPx / w, PHONE_SLOT.heightPx / h) : Math.max(viewportWidthPx / w, PHONE_SLOT.heightPx / h);
+  const scale = mediaKind === 'video' ? Math.min(viewportWidthPx / w, slot.heightPx / h) : Math.max(viewportWidthPx / w, slot.heightPx / h);
   const width = w * scale;
   const centreX = viewportWidthPx / 2;
-  const centreY = PHONE_SLOT.topPx + PHONE_SLOT.heightPx / 2;
+  const centreY = slot.topPx + slot.heightPx / 2;
   return {
     zoom: width / fitted.widthPx,
     panX: (centreX - fitted.leftPx) / fitted.widthPx - 0.5,
@@ -53,18 +68,20 @@ export function phoneSlotCrop(
 }
 
 /** The mask that fades the slot's top and bottom and hides the photo beyond it, in the photo's own box. */
-export function phoneEndsMask(rect: PhotoRect): string {
+export function phoneEndsMask(rect: PhotoRect, viewportHeightPx: number = PHONE_DESIGN_HEIGHT_PX): string {
   const r = (n: number) => Math.round(n * 10) / 10;
-  const top = PHONE_SLOT.topPx - rect.topPx;
-  const bottom = top + PHONE_SLOT.heightPx;
+  const slot = phoneSlotIn(viewportHeightPx);
+  const top = slot.topPx - rect.topPx;
+  const bottom = top + slot.heightPx;
   return `linear-gradient(to bottom, transparent ${r(top)}px, #000 ${r(top + ENDS_FADE_PX)}px, #000 ${r(bottom - ENDS_FADE_PX)}px, transparent ${r(bottom)}px)`;
 }
 
 /** The part of the photo the slot shows: where the phone's corners go over Real sky (#p-real: 18 px inside the slot). */
-export function phoneSlotRect(photo: PhotoRect, viewportWidthPx: number): PhotoRect {
+export function phoneSlotRect(photo: PhotoRect, viewportWidthPx: number, viewportHeightPx: number = PHONE_DESIGN_HEIGHT_PX): PhotoRect {
+  const slot = phoneSlotIn(viewportHeightPx);
   const left = Math.max(photo.leftPx, 0);
-  const top = Math.max(photo.topPx, PHONE_SLOT.topPx);
+  const top = Math.max(photo.topPx, slot.topPx);
   const right = Math.min(photo.leftPx + photo.widthPx, viewportWidthPx);
-  const bottom = Math.min(photo.topPx + photo.heightPx, PHONE_SLOT.topPx + PHONE_SLOT.heightPx);
+  const bottom = Math.min(photo.topPx + photo.heightPx, slot.topPx + slot.heightPx);
   return { leftPx: left, topPx: top, widthPx: Math.max(0, right - left), heightPx: Math.max(0, bottom - top) };
 }

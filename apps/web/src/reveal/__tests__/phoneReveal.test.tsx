@@ -415,9 +415,9 @@ describe('RevealPhoto at phone width', () => {
 
 describe("the phone reveal's rules are the approved page's", () => {
   it('sets the counts and the names as #rbp-photo does', () => {
-    expect(declarationsOf('.reveal-phone-counts__big')).toEqual({ position: 'absolute', left: '24px', top: '660px', margin: '0', display: 'flex', 'align-items': 'center', gap: '14px' });
+    expect(declarationsOf('.reveal-phone-counts__big')).toEqual({ position: 'absolute', left: '24px', top: 'calc(100% - 184px)', margin: '0', display: 'flex', 'align-items': 'center', gap: '14px' });
     expect(declarationsOf('.reveal-phone-counts__big b')).toEqual({ font: '300 40px / 1 var(--look-font-sans)', 'letter-spacing': '-0.045em', 'font-variant-numeric': 'tabular-nums' });
-    expect(declarationsOf('.reveal-phone-counts__more')).toEqual({ position: 'absolute', left: '24px', top: '714px', margin: '0', display: 'flex', gap: '16px', 'align-items': 'center', font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', 'font-variant-numeric': 'tabular-nums' });
+    expect(declarationsOf('.reveal-phone-counts__more')).toEqual({ position: 'absolute', left: '24px', top: 'calc(100% - 130px)', margin: '0', display: 'flex', gap: '16px', 'align-items': 'center', font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', 'font-variant-numeric': 'tabular-nums' });
     expect(declarationsOf('.reveal-phone-counts__item b')).toEqual({ 'font-weight': '400', 'margin-right': '8px' });
     expect(declarationsOf('.reveal-photo.is-phone .reveal-mark__name')).toEqual({ left: 'calc(50% + 16px)', 'font-size': '11px' });
     expect(declarationsOf('.reveal-photo.is-phone .reveal-mark.is-left .reveal-mark__name')).toEqual({ left: 'auto', right: 'calc(50% + 16px)' });
@@ -428,7 +428,7 @@ describe("the phone reveal's rules are the approved page's", () => {
     // Ask out loud at 772 (the lead's answer 23:50 to WEB-UX-unit-phone-1-QUESTION.md, option A, INTERIM)
     // D19, decided by the lead (UIUX-phoneanswer-DECIDED-BY-LEAD.md): its foot 16 pt above Ask out loud, at y 756; a longer
     // answer rises over the photo's lower edge, which darkens behind it to 82 percent black over 44 pt
-    expect(declarationsOf('.reveal-answer.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 756px)', width: 'auto' });
+    expect(declarationsOf('.reveal-answer.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: '88px', width: 'auto' });
     expect(declarationsOf('.reveal-answer.is-phone::before')).toEqual({
       content: "''",
       position: 'absolute',
@@ -444,7 +444,7 @@ describe("the phone reveal's rules are the approved page's", () => {
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__s')).toEqual({ font: '300 22px / 1.15 var(--look-font-sans)', 'letter-spacing': '-0.03em' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__st')).toEqual({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px', 'margin-top': '12px', 'padding-top': '0', 'border-top': '0' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__v')).toEqual({ 'font-size': '12px' });
-    expect(declarationsOf('.ask-bar.is-phone')).toEqual({ top: '772px', bottom: 'auto' });
+    expect(declarationsOf('.ask-bar.is-phone')).toEqual({ top: 'calc(100% - 72px)', bottom: 'auto' });
     expect(declarationsOf('.ask-bar.is-phone .look-main, .ask-bar.is-phone .look-second')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)' });
   });
 

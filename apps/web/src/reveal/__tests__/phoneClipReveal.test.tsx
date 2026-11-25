@@ -356,7 +356,7 @@ describe('D16 phone clip reveal across calibrated, estimate, no-match, refused-a
 
   it('pins the CSS rules for D16 phone clip estimate, no-match, and refused-alignment blocks with D19 darkening', () => {
     const d19 = declarationsOf('.reveal-answer.is-phone::before');
-    expect(declarationsOf('.reveal-phone-estimate.is-clip')).toEqual({ bottom: 'calc(100% - 638px)' });
+    expect(declarationsOf('.reveal-phone-estimate.is-clip')).toEqual({ bottom: 'max(206px, calc(100% - 638px))' });
     expect(declarationsOf('.reveal-phone-estimate.is-clip::before')).toEqual(d19);
     expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-clip:not(.is-refused)')).toEqual({ padding: '772px 24px 40px' });
     expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-clip .reveal-phone-lead')).toEqual({

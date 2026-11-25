@@ -284,7 +284,7 @@ describe("the clip player's rules are the design lane's page", () => {
     expect(declarationsOf('.clip-player.is-phone')).toEqual({
       left: '24px',
       right: '24px',
-      top: '676px',
+      top: 'calc(100% - 168px)',
       bottom: 'auto',
       width: 'auto',
       transform: 'none',
