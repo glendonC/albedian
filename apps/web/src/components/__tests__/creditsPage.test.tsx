@@ -165,7 +165,7 @@ describe('creditRows: rows by what a person sees, every source credited from the
     }
     // The panorama's are held to the code by creditChanges.test.ts; OpenNGC comes from its record
     expect(CHANGES.eso0932a!()).toHaveLength(6);
-    expect(recordChangeLines(loaded, 'eso0932a')).toHaveLength(2);
+    expect(recordChangeLines(loaded, 'eso0932a')).toHaveLength(4);
     expect(CHANGES['openngc-v20260501-ngc']!()).toEqual([]);
     expect(CHANGES['openngc-v20260501-addendum']!()).toEqual([]);
     const deepskyChanges = recordChangeLines(loaded, 'openngc-v20260501-ngc');

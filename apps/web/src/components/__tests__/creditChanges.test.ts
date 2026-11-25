@@ -385,7 +385,7 @@ describe("a file a script made shows its record's own sentence on how it differs
   };
   const milkyWay = (loaded: LoadedRecord[]) => creditRows(loaded, []).find((row) => row.name === 'Milky Way photograph')!.blocks;
 
-  it('shows no further line when a record holds no such field, and shows the two eso0932a script sentences from disk today', () => {
+  it('shows no further line when a record holds no such field, and shows the four eso0932a script sentences from disk today', () => {
     expect(fileOf('eso_milkyway_diffuse_6k.webp')?.producedBy.method).toBe('script');
     expect(recordChangeLines(withoutChanges(), 'eso0932a')).toEqual([]);
     expect(milkyWay(withoutChanges()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY]]);
@@ -396,6 +396,10 @@ describe("a file a script made shows its record's own sentence on how it differs
     const diskSentences = [
       registration.method === 'script' ? registration.changes : '',
       starless.method === 'script' ? starless.changes : '',
+      ...['eso_milkyway_panorama_3k.jpg', 'eso_milkyway_diffuse_3k.webp'].map((path) => {
+        const half = fileOf(path)!.producedBy;
+        return half.method === 'script' ? half.changes : '';
+      }),
     ];
     expect(recordChangeLines(today(), 'eso0932a')).toEqual(diskSentences);
     expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY, ...diskSentences]]);

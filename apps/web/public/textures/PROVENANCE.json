@@ -344,6 +344,36 @@
         "changes": "Stars removed: the photograph is converted to linear light; every catalogue star down to magnitude 7 is masked as a disc where the panorama's registration places it, sized from the photograph's own stars; every pixel is smoothed by a median and a slight blur; the discs are filled in from their surroundings; the whole image is blurred slightly once more; its brightness is rescaled so that each region about a degree across keeps the photograph's own; it is turned back into ordinary colour values; Venus and Jupiter are put back as photographed; and it is saved as a lossless image of the same size."
       },
       "note": "The landing draws its point stars from the catalog tiles, so the photograph's 21,417 catalog stars to magnitude 7 are masked where the panorama's registration puts them, with radii measured from the photograph's own star profiles by magnitude (bin and pixels: -1 7, 0 5, 1 4, 2 3, 3 3, 4 3, 5 2, 6 2) plus 2 for the registration's error. Every pixel is then smoothed by a 5x5 median and a 1 px Gaussian, the masks are filled from their surroundings, a second 1 px Gaussian goes over the whole image, and two passes rescale each 1 degree region to the photograph's median luminance, every filter wrapping in longitude. What remains is the photograph's diffuse light: unresolved stars, dust lanes and nebulae. Venus and Jupiter are put back exactly as photographed. Same projection and size as the photograph, so its registration applies unchanged."
+    },
+    {
+      "path": "eso_milkyway_panorama_3k.jpg",
+      "sha256": "4cceab94691e1ab5603f399a1545048b18a5a097a6741ba660de22dea2c0c6ea",
+      "sources": [
+        "eso0932a"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/make_sky_half_side.py",
+        "command": "uv run python scripts/make_sky_half_side.py",
+        "changes": "Scaled to half its width and height (3000 by 1500) with a Lanczos filter, the same picture and projection, and saved again as a JPEG at quality 94 with no chroma subsampling, for a phone's memory."
+      },
+      "note": "Made from this folder's eso_milkyway_panorama.jpg (8228817 bytes, SHA-256 60400c92c54b7c1bd12299c69e83b16e5b6256e7dabacc478c021758ecd28179) at 3000 by 1500; the phone's loader keeps it in place of the full-size picture. Same projection, so eso0932a_registration.json applies unchanged; the credit is the source's."
+    },
+    {
+      "path": "eso_milkyway_diffuse_3k.webp",
+      "sha256": "57d296c88c9b1fd63aa4100f1efaa1b2ecd688e6b50555f5dcffde2821b0252b",
+      "sources": [
+        "eso0932a",
+        "gaia-dr3",
+        "hipparcos-2007"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/make_sky_half_side.py",
+        "command": "uv run python scripts/make_sky_half_side.py",
+        "changes": "The starless glow scaled to half its width and height (3000 by 1500) with a Lanczos filter, the same picture and projection, and saved again as a lossless WebP, for a phone's memory."
+      },
+      "note": "Made from this folder's eso_milkyway_diffuse_6k.webp (4572986 bytes, SHA-256 726af416fc491c865bbf3b907bb87fec7c55481d55c7caa805f9727503e99b56) at 3000 by 1500; the phone's loader keeps it in place of the full-size picture. Same projection, so eso0932a_registration.json applies unchanged; the credit is the source's."
     }
   ],
   "fileSets": []

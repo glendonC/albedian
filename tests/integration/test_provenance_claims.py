@@ -1,4 +1,4 @@
-"""Every claim of the 24 producedBy.changes sentences, counted in the committed file (provenance-changes-1).
+"""Every claim of the 26 producedBy.changes sentences, counted in the committed file (provenance-changes-1).
 
 The sentences say how each file a script made differs from its sources, and the Credits page shows them to a person.
 Each row below is one claim, in the sentence's own words, of one of two kinds, named at the start of its id:
@@ -1601,6 +1601,60 @@ for _entry in _hangar_entries():
 
 
 # =============================================================================================
+# The phone's half-side sky pictures (scripts/make_sky_half_side.py)
+# =============================================================================================
+
+PHOTO_HALF = "textures/eso_milkyway_panorama_3k.jpg"
+STARLESS_HALF = "textures/eso_milkyway_diffuse_3k.webp"
+
+
+@claim(PHOTO_HALF, "Scaled to half its width and height (3000 by 1500)")
+def _photo_half_size(f: Files) -> None:
+    w, h = image(f.bytes(PHOTO)).size
+    assert image(f.bytes(PHOTO_HALF)).size == (w // 2, h // 2) == (3000, 1500)
+
+
+@_photo_half_size.wrong
+def _(f: Files) -> None:
+    f.set_bytes(PHOTO_HALF, tiny("JPEG", quality=94, subsampling=0))
+
+
+@claim(PHOTO_HALF, "saved again as a JPEG at quality 94 with no chroma subsampling")
+def _photo_half_jpeg(f: Files) -> None:
+    from PIL import JpegImagePlugin
+
+    data = image(f.bytes(PHOTO_HALF))
+    assert data.format == "JPEG" and JpegImagePlugin.get_sampling(data) == 0
+    assert data.quantization == image(tiny("JPEG", quality=94, subsampling=0)).quantization
+
+
+@_photo_half_jpeg.wrong
+def _(f: Files) -> None:
+    f.set_bytes(PHOTO_HALF, tiny("JPEG", quality=80))
+
+
+@claim(STARLESS_HALF, "scaled to half its width and height (3000 by 1500)")
+def _starless_half_size(f: Files) -> None:
+    w, h = image(f.bytes(STARLESS)).size
+    assert image(f.bytes(STARLESS_HALF)).size == (w // 2, h // 2) == (3000, 1500)
+
+
+@_starless_half_size.wrong
+def _(f: Files) -> None:
+    f.set_bytes(STARLESS_HALF, tiny("WEBP", lossless=True))
+
+
+@claim(STARLESS_HALF, "saved again as a lossless WebP")
+def _starless_half_lossless(f: Files) -> None:
+    assert webp_chunk(f.bytes(STARLESS_HALF)) == "VP8L"
+
+
+@_starless_half_lossless.wrong
+def _(f: Files) -> None:
+    f.set_bytes(STARLESS_HALF, tiny("WEBP", lossless=False, quality=80))
+
+
+# =============================================================================================
 # The rows, and that every script-made file has some
 # =============================================================================================
 
@@ -1633,4 +1687,4 @@ def test_every_script_made_file_has_its_claims_here() -> None:
             if entry["producedBy"]["method"] == "script":
                 made.add(str((record.parent / (entry.get("path") or entry["checksums"])).relative_to(PUBLIC)))
     # The hangar's files get their rows from the record itself, so only the others are counted here
-    assert made == {c.file for c in CLAIMS} and len({m for m in made if not m.startswith("models/hangar/")}) == 25
+    assert made == {c.file for c in CLAIMS} and len({m for m in made if not m.startswith("models/hangar/")}) == 27
