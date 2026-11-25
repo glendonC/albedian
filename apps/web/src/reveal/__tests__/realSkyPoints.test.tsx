@@ -156,3 +156,44 @@ describe('Real sky\'s stars in flight', () => {
     expect(glow()).not.toBeNull();
   });
 });
+
+// AUDIT-D's note on the stack: the stylesheet's rules are what keep a star from being drawn twice at rest (the
+// photograph's own stars under the catalog's), so they are held here, read from reveal.css itself
+describe('Real sky\'s stylesheet with the points', () => {
+  const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = (selector: string) => {
+    const at = css.indexOf(`${selector} {`);
+    expect(at, selector).toBeGreaterThanOrEqual(0);
+    return css.slice(at, css.indexOf('}', at));
+  };
+
+  it('hides the photograph under the glow and the stars at rest, and shows the glow at full', () => {
+    expect(rule('.real-sky.is-points:not(.is-there) .real-sky__canvas')).toMatch(/opacity:\s*0;/);
+    expect(rule('.real-sky.is-points .real-sky__glow.is-drawn')).toMatch(/opacity:\s*1;/);
+  });
+
+  it('adds the stars\' light to the glow, hidden until shown, with no fade of their own', () => {
+    const stars = rule('.real-sky__stars');
+    expect(stars).toMatch(/opacity:\s*0;/);
+    expect(stars).toMatch(/mix-blend-mode:\s*plus-lighter;/);
+    expect(rule('.real-sky__stars.is-shown')).toMatch(/opacity:\s*1;/);
+    // Nothing gives the stars' canvas a transition, so the hand-over is one paint
+    expect(css).not.toMatch(/[^{}]*\.real-sky__stars[^{}]*\{[^}]*transition/);
+  });
+
+  it('marks the layer for those rules only while the glow and the stars are both drawn, at rest', async () => {
+    const fakes = await prepared();
+    act(() => root.render(at({ openStarTiles: oneTile })));
+    expect(layerEl().classList.contains('is-points')).toBe(false);
+    await untilPoints(fakes);
+    expect(layerEl().matches('.real-sky.is-points:not(.is-there)')).toBe(true);
+    act(() => root.render(at({ openStarTiles: noCatalog })));
+    // A new mount whose catalog cannot be had: never marked, so the photograph stays
+    act(() => root.unmount());
+    root = createRoot(container);
+    act(() => root.render(at({ openStarTiles: noCatalog })));
+    for (let i = 0; i < 4; i++) await act(async () => await fakes.frame());
+    expect(layerEl().classList.contains('is-points')).toBe(false);
+  });
+});
+
