@@ -410,10 +410,18 @@ def create_app(
         except OSError as error:
             # The app still starts; the sweep runs again at the next start. No path, id or name is logged
             logging.getLogger("albedian.jobs").error("job sweep stopped: %s", type(error).__name__)
+        # The sample night made at the laptop's own start when it is not there yet, in the background, only when the
+        # field run asks (ALBEDIAN_SAMPLES_AT_START=1, first-use-sample-three); read at call time, so a test can stand in
+        from services.samples import make as samples_make
+
+        making = samples_make.start_making_samples()
         try:
             yield
         finally:
             runner.shutdown()
+            # The step this server started, stopped with it if it is still making the sample
+            if making is not None and making.poll() is None:
+                making.terminate()
 
     app = FastAPI(
         lifespan=lifespan,

@@ -100,7 +100,9 @@ export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, web
   const origins = lan ? [...local, phoneUrl] : local;
 
   // The shell's own origin and host lists never reach the API here: a wildcard set there must not open it.
-  const apiEnv = { ...env, ALBEDIAN_CORS_ORIGINS: origins.join(',') };
+  // first-use-sample-three: the laptop makes the sample night at its own start when it is not there yet (in the
+  // background, by the setup step itself: services/samples/make.py)
+  const apiEnv = { ...env, ALBEDIAN_CORS_ORIGINS: origins.join(','), ALBEDIAN_SAMPLES_AT_START: '1' };
   delete apiEnv.ALBEDIAN_TRUSTED_HOSTS;
 
   return {

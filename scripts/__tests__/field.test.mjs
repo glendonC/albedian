@@ -40,6 +40,8 @@ describe('field start plan', () => {
     expect(hostArg(plan.web.args)).toBe('localhost');
     expect(plan.web.args).toContain('--strictPort');
     expect(plan.api.env.ALBEDIAN_CORS_ORIGINS).toBe(DEFAULT_ORIGINS.join(','));
+    // first-use-sample-three: the field run's laptop makes the sample night at its own start when it is not there yet
+    expect(plan.api.env.ALBEDIAN_SAMPLES_AT_START).toBe('1');
     expect(plan.web.env.ALBEDIAN_API_TARGET).toBe(`http://127.0.0.1:${API_PORT}`);
     expect(plan.phoneUrl).toBeNull();
   });
