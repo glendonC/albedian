@@ -291,9 +291,13 @@ export const App: React.FC = () => {
     const sha256 = asked.sourceAsset?.sha256;
     if (modality !== 'pointer' && sha256 && revealOn(asked) && isQuestion(utterance, asked, pointer)) {
       const photoKey = photoKeyOf(asked);
+      const askedOnSky = isPredictedSkyShown(asked);
       void askVoiceAnswer(sha256, utterance, asked.selectedFindingId).then((reply) => {
         // An answer about the previous photo is dropped
         if (photoKeyOf(sessionRef.current) !== photoKey) return;
+        // So is one asked on the predicted sky that comes once the sky has gone: it is the sky's, which left with its
+        // answers (refusal-on-predsky-three, UIUX-predsky-READY.md's addition for the lead's ask stamped 02:45)
+        if (askedOnSky && !isPredictedSkyShown(sessionRef.current)) return;
         if (reply) setAnswer({ photoKey, heard: reply.heard, sentence: reply.answer.sentence, answer: reply.answer });
         // The route gave no answer: say so, and to ask again (C11, decided by the lead)
         else setAnswer({ photoKey, heard: utterance, sentence: 'No answer from the Albedian server.', sub: 'Ask again.', answer: null });
