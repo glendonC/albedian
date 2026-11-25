@@ -233,11 +233,13 @@ export function useCameraFlightAnimation(
   );
 
   /**
-   * Back to Moment (the motion record, "Go there", Back to Moment; one move since flight-anim-one): the flight's one curve
-   * reversed over the same 1.5 s, u = 1 - curve(t): the travel back first (u 1 to 0.5), the camera from where it is to
-   * where the flight began (the moment's own camera) in log distance to the star, then the registered sky back to the
-   * photo (u 0.5 to 0); then `restore`, the reducer's source.return, which restores the CameraCheckpoint exactly as
-   * before. Reduced motion: `restore` at once, nothing travels. A press while it flies back does nothing.
+   * Back to Moment (the motion record, "Go there", Back to Moment; one move since flight-anim-one, the return ruled
+   * 24 Nov): the travel back on the flight's one curve reversed, u = 1 - curve(t / 1.5 s), from u 1 to 0.5, the camera
+   * from where it is to where the flight began (the moment's own camera) in log distance to the star; then, on the first
+   * frame after it (440 ms), `restore`, the reducer's source.return, which restores the CameraCheckpoint exactly as
+   * before. The photo's return is Real sky's own view dissolve, which only the restore starts, so nothing holds the
+   * registered sky in between. Reduced motion: `restore` at once, nothing travels. A press while it flies back does
+   * nothing.
    */
   const animateReturnToMoment = useCallback(
     (restore: () => void) => {
@@ -258,9 +260,9 @@ export function useCameraFlightAnimation(
       const startTime = performance.now();
       const step = (now: number) => {
         const elapsed = now - startTime;
-        // u is the place on the flight there, from its end (1) back to its start (0)
+        // u is the place on the flight there, from its end (1) back to the travel's start (0.5)
         const u = 1 - flightCurve(elapsed / FLIGHT_MS);
-        if (elapsed < FLIGHT_MS && u >= 0.5) {
+        if (u >= 0.5) {
           const q = (u - 0.5) / 0.5;
           const origin: [number, number, number] =
             q >= 1
@@ -282,21 +284,8 @@ export function useCameraFlightAnimation(
             },
           }));
           frame(step);
-        } else if (elapsed < FLIGHT_MS) {
-          setSession((prev) => ({
-            ...prev,
-            machines: { ...prev.machines, navigation: 'sky_registered', exploration: 'calibrated_sky' },
-            spatialView: {
-              ...prev.spatialView,
-              mode: 'registered_sky',
-              transitionPhase: 'phase_a_photo_to_sky',
-              transitionProgress: Number((u / 0.5).toFixed(3)),
-              lockedAnchorNdc: anchorNdc,
-              observerOriginParsec: home,
-            },
-          }));
-          frame(step);
         } else {
+          // The travel is over: the moment comes back now, and with it the photo's own dissolve
           flightRafRef.current = null;
           camera.raf = null;
           camera.returning = false;

@@ -263,10 +263,11 @@ describe('the there screen shows from the travel\'s first frame', () => {
   });
 });
 
-// The motion record (MOTION-READY-web.md, "Go there (A = 0)", Back to Moment, one move since flight-anim-one): the
-// flight's one curve reversed over the same 1500 ms, the travel back first (the camera from where it is to where the
-// flight began, in log distance), then the registered sky back to the photo, and only then the reducer's restore of the
-// CameraCheckpoint, unchanged; under reduced motion the restore at once, with no travel.
+// The motion record (MOTION-READY-web.md, "Go there (A = 0)", Back to Moment, one move since flight-anim-one, the
+// return ruled 24 Nov): the travel back on the flight's one curve reversed, u = 1 - curve(t / 1500 ms), the camera from
+// where it is to where the flight began in log distance, and the reducer's restore of the CameraCheckpoint, unchanged,
+// the instant the travel ends (u reaches 0.5, 440 ms): the photo's own view dissolve is then Back's second part, with no
+// hold on the registered sky. Under reduced motion the restore at once, with no travel.
 describe('Back to Moment flies the flight backwards, then restores the checkpoint', () => {
   /** There after Go there, through the reducer (space.enter saves the moment first). */
   const thereSession = (reducedMotion: boolean): ObservationSession => {
@@ -320,22 +321,27 @@ describe('Back to Moment flies the flight backwards, then restores the checkpoin
     expect(frames).toHaveLength(0);
   });
 
-  it('travels back until the curve reaches half its progress, 440 ms in, then turns the sky back to the photo', () => {
-    // flown to its end (1500 ms), so the shared camera is free for the next press
-    const { seen } = returnThrough(thereSession(false), queueFrames(), [430, 450, 1500]);
-    const [before, after] = [seen[1]!.states.at(-1)!, seen[2]!.states.at(-1)!];
+  it('travels back until the curve reaches half its progress, 440 ms in, and restores the moment on that frame', () => {
+    const frames = queueFrames();
+    const { seen, restored } = returnThrough(thereSession(false), frames, [430, 450]);
+    const before = seen[1]!.states.at(-1)!;
     expect(1 - referenceEase(430 / 1500)).toBeGreaterThan(0.5);
     expect(before.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
     expect(before.spatialView.transitionProgress).toBeCloseTo((1 - referenceEase(430 / 1500) - 0.5) / 0.5, 3);
-    expect(after.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
-    expect(after.spatialView.transitionProgress).toBeCloseTo((1 - referenceEase(450 / 1500)) / 0.5, 3);
+    expect(seen[1]!.restored).toBe(0);
+    // 450 ms: the travel is over, so the restore runs on this frame, with no frame of the registered sky of its own
+    expect(1 - referenceEase(450 / 1500)).toBeLessThan(0.5);
+    expect(seen[2]!.restored).toBe(1);
+    expect(seen[2]!.states).toHaveLength(seen[1]!.states.length);
+    expect(restored).toHaveLength(1);
+    expect(frames).toHaveLength(0);
   });
 
-  it('flies the same curve reversed, the travel back first, then the sky back to the photo, and restores only at the end, once', () => {
+  it('flies the same curve reversed, the travel back only, and restores at the travel\'s end, once', () => {
     const there = thereSession(false);
     const home = returnCheckpointOf(there)!.spatialView.observerOriginParsec;
     const from = there.spatialView.observerOriginParsec;
-    const { seen, restored } = returnThrough(there, queueFrames(), [300, 900, 1499, 1500]);
+    const { seen, restored } = returnThrough(there, queueFrames(), [300, 1499, 1500]);
     // The first frame at once: the travel at its end, the camera where it is
     const first = seen[0]!.states.at(-1)!;
     expect(first.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
@@ -350,18 +356,16 @@ describe('Back to Moment flies the flight backwards, then restores the checkpoin
     const dHome = distancePc(home, targetPc);
     const dFrom = distancePc(from, targetPc);
     expect(distancePc(b.spatialView.observerOriginParsec, targetPc) / (dHome * (dFrom / dHome) ** ((u - 0.5) / 0.5))).toBeCloseTo(1, 3);
-    // 900 ms: back at the flight's start, the registered sky going back to the photo
-    const a = seen[2]!.states.at(-1)!;
-    expect(a.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
-    expect(a.spatialView.mode).toBe('registered_sky');
-    expect(a.machines.navigation).toBe('sky_registered');
-    expect(a.spatialView.observerOriginParsec).toEqual(home);
-    expect(a.spatialView.lockedAnchorNdc).toEqual([0.2, -0.1]);
-    expect(a.spatialView.transitionProgress).toBeCloseTo((1 - referenceEase(900 / 1500)) / 0.5, 3);
-    // Not restored before the move ends; restored once at 1500 ms
-    expect(seen.slice(0, 4).map((x) => x.restored)).toEqual([0, 0, 0, 0]);
-    expect(seen[4]!.restored).toBe(1);
+    // Not restored before the travel ends; restored once on the first frame after it (1499 ms), and never again
+    expect(seen.slice(0, 2).map((x) => x.restored)).toEqual([0, 0]);
+    expect(seen[2]!.restored).toBe(1);
+    expect(seen[3]!.restored).toBe(1);
     expect(restored).toHaveLength(1);
+    // No frame of the way back shows the registered sky: every frame is the travel, ending at the flight's start
+    const states = seen.at(-1)!.states;
+    expect(states.every((s) => s.spatialView.transitionPhase === 'phase_b_sky_to_space')).toBe(true);
+    expect(states.every((s) => s.spatialView.mode === 'catalog_3d')).toBe(true);
+    expect(distancePc(states.at(-1)!.spatialView.observerOriginParsec, home)).toBeLessThan(distancePc(from, home));
   });
 
   it('ignores a second press while it flies back', () => {
