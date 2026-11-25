@@ -76,11 +76,18 @@ export interface FlightCamera {
   readonly referencePc: Vec3;
 }
 
-/** The photo as the camera, for a session with a photo and a verified solve; none otherwise. */
+/**
+ * The photo as the camera, for a session with a photo and a verified solve, or with a pose estimate: go-there-predicted-1
+ * (LEAD ANSWER 12:55), the pose's own nominal WCS, the one its predicted rings are drawn through
+ * (`poseProjection.ts` projectThroughPose), so a flight to a predicted star leaves from its ring and never from a claimed
+ * pixel. None otherwise.
+ */
 export function flightCameraOf(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number): FlightCamera | null {
   const solution = session.observationSolution;
   const asset = session.sourceAsset;
-  if (!solution || solution.status !== 'calibrated' || !hasVerifiedWcs(solution) || !solution.wcs) return null;
+  const verified = solution?.status === 'calibrated' && hasVerifiedWcs(solution);
+  const posed = solution?.status === 'approximate' && solution.poseEstimate !== undefined;
+  if (!solution || !(verified || posed) || !solution.wcs) return null;
   if (!asset || !(asset.width > 1) || !(asset.height > 1)) return null;
   const storedToScreen = storedToScreenAffine(asset.width, asset.height, viewportWidthPx, viewportHeightPx, session.cropTransform, asset.displayOrientation);
   const picked = solution.findings.find((f) => f.id === session.selectedFindingId);

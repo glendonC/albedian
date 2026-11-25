@@ -226,7 +226,7 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
   onClose,
 }) => {
   const distInfo = formatDistanceWithUncertainty(selectedFinding?.inferredDistancePc);
-  const canEnterSpace = findingCanEnterSpace(selectedFinding);
+  const canEnterSpace = findingCanEnterSpace(selectedFinding, session.observationSolution);
   const deepSky = useDeepSkyTable(Boolean(selectedFinding && isDeepSky(selectedFinding)));
   const [cropFailedUrl, setCropFailedUrl] = useState<string | null>(null);
   const [cropMismatchUrl, setCropMismatchUrl] = useState<string | null>(null);

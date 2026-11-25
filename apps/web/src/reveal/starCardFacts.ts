@@ -1,4 +1,4 @@
-import { DESIGNATION_CONSTELLATIONS, flamsteedLongDesignation, type CelestialFinding, type EvidenceClass } from '@albedian/contracts';
+import { DESIGNATION_CONSTELLATIONS, flamsteedLongDesignation, type CelestialFinding, type EvidenceClass, type ObservationSolution } from '@albedian/contracts';
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { findingCanEnterSpace } from '../components/askSuggestions.js';
 import { RUWE_CAUTION_ABOVE, astrophysicsOf, formatSignificant } from '../components/scanScales.js';
@@ -78,7 +78,7 @@ function namelessParts(finding: CelestialFinding): { title: string; number: stri
   return { title: ref.provider, number };
 }
 
-export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | null = null): StarCardFacts {
+export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | null = null, solution?: ObservationSolution): StarCardFacts {
   const ref = finding.catalogRef;
   const deep = isDeepSky(finding);
   // A deep-sky object is titled by its own name or its NGC number (D23): never a nameless star's parts
@@ -133,7 +133,8 @@ export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | n
     numbers,
     // A nameless star's title and small line already say what the catalog line would
     sourceLine: ref && !nameless ? `${ref.releaseVersion} · ${ref.catalogSourceId}` : null,
-    canGoThere: findingCanEnterSpace(finding),
+    // go-there-predicted-1: a predicted star's Go there needs the photo's pose estimate to show its ring
+    canGoThere: findingCanEnterSpace(finding, solution),
     notes,
   };
 }

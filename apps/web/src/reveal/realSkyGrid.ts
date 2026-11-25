@@ -32,10 +32,16 @@ export function storedPointOfUpright(
   return { xPx: orientation?.mirrored ? storedWidthPx - x : x, yPx: y };
 }
 
-/** The verified solve of the session, or none. */
-function verifiedSolve(session: ObservationSession): ObservationSolution | null {
+/**
+ * The verified solve of the session, or none; with `pose`, go-there-predicted-1 (ruling A): a pose estimate's own
+ * nominal WCS too, for the flight's starless glow at a predicted star (simulated, as the glow always is), never for
+ * ESO's photograph.
+ */
+function verifiedSolve(session: ObservationSession, pose = false): ObservationSolution | null {
   const solution = session.observationSolution;
-  return solution && solution.status === 'calibrated' && hasVerifiedWcs(solution) && solution.wcs ? solution : null;
+  if (!solution || !solution.wcs) return null;
+  if (solution.status === 'calibrated' && hasVerifiedWcs(solution)) return solution;
+  return pose && solution.status === 'approximate' && solution.poseEstimate !== undefined ? solution : null;
 }
 
 /** The sky at a screen point, through the photo's frame and its verified solve; none without one. */
@@ -44,9 +50,10 @@ export function skyAtScreen(
   xPx: number,
   yPx: number,
   viewportWidthPx: number,
-  viewportHeightPx: number
+  viewportHeightPx: number,
+  pose = false
 ): { raDeg: number; decDeg: number } | null {
-  const solution = verifiedSolve(session);
+  const solution = verifiedSolve(session, pose);
   const asset = session.sourceAsset;
   if (!solution || !asset || !(asset.width > 0) || !(asset.height > 0)) return null;
   const orientation = asset.displayOrientation;
@@ -92,9 +99,11 @@ export function realSkyGrid(
    * the star flown to to its resting place the panorama moves with the stars, so it is drawn over the window and the
    * strip the move uncovers.
    */
-  area: { x0: number; y0: number; widthPx: number; heightPx: number } = { x0: 0, y0: 0, widthPx: viewportWidthPx, heightPx: viewportHeightPx }
+  area: { x0: number; y0: number; widthPx: number; heightPx: number } = { x0: 0, y0: 0, widthPx: viewportWidthPx, heightPx: viewportHeightPx },
+  /** go-there-predicted-1: a pose estimate's WCS taken too (the flight's glow only). */
+  pose = false
 ): RealSkyGrid | null {
-  if (!verifiedSolve(session)) return null;
+  if (!verifiedSolve(session, pose)) return null;
   const cols = Math.ceil(area.widthPx / stepPx) + 1;
   const rows = Math.ceil(area.heightPx / stepPx) + 1;
   const positions = new Float32Array(cols * rows * 2);
@@ -104,7 +113,7 @@ export function realSkyGrid(
     for (let i = 0; i < cols; i++) {
       const x = area.x0 + i * stepPx;
       const y = area.y0 + j * stepPx;
-      const sky = skyAtScreen(session, x, y, viewportWidthPx, viewportHeightPx)!;
+      const sky = skyAtScreen(session, x, y, viewportWidthPx, viewportHeightPx, pose)!;
       let [u, v] = panoramaUvOfIcrs(raDecToUnitVector(sky.raDeg, sky.decDeg), registration);
       // Carry u on from its neighbour (the row's left, or the cell above for a row's first vertex)
       const near = i > 0 ? lastU : j > 0 ? uvs[((j - 1) * cols) * 2]! : Number.NaN;

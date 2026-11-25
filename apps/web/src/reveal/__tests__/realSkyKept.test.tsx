@@ -239,6 +239,24 @@ describe('Real sky keeps a sky on every frame', () => {
   });
 });
 
+describe('go-there-predicted-1: a pose estimate\'s flight', () => {
+  it('draws the glow through the pose\'s own WCS at a predicted star, and not ESO\'s photograph', async () => {
+    const { POSE } = await import('../../components/__tests__/poseSessions.js');
+    const posed = poseSession(POSE);
+    const fakes = installSkyFakes({ pictureUrl: REAL_SKY_PANORAMA_URL, otherBody: registration, pictureRows: 400 });
+    stubCanvases(fakes);
+    prepareRealSky();
+    await act(async () => await fakes.frame(8));
+    act(() => root.render(createElement(RealSkyLayer, { session: posed, rect: null, viewportWidthPx: 390, viewportHeightPx: 844, phone: true, there: true })));
+    await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    const glow = container.querySelector<HTMLCanvasElement>('canvas.real-sky__glow')!;
+    expect(glow.getAttribute('data-state')).toBe('drawn');
+    expect(transfers.some(([c]) => c === glow)).toBe(true);
+    expect(state()).toBe('failed');
+    expect(transfers.some(([c]) => c === container.querySelector('canvas.real-sky__canvas'))).toBe(false);
+  });
+});
+
 describe('where the browser cannot keep sky pictures', () => {
   it('draws from the image element in its own context, as before, with no wait for the GPU', async () => {
     const fakes = installSkyFakes({ pictureUrl: REAL_SKY_PANORAMA_URL, otherBody: registration });

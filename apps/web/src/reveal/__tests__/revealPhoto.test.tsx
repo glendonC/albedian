@@ -472,6 +472,22 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
 });
 
 describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => {
+  // go-there-predicted-1 (UIUX-predflight-READY.md items 1 and 4): on a photo with a pose estimate a predicted star the
+  // flight rule allows is flown to; nothing matched, so the flight says nothing of matched rings
+  it('flies to a predicted star from a pose estimate without the matched rings\' line', async () => {
+    const { flightRefusal } = await import('@albedian/contracts');
+    const { projectThroughPose } = await import('../../components/poseProjection.js');
+    const base = poseSession(POSE);
+    const star = POSE.findings.find((f) => f.evidenceClass === 'predicted' && flightRefusal(f) === null && projectThroughPose(f, POSE) !== null)!;
+    expect(POSE.findings.some((f) => f.evidenceClass === 'catalog_matched')).toBe(false);
+    show({ ...base, selectedFindingId: star.id } as ObservationSession, { flight: { name: star.title, toStarLy: 1, fromEarthLy: 100 } });
+    const status = q('[data-testid="reveal-status"]')!;
+    expect(status.getAttribute('data-moment')).toBe('there');
+    expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(status.textContent).toContain('Drawn or computed by the app; not measured in the source recording.');
+    expect(status.textContent).not.toContain('Rings: the stars your photo matched.');
+  });
+
   const READOUT = '[data-testid="flight-readout"]';
   const rigelPicked = () => {
     const session = calibrated();

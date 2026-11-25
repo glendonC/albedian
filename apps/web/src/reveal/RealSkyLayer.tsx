@@ -219,11 +219,11 @@ function drawOwn(canvas: HTMLCanvasElement, image: HTMLImageElement, grid: NonNu
  * canvas clears it, so where the picture is already up the layer draws again at once, before the browser paints; null
  * when it is not (the draw then waits for the picture, as before).
  */
-function paintNow(canvas: HTMLCanvasElement, url: string, session: ObservationSession, viewW: number, viewH: number, area: RealSkyArea, fragment: string = FRAGMENT): boolean | null {
+function paintNow(canvas: HTMLCanvasElement, url: string, session: ObservationSession, viewW: number, viewH: number, area: RealSkyArea, fragment: string = FRAGMENT, pose = false): boolean | null {
   const picture = keptSkyPictureNow(url);
   const registration = heldPanoramaRegistration();
   if (!picture || !registration) return null;
-  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
+  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area, pose);
   if (!grid) return false;
   return picture.paint(canvas, (gl, texture) => drawGrid(gl, texture, grid, area, canvas.width, canvas.height, fragment));
 }
@@ -233,9 +233,9 @@ function paintNow(canvas: HTMLCanvasElement, url: string, session: ObservationSe
  * sky pictures (realsky-upload-one), otherwise from an image element in the canvas's own context. Resolves false when
  * the browser refuses a step, and undefined when the layer stopped wanting the draw first.
  */
-async function drawRealSky(canvas: HTMLCanvasElement, url: string, session: ObservationSession, viewW: number, viewH: number, area: RealSkyArea, wanted: () => boolean, fragment: string = FRAGMENT): Promise<boolean | undefined> {
+async function drawRealSky(canvas: HTMLCanvasElement, url: string, session: ObservationSession, viewW: number, viewH: number, area: RealSkyArea, wanted: () => boolean, fragment: string = FRAGMENT, pose = false): Promise<boolean | undefined> {
   const [registration, picture] = await Promise.all([panoramaRegistrationOnce(), keptSkyPicture(url)]);
-  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
+  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area, pose);
   if (!wanted()) return undefined;
   if (!grid) return false;
   if (picture) return picture.paint(canvas, (gl, texture) => drawGrid(gl, texture, grid, area, canvas.width, canvas.height, fragment));
@@ -350,14 +350,15 @@ export const RealSkyLayer: React.FC<{
     if (!glowWanted) return undefined;
     const target = glowCanvas.current;
     if (!target) return undefined;
-    const now = paintNow(target, FLIGHT_MILKY_WAY_URL, session, viewportWidthPx, viewportHeightPx, area, FLIGHT_GLOW_FRAGMENT);
+    // go-there-predicted-1 (ruling A): at a predicted star the glow through the pose estimate's own WCS too
+    const now = paintNow(target, FLIGHT_MILKY_WAY_URL, session, viewportWidthPx, viewportHeightPx, area, FLIGHT_GLOW_FRAGMENT, true);
     if (now !== null) {
       setGlowState(now ? 'drawn' : 'failed');
       return undefined;
     }
     let current = true;
     setGlowState('loading');
-    void drawRealSky(target, FLIGHT_MILKY_WAY_URL, session, viewportWidthPx, viewportHeightPx, area, () => current && glowCanvas.current === target, FLIGHT_GLOW_FRAGMENT)
+    void drawRealSky(target, FLIGHT_MILKY_WAY_URL, session, viewportWidthPx, viewportHeightPx, area, () => current && glowCanvas.current === target, FLIGHT_GLOW_FRAGMENT, true)
       .then((drawn) => {
         if (drawn !== undefined) setGlowState(drawn ? 'drawn' : 'failed');
       })

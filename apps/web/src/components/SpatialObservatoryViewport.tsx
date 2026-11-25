@@ -632,7 +632,7 @@ export const SpatialObservatoryViewport: React.FC<
   const solution = session.observationSolution;
   const realSkyOpens = solution !== undefined && solution.status === 'calibrated' && hasVerifiedWcs(solution) && canDrawRealSky();
   const pickedFinding = solution?.findings.find((finding) => finding.id === session.selectedFindingId) ?? null;
-  const threeDOpens = pickedFinding !== null && findingCanEnterSpace(pickedFinding);
+  const threeDOpens = pickedFinding !== null && findingCanEnterSpace(pickedFinding, session.observationSolution);
   const handleView = (view: string) => {
     if (view === 'sky' && realSkyOpens && !realSkyShown) showSky('measured');
     // Back to the photo from the sky: the saved moment, restored exactly

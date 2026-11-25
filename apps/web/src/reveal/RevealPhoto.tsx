@@ -449,7 +449,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const deepSky = useDeepSkyTable(deepSkyWanted);
   // realsky-upload-one: on a verified solve the sky pictures go up, and the flight's programs link, while the photo is at
   // rest, before Real sky or Go there asks for them
-  const skyPrepared = solution?.status === 'calibrated' && hasVerifiedWcs(solution);
+  // go-there-predicted-1: a pose estimate's flight to a predicted star takes the glow too, so it is prepared at rest
+  const skyPrepared = (solution?.status === 'calibrated' && hasVerifiedWcs(solution)) || (solution?.status === 'approximate' && solution.poseEstimate !== undefined);
+  // UIUX-predflight-READY.md item 4: the rings' line only where the photo matched stars (a predicted star's flight has none)
+  const ringsMatched = solution?.findings.some((f) => f.evidenceClass === 'catalog_matched') ?? false;
   useEffect(() => {
     if (!skyPrepared) return;
     prepareRealSky();
@@ -862,14 +865,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <p className="reveal-status__line">{CONE_LINES.spec}</p>
               <p className="reveal-status__line">{CONE_LINES.view}</p>
               <p className="reveal-status__line">{CONE_LINES.stars}</p>
-              <p className="reveal-status__line">{CONE_LINES.rings}</p>
+              {ringsMatched && <p className="reveal-status__line">{CONE_LINES.rings}</p>}
               {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
             </>
           ) : (
             <>
               <p className="reveal-status__line">{FLIGHT_LINES.spec}</p>
               <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
-              <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>
+              {ringsMatched && <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>}
               {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
               {/* The sky's line names what is drawn: the glow (the dome while steering), or the photograph until the glow comes */}
               {flightSkyLine && <p className="reveal-status__line">{flightSkyLine}</p>}
@@ -1338,11 +1341,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <DetailsSheet
           lines={
             cone
-              ? [CONE_LINES.spec, CONE_LINES.view, CONE_LINES.stars, CONE_LINES.rings, ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : [])]
+              ? [CONE_LINES.spec, CONE_LINES.view, CONE_LINES.stars, ...(ringsMatched ? [CONE_LINES.rings] : []), ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : [])]
               : [
                   FLIGHT_LINES.spec,
                   FLIGHT_LINES.stars,
-                  FLIGHT_LINES.rings,
+                  ...(ringsMatched ? [FLIGHT_LINES.rings] : []),
                   ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
                   ...(flightSkyLine ? [flightSkyLine] : []),
                   ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
@@ -1434,6 +1437,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onClose={() => onCloseCard?.()}
           phone={phone}
           deepSky={isDeepSky(cardStar) ? deepSkyRowOf(cardStar, deepSky) : null}
+          solution={session.observationSolution}
           leaving={card.leaving}
         />
       )}
