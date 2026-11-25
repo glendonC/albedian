@@ -334,6 +334,9 @@ export const App: React.FC = () => {
     // A command it cannot carry out shows its refusal where answers show, over the laptop reveal (command, decided
     // 2026-11-12): the words as heard, then the app's own sentence; nothing lights up
     const refuse = (sentence: string) => {
+      // refusal-on-predsky-four (DECIDED-BY-LEAD 06:55): a refusal for words given on the predicted sky that comes once
+      // the sky has gone (the voice backend's reply) is dropped with the sky's other answers
+      if (isPredictedSkyShown(asked) && !isPredictedSkyShown(sessionRef.current)) return;
       if (revealOn(asked) && photoKeyOf(sessionRef.current) === photoKeyOf(asked)) {
         setAnswer({ photoKey: photoKeyOf(asked), heard: utterance, sentence, answer: null });
       }

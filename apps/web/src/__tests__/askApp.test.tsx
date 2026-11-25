@@ -618,6 +618,47 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
+  // refusal-on-predsky-four (AUDIT's FAIL of version three; DECIDED-BY-LEAD 06:55: one behaviour, whichever road): a
+  // command refused through the voice backend on the sky whose reply comes after the sky has gone is dropped too
+  it('drops a refusal from the voice backend for a command given on the predicted sky that comes after the sky has gone', async () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const noMatch = { ...samples['horizon_predicted_only']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    let release: (() => void) | null = null;
+    let backendCalls = 0;
+    try {
+      await openAppAt(`/?upload=${sha256}`, {
+        solution: () => json(noMatch),
+        other: (url) => {
+          if (url !== '/api/voice/command') return undefined;
+          backendCalls += 1;
+          return new Promise<Response>((resolve) => {
+            release = () => resolve(json({ detail: 'not found' }, 404));
+          }) as unknown as Response;
+        },
+      });
+      await waitUntil(() => expect(q('[data-testid="reveal-status"]')).not.toBeNull());
+      const showSkyBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Show predicted sky')!;
+      await act(async () => showSkyBtn.click());
+      await waitUntil(() => expect(q('[data-testid="predicted-sky"]')).not.toBeNull());
+      await typeAndSend('Take me to Zorblax');
+      await settle();
+      expect(backendCalls).toBe(1);
+      const backBtn = [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === 'Back to Moment')!;
+      await act(async () => backBtn.click());
+      await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
+      await act(async () => release!());
+      await settle();
+      await settle();
+      expect(q(ANSWER)).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
   it('opens the phone reveal with Ask out loud over a pose-estimated sky too (d16phone-2)', async () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
       matches: query.includes('max-width: 720px'),
