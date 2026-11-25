@@ -6,7 +6,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MediaVariantSchema, type ObservationSession } from '@albedian/contracts';
-import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
+import { EMPTY_MEDIA_VARIANT_ID, dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { SpeechRecognitionLike } from '../voice/speechInput';
 
@@ -117,9 +117,10 @@ describe('leaving by words or a pointer command saves the row pressed', () => {
 });
 
 // The lead's 19:40 ruling: a version is never compared with itself. With the row pressed active and the only variant the
-// session holds the version on screen (voice-restore-one), asking to compare with the original compares nothing
+// session holds the version on screen (voice-restore-one), asking to compare with the original compares that version
+// with the recording itself, as the compare on screen does (voice-compare-one)
 describe('with a row pressed, asking to compare with the original', () => {
-  it('is refused, and the session is left on the recording with nothing compared', () => {
+  it('compares the version pressed with the recording, and keeps it the active version', () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const media = JSON.parse(fs.readFileSync(path.resolve(here, '../../../../tests/fixtures/media_contract.json'), 'utf8')) as { valid: { MediaVariant: Array<Record<string, unknown>> } };
     const template = media.valid.MediaVariant.find((v) => v.kind === 'restoration')!;
@@ -130,10 +131,9 @@ describe('with a row pressed, asking to compare with the original', () => {
     act(() => seen.props.onRunUtterance('compare with the original', 'text'));
     const after = seen.props.session;
     expect(after.voiceActions.at(-1)!.proposedAction?.type).toBe('media.compare');
-    // A refusal is shown; its words are PLATFORM's (voice-compare-one), so none is pinned here
-    expect(seen.props.answer?.sentence).toBeTruthy();
-    expect(after.machines.navigation).toBe('source');
-    expect(after.compareVariantId).toBeUndefined();
+    expect(seen.props.answer).toBeNull();
+    expect(after.machines.navigation).toBe('comparison');
+    expect(after.compareVariantId).toBe(EMPTY_MEDIA_VARIANT_ID);
     expect(after.activeVariantId).toBe(OLDER);
   });
 });

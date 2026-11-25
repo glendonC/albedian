@@ -39,8 +39,13 @@ describe('@albedian/observation: the reducer refuses in the ruled plain words', 
     const unrestored = { ...clip, mediaVariants: clip.mediaVariants.filter((v) => v.kind !== 'restoration') };
     expect(explanation(unrestored, restore)).toBe('This clip has not been restored.');
     expect(explanation(asPhoto(unrestored), restore)).toBe('This photo has not been restored.');
-    expect(explanation(clip, { type: 'media.compare', variantAId: 'var_missing_a', variantBId: 'var_missing_b' })).toBe(
-      'This clip has not been restored, so there is nothing to compare.'
+    // voice-compare-one: UIUX's two compare sentences (DECIDED-BY-LEAD 24 Nov 19:42); tests/voiceCompare.test.ts holds the rest
+    expect(explanation(unrestored, { type: 'media.compare', variantAId: 'var_missing_a', variantBId: 'var_missing_b' })).toBe(
+      'This clip has not been restored, so there is nothing to compare it with.'
+    );
+    const restored = clip.mediaVariants.find((v) => v.kind === 'restoration')!.id;
+    expect(explanation(asPhoto(clip), { type: 'media.compare', variantAId: restored, variantBId: restored })).toBe(
+      'That would compare a version of this photo with itself, so nothing was compared.'
     );
   });
 

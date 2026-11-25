@@ -8,10 +8,9 @@ import { buildActionContext, parseUtteranceToAction } from '../voiceParser';
 import { createSyntheticCalibratedSession } from '../testing/syntheticSessions';
 
 // checkpoint-version-one (DECIDED-BY-LEAD 19:40 on 24 Nov): a version is never compared with itself. The parser names
-// the original as no variant when the session holds no display copy of the recording, so asking to compare with the
-// original is refused as it was before a pressed row became the session's active variant; with a display copy held,
-// that copy is the original. The right compare (the restored version against the recording) is PLATFORM's
-// voice-compare-one.
+// the original as no variant when the session holds no display copy of the recording; with a display copy held, that
+// copy is the original. voice-compare-one: the reducer takes no variant as the recording itself, so asking to compare
+// with the original does what the compare on screen does, the restored version against the recording.
 
 const NOW = new Date(Date.UTC(2101, 5, 1, 12, 0, 0));
 const media = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/media_contract.json'), 'utf8')) as {
@@ -42,21 +41,21 @@ const compare = (session: ObservationSession) => {
 };
 
 describe('"compare with the original": the original is a display copy of the recording, or no variant', () => {
-  it('with a pressed row active and no display copy held: no original named, refused, nothing compared with itself', () => {
+  it('with a pressed row active and no display copy held: the version pressed against the recording itself', () => {
     const { session, shown } = photoShowing(true);
     const { action, result } = compare(session);
     expect(action.variantAId).toBe(EMPTY_MEDIA_VARIANT_ID);
     expect(action.variantBId).toBe(shown.id);
-    expect(result.outcome.status).toBe('rejected');
-    expect(result.session.machines.navigation).toBe('source');
-    expect(result.session.compareVariantId).toBeUndefined();
+    expect(result.outcome.status).toBe('completed');
+    expect(result.session.machines.navigation).toBe('comparison');
+    expect(result.session.compareVariantId).toBe(EMPTY_MEDIA_VARIANT_ID);
   });
 
-  it('with nothing pressed: refused as before', () => {
-    const { session } = photoShowing(false);
+  it('with nothing pressed: the version shown against the recording itself', () => {
+    const { session, shown } = photoShowing(false);
     const { action, result } = compare(session);
-    expect(action.variantAId).toBe(EMPTY_MEDIA_VARIANT_ID);
-    expect(result.outcome.status).toBe('rejected');
+    expect([action.variantAId, action.variantBId]).toEqual([EMPTY_MEDIA_VARIANT_ID, shown.id]);
+    expect(result.outcome.status).toBe('completed');
   });
 
   it('with a display copy of the recording held: that copy is the original, compared with the version shown', () => {

@@ -12,6 +12,7 @@ import {
   formatDistanceWithUncertainty,
   getEpistemicBadgeDescriptor,
 } from '@albedian/evidence';
+import { EMPTY_MEDIA_VARIANT_ID } from './emptySession.js';
 import { arrivalDistanceText, flightEndOrigin } from './flight.js';
 import { CATALOG_STAR_NAMES } from './generated/catalogStarNames.js';
 import {
@@ -88,6 +89,17 @@ function mediaNoun(session: ObservationSession): 'photo' | 'clip' {
   return session.sourceAsset?.mediaKind === 'video' ? 'clip' : 'photo';
 }
 
+/**
+ * Whether the screen is off the recording: the flight, or the predicted sky drawn for a sky not matched to the
+ * catalog, as apps/web's isFlightShown and isPredictedSkyShown read the view (Real sky is laid over the recording, so
+ * it is on it). DECIDED-BY-LEAD 24 Nov 21:17, voice-compare-one.
+ */
+function isOffTheRecording(session: ObservationSession): boolean {
+  const mode = session.spatialView?.mode;
+  const solution = session.observationSolution;
+  return mode === 'catalog_3d' || (mode === 'registered_sky' && solution !== undefined && solution.status !== 'calibrated');
+}
+
 function rejectAction(
   session: ObservationSession,
   actionId: string,
@@ -153,6 +165,18 @@ export function dispatchAlbedianAction(
       if (!variant) {
         return rejectAction(session, action.requestId, 'missing_source', `This ${mediaNoun(base)} has not been restored.`, ['Run restoration pipeline first']);
       }
+      // Off the recording the restored version is not what is on screen: it is said where it shows, and nothing is
+      // changed or pressed (not_connected, never missing_source, which the web answers by pressing Restore)
+      if (isOffTheRecording(base)) {
+        return rejectAction(
+          session,
+          action.requestId,
+          'not_connected',
+          // UIUX-voice-compare-restore-words-READY.md item 2, DECIDED-BY-LEAD 24 Nov 19:42
+          `The restored version shows on this ${mediaNoun(base)} itself; Back to Moment returns to it.`,
+          ['Return to the recording with Back to Moment']
+        );
+      }
       const name = 'the restored version';
       const status = `Applied ${name} (${variant.disclosure})`;
       // Only what the session holds: the variant now shown, and that its audio is the source's when it records so (each
@@ -174,14 +198,27 @@ export function dispatchAlbedianAction(
     }
 
     case 'media.compare': {
-      const variantA = base.mediaVariants.find((v) => v.id === action.variantAId);
-      const variantB = base.mediaVariants.find((v) => v.id === action.variantBId);
-      if (!variantA || !variantB) {
-        return rejectAction(session, action.requestId, 'missing_source', `This ${mediaNoun(base)} has not been restored, so there is nothing to compare.`, ['Select valid media variants from session.mediaVariants']);
+      // The words of a compare that cannot be made (UIUX-voice-compare-restore-words-READY.md item 1, DECIDED-BY-LEAD 24
+      // Nov 19:42) name the recording by its noun, never a variant id
+      const sha256 = base.sourceAsset?.sha256;
+      if (!base.mediaVariants.some((v) => v.kind === 'restoration' && v.sourceSha256 === sha256)) {
+        return rejectAction(session, action.requestId, 'missing_source', `This ${mediaNoun(base)} has not been restored, so there is nothing to compare it with.`, ['Run restoration pipeline first']);
       }
-      const status = `Comparing ${variantA.id} with ${variantB.id} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
+      // A version is never compared with itself (DECIDED-BY-LEAD 24 Nov 19:40)
+      if (action.variantAId === action.variantBId) {
+        return rejectAction(session, action.requestId, 'missing_source', `That would compare a version of this ${mediaNoun(base)} with itself, so nothing was compared.`, ['Compare the restored version with the original']);
+      }
+      // The original is the recording itself where no display copy of it is held (the variant id the session names it
+      // by, as the active variant is when nothing is pressed): the compare on screen sets the restored version against it
+      const held = (id: string) => (id === EMPTY_MEDIA_VARIANT_ID && base.sourceAsset !== undefined) || base.mediaVariants.some((v) => v.id === id);
+      if (!held(action.variantAId) || !held(action.variantBId)) {
+        // A version the screen has since swapped out (the session's variants change with no new revision): the
+        // ruled words for a screen that changed while the person asked (reducer 115)
+        return rejectAction(session, action.requestId, 'missing_source', 'The screen changed while you asked.', ['Rebuild ActionContext from latest ObservationSession and retry']);
+      }
+      const status = `Comparing ${action.variantAId} with ${action.variantBId} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
       return completeAction(
-        { ...base, viewRevision: nextRev, activeVariantId: variantB.id, compareVariantId: variantA.id, compareWipePosition: 0.5, machines: { ...base.machines, navigation: 'comparison' }, lastStatusBanner: status },
+        { ...base, viewRevision: nextRev, activeVariantId: action.variantBId, compareVariantId: action.variantAId, compareWipePosition: 0.5, machines: { ...base.machines, navigation: 'comparison' }, lastStatusBanner: status },
         action.requestId,
         nextRev,
         'Comparing the two versions.',

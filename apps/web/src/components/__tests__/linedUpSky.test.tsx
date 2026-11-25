@@ -494,7 +494,8 @@ describe('the stage shows the frame the session clock names (verdict finding 1)'
 
   it('keeps the frame and the markers through the compare wipe, and follows a seek made while comparing', () => {
     const variants = createSyntheticCalibratedSession().mediaVariants.slice(0, 2);
-    let session: ObservationSession = { ...clipOn(3), mediaVariants: variants.map((v) => ({ ...v, sourceAssetId: POSE.sourceAssetId })) };
+    // Restorations of this clip, as the session holds them: of its source asset and its bytes (voice-compare-one)
+    let session: ObservationSession = { ...clipOn(3), mediaVariants: variants.map((v) => ({ ...v, sourceAssetId: POSE.sourceAssetId, sourceSha256: POSE.sourceSha256! })) };
     renderScene(session);
     const video = loadClip();
     session = dispatchAlbedianAction(session, {

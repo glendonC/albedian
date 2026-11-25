@@ -121,6 +121,44 @@ describe('asking to restore does what the Restore button does', () => {
     ask('compare with the original');
     expect(seen.props.session.voiceActions.at(-1)!.proposedAction?.type).toBe('media.compare');
     expect(pressed).not.toHaveBeenCalled();
-    expect(seen.props.answer?.sentence).toBe('This photo has not been restored, so there is nothing to compare.');
+    expect(seen.props.answer?.sentence).toBe('This photo has not been restored, so there is nothing to compare it with.');
+  });
+});
+
+// voice-compare-one (DECIDED-BY-LEAD 24 Nov 21:17): off the recording, a restored version held, the reducer refuses with
+// not_connected and leaves the session as it is; the web presses Restore for no reason but missing_source
+describe('asking to restore off the recording, a restored version held', () => {
+  function restoredOff(kind: 'image' | 'video', away: 'flight' | 'predicted sky'): ObservationSession {
+    const at = recording(kind);
+    const sha = at.sourceAsset!.sha256;
+    const shown = MediaVariantSchema.parse({ ...template, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: `/api/media/${sha}/variants/${String(template.id)}/file` });
+    const held = { ...at, mediaVariants: [shown], selectedFindingId: at.observationSolution!.findings[0]!.id };
+    return (away === 'flight'
+      ? { ...held, spatialView: { ...held.spatialView, mode: 'catalog_3d' }, machines: { ...held.machines, navigation: 'space' } }
+      : { ...held, spatialView: { ...held.spatialView, mode: 'registered_sky' }, observationSolution: { ...held.observationSolution!, status: 'approximate' } }) as ObservationSession;
+  }
+  // The flight is drawn only where WebGL 2 is (canDrawRealSky), so the reveal is on and the sentence shows there
+  beforeEach(() => vi.stubGlobal('WebGL2RenderingContext', class {}));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([['image', 'photo'], ['video', 'clip']] as const)('the flight over a %s: the sentence shows, nothing is pressed or changed', (kind, noun) => {
+    const off = restoredOff(kind, 'flight');
+    load(off);
+    ask('make the sky clearer');
+    expect(seen.props.session.voiceActions.at(-1)!.proposedAction?.type).toBe('media.restore');
+    expect(pressed).not.toHaveBeenCalled();
+    expect(seen.props.answer?.sentence).toBe(`The restored version shows on this ${noun} itself; Back to Moment returns to it.`);
+    expect(seen.props.session.activeVariantId).toBe(off.activeVariantId);
+    expect(seen.props.session.spatialView.mode).toBe('catalog_3d');
+  });
+
+  it('the predicted sky: nothing is pressed or changed', () => {
+    const off = restoredOff('image', 'predicted sky');
+    load(off);
+    ask('make the sky clearer');
+    expect(seen.props.session.voiceActions.at(-1)!.proposedAction?.type).toBe('media.restore');
+    expect(pressed).not.toHaveBeenCalled();
+    expect(seen.props.session.activeVariantId).toBe(off.activeVariantId);
+    expect(seen.props.session.spatialView.mode).toBe('registered_sky');
   });
 });

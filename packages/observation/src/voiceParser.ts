@@ -1183,10 +1183,14 @@ const RULE_HANDLERS: Readonly<Record<string, (input: RuleInput) => VoiceParseRes
   },
   'ui.overlay': ({ base, fields }) => acted({ type: 'ui.overlay', ...base, ...fields }),
   'media.compare': ({ base, session }) => {
-    // A version is never compared with itself (checkpoint-version-one, decided by the lead 19:40 on 24 Nov): the original
-    // is the session's display copy of the recording, or no variant, so a compare with none to make is refused
-    const originalVariant = session.mediaVariants.find((v) => v.kind === 'display_copy' && v.sourceSha256 === session.sourceAsset?.sha256)?.id ?? EMPTY_MEDIA_VARIANT_ID;
-    const restoredVariant = session.activeVariantId !== originalVariant ? session.activeVariantId : (session.mediaVariants[1]?.id ?? originalVariant);
+    // What the compare on screen does (voice-compare-one, decided by the lead 19:40 on 24 Nov): the restored version
+    // against the original, which is the session's display copy of the recording, or else the recording itself (no
+    // variant). The restored version is the one pressed, else the one shown; with none, the two are one version and
+    // the reducer refuses the compare in plain words
+    const sha256 = session.sourceAsset?.sha256;
+    const originalVariant = session.mediaVariants.find((v) => v.kind === 'display_copy' && v.sourceSha256 === sha256)?.id ?? EMPTY_MEDIA_VARIANT_ID;
+    const restorations = session.mediaVariants.filter((v) => v.kind === 'restoration' && v.sourceSha256 === sha256);
+    const restoredVariant = (restorations.find((v) => v.id === session.activeVariantId) ?? restorations.at(-1))?.id ?? originalVariant;
     return acted({ type: 'media.compare', ...base, variantAId: originalVariant, variantBId: restoredVariant, preserveTime: true });
   },
   'media.restore': ({ base, fields, session }) =>

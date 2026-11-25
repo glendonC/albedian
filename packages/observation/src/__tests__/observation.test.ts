@@ -538,9 +538,11 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
             const onRecording = (s: ObservationSession) =>
               s.machines.navigation === 'source' ||
               (s.machines.navigation === 'comparison' && s.spatialView.mode === 'source_2d');
-            // space.epoch is refused because the view does not move the stars to a chosen year, and media.playback
-            // away from the clip because it is not on screen; each leaves the session as it was
-            if (action.type === 'space.epoch' || (action.type === 'media.playback' && !onRecording(session))) {
+            // space.epoch is refused because the view does not move the stars to a chosen year, media.playback
+            // away from the clip because it is not on screen, and a compare of a version with itself because a
+            // version is never compared with itself (DECIDED-BY-LEAD 24 Nov 19:40); each leaves the session as it was
+            const selfCompare = action.type === 'media.compare' && action.variantAId === action.variantBId;
+            if (action.type === 'space.epoch' || (action.type === 'media.playback' && !onRecording(session)) || selfCompare) {
               expect(res.outcome).toMatchObject({ status: 'rejected', reason: action.type === 'space.epoch' ? 'not_connected' : 'missing_source' });
               expect(res.session).toBe(session);
             } else {
