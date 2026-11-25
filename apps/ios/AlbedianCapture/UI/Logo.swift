@@ -27,9 +27,13 @@ struct Logo: View {
     var body: some View {
         let mark = size * ControlStyle.logoMarkScale
         HStack(alignment: .top, spacing: 0) {
+            // largertext-home-m (UIUX-iphone-largertext-sweep-READY item 2, DECIDED-BY-LEAD 24 Nov 19:56): the logo at its
+            // approved size at every text size, on one line, never text that grows
             Text(ControlStyle.logoWord)
-                .font(AlbedianFont.semibold(size))
+                .font(AlbedianFont.semiboldFixed(size))
                 .tracking(CGFloat(ControlStyle.logoLetterSpacingEm * size))
+                .lineLimit(1)
+                .fixedSize()
             LogoMarkShape()
                 .fill(Color(ControlStyle.logoInk))
                 .frame(width: CGFloat(mark), height: CGFloat(mark))

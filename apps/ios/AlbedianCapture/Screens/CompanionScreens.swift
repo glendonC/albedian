@@ -105,12 +105,18 @@ struct HomeScreen: View {
                 // linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)
                 LinearGradient(stops: HomeBackdrop.shade.map { .init(color: .black.opacity($0.opacity), location: CGFloat($0.location)) },
                                startPoint: .bottom, endPoint: .top)
+                // largertext-home-m (item 2): the two top pills are bar items, held at the first accessibility size, where
+                // both stand whole side by side, each shown larger by Apple's large content viewer on a long press
                 OutlinePill(title: "Credits", height: 36, fontSize: 15, action: model.showCredits)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    .accessibilityShowsLargeContentViewer()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding(.top, CGFloat(Arrive.topControls)).padding(.trailing, CGFloat(Arrive.edge))
                 // D13, INTERIM (ik-home): only while photos are kept that were never sent, a pill opposite "Credits"
                 if !model.keptNotSent.isEmpty {
                     OutlinePill(title: KeptWords.pill(model.keptNotSent.count), height: 36, fontSize: 15, action: model.openKept)
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                        .accessibilityShowsLargeContentViewer()
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .padding(.top, CGFloat(Arrive.topControls)).padding(.leading, CGFloat(Arrive.edge))
                 }

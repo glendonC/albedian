@@ -13,6 +13,9 @@ extension Color {
 enum AlbedianFont {
     static func regular(_ size: Double) -> Font { .custom("Geist-Regular", size: size, relativeTo: .body) }
     static func semibold(_ size: Double) -> Font { .custom("Geist-SemiBold", size: size, relativeTo: .title) }
+    /// The semibold weight at one size whatever the text size: the logo's word, a picture and not text that grows
+    /// (largertext-home-m).
+    static func semiboldFixed(_ size: Double) -> Font { .custom("Geist-SemiBold", fixedSize: size) }
     /// The light weight (300) the approved titles and the result's count use, a named instance of the web's own Geist variable
     /// font (`Fonts/Geist-wght.woff2`, the same bytes as `apps/web/public/fonts/geist/Geist-wght.woff2`).
     static func light(_ size: Double) -> Font { .custom("Geist-Light", size: size, relativeTo: .largeTitle) }

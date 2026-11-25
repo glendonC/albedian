@@ -416,4 +416,23 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(connect.contains("field(wraps:false).padding(.horizontal,CGFloat(Arrive.side)).atTop(262)") && connect.contains(".atTop(404)")
                       && connect.contains(".padding(.horizontal,18).frame(height:60)"), "at default sizes as recorded")
     }
+
+    /// largertext-home-m (UIUX-iphone-largertext-sweep-READY item 2, DECIDED-BY-LEAD 24 Nov 19:56): the wordmark is the
+    /// logo at its approved size at every text size, on one line, never text that grows; the home's top pills ("N not
+    /// sent", "Credits") are bar items, held at the first accessibility size, where both stand whole side by side, each
+    /// shown larger by Apple's large content viewer on a long press; Start grows as every main button does.
+    func testTheHomesLogoKeepsItsSizeAndItsTopPillsHoldAtTheFirstAccessibilitySize() throws {
+        let logo = compact(try body(of: "struct Logo: View", in: try code("UI/Logo.swift").code))
+        XCTAssertTrue(logo.contains(".font(AlbedianFont.semiboldFixed(size)).tracking(CGFloat(ControlStyle.logoLetterSpacingEm*size)).lineLimit(1).fixedSize()"),
+                      "the logo's word at one size and on one line")
+        XCTAssertFalse(logo.contains("AlbedianFont.semibold(size)"), "no word of the logo grows with the text")
+        let style = compact(try code("UI/Style.swift").code)
+        XCTAssertTrue(style.contains("staticfuncsemiboldFixed(_size:Double)->Font{.custom(") && style.contains(",fixedSize:size)}"), "a size Dynamic Type leaves alone")
+        let home = compact(try body(of: "struct HomeScreen: View", in: try code("Screens/CompanionScreens.swift").code))
+        XCTAssertEqual(home.components(separatedBy: ".dynamicTypeSize(...DynamicTypeSize.accessibility1).accessibilityShowsLargeContentViewer()").count - 1, 2,
+                       "both top pills held at the first accessibility size, each with the large content viewer")
+        XCTAssertTrue(home.contains("height:36,fontSize:15,action:model.showCredits).dynamicTypeSize(...DynamicTypeSize.accessibility1)"))
+        XCTAssertTrue(home.contains("OutlinePill(title:KeptWords.pill(model.keptNotSent.count),height:36,fontSize:15,action:model.openKept).dynamicTypeSize(...DynamicTypeSize.accessibility1)"))
+        XCTAssertTrue(home.contains("icon:.arrow,action:model.startAiming).atBottom(Arrive.mainBottomGap)"), "Start as every main button")
+    }
 }
