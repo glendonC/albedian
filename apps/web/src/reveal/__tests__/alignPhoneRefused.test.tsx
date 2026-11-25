@@ -13,8 +13,9 @@ import { RevealPhoto } from '../RevealPhoto.js';
 import type { Restoration } from '../restoration.js';
 
 // D24's refused state at phone width (UIUX-align-READY.md, drawn 19 Nov 18:01 as alp-refused): the kept rings over the
-// photo, the Predicted tag at 606, the two sentences at 646 and 704, Line it up again centred at 772 where Solve from
-// here was, then Show predicted sky and Restore under it, reached by scrolling, all 44 px.
+// photo, the Predicted tag at 614, the two sentences at 654 and 712 (ruled 24 Nov 17:26: aligned to the phone wait's tag,
+// phone-refused-tag-one; they were 606, 646 and 704), Line it up again centred at 772 where Solve from here was, then
+// Show predicted sky and Restore under it, reached by scrolling, all 44 px.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -99,11 +100,24 @@ describe('D24 refused at phone width', () => {
 
   it('places each piece where alp-refused draws it, the whole screen scrolling with the photo and the rings', () => {
     expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused')).toEqual({ height: '970px', padding: '0' });
-    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .look-tag')).toEqual({ position: 'absolute', left: '24px', top: '606px', margin: '0' });
-    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .reveal-status__lead')).toEqual({ position: 'absolute', left: '24px', right: '24px', top: '646px' });
-    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .align-refused__kept')).toEqual({ position: 'absolute', left: '24px', right: '24px', top: '704px', margin: '0' });
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .look-tag')).toEqual({ position: 'absolute', left: '24px', top: '614px', margin: '0' });
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .reveal-status__lead')).toEqual({ position: 'absolute', left: '24px', right: '24px', top: '654px' });
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .align-refused__kept')).toEqual({ position: 'absolute', left: '24px', right: '24px', top: '712px', margin: '0' });
     expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .reveal-phone-go')).toEqual({ position: 'absolute', left: '0', right: '0', top: '772px' });
     expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .reveal-phone-more')).toEqual({ position: 'absolute', left: '0', right: '0', top: '832px', display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '10px' });
     expect(declarationsOf(':root[data-phone-scroll] .align-layer.is-still')).toEqual({ translate: '0 calc(-1 * var(--phone-scroll, 0px))' });
+  });
+
+  // phone-refused-tag-one (DECIDED-BY-LEAD 24 Nov 17:26, UIUX-align-READY.md): the tag holds still from aligning through
+  // Solve from here's wait to the refused end, the sweep's 12 px kept under it, the kept line where the sentence leaves
+  // it, Line it up again where it was
+  it("stands its Predicted tag where the aligning screen and the wait stand theirs, the lines moved with it", () => {
+    const tagTop = parseFloat(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .look-tag').top!);
+    expect(tagTop).toBe(parseFloat(declarationsOf('.align-phone__tag').top!));
+    expect(tagTop).toBe(parseFloat(declarationsOf('.work-phone-early__tag').top!));
+    // The tag's 28 px row, then the sweep's 12 px to the sentence; the kept line 58 px under the sentence, as drawn
+    expect(parseFloat(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .reveal-status__lead').top!) - tagTop).toBe(40);
+    expect(parseFloat(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .align-refused__kept').top!) - tagTop).toBe(98);
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone.is-refused > .reveal-phone-go').top).toBe('772px');
   });
 });

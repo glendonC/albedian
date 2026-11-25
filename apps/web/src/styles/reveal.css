@@ -2359,9 +2359,11 @@
 }
 
 /* D24's refused state at phone width (UIUX-align-READY.md, drawn 18:01 as alp-refused and alp-refused-scrolled): the
-   Predicted tag at 606, the sentence at 646 (22 px, as the phone's no-match sentence), the kept line at 704 (14 px,
+   Predicted tag at 614, the sentence at 654 (22 px, as the phone's no-match sentence), the kept line at 712 (14 px,
    ink 66 percent), Line it up again centred at 772, then Show predicted sky and Restore at 832, 10 apart, all 44 px;
-   the whole screen scrolls, the photo and the kept rings moving up with it */
+   the whole screen scrolls, the photo and the kept rings moving up with it. The tag and the two lines stand 8 px lower
+   than drawn so the tag holds still from aligning through Solve from here's wait (phone-refused-tag-one, ruled 24 Nov
+   17:26) */
 .reveal-status.is-unmatched.is-phone.is-refused {
   height: 970px;
   padding: 0;
@@ -2370,7 +2372,7 @@
 .reveal-status.is-unmatched.is-phone.is-refused > .look-tag {
   position: absolute;
   left: 24px;
-  top: 606px;
+  top: 614px;
   margin: 0;
 }
 
@@ -2378,14 +2380,14 @@
   position: absolute;
   left: 24px;
   right: 24px;
-  top: 646px;
+  top: 654px;
 }
 
 .reveal-status.is-unmatched.is-phone.is-refused > .align-refused__kept {
   position: absolute;
   left: 24px;
   right: 24px;
-  top: 704px;
+  top: 712px;
   margin: 0;
 }
 
