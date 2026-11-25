@@ -1,6 +1,6 @@
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { CraftFraming } from './craftScene.js';
-import { STEER_KEY_TURN_RAD_S, STEER_START_SPEED_PC_S } from './steering.js';
+import { STEER_START_SPEED_PC_S, type SteerFrame } from './steering.js';
 
 /**
  * craft-alive-one (DECIDED-BY-LEAD 25 Nov 03:22, on MOTION's craft-alive-proposal): while the person steers, the craft
@@ -56,20 +56,22 @@ export function speedShare(speedPcPerS: number, startPcPerS: number): number {
 }
 
 /**
- * The signals one frame of `dt` seconds on, toward what the hands ask: `turnShare` the turn as a share of the full key
- * turn (-1 to 1; a drag's rate on the phone), the speed, and whether the brake is held. Under Reduce Motion the bank,
- * the brake and the roll stay at rest.
+ * The signals one frame of `dt` seconds on, toward what the hands ask: `turnShare` the turn as a share of a full bank
+ * (held to -1 to 1), the speed, and whether the brake is held. While a finger is down (`dragHeld`) the bank is the
+ * drag's share at once, since the hands already follow the drag's own speed on their short time constant
+ * (craft-alive-drag-one); otherwise it follows on `ALIVE_TAU.bank`. Under Reduce Motion the bank, the brake and the roll
+ * stay at rest.
  */
 export function stepAlive(
   prev: AliveSignals,
-  ask: { turnShare: number; speedPcPerS: number; startPcPerS: number; braking: boolean; reduced: boolean },
+  ask: { turnShare: number; speedPcPerS: number; startPcPerS: number; braking: boolean; reduced: boolean; dragHeld?: boolean },
   dt: number
 ): AliveSignals {
   const k = (tau: number) => (dt > 0 ? 1 - Math.exp(-dt / tau) : 0);
   const bankTo = ask.reduced ? 0 : Math.max(-1, Math.min(1, ask.turnShare));
   const brakeTo = ask.braking && !ask.reduced ? 1 : 0;
   const speedTo = ask.reduced ? 0 : speedShare(ask.speedPcPerS, ask.startPcPerS);
-  const bank = prev.bank + (bankTo - prev.bank) * k(ALIVE_TAU.bank);
+  const bank = ask.dragHeld && dt > 0 ? bankTo : prev.bank + (bankTo - prev.bank) * k(ALIVE_TAU.bank);
   return {
     bank,
     speed: prev.speed + (speedTo - prev.speed) * k(ALIVE_TAU.speed),
@@ -79,11 +81,12 @@ export function stepAlive(
 }
 
 /**
- * What the hands ask of the signals in one frame: the turn as a share of the full key turn (a drag's rate on the phone
- * comes through the same yaw rate), the speed against the start speed, and the brake while S slows the craft.
+ * What the hands ask of the signals in one frame: the turn as a share of a full bank (the keys' share of their turn
+ * rate, a drag's share of its full-bank speed: `SteerHands.frame`), whether a finger is down, the speed against the
+ * start speed, and the brake while S slows the craft.
  */
-export function aliveAsk(yawRadPerS: number, speedDirection: -1 | 0 | 1, speedPcPerS: number, reduced: boolean) {
-  return { turnShare: yawRadPerS / STEER_KEY_TURN_RAD_S, speedPcPerS, startPcPerS: STEER_START_SPEED_PC_S, braking: speedDirection < 0, reduced };
+export function aliveAsk(hands: Pick<SteerFrame, 'turnShare' | 'dragHeld' | 'speedDirection'>, speedPcPerS: number, reduced: boolean) {
+  return { turnShare: hands.turnShare, dragHeld: hands.dragHeld, speedPcPerS, startPcPerS: STEER_START_SPEED_PC_S, braking: hands.speedDirection < 0, reduced };
 }
 
 /**

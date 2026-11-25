@@ -118,3 +118,39 @@ describe('the craft while a key is held (craft-alive-held-keys)', () => {
     expect(layer().getAttribute('data-pose')).toBe('chase');
   });
 });
+
+// craft-alive-drag-one (DECIDED-BY-LEAD 25 Nov 06:55, MOTION's craft-alive-phone report): on the phone a drag banks the
+// craft by its own speed, fully at about 600 px/s; before, a drag of any speed banked it about the same.
+describe('the craft while a finger drags the sky (craft-alive-drag-one)', () => {
+  it('banks by the drag\'s own speed: a third at 200 px/s, full at 600 and at once in a flick', async () => {
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      onTile(tile);
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const session = there();
+    const bankAfterDrag = async (pxPerS: number, frames = 60) => {
+      await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 390, viewportHeightPx: 844, openTiles, phone: true, steering: true, onSteer: () => {}, craft: CRAFTS['astronaut-emu']!, craftLoad, makeCraftRenderer })));
+      await tick(4);
+      const sky = container.querySelector('[data-testid="flight-sky"]')!;
+      const ev = (type: string, x: number) => act(() => void sky.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: 300 })));
+      let x = 100;
+      await ev('pointerdown', x);
+      // One move a frame, a second unless told otherwise, across to the right
+      for (let i = 0; i < frames; i++) {
+        x += pxPerS / 60;
+        await ev('pointermove', x);
+        await tick(1);
+      }
+      const bank = Number(container.querySelector('[data-testid="flight-stars"]')!.getAttribute('data-alive')!.split(' ')[0]);
+      await ev('pointerup', x);
+      act(() => root.unmount());
+      root = createRoot(container);
+      return bank;
+    };
+    // Dragging the sky right turns the view left: the craft banks left
+    expect(await bankAfterDrag(200)).toBeCloseTo(-1 / 3, 2);
+    expect(await bankAfterDrag(600)).toBeCloseTo(-1, 2);
+    // MOTION's flick, 160 px in seven frames: full while the finger is still down, not on the bank's slower follow
+    expect(await bankAfterDrag((160 / 7) * 60, 7)).toBeCloseTo(-1, 2);
+  });
+});

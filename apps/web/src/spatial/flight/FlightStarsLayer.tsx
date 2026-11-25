@@ -433,7 +433,8 @@ export const FlightStarsLayer: React.FC<{
     const tick = (now: number) => {
       const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;
-      const { input, speedDirection } = hands.current.frame(dt);
+      const hand = hands.current.frame(dt);
+      const { input, speedDirection } = hand;
       const prev = steerNow.current;
       if (prev) {
         const next = steerCamera(prev, input, dt);
@@ -442,7 +443,7 @@ export const FlightStarsLayer: React.FC<{
         const pxPerRad = cam ? Math.hypot(cam.storedToScreen[0], cam.storedToScreen[3]) / ((cam.wcs.scaleDegPerPx * Math.PI) / 180) : Infinity;
         const chase = capLead(followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
         const moved: SteerNow = { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase };
-        alive.current = stepAlive(alive.current, aliveAsk(input.yawRadPerS, speedDirection, moved.speedPcPerS, reducedRef.current), dt);
+        alive.current = stepAlive(alive.current, aliveAsk(hand, moved.speedPcPerS, reducedRef.current), dt);
         steerNow.current = moved;
         frameDraw.current?.(moved);
       }

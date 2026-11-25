@@ -16,6 +16,26 @@ export const STEER_KEY_TURN_RAD_S = 0.6;
 export const STEER_DRAG_RAD_PER_PX = 0.003;
 /** k10: a released drag's turn slows by this factor every sixtieth of a second. */
 export const DRAG_DECAY_PER_60TH = 0.8;
+/**
+ * craft-alive-drag-one (DECIDED-BY-LEAD 25 Nov 06:55, on MOTION's craft-alive-phone report): a drag banks the craft by
+ * its own speed, fully at this many CSS pixels a second across (1.8 radians a second of turn), the keys unchanged.
+ */
+export const DRAG_FULL_BANK_PX_S = 600;
+/** The drag's own speed is followed with this time constant while the finger is down, seconds. */
+export const DRAG_BANK_TAU_S = 0.08;
+
+/** What the hands do in one frame: the turn rates, the speed's direction, and the turn's share of a full bank. */
+export interface SteerFrame {
+  readonly input: SteerInput;
+  readonly speedDirection: -1 | 0 | 1;
+  /**
+   * The turn as a share of each hand's full bank, unclamped: the arrow keys' share of their turn rate, and a drag's
+   * share of `DRAG_FULL_BANK_PX_S` (its own speed while the finger is down, its carry after release).
+   */
+  readonly turnShare: number;
+  /** Whether a finger (or the mouse) is down on the sky, the drag's speed then already followed on its own time constant. */
+  readonly dragHeld: boolean;
+}
 
 /** D26 item 6's lines while steering, the third reworded for a press on the sky [proposed words: the lead decides]. */
 /** D30 item 6: the phone's one steering line, under the first sentence (no keys on a touch screen). */
@@ -40,6 +60,8 @@ export class SteerHands {
   private residualYaw = 0;
   private residualPitch = 0;
   private dragging = false;
+  /** The drag's own turn rate while the finger is down, followed on `DRAG_BANK_TAU_S`. */
+  private dragYawRate = 0;
 
   /**
    * `reduced` says whether Reduce Motion is on: then a released drag stops at once with no carry (MOTION-READY-web.md
@@ -63,6 +85,7 @@ export class SteerHands {
 
   /** A drag of (dx, dy) CSS pixels, `dt` seconds after the last one: the view turns with the hand. */
   drag(dxPx: number, dyPx: number, dt: number): void {
+    if (!this.dragging) this.dragYawRate = 0;
     this.dragging = true;
     this.residualYaw = 0;
     this.residualPitch = 0;
@@ -83,8 +106,8 @@ export class SteerHands {
     this.residualPitch = this.lastPitchRate;
   }
 
-  /** The turn rates and the speed's direction for a frame of `dt` seconds. */
-  frame(dt: number): { input: SteerInput; speedDirection: -1 | 0 | 1 } {
+  /** The turn rates, the speed's direction and the turn's share of a full bank for a frame of `dt` seconds. */
+  frame(dt: number): SteerFrame {
     let yaw = 0;
     let pitch = 0;
     for (const code of this.held) {
@@ -94,27 +117,40 @@ export class SteerHands {
         pitch += t[1] * STEER_KEY_TURN_RAD_S;
       }
     }
+    const keysYaw = yaw;
+    let dragYaw = 0;
     if (dt > 0) {
       // What the hand turned since the last frame, applied in this one
       yaw += this.pendingYaw / dt;
       pitch += this.pendingPitch / dt;
+      // The drag's own speed, followed while the finger is down: a frame with no move in it does not drop the bank
+      if (this.dragging) this.dragYawRate += (this.pendingYaw / dt - this.dragYawRate) * (1 - Math.exp(-dt / DRAG_BANK_TAU_S));
     }
     this.pendingYaw = 0;
     this.pendingPitch = 0;
-    if (!this.dragging) {
+    if (this.dragging) {
+      dragYaw = this.dragYawRate;
+    } else {
       if (this.reduced()) {
         this.residualYaw = 0;
         this.residualPitch = 0;
       }
       yaw += this.residualYaw;
       pitch += this.residualPitch;
+      // After the release the bank follows the drag's carry down
+      dragYaw = this.residualYaw;
       const decay = Math.pow(DRAG_DECAY_PER_60TH, dt * 60);
       this.residualYaw *= decay;
       this.residualPitch *= decay;
     }
     const w = this.held.has('KeyW');
     const s = this.held.has('KeyS');
-    return { input: { yawRadPerS: yaw, pitchRadPerS: pitch }, speedDirection: w === s ? 0 : w ? 1 : -1 };
+    return {
+      input: { yawRadPerS: yaw, pitchRadPerS: pitch },
+      speedDirection: w === s ? 0 : w ? 1 : -1,
+      turnShare: keysYaw / STEER_KEY_TURN_RAD_S + dragYaw / (DRAG_FULL_BANK_PX_S * STEER_DRAG_RAD_PER_PX),
+      dragHeld: this.dragging,
+    };
   }
 }
 

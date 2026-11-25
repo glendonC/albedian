@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import { ALIVE, ALIVE_AT_REST, ALIVE_TAU, aliveAsk, aliveFrame, aliveFraming, diameterPerHeight, screenBoxOf, capLead, maxLeadRad, aliveRotation, axisRotation, chaseAxes, rolledRows, rotatedAboutCentre, speedShare, stepAlive } from '../craftAlive.js';
-import { STEER_KEY_TURN_RAD_S, STEER_START_SPEED_PC_S } from '../steering.js';
+import { DRAG_FULL_BANK_PX_S, STEER_KEY_TURN_RAD_S, STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
 import { CRAFTS, HANGAR_CRAFTS } from '../crafts.js';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
@@ -29,11 +29,17 @@ describe('the ruled numbers (MOTION craft-alive-proposal, DECIDED-BY-LEAD 03:22)
 });
 
 describe('aliveAsk and aliveFrame', () => {
-  it('asks the turn as a share of the key turn, the speed against the start speed, and the brake only on S', () => {
-    expect(aliveAsk(-STEER_KEY_TURN_RAD_S, 0, 2, false)).toEqual({ turnShare: -1, speedPcPerS: 2, startPcPerS: STEER_START_SPEED_PC_S, braking: false, reduced: false });
-    expect(aliveAsk(0, -1, 1, false).braking).toBe(true);
-    expect(aliveAsk(0, 1, 1, false).braking).toBe(false);
-    expect(aliveAsk(0, 0, 1, true).reduced).toBe(true);
+  it('asks the hands\' share of a full bank, whether a finger is down, the speed against the start speed, and the brake only on S', () => {
+    const hand = (turnShare: number, speedDirection: -1 | 0 | 1, dragHeld = false) => ({ turnShare, speedDirection, dragHeld });
+    expect(aliveAsk(hand(-1, 0), 2, false)).toEqual({ turnShare: -1, dragHeld: false, speedPcPerS: 2, startPcPerS: STEER_START_SPEED_PC_S, braking: false, reduced: false });
+    expect(aliveAsk(hand(0.4, 0, true), 1, false)).toMatchObject({ turnShare: 0.4, dragHeld: true });
+    expect(aliveAsk(hand(0, -1), 1, false).braking).toBe(true);
+    expect(aliveAsk(hand(0, 1), 1, false).braking).toBe(false);
+    expect(aliveAsk(hand(0, 0), 1, true).reduced).toBe(true);
+    // The keys unchanged: an arrow held asks a full bank, as its turn rate did before
+    const keys = new SteerHands();
+    keys.keyDown('ArrowLeft');
+    expect(aliveAsk(keys.frame(1 / 60), 1, false).turnShare).toBe(-STEER_KEY_TURN_RAD_S / STEER_KEY_TURN_RAD_S);
   });
 
   it('hands the craft layer the drawn, rolled camera, the craft\'s own axes and the signals', () => {
@@ -74,6 +80,37 @@ describe('stepAlive', () => {
 
   it('keeps everything at rest under Reduce Motion', () => {
     expect(run({ ...ASK, turnShare: 1, speedPcPerS: 16, braking: true, reduced: true }, 3)).toEqual(ALIVE_AT_REST);
+  });
+
+  // craft-alive-drag-one (DECIDED-BY-LEAD 25 Nov 06:55): while a finger is down the bank is the drag's share at once,
+  // the hands having followed the drag's own speed on their short time constant
+  it('banks to a held drag\'s share at once, held to a full bank, and on its time constant again after the release', () => {
+    const from = { ...ALIVE_AT_REST, bank: 0.2 };
+    const dt = 1 / 60;
+    expect(stepAlive(from, { ...ASK, turnShare: -0.5, dragHeld: true }, dt).bank).toBe(-0.5);
+    expect(stepAlive(from, { ...ASK, turnShare: 3, dragHeld: true }, dt).bank).toBe(1);
+    expect(stepAlive(from, { ...ASK, turnShare: -0.5, dragHeld: true }, 0)).toEqual(from);
+    expect(stepAlive(from, { ...ASK, turnShare: -0.5, dragHeld: true, reduced: true }, dt).bank).toBe(0);
+    expect(stepAlive(from, { ...ASK, turnShare: -0.5, dragHeld: false }, dt).bank).toBeCloseTo(0.2 + (-0.5 - 0.2) * (1 - Math.exp(-dt / ALIVE_TAU.bank)), 12);
+  });
+
+  it('banks MOTION\'s three drags by their speed: a third, about two thirds, and full in a flick', () => {
+    // MOTION's craft-alive-phone drags, one move a frame at sixty frames a second
+    const bankAfter = (px: number, seconds: number) => {
+      const hands = new SteerHands();
+      let alive = ALIVE_AT_REST;
+      const frames = Math.round(seconds * 60);
+      for (let i = 0; i < frames; i++) {
+        hands.drag(-px / frames, 0, 1 / 60);
+        alive = stepAlive(alive, aliveAsk(hands.frame(1 / 60), 1, false), 1 / 60);
+      }
+      return alive.bank;
+    };
+    // 120 px in 0.6 s (200 px/s), 120 px in 0.3 s (400 px/s), 160 px in 0.12 s (a flick, over 1,300 px/s)
+    expect(bankAfter(120, 0.6)).toBeCloseTo(200 / DRAG_FULL_BANK_PX_S, 2);
+    expect(bankAfter(120, 0.3)).toBeGreaterThan(0.62);
+    expect(bankAfter(120, 0.3)).toBeLessThan(400 / DRAG_FULL_BANK_PX_S);
+    expect(bankAfter(160, 0.12)).toBe(1);
   });
 });
 

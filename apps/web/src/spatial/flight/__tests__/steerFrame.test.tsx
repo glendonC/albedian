@@ -9,11 +9,11 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
 import { flightCameraOf } from '../flightFrame.js';
-import { ALIVE_AT_REST, rolledRows, stepAlive } from '../craftAlive.js';
+import { ALIVE_AT_REST, aliveAsk, rolledRows, stepAlive } from '../craftAlive.js';
 import { starViewOfSteer, steerStartOf } from '../starView.js';
 import { arrivalShiftOf, arrivedFlightCamera } from '../arrival.js';
 import { RING_RADIUS_PX, flightRings } from '../flightRings.js';
-import { STEER_KEY_TURN_RAD_S, STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
+import { STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
 
 // steer-frame-one (DECIDED-BY-LEAD 24 Nov 15:59): while the person steers, each frame's camera is held in a ref and drawn
 // by the one frame loop, with no React render per frame; the page is told only when the readout's numbers change; the
@@ -124,10 +124,11 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
       const now = t0 + i * (1000 / 60);
       await act(async () => cb(now));
       const dt = 1 / 60;
-      const { input, speedDirection } = hands.frame(dt);
+      const hand = hands.frame(dt);
+      const { input, speedDirection } = hand;
       const next = steerCamera(want, input, dt);
       want = { ...next, speedPcPerS: changeSpeed(want.speedPcPerS, speedDirection, dt), chase: followRows(want.chase, next.rows, dt, { reduced: false }) };
-      alive = stepAlive(alive, { turnShare: input.yawRadPerS / STEER_KEY_TURN_RAD_S, speedPcPerS: want.speedPcPerS, startPcPerS: STEER_START_SPEED_PC_S, braking: speedDirection < 0, reduced: false }, dt);
+      alive = stepAlive(alive, aliveAsk(hand, want.speedPcPerS, false), dt);
     }
     clock.mockRestore();
     // No React render while the loop draws
