@@ -1228,12 +1228,18 @@ export const MediaVariantSchema = z
     audioStreams: z.array(VariantAudioStreamSchema), // the ingest shape made strict, with a codec name and a 64 hex packet hash
     colour: ColourDescriptionSchema,
     displayOrientation: DisplayOrientationSchema.optional(),
+    // A restored clip's copy for playing in browsers (clip-display-copy, DECIDED-BY-LEAD 24 Nov 21:57): H.264 High,
+    // made beside the lossless file and never in its place, kept only past its own gate; the download, Original
+    // pixels and the evidence stay the lossless file
+    playbackCopy: z.object({ uri, sha256, byteSize, mimeType: z.literal('video/mp4'), codecs, minPsnrDb }).strict().optional(),
     disclosure: z.string().min(1),
     createdAtUTC: utcInstant(),
   })
   .strict(); // refined: disclosure equals DISCLOSURES[kind]; sourceAssetId is the source's own; a still has
              // frameCount 1, durationMs 0, no audio and
-             // no frameTimesSha256; a clip has frameTimesSha256
+             // no frameTimesSha256; a clip has frameTimesSha256; only a restored clip has a playbackCopy, served at
+             // /api/media/{sha256}/variants/{variantId}/playback, its codecs avc1.64xxxx (High), its lowest frame
+             // PSNR against the lossless file at least PLAYBACK_COPY_MIN_PSNR_DB (45)
 
 // No job schema here: a display copy or restoration job is the upload job runner's UploadJobSchema with kind
 // 'display_copy' or 'restoration' (platform-1, the upload jobs design 3.8). Its stages and units are the same as

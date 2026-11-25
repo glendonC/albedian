@@ -388,6 +388,11 @@ export const MEDIA_PATTERNS = {
   semver: '^(?:0|[1-9][0-9]?)\\.(?:0|[1-9][0-9]?)\\.(?:0|[1-9][0-9]?)$',
   // A stored variant is served at its own route (REQ-RST-8.6), never named by a path in the store
   variantUri: '^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/file$',
+  // A restored clip's playback copy is served at a route of its own beside the variant's file (clip-display-copy)
+  playbackUri: '^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/playback$',
+  // The playback copy's codec as RFC 6381 writes it: H.264 High profile only (profile_idc 100), which every browser
+  // the app meets draws [tested 24 Nov: Chrome on the Mac; MOBILE: Safari draws High and not High 4:4:4 Predictive]
+  playbackCodecs: '^avc1\\.64[0-9A-F]{4}$',
   // A codec as ffprobe names it [proposed: lower-case letters, digits and underscore, at most 32]
   codecName: '^[a-z0-9_]{1,32}$',
 } as const;
@@ -434,6 +439,11 @@ export const EXPORT_MANIFEST_FORMAT = 'albedian.export-manifest';
 export const EXPORT_MANIFEST_FORMAT_VERSION = 1;
 /** The largest exposure a request may ask for, in EV [proposed in design section 14; the lift's own bounds decide]. */
 export const EXPOSURE_EV_MAX = 6;
+/**
+ * A playback copy is kept only when every frame is at least this close to the lossless restoration, in dB of PSNR
+ * [proposed: the public clip's copy at CRF 18 had its lowest frame at 49.3 dB, 24 Nov].
+ */
+export const PLAYBACK_COPY_MIN_PSNR_DB = 45;
 
 export const MEDIA_ENUMS = {
   variantKinds: VARIANT_KINDS,
@@ -780,6 +790,9 @@ const M = {
   clipTimes: 'a clip names the hash of its frame times',
   displayCopyStill: 'a display copy is a PNG of a still',
   variantUri: 'a variant is served at its own route',
+  playbackClip: 'only a restored clip has a playback copy',
+  playbackUri: 'a playback copy is served at its own route',
+  playbackGate: 'a playback copy passed its gate',
   variantColour: "a PNG holds R'G'B' and a clip Y'CbCr",
   manifestSource: 'the parts are of one source',
   manifestIds: 'the variant, its graph and its attempt name each other',
@@ -798,6 +811,11 @@ export const MEDIA_REFINEMENT_MESSAGES: readonly string[] = [...Object.values(M)
 /** Where a stored variant is served (REQ-RST-8.6): its own route under its original, never a store path. */
 export function variantUri(sourceSha256: string, variantId: string): string {
   return `/api/media/${sourceSha256}/variants/${variantId}/file`;
+}
+
+/** Where a restored clip's playback copy is served: beside the variant's own file, under the same original. */
+export function playbackUri(sourceSha256: string, variantId: string): string {
+  return `/api/media/${sourceSha256}/variants/${variantId}/playback`;
 }
 
 /** Format a finite wire number with ECMAScript Number::toString rules (-0 as '0', refusing NaN and Infinity). */
@@ -1130,6 +1148,23 @@ export const VariantAudioStreamSchema = AudioStreamDescriptorSchema.extend({
   sha256: sha256(),
 }).strict();
 
+/**
+ * A copy of a restored clip that every browser the app meets draws (clip-display-copy, DECIDED-BY-LEAD 21:57 on
+ * 24 Nov): H.264 High, made beside the lossless file and never in its place, kept only past its own gate. The
+ * download, Original pixels and the evidence stay the lossless file. Strict, as every media record is.
+ */
+export const VariantPlaybackCopySchema = z
+  .object({
+    uri: pattern(MEDIA_PATTERNS.playbackUri),
+    sha256: sha256(),
+    byteSize: positiveInt(),
+    mimeType: z.literal('video/mp4'),
+    codecs: pattern(MEDIA_PATTERNS.playbackCodecs),
+    // Its gate: the lowest PSNR of any frame against the lossless restoration
+    minPsnrDb: wireNumber().positive(),
+  })
+  .strict();
+
 /** A file made from one original and stored beside it: a display copy or a restoration. */
 export const MediaVariantSchema = z
   .object({
@@ -1152,6 +1187,8 @@ export const MediaVariantSchema = z
     audioStreams: z.array(VariantAudioStreamSchema),
     colour: ColourDescriptionSchema,
     displayOrientation: DisplayOrientationSchema.optional(),
+    // A restored clip's copy for playing in browsers, when it passed its gate (clip-display-copy)
+    playbackCopy: VariantPlaybackCopySchema.optional(),
     disclosure: disclosure(),
     createdAtUTC: utcInstant(),
   })
@@ -1172,6 +1209,12 @@ export const MediaVariantSchema = z
     if (variant.kind === 'display_copy' && !still) issue(['mimeType'], M.displayCopyStill);
     if (variant.uri !== variantUri(variant.sourceSha256, variant.id)) issue(['uri'], M.variantUri);
     if (variant.colour.model !== (still ? 'rgb' : 'ycbcr')) issue(['colour', 'model'], M.variantColour);
+    const copy = variant.playbackCopy;
+    if (copy !== undefined) {
+      if (still || variant.kind !== 'restoration') issue(['playbackCopy'], M.playbackClip);
+      if (copy.uri !== playbackUri(variant.sourceSha256, variant.id)) issue(['playbackCopy', 'uri'], M.playbackUri);
+      if (copy.minPsnrDb < PLAYBACK_COPY_MIN_PSNR_DB) issue(['playbackCopy', 'minPsnrDb'], M.playbackGate);
+    }
   });
 export type MediaVariant = z.infer<typeof MediaVariantSchema>;
 

@@ -84,6 +84,11 @@ MEDIA_PATTERNS = {
     "semver": r"^(?:0|[1-9][0-9]?)\.(?:0|[1-9][0-9]?)\.(?:0|[1-9][0-9]?)$",
     # A stored variant is served at its own route (REQ-RST-8.6), never named by a path in the store
     "variantUri": r"^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/file$",
+    # A restored clip's playback copy is served at a route of its own beside the variant's file (clip-display-copy)
+    "playbackUri": r"^/api/media/[0-9a-f]{64}/variants/var_[0-9a-f]{16}/playback$",
+    # The playback copy's codec as RFC 6381 writes it: H.264 High profile only (profile_idc 100), which every browser
+    # the app meets draws [tested 24 Nov: Chrome on the Mac; MOBILE: Safari draws High and not High 4:4:4 Predictive]
+    "playbackCodecs": r"^avc1\.64[0-9A-F]{4}$",
     # A codec as ffprobe names it [proposed: lower-case letters, digits and underscore, at most 32]
     "codecName": r"^[a-z0-9_]{1,32}$",
 }
@@ -121,6 +126,10 @@ EXPORT_MANIFEST_FORMAT = "albedian.export-manifest"
 EXPORT_MANIFEST_FORMAT_VERSION = 1
 # The largest exposure a request may ask for, in EV [proposed in design section 14; the lift's own bounds decide]
 EXPOSURE_EV_MAX = 6
+# A playback copy is kept only when every frame is at least this close to the lossless restoration, in dB of PSNR
+# [proposed: the public clip's copy at CRF 18 had its lowest frame at 49.3 dB, 24 Nov; restore-7's decision asks a
+# smaller viewing copy for a gate of its own]
+PLAYBACK_COPY_MIN_PSNR_DB = 45
 
 MEDIA_ENUMS = {
     "variantKinds": list(VARIANT_KINDS),
@@ -469,6 +478,9 @@ M_STILL = "a still is one frame with no duration, audio or frame times"
 M_CLIP_TIMES = "a clip names the hash of its frame times"
 M_DISPLAY_COPY_STILL = "a display copy is a PNG of a still"
 M_VARIANT_URI = "a variant is served at its own route"
+M_PLAYBACK_CLIP = "only a restored clip has a playback copy"
+M_PLAYBACK_URI = "a playback copy is served at its own route"
+M_PLAYBACK_GATE = "a playback copy passed its gate"
 M_VARIANT_COLOUR = "a PNG holds R'G'B' and a clip Y'CbCr"
 M_MANIFEST_SOURCE = "the parts are of one source"
 M_MANIFEST_IDS = "the variant, its graph and its attempt name each other"
@@ -494,6 +506,7 @@ REFINEMENT_MESSAGES = (
     M_MEASURED_NOISE, M_CHROMA_NOISE, M_FAILURE_SENTENCE, *(_attempt_fit(s) for s in ATTEMPT_STATUSES), M_READY_PASSED,
     M_REFUSED_IS_REJECTED, M_GATE_REJECTION, M_REJECTION_NAMED, M_NO_GATE_BEFORE, M_GATE_STARS_FOUND,
     M_ATTEMPT_TIMES, M_DISCLOSURE, M_SOURCE_ASSET, M_STILL, M_CLIP_TIMES, M_DISPLAY_COPY_STILL, M_VARIANT_URI,
+    M_PLAYBACK_CLIP, M_PLAYBACK_URI, M_PLAYBACK_GATE,
     M_VARIANT_COLOUR, M_MANIFEST_SOURCE, M_MANIFEST_IDS, M_MANIFEST_READY, M_MANIFEST_DISCLOSURE, M_MANIFEST_GATE,
     M_MANIFEST_NOISE, M_MANIFEST_FRAMES, M_STILL_GATE, M_SOLUTION, M_CONVERTED_DISCLOSURE,
 )
@@ -502,6 +515,11 @@ REFINEMENT_MESSAGES = (
 def variant_uri(source_sha256: str, variant_id: str) -> str:
     """Where a stored variant is served (REQ-RST-8.6): its own route under its original, never a store path."""
     return f"/api/media/{source_sha256}/variants/{variant_id}/file"
+
+
+def playback_uri(source_sha256: str, variant_id: str) -> str:
+    """Where a restored clip's playback copy is served: beside the variant's own file, under the same original."""
+    return f"/api/media/{source_sha256}/variants/{variant_id}/playback"
 
 
 # =============================================================================================
@@ -980,6 +998,22 @@ class VariantAudioStream(AudioStreamDescriptor):
     sha256: Sha256
 
 
+class VariantPlaybackCopy(_Record):
+    """A copy of a restored clip that every browser the app meets draws (clip-display-copy, DECIDED-BY-LEAD 21:57 on
+    24 Nov): H.264 High, made beside the lossless file and never in its place, kept only past its own gate. The
+    download, Original pixels and the evidence stay the lossless file this record describes. Strict, as every media
+    record is."""
+
+    model_config = WIRE_CONFIG
+    uri: _pattern(MEDIA_PATTERNS["playbackUri"])
+    sha256: Sha256
+    byte_size: Positive
+    mime_type: Literal["video/mp4"]
+    codecs: _pattern(MEDIA_PATTERNS["playbackCodecs"])
+    # Its gate: the lowest PSNR of any frame against the lossless restoration
+    min_psnr_db: PositiveNumber
+
+
 class MediaVariant(_Record):
     id: VariantId
     kind: VariantKind
@@ -1000,6 +1034,8 @@ class MediaVariant(_Record):
     audio_streams: list[VariantAudioStream]
     colour: ColourDescription
     display_orientation: Optional[DisplayOrientation] = None
+    # A restored clip's copy for playing in browsers, when it passed its gate (clip-display-copy)
+    playback_copy: Optional[VariantPlaybackCopy] = None
     disclosure: Disclosure
     created_at_utc: UtcInstant = Field(alias="createdAtUTC")
 
@@ -1022,6 +1058,14 @@ class MediaVariant(_Record):
             failures.append(M_VARIANT_URI)
         if self.colour.model != ("rgb" if still else "ycbcr"):
             failures.append(M_VARIANT_COLOUR)
+        copy = self.playback_copy
+        if copy is not None:
+            if still or self.kind != "restoration":
+                failures.append(M_PLAYBACK_CLIP)
+            if copy.uri != playback_uri(self.source_sha256, self.id):
+                failures.append(M_PLAYBACK_URI)
+            if copy.min_psnr_db < PLAYBACK_COPY_MIN_PSNR_DB:
+                failures.append(M_PLAYBACK_GATE)
         _refuse(failures)
         return self
 
@@ -1346,7 +1390,10 @@ def build_media_samples() -> dict[str, Any]:
         variant(variant_clip_id, "restoration", graph_clip, attempts[2], byteSize=52811776, mimeType="video/quicktime",
                 width=1080, height=1920, durationMs=12000, frameCount=360,
                 frameTimesSha256=_label_hash("albedian synthetic frame times: clip"), audioStreams=[audio],
-                colour=colour_clip, displayOrientation=portrait),
+                colour=colour_clip, displayOrientation=portrait,
+                playbackCopy={"uri": playback_uri(clip_sha, variant_clip_id),
+                              "sha256": _label_hash(f"albedian synthetic playback copy: {variant_clip_id}"),
+                              "byteSize": 11534336, "mimeType": "video/mp4", "codecs": "avc1.640028", "minPsnrDb": 49.25}),
         variant(variant_black_id, "restoration", graph_black, attempts[3], byteSize=20971520, mimeType="video/mp4",
                 width=1920, height=1080, durationMs=6000, frameCount=180,
                 frameTimesSha256=_label_hash("albedian synthetic frame times: black clip"), audioStreams=[],
@@ -1739,6 +1786,17 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
     bad("MediaVariant", edit(still_variant, ["uri"], variant_uri(display_variant["sourceSha256"], still_variant["id"])),
         "a uri under another original", M_VARIANT_URI)
     bad("MediaVariant", edit(still_variant, ["colour"], clip_colour), "a PNG described as Y'CbCr", M_VARIANT_COLOUR)
+    playback = clip_variant["playbackCopy"]
+    bad("MediaVariant", {**still_variant, "playbackCopy": {**playback, "uri": playback_uri(still_variant["sourceSha256"], still_variant["id"])}},
+        "a still with a playback copy", M_PLAYBACK_CLIP)
+    bad("MediaVariant", edit(clip_variant, ["playbackCopy", "uri"], playback_uri(clip_variant["sourceSha256"], still_variant["id"])),
+        "a playback copy served under another variant", M_PLAYBACK_URI)
+    bad("MediaVariant", edit(clip_variant, ["playbackCopy", "minPsnrDb"], 44.9), "a playback copy below its gate", M_PLAYBACK_GATE)
+    bad("MediaVariant", edit(clip_variant, ["playbackCopy", "codecs"], "avc1.F40028"),
+        "a playback copy in High 4:4:4 Predictive, which Safari does not draw")
+    bad("MediaVariant", edit(clip_variant, ["playbackCopy", "mimeType"], "video/quicktime"), "a playback copy that is no MP4")
+    bad("MediaVariant", edit(clip_variant, ["playbackCopy", "uri"], clip_variant["uri"]), "a playback copy at the lossless file's route")
+    bad("MediaVariant", {**clip_variant, "playbackCopy": {**playback, "gopFrames": 15}}, "a playback copy with a field the contract has not")
     bad("MediaVariant", edit(clip_variant, ["colour"], png8), "a clip described as R'G'B'", M_VARIANT_COLOUR)
     bad("MediaVariant", edit(still_variant, ["uri"], f"/srv/albedian/store/5f/{still_variant['sourceSha256']}/variants/x/variant.png"),
         "a store path as the uri")
