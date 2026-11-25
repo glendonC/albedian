@@ -1288,3 +1288,45 @@ def test_the_job_finds_its_measure_frames_stars_in_the_pool_and_stores_the_same_
                         lambda clip, sampled, exposure_ev=None, fields=None: real_measure(clip, sampled, exposure_ev))
     alone = run("alone")
     assert pooled == alone
+
+
+def _letterboxed_clip_file(path: Path, *, bars: int, count: int = 8, size: int = 192) -> None:
+    """A noisy dark sky (Y' 30, sigma 4) between black bars of `bars` rows at Y' 16 top and bottom, limited range,
+    written losslessly."""
+    from fractions import Fraction
+
+    tags = clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")
+    video = clip_io.VideoFormat(size, size, "yuv420p", tags)
+    frames = []
+    for k in range(count):
+        rng = np.random.default_rng(401 + k)
+        y = np.clip(np.round(30.0 + rng.normal(0.0, 4.0, (size, size))), 0, 255).astype(np.uint8)
+        y[:bars], y[size - bars:] = 16, 16
+        frames.append((y, np.full((size // 2, size // 2), 128, np.uint8), np.full((size // 2, size // 2), 128, np.uint8)))
+    with clip_io.ClipEncoder(path, video, time_base=Fraction(1, 600), frame_times=[20 * k for k in range(count)],
+                             container="mov", crf=0) as encoder:
+        for frame in frames:
+            encoder.write(frame)
+        encoder.finish()
+
+
+def test_a_letterboxed_clip_is_restored_by_the_job_inside_its_bars_and_not_refused(client, tmp_path) -> None:
+    # letterbox-2 [decided 2026-11-24 by the lead]: bars on 25 percent of the rows once met C36, which names a sky that
+    # is not near black; the job now measures, restores and gates the picture inside them
+    source = tmp_path / "letterboxed.mov"
+    _letterboxed_clip_file(source, bars=24)
+    sha = upload(client, source.read_bytes(), "video/quicktime")
+    started = client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"})
+    assert started.status_code == 202, started.text
+    job = finished(client, started.json())
+    UploadJob.model_validate(job)
+    assert job["state"] == "succeeded", (job.get("error"), job.get("attemptId"))
+    stages = {stage["stage"]: (stage["done"], stage["total"]) for stage in job["stages"]}
+    assert stages["measure"] == (8, 8) and stages["verify"] == (8, 8)
+    record = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()
+    contracts.MediaVariant.model_validate(record["variant"])
+    contracts.ProcessingAttempt.model_validate(record["attempt"])
+    variant, attempt = record["variant"], record["attempt"]
+    assert (variant["width"], variant["height"], variant["frameCount"]) == (192, 192, 8)
+    assert attempt["status"] == "ready" and attempt["gate"]["passed"] is True
+    assert "noise" in attempt["measured"] and attempt["measured"]["fineNoiseLeft"] is not None

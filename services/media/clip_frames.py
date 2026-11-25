@@ -11,12 +11,14 @@ there is no noise reduction (REQ-RST-4.3): the frame is only lifted. The dissolv
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 import numpy as np
 
+from services.media import bars as bars_rule
 from services.media import clip_io, colour, encode, frame_pool, gate, noise, spatial, stars, temporal, tone
 from services.media.decode import (
     ASSUMED_IN_DESIGN,
@@ -251,9 +253,37 @@ def sample_indices(frame_count: int, samples: int = SAMPLE_FRAMES) -> list[int]:
     return sorted({int(round(k * (frame_count - 1) / (samples - 1))) for k in range(samples)})
 
 
+def clip_bars(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]]) -> bars_rule.Bars:
+    """The clip's black bars by the one shared rule (`bars.find_bars`) on its measure frames' luma at the clip's own
+    nominal black, counted toward the edge to its chroma grid [decided 2026-11-24 by the lead: letterbox-1 at 12:19,
+    the opening condition at 13:36]; none for most clips."""
+    across, down = clip._factors()
+    return bars_rule.find_bars([np.asarray(planes[0]) for planes in sampled], clip.black_code(), down=down, across=across)
+
+
+def _crop(clip: ClipColour, found: bars_rule.Bars, planes: Sequence[np.ndarray]) -> tuple[np.ndarray, ...]:
+    """A frame's planes inside its bars: luma by the bars as they are, chroma on its own grid."""
+    across, down = clip._factors()
+    return tuple(found.crop(plane) if k == 0 else found.crop(plane, down, across) for k, plane in enumerate(planes))
+
+
+def _put_back(clip: ClipColour, found: bars_rule.Bars, original: Sequence[np.ndarray],
+              picture: Sequence[np.ndarray]) -> tuple[np.ndarray, ...]:
+    """The frame's own original planes with the restored picture inside its bars."""
+    across, down = clip._factors()
+    return tuple(found.put_back(whole, inner) if k == 0 else found.put_back(whole, inner, down, across)
+                 for k, (whole, inner) in enumerate(zip(original, picture)))
+
+
+def _inside(clip: ClipColour, found: bars_rule.Bars) -> ClipColour:
+    """The colour of the picture inside the bars: the same fields, the inside's size."""
+    return dataclasses.replace(clip, width=clip.width - found.left - found.right, height=clip.height - found.top - found.bottom)
+
+
 @dataclass(frozen=True)
 class ClipSettings:
-    """What is measured once for the clip and used for every frame: its colour, its noise table and its lift."""
+    """What is measured once for the clip and used for every frame: its colour, its noise table and its lift, and the
+    bars its picture sits inside (`clip_bars`, none for most clips)."""
 
     colour: ClipColour
     measurement: noise.NoiseMeasurement
@@ -264,6 +294,11 @@ class ClipSettings:
     # The fine noise after the spatial filter over before, at the darkest quarter of the measure frames' blocks; None
     # without a noise table
     fine_noise_left: Optional[float] = None
+    bars: bars_rule.Bars = bars_rule.Bars()
+
+    def within(self) -> "ClipSettings":
+        """The settings as the picture inside the bars is restored and gated: its own colour and no bars."""
+        return dataclasses.replace(self, colour=_inside(self.colour, self.bars), bars=bars_rule.Bars())
 
 
 def _whole_blocks(array: np.ndarray) -> np.ndarray:
@@ -300,11 +335,12 @@ def _chosen_code_blocks(luma_codes: np.ndarray, blocks: np.ndarray) -> np.ndarra
     return grid.reshape(rows * columns, noise.BLOCK_PX, noise.BLOCK_PX)[chosen_mask]
 
 
-def measure_stars(clip: ClipColour, run: frame_pool.Run) -> list[stars.StarField]:
-    """The pool's work for the measure: the stars of each of the run's own frames on its own luma, as `measure_clip`
-    finds them [decided 2026-11-24 by the lead, clipmeasure-pool-one: one after another, the 8 measure frames' stars
-    were 32 of the public clip's 34 s of measure]."""
-    return [stars.find_stars(clip.luma_codes(planes), peak=clip.peak_code()) for planes in run.own()]
+def measure_stars(clip: ClipColour, found: bars_rule.Bars, run: frame_pool.Run) -> list[stars.StarField]:
+    """The pool's work for the measure: the stars of each of the run's own frames on its own luma inside the clip's
+    bars (`clip_bars`), as `measure_clip` finds them [decided 2026-11-24 by the lead, clipmeasure-pool-one: one after
+    another, the 8 measure frames' stars were 32 of the public clip's 34 s of measure]."""
+    return [stars.find_stars(clip.luma_codes(_crop(clip, found, planes) if found else planes), peak=clip.peak_code())
+            for planes in run.own()]
 
 
 def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], exposure_ev: Optional[float] = None,
@@ -316,13 +352,20 @@ def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], expo
     in the job's pool, in the order of `sampled`; without it they are found here, one frame after another."""
     if fields is not None and len(fields) != len(sampled):
         raise ClipFramesError("the measure frames and their stars do not match")
+    # A clip with bars is measured inside them (`clip_bars`), and so are the stars it is handed
+    whole, found = clip, clip_bars(clip, sampled)
+    if found:
+        clip = _inside(whole, found)
+        sampled = [_crop(whole, found, planes) for planes in sampled]
+    if fields is not None and any(np.shape(f.footprint) != np.shape(p[0]) for f, p in zip(fields, sampled)):
+        raise ClipFramesError("the measure frames and their stars do not match")
     too_small = min(clip.height, clip.width) < noise.MIN_SIDE_PX
-    linear, codes, footprints, clipped, found, confirmed = [], [], [], [], 0, 0
+    linear, codes, footprints, clipped, found_count, confirmed = [], [], [], [], 0, 0
     for k, planes in enumerate(sampled):
         light = clip.to_linear(planes)
         luma = clip.luma_codes(planes)
         field_ = fields[k] if fields is not None else stars.find_stars(luma, peak=clip.peak_code())
-        found += field_.found
+        found_count += field_.found
         confirmed += field_.confirmed
         linear.append(light if clip.height < noise.BLOCK_PX else _whole_blocks(light))
         if not too_small:
@@ -366,7 +409,7 @@ def measure_clip(clip: ClipColour, sampled: Sequence[Sequence[np.ndarray]], expo
         left = working_noise / before
     lift = tone.solve_lift(luminance, encode_slope=clip.encode_slope, decode=clip.decode, original_noise=original_noise,
                            working_noise=working_noise, exposure_ev=exposure_ev)
-    return ClipSettings(clip, measurement, lift, len(sampled), found, confirmed, left)
+    return ClipSettings(whole, measurement, lift, len(sampled), found_count, confirmed, left, found)
 
 
 def _filtered(clip: ClipColour, light: np.ndarray, footprint: np.ndarray, measurement: noise.NoiseMeasurement) -> np.ndarray:
@@ -579,7 +622,12 @@ def _run_frames(settings: ClipSettings, run: frame_pool.Run, originals: Sequence
 
 def restore_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameResult]:
     """The pool's work for one run (`frame_pool.runs` with `window=RUN_WINDOW`): each of its own frames prepared,
-    dissolved and finished, in order."""
+    dissolved and finished, in order. A clip with bars is restored inside them, and each frame takes back its own."""
+    if settings.bars:
+        found, clip = settings.bars, settings.colour
+        inside = frame_pool.Run(run.first, run.before, run.count, tuple(_crop(clip, found, planes) for planes in run.frames))
+        return [dataclasses.replace(result, planes=_put_back(clip, found, run.frames[run.before + k], result.planes))
+                for k, result in enumerate(restore_run(settings.within(), inside))]
     frames, first = _run_frames(settings, run, run.frames)
     # The clip index of frames[0]
     origin = run.first - first
@@ -650,7 +698,12 @@ def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
     """The pool's work for the gate: a run of (original planes, stored planes) pairs, or triples with the frame's own
     stars as the restore pass found them (`gate.OwnStars`), each of its own frames gated, in order. The window, the
     frames together and the stars are rebuilt from the original frames alone, by the same rule as the merge's (design
-    section 10); a frame's own stars are taken from its record only for the luma they were found on."""
+    section 10); a frame's own stars are taken from its record only for the luma they were found on. A clip with bars
+    is gated inside them, as it was restored."""
+    if settings.bars:
+        found, clip = settings.bars, settings.colour
+        inside = tuple((_crop(clip, found, item[0]), _crop(clip, found, item[1]), *item[2:]) for item in run.frames)
+        return gate_run(settings.within(), frame_pool.Run(run.first, run.before, run.count, inside))
     frames, first = _run_frames(settings, run, [pair[0] for pair in run.frames])
     # The run's tile searches (`gate.Searches`): a repeated frame's stored tiles are answered from their first search.
     # The restore pass's own are not handed here: the gate reads the encode back, whose values are not the codes the
@@ -668,6 +721,6 @@ def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
     return results
 
 
-__all__ = ["ClipColour", "ClipSettings", "FrameGate", "FrameResult", "OriginalSide", "Prepared", "clip_colour",
+__all__ = ["ClipColour", "ClipSettings", "clip_bars", "FrameGate", "FrameResult", "OriginalSide", "Prepared", "clip_colour",
            "dissolve_frame", "finish_frame", "gate_frame", "gate_run", "measure_clip", "measure_stars", "original_side", "prepare_frame",
            "restore_run", "sample_indices", "stored_luma", "to_stored"]

@@ -19,6 +19,7 @@ from hypothesis import strategies as st
 
 from services.contracts import media as contracts
 from services.media import clip_frames, clip_io, colour, frame_pool, gate, noise, spatial, stars, tone
+from services.media import bars as bars_rule
 from test_photo_path import SOURCE_MARKERS, numeric_constants
 from test_temporal import pan, render, star_list
 
@@ -217,7 +218,7 @@ def test_the_measure_frames_stars_found_in_the_pool_give_the_settings_found_alon
     frames = scene_clip(clip, 12, 34, sigma=0.002, moving=True)
     sampled = [frames[i] for i in clip_frames.sample_indices(len(frames))]
     alone = clip_frames.measure_clip(clip, sampled)
-    with frame_pool.FramePool(functools.partial(clip_frames.measure_stars, clip), workers=2) as pool:
+    with frame_pool.FramePool(functools.partial(clip_frames.measure_stars, clip, bars_rule.Bars()), workers=2) as pool:
         fields = list(pool.map(frame_pool.runs(iter(sampled), run_frames=1, window=0)))
     assert len(fields) == len(sampled) == 8
     for planes, got in zip(sampled, fields):
@@ -899,6 +900,273 @@ def test_a_quarter_block_is_one_code_only_with_its_border_out_to_the_fine_scales
     far = np.zeros(64, dtype=bool)
     far[:24] = True
     assert clip_frames._blocks_flat_in_codes(halves, far) is True
+
+
+# letterbox-2 [decided 2026-11-24 by the lead: 12:19, the rule of 13:36 in the shared services/media/bars.py]: a
+# clip with bars that open its picture is measured, restored and gated inside them, and every restored frame keeps
+# its own original bars
+
+def _sky_frames(clip: clip_frames.ClipColour, *, sky_y: float, sigma: float, count: int = 6, width: int = 192,
+                height: int = 144, seed: int = 401) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """`count` frames of a noisy dark sky at Y' `sky_y` (8 bit codes, scaled to `clip.bits`), grey chroma, no bars."""
+    scale, top, mid = 2 ** (clip.bits - 8), 2**clip.bits - 1, 2 ** (clip.bits - 1)
+    across, down = colour.SUBSAMPLING[clip.subsampling]
+    frames = []
+    for k in range(count):
+        rng = np.random.default_rng(seed + k)
+        y = np.clip(np.round((sky_y + rng.normal(0.0, sigma, (height, width))) * scale), 0, top).astype(clip.dtype)
+        chroma = np.full((height // down, width // across), mid, dtype=clip.dtype)
+        frames.append((y, chroma, chroma.copy()))
+    return frames
+
+
+def _with_bars(clip: clip_frames.ClipColour, frames, *, top: int = 0, bottom: int = 0, left: int = 0, right: int = 0,
+               code: int | None = None) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """`frames` padded with bars of luma `code` (nominal black by default) and grey chroma; even bars on 4:2:0."""
+    across, down = colour.SUBSAMPLING[clip.subsampling]
+    code = clip.black_code() if code is None else code
+    mid = 2 ** (clip.bits - 1)
+    out = []
+    for y, cb, cr in frames:
+        padded_y = np.pad(y, ((top, bottom), (left, right)), constant_values=code)
+        chroma = [np.pad(c, ((top // down, bottom // down), (left // across, right // across)), constant_values=mid)
+                  for c in (cb, cr)]
+        out.append((padded_y, *chroma))
+    return out
+
+
+def _luma_only(clip: clip_frames.ClipColour, lumas: list[np.ndarray]) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    across, down = colour.SUBSAMPLING[clip.subsampling]
+    mid = 2 ** (clip.bits - 1)
+    return [(y, *(np.full((-(-y.shape[0] // down), -(-y.shape[1] // across)), mid, dtype=clip.dtype),) * 2) for y in lumas]
+
+
+def test_bars_are_whole_edge_rows_or_columns_of_one_code_at_or_below_black_on_both_opposite_edges() -> None:
+    Bars = bars_rule.Bars
+    limited = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    sky = _sky_frames(limited, sky_y=22.0, sigma=2.5, height=144)
+    assert clip_frames.clip_bars(limited, _with_bars(limited, sky, top=24, bottom=24)) == Bars(24, 24, 0, 0)
+    tall = _sky_frames(limited, sky_y=22.0, sigma=2.5, width=128, height=192)
+    assert clip_frames.clip_bars(limited, _with_bars(limited, tall, left=32, right=32)) == Bars(0, 0, 32, 32)
+    small = _sky_frames(limited, sky_y=22.0, sigma=2.5, width=160, height=144)
+    assert clip_frames.clip_bars(limited, _with_bars(limited, small, top=24, bottom=24, left=16, right=16)) == Bars(24, 24, 16, 16)
+    # One edge only is not a bar: the decided C36 rule reads it
+    for one_edge in ({"top": 48}, {"bottom": 48}, {"left": 64}, {"right": 64}):
+        assert clip_frames.clip_bars(limited, _with_bars(limited, sky, **one_edge)) == Bars(), one_edge
+    assert not Bars() and Bars(2, 2, 0, 0)
+    # Above black is not a bar; full range's black is 0, so 16 there is above it
+    assert clip_frames.clip_bars(limited, _with_bars(limited, sky, top=24, bottom=24, code=17)) == Bars()
+    full = clip_frames.clip_colour(video("yuvj420p", clip_io.ColourTags(), width=192, height=192))
+    full_sky = _sky_frames(full, sky_y=6.0, sigma=2.5)
+    assert clip_frames.clip_bars(full, _with_bars(full, full_sky, top=24, bottom=24)) == Bars(24, 24, 0, 0)
+    assert clip_frames.clip_bars(full, _with_bars(full, full_sky, top=24, bottom=24, code=16)) == Bars()
+    # Odd bars are counted toward the edge to the chroma grid: 13 and 11 rows are 12 and 10 on 4:2:0, kept on 4:4:4
+    odd = [np.pad(f[0], ((13, 11), (0, 0)), constant_values=16) for f in sky]
+    assert clip_frames.clip_bars(limited, _luma_only(limited, odd)) == Bars(12, 10, 0, 0)
+    ten = clip_frames.clip_colour(video("yuv444p10le", BT709_TV, width=192, height=168))
+    ten_sky = _sky_frames(ten, sky_y=22.0, sigma=2.5)
+    odd_ten = [np.pad(f[0], ((13, 11), (0, 0)), constant_values=64) for f in ten_sky]
+    assert clip_frames.clip_bars(ten, _luma_only(ten, odd_ten)) == Bars(13, 11, 0, 0)
+    # A row is a bar only if it is one code in every measure frame: one sample a code off ends the bar there
+    broken = [f[0].copy() for f in _with_bars(limited, sky, top=24, bottom=24)]
+    # (row 20, mostly black, opens no picture, so the top has no bar and the clip none)
+    broken[3][20, 100] = 17
+    assert clip_frames.clip_bars(limited, _luma_only(limited, broken)) == Bars()
+    # and so does a sample a code under black: the row is still at or below black but no longer one code
+    under = [f[0].copy() for f in _with_bars(limited, sky, top=24, bottom=24)]
+    under[2][171, 7] = 15
+    assert clip_frames.clip_bars(limited, _luma_only(limited, under)) == Bars()
+    # 4:2:2 halves the columns only: odd rows are kept, odd columns are counted to the chroma grid
+    wide = clip_frames.clip_colour(video("yuv422p", BT709_TV, width=192, height=192))
+    wide_sky = _sky_frames(wide, sky_y=22.0, sigma=2.5, width=168, height=168)
+    odd_both = [np.pad(f[0], ((13, 11), (13, 11)), constant_values=16) for f in wide_sky]
+    assert clip_frames.clip_bars(wide, _luma_only(wide, odd_both)) == Bars(13, 11, 12, 10)
+    # A picture over the bars' rows in one measure frame only: no bars
+    shown = [f[0].copy() for f in _with_bars(limited, sky, top=24, bottom=24)]
+    shown[5][:24] = shown[5][24:48]
+    assert clip_frames.clip_bars(limited, _luma_only(limited, shown)) == Bars()
+    # A clip all at black has no picture inside bars
+    black = [np.full((192, 192), 16, dtype=np.uint8) for _ in range(4)]
+    assert clip_frames.clip_bars(limited, _luma_only(limited, black)) == Bars()
+    # A bar must open a picture: the row or column past it has its median above black. A black starry sky whose stars
+    # never reach the edges has whole edge rows and columns at 16, and no bars (the public sample's case)
+    starry = []
+    for k in range(6):
+        y = np.full((192, 192), 16, dtype=np.uint8)
+        rng = np.random.default_rng(611 + k)
+        for row, column in rng.integers(40, 152, size=(30, 2)):
+            y[row - 1:row + 2, column - 1:column + 2] = 60
+        starry.append(y)
+    assert clip_frames.clip_bars(limited, _luma_only(limited, starry)) == Bars()
+    # and bars round a picture whose own top row is mostly black are no bars either
+    dark_edge = [f[0].copy() for f in sky]
+    for y in dark_edge:
+        y[0, :120] = 16
+    assert clip_frames.clip_bars(limited, _luma_only(limited, [np.pad(y, ((24, 24), (0, 0)), constant_values=16)
+                                                                for y in dark_edge])) == Bars()
+    # and so is the far edge: a picture whose bottom row is mostly black
+    dark_bottom = [f[0].copy() for f in sky]
+    for y in dark_bottom:
+        y[-1, :120] = 16
+    assert clip_frames.clip_bars(limited, _luma_only(limited, [np.pad(y, ((24, 24), (0, 0)), constant_values=16)
+                                                                for y in dark_bottom])) == Bars()
+
+
+@pytest.mark.parametrize("pix_fmt,tags,sky_y,sigma,bars", [
+    ("yuv420p", BT709_TV, 22.0, 2.5, {"top": 24, "bottom": 24}),
+    ("yuv420p", BT709_TV, 30.0, 4.0, {"top": 38, "bottom": 38}),
+    ("yuvj420p", clip_io.ColourTags(), 6.0, 2.5, {"top": 24, "bottom": 24}),
+    ("yuv420p", BT709_TV, 22.0, 2.5, {"left": 32, "right": 32}),
+])
+def test_a_letterboxed_clip_measures_as_its_unbarred_picture_and_does_not_meet_c36(
+        pix_fmt: str, tags: clip_io.ColourTags, sky_y: float, sigma: float, bars: dict) -> None:
+    width = 192 - bars.get("left", 0) - bars.get("right", 0)
+    height = 192 - bars.get("top", 0) - bars.get("bottom", 0)
+    full = clip_frames.clip_colour(video(pix_fmt, tags, width=192, height=192))
+    inside = clip_frames.clip_colour(video(pix_fmt, tags, width=width, height=height))
+    picture = _sky_frames(full, sky_y=sky_y, sigma=sigma, width=width, height=height)
+    twin = clip_frames.measure_clip(inside, picture)
+    barred = clip_frames.measure_clip(full, _with_bars(full, picture, **bars))
+    assert barred.bars == bars_rule.Bars(bars.get("top", 0), bars.get("bottom", 0), bars.get("left", 0), bars.get("right", 0))
+    assert twin.bars == bars_rule.Bars() and barred.colour == full
+    assert barred.measurement.reason is None and twin.measurement.reason is None
+    assert barred.measurement.table() == twin.measurement.table()
+    assert barred.lift.record() == twin.lift.record() and barred.lift.beta == twin.lift.beta
+    assert barred.fine_noise_left == twin.fine_noise_left
+    assert (barred.frames_measured, barred.stars_found, barred.stars_confirmed) == (
+        twin.frames_measured, twin.stars_found, twin.stars_confirmed)
+    assert barred.within().colour == inside and barred.within().bars == bars_rule.Bars()
+
+
+def test_a_black_band_on_one_edge_only_or_a_sky_on_the_black_floor_between_bars_still_meets_c36() -> None:
+    # The lead's condition for letterbox-1: neither is a bar, so the decided C36 refusal reads them as before
+    limited = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    for one_edge, height, width in (({"top": 64}, 128, 192), ({"bottom": 64}, 128, 192), ({"left": 64}, 192, 128)):
+        picture = _sky_frames(limited, sky_y=22.0, sigma=2.5, width=width, height=height)
+        with pytest.raises(clip_frames.ClipRefusal) as caught:
+            clip_frames.measure_clip(limited, _with_bars(limited, picture, **one_edge))
+        assert caught.value.sentence == clip_frames.NEAR_BLACK_CLIP, one_edge
+    # Bars on both edges round a sky truly on the black floor, a black band at 16 in the left 160 columns with a glow at
+    # the right, so no sky row is one code. (a) Against the top bar: the row past it is mostly black and opens no
+    # picture, so there are no bars and the clip meets C36 as before. (b) Below a noisy strip of 8 rows: the bars are
+    # found and cut, and the sky inside them meets C36
+    picture = _sky_frames(limited, sky_y=22.0, sigma=2.5, height=144)
+    for start, rows, bars in ((0, 32, bars_rule.Bars()), (8, 48, bars_rule.Bars(24, 24, 0, 0))):
+        glowing = []
+        for y, cb, cr in picture:
+            y = y.copy()
+            y[start:start + rows, :160] = 16
+            y[start:start + rows, 160:] = np.clip(y[start:start + rows, 160:], 17, None)
+            glowing.append((y, cb, cr))
+        barred = _with_bars(limited, glowing, top=24, bottom=24)
+        assert clip_frames.clip_bars(limited, barred) == bars, start
+        with pytest.raises(clip_frames.ClipRefusal) as caught:
+            clip_frames.measure_clip(limited, barred)
+        assert caught.value.sentence == clip_frames.NEAR_BLACK_CLIP, start
+
+
+@pytest.mark.parametrize("sigma", [4.0, 0.0])
+def test_a_letterboxed_clip_restores_and_gates_as_its_unbarred_picture_and_keeps_its_own_bars(sigma: float) -> None:
+    # sigma 4: a noise table, the merge and the filter; sigma 0: a flat sky with a few stars, no table, the lift alone
+    full = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    inside = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=144))
+    picture = _sky_frames(full, sky_y=30.0, sigma=sigma, count=6, height=144)
+    if not sigma:
+        for y, _, _ in picture:
+            for row, column in ((40, 50), (90, 140), (120, 30)):
+                y[row - 1:row + 2, column - 1:column + 2] = 120
+    barred = _with_bars(full, picture, top=24, bottom=24)
+    twin_settings = clip_frames.measure_clip(inside, picture)
+    settings = clip_frames.measure_clip(full, barred)
+    assert settings.bars == bars_rule.Bars(24, 24, 0, 0)
+    assert (settings.measurement.reason is None) == bool(sigma)
+    twin = clip_frames.restore_run(twin_settings, frame_pool.Run(0, 0, len(picture), tuple(picture)))
+    restored = clip_frames.restore_run(settings, frame_pool.Run(0, 0, len(barred), tuple(barred)))
+    assert len(restored) == len(twin) == len(barred)
+    for original, own, other in zip(barred, restored, twin):
+        y, cb, cr = own.planes
+        assert y.shape == original[0].shape and cb.shape == original[1].shape and cr.shape == original[2].shape
+        # The inside is the unbarred picture's restoration, sample for sample
+        assert np.array_equal(y[24:168], other.planes[0])
+        assert np.array_equal(cb[12:84], other.planes[1]) and np.array_equal(cr[12:84], other.planes[2])
+        # The bars are the frame's own original bars
+        assert np.array_equal(y[:24], original[0][:24]) and np.array_equal(y[168:], original[0][168:])
+        assert np.array_equal(cb[:12], original[1][:12]) and np.array_equal(cr[84:], original[2][84:])
+        assert (own.neighbours, own.stars_found, own.stars_confirmed, own.beta, own.repeats, own.samples) == (
+            other.neighbours, other.stars_found, other.stars_confirmed, other.beta, other.repeats, other.samples)
+    gated = clip_frames.gate_run(settings, frame_pool.Run(0, 0, len(barred), tuple(
+        (o, r.planes, r.own_stars) for o, r in zip(barred, restored))))
+    twin_gated = clip_frames.gate_run(twin_settings, frame_pool.Run(0, 0, len(picture), tuple(
+        (o, r.planes, r.own_stars) for o, r in zip(picture, twin))))
+    for own, other in zip(gated, twin_gated):
+        assert own.outcome.record == other.outcome.record and own.outcome.unconfirmed == other.outcome.unconfirmed
+        assert (own.stars_found, own.stars_confirmed, own.together, own.fixed) == (
+            other.stars_found, other.stars_confirmed, other.together, other.fixed)
+    assert all(g.outcome.record["passed"] for g in gated)
+
+
+def test_a_restored_frame_keeps_whatever_its_own_bars_hold() -> None:
+    # Bars are found on the measure frames; a frame between them whose bar rows hold a caption gets that caption back
+    full = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    picture = _sky_frames(full, sky_y=30.0, sigma=4.0, count=12, height=144)
+    barred = _with_bars(full, picture, top=24, bottom=24)
+    settings = clip_frames.measure_clip(full, barred)
+    assert settings.bars == bars_rule.Bars(24, 24, 0, 0)
+    unread = next(k for k in range(len(barred)) if k not in set(clip_frames.sample_indices(len(barred))))
+    y = barred[unread][0].copy()
+    y[4:12, 40:120] = 180
+    barred[unread] = (y, barred[unread][1], barred[unread][2])
+    restored = clip_frames.restore_run(settings, frame_pool.Run(unread, 0, 1, (barred[unread],)))
+    assert np.array_equal(restored[0].planes[0][:24], y[:24])
+    assert np.array_equal(restored[0].planes[0][168:], y[168:])
+
+
+def test_each_frame_of_a_run_takes_back_its_own_bars_not_another_frames() -> None:
+    # AUDIT-B's note on letterbox-2: a run of three frames whose bars each hold a caption of their own; every restored
+    # frame's bars are its own original samples, so a mix-up of frames in the put-back is caught
+    full = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    picture = _sky_frames(full, sky_y=30.0, sigma=4.0, count=8, height=144)
+    barred = _with_bars(full, picture, top=24, bottom=24)
+    settings = clip_frames.measure_clip(full, barred)
+    assert settings.bars == bars_rule.Bars(24, 24, 0, 0)
+    run = []
+    for k, (y, cb, cr) in enumerate(barred[2:5]):
+        y = y.copy()
+        y[4:12, 20 + 50 * k:60 + 50 * k] = 100 + 40 * k
+        y[176:184, 150 - 40 * k:180 - 40 * k] = 90 + 30 * k
+        run.append((y, cb, cr))
+    restored = clip_frames.restore_run(settings, frame_pool.Run(2, 0, 3, tuple(run)))
+    assert [r.index for r in restored] == [2, 3, 4]
+    for own, original in zip(restored, run):
+        assert np.array_equal(own.planes[0][:24], original[0][:24])
+        assert np.array_equal(own.planes[0][168:], original[0][168:])
+        assert np.array_equal(own.planes[1][:12], original[1][:12]) and np.array_equal(own.planes[2][84:], original[2][84:])
+    assert not np.array_equal(restored[0].planes[0][:24], restored[1].planes[0][:24])
+
+
+def test_the_pooled_measure_finds_the_stars_of_the_picture_inside_the_bars() -> None:
+    # clipmeasure-pool-1 with bars: the job finds the bars first and the pool's stars are those of the picture inside
+    full = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=192))
+    inside = clip_frames.clip_colour(video("yuv420p", BT709_TV, width=192, height=144))
+    picture = _sky_frames(full, sky_y=30.0, sigma=4.0, count=8, height=144)
+    for y, _, _ in picture:
+        y[60:63, 90:93] = 200
+    barred = _with_bars(full, picture, top=24, bottom=24)
+    found = clip_frames.clip_bars(full, barred)
+    assert found == bars_rule.Bars(24, 24, 0, 0)
+    fields = clip_frames.measure_stars(full, found, frame_pool.Run(0, 0, len(barred), tuple(barred)))
+    for planes, got in zip(picture, fields):
+        want = stars.find_stars(inside.luma_codes(planes), peak=inside.peak_code())
+        assert (got.found, got.confirmed) == (want.found, want.confirmed) and got.footprint.shape == (144, 192)
+        assert np.array_equal(got.footprint, want.footprint)
+    pooled = clip_frames.measure_clip(full, barred, fields=fields)
+    alone = clip_frames.measure_clip(full, barred)
+    assert pooled.lift.record() == alone.lift.record() and pooled.lift.beta == alone.lift.beta
+    assert (pooled.stars_found, pooled.stars_confirmed, pooled.bars) == (alone.stars_found, alone.stars_confirmed, found)
+    # Stars of the whole frames do not match the picture inside the bars: the path's own fault, never a mixed measure
+    whole = clip_frames.measure_stars(full, bars_rule.Bars(), frame_pool.Run(0, 0, len(barred), tuple(barred)))
+    with pytest.raises(clip_frames.ClipFramesError):
+        clip_frames.measure_clip(full, barred, fields=whole)
 
 
 @pytest.mark.parametrize("width,height", [(64, 48), (48, 64), (64, 6)])

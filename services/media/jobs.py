@@ -70,8 +70,10 @@ MEDIA_PRODUCER_FILES = (
 # and keeps its bars (photo-bars-one); 11, a clip whose darkest quarter is a flat dark band above black takes the
 # not-measured path as dark_level_flat, and a dark-level noise made of rounding reads as zero (flatband-two); 12, a
 # still whose darkest quarter is a flat band off the black clip takes the not-measured path as dark_level_flat, by the
-# clip's flat test, now one helper in noise.py, border reach included (photo-flatband-one)
-MEDIA_PRODUCER = Producer("albedian.restore", 12, MEDIA_PRODUCER_FILES)
+# clip's flat test, now one helper in noise.py, border reach included (photo-flatband-one); 13, a clip with black bars
+# that open its picture on both opposite edges is measured, restored and gated inside them and keeps its own bars
+# (letterbox-2)
+MEDIA_PRODUCER = Producer("albedian.restore", 13, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -496,7 +498,8 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
                     break
     # The measure frames' stars in the pool, as many at once as there are workers (clipmeasure-pool-one) [decided
     # 2026-11-24 by the lead: one after another they were 32 of the public clip's 34 s of measure]
-    with frame_pool.FramePool(functools.partial(clip_frames.measure_stars, clip),
+    # found inside the clip's bars, as the measure reads them (letterbox-2)
+    with frame_pool.FramePool(functools.partial(clip_frames.measure_stars, clip, clip_frames.clip_bars(clip, sampled)),
                               workers=max(1, min(workers, len(sampled)))) as pool:
         fields = list(pool.map(frame_pool.runs(iter(sampled), run_frames=1, window=0)))
         measure_peak = pool.worker_peak_bytes
