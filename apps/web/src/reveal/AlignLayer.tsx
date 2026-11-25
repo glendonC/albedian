@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { grabPose, pinchPose, projectAltAz, scalePose, skyAt, turnPose, type AlignPose, type AlignTarget } from './alignPose.js';
 import type { PlacedTarget } from './earlyPose.js';
+import { nameClearOf } from './keepClear.js';
 import type { Box } from './predictedSkyMarks.js';
 
 /**
@@ -66,7 +67,7 @@ export function placeMarks(placed: readonly PlacedTarget[], rect: FrameRect, fon
       const b = { x0: left ? x - r - 6 - width : x + r + 4, x1: left ? x - r - 4 : x + r + 6 + width, y0: y - fontPx, y1: y + fontPx * 0.5 };
       if (b.x0 < rect.leftPx + 2 || b.x1 > rect.leftPx + rect.widthPx - 2) continue;
       if (boxes.some((q) => overlaps(b, q))) continue;
-      if (clear.some((q) => overlaps(b, q))) continue;
+      if (clear.some((q) => overlaps(b, nameClearOf(q)))) continue;
       boxes.push(b);
       mark = { ...mark, name: target.name, nameOnLeft: left };
       break;

@@ -8,6 +8,7 @@ import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable } from './deepSky.js';
 import { phoneFacts, predictedSkyWords } from './predictedSky.js';
 import { StarCard } from './StarCard.js';
+import { fadeOf } from './keepClear.js';
 import { predictedSkyMarks, skyLeaderPath, type Box } from './predictedSkyMarks.js';
 
 /** The star card's seven staggered lines (top, name, sub, numbers, source, actions, notes; motion.css). */
@@ -16,11 +17,15 @@ const STAR_CARD_LINES = 7;
 /** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
 function clearOf(status: HTMLElement | null): Box[] {
   // On the phone: the readout, its foot at y 756 (F2), and the close circle
-  const rects = [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar'), document.querySelector('.predsky-top')]
+  return [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar'), document.querySelector('.predsky-top')]
     .filter((el): el is Element => el !== null)
-    .map((el) => el.getBoundingClientRect())
-    .filter((r) => r.width > 0 && r.height > 0);
-  return rects.map((r) => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }));
+    .flatMap((el) => {
+      const r = el.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0)) return [];
+      // The status column and the Sound circle carry the ruled fade on the laptop: a name clears its reach (20:12)
+      const fade = fadeOf(el);
+      return [{ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom, ...(fade ? { fade } : {}) }];
+    });
 }
 import '../styles/look-tokens.css';
 import '../styles/look.css';

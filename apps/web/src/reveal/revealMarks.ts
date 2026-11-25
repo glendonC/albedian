@@ -3,7 +3,8 @@ import { chooseLabelledFindingIds, projectFindingToViewport } from '../component
 import { sessionPhotoRect, sourcePixelToViewport } from '../components/sourcePhotoRect.js';
 import { worldToPixelWCS } from '@albedian/camera-rig';
 import { DEEP_SKY_LIMIT, decisionMagnitude, deepSkyName, deepSkyRowOf, deepSkySymbol, hasCommonName, isDeepSky, type DeepSkySymbol, type DeepSkyTable } from './deepSky.js';
-import { phoneRevealScrollPx } from './keepClear.js';
+import { nameClearOf, phoneRevealScrollPx } from './keepClear.js';
+import type { Box } from './predictedSkyMarks.js';
 
 /**
  * Which marks the reveal draws over the photo (reveal, approved 2026-11-12), and where.
@@ -54,12 +55,6 @@ export const DEEP_SKY_NAME_GAP_PX = 6;
 const DEEP_SKY_ROOM_PX = DEEP_SKY_RADIUS_PX + 2;
 const DEEP_SKY_STAR_ROOM_PX = 9;
 
-interface Box {
-  x0: number;
-  x1: number;
-  y0: number;
-  y1: number;
-}
 const overlap = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 
 /** The type size and gap of a name, and the faintest star named, on the laptop and at phone width. */
@@ -161,7 +156,8 @@ export function revealMarks(
 ): RevealMark[] {
   const spec = phone ? PHONE_NAMES : LAPTOP_NAMES;
   const scrollY = phone ? Math.max(0, scrollTopPx ?? phoneRevealScrollPx()) : 0;
-  const places = scrollY === 0 ? clear : clear.map((box) => ({ x0: box.x0, x1: box.x1, y0: box.y0 + scrollY, y1: box.y1 + scrollY }));
+  const scrolled = (box: Box): Box => ({ x0: box.x0, x1: box.x1, y0: box.y0 + scrollY, y1: box.y1 + scrollY, ...(box.fade ? { fade: scrolled(box.fade) } : {}) });
+  const places = scrollY === 0 ? clear : clear.map(scrolled);
   const solution = session.observationSolution;
   const rect = sessionPhotoRect(session, viewportWidthPx, viewportHeightPx);
   if (!solution || !rect) return [];
@@ -262,7 +258,7 @@ export function revealMarks(
     const runsInto = (box: Box) =>
       rooms.some((room) => room.id !== finding.id && overlap(box, room.box)) ||
       taken.some((other) => overlap(box, other)) ||
-      places.some((place) => overlap(box, place));
+      places.some((place) => overlap(box, nameClearOf(place)));
     // To the right, unless that crosses the photo's right edge
     let nameOnLeft = nameBox(position.xPx, position.yPx, candidate, picked, false, spec).x1 - NAME_MARGIN_PX > right;
     let chosen: Box | null = nameBox(position.xPx, position.yPx, candidate, picked, nameOnLeft, spec);
@@ -307,7 +303,7 @@ export function revealMarks(
       // A mark over the symbol's own centre (a star the object holds) does not stand in its way, as build.mjs has it
       const holds = (room: Box) => room.x0 <= mark.xPx && mark.xPx <= room.x1 && room.y0 <= mark.yPx && mark.yPx <= room.y1;
       if (deepRooms.some((room) => room.id !== mark.finding.id && !holds(room.box) && overlap(box, room.box)) || taken.some((other) => overlap(box, other))) continue;
-      if (places.some((place) => overlap(box, place))) continue;
+      if (places.some((place) => overlap(box, nameClearOf(place)))) continue;
       taken.push(box);
       marks[index] = { ...mark, name, nameOnLeft: onLeft };
       break;

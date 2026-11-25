@@ -35,7 +35,37 @@ export const WORKING_KEEP_CLEAR = ['[data-testid="work-early"]', '.reveal-nav .s
  */
 export const KEEP_CLEAR_BLOCKS = ['[data-testid="reveal-status"]', '[data-testid="work-early"]', '[data-testid="reveal-phone-estimate"]', '.reveal-phone-counts', '.restore-phone-lead', '.restore-phone-why'] as const;
 
-const laidOut = (r: DOMRect) => r.width > 0 && r.height > 0;
+/** What a name keeps clear of at a place: the fade's reach where the place carries one, else the place itself. */
+export const nameClearOf = (place: Box): Box => place.fade ?? place;
+
+/**
+ * The places kept clear that carry the ruled fade (D19's values, reveal.css), the element that draws it (its ::before)
+ * and how far the fade reaches beyond that element's box, in px, as the stylesheet sets it: the open card on the laptop,
+ * the flight's disclosure column and the predicted sky's status column on the laptop, and the Sound circle, under the
+ * views row's fade. A name clears the reach; a ring keeps the place's own box (DECIDED-BY-LEAD 20:12 on 24 Nov).
+ */
+export const FADE_REACH: ReadonlyArray<{ place: string; faded: string; reach: { left: number; top: number; right: number; bottom: number } }> = [
+  { place: '.reveal-card:not(.is-phone):not(.is-sky)', faded: '.reveal-card:not(.is-phone):not(.is-sky)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },
+  { place: "[data-testid='reveal-status'][data-moment='there']", faded: ".reveal-status[data-moment='there']", reach: { left: 36, top: 44, right: 44, bottom: 44 } },
+  { place: '.predsky:not(.is-phone) .predsky-status', faded: '.predsky:not(.is-phone) .predsky-status', reach: { left: 36, top: 44, right: 44, bottom: 44 } },
+  { place: '.reveal-nav .sound-control', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
+];
+
+/** The fade's reach around a place kept clear, where the place carries one (FADE_REACH), on screen; else none. */
+export function fadeOf(el: Element): Box | undefined {
+  for (const { place, faded, reach } of FADE_REACH) {
+    if (!el.matches(place)) continue;
+    const drawn = el.closest(faded);
+    const r = drawn?.getBoundingClientRect();
+    if (!r || !laidOut(r)) return undefined;
+    return { x0: r.left - reach.left, x1: r.right + reach.right, y0: r.top - reach.top, y1: r.bottom + reach.bottom };
+  }
+  return undefined;
+}
+
+function laidOut(r: DOMRect): boolean {
+  return r.width > 0 && r.height > 0;
+}
 const boxOf = (r: DOMRect): Box => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom });
 
 /** Each element's box on screen; one not laid out (no width or height) keeps nothing clear. */
@@ -60,8 +90,9 @@ export function blockBoxOf(block: Element): Box[] {
   ];
 }
 
-const sameBoxes = (a: readonly Box[], b: readonly Box[]) =>
-  a.length === b.length && a.every((box, i) => box.x0 === b[i]!.x0 && box.x1 === b[i]!.x1 && box.y0 === b[i]!.y0 && box.y1 === b[i]!.y1);
+const sameBox = (a: Box | undefined, b: Box | undefined): boolean =>
+  a === undefined || b === undefined ? a === b : a.x0 === b.x0 && a.x1 === b.x1 && a.y0 === b.y0 && a.y1 === b.y1 && sameBox(a.fade, b.fade);
+const sameBoxes = (a: readonly Box[], b: readonly Box[]) => a.length === b.length && a.every((box, i) => sameBox(box, b[i]));
 
 /**
  * How far the phone reveal's scrolling container has scrolled (D38 item 1, D36 item 5): read from the container's own
@@ -86,7 +117,11 @@ export function useKeepClear(active: boolean, selectors: readonly string[] = REV
   const [, setResized] = useState(0);
   useLayoutEffect(() => {
     const isBlock = (el: Element) => blocks.some((block) => el.matches(block));
-    const next = active ? selectors.flatMap((selector) => [...document.querySelectorAll(selector)]).flatMap((el) => (isBlock(el) ? blockBoxOf(el) : boxesOf([el]))) : [];
+    const withFade = (el: Element, boxes: Box[]) => {
+      const fade = fadeOf(el);
+      return fade ? boxes.map((box) => ({ ...box, fade })) : boxes;
+    };
+    const next = active ? selectors.flatMap((selector) => [...document.querySelectorAll(selector)]).flatMap((el) => withFade(el, isBlock(el) ? blockBoxOf(el) : boxesOf([el]))) : [];
     setBoxes((now) => (sameBoxes(now, next) ? now : next));
   });
   useEffect(() => {

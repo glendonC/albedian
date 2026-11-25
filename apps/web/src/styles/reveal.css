@@ -547,6 +547,84 @@
   mask-composite: intersect;
 }
 
+/* laptop-column-fade-one (gap five, ruled 16:40; UIUX-look5to10-units-READY.md item 1): D19's fade, the card backing's
+   values (82 percent black under the words, clearing to nothing over 44 px beyond their open edges, the window's edges
+   closing the rest; no box, no edge line, no motion of its own), behind the flight's disclosure column and its readout
+   and the predicted sky's status column on the laptop, so the sky yields under the words. The columns stand 36 px from
+   the window's left edge, so the fade reaches that edge; the readout stands 32 px from the right edge, as the card */
+.reveal-status[data-moment='there'],
+.predsky:not(.is-phone) .predsky-status,
+.flight-readout:not(.is-phone) {
+  isolation: isolate;
+}
+
+.reveal-status[data-moment='there']::before,
+.predsky:not(.is-phone) .predsky-status::before {
+  content: '';
+  position: absolute;
+  left: -36px;
+  top: -44px;
+  bottom: -44px;
+  right: -44px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-composite: intersect;
+}
+
+.flight-readout:not(.is-phone)::before {
+  content: '';
+  position: absolute;
+  left: -44px;
+  top: -44px;
+  bottom: -44px;
+  right: -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-composite: intersect;
+}
+
+/* views-row fade (UIUX's addition of 19:46 at the foot of UIUX-reveal-READY.md, DECIDED-BY-LEAD 19:48): the same fade
+   behind the views row and the Sound circle whenever a photo or a sky is drawn under them; on the laptop the row stands
+   26 px from the window's top and 32 px from its right, so those edges close it and it clears over 44 px to the left
+   and below; on the phone behind the whole top bar, clearing over 44 px below its foot. No box, no motion, the pills
+   unchanged */
+/* The row is fixed with its own z-index, so it is its own stacking: the fade stands behind its pills */
+.reveal-nav::before {
+  content: '';
+  position: absolute;
+  left: -44px;
+  top: -26px;
+  bottom: -44px;
+  right: -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, #000 calc(100% - 44px), transparent 100%);
+  mask-composite: intersect;
+}
+
+.reveal-phone-top::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: -60px;
+  bottom: -44px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.82) calc(100% - 44px), rgba(0, 0, 0, 0) 100%);
+}
+
 .reveal-answer__q {
   margin: 0 0 14px;
   font-size: 14px;

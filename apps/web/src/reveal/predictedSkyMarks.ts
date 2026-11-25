@@ -3,6 +3,7 @@ import type { ObservationSolution } from '@albedian/contracts';
 import { projectIcrsThroughPose } from '../components/skyPoseProjection.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { ALIGN_MAGNITUDE_LIMIT } from './alignPose.js';
+import { nameClearOf } from './keepClear.js';
 import { CARD_RIGHT_PX, CARD_TOP_PX, CARD_WIDTH_PX } from './revealMarks.js';
 
 /**
@@ -33,6 +34,12 @@ export interface Box {
   x1: number;
   y0: number;
   y1: number;
+  /**
+   * Where the place carries the ruled fade (D19's values), how far the fade reaches: a name is placed only where its
+   * whole box clears it, so no word stands half in the darkening; a ring keeps the place's own box (DECIDED-BY-LEAD 20:12
+   * on 24 Nov, folded into laptop-column-fade-one).
+   */
+  fade?: Box;
 }
 const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 
@@ -71,7 +78,7 @@ export function placeSkyMarks(
       const box = { x0, x1: x0 + width, y0: star.yPx - fontPx * 0.6, y1: star.yPx + fontPx * 0.6 };
       if (box.x0 < 2 || box.x1 > widthPx - 2) continue;
       if (names.some((n) => overlaps(box, n))) continue;
-      if (clear.some((b) => overlaps(box, b))) continue;
+      if (clear.some((b) => overlaps(box, nameClearOf(b)))) continue;
       if (rings.some((ring) => ring.id !== star.id && overlaps(box, ring.box))) continue;
       names.push(box);
       return { ...unnamed, r: SKY_NAMED_RING_PX, name: star.name, nameOnLeft: left };
