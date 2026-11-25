@@ -99,12 +99,15 @@ class FakeContext {
  * Serves any file under the sources base with a few bytes, and logs the requests. Like a browser's
  * fetch it refuses to be called as another object's method ("Illegal invocation").
  */
-function sourcesFetch(options: { fail?: (url: string) => boolean; analysis?: RecordingAnalysis } = {}) {
+function sourcesFetch(options: { fail?: (url: string) => boolean; analysis?: RecordingAnalysis; slowMs?: (url: string) => number } = {}) {
   const requests: string[] = [];
   const impl = vi.fn(async function (this: unknown, input: RequestInfo | URL): Promise<Response> {
     if (this !== undefined && this !== globalThis) throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
     const url = String(input);
     requests.push(url);
+    // A slow file, as a 14 MB recording is on a phone: answered after this long on the test's timers
+    const slow = options.slowMs?.(url) ?? 0;
+    if (slow > 0) await new Promise((resolve) => setTimeout(resolve, slow));
     if (options.fail?.(url)) return new Response('unavailable in this test', { status: 503 });
     if (url.endsWith('recording-analysis.json')) return new Response(JSON.stringify(options.analysis ?? null));
     return new Response(new Uint8Array(16));
@@ -450,6 +453,32 @@ describe('MusicLayer playing the soundtrack', () => {
     layer.stop();
     moments.arrive();
     expect(layer.getStatus()).toMatchObject({ state: 'off' });
+  });
+
+  // music-crossing-2 (LEAD ANSWER 19:41 on 24 Nov): Go there crosses on the next beat after the press, the recording
+  // fetched while the star card it sits on is open
+  it('crosses Go there on the next beat after the press when the star card was open while the recording was fetched', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch, requests } = sourcesFetch({ analysis: ANALYSIS, slowMs: (url) => (url.endsWith('.mp3') ? 1500 : 0) });
+    const layer = new MusicLayer({ moment: 'look_around', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ piece: 'ambient-beats', state: 'playing' });
+    await clockTo(ctx, 12);
+    layer.setMoment('star_card');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(requests.some((url) => url.endsWith('.mp3'))).toBe(true);
+    // The card stays open two seconds, longer than the recording takes to come
+    await clockTo(ctx, 14);
+    const sourcesBefore = ctx.sources().length;
+    layer.setMoment('travel');
+    await clockTo(ctx, 14.1);
+    // Ambient beats started at 10.25 with a 0.625 s beat: the first beat at or after 14.25 is 14.625
+    expect(layer.getStatus()).toMatchObject({ moment: 'travel', piece: 'recording', state: 'playing', passes: 2 });
+    const starts = ctx.sources().slice(sourcesBefore).flatMap((node) => node.starts);
+    expect(Math.min(...starts)).toBeCloseTo(14.625, 9);
   });
 
   it('drops a pass still loading when the moment moves on, so only the new piece plays', async () => {

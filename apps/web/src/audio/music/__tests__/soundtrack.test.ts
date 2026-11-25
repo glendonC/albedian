@@ -105,6 +105,8 @@ class Stage {
   readonly fades: { piece: string; atSec: number; fadeSec: number; moment: SoundtrackMoment; setting: string; settingChanged: boolean }[] = [];
   /** Each prepare the director asked for, and when its piece is ready (after the stage's fetch). */
   readonly prepares: { piece: string; askedSec: number; readyAt: number }[] = [];
+  /** Each piece the director asked to have fetched ahead, one press before its crossing (music-crossing-2). */
+  readonly warms: { piece: string; atSec: number }[] = [];
   /** How long a prepare's fetch takes; the layer schedules this far ahead of its clock. */
   fetchSec = 0.2;
   leadSec = 0.25;
@@ -127,6 +129,10 @@ class Stage {
       if (command.kind === 'fade') {
         this.fades.push({ piece: command.piece, atSec: command.atSec, fadeSec: command.fadeSec, moment: this.director.state.moment, setting: this.director.state.setting, settingChanged: this.settingChanged });
         this.sounding = null;
+        continue;
+      }
+      if (command.kind === 'warm') {
+        this.warms.push({ piece: command.piece, atSec: this.now });
         continue;
       }
       if (command.kind === 'prepare') {
@@ -674,6 +680,42 @@ describe('the crossing on the beat', () => {
     expect(unbeaten.prepares).toEqual([]);
     unbeaten.advance(T.settleSec);
     expect(unbeaten.fades.at(-1)).toMatchObject({ piece: 'a', fadeSec: T.fadeSec });
+  });
+});
+
+// music-crossing-2 (LEAD ANSWER 19:41 on 24 Nov): Go there crosses on the next beat after the press, so its piece is
+// fetched while the star card it sits on is open ("fetched while the moment settles"); Back to Moment's while travelling
+describe('the crossing one press away', () => {
+  it("asks for Go there's piece as a star card opens, and Back to Moment's as the flight starts", () => {
+    const s = stage({ moment: 'look_around', random: () => 0 });
+    s.start();
+    s.advance(10);
+    s.moment('star_card');
+    expect(s.warms).toEqual([{ piece: 'recording', atSec: 10 }]);
+    s.advance(3);
+    s.moment('travel');
+    expect(s.warms.at(-1)).toEqual({ piece: 'organ-pulse', atSec: 13 });
+    expect(s.warms).toHaveLength(2);
+  });
+
+  it('asks for nothing the playing piece already covers, nothing for other moments, and nothing with the music off, pinned or before Audio on', () => {
+    // Organ and pulse plays and fits Back to Moment: travelling asks for nothing more
+    const s = stage({ moment: 'back_to_moment', random: () => 0, pieces: [{ id: 'organ', moments: ['back_to_moment', 'travel'] }, { id: 'b', moments: ['star_card'] }, { id: 'c', moments: ['back_to_moment'] }] });
+    s.start();
+    s.advance(5);
+    s.moment('travel');
+    s.moment('look_around');
+    s.moment('reveal');
+    expect(s.warms).toEqual([]);
+    for (const setting of ['off', 'ambient-beats']) {
+      const pinned = stage({ moment: 'look_around', setting });
+      pinned.start();
+      pinned.advance(5);
+      pinned.moment('star_card');
+      expect(pinned.warms).toEqual([]);
+    }
+    const quiet = stage({ moment: 'look_around' });
+    expect(quiet.director.setMoment('star_card', 1)).toEqual([]);
   });
 });
 

@@ -353,7 +353,8 @@ describe('SoundtrackDirector timings, debounce, gap bounds, and lifecycle guards
     expect(director.state).toMatchObject({ phase: 'gap', untilSec: 32 });
 
     // Moment changes at 29.5s and settles at 30.0s; 30 + entrySec (34s) > untilSec (32s), so untilSec stays 32s!
-    expect(director.setMoment('travel', 29.5)).toEqual([]);
+    // Travel also asks for Back to Moment's piece ahead of its crossing (music-crossing-2)
+    expect(director.setMoment('travel', 29.5)).toEqual([{ kind: 'warm', piece: 'organ-pulse' }]);
     expect(director.nextWakeSec()).toBe(30);
     expect(director.tick(30)).toEqual([]);
     expect(director.state).toMatchObject({ phase: 'gap', moment: 'travel', untilSec: 32 });

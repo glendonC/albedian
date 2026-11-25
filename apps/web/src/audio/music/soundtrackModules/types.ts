@@ -22,6 +22,16 @@ export const SOUNDTRACK_MOMENTS: readonly SoundtrackMoment[] = [
  */
 export const CROSSING_MOMENTS: ReadonlySet<SoundtrackMoment> = new Set(['reveal', 'travel', 'back_to_moment']);
 
+/**
+ * The crossing one press away from a moment, whose piece is fetched as soon as that moment comes, so the crossing turns
+ * on the next beat after the press (music-crossing-2, LEAD ANSWER 19:41 on 24 Nov: the incoming piece "fetched while
+ * the moment settles"): Go there sits on the star card, and Back to Moment is one press away while travelling.
+ */
+export const CROSSING_AHEAD: ReadonlyMap<SoundtrackMoment, SoundtrackMoment> = new Map([
+  ['star_card', 'travel'],
+  ['travel', 'back_to_moment'],
+]);
+
 /** Default visit moment before the app reports another. */
 export const DEFAULT_SOUNDTRACK_MOMENT: SoundtrackMoment = 'arrive';
 
@@ -65,7 +75,9 @@ export type DirectorCommand =
   /** Fade the piece that sounds (or is about to) out from `atSec` over `fadeSec`. */
   | { readonly kind: 'fade'; readonly piece: string; readonly atSec: number; readonly fadeSec: number }
   /** Fetch and arrange `piece` now, so a crossing finds it ready; tell the director `prepared` when it is. */
-  | { readonly kind: 'prepare'; readonly piece: string };
+  | { readonly kind: 'prepare'; readonly piece: string }
+  /** Fetch `piece`'s files ahead, one press before its crossing; nothing is reported back. */
+  | { readonly kind: 'warm'; readonly piece: string };
 
 /**
  * stopped: Audio is off. silent: nothing to play (the setting is off). starting: a play was sent and

@@ -467,6 +467,7 @@ export class MusicLayer {
     for (const command of commands) {
       if (command.kind === 'fade') this.fadePass(command.fadeSec, command.atSec);
       else if (command.kind === 'prepare') void this.preparePass(command.piece);
+      else if (command.kind === 'warm') void this.fetchPiece(command.piece);
       else plays.push(this.playPass(command.piece, command.atSec));
     }
     this.arm();
@@ -545,6 +546,18 @@ export class MusicLayer {
    */
   private async preparePass(id: string): Promise<void> {
     const run = this.run;
+    if (!this.ctx || !this.options.sourcesBase) return;
+    await this.fetchPiece(id);
+    if (run !== this.run) return;
+    await this.answer(this.director.prepared(id, this.clock(), this.lead));
+  }
+
+  /**
+   * Fetches `id`'s samples, room and recording into the layer's caches, from the stars then on screen: for a crossing
+   * now (`prepare`) or one press ahead of it (`warm`, music-crossing-2). A file it lacks is said by the pass's own
+   * fetch when the piece plays.
+   */
+  private async fetchPiece(id: string): Promise<void> {
     const ctx = this.ctx;
     const base = this.options.sourcesBase;
     if (!ctx || !base) return;
@@ -556,10 +569,8 @@ export class MusicLayer {
       await this.roomFor(ctx, arrangement.room);
       if (arrangement.recording) await this.recordingFor(ctx, base, arrangement.recording.file);
     } catch {
-      // Said by the pass's own fetch when the crossing plays it
+      // Said by the pass's own fetch when the piece plays
     }
-    if (run !== this.run) return;
-    await this.answer(this.director.prepared(id, this.clock(), this.lead));
   }
 
   private async playPass(id: string, atSec: number): Promise<void> {

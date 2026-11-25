@@ -17,6 +17,7 @@ import {
   type PendingMoment,
 } from './silenceScheduler.js';
 import {
+  CROSSING_AHEAD,
   CROSSING_MOMENTS,
   DEFAULT_SOUNDTRACK_MOMENT,
   MAX_DIRECTOR_TICK_STEPS,
@@ -98,6 +99,24 @@ export class SoundtrackDirector {
       this.crossing = null;
       return [];
     }
+    const out = this.takeMoment(moment, nowSec);
+    return [...out, ...this.warmAhead(moment)];
+  }
+
+  /**
+   * The pieces the crossing one press away from `moment` would pick, to be fetched now (music-crossing-2); none when
+   * the playing piece already fits that crossing, or the music is pinned or off.
+   */
+  private warmAhead(moment: SoundtrackMoment): DirectorCommand[] {
+    const ahead = CROSSING_AHEAD.get(moment);
+    if (!ahead || this.setting !== SOUNDTRACK_SETTING || this.phase === 'stopped') return [];
+    if (this.piece !== null && pieceIdFitsMoment(this.pieces, this.piece, ahead)) return [];
+    return this.pieces
+      .filter((piece) => piece.moments.includes(ahead))
+      .map((piece) => ({ kind: 'warm' as const, piece: piece.id }));
+  }
+
+  private takeMoment(moment: SoundtrackMoment, nowSec: number): DirectorCommand[] {
     const due = this.tick(nowSec);
     // A new moment ends a crossing still waiting for its piece, whichever moment it is
     this.crossing = null;
