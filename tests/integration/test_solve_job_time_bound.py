@@ -222,18 +222,19 @@ def test_a_job_given_no_limit_stops_its_search_at_the_products_own_bound(
     body = _dense_png(320, 240, 200)
     assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
     sha = hashlib.sha256(body).hexdigest()
-    bounds: list[float] = []
+    bounds: list[tuple[str, float]] = []
     real = job_runner._SLOT_WORKERS["solve"].call
 
     def spy(*args: Any, **kwargs: Any) -> Any:
-        bounds.append(kwargs["timeout_s"])
+        bounds.append((args[0].__name__, kwargs["timeout_s"]))
         return real(*args, **kwargs)
 
     monkeypatch.setattr(job_runner._SLOT_WORKERS["solve"], "call", spy)
     monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", 123.5)
     job = ingest_jobs.run_solve_job(store, sha)
     assert job["state"] == "succeeded"
-    assert bounds == [123.5]
+    # The phone solver's detection beside the server's (detect-overlap-1), then the chain, each at the product's bound
+    assert bounds == [("_prepare_phone_detections", 123.5), ("_solve_chain", 123.5)]
 
 
 def test_production_runs_the_searches_in_the_worker() -> None:

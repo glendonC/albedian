@@ -128,8 +128,14 @@ class FakeWorker:
         self.error = error
         self.asked: list[dict[str, Any]] = []
 
-    def call(self, fn: Callable[..., Any], args: tuple, kwargs: dict, *, timeout_s: float, progress_kwarg: str,
-             on_event: Callable[..., None], stop: Any = None) -> Any:
+    def call(self, fn: Callable[..., Any], args: tuple, kwargs: dict, *, timeout_s: float, progress_kwarg: str | None = None,
+             on_event: Callable[..., None] | None = None, stop: Any = None) -> Any:
+        if fn.__name__ == "_prepare_phone_detections":
+            # The phone solver's detection the job has made beside its own (detect-overlap-1): kept, and made, as the
+            # child makes it
+            image, _, _ = args
+            self.asked.append({"fn": fn.__name__, "image": [list(image.shape), str(image.dtype)], "timeout_s": timeout_s})
+            return fn(*args, **kwargs)
         image, detections, width, height = args
         self.asked.append({"fn": fn.__name__, "image": None if image is None else [list(image.shape), str(image.dtype)],
                            "detections": len(detections), "size": [width, height], "kwargs": dict(sorted(kwargs.items())),
@@ -489,6 +495,8 @@ def _against_upload(record: dict[str, Any], sent: tuple[str, ...], name: str) ->
             _close(json.loads(json.dumps(expected)), findings[predicted[0]:], where + "predicted")
             solution["findings"] = [*others, *([PREDICTED_MARK] * len(predicted))]
     for asked in record["worker"] or []:
+        if asked["fn"] == "_prepare_phone_detections":
+            continue  # the phone solver's detection beside the job's own (detect-overlap-1): no time or place sent
         kwargs = asked["kwargs"]
         assert kwargs["obs_utc_iso"] == (format_utc(SENT["moment"]) if "time" in sent else None), \
             where + "the solve child was not given the sent moment"

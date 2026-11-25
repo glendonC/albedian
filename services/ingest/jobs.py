@@ -500,6 +500,74 @@ class _PhoneDetections:
         return self._found
 
 
+# detect-overlap-1: the job has the phone solver's detection made beside its own (`_PhoneDetectionsAlongside`); tests
+# turn it off to hold the job's records to the detections one after the other
+_DETECT_ALONGSIDE = True
+# The phone solver's detections made ahead of a chain call, by the upload's sha256 (a group's child runs one job at a
+# time), in the process the chain runs in (the child, or this one when the solve runs here); the chain call takes its
+# own out, and a later one of the same upload's frame finds the same list; at most a few are held
+_PREPARED_PHONE: dict[str, list] = {}
+_PREPARED_PHONE_MAX = 4
+
+
+def _prepare_phone_detections(image: np.ndarray, source_asset_id: str | None, key: str) -> None:
+    """The phone solver's detection of a job's frame (`_PhoneDetections`), made and kept under `key` for its chain
+    call, in the process the chain will run in; nothing is sent back."""
+    while len(_PREPARED_PHONE) >= _PREPARED_PHONE_MAX:
+        _PREPARED_PHONE.pop(next(iter(_PREPARED_PHONE)))
+    _PREPARED_PHONE[key] = _PhoneDetections(image, source_asset_id)()
+
+
+class _EitherStop:
+    """Set when the job's stop event or this job's own is: the child call stops for either."""
+
+    def __init__(self, *events: Optional[threading.Event]) -> None:
+        self._events = [e for e in events if e is not None]
+
+    def is_set(self) -> bool:
+        return any(e.is_set() for e in self._events)
+
+
+class _PhoneDetectionsAlongside:
+    """detect-overlap-1: one thread that has the group's child (or this process, when the solve runs here) make the
+    phone solver's detection (`_prepare_phone_detections`) while the server makes the job's own. `wait()` gives the
+    seconds it took and raises what it raised (a fault, the child's exit, its bound or a stop, as the chain call would
+    have); `stop()` stops it and waits for it, for a job leaving early. The two detections share nothing, so each
+    makes what it makes when they run one after the other."""
+
+    def __init__(self, ctx: "SolveContext", image: np.ndarray, source_asset_id: str, key: str, limit_s: float) -> None:
+        self._error: BaseException | None = None
+        self._seconds = 0.0
+        self._own_stop = threading.Event()
+        stop = _EitherStop(ctx.stop, self._own_stop)
+
+        def run() -> None:
+            started = time.monotonic()
+            try:
+                if _SOLVE_IN_PROCESS:
+                    _prepare_phone_detections(image, source_asset_id, key)
+                else:
+                    ctx.child().call(_prepare_phone_detections, (image, source_asset_id, key), {}, timeout_s=limit_s,
+                                     stop=stop)
+            except BaseException as error:  # noqa: BLE001 (raised again in the job's own thread by wait)
+                self._error = error
+            finally:
+                self._seconds = time.monotonic() - started
+
+        self._thread = threading.Thread(target=run, name="albedian-phone-detections", daemon=True)
+        self._thread.start()
+
+    def wait(self) -> float:
+        self._thread.join()
+        if self._error is not None:
+            raise self._error
+        return self._seconds
+
+    def stop(self) -> None:
+        self._own_stop.set()
+        self._thread.join()
+
+
 def _solve_chain(
     solve_image: np.ndarray,
     detections: list,
@@ -536,8 +604,11 @@ def _solve_chain(
     A solve from a person's alignment (`person_fov_deg`, with `person_axes` the pose in the stored frame) runs its own
     searches instead (`_solve_person_chain`). It runs no unhinted search: the upload's plain solve is its own job.
 
-    Every pass shares one phone-solver detection of the frame (`_PhoneDetections`)."""
+    Every pass shares one phone-solver detection of the frame (`_PhoneDetections`), made before the call when the job
+    had it made beside its own (`_PREPARED_PHONE`, detect-overlap-1)."""
     phone_detections = _PhoneDetections(solve_image, chain.get("source_asset_id"))
+    if chain.get("sha256") in _PREPARED_PHONE:
+        phone_detections._found = _PREPARED_PHONE.pop(chain["sha256"])
     if person_fov_deg is not None:
         return _solve_person_chain(
             solve_image, detections, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
@@ -1104,18 +1175,58 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     ctx.check_cancel()
     ctx.report({"stage": "detect", "unit": "frames", "done": 0, "total": frame_count}, persist=False)
 
-    if frame_count > 1:
-        composite = stack_video_frames_for_calibration(frames).composite_luma
-        # The frames' own rounding noise floors the stack's (FIELD field-8): the stack sits on no whole-code grid, so
-        # its own floor fell to 0.001 of a code while the phone solver's, on the same stack scaled to 0..1, is 0.255
-        detections = detect_point_sources(composite, asset_id=asset["id"], noise_floor=stack_rounding_noise(frames))
-        solve_image: np.ndarray = composite
-        ctx.report({"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count})
-    else:
-        detections = detect_point_sources(frames[0], asset_id=asset["id"])
-        solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
-        ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
-    ctx.check_cancel()
+    # The phone solver's detection made beside the server's (detect-overlap-1) is held to the search's bound too; the
+    # job's whole bound (`remaining_s`) still holds both and the searches after them
+    limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
+    if ctx.remaining_s is not None:
+        limit_s = min(limit_s, ctx.remaining_s())
+    prepared_key = sha256
+    alongside: _PhoneDetectionsAlongside | None = None
+    try:
+        if frame_count > 1:
+            composite = stack_video_frames_for_calibration(frames).composite_luma
+            solve_image: np.ndarray = composite
+            if _DETECT_ALONGSIDE:
+                alongside = _PhoneDetectionsAlongside(ctx, solve_image, asset["id"], prepared_key, limit_s)
+            # The frames' own rounding noise floors the stack's (FIELD field-8): the stack sits on no whole-code grid,
+            # so its own floor fell to 0.001 of a code while the phone solver's, on the same stack scaled to 0..1, is
+            # 0.255
+            detections = detect_point_sources(composite, asset_id=asset["id"], noise_floor=stack_rounding_noise(frames))
+            ctx.report({"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count})
+        else:
+            solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
+            if _DETECT_ALONGSIDE:
+                alongside = _PhoneDetectionsAlongside(ctx, solve_image, asset["id"], prepared_key, limit_s)
+            detections = detect_point_sources(frames[0], asset_id=asset["id"])
+            ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
+        ctx.check_cancel()
+        return _solve_after_detection(ctx, asset, moment_hint, alignment, search, frames, media_kind, original, width,
+                                      height, sha256, solve_image, detections, alongside, prepared_key)
+    finally:
+        # A job leaving early (a fault, a cancel, the bound) stops the phone detection and waits for it
+        if alongside is not None:
+            alongside.stop()
+
+
+def _solve_after_detection(
+    ctx: SolveContext,
+    asset: dict[str, Any],
+    moment_hint: Any,
+    alignment: Any,
+    search: Any,
+    frames: list,
+    media_kind: str,
+    original: Any,
+    width: int,
+    height: int,
+    sha256: str,
+    solve_image: np.ndarray,
+    detections: list,
+    alongside: "_PhoneDetectionsAlongside | None",
+    prepared_key: str,
+) -> ObservationSolution:
+    """`solve_upload` from the job's detections on: the searches in the child under the bound, then the sky."""
+    frame_count = len(frames)
 
     candidate_reported = False
     stopped_at_bound = False
@@ -1203,9 +1314,15 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         # The search keeps its own bound, and never runs past what is left of its job's
         limit_s = min(limit_s, ctx.remaining_s())
     if _SOLVE_IN_PROCESS:
+        if alongside is not None:
+            alongside.wait()
         solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
     else:
         try:
+            # The phone solver's detection made beside the server's: its fault, its child's exit, its bound or a stop
+            # ends the job here as the chain call's would (detect-overlap-1)
+            if alongside is not None:
+                alongside.wait()
             # The group's one child, which runs one job at a time; a cancel or the job's bound stops it and every
             # process it started (WorkerStopped)
             solution = ctx.child().call(

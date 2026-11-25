@@ -408,18 +408,20 @@ def test_the_search_keeps_its_own_bound_and_never_runs_past_what_is_left_of_its_
     body = _png(_starfield())
     client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
     sha = hashlib.sha256(body).hexdigest()
-    asked: list[float] = []
+    asked: list[tuple[str, float]] = []
     real_call = job_runner.SlotWorker.call
 
     def spy(worker: Any, *args: Any, timeout_s: float, **kwargs: Any) -> Any:
-        asked.append(timeout_s)
+        asked.append((args[0].__name__, timeout_s))
         return real_call(worker, *args, timeout_s=timeout_s, **kwargs)
 
     monkeypatch.setattr(ingest_jobs, "SOLVE_JOB_TIME_LIMIT_SEC", job_bound)
     monkeypatch.setattr(job_runner.SlotWorker, "call", spy)
     assert _solved(client, sha)[1]["state"] == "succeeded"
-    (timeout,) = asked
-    assert search_bound - 30.0 < timeout <= search_bound
+    # The phone solver's detection beside the server's (detect-overlap-1), then the chain: each held to the bound
+    assert [name for name, _ in asked] == ["_prepare_phone_detections", "_solve_chain"]
+    for _, timeout in asked:
+        assert search_bound - 30.0 < timeout <= search_bound
 
 
 # ---- platform-5b: the solve job's whole bound, from measured real cases ----

@@ -718,6 +718,18 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -1474,6 +1486,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -2232,6 +2256,18 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -2988,6 +3024,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -3746,6 +3794,18 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -4502,6 +4562,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -5260,6 +5332,17 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160
+     ],
+     "float64"
+    ],
+    "timeout_s": 180.0
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -6015,6 +6098,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -6882,6 +6977,17 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160
+     ],
+     "float64"
+    ],
+    "timeout_s": "<float>"
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -40834,6 +40940,17 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160
+     ],
+     "float64"
+    ],
+    "timeout_s": "<float>"
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -41656,6 +41773,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -43809,6 +43938,18 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -45265,6 +45406,18 @@
   },
   "worker": [
    {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
+   {
     "fn": "_solve_chain",
     "image": [
      [
@@ -46083,6 +46236,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 7.5
+   },
    {
     "fn": "_solve_chain",
     "image": [
@@ -46906,6 +47071,18 @@
    "solutions/job_<sha16 sent><job random>.json": "0o400"
   },
   "worker": [
+   {
+    "fn": "_prepare_phone_detections",
+    "image": [
+     [
+      120,
+      160,
+      3
+     ],
+     "uint8"
+    ],
+    "timeout_s": 180.0
+   },
    {
     "fn": "_solve_chain",
     "image": [
