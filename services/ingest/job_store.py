@@ -47,7 +47,7 @@ from pydantic import ValidationError
 
 from services.contracts.astronomy import parse_observation_solution
 from services.contracts.ingest import SolveJob, format_utc
-from services.contracts.jobs import INTERRUPTED_SENTENCE, MEDIA_JOB_KINDS, UploadJob
+from services.contracts.jobs import INTERRUPTED_SENTENCE, MEDIA_JOB_KINDS, PLAYBACK_JOB_KINDS, UploadJob
 from services.ingest.store import PRIVATE_FILE_MODE, PRIVATE_FOLDER_MODE, IngestStore, _fsync_dir
 from services.science.designations import upgrade_stored_solution
 
@@ -75,7 +75,8 @@ VARIANT_ENTRY_NAMES = frozenset(
 )
 JOB_PARTIAL = re.compile(r"(job_[0-9a-f]{32})-[a-z0-9_]{1,64}(?:\.[a-z0-9]{1,8})?\.part")
 STORE_SCRATCH = re.compile(r"\.job-[0-9a-f]{16}\.tmp")
-LOCK_FILE = re.compile(r"[a-z_]{1,32}(?:\.(?:graph|align)_[0-9a-f]{16})?\.lock")
+# A playback copy's lock is named by the variant it copies (playback-firstneed, REQ-JOB-10.1)
+LOCK_FILE = re.compile(r"[a-z_]{1,32}(?:\.(?:graph|align|var)_[0-9a-f]{16})?\.lock")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 LEGACY_JOB_ID = re.compile(r"job_[0-9a-f]{16}")
 BUCKET = re.compile(r"[0-9a-f]{2}")
@@ -97,6 +98,9 @@ def record_subject(record: Mapping[str, Any]) -> Optional[str]:
     if record.get("kind") in MEDIA_JOB_KINDS:
         return record.get("graphId")
     request = record.get("request")
+    # A playback copy's: the variant its request names (playback-firstneed, REQ-JOB-10.1)
+    if record.get("kind") in PLAYBACK_JOB_KINDS:
+        return request.get("variantId") if isinstance(request, Mapping) else None
     return alignment_subject(request) if isinstance(request, Mapping) else None
 _FOLDER_GUARDS: dict[Path, threading.Lock] = {}
 _FOLDER_GUARDS_LOCK = threading.Lock()

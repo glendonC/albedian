@@ -446,6 +446,53 @@
         }
       },
       "/api/media/{sha256}/variants/{variant_id}/playback": {
+        "post": {
+          "summary": "Start Variant Playback",
+          "description": "Start, join or return the job that makes a stored restored clip's playback copy: 202 with a new job, 200 with\nthe active job it joined or a stored refusal of its gate; 409 when the copy exists, 422 when the clip cannot be\ncopied; poll it at GET /api/ingest/jobs/{job_id}.",
+          "operationId": "start_variant_playback_api_media__sha256__variants__variant_id__playback_post",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            },
+            {
+              "name": "variant_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^var_[0-9a-f]{16}$",
+                "title": "Variant Id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        },
         "get": {
           "summary": "Get Variant Playback",
           "description": "A restored clip's playback copy, H.264 High, served as the variant's own file is: cached privately, never\nsniffed, shown inline. 404 when the variant has none; the variant's file stays the lossless restoration.",
@@ -1801,6 +1848,15 @@
         "GET"
       ],
       "name": "get_variant_file",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/{sha256}/variants/{variant_id}/playback",
+      "methods": [
+        "POST"
+      ],
+      "name": "start_variant_playback",
       "responseModel": null,
       "includeInSchema": true
     },

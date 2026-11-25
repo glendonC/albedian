@@ -38,7 +38,8 @@ from pydantic import ValidationError
 
 from services.contracts.astronomy import parse_observation_solution
 from services.contracts.ingest import format_utc
-from services.contracts.jobs import JOB_PASS_LABELS, JOB_PASS_MAX, JOB_STAGE_UNITS, MEDIA_JOB_KINDS, UploadJob
+from services.contracts.jobs import (JOB_PASS_LABELS, JOB_PASS_MAX, JOB_STAGE_UNITS, MEDIA_JOB_KINDS, PLAYBACK_JOB_KINDS,
+                                     UploadJob)
 from services.ingest.job_store import (
     JOB_PARTIAL,
     LEGACY_JOB_ID,
@@ -126,6 +127,10 @@ def _no_subject(sha256: str, request: Optional[Mapping[str, Any]]) -> Optional[s
     return None
 
 
+def _never(record: Mapping[str, Any]) -> bool:
+    return False
+
+
 
 def solve_subject(sha256: str, request: Optional[Mapping[str, Any]]) -> Optional[str]:
     """A solve's subject: its alignment's digest when a person's alignment started it (align-2r), else none."""
@@ -159,6 +164,9 @@ class JobKind:
     # (a media job's kept attempt, which holds why it was refused); asked at the commit and of a succeeded job a
     # start would answer
     results_valid: Callable[[JobStore, Mapping[str, Any]], bool] = _results_whole
+    # Which ended failed job a start answers in place of a new one: never, but where the kind says a failure is its
+    # work's own answer (a playback copy's gate refusal under the revision that made it, REQ-JOB-10.3)
+    answers_failed: Callable[[Mapping[str, Any]], bool] = _never
 
 
 # The partial a solve's early predicted sky is kept in while it runs (platform-10b)
@@ -309,10 +317,12 @@ class Runner:
         original = self.uploads.original(sha256)
         if upload is None or original is None:
             raise NoUpload("no stored upload with that hash")
-        if kind.name in MEDIA_JOB_KINDS and request is None:
+        named = kind.name in MEDIA_JOB_KINDS or kind.name in PLAYBACK_JOB_KINDS
+        if named and request is None:
             raise ValueError("a media job names its request")
-        # A media job's subject is its kind's; a solve's its alignment's, by the store's one rule (align-2s)
-        subject = kind.subject(sha256, request) if kind.name in MEDIA_JOB_KINDS else solve_subject(sha256, request)
+        # A media job's subject is its kind's, and a playback copy's (the variant it copies); a solve's its
+        # alignment's, by the store's one rule (align-2s)
+        subject = kind.subject(sha256, request) if named else solve_subject(sha256, request)
         key = (sha256, kind.name, subject)
         lock = self.store.lock_path(sha256, kind.name, subject)
         waited_until = time.monotonic() + JOIN_ELSEWHERE_BOUND_SEC
@@ -352,6 +362,8 @@ class Runner:
                 self.store.interrupt(newest)
             elif newest["state"] == "succeeded" and self._current(kind, newest):
                 return newest, False, False
+            elif newest["state"] == "failed" and kind.answers_failed(newest):
+                return newest, False, False
         elif newest is not None and newest["state"] == "succeeded" and self._current(kind, newest):
             return newest, False, False
         record: dict[str, Any] = {
@@ -366,7 +378,8 @@ class Runner:
             record["request"] = request
             record["graphId"] = subject
         elif request is not None:
-            # The person's alignment a solve runs from (align-2r), kept from its creation
+            # The person's alignment a solve runs from (align-2r), or the variant a playback copy copies (REQ-JOB-10.1,
+            # no graph), kept from its creation
             record["request"] = request
         written = self.store.write_record(record)
         return self._served(self._adopt(kind, written, lock, upload, original)), True, True
@@ -770,7 +783,7 @@ class Runner:
         self._write(job, force=raised or (total is not None and done == total), quiet=True)
 
     def _pass(self, job: _Job, stage: str, number: int, label: str) -> None:
-        if stage not in JOB_STAGE_UNITS[job.kind.name] or job.kind.name in MEDIA_JOB_KINDS:
+        if stage not in JOB_STAGE_UNITS[job.kind.name] or job.kind.name in MEDIA_JOB_KINDS or job.kind.name in PLAYBACK_JOB_KINDS:
             raise ValueError("only a solve stage reports a pass")
         if label not in JOB_PASS_LABELS or not _count(number) or not 1 <= number <= JOB_PASS_MAX:
             raise ValueError("a pass the contract does not know")
@@ -820,7 +833,7 @@ class Runner:
             return None
 
     def _input_span(self, job: _Job, first: int, count: int, start_sec: float, end_sec: float) -> None:
-        if job.kind.name in MEDIA_JOB_KINDS:
+        if job.kind.name in MEDIA_JOB_KINDS or job.kind.name in PLAYBACK_JOB_KINDS:
             raise ValueError("only a solve records a frame span")
         with self._cond:
             job.record = {**job.record, "inputSpan": {"firstFrameIndex": first, "frameCount": count,

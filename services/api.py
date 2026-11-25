@@ -50,6 +50,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from services.ingest.jobs import SOLVE_KIND
 from services.media.jobs import MEDIA_KINDS
+from services.media.playback_jobs import PLAYBACK_COPY_KIND
 from services.ingest.runner import register_default_kind, runner_for
 from services.ingest.router import get_ingest_store
 from services.ingest.router import router as ingest_router
@@ -396,7 +397,7 @@ def create_app(
     origins = allowed_origins(cors_origins)
     hosts = allowed_hosts(trusted_hosts)
     register_default_kind(SOLVE_KIND)
-    for kind in MEDIA_KINDS:
+    for kind in (*MEDIA_KINDS, PLAYBACK_COPY_KIND):
         register_default_kind(kind)
 
     @asynccontextmanager

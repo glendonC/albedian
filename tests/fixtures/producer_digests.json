@@ -1,4 +1,13 @@
 {
+ "albedian.playback": {
+  "revision": 1,
+  "files": [
+   "services/media/playback_jobs.py",
+   "services/media/clip_io.py",
+   "services/media/variants.py"
+  ],
+  "digest": "ac30400165c96c096dc97540abe795f88780338cbd0ea4aa7f42c60f225ee32e"
+ },
  "albedian.restore": {
   "revision": 16,
   "files": [

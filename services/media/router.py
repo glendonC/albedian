@@ -81,7 +81,8 @@ from services.ingest.job_store import JobStore  # noqa: E402
 from services.ingest.router import get_ingest_store  # noqa: E402
 from services.ingest.runner import NoUpload, runner_for  # noqa: E402
 from services.ingest.store import IngestStore  # noqa: E402
-from services.media import variants  # noqa: E402
+from services.contracts.jobs import PLAYBACK_NOT_COPYABLE  # noqa: E402
+from services.media import playback_jobs, variants  # noqa: E402
 
 SHA256_PATTERN = media_contract.MEDIA_PATTERNS["sha256"]
 VARIANT_PATTERN = media_contract.MEDIA_ID_PATTERNS["variant"]
@@ -316,6 +317,36 @@ def _file_digest(handle: BinaryIO) -> str:
         digest.update(block)
     handle.seek(0)
     return digest.hexdigest()
+
+
+HAS_PLAYBACK = "that variant has a playback copy"
+
+
+# The copy made at first need for a restored clip stored before restore revision 16 (playback-firstneed,
+# DECIDED-BY-LEAD 04:47 on 25 Nov, REQ-JOB-10): a clip the job cannot copy at all never gets a job
+@router.post("/api/media/{sha256}/variants/{variant_id}/playback")
+def start_variant_playback(
+    sha256: str = PathParameter(pattern=SHA256_PATTERN),
+    variant_id: str = PathParameter(pattern=VARIANT_PATTERN),
+    store: IngestStore = Depends(get_ingest_store),
+) -> JSONResponse:
+    """Start, join or return the job that makes a stored restored clip's playback copy: 202 with a new job, 200 with
+    the active job it joined or a stored refusal of its gate; 409 when the copy exists, 422 when the clip cannot be
+    copied; poll it at GET /api/ingest/jobs/{job_id}."""
+    folder, (variant,) = _variant_records(JobStore(store), store, sha256, variant_id, ("variant.json",))
+    try:
+        _, stored = playback_jobs.stored_clip(folder)
+    except (OSError, ValueError):
+        raise HTTPException(status_code=404, detail=NO_PLAYBACK) from None
+    if _playback_copy(folder, variant) is not None:
+        raise HTTPException(status_code=409, detail=HAS_PLAYBACK)
+    if not playback_jobs.copyable(stored):
+        raise HTTPException(status_code=422, detail=PLAYBACK_NOT_COPYABLE)
+    try:
+        job, created = runner_for(store).start(sha256, "playback_copy", {"kind": "playback_copy", "variantId": variant_id})
+    except NoUpload:
+        raise HTTPException(status_code=404, detail=NO_UPLOAD) from None
+    return JSONResponse(job, status_code=202 if created else 200)
 
 
 @router.get("/api/media/{sha256}/variants/{variant_id}/playback", response_class=FileResponse)
