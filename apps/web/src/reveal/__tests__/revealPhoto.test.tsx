@@ -1227,6 +1227,10 @@ describe('the reveal\'s words arrive after its marks', () => {
         animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
       },
       '.reveal-legend .reveal-legend__row > .look-tag:is([data-evidence-class="predicted"], [data-evidence-class="simulated"])': { animation: 'none' },
+      // fade-with-words-one (22:12): its fade comes in with its title, never before its words
+      '.reveal-legend:not(.is-leaving)::before': {
+        animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
+      },
     });
   });
 });

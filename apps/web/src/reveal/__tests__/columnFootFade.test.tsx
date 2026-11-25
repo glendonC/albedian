@@ -116,11 +116,13 @@ describe("D19's fade behind Real sky's column, the legend, the ask bar and the f
     expect(ruleWith('.flight-pills[data-stepped]:not(.is-phone)::before')).toEqual({ bottom: '-44px', '-webkit-mask-image': stepped, 'mask-image': stepped });
   });
 
-  it('has no motion of its own: nothing animates or transitions these fades', () => {
+  it('has no motion of its own: none in their own rules, only their blocks\' entrances, and no transition', () => {
     for (const sheet of [css, motion]) {
       postcss.parse(sheet).walkRules((rule) => {
         if (!rule.selector.includes('::before') || !/real-sky|reveal-legend|ask-bar|flight-pills/.test(rule.selector)) return;
-        rule.walkDecls((d) => expect(/^(animation|transition)/.test(d.prop), rule.selector).toBe(false));
+        // fade-with-words-one (22:12): the fade's only motion is its block's own entrance, in motion.css, each pinned to its
+        // block's first words by fadeWithWords.test.ts; reveal.css gives it none, and nothing transitions it
+        rule.walkDecls((d) => expect(sheet === motion ? /^transition/.test(d.prop) : /^(animation|transition)/.test(d.prop), rule.selector).toBe(false));
       });
     }
   });

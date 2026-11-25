@@ -606,3 +606,59 @@
 [data-arriving] .reveal-status.has-predicted:not(.is-leaving) {
   animation: none;
 }
+
+/* fade-with-words-one (LEAD ANSWER to WEB-UX 22:12 on 24 Nov, on VIDEO's frame strip of Go there): a fade is never drawn
+   without its block. Each ruled fade (reveal.css) takes its block's own entrance, the same animation as the block's first
+   words, and where the block's words leave one after another it leaves with the last of them; a block that comes in whole
+   (the ask bar on the reveal, the predicted sky's column standing at once) carries its fade with it already */
+.reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving)::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.flight-readout:not(.is-leaving)::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+}
+
+.reveal-card:not(.is-leaving)::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 0) both;
+}
+
+.reveal-card.is-leaving::before {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 6) both;
+}
+
+.reveal-answer::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * 0) both;
+}
+
+.reveal-legend:not(.is-leaving)::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+}
+
+.is-locking .reveal-legend:not(.is-leaving)::before {
+  animation-delay: calc(var(--look-mo-dur-frame-in) + var(--look-mo-dur-colour) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-locking .reveal-legend:not(.is-leaving)::before {
+    animation-delay: calc(var(--look-mo-dur-dissolve) + var(--look-mo-delay-words-in) + var(--look-mo-stagger));
+  }
+}
+
+.reveal-legend.is-leaving::before {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--legend-n)) both;
+}
+
+/* The ask bar at Go there: while it holds no word that is not leaving, its fade leaves with its buttons; with Back to
+   Moment in it (once the camera is still), it comes in with Back to Moment */
+.ask-bar:not(:has(> :not(.is-leaving)))::before {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
+.ask-bar:has(> .look-main)::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both;
+}
+
+.predsky ~ .ask-bar:has(> .look-main)::before {
+  animation-delay: var(--look-mo-delay-words-in);
+}

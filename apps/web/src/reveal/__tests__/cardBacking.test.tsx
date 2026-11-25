@@ -163,12 +163,14 @@ describe('the fade behind the open card and the answer on the laptop', () => {
     expect(rules()['.reveal-card:not(.is-phone):not(.is-sky), .reveal-answer:not(.is-phone)']).toEqual({ isolation: 'isolate' });
   });
 
-  it('has no motion of its own: nothing animates or transitions the fade', () => {
+  it('has no motion of its own: none in its own rule, only its block\'s entrance, and no transition', () => {
     for (const sheet of [css, motion]) {
       postcss.parse(sheet).walkRules((rule) => {
         if (!rule.selector.includes('::before') || !/reveal-card|reveal-answer/.test(rule.selector)) return;
         if (rule.selector.includes('is-phone')) return;
-        rule.walkDecls((d) => expect(/^(animation|transition)/.test(d.prop), rule.selector).toBe(false));
+        // fade-with-words-one (22:12): the fade's only motion is its block's own entrance, in motion.css, each pinned to its
+        // block's first words by fadeWithWords.test.ts; reveal.css gives it none, and nothing transitions it
+        rule.walkDecls((d) => expect(sheet === motion ? /^transition/.test(d.prop) : /^(animation|transition)/.test(d.prop), rule.selector).toBe(false));
       });
     }
   });
