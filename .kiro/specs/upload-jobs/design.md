@@ -499,6 +499,10 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   belongs to), its stars and planets `predicted` and placed through that pose, served by
   the job's predicted-sky route while the job runs [proposed: the route and its life after the job ends are the
   publishing unit's; the record holds a time, not the sky, so each read of the job stays small].
+- `measuredAtUTC` only on a solve that started, kept once recorded, not before `startedAtUTC` nor after
+  `finishedAtUTC` (REQ-JOB-2.8, wait-detections-zero). The partial it names is the solve's measured detections, each
+  as an observed finding's `sourceDetection` holds it, served while the job runs [proposed: the route is the
+  publishing unit's].
 - As built in platform-10b [tested]: a solve kind calls `ctx.predicted_sky(solution)` with an approximate
   solution and its pose estimate (anything else, or a media kind, is a ValueError); the runner keeps it whole
   among the job's partials (`predicted_sky.json`, put in place in one step) and sets `predictedSkyAtUTC` on the

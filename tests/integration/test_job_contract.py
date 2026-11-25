@@ -360,6 +360,13 @@ READING: list[tuple[list[tuple[str, str]], Any]] = [
       ("design 3.8", "`predictedSkyAtUTC` only on a solve that started, kept once recorded, not before "
                      "`startedAtUTC` nor after `finishedAtUTC` (REQ-JOB-2.7, platform-10a).")],
      lambda g, st, has: "predictedSkyAtUTC" not in has or (g == "solve" and "startedAtUTC" in has)),
+    ([("REQ-JOB-2.8", "WHEN a solve's detect stage ends, THE job SHALL publish the detections it measured as a partial "
+                      "result, the same list its solution later holds as observed, and its record SHALL say when "
+                      "(`measuredAtUTC`) [proposed in wait-detections-zero for the first-use wait; the publishing is the "
+                      "next unit]."),
+      ("design 3.8", "`measuredAtUTC` only on a solve that started, kept once recorded, not before `startedAtUTC` nor "
+                     "after `finishedAtUTC` (REQ-JOB-2.8, wait-detections-zero).")],
+     lambda g, st, has: "measuredAtUTC" not in has or (g == "solve" and "startedAtUTC" in has)),
     ([S_CANCEL,
       ("REQ-JOB-4.1", "A cancel of a `queued` job SHALL make it `canceled` at once."),
       ("REQ-JOB-4.2", "A cancel of a `running` job SHALL record when it was asked, stop the work at the next point the "

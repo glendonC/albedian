@@ -115,9 +115,10 @@ M_CANCEL = "a cancel time lies within the job's run"
 M_FAILURE = "a failure is one of the fixed sentences its kind and state allow"
 M_INTERRUPTED = "an interrupted job says the server stopped"
 M_PREDICTED_SKY = "a predicted sky time lies within the job's run"
+M_MEASURED = "a measured time lies within the job's run"
 M_PLAYBACK_VARIANT = "a playback copy job names the variant it copies"
 JOB_MESSAGES = (M_DONE, M_SPAN, M_STATE, M_TIMES, M_REQUEST_KIND, M_STAGE_KIND, M_STAGE_ORDER, M_STAGE_UNIT, M_PASS_KIND,
-                M_CANCEL, M_FAILURE, M_INTERRUPTED, M_PREDICTED_SKY, M_PLAYBACK_VARIANT)
+                M_CANCEL, M_FAILURE, M_INTERRUPTED, M_PREDICTED_SKY, M_MEASURED, M_PLAYBACK_VARIANT)
 
 # What each state may and must hold, for each group of kinds, read from the requirements: a job is queued until it gets
 # a slot and started from then (REQ-JOB-2.1), with a queue count only while queued (2.2); a stage that did not run is
@@ -140,38 +141,38 @@ JOB_PRE_RUN_STAGES: dict[str, tuple[str, ...]] = {"solve": ("store",), "display_
                                                   "playback_copy": ()}
 JOB_STATE_FIELDS = ("startedAtUTC", "finishedAtUTC", "error", "solutionId", "attemptId", "variantId", "inputSpan",
                     "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages",
-                    "predictedSkyAtUTC")
+                    "predictedSkyAtUTC", "measuredAtUTC")
 _RULES = {"R": "required", "F": "forbidden", "E": "either", "S": "started", "A": "with_start"}
-#                     start fin  err  sol  att  var  span cancel queue prod req graph work sky  errors
+#                     start fin  err  sol  att  var  span cancel queue prod req graph work sky  meas errors
 _STATE_ROWS: dict[str, dict[str, Optional[tuple[str, str]]]] = {
     "solve": {
-        "queued":      ("F    F    F    F    F    F    F    F      E     A    E   F     F    F", "none"),
-        "running":     ("R    F    F    F    F    F    E    S      F     A    E   F     E    S", "none"),
-        "succeeded":   ("R    R    F    R    F    F    E    S      F     A    E   F     E    S", "none"),
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    E   F     F    F F", "none"),
+        "running":     ("R    F    F    F    F    F    E    S      F     A    E   F     E    S S", "none"),
+        "succeeded":   ("R    R    F    R    F    F    E    S      F     A    E   F     E    S S", "none"),
         "rejected":    None,
-        "failed":      ("R    R    R    F    F    F    E    S      F     A    E   F     E    S", "failure"),
-        "canceled":    ("E    R    F    F    F    F    S    A      F     A    E   F     S    S", "none"),
-        "interrupted": ("R    R    R    F    F    F    E    S      F     A    E   F     E    S", "interrupted"),
+        "failed":      ("R    R    R    F    F    F    E    S      F     A    E   F     E    S S", "failure"),
+        "canceled":    ("E    R    F    F    F    F    S    A      F     A    E   F     S    S S", "none"),
+        "interrupted": ("R    R    R    F    F    F    E    S      F     A    E   F     E    S S", "interrupted"),
     },
     "media": {
-        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   R     F    F", "none"),
-        "running":     ("R    F    F    F    F    F    F    S      F     A    R   R     E    F", "none"),
-        "succeeded":   ("R    R    F    F    R    R    F    S      F     A    R   R     E    F", "none"),
-        "rejected":    ("R    R    F    F    R    F    F    S      F     A    R   R     E    F", "none"),
-        "failed":      ("R    R    R    F    E    F    F    S      F     A    R   R     E    F", "failure"),
-        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   R     S    F", "none"),
-        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   R     E    F", "interrupted"),
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   R     F    F F", "none"),
+        "running":     ("R    F    F    F    F    F    F    S      F     A    R   R     E    F F", "none"),
+        "succeeded":   ("R    R    F    F    R    R    F    S      F     A    R   R     E    F F", "none"),
+        "rejected":    ("R    R    F    F    R    F    F    S      F     A    R   R     E    F F", "none"),
+        "failed":      ("R    R    R    F    E    F    F    S      F     A    R   R     E    F F", "failure"),
+        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   R     S    F F", "none"),
+        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   R     E    F F", "interrupted"),
     },
     # A playback copy: its request always (the variant it copies), no graph and no attempt; a succeeded one names its
     # variant; a gate's refusal is a failure with its fixed sentence, so it is never rejected
     "playback": {
-        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   F     F    F", "none"),
-        "running":     ("R    F    F    F    F    F    F    S      F     A    R   F     E    F", "none"),
-        "succeeded":   ("R    R    F    F    F    R    F    S      F     A    R   F     E    F", "none"),
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   F     F    F F", "none"),
+        "running":     ("R    F    F    F    F    F    F    S      F     A    R   F     E    F F", "none"),
+        "succeeded":   ("R    R    F    F    F    R    F    S      F     A    R   F     E    F F", "none"),
         "rejected":    None,
-        "failed":      ("R    R    R    F    F    F    F    S      F     A    R   F     E    F", "failure"),
-        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   F     S    F", "none"),
-        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   F     E    F", "interrupted"),
+        "failed":      ("R    R    R    F    F    F    F    S      F     A    R   F     E    F F", "failure"),
+        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   F     S    F F", "none"),
+        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   F     E    F F", "interrupted"),
     },
 }
 
@@ -285,6 +286,9 @@ class UploadJob(WireModel):
     # lock-on, platform-10a); the solve job's predicted-sky route serves it as an approximate ObservationSolution
     # with its poseEstimate [proposed]
     predicted_sky_at_utc: Optional[UtcInstant] = Field(default=None, alias="predictedSkyAtUTC")
+    # When a solve published its measured detections, at its detect stage's end (wait-detections-zero): the same list
+    # its solution later holds as observed, served while it runs [proposed]
+    measured_at_utc: Optional[UtcInstant] = Field(default=None, alias="measuredAtUTC")
 
     @model_validator(mode="after")
     def _fits_its_state_and_kind(self) -> "UploadJob":
@@ -327,6 +331,9 @@ class UploadJob(WireModel):
         sky = _instant(self.predicted_sky_at_utc)
         if sky is not None and start is not None and (sky < start or (end is not None and sky > end)):
             failures.append(M_PREDICTED_SKY)
+        measured = _instant(self.measured_at_utc)
+        if measured is not None and start is not None and (measured < start or (end is not None and measured > end)):
+            failures.append(M_MEASURED)
         allowed = None if row is None else row["errors"]
         if self.error is not None and allowed == "interrupted" and self.error != INTERRUPTED_SENTENCE:
             failures.append(M_INTERRUPTED)
@@ -350,7 +357,7 @@ PYTHON_NAMES = {
     "variantId": "variant_id", "inputSpan": "input_span", "cancelRequestedAtUTC": "cancel_requested_at_utc",
     "queueAhead": "queue_ahead", "firstFrameIndex": "first_frame_index", "frameCount": "frame_count",
     "startSec": "start_sec", "endSec": "end_sec", "exposureEv": "exposure_ev", "pass": "pass_",
-    "predictedSkyAtUTC": "predicted_sky_at_utc",
+    "predictedSkyAtUTC": "predicted_sky_at_utc", "measuredAtUTC": "measured_at_utc",
 }
 
 
@@ -480,8 +487,13 @@ def build_job_samples() -> dict[str, Any]:
     sky_at = "2031-05-02T19:20:20Z"
     running_with_sky = {**solve["running"], "predictedSkyAtUTC": sky_at}
     succeeded_with_sky = {**solve["succeeded"], "predictedSkyAtUTC": sky_at}
+    # A solve that published its measured detections at its detect stage's end (wait-detections-zero)
+    measured_at = "2031-05-02T19:20:10Z"
+    running_measured = {**solve["running"], "measuredAtUTC": measured_at}
+    succeeded_measured = {**solve["succeeded"], "measuredAtUTC": measured_at, "predictedSkyAtUTC": sky_at}
     valid = [*solve.values(), *media.values(), display, interrupted_media, canceled_queued_solve,
-             canceled_queued_media, interrupted_after_cancel, rejected_after_cancel, running_with_sky,
+             canceled_queued_media, interrupted_after_cancel, rejected_after_cancel, running_with_sky, running_measured,
+             succeeded_measured,
              succeeded_with_sky, *aligned, *playback.values()]
 
     invalid: list[dict[str, Any]] = []
@@ -565,6 +577,11 @@ def build_job_samples() -> dict[str, Any]:
     bad(_with(media["succeeded"], ["predictedSkyAtUTC"], sky_at), "a predicted sky on a media job", M_STATE)
     bad(_with(running_with_sky, ["predictedSkyAtUTC"], "2031-05-02T19:20:01Z"), "a predicted sky before the start", M_PREDICTED_SKY)
     bad(_with(succeeded_with_sky, ["predictedSkyAtUTC"], "2031-05-02T19:20:42Z"), "a predicted sky after the finish", M_PREDICTED_SKY)
+    bad(_with(solve["queued"], ["measuredAtUTC"], created), "a measured time on a queued solve", M_STATE)
+    bad(_with(canceled_queued_solve, ["measuredAtUTC"], created), "a measured time on a solve that never started", M_STATE)
+    bad(_with(media["succeeded"], ["measuredAtUTC"], measured_at), "a measured time on a media job", M_STATE)
+    bad(_with(running_measured, ["measuredAtUTC"], "2031-05-02T19:20:01Z"), "a measured time before the start", M_MEASURED)
+    bad(_with(succeeded_measured, ["measuredAtUTC"], "2031-05-02T19:20:42Z"), "a measured time after the finish", M_MEASURED)
     # The playback copy's own (playback-firstneed): its request, the variant it names, no graph, no attempt, never
     # rejected, and only its own sentences
     bad(_with(playback["succeeded"], ["variantId"], "var_0a1b2c3d4e5f6071"), "a playback copy names another variant than it copies", M_PLAYBACK_VARIANT)
@@ -631,6 +648,8 @@ def build_job_samples() -> dict[str, Any]:
          ["2031-05-02T19:20:01.249Z", "2031-05-02T19:20:05.001Z", "2031-05-02T19:20:04+00:00"]),
         ("predicted sky within the run", succeeded_with_sky, ["predictedSkyAtUTC"], [started, finished],
          ["2031-05-02T19:20:01.249Z", "2031-05-02T19:20:41.001Z", "2031-05-02T19:20:20+00:00"]),
+        ("measured within the run", succeeded_measured, ["measuredAtUTC"], [started, finished],
+         ["2031-05-02T19:20:01.249Z", "2031-05-02T19:20:41.001Z", "2031-05-02T19:20:10+00:00"]),
         ("created", solve["queued"], ["createdAtUTC"], ["2031-05-02T19:20:00Z", "2028-02-29T00:00:00.000Z", "0001-01-01T00:00:00Z"],
          ["2031-02-29T00:00:00Z", "0000-01-01T00:00:00Z", "2031-05-02T19:20:00+00:00", "2031-05-02T19:20:00.12Z", "2031-05-02 19:20:00Z"]),
         ("solve failure", solve["failed"], ["error"], [x for x in SOLVE_FAILURE_SENTENCES if x != INTERRUPTED_SENTENCE],
@@ -681,6 +700,7 @@ def build_job_samples() -> dict[str, Any]:
                   "solutionId": "sol_0a1b2c3d4e5f6071", "attemptId": "att_7e6f5a4b3c2d1e0f",
                   "variantId": "var_7e6f5a4b3c2d1e0f", "inputSpan": span, "cancelRequestedAtUTC": "2031-05-02T19:20:04Z",
                   "queueAhead": 0, "producer": producer, "predictedSkyAtUTC": "2031-05-02T19:20:20Z",
+                  "measuredAtUTC": "2031-05-02T19:20:10Z",
                   "request": ({"format": "albedian.person-alignment", "formatVersion": 1, "source": "person",
                                "centerAltDeg": 41.5, "centerAzDeg": 128.25, "rollDeg": -6.0, "fovDiagonalDeg": 68.5}
                               if kind == "solve" else {"kind": kind, "variantId": "var_7e6f5a4b3c2d1e0f"}

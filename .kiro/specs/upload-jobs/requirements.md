@@ -94,6 +94,9 @@ along it is, without any number that was not counted.
   7. WHEN a solve knows a pose before its search ends, THE job SHALL publish the sky predicted from that pose as a
      partial result, labelled predicted, and its record SHALL say when (`predictedSkyAtUTC`) [proposed in
      platform-10a for the lock-on, part B of the lead's ALIGN-LOCKON brief; the publishing is the next unit].
+  8. WHEN a solve's detect stage ends, THE job SHALL publish the detections it measured as a partial result, the same
+     list its solution later holds as observed, and its record SHALL say when (`measuredAtUTC`) [proposed in
+     wait-detections-zero for the first-use wait; the publishing is the next unit].
 
 ### REQ-JOB-3: Every job ends, and a restart says what happened
 **User Story:** As someone whose laptop restarted the server mid-job, I want the job to say it was interrupted, not

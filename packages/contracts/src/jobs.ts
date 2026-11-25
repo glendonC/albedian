@@ -94,6 +94,7 @@ export const JOB_MESSAGES = {
   failure: 'a failure is one of the fixed sentences its kind and state allow',
   interrupted: 'an interrupted job says the server stopped',
   predictedSky: "a predicted sky time lies within the job's run",
+  measured: "a measured time lies within the job's run",
   playbackVariant: 'a playback copy job names the variant it copies',
 } as const;
 const M = JOB_MESSAGES;
@@ -109,6 +110,7 @@ export const JOB_PRE_RUN_STAGES: Record<Kind, readonly string[]> = { solve: ['st
 export const JOB_STATE_FIELDS = [
   'startedAtUTC', 'finishedAtUTC', 'error', 'solutionId', 'attemptId', 'variantId', 'inputSpan',
   'cancelRequestedAtUTC', 'queueAhead', 'producer', 'request', 'graphId', 'workStages', 'predictedSkyAtUTC',
+  'measuredAtUTC',
 ] as const;
 type StateField = (typeof JOB_STATE_FIELDS)[number];
 type Rule = 'required' | 'forbidden' | 'either' | 'started' | 'with_start';
@@ -124,35 +126,35 @@ export const jobStateRow = (letters: string, errors: JobStateRow['errors']): Job
   if (codes.length !== JOB_STATE_FIELDS.length) throw new Error(`a state row needs ${JOB_STATE_FIELDS.length} rules`);
   return { fields: Object.fromEntries(JOB_STATE_FIELDS.map((field, i) => [field, RULES[codes[i]!]!])) as JobStateRow['fields'], errors };
 };
-//                    start fin  err  sol  att  var  span cancel queue prod req graph work sky
+//                    start fin  err  sol  att  var  span cancel queue prod req graph work sky  meas
 export const JOB_STATE_TABLE: Record<'solve' | 'media' | 'playback', Record<State, JobStateRow | null>> = {
   solve: {
-    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    E   F     F    F', 'none'),
-    running:     jobStateRow('R    F    F    F    F    F    E    S      F     A    E   F     E    S', 'none'),
-    succeeded:   jobStateRow('R    R    F    R    F    F    E    S      F     A    E   F     E    S', 'none'),
+    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    E   F     F    F F', 'none'),
+    running:     jobStateRow('R    F    F    F    F    F    E    S      F     A    E   F     E    S S', 'none'),
+    succeeded:   jobStateRow('R    R    F    R    F    F    E    S      F     A    E   F     E    S S', 'none'),
     rejected:    null,
-    failed:      jobStateRow('R    R    R    F    F    F    E    S      F     A    E   F     E    S', 'failure'),
-    canceled:    jobStateRow('E    R    F    F    F    F    S    A      F     A    E   F     S    S', 'none'),
-    interrupted: jobStateRow('R    R    R    F    F    F    E    S      F     A    E   F     E    S', 'interrupted'),
+    failed:      jobStateRow('R    R    R    F    F    F    E    S      F     A    E   F     E    S S', 'failure'),
+    canceled:    jobStateRow('E    R    F    F    F    F    S    A      F     A    E   F     S    S S', 'none'),
+    interrupted: jobStateRow('R    R    R    F    F    F    E    S      F     A    E   F     E    S S', 'interrupted'),
   },
   media: {
-    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    R   R     F    F', 'none'),
-    running:     jobStateRow('R    F    F    F    F    F    F    S      F     A    R   R     E    F', 'none'),
-    succeeded:   jobStateRow('R    R    F    F    R    R    F    S      F     A    R   R     E    F', 'none'),
-    rejected:    jobStateRow('R    R    F    F    R    F    F    S      F     A    R   R     E    F', 'none'),
-    failed:      jobStateRow('R    R    R    F    E    F    F    S      F     A    R   R     E    F', 'failure'),
-    canceled:    jobStateRow('E    R    F    F    F    F    F    A      F     A    R   R     S    F', 'none'),
-    interrupted: jobStateRow('R    R    R    F    F    F    F    S      F     A    R   R     E    F', 'interrupted'),
+    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    R   R     F    F F', 'none'),
+    running:     jobStateRow('R    F    F    F    F    F    F    S      F     A    R   R     E    F F', 'none'),
+    succeeded:   jobStateRow('R    R    F    F    R    R    F    S      F     A    R   R     E    F F', 'none'),
+    rejected:    jobStateRow('R    R    F    F    R    F    F    S      F     A    R   R     E    F F', 'none'),
+    failed:      jobStateRow('R    R    R    F    E    F    F    S      F     A    R   R     E    F F', 'failure'),
+    canceled:    jobStateRow('E    R    F    F    F    F    F    A      F     A    R   R     S    F F', 'none'),
+    interrupted: jobStateRow('R    R    R    F    F    F    F    S      F     A    R   R     E    F F', 'interrupted'),
   },
   // The playback copy: its request always, no graph and no attempt, a variant on success, never rejected
   playback: {
-    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    R   F     F    F', 'none'),
-    running:     jobStateRow('R    F    F    F    F    F    F    S      F     A    R   F     E    F', 'none'),
-    succeeded:   jobStateRow('R    R    F    F    F    R    F    S      F     A    R   F     E    F', 'none'),
+    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    R   F     F    F F', 'none'),
+    running:     jobStateRow('R    F    F    F    F    F    F    S      F     A    R   F     E    F F', 'none'),
+    succeeded:   jobStateRow('R    R    F    F    F    R    F    S      F     A    R   F     E    F F', 'none'),
     rejected:    null,
-    failed:      jobStateRow('R    R    R    F    F    F    F    S      F     A    R   F     E    F', 'failure'),
-    canceled:    jobStateRow('E    R    F    F    F    F    F    A      F     A    R   F     S    F', 'none'),
-    interrupted: jobStateRow('R    R    R    F    F    F    F    S      F     A    R   F     E    F', 'interrupted'),
+    failed:      jobStateRow('R    R    R    F    F    F    F    S      F     A    R   F     E    F F', 'failure'),
+    canceled:    jobStateRow('E    R    F    F    F    F    F    A      F     A    R   F     S    F F', 'none'),
+    interrupted: jobStateRow('R    R    R    F    F    F    F    S      F     A    R   F     E    F F', 'interrupted'),
   },
 };
 export const jobGroup = (kind: Kind): 'solve' | 'media' | 'playback' =>
@@ -218,6 +220,8 @@ const UploadJobShape = {
     queueAhead: safeCount().optional(),
     // When a solve published the sky predicted from a pose known before its search ended (the lock-on, platform-10a)
     predictedSkyAtUTC: wireUtcInstant().optional(),
+    // When a solve published its measured detections, at its detect stage's end (wait-detections-zero) [proposed]
+    measuredAtUTC: wireUtcInstant().optional(),
 };
 
 /** The optional fields of the record, which the state table names one by one. */
@@ -275,6 +279,10 @@ export const UploadJobSchema = z
     if (job.predictedSkyAtUTC !== undefined && start !== undefined) {
       const sky = Date.parse(job.predictedSkyAtUTC);
       if (sky < start || (end !== undefined && sky > end)) fail(M.predictedSky);
+    }
+    if (job.measuredAtUTC !== undefined && start !== undefined) {
+      const measured = Date.parse(job.measuredAtUTC);
+      if (measured < start || (end !== undefined && measured > end)) fail(M.measured);
     }
     const allowed = stateRow === null ? null : stateRow.errors;
     if (job.error !== undefined && allowed === 'interrupted' && job.error !== INTERRUPTED_SENTENCE) fail(M.interrupted);
