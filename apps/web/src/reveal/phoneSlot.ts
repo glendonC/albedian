@@ -17,7 +17,16 @@ export const PHONE_DESIGN_HEIGHT_PX = 844;
  * the photo gives the room, its slot's foot rising with the window's; in a taller one the slot keeps its 520 and the
  * foot block moves down from it. 390 by 520 from y 118 at 844.
  */
+/**
+ * The tallest window the phone's layout takes as a phone on its side: a touch window this tall or shorter
+ * (LANDSCAPE_PHONE_QUERY's `max-height: 500px`; UIUX-phone-sideways-READY.md item 1).
+ */
+export const SIDEWAYS_MAX_HEIGHT_PX = 500;
+
 export function phoneSlotIn(viewportHeightPx: number): { topPx: number; heightPx: number } {
+  // phone-sideways-two (UIUX-phone-sideways-READY.md item 2, RULED 06:27): on its side the photo is whole, fit to the
+  // window's height, so its slot is the whole window
+  if (viewportHeightPx <= SIDEWAYS_MAX_HEIGHT_PX) return { topPx: 0, heightPx: Math.max(0, viewportHeightPx) };
   const shorter = Math.min(0, viewportHeightPx - PHONE_DESIGN_HEIGHT_PX);
   return { topPx: PHONE_SLOT.topPx, heightPx: Math.max(0, PHONE_SLOT.heightPx + shorter) };
 }
@@ -56,7 +65,9 @@ export function phoneSlotCrop(
   const slot = phoneSlotIn(viewportHeightPx);
   const w = Math.max(1, shownWidthPx);
   const h = Math.max(1, shownHeightPx);
-  const scale = mediaKind === 'video' ? Math.min(viewportWidthPx / w, slot.heightPx / h) : Math.max(viewportWidthPx / w, slot.heightPx / h);
+  // A clip fits the slot (D16); so does a photo on a phone held on its side, shown whole (phone-sideways-two)
+  const whole = mediaKind === 'video' || viewportHeightPx <= SIDEWAYS_MAX_HEIGHT_PX;
+  const scale = whole ? Math.min(viewportWidthPx / w, slot.heightPx / h) : Math.max(viewportWidthPx / w, slot.heightPx / h);
   const width = w * scale;
   const centreX = viewportWidthPx / 2;
   const centreY = slot.topPx + slot.heightPx / 2;
