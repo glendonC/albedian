@@ -537,6 +537,7 @@ export const STEP_PARAMETERS: readonly StepParameter[] = [
   integer('brightLevels', ['spatial_denoise'], 0, 8, 'B3 levels'),
   integer('brightBackgroundPercentile', ['spatial_denoise'], 0, 100, 'percentile'),
   integer('brightBackgroundPx', ['spatial_denoise'], 1, 4096, 'px'),
+  number('keptFineNoiseShare', ['spatial_denoise'], 0, 1, "share of the photo's own finest noise"),
   integer('maxPasses', ['dissolve_unconfirmed'], 0, 3, 'passes'),
   number('variantThresholdSnr', ['dissolve_unconfirmed'], 0, 100, 'signal to noise'),
   number('sensitivityPeakCodes', ['dissolve_unconfirmed'], 0, 255, 'codes of 255'),
@@ -667,6 +668,8 @@ export const ASSUMPTION_REASONS = [
   { field: 'transfer', assumed: 'srgb', reason: "The file's ICC profile could not be read, so sRGB is assumed." },
   { field: 'primaries', assumed: 'bt709', reason: "The file's ICC profile could not be read, so sRGB is assumed." },
 ] as const;
+/** The basis of a share of the photo's own grain the gate refused: tied to a share of nought (grain-share-zero). */
+export const GRAIN_REFUSED_BASIS = "The gate refused this file's result with the grain, so it was restored without it.";
 /** What a parameter's basis may say, by its origin: what on this file it was measured from, the request field, or a source. */
 export const BASES = {
   measured: [
@@ -680,6 +683,7 @@ export const BASES = {
     "Counted from the asset record's audio streams.",
     "Measured on this file's confirmed stars.",
     "Measured on this clip's registered frames.",
+    "The gate refused this file's result with the grain, so it was restored without it.",
   ],
   requested: ['exposureEv'],
   default: [
@@ -688,6 +692,8 @@ export const BASES = {
     'Verified at its source in design section {section}.',
     'Required by REQ-RST-{criterion}.',
     "The detector's own floor.",
+    'Measured on the 60 public design crops to cure posterised skies; table in the fine noise floor probe.',
+    "Measured on the 60 public design crops to cure posterised skies; lowered where it would pass the gate's floor.",
   ],
 } as const satisfies Record<ParameterOrigin, readonly string[]>;
 /** Every closed list both sides hold, compared through the fixture. */
@@ -743,6 +749,7 @@ const M = {
   requestOption: 'a display copy takes no option',
   parameterValue: "a parameter's value has its row's type and range",
   basis: "a parameter's basis is one its origin allows",
+  grainRefused: 'a refused grain keeps a share of nought',
   parameterOnce: 'a step names each parameter once',
   parameterStep: "a step holds only its kind's parameters",
   graphKind: 'the graph is of the kind its request asks for',
@@ -882,6 +889,9 @@ export const GraphParameterSchema = z
   .superRefine((parameter, ctx) => {
     const issue = issuer(ctx);
     if (!parameterValueFits(PARAMETER_BY_NAME.get(parameter.name)!, parameter.value)) issue(['value'], M.parameterValue);
+    if (parameter.name === 'keptFineNoiseShare' && parameter.basis === GRAIN_REFUSED_BASIS && parameter.value !== 0) {
+      issue(['value'], M.grainRefused);
+    }
     if (!basisFits(parameter.origin, parameter.basis)) issue(['basis'], M.basis);
   });
 export type GraphParameter = z.infer<typeof GraphParameterSchema>;

@@ -224,6 +224,7 @@ STEP_PARAMETERS = (
     _integer("brightLevels", ("spatial_denoise",), 0, 8, "B3 levels"),
     _integer("brightBackgroundPercentile", ("spatial_denoise",), 0, 100, "percentile"),
     _integer("brightBackgroundPx", ("spatial_denoise",), 1, 4096, "px"),
+    _number("keptFineNoiseShare", ("spatial_denoise",), 0, 1, "share of the photo's own finest noise"),
     _integer("maxPasses", ("dissolve_unconfirmed",), 0, 3, "passes"),
     _number("variantThresholdSnr", ("dissolve_unconfirmed",), 0, 100, "signal to noise"),
     _number("sensitivityPeakCodes", ("dissolve_unconfirmed",), 0, 255, "codes of 255"),
@@ -346,6 +347,13 @@ ASSUMPTION_REASONS = (
     {"field": "transfer", "assumed": "srgb", "reason": "The file's ICC profile could not be read, so sRGB is assumed."},
     {"field": "primaries", "assumed": "bt709", "reason": "The file's ICC profile could not be read, so sRGB is assumed."},
 )
+# The bases of the share of a photo's own finest noise its sky keeps (`keptFineNoiseShare`): kept, kept but lowered by
+# the cap in places, and the fallback where the gate refused the result with it [decided 2026-11-24 and 2026-11-25 by
+# the lead, grain-share-zero]
+GRAIN_KEPT_BASIS = "Measured on the 60 public design crops to cure posterised skies; table in the fine noise floor probe."
+GRAIN_REFUSED_BASIS = "The gate refused this file's result with the grain, so it was restored without it."
+GRAIN_CAPPED_BASIS = ("Measured on the 60 public design crops to cure posterised skies; lowered where it would pass the "
+                      "gate's floor.")
 # What a parameter's basis may say, by its origin: what on this file it was measured from, the request field, or a source
 BASES = {
     "measured": [
@@ -359,6 +367,7 @@ BASES = {
         "Counted from the asset record's audio streams.",
         "Measured on this file's confirmed stars.",
         "Measured on this clip's registered frames.",
+        GRAIN_REFUSED_BASIS,
     ],
     "requested": ["exposureEv"],
     "default": [
@@ -367,6 +376,8 @@ BASES = {
         "Verified at its source in design section {section}.",
         "Required by REQ-RST-{criterion}.",
         "The detector's own floor.",
+        GRAIN_KEPT_BASIS,
+        GRAIN_CAPPED_BASIS,
     ],
 }
 MEDIA_VOCABULARY = {
@@ -430,6 +441,7 @@ def basis_fits(origin: str, basis: str) -> bool:
 M_REQUEST_OPTION = "a display copy takes no option"
 M_PARAMETER_VALUE = "a parameter's value has its row's type and range"
 M_BASIS = "a parameter's basis is one its origin allows"
+M_GRAIN_REFUSED = "a refused grain keeps a share of nought"
 M_PARAMETER_ONCE = "a step names each parameter once"
 M_PARAMETER_STEP = "a step holds only its kind's parameters"
 M_GRAPH_KIND = "the graph is of the kind its request asks for"
@@ -498,7 +510,7 @@ def _attempt_fit(status: str) -> str:
 
 
 REFINEMENT_MESSAGES = (
-    M_CALENDAR, M_REQUEST_OPTION, M_PARAMETER_VALUE, M_BASIS, M_PARAMETER_ONCE, M_PARAMETER_STEP, M_GRAPH_KIND,
+    M_CALENDAR, M_REQUEST_OPTION, M_PARAMETER_VALUE, M_BASIS, M_GRAIN_REFUSED, M_PARAMETER_ONCE, M_PARAMETER_STEP, M_GRAPH_KIND,
     M_FIRST_DECODE, M_DISPLAY_COPY_STEPS, M_CONVERT_DISPLAY_ONLY, M_PIPELINE_ORDER, M_LIFT_AND_ENCODE, M_RGB, M_YCBCR, M_SITING, M_BIT_DEPTH,
     M_PROFILE, M_ASSUMED_ONCE, M_ASSUMED_VALUE, M_ASSUMPTION_REASON, M_NOISE_COLUMNS, M_NOISE_INCREASING,
     M_GATE_PASSED, M_GATE_POINTS, M_GATE_FRAMES, M_GATE_ANY_FRAME, M_GATE_FRAME_POINTS, M_GATE_STARS,
@@ -679,6 +691,8 @@ class GraphParameter(_Record):
         failures = []
         if not parameter_value_fits(_PARAMETER_BY_NAME[self.name], self.value):
             failures.append(M_PARAMETER_VALUE)
+        if self.name == "keptFineNoiseShare" and self.basis == GRAIN_REFUSED_BASIS and self.value != 0:
+            failures.append(M_GRAIN_REFUSED)
         if not basis_fits(self.origin, self.basis):
             failures.append(M_BASIS)
         _refuse(failures)
@@ -1231,6 +1245,13 @@ def build_media_samples() -> dict[str, Any]:
     find_stars = _step("find_stars", parameters[3], _parameter("tilePx", 256, "default", "Proposed in design section 3."))
     measure_noise = _step("measure_noise", _parameter("bins", 12, "default", "Proposed in design section 4."))
     spatial = _step("spatial_denoise", _parameter("sigmaScale", 1.0, "measured", "Measured on this file's noise table."))
+    # A sky that keeps its share of the photo's own finest noise, and one whose gate refused that, restored without it
+    spatial_grain = _step("spatial_denoise", _parameter("sigmaScale", 1.0, "measured", "Measured on this file's noise table."),
+                          _parameter("keptFineNoiseShare", 0.35, "default", GRAIN_KEPT_BASIS))
+    spatial_plain = _step("spatial_denoise", _parameter("sigmaScale", 1.0, "measured", "Measured on this file's noise table."),
+                          _parameter("keptFineNoiseShare", 0.0, "measured", GRAIN_REFUSED_BASIS))
+    spatial_capped = _step("spatial_denoise", _parameter("sigmaScale", 1.0, "measured", "Measured on this file's noise table."),
+                           _parameter("keptFineNoiseShare", 0.35, "default", GRAIN_CAPPED_BASIS))
     chroma_step = _step(
         "smooth_chroma",
         _parameter("levels", 6, "default", "Proposed in design section 5."),
@@ -1422,7 +1443,8 @@ def build_media_samples() -> dict[str, Any]:
     valid = {
         "RestoreRequest": requests,
         "GraphParameter": parameters,
-        "GraphStep": [decode_heic, encode_png8, find_stars, lift_clip, copy_audio, encode_h264, chroma_step],
+        "GraphStep": [decode_heic, encode_png8, find_stars, lift_clip, copy_audio, encode_h264, chroma_step, spatial_grain,
+                      spatial_plain, spatial_capped],
         "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black, graph_converted, graph_still_chroma],
         "ColourDescription": [colour_heic, colour_png8, colour_jpeg, colour_png16, colour_clip],
         "NoiseTable": [noise_still, noise_clip],
@@ -1569,6 +1591,8 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
     bad("GraphParameter", edit(tile, ["basis"], "Proposed in design section 08."), "a section with a leading zero", M_BASIS)
     bad("GraphParameter", edit(tile, ["basis"], "Proposed in design section 2031."), "a year in the section slot", M_BASIS)
     bad("GraphParameter", edit(tile, ["basis"], "Proposed in design section 3"), "a template without its full stop", M_BASIS)
+    refused_share = {"name": "keptFineNoiseShare", "value": 0.0, "origin": "measured", "basis": GRAIN_REFUSED_BASIS}
+    bad("GraphParameter", edit(refused_share, ["value"], 0.35), "a refused grain with a share above nought", M_GRAIN_REFUSED)
     bad("GraphParameter", edit(tile, ["basis"], "Proposed in design section 3. "), "a template with a trailing space", M_BASIS)
     bad("GraphParameter", edit(tile, ["basis"], "Required by REQ-RST-6.14."), "a criterion past the last", M_BASIS)
     bad("GraphParameter", edit(tile, ["basis"], "Required by REQ-RST-13.1."), "a requirement past the last", M_BASIS)

@@ -289,7 +289,8 @@
         "Solved for this file from its median and its measured bounds.",
         "Counted from the asset record's audio streams.",
         "Measured on this file's confirmed stars.",
-        "Measured on this clip's registered frames."
+        "Measured on this clip's registered frames.",
+        "The gate refused this file's result with the grain, so it was restored without it."
       ],
       "requested": [
         "exposureEv"
@@ -299,7 +300,9 @@
         "Decided by the lead in design section {section}.",
         "Verified at its source in design section {section}.",
         "Required by REQ-RST-{criterion}.",
-        "The detector's own floor."
+        "The detector's own floor.",
+        "Measured on the 60 public design crops to cure posterised skies; table in the fine noise floor probe.",
+        "Measured on the 60 public design crops to cure posterised skies; lowered where it would pass the gate's floor."
       ]
     },
     "slots": {
@@ -971,6 +974,16 @@
         "unit": "px"
       },
       {
+        "name": "keptFineNoiseShare",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1,
+        "unit": "share of the photo's own finest noise"
+      },
+      {
         "name": "maxPasses",
         "steps": [
           "dissolve_unconfirmed"
@@ -1157,6 +1170,7 @@
     "a display copy takes no option",
     "a parameter's value has its row's type and range",
     "a parameter's basis is one its origin allows",
+    "a refused grain keeps a share of nought",
     "a step names each parameter once",
     "a step holds only its kind's parameters",
     "the graph is of the kind its request asks for",
@@ -1372,7 +1386,7 @@
       "__proto__"
     ],
     "value": "/Users/me/Pictures/IMG_0001.MOV",
-    "records": 2404
+    "records": 2440
   },
   "valid": {
     "RestoreRequest": [
@@ -1615,6 +1629,60 @@
             "value": 4,
             "origin": "default",
             "basis": "Proposed in design section 5."
+          }
+        ]
+      },
+      {
+        "kind": "spatial_denoise",
+        "version": "1.0.0",
+        "parameters": [
+          {
+            "name": "sigmaScale",
+            "value": 1.0,
+            "origin": "measured",
+            "basis": "Measured on this file's noise table."
+          },
+          {
+            "name": "keptFineNoiseShare",
+            "value": 0.35,
+            "origin": "default",
+            "basis": "Measured on the 60 public design crops to cure posterised skies; table in the fine noise floor probe."
+          }
+        ]
+      },
+      {
+        "kind": "spatial_denoise",
+        "version": "1.0.0",
+        "parameters": [
+          {
+            "name": "sigmaScale",
+            "value": 1.0,
+            "origin": "measured",
+            "basis": "Measured on this file's noise table."
+          },
+          {
+            "name": "keptFineNoiseShare",
+            "value": 0.0,
+            "origin": "measured",
+            "basis": "The gate refused this file's result with the grain, so it was restored without it."
+          }
+        ]
+      },
+      {
+        "kind": "spatial_denoise",
+        "version": "1.0.0",
+        "parameters": [
+          {
+            "name": "sigmaScale",
+            "value": 1.0,
+            "origin": "measured",
+            "basis": "Measured on this file's noise table."
+          },
+          {
+            "name": "keptFineNoiseShare",
+            "value": 0.35,
+            "origin": "default",
+            "basis": "Measured on the 60 public design crops to cure posterised skies; lowered where it would pass the gate's floor."
           }
         ]
       }
@@ -5060,6 +5128,17 @@
       },
       "reason": "a template without its full stop",
       "message": "a parameter's basis is one its origin allows"
+    },
+    {
+      "schema": "GraphParameter",
+      "sample": {
+        "name": "keptFineNoiseShare",
+        "value": 0.35,
+        "origin": "measured",
+        "basis": "The gate refused this file's result with the grain, so it was restored without it."
+      },
+      "reason": "a refused grain with a share above nought",
+      "message": "a refused grain keeps a share of nought"
     },
     {
       "schema": "GraphParameter",

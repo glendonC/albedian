@@ -443,7 +443,8 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     // restore-8e added C20's colour-profile refusal; nearblack-0 and nearblackclip-0 added C36's photo and clip
     // near-black refusals [verified: UIUX-colourwords-READY.md and UIUX-nearblackrestore-READY.md, DECIDED-BY-LEAD]
     expect(FAILURES.length).toBe(11 + FAILURE_FORMATS.length + FAILURE_CAPABILITIES.length);
-    expect(DEFAULT_BASES.length).toBe(3 * 18 + RESTORATION_CRITERIA.length + 1);
+    // grain-share-zero added the kept grain's default basis [decided 2026-11-24 by the lead]
+    expect(DEFAULT_BASES.length).toBe(3 * 18 + RESTORATION_CRITERIA.length + 3);
   });
 
   it('accepts the C36 near-black photo and clip refusal sentences on a failed attempt and restoration job only', () => {
@@ -1210,5 +1211,49 @@ describe('the not-measured reasons (flatband-zero)', () => {
     expect(RestorationMeasurementsSchema.safeParse(flat[0]).success).toBe(true);
     expect(RestorationMeasurementsSchema.safeParse({ ...flat[0], noiseNotMeasured: 'dark_level_flatness' }).success).toBe(false);
     expect(RestorationMeasurementsSchema.safeParse({ ...flat[0], noise: (VALID.NoiseTable as Rec[])[1] }).success).toBe(false);
+  });
+});
+
+describe('the share of the photo grain a sky keeps (grain-share-zero)', () => {
+  it('names the share on the spatial step, kept by default and 0 where the gate refused it, each basis by its origin', () => {
+    // [decided 2026-11-24 by the lead] a basis says what was measured, on which corpus and where its table is
+    const row = STEP_PARAMETERS.find((p) => p.name === 'keptFineNoiseShare');
+    expect(row).toEqual({
+      name: 'keptFineNoiseShare',
+      steps: ['spatial_denoise'],
+      type: 'number',
+      min: 0,
+      max: 1,
+      unit: "share of the photo's own finest noise",
+    });
+    const kept = 'Measured on the 60 public design crops to cure posterised skies; table in the fine noise floor probe.';
+    const refused = "The gate refused this file's result with the grain, so it was restored without it.";
+    const capped =
+      "Measured on the 60 public design crops to cure posterised skies; lowered where it would pass the gate's floor.";
+    expect(BASES.default as readonly string[]).toContain(kept);
+    expect(BASES.default as readonly string[]).toContain(capped);
+    expect(BASES.measured as readonly string[]).toContain(refused);
+    const steps = (VALID.GraphStep as Rec[]).filter(
+      (s) => s.kind === 'spatial_denoise' && (s.parameters as Rec[]).some((p) => p.name === 'keptFineNoiseShare'),
+    );
+    const shares = steps
+      .flatMap((s) => (s.parameters as Rec[]).filter((p) => p.name === 'keptFineNoiseShare'))
+      .map((p) => [p.value, p.origin, p.basis]);
+    expect(shares).toEqual([
+      [0.35, 'default', kept],
+      [0, 'measured', refused],
+      [0.35, 'default', capped],
+    ]);
+    for (const step of steps) expect(GraphStepSchema.safeParse(step).success).toBe(true);
+    const share = (steps[0]!.parameters as Rec[]).find((p) => p.name === 'keptFineNoiseShare')!;
+    expect(GraphParameterSchema.safeParse({ ...share, value: 1.5 }).success).toBe(false);
+    expect(GraphParameterSchema.safeParse({ ...share, origin: 'measured' }).success).toBe(false);
+    expect(GraphParameterSchema.safeParse({ ...share, value: 0, origin: 'default', basis: refused }).success).toBe(false);
+    // A refused grain keeps a share of nought, or the record contradicts itself (AUDIT-B on grain-share-zero)
+    const refusedRow = { name: 'keptFineNoiseShare', value: 0, origin: 'measured', basis: refused };
+    expect(GraphParameterSchema.safeParse(refusedRow).success).toBe(true);
+    const contradicted = GraphParameterSchema.safeParse({ ...refusedRow, value: 0.35 });
+    expect(contradicted.success).toBe(false);
+    expect(contradicted.error?.issues.map((i) => i.message)).toContain('a refused grain keeps a share of nought');
   });
 });

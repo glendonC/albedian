@@ -22,6 +22,7 @@ import itertools
 import json
 import math
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -482,7 +483,8 @@ def test_every_entry_of_every_list_is_accepted_in_its_slot() -> None:
     # restore-8e added C20's colour-profile refusal; nearblack-0 and nearblackclip-0 added C36's photo and clip
     # near-black refusals [verified: UIUX-colourwords-READY.md and UIUX-nearblackrestore-READY.md, DECIDED-BY-LEAD]
     assert len(FAILURES) == 11 + len(media.FAILURE_FORMATS) + len(media.FAILURE_CAPABILITIES)
-    assert len(DEFAULT_BASES) == 3 * 18 + len(media.RESTORATION_CRITERIA) + 1
+    # grain-share-zero added the kept grain's two default bases, kept and lowered by the cap [decided by the lead]
+    assert len(DEFAULT_BASES) == 3 * 18 + len(media.RESTORATION_CRITERIA) + 3
 
 
 NEAR_BLACK_REFUSAL = "This photo's sky is so close to black that its faintest noise is cut off, so it was not restored."
@@ -1303,3 +1305,35 @@ def test_a_flat_dark_band_is_its_own_not_measured_reason_with_the_decided_note()
     assert not accepts(media.RestorationMeasurements, {**flat[0], "noiseNotMeasured": "dark_level_flatness"})
     # A reason, never beside a noise table
     assert not accepts(media.RestorationMeasurements, {**flat[0], "noise": VALID["NoiseTable"][1]})
+
+
+def test_a_sky_that_keeps_its_share_of_the_photos_grain_says_so_and_the_fallback_says_why() -> None:
+    # grain-share-zero [decided 2026-11-24 by the lead]: the spatial step names the share of the photo's own finest
+    # noise its sky keeps; 0.35 by default, with a basis that says what was measured, on which corpus and where its
+    # table is, never who decided it or when; 0 where the gate refused the grained result, as measured on this file
+    row = {"name": "keptFineNoiseShare", "steps": ["spatial_denoise"], "type": "number", "min": 0, "max": 1,
+           "unit": "share of the photo's own finest noise"}
+    assert row in media.STEP_PARAMETERS and row in media.MEDIA_VOCABULARY["stepParameters"]
+    assert media.GRAIN_KEPT_BASIS in media.BASES["default"] and media.GRAIN_REFUSED_BASIS in media.BASES["measured"]
+    assert media.GRAIN_CAPPED_BASIS in media.BASES["default"]
+    for basis in (media.GRAIN_KEPT_BASIS, media.GRAIN_REFUSED_BASIS, media.GRAIN_CAPPED_BASIS):
+        assert "lead" not in basis.lower() and not re.search(r"\d{1,2}:\d{2}|2026|November", basis)
+    kept = [s for s in VALID["GraphStep"] if s["kind"] == "spatial_denoise"
+            and any(p["name"] == "keptFineNoiseShare" for p in s["parameters"])]
+    shares = sorted((p["value"], p["origin"], p["basis"]) for s in kept for p in s["parameters"] if p["name"] == "keptFineNoiseShare")
+    assert shares == sorted([(0.0, "measured", media.GRAIN_REFUSED_BASIS), (0.35, "default", media.GRAIN_KEPT_BASIS),
+                             (0.35, "default", media.GRAIN_CAPPED_BASIS)])
+    assert all(accepts(media.GraphStep, step) for step in kept)
+    share = next(p for p in kept[0]["parameters"] if p["name"] == "keptFineNoiseShare")
+    assert not accepts(media.GraphParameter, {**share, "value": 1.5})
+    assert not accepts(media.GraphParameter, {**share, "value": -0.1})
+    # Each basis only by its own origin, and the share only on the spatial step
+    assert not accepts(media.GraphParameter, {**share, "origin": "measured", "basis": media.GRAIN_KEPT_BASIS})
+    assert not accepts(media.GraphParameter, {**share, "origin": "default", "basis": media.GRAIN_REFUSED_BASIS})
+    chroma = next(s for s in VALID["GraphStep"] if s["kind"] == "smooth_chroma")
+    assert not accepts(media.GraphStep, {**chroma, "parameters": [*chroma["parameters"], share]})
+    # A refused grain keeps a share of nought, or the record contradicts itself (AUDIT-B on grain-share-zero)
+    refused = {"name": "keptFineNoiseShare", "value": 0.0, "origin": "measured", "basis": media.GRAIN_REFUSED_BASIS}
+    assert accepts(media.GraphParameter, refused)
+    assert media.M_GRAIN_REFUSED in "; ".join(messages(media.GraphParameter, {**refused, "value": 0.35}))
+    assert accepts(media.GraphParameter, {**refused, "value": 0.35, "origin": "default", "basis": media.GRAIN_CAPPED_BASIS})
