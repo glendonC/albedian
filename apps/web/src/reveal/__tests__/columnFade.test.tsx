@@ -217,6 +217,13 @@ describe("names clear the fade's reach; rings keep the place's own box", () => {
     for (const { place } of FADE_REACH.filter((f) => !f.place.includes('predsky'))) {
       const el = document.createElement('div');
       if (place.includes('reveal-card')) el.className = 'reveal-card';
+      if (place.includes('reveal-answer')) el.className = 'reveal-answer';
+      if (place.includes('look-views')) {
+        const nav = document.createElement('div');
+        nav.className = 'reveal-nav';
+        el.className = 'look-views';
+        nav.appendChild(el);
+      }
       if (place.includes('reveal-status')) {
         el.className = 'reveal-status';
         el.dataset.testid = 'reveal-status';

@@ -23,6 +23,11 @@ export const REVEAL_KEEP_CLEAR = [
   // card-backing-one (UIUX-reveal-READY.md, the addition of 24 Nov 18:13): the open star card on the laptop; the phone's
   // sheet and the card on the predicted sky keep their own rules. The picked star's mark stays (revealMarks)
   '.reveal-card:not(.is-phone):not(.is-sky)',
+  // keepclear-answer-views-one (DECIDED-BY-LEAD 21:07 on 24 Nov, UIUX on FIELD's two points): the open answer in the
+  // card's place and the laptop's views row, as the keep-clear record's own words have it, and the Credits link
+  '.reveal-answer:not(.is-phone)',
+  '.reveal-nav .look-views',
+  '.reveal-credits',
 ] as const;
 
 /** On the working screen: its column (the lead, the source line, Cancel and the rows) and the Sound circle. */
@@ -49,6 +54,9 @@ export const FADE_REACH: ReadonlyArray<{ place: string; faded: string; reach: { 
   { place: "[data-testid='reveal-status'][data-moment='there']", faded: ".reveal-status[data-moment='there']", reach: { left: 36, top: 44, right: 44, bottom: 44 } },
   { place: '.predsky:not(.is-phone) .predsky-status', faded: '.predsky:not(.is-phone) .predsky-status', reach: { left: 36, top: 44, right: 44, bottom: 44 } },
   { place: '.reveal-nav .sound-control', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
+  // The open answer carries the card's fade, and the views row the row's own (keepclear-answer-views-one)
+  { place: '.reveal-answer:not(.is-phone)', faded: '.reveal-answer:not(.is-phone)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },
+  { place: '.reveal-nav .look-views', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
 ];
 
 /** The fade's reach around a place kept clear, where the place carries one (FADE_REACH), on screen; else none. */

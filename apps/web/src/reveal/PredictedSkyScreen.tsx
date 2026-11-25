@@ -17,7 +17,8 @@ const STAR_CARD_LINES = 7;
 /** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
 function clearOf(status: HTMLElement | null): Box[] {
   // On the phone: the readout, its foot at y 756 (F2), and the close circle
-  return [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar'), document.querySelector('.predsky-top')]
+  // The Credits link joins them (keepclear-answer-views-one, 21:07)
+  return [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar'), document.querySelector('.predsky-top'), document.querySelector('.reveal-credits')]
     .filter((el): el is Element => el !== null)
     .flatMap((el) => {
       const r = el.getBoundingClientRect();
