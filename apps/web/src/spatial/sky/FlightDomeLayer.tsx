@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadPanoramaRegistration, type PanoramaRegistration } from './skyRegistration.js';
 import { FLIGHT_MILKY_WAY_URL, createFlightDome, createFlightDomeOn, disposeFlightDome, drawFlightDome, type DomeCamera, type FlightDomeGpu } from './flightMilkyWay.js';
-import { keptSkyPicture, type KeptSkyPicture } from './skyPicture.js';
+import { keptSkyPicture, skyPictureSourceOf, type KeptSkyPicture } from './skyPicture.js';
 
 /**
  * milkyway-flight-one's steering dome in a canvas of its own (flight-stars-finish-one, 16:08): while the person steers,
@@ -87,7 +87,7 @@ export const FlightDomeLayer: React.FC<{
         image.onload = () => resolve(image);
         image.onerror = () => reject(new Error('flight dome'));
       });
-      image.src = FLIGHT_MILKY_WAY_URL;
+      image.src = skyPictureSourceOf(FLIGHT_MILKY_WAY_URL);
       void Promise.all([loaded, loadPanoramaRegistration()]).then(
         ([img, registration]) => {
           if (!current) return;

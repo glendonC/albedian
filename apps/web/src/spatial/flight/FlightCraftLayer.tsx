@@ -11,6 +11,7 @@ import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming 
 import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
+import { skyPictureSourceOf } from '../sky/skyPicture.js';
 
 /**
  * pilot-1: a NASA model drawn in the photo's own view during the flight through the stars, a few metres ahead of the
@@ -189,7 +190,8 @@ let craftSkySource: Promise<CraftSkySource> | null = null;
  * off the main thread at full size and the canvas below shrinks it.
  */
 export async function smallCraftSky(): Promise<ImageBitmap | HTMLImageElement> {
-  const response = await fetch(CRAFT_SKY_URL);
+  // On a phone the glow's half-side copy, the file the glow itself is kept from there, so the page fetches one of them
+  const response = await fetch(skyPictureSourceOf(CRAFT_SKY_URL));
   if (!response.ok) throw new Error('craft sky');
   const blob = await response.blob();
   try {

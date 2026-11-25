@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { REAL_SKY_PANORAMA_URL, RealSkyLayer, prepareRealSky } from '../RealSkyLayer.js';
+import { PHONE_QUERY } from '../../components/phoneSheet.js';
 import { forgetKeptSkyPictures } from '../../spatial/sky/skyPicture.js';
 import { forgetPanoramaRegistration } from '../../spatial/sky/skyRegistration.js';
 import { FLIGHT_DOME_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../../spatial/sky/flightMilkyWay.js';
@@ -258,6 +259,28 @@ describe('go-there-predicted-1: a pose estimate\'s flight', () => {
 });
 
 describe('where the browser cannot keep sky pictures', () => {
+  it('reads the panorama\'s half-side copy on a phone (sky-picture-phone-size-one)', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === PHONE_QUERY, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const fakes = installSkyFakes({ pictureUrl: '/textures/eso_milkyway_panorama_3k.jpg', otherBody: registration });
+    vi.stubGlobal('OffscreenCanvas', undefined);
+    stubCanvases(fakes);
+    const asked: string[] = [];
+    class LoadingImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      decoding = '';
+      set src(url: string) {
+        asked.push(url);
+        setTimeout(() => this.onload?.(), 0);
+      }
+    }
+    vi.stubGlobal('Image', LoadingImage);
+    await act(async () => root.render(layer()));
+    await act(async () => await new Promise((r) => setTimeout(r, 10)));
+    expect(state()).toBe('drawn');
+    expect(asked).toEqual(['/textures/eso_milkyway_panorama_3k.jpg']);
+  });
+
   it('draws from the image element in its own context, as before, with no wait for the GPU', async () => {
     const fakes = installSkyFakes({ pictureUrl: REAL_SKY_PANORAMA_URL, otherBody: registration });
     vi.stubGlobal('OffscreenCanvas', undefined);

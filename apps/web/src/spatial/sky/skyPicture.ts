@@ -1,3 +1,5 @@
+import { LANDSCAPE_PHONE_QUERY, PHONE_QUERY } from '../../components/phoneSheet.js';
+
 /**
  * realsky-upload-one (LEAD ANSWER 18:27): a sky picture, such as ESO's Milky Way panorama or its baked starless glow, is
  * fetched and decoded off the main thread (`createImageBitmap`), then uploaded once into one WebGL 2 context kept for
@@ -14,6 +16,32 @@
  * pictures this way (no `createImageBitmap`, no WebGL 2 in an OffscreenCanvas, or bitmaps whose rows it does not flip),
  * `keptSkyPicture` says so with null and the layer draws as before in its own canvas.
  */
+
+/**
+ * sky-picture-phone-size-one (DECIDED-BY-LEAD 21:56): on a phone the loader keeps a half-side copy of each sky picture,
+ * a quarter of its memory (ASSETS' copies, made by scripts/make_sky_half_side.py and recorded with their sources in
+ * textures/PROVENANCE.json); a picture with no recorded copy is kept whole.
+ */
+export const SKY_PICTURE_PHONE_COPIES: Readonly<Record<string, string>> = {
+  '/textures/eso_milkyway_panorama.jpg': '/textures/eso_milkyway_panorama_3k.jpg',
+  '/textures/eso_milkyway_diffuse_6k.webp': '/textures/eso_milkyway_diffuse_3k.webp',
+};
+
+let phoneDevice: boolean | undefined;
+
+/** Whether the page began on a phone's window (the app's own phone queries), decided once so every layer keeps one copy. */
+function onPhone(): boolean {
+  if (phoneDevice === undefined) {
+    const matches = (query: string) => typeof globalThis.matchMedia === 'function' && globalThis.matchMedia(query).matches;
+    phoneDevice = matches(PHONE_QUERY) || matches(LANDSCAPE_PHONE_QUERY);
+  }
+  return phoneDevice;
+}
+
+/** The file a sky picture is read from: its half-side copy on a phone where one is recorded, itself otherwise. */
+export function skyPictureSourceOf(url: string): string {
+  return onPhone() ? (SKY_PICTURE_PHONE_COPIES[url] ?? url) : url;
+}
 
 /** Rows of the picture per slice: one slice goes up a frame (250 rows took 1.3 to 9.5 ms each on the probe). */
 export const SKY_PICTURE_SLICE_ROWS = 200;
@@ -156,7 +184,7 @@ export async function uploadSkyPicture(gl: WebGL2RenderingContext, picture: Deco
 
 async function upload(context: KeptContext, url: string): Promise<KeptSkyPicture> {
   const { gl } = context;
-  const texture = await uploadSkyPicture(gl, await decodeSkyPicture(url));
+  const texture = await uploadSkyPicture(gl, await decodeSkyPicture(skyPictureSourceOf(url)));
   return {
     paint(target, draw) {
       if (gl.isContextLost()) return false;
@@ -302,4 +330,5 @@ export function warmPrograms(
 export function forgetKeptSkyPictures(): void {
   kept = undefined;
   rowsFlip = undefined;
+  phoneDevice = undefined;
 }

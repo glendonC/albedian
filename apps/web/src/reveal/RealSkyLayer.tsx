@@ -4,7 +4,7 @@ import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { PHONE_SLOT } from './phoneSlot.js';
 import { heldPanoramaRegistration, panoramaRegistrationOnce } from '../spatial/sky/skyRegistration.js';
 import { realSkyGrid } from './realSkyGrid.js';
-import { keptSkyPicture, keptSkyPictureNow, prepareSkyPicture, skyProgram, warmPrograms } from '../spatial/sky/skyPicture.js';
+import { keptSkyPicture, keptSkyPictureNow, prepareSkyPicture, skyPictureSourceOf, skyProgram, warmPrograms } from '../spatial/sky/skyPicture.js';
 import { FLIGHT_DOME_FRAGMENT, FLIGHT_DOME_VERTEX, FLIGHT_GLOW_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../spatial/sky/flightMilkyWay.js';
 import { RealSkyStars, type MakeRealSkyFinish, type OpenRealSkyTiles, type RealSkyStarsState } from '../spatial/sky/RealSkyStars.js';
 
@@ -240,7 +240,7 @@ async function drawRealSky(canvas: HTMLCanvasElement, url: string, session: Obse
   if (!wanted()) return undefined;
   if (!grid) return false;
   if (picture) return picture.paint(canvas, (gl, texture) => drawGrid(gl, texture, grid, area, canvas.width, canvas.height, fragment));
-  const image = await loadImage(url);
+  const image = await loadImage(skyPictureSourceOf(url));
   if (!wanted()) return undefined;
   return drawOwn(canvas, image, grid, area, fragment);
 }

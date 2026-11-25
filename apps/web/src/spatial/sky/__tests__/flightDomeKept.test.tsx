@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Vec3 } from '@albedian/camera-rig';
 import { FlightDomeLayer, type DomeView } from '../FlightDomeLayer.js';
 import { FLIGHT_DOME_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../flightMilkyWay.js';
+import { PHONE_QUERY } from '../../../components/phoneSheet.js';
 import { forgetKeptSkyPictures, prepareSkyPicture } from '../skyPicture.js';
 import { elementGl, installSkyFakes, named } from './skyPictureFakes.js';
 
@@ -82,6 +83,21 @@ describe('the steering dome on the kept glow', () => {
     // The kept dome is the page's: nothing of it is freed as a steer ends
     expect(named(fakes.calls, 'deleteProgram')).toHaveLength(0);
     expect(named(fakes.calls, 'deleteTexture')).toHaveLength(0);
+  });
+
+  it('where pictures cannot be kept, reads the glow\'s half-side copy on a phone (sky-picture-phone-size-one)', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === PHONE_QUERY, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const fakes = installSkyFakes({ pictureUrl: '/textures/eso_milkyway_diffuse_3k.webp', otherBody: registration });
+    vi.stubGlobal('OffscreenCanvas', undefined);
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(function (this: HTMLCanvasElement, type: string) {
+      return (type === 'webgl2' ? elementGl(fakes, this) : null) as unknown as RenderingContext;
+    } as typeof HTMLCanvasElement.prototype.getContext);
+    const asked: string[] = [];
+    vi.stubGlobal('Image', class { onload: (() => void) | null = null; set src(u: string) { asked.push(u); setTimeout(() => this.onload?.(), 0); } });
+    await act(async () => root.render(createElement(FlightDomeLayer, { view: view([0, 0, 1]), viewportWidthPx: 390, viewportHeightPx: 844 })));
+    await act(async () => await new Promise((r) => setTimeout(r, 10)));
+    expect(state()).toBe('drawn');
+    expect(asked).toEqual(['/textures/eso_milkyway_diffuse_3k.webp']);
   });
 
   it('where pictures cannot be kept, uploads the glow into its own context from the image, flipped, as before', async () => {
