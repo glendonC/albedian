@@ -146,9 +146,16 @@ describe.each(NOUNS)('Restore asked off the %s', (noun) => {
     });
   });
 
-  it('Real sky, laid over the recording, is on it: the restored version is shown', () => {
+  it('Real sky takes the recording\'s place too (version two): refused, its way back being the views pill', () => {
+    const off = realSky(recording(noun).session);
+    const { result } = said(off, 'make the sky clearer');
+    expect(result.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected', explanation: `The restored version shows on this ${noun} itself.` });
+    expect(result.session).toBe(off);
+  });
+
+  it('on the recording itself the restored version is shown', () => {
     const { session, shown } = recording(noun);
-    const { result } = said(realSky(session), 'make the sky clearer');
+    const { result } = said(session, 'make the sky clearer');
     expect(result.outcome.status).toBe('completed');
     expect(result.session.activeVariantId).toBe(shown.id);
   });

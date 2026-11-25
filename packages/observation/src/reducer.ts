@@ -90,11 +90,19 @@ function mediaNoun(session: ObservationSession): 'photo' | 'clip' {
 }
 
 /**
- * Whether the screen is off the recording: the flight, or the predicted sky drawn for a sky not matched to the
- * catalog, as apps/web's isFlightShown and isPredictedSkyShown read the view (Real sky is laid over the recording, so
- * it is on it). DECIDED-BY-LEAD 24 Nov 21:17, voice-compare-one.
+ * Whether the screen is off the recording: any view but the recording's own (source_2d), as apps/web's
+ * isSourcePhotoShown reads it: the flight, Real sky and the predicted sky each take the photo's place (voice-compare-one
+ * version two, AUDIT-C's live run: in Real sky the recording is not on screen and Restore cannot be pressed there).
  */
 function isOffTheRecording(session: ObservationSession): boolean {
+  return (session.spatialView?.mode ?? 'source_2d') !== 'source_2d';
+}
+
+/**
+ * Whether Back to Moment is the screen's way back: the flight and the predicted sky (the viewport's AskBar onBack, as
+ * isFlightShown and isPredictedSkyShown read the view); Real sky goes back by its views pill instead.
+ */
+function backToMomentShown(session: ObservationSession): boolean {
   const mode = session.spatialView?.mode;
   const solution = session.observationSolution;
   return mode === 'catalog_3d' || (mode === 'registered_sky' && solution !== undefined && solution.status !== 'calibrated');
@@ -172,8 +180,11 @@ export function dispatchAlbedianAction(
           session,
           action.requestId,
           'not_connected',
-          // UIUX-voice-compare-restore-words-READY.md item 2, DECIDED-BY-LEAD 24 Nov 19:42
-          `The restored version shows on this ${mediaNoun(base)} itself; Back to Moment returns to it.`,
+          // UIUX-voice-compare-restore-words-READY.md item 2, DECIDED-BY-LEAD 24 Nov 19:42; where Back to Moment is not
+          // the screen's control (Real sky), its first clause alone (DECIDED-BY-LEAD 25 Nov 00:06)
+          backToMomentShown(base)
+            ? `The restored version shows on this ${mediaNoun(base)} itself; Back to Moment returns to it.`
+            : `The restored version shows on this ${mediaNoun(base)} itself.`,
           ['Return to the recording with Back to Moment']
         );
       }

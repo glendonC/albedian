@@ -724,8 +724,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   }, [asset?.sha256]);
   const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
-  // voice-restore-one: the restored version on screen, for the session, so "make the sky clearer" finds what is shown
-  const shownRestoration = compareOn ? (shownVersion?.variant ?? null) : null;
+  // voice-restore-one: the restored version on screen, for the session, so "make the sky clearer" finds what is shown.
+  // voice-compare-one version two (AUDIT-C's FAIL): away from the recording (the flight, Real sky, the sky leaving) the
+  // version last shown stays the session's, so voice there answers what the session holds; on the recording, only the
+  // compare's version, or none
+  const lastShownRestoration = useRef<MediaVariant | null>(null);
+  if (compareOn) lastShownRestoration.current = shownVersion?.variant ?? null;
+  if (lastShownRestoration.current !== null && lastShownRestoration.current.sourceSha256 !== asset?.sha256) lastShownRestoration.current = null;
+  const awayFromRecording = there || realSky || skyLeaving;
+  const shownRestoration = compareOn ? (shownVersion?.variant ?? null) : awayFromRecording ? lastShownRestoration.current : null;
   const tellShown = useRef(onShownRestoration);
   tellShown.current = onShownRestoration;
   useEffect(() => {
