@@ -138,8 +138,10 @@ export function arrivalShiftOf(session: ObservationSession, viewportWidthPx: num
   if (!camera || !picked) return null;
   const placement = placeFinding(picked);
   if (placement.kind !== 'at_distance') return null;
-  // On the flight's line the star's direction is the photo's, so it lands where the photo shows it
-  const at = screenOfPlacement(camera, placement);
+  // On the flight's line the star's direction is the photo's, so it lands where the photo shows it: seen from where the
+  // photo was taken (arrival-shift-steady-one), since Go there writes the camera's place on its way to a thousandth of a
+  // parsec, a hair off the line near the star, and the full shift, with Real sky's area, must stay one for the flight
+  const at = screenOfPlacement({ ...camera, observerPc: [0, 0, 0] }, placement);
   if (!at) return null;
   const share = phone ? ARRIVAL_REST_SHARE.phone : ARRIVAL_REST_SHARE.laptop;
   const full: [number, number] = [share[0] * viewportWidthPx - at.xPx, share[1] * viewportHeightPx - at.yPx];

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
 import { CATALOG_STAR_TILE_ENCODING_V1 as ENC } from '@albedian/contracts';
 import { raDecToUnitVector, type Vec3 } from '@albedian/camera-rig';
-import { dispatchAlbedianAction } from '@albedian/observation';
+import { dispatchAlbedianAction, flightEndOrigin } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { catalogStarTint } from '../../catalogStars/catalogStarTint.js';
@@ -231,6 +231,27 @@ describe('the arrival\'s resting place (look gap two, DECIDED-BY-LEAD 15:34)', (
     const v = inv[3] * x + inv[4] * y + inv[5];
     expect(m[0] * u + m[1] * v + m[2]).toBeCloseTo(x, 6);
     expect(m[3] * u + m[4] * v + m[5]).toBeCloseTo(y, 6);
+  });
+
+  it('keeps one full shift for the whole flight, wherever the camera stands on its way (arrival-shift-steady-one)', () => {
+    // Go there's animation writes the camera's place to a thousandth of a parsec each frame
+    // (useCameraFlightAnimation.ts), which near the star leaves it a hair off the line to it: the full shift, and so
+    // Real sky's area, must not follow that, or both sky canvases are drawn again every frame of Phase B
+    for (const [w, h, phone] of [[1440, 900, false], [390, 844, true]] as const) {
+      const s = there();
+      const picked = s.observationSolution!.findings.find((f) => f.id === s.selectedFindingId)!;
+      const placement = placeFinding(picked);
+      if (placement.kind !== 'at_distance') throw new Error('the picked star has a distance');
+      const end = flightEndOrigin([0, 0, 0], placement.positionPc);
+      const atRest = arrivalShiftOf({ ...inPhase(s, 'at_space', 1), spatialView: { ...s.spatialView, transitionPhase: 'at_space', transitionProgress: 1, observerOriginParsec: end } } as ObservationSession, w, h, phone)!;
+      for (const p of [0.05, 0.3, 0.6, 0.9, 0.97, 0.995]) {
+        const at = end.map((c) => Number((c * p).toFixed(3))) as [number, number, number];
+        const flying = { ...s, spatialView: { ...s.spatialView, transitionPhase: 'phase_b_sky_to_space', transitionProgress: p, observerOriginParsec: at } } as ObservationSession;
+        const shift = arrivalShiftOf(flying, w, h, phone)!;
+        expect(shift.fullPx[0]).toBe(atRest.fullPx[0]);
+        expect(shift.fullPx[1]).toBe(atRest.fullPx[1]);
+      }
+    }
   });
 
   it('has none without a picked star placed at its distance', () => {
