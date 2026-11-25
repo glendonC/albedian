@@ -65,6 +65,13 @@ BLADE_PLATES = [
     {"box": (887, 398, 1020, 508), "fill_from": (925, 393, 980, 399), "what": "the NASA insignia on a front body plate"},
 ]
 
+# Why the station's far levels are over the hangar's budget (the lead's ruling of 2026-11-27, lod-iss-1).
+ISS_BUDGET_REASON = (
+    "its lattice parts, the six 35.9 m truss masts among them, are chains of separate strut triangles under an alpha "
+    "lattice that no decimation reduces, and the station is drawn whole with its solar arrays (the lead's ruling of "
+    "2026-11-27)"
+)
+
 CRAFTS: dict[str, dict] = {
     "voyager": {
         "title": "Voyager",
@@ -871,10 +878,26 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "maps_mean"}],
         "strip_unused_layers": True,
         "smooth_deg": 30.0,
-        # Thousands of small parts set a floor under decimation: the far levels leave out those under a size.
-        "lod_ratio": {"lod0": 0.03, "lod1": 0.008, "lod2": 0.0025},
-        "drop_parts_under_m": {"lod1": 0.5, "lod2": 3.0},
-        "budget_bytes": {"lod0": 8_000_000},
+        # Thousands of small parts set a floor under decimation: the far levels leave out those under a size. One
+        # ratio over the whole mesh dropped the 20 m radiators from lod1 and the 35 m solar arrays from lod2, so those
+        # two levels go part by part after their small parts are left out; lod0 keeps one ratio (part by part over its
+        # ~25,000 parts ran one core for over 46 minutes).
+        "weld_m": 0.0001,
+        # welded at lod1 and lod2 alone: one ratio over the welded mesh kept 246,130 triangles (19.1 MB) at lod0
+        "weld_levels": ["lod1", "lod2"],
+        "decimate_by_part": ["lod1", "lod2"],
+        "drop_hidden_faces": ["lod1", "lod2"],
+        # lod0's share over the whole mesh; each part's share at the far levels, with a floor of 4 triangles, the parts
+        # under 2.5 m (chase view) and 5 m (phone) left out: 2,820 parts at 1.5 m made lod1 3.4 MB (trials of 27 Nov)
+        "lod_ratio": {"lod0": 0.03, "lod1": 0.002, "lod2": 0.0008},
+        "part_floor_tris": {"lod0": 12, "lod1": 4, "lod2": 4},
+        "part_tris_per_m": {"lod0": 40, "lod1": 4, "lod2": 2},
+        "drop_parts_under_m": {"lod1": 2.5, "lod2": 5.0},
+        # smooth across 60 degrees at the far levels: a decimated module of few sides stays round, with fewer split corners
+        "level_smooth_deg": {"lod1": 60.0, "lod2": 60.0},
+        "budget_bytes": {"lod0": 8_000_000, "lod1": 2_300_000, "lod2": 1_600_000},
+        # each far level over the hangar's budget says why in its file's record
+        "budget_reason": {"lod1": ISS_BUDGET_REASON, "lod2": ISS_BUDGET_REASON},
         "texture_edge": {"lod1": 256, "lod2": 128},
         "body_radius_m": 30.0,
         "changes": "mean",

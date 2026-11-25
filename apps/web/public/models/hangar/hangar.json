@@ -835,17 +835,17 @@
         },
         "lod1": {
           "path": "iss/iss_lod1.glb",
-          "bytes": 992380,
-          "triangles": 11365,
+          "bytes": 2264456,
+          "triangles": 26215,
           "textureEdgeMax": 256,
-          "budgetBytes": 1500000
+          "budgetBytes": 2300000
         },
         "lod2": {
           "path": "iss/iss_lod2.glb",
-          "bytes": 506940,
-          "triangles": 4902,
+          "bytes": 1573780,
+          "triangles": 17161,
           "textureEdgeMax": 128,
-          "budgetBytes": 600000
+          "budgetBytes": 1600000
         },
         "picker": {
           "path": "iss/iss_picker.webp",
@@ -869,8 +869,8 @@
       "bodyRadiusM": 30.0,
       "lodTriangleShare": {
         "lod0": 0.03,
-        "lod1": 0.008,
-        "lod2": 0.0025
+        "lod1": 0.002,
+        "lod2": 0.0008
       },
       "scaleFrom": {
         "part": null,

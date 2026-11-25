@@ -22,6 +22,7 @@ import pytest
 
 from scripts.lookdev.hangar import write_hangar
 from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CACHE, CRAFTS, HANGAR
+from scripts.lookdev.hangar.geometry import by_part_at
 
 ROOT = Path(__file__).resolve().parents[2]
 HANGAR_DIR = ROOT / "apps" / "web" / "public" / "models" / "hangar"
@@ -46,6 +47,7 @@ def test_the_shared_record_keeps_the_moon_source_first_and_the_bubble_source_las
 
 
 def test_every_built_file_is_within_its_budget() -> None:
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
     for name, model in FACTS["models"].items():
         for level, f in model["files"].items():
             size = (HANGAR_DIR / f["path"]).stat().st_size
@@ -60,9 +62,16 @@ def test_every_built_file_is_within_its_budget() -> None:
             assert f.get("occlusionBytes", 0) == occlusion, (name, level)
             base = {**BUDGET_BYTES, **CRAFTS[name].get("budget_bytes", {})}[level]
             assert size == f["bytes"] <= f["budgetBytes"] == base + occlusion, (name, level)
-            # a craft's own budget is only ever for its close view, and never past twice the shared one
-            assert level == "lod0" or base == BUDGET_BYTES[level]
-            assert base <= 2 * BUDGET_BYTES[level]
+            # a craft's own budget is for its close view; at a far level only with its reason named in the recipe and in
+            # the file's record (the station's lattice parts, which no decimation reduces: the lead's ruling of
+            # 2026-11-27); never past twice the shared one at the close view, three times at a far one
+            reason = CRAFTS[name].get("budget_reason", {}).get(level)
+            assert level == "lod0" or base == BUDGET_BYTES[level] or reason, (name, level)
+            assert base <= (2 if level == "lod0" else 3) * BUDGET_BYTES[level], (name, level)
+            if reason:
+                assert reason in record[f"hangar/{f['path']}"]["note"], (name, level)
+    assert {n for n in CRAFTS if CRAFTS[n].get("budget_reason")} == {"iss"}
+    assert set(CRAFTS["iss"]["budget_reason"]) == {"lod1", "lod2"}
 
 
 def test_over_budget_is_refused() -> None:
@@ -254,19 +263,35 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
     # footpads in lod1 and lod2 (53 lod0 parts of 3 cm and over gone from lod1, 79 of 6.5 cm and over from lod2, the
     # largest 27 cm): a craft decimated part by part leaves out only the parts under its level's size, measured before
     # decimation, and every larger lod0 part still has corners in its place (its box grown by 1 cm) at every level.
+    # The station's lod1 dropped its 20 m radiators and its lod2 its 35 m solar arrays under one ratio over its ~22,600
+    # loose parts (14,878 lod0 parts of 3 cm and over gone from lod1, 17,525 of 6.5 cm and over from lod2): it is
+    # decimated part by part at lod1 and lod2, its lod0 under one ratio still.
     by_part = [name for name in FACTS["models"] if CRAFTS[name].get("decimate_by_part")]
-    assert {"insight", "voyager"} <= set(by_part)
+    assert {"insight", "voyager", "iss"} <= set(by_part)
+    assert CRAFTS["iss"]["decimate_by_part"] == ["lod1", "lod2"]
     for name in by_part:
         # the provenance sentence of a by-part level says hidden inner faces of bulky parts are left out
         assert CRAFTS[name].get("drop_hidden_faces") == ["lod1", "lod2"], name
         boxes0, _ = _glb_parts(HANGAR_DIR / FACTS["models"][name]["files"]["lod0"]["path"])
         for level in ("lod1", "lod2"):
+            assert by_part_at(CRAFTS[name], level), (name, level)
             under = CRAFTS[name].get("drop_parts_under_m", {}).get(level, 0.0)
+            # in its place: a corner within its box grown by 1 cm, or by a fiftieth of the level's cut where that is more
+            # (the station's 17.8 m rods 5 mm thick keep corners 2.6 to 3.9 cm from their ends at a 2.5 m cut)
+            grow = max(0.01, under / 50)
             _, points = _glb_parts(HANGAR_DIR / FACTS["models"][name]["files"][level]["path"])
+            if by_part_at(CRAFTS[name], "lod0"):
+                checked = [(lo, hi) for lo, hi in boxes0 if np.linalg.norm(hi - lo) >= under]
+            else:
+                # the station's lod0 is one share over its unwelded mesh, so its parts are not the far levels' parts (a
+                # panel inside a module is a part there, inner faces at the far levels): each of its sheets and bodies of
+                # 10 m and over, 0.5 m wide or more, keeps a corner in place (96: main's files lost 21 at lod1, 76 at lod2)
+                checked = [(lo, hi) for lo, hi in boxes0 if np.linalg.norm(hi - lo) >= 10.0 and np.sort(hi - lo)[1] >= 0.5]
+                assert len(checked) >= 90, (name, len(checked))
             gone = [
                 (round(float(np.linalg.norm(hi - lo)), 3), [round(float(x), 2) for x in (lo + hi) / 2])
-                for lo, hi in boxes0
-                if np.linalg.norm(hi - lo) >= under and not np.all((points >= lo - 0.01) & (points <= hi + 0.01), axis=1).any()
+                for lo, hi in checked
+                if not np.all((points >= lo - grow) & (points <= hi + grow), axis=1).any()
             ]
             assert not gone, (name, level, len(gone), sorted(gone, reverse=True)[:5])
 
@@ -311,6 +336,19 @@ def test_a_credit_source_no_model_names_leaves_the_record(tmp_path: Path, monkey
     written = write_hangar.build_record(list(FACTS["models"]))
     assert stale["id"] not in {s["id"] for s in written["sources"]}
     assert [s["id"] for s in written["sources"]] == [s["id"] for s in raw["sources"] if s is not stale]
+
+
+def test_decimating_part_by_part_is_every_level_for_true_and_the_named_levels_for_a_list() -> None:
+    assert [by_part_at({"decimate_by_part": True}, lv) for lv in ("lod0", "lod1", "lod2")] == [True, True, True]
+    assert [by_part_at({"decimate_by_part": ["lod1", "lod2"]}, lv) for lv in ("lod0", "lod1", "lod2")] == [False, True, True]
+    assert [by_part_at(r, "lod1") for r in ({}, {"decimate_by_part": False}, {"decimate_by_part": "lod1"})] == [False] * 3
+    # each level's provenance sentence says how that level was made: the station's lod0 under one ratio
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
+    for name in FACTS["models"]:
+        for level in ("lod1", "lod2"):
+            said = record[f"hangar/{name}/{name}_{level}.glb"]["producedBy"]["changes"]
+            assert ("each loose part reduced on its own" in said) == by_part_at(CRAFTS[name], level), (name, level)
+    assert "each loose part reduced on its own" not in record["hangar/iss/iss_lod0.glb"]["producedBy"]["changes"]
 
 
 def test_the_true_size_is_metres_of_a_real_craft() -> None:

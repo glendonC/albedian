@@ -40,6 +40,7 @@ from scripts.lookdev.hangar.crafts import (  # noqa: E402
     PICKER_EDGE,
     TEXTURE_EDGE,
 )
+from scripts.lookdev.hangar.geometry import by_part_at  # noqa: E402
 from services.contracts.provenance import AssetProvenanceRecord, dumps_record, sha256_file  # noqa: E402
 
 HANGAR_DIR = REPO_ROOT / "apps" / "web" / "public" / "models" / "hangar"
@@ -201,7 +202,7 @@ def _level_changes(model: str, level: str) -> str:
     """The key of build_craft.py's CHANGES sentence for one level of one model."""
     if level == "lod0":
         return f"lod0_{CRAFTS[model]['changes']}"
-    key = f"{level}_by_part" if CRAFTS[model].get("decimate_by_part") else level
+    key = f"{level}_by_part" if by_part_at(CRAFTS[model], level) else level
     # a craft given the sky fill's occlusion per vertex says so at every level (craft-ao-one)
     return f"{key}_ao" if CRAFTS[model].get("vertex_ao") else key
 
@@ -271,13 +272,16 @@ def build_record(models: list[str]) -> dict:
         )
         model_note = f"Built from {model_url} ({src['bytes']} bytes, SHA-256 {src['sha256']}); {scaled}. Its model's page {page} {credited}."
         for level in LEVELS:
+            reason = CRAFTS[m].get("budget_reason", {}).get(level)
+            budget = {**BUDGET_BYTES, **CRAFTS[m].get("budget_bytes", {})}[level]
+            over = f" Its budget is {budget} bytes, over the hangar's {BUDGET_BYTES[level]}: {reason}." if reason else ""
             files.append(
                 {
                     "path": f"hangar/{m}/{m}_{level}.glb",
                     "sha256": sha256_file(HANGAR_DIR / m / f"{m}_{level}.glb"),
                     "sources": [sid, PAGES_SOURCE],
                     "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[_level_changes(m, level)]},
-                    "note": model_note,
+                    "note": model_note + over,
                 }
             )
         if src.get("picture") and not src.get("picker_render_reason"):

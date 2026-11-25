@@ -39,3 +39,11 @@ def max_plan_distance(points: list[tuple[float, float, float]], up: int = 2) -> 
         upper.append(p)
     hull = lower[:-1] + upper[:-1]
     return max(dist(a, b) for a, b in combinations(hull, 2))
+
+
+def by_part_at(recipe: dict, level: str) -> bool:
+    """Whether a recipe decimates `level` part by part: `decimate_by_part` is True for every level, or names the levels
+    (the station's lod0 keeps one ratio over its whole mesh; its lod1 and lod2 go part by part after their small parts
+    are left out, since part by part over all of its parts at lod0 ran one core for over 46 minutes)."""
+    by_part = recipe.get("decimate_by_part")
+    return by_part is True or (isinstance(by_part, (list, tuple)) and level in by_part)

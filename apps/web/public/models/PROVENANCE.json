@@ -911,7 +911,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "0658768fd316d97d2de63f35827cffc5ac96c0737f18e0ae1ee4699390669246",
+      "sha256": "295fd2f14fc3ab0065e60eedd7541ffaef233dcb3f3138be6c0403b5f6942395",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-3d-models-nasa-brian-e-kumanchik",
@@ -1190,7 +1190,7 @@
     },
     {
       "path": "hangar/iss/iss_lod1.glb",
-      "sha256": "1af7ecaa311648ee5b554c680d8c357bfabc6670c41114606f78594f7022c32a",
+      "sha256": "877550f62c45503cfc60b9b39679e8a9b084c1b2aa27dac2c2be340eefd6faa6",
       "sources": [
         "nasa-3d-models-nasa-jsc-integrated-graphics-operations-and-analysis-laboratory",
         "nasa-science-mission-pages"
@@ -1199,13 +1199,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
       },
-      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory."
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory. Its budget is 2300000 bytes, over the hangar's 1500000: its lattice parts, the six 35.9 m truss masts among them, are chains of separate strut triangles under an alpha lattice that no decimation reduces, and the station is drawn whole with its solar arrays (the lead's ruling of 2026-11-27)."
     },
     {
       "path": "hangar/iss/iss_lod2.glb",
-      "sha256": "e31d3013c9a1c061c3e2c781546fe07e303c6dd7b46869c921d8d6ce3e397433",
+      "sha256": "675d2a8d3ab6ba46a9cf365577b5314d6bec129a8d205fe9c273ed1115d38527",
       "sources": [
         "nasa-3d-models-nasa-jsc-integrated-graphics-operations-and-analysis-laboratory",
         "nasa-science-mission-pages"
@@ -1214,9 +1214,9 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
       },
-      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory."
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory. Its budget is 1600000 bytes, over the hangar's 600000: its lattice parts, the six 35.9 m truss masts among them, are chains of separate strut triangles under an alpha lattice that no decimation reduces, and the station is drawn whole with its solar arrays (the lead's ruling of 2026-11-27)."
     },
     {
       "path": "hangar/iss/iss_picker.webp",
