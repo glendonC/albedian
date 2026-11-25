@@ -51,7 +51,7 @@ struct CompanionRoot: View {
                 }
         }
         .preferredColorScheme(.dark)
-        .sheet(item: $model.openPage) { page in SafariView(url: page.url).ignoresSafeArea() }
+        .sheet(item: $model.openPage) { page in CoveredSafariView(url: page.url).ignoresSafeArea() }
         #if DEBUG
         .task { model.runFromLaunchArguments() }
         #endif
