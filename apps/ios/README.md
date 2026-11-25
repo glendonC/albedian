@@ -131,9 +131,23 @@ ALBEDIAN_SWIFT_ORDER_SEED=3 swift test --package-path apps/ios/AlbedianCaptureCo
 xcodebuild -project apps/ios/AlbedianCapture.xcodeproj -scheme AlbedianCapture -destination 'generic/platform=iOS Simulator' -jobs 2 build
 ```
 
-Then open the built `AlbedianCapture.app` in an iPhone simulator. "Build record" builds a record from the sample
-values; "Send" takes a laptop address such as `http://127.0.0.1:8000` (the API in the simulator) or the `--lan`
-address `pnpm field --lan` prints. The sample photo is a black image the app draws, not a photo.
+Then open the built `AlbedianCapture.app` in an iPhone simulator (Xcode's Run on a simulator does both). What the
+simulator shows [tested on the iPhone 17 Pro simulator, 24 November]:
+
+- The app opens on its home: the Milky Way, the wordmark, Start and Credits. Credits names the sources the app shows,
+  each with its licence.
+- Start asks for the location, then shows "Albedian can't use the camera" with Try again: the simulator has no camera
+  and no motion sensors, so there is no preview, no aim overlay and no photo to take.
+- So nothing reaches the laptop from the simulator: taking a photo, sending it, the wait and the result run on an iPhone.
+
+On an iPhone, with the laptop and the phone on the same network:
+
+1. On the laptop, run `pnpm field --lan` (`docs/FIELD_USE.md`); it prints the laptop's address on the network.
+2. Open `apps/ios/AlbedianCapture.xcodeproj` in Xcode, choose your own team under Signing & Capabilities (and a bundle
+   identifier of your own if Xcode asks), choose the iPhone (with Developer Mode on) and Run.
+3. On the phone, press Start, allow the location, the camera and motion when iOS asks, aim and take a photo. The first
+   Send asks for the laptop's address: type the one `pnpm field --lan` printed, after the `http://` already there, and
+   allow the local network when iOS asks. The wait shows the laptop's steps, and Open shows the result in the web app.
 
 ## Choices
 
