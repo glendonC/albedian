@@ -6,7 +6,9 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DISK_ADVICE_GB, HEIC_ADVICE, fieldCheck, formatReport, realProbes } from '../field-check.mjs';
 
-const MUSIC_MANIFEST = 'apps/web/spike/music/sources.json';
+// The files the app plays (field-check-music-one, LEAD ANSWER 20:48 on 24 Nov), not the spike's whole catalogue
+const MUSIC_LIST = 'data/music_sources.json';
+const CATALOGUE = 'apps/web/spike/music/sources.json';
 const SOURCES = '.cache/music/sources/';
 
 function fakeProbes(over = {}) {
@@ -46,7 +48,9 @@ function fakeProbes(over = {}) {
     readJson: (rel) =>
       ({
         'package.json': { engines: { node: '>=22.0.0' }, packageManager: 'pnpm@10.7.1' },
-        [MUSIC_MANIFEST]: { files: music },
+        [MUSIC_LIST]: { downloads: music.map((file) => ({ ...file, path: SOURCES + file.path })) },
+        // The spike's catalogue holds more, which the app does not play and the check must not count
+        [CATALOGUE]: { files: [...music, { path: 'scottbuckley/Starfire.mp3', bytes: 30 }] },
       })[rel] ?? null,
     fileSize: (rel) => (links.has(rel) ? null : (files[rel] ?? null)),
     servedSize: (folder, rel) => {
@@ -110,6 +114,27 @@ describe('pnpm field --check', () => {
     expect(entry.detail).toContain('1 of 3');
     for (const name of ['Chimes', 'C#4', 'D4', 'scottbuckley']) expect(entry.detail).not.toContain(name);
     expect(result.exitCode).toBe(0);
+  });
+
+  it('counts against the files the app plays, so a complete fetch says the music is ready', async () => {
+    const entry = line(await run(), 'music');
+    expect(entry).toMatchObject({ status: 'ok' });
+    expect(entry.detail).toContain('2 of 2');
+  });
+
+  it('never counts a listed file outside the music folder, whatever lies in the folder', async () => {
+    const probes = fakeProbes({ files: { [`${SOURCES}null`]: 3 } });
+    const readJson = probes.readJson;
+    probes.readJson = (rel) =>
+      rel === MUSIC_LIST ? { downloads: [{ path: '.cache/elsewhere/x.wav', bytes: 3 }, { path: `${SOURCES}vcsl/Chimes/C#4.wav`, bytes: 10 }] } : readJson(rel);
+    const entry = (await fieldCheck({ probes, ports: PORTS })).lines.find((l) => l.name === 'music');
+    expect(entry.detail).toContain('1 of 2');
+  });
+
+  it('reads the tracked list of the files the app plays, each under the music folder', () => {
+    const listed = JSON.parse(fs.readFileSync(new URL('../../data/music_sources.json', import.meta.url), 'utf8')).downloads;
+    expect(listed.length).toBeGreaterThan(100);
+    for (const entry of listed) expect(entry.path.startsWith(SOURCES)).toBe(true);
   });
 
   it('counts a music file reached through a link as missing, as the music server would', async () => {

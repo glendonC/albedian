@@ -14,7 +14,9 @@ import { gitEnvironment } from './git-env.mjs';
 export const DISK_ADVICE_GB = 10;
 export const HEIC_ADVICE =
   "iPhone HEIC photos will be refused: install ffmpeg 7.1 or later, or set the iPhone's Camera Formats to Most Compatible (JPEG)";
-const MUSIC_MANIFEST = 'apps/web/spike/music/sources.json';
+// The files the app plays, as scripts/fetch_music_sources.py fetches them (field-check-music-one), not the spike's
+// whole catalogue, whose evaluated mixes the app never plays
+const MUSIC_LIST = 'data/music_sources.json';
 const MUSIC_SOURCES = '.cache/music/sources';
 const CATALOG_DIR = 'apps/web/public/catalog';
 const VOICE_OFFLINE = "typed commands work offline; spoken input depends on the browser's own speech recognition";
@@ -162,9 +164,11 @@ function heicLine(probes) {
 }
 
 function musicLine(probes) {
-  const files = probes.readJson(MUSIC_MANIFEST)?.files;
-  if (!Array.isArray(files)) return { name: 'music', status: 'advice', detail: 'the music manifest could not be read' };
-  const present = files.filter((file) => probes.servedSize(MUSIC_SOURCES, file.path) === file.bytes).length;
+  const downloads = probes.readJson(MUSIC_LIST)?.downloads;
+  if (!Array.isArray(downloads)) return { name: 'music', status: 'advice', detail: 'the music manifest could not be read' };
+  const prefix = `${MUSIC_SOURCES}/`;
+  const files = downloads.map((entry) => ({ path: String(entry.path).startsWith(prefix) ? String(entry.path).slice(prefix.length) : null, bytes: entry.bytes }));
+  const present = files.filter((file) => file.path !== null && probes.servedSize(MUSIC_SOURCES, file.path) === file.bytes).length;
   const counted = `${present} of ${files.length} sample files present at their listed size`;
   if (present === files.length) return { name: 'music', status: 'ok', detail: counted };
   return {
