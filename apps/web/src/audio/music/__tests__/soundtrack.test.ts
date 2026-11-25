@@ -102,7 +102,12 @@ describe('the soundtrack registry', () => {
 /** Plays the director's commands as the music layer would: a play starts its piece at once. */
 class Stage {
   readonly plays: { piece: string; atSec: number; setting: string; last: string | null }[] = [];
-  readonly fades: { piece: string; atSec: number; moment: SoundtrackMoment; setting: string; settingChanged: boolean }[] = [];
+  readonly fades: { piece: string; atSec: number; fadeSec: number; moment: SoundtrackMoment; setting: string; settingChanged: boolean }[] = [];
+  /** Each prepare the director asked for, and when its piece is ready (after the stage's fetch). */
+  readonly prepares: { piece: string; askedSec: number; readyAt: number }[] = [];
+  /** How long a prepare's fetch takes; the layer schedules this far ahead of its clock. */
+  fetchSec = 0.2;
+  leadSec = 0.25;
   /** Natural ends: the end time each piece that finished on its own had been given. */
   readonly ends: number[] = [];
   /** When a moment took effect or the setting changed: only these may move a gap off its draw. */
@@ -120,8 +125,12 @@ class Stage {
   run(commands: readonly DirectorCommand[]): void {
     for (const command of commands) {
       if (command.kind === 'fade') {
-        this.fades.push({ piece: command.piece, atSec: command.atSec, moment: this.director.state.moment, setting: this.director.state.setting, settingChanged: this.settingChanged });
+        this.fades.push({ piece: command.piece, atSec: command.atSec, fadeSec: command.fadeSec, moment: this.director.state.moment, setting: this.director.state.setting, settingChanged: this.settingChanged });
         this.sounding = null;
+        continue;
+      }
+      if (command.kind === 'prepare') {
+        this.prepares.push({ piece: command.piece, askedSec: this.now, readyAt: this.now + this.fetchSec });
         continue;
       }
       // A play never overlaps a piece that still sounds
@@ -129,7 +138,7 @@ class Stage {
       this.plays.push({ piece: command.piece, atSec: command.atSec, setting: this.director.state.setting, last: this.lastStarted });
       this.sounding = command.piece;
       this.lastStarted = command.piece;
-      this.director.started(command.piece, command.atSec, command.atSec + this.lengthSec(command.piece));
+      this.director.started(command.piece, command.atSec, command.atSec + this.lengthSec(command.piece), BEAT[command.piece] ?? null);
     }
     this.settingChanged = false;
   }
@@ -161,11 +170,20 @@ class Stage {
     this.changes.push(this.now);
     this.watchEnd(() => this.director.setSetting(setting, this.now));
   }
-  /** Moves the clock to `nowSec`, waking the director at every time it asked for on the way. */
+  private readied = 0;
+  /** Moves the clock to `nowSec`, waking the director at every time it asked for on the way, and telling it each
+   * prepared piece when its fetch is done, in time order. */
   advanceTo(nowSec: number): void {
     for (let guard = 0; guard < 1000; guard++) {
-      const wake = this.director.nextWakeSec();
-      if (wake === null || wake > nowSec) break;
+      const wake = this.director.nextWakeSec() ?? Infinity;
+      const ready = this.prepares[this.readied]?.readyAt ?? Infinity;
+      if (Math.min(wake, ready) > nowSec) break;
+      if (ready <= wake) {
+        const prepared = this.prepares[this.readied++]!;
+        this.now = Math.max(this.now, ready);
+        this.watchEnd(() => this.director.prepared(prepared.piece, this.now, this.leadSec));
+        continue;
+      }
       this.now = Math.max(this.now, wake);
       this.watchEnd(() => this.director.tick(this.now));
     }
@@ -178,6 +196,8 @@ class Stage {
 }
 
 const LENGTH: Record<string, number> = { 'organ-pulse': 53, 'ambient-beats': 53.5, recording: 40 };
+/** Each piece's beat: Organ and pulse at 60 a minute, Ambient beats at 96, the recording's measured 66.7. */
+const BEAT: Record<string, number> = { 'organ-pulse': 1, 'ambient-beats': 0.625, recording: 0.9 };
 const lengthOf = (piece: string) => LENGTH[piece] ?? 30;
 
 function stage(options: { moment?: SoundtrackMoment; setting?: string; random?: () => number; pieces?: readonly DirectedPiece[] } = {}) {
@@ -228,15 +248,16 @@ describe('the soundtrack director, through the moments of a visit', () => {
   });
 
   it('does not react to a moment that changes back before it has held', () => {
-    const s = stage({ moment: 'look_around' });
+    // The star card and looking around settle (the crossing moments answer on the beat instead: music-crossing-1)
+    const s = stage({ moment: 'back_to_moment' });
     s.start();
     s.advance(5);
-    s.moment('travel');
+    s.moment('star_card');
     s.advance(1);
-    s.moment('look_around');
+    s.moment('back_to_moment');
     s.advance(10);
     expect(s.fades).toEqual([]);
-    expect(s.plays.map((p) => p.piece)).toEqual(['ambient-beats']);
+    expect(s.plays.map((p) => p.piece)).toEqual(['organ-pulse']);
   });
 
   it('leaves a silence gap after a piece ends, drawn between 20 and 60 s', () => {
@@ -461,11 +482,11 @@ describe("the restored compare's arrival", () => {
     s.arrive();
     expect(s.director.state).toMatchObject({ phase: 'playing', piece: 'organ-pulse', moment: 'back_to_moment' });
     expect(s.fades).toHaveLength(0);
-    s.moment('travel');
+    s.moment('star_card');
     s.advance(T.settleSec + 0.5);
     expect(s.director.state.phase).toBe('fading');
     s.arrive();
-    expect(s.director.state).toMatchObject({ phase: 'fading', moment: 'travel' });
+    expect(s.director.state).toMatchObject({ phase: 'fading', moment: 'star_card' });
     expect(s.fades).toHaveLength(1);
   });
 
@@ -507,6 +528,155 @@ describe("the restored compare's arrival", () => {
   });
 });
 
+// music-crossing-1 (DECIDED-BY-LEAD 12:55 on 24 Nov, UIUX-sound-READY.md, MOTION-music-crossing-PROPOSAL.md): the reveal,
+// Go there (travel) and Back to Moment cross on the playing piece's next beat: the incoming piece is fetched at once
+// so no gap is heard, enters at full on that beat, and the outgoing fades across one beat. The star card and looking
+// around keep the settle, so quick presses do not flap.
+describe('the crossing on the beat', () => {
+  it('answers Back to Moment on the playing piece\'s first beat after the incoming piece is ready, with no settle', () => {
+    const s = stage({ moment: 'look_around', random: () => 0 });
+    s.start();
+    s.advance(10.1);
+    expect(s.plays).toEqual([expect.objectContaining({ piece: 'ambient-beats', atSec: 0 })]);
+    s.moment('back_to_moment');
+    // Asked for at once, no 1.5 s wait; the music keeps playing meanwhile
+    expect(s.prepares).toEqual([{ piece: 'organ-pulse', askedSec: 10.1, readyAt: 10.1 + s.fetchSec }]);
+    expect(s.fades).toEqual([]);
+    expect(s.director.state).toMatchObject({ phase: 'playing', piece: 'ambient-beats', moment: 'look_around' });
+    s.advance(0.2);
+    // Ready at 10.3, schedulable from 10.55: Ambient beats' next beat (0.625 s from its start at 0) is 10.625
+    expect(s.fades).toEqual([expect.objectContaining({ piece: 'ambient-beats', atSec: 10.625, fadeSec: 0.625, moment: 'back_to_moment' })]);
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'organ-pulse', atSec: 10.625 });
+    expect(s.director.state).toMatchObject({ phase: 'playing', piece: 'organ-pulse', moment: 'back_to_moment', untilSec: 10.625 + 53 });
+  });
+
+  it('answers Go there and the reveal the same way, on the beat of the piece that plays', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0 });
+    s.start();
+    s.advance(20.3);
+    s.moment('travel');
+    s.advance(s.fetchSec);
+    // Organ and pulse beats each second: ready at 20.5, schedulable from 20.75, so 21
+    expect(s.fades.at(-1)).toMatchObject({ piece: 'organ-pulse', atSec: 21, fadeSec: 1 });
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'recording', atSec: 21 });
+    s.advance(5);
+    s.moment('reveal');
+    s.advance(s.fetchSec);
+    // The recording's beat is 0.9 s from 21: asked at 25.5, ready at 25.7, schedulable from 25.95, so 21 + 6 * 0.9
+    expect(s.fades.at(-1)).toMatchObject({ piece: 'recording', fadeSec: 0.9 });
+    expect(s.fades.at(-1)!.atSec).toBeCloseTo(26.4, 9);
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'ambient-beats' });
+    expect(s.plays.at(-1)!.atSec).toBeCloseTo(26.4, 9);
+  });
+
+  it('waits for a slow fetch: the crossing is the first beat after the piece is ready, never a gap', () => {
+    const s = stage({ moment: 'look_around', random: () => 0 });
+    s.fetchSec = 1.4;
+    s.start();
+    s.advance(10.1);
+    s.moment('back_to_moment');
+    s.advance(1.0);
+    expect(s.fades).toEqual([]);
+    expect(s.sounding).toBe('ambient-beats');
+    s.advance(0.4);
+    // Ready at 11.5, schedulable from 11.75: the beat at 11.875
+    expect(s.fades.at(-1)).toMatchObject({ atSec: 11.875 });
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'organ-pulse', atSec: 11.875 });
+  });
+
+  it('keeps the settle and the 3 s fade for the star card and looking around', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0 });
+    s.start();
+    s.advance(10);
+    s.moment('star_card');
+    expect(s.prepares).toEqual([]);
+    s.advance(T.settleSec);
+    expect(s.fades.at(-1)).toMatchObject({ piece: 'organ-pulse', atSec: 10 + T.settleSec, fadeSec: T.fadeSec });
+    expect(s.prepares).toEqual([]);
+  });
+
+  it('takes a crossing moment the playing piece fits at once, crossing nothing', () => {
+    const s = stage({ moment: 'look_around', random: () => 0 });
+    s.start();
+    s.advance(10);
+    s.moment('reveal');
+    expect(s.director.state).toMatchObject({ phase: 'playing', piece: 'ambient-beats', moment: 'reveal' });
+    s.advance(5);
+    expect([s.prepares, s.fades]).toEqual([[], []]);
+  });
+
+  it('crosses nothing for a moment taken back before its piece is ready, and only the last of two', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0 });
+    s.start();
+    s.advance(10);
+    s.moment('travel');
+    s.advance(0.1);
+    s.moment('back_to_moment');
+    s.advance(2);
+    expect(s.prepares).toHaveLength(1);
+    expect([s.fades, s.plays.length]).toEqual([[], 1]);
+    expect(s.director.state).toMatchObject({ piece: 'organ-pulse', moment: 'back_to_moment' });
+    s.moment('travel');
+    s.advance(0.1);
+    s.moment('reveal');
+    s.advance(1);
+    // The recording's prepare came back first and crossed nothing; the reveal's piece crossed
+    expect(s.prepares.map((prepare) => prepare.piece)).toEqual(['recording', 'recording', 'ambient-beats']);
+    expect(s.plays.map((play) => play.piece)).toEqual(['organ-pulse', 'ambient-beats']);
+    expect(s.fades).toHaveLength(1);
+  });
+
+  it('plays the prepared piece at once if the playing piece ended before its beat came', () => {
+    const s = stage({ moment: 'back_to_moment', random: () => 0 });
+    s.start();
+    s.advance(52.9);
+    s.moment('travel');
+    s.advance(s.fetchSec);
+    // Organ and pulse ended at 53: a silence, so the recording enters when it can, with nothing to fade
+    expect(s.fades).toEqual([]);
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'recording' });
+    expect(s.plays.at(-1)!.atSec).toBeCloseTo(52.9 + s.fetchSec + s.leadSec, 9);
+  });
+
+  it("crosses at the playing piece's own end when it ends before its next beat", () => {
+    const s = stage({ moment: 'look_around', random: () => 0 });
+    s.start();
+    s.advance(52.9);
+    s.moment('back_to_moment');
+    s.advance(s.fetchSec);
+    // Ambient beats ends at 53.5, off its 0.625 s grid: its next beat after 53.35 would be 53.75, past its end
+    expect(s.fades.at(-1)).toMatchObject({ piece: 'ambient-beats', atSec: 53.5 });
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'organ-pulse', atSec: 53.5 });
+  });
+
+  it('keeps today\'s rule in a silence, while a piece starts or fades, with the music pinned, and with no beat known', () => {
+    // A silence: the settle, then the entry
+    const s = stage({ moment: 'look_around', random: () => 0 });
+    s.start();
+    s.advance(53.5 + 5);
+    s.moment('travel');
+    expect(s.prepares).toEqual([]);
+    s.advance(T.settleSec + T.entrySec + 0.01);
+    expect(s.plays.at(-1)).toMatchObject({ piece: 'recording' });
+    expect(s.plays.at(-1)!.atSec).toBeCloseTo(53.5 + 5 + T.settleSec + T.entrySec, 9);
+    // Pinned: the pin plays whatever the moment
+    const pinned = stage({ moment: 'look_around', setting: 'ambient-beats' });
+    pinned.start();
+    pinned.advance(10);
+    pinned.moment('travel');
+    pinned.advance(5);
+    expect([pinned.prepares, pinned.fades]).toEqual([[], []]);
+    // A piece with no beat: the settle and the fade
+    const unbeaten = stage({ moment: 'look_around', random: () => 0, pieces: [{ id: 'a', moments: ['look_around'] }, { id: 'b', moments: ['travel'] }] });
+    unbeaten.start();
+    unbeaten.advance(5);
+    unbeaten.moment('travel');
+    expect(unbeaten.prepares).toEqual([]);
+    unbeaten.advance(T.settleSec);
+    expect(unbeaten.fades.at(-1)).toMatchObject({ piece: 'a', fadeSec: T.fadeSec });
+  });
+});
+
 describe('the soundtrack director, over any visit', () => {
   it('keeps its rules whatever the moments, settings and waits', () => {
     fc.assert(
@@ -533,6 +703,8 @@ describe('the soundtrack director, over any visit', () => {
           if (fade.settingChanged) continue;
           expect(fade.setting).toBe('soundtrack');
           expect(SOUNDTRACK.find((piece) => piece.id === fade.piece)!.moments).not.toContain(fade.moment);
+          // Across one beat of the piece that fades on a crossing, or the settle's 3 s
+          expect([T.fadeSec, BEAT[fade.piece]]).toContain(fade.fadeSec);
         }
         for (const end of s.ends) {
           const next = s.plays.find((play) => play.atSec >= end);

@@ -17,6 +17,7 @@ import {
   type PendingMoment,
 } from './silenceScheduler.js';
 import {
+  CROSSING_MOMENTS,
   DEFAULT_SOUNDTRACK_MOMENT,
   MAX_DIRECTOR_TICK_STEPS,
   SOUNDTRACK_SETTING,
@@ -32,6 +33,8 @@ import {
 
 const isActivePiecePhase = (phase: DirectorPhase): boolean => phase === 'starting' || phase === 'playing';
 const isValidPlaybackSpan = (startSec: number, endSec: number): boolean => endSec >= startSec;
+/** A beat that falls within this of the earliest schedulable time still counts as reached. */
+const BEAT_SNAP_SEC = 1e-9;
 
 export class SoundtrackDirector {
   private phase: DirectorPhase = 'stopped';
@@ -41,6 +44,10 @@ export class SoundtrackDirector {
   private last: string | null = null;
   private untilSec: number | null = null;
   private pending: PendingMoment | null = null;
+  /** The playing piece's beat grid: its start and its beat; null when it has none. */
+  private beat: { readonly t0: number; readonly beatSec: number } | null = null;
+  /** A crossing moment waiting for its piece to be prepared (music-crossing-1). */
+  private crossing: { readonly moment: SoundtrackMoment; readonly piece: string } | null = null;
   private readonly random: () => number;
   private readonly timings: DirectorTimings;
 
@@ -78,6 +85,8 @@ export class SoundtrackDirector {
     this.phase = 'stopped';
     this.piece = null;
     this.untilSec = null;
+    this.beat = null;
+    this.crossing = null;
     this.pending = null;
   }
 
@@ -86,10 +95,65 @@ export class SoundtrackDirector {
     if (this.phase === 'stopped') {
       this.moment = moment;
       this.pending = null;
+      this.crossing = null;
       return [];
     }
+    const due = this.tick(nowSec);
+    // A new moment ends a crossing still waiting for its piece, whichever moment it is
+    this.crossing = null;
+    if (this.setting === SOUNDTRACK_SETTING && this.phase === 'playing' && CROSSING_MOMENTS.has(moment) && moment !== this.moment) {
+      // The playing piece fits it: taken at once, nothing to cross
+      if (pieceIdFitsMoment(this.pieces, this.piece!, moment)) {
+        this.moment = moment;
+        this.pending = null;
+        return due;
+      }
+      // On the playing piece's beat, with the incoming piece fetched first (music-crossing-1); with no beat known,
+      // the settle and the fade as for any moment
+      const piece = this.beat ? selectNextPieceId(this.pieces, this.setting, moment, this.piece, this.random) : null;
+      if (piece !== null) {
+        this.pending = null;
+        this.crossing = { moment, piece };
+        return [...due, { kind: 'prepare', piece }];
+      }
+    }
     this.pending = updatePendingMoment(this.moment, this.pending, moment, nowSec);
-    return this.tick(nowSec);
+    return [...due, ...this.tick(nowSec)];
+  }
+
+  /**
+   * The music layer has `piece` ready (music-crossing-1). If it is the piece a crossing waits for, the moment is taken:
+   * while a piece plays, both turn on its first beat at or after `nowSec + leadSec` (never past its end), the outgoing
+   * fading across one beat and the incoming entering at full; in a silence the incoming enters at once. Any other
+   * report is stale and changes nothing.
+   */
+  prepared(piece: string, nowSec: number, leadSec: number): DirectorCommand[] {
+    const due = this.tick(nowSec);
+    const crossing = this.crossing;
+    if (!crossing || crossing.piece !== piece || this.setting !== SOUNDTRACK_SETTING || this.phase === 'stopped') return due;
+    this.crossing = null;
+    this.moment = crossing.moment;
+    this.pending = null;
+    const earliest = nowSec + leadSec;
+    if (this.phase === 'playing' && this.beat) {
+      const { t0, beatSec } = this.beat;
+      const next = t0 + Math.max(0, Math.ceil((earliest - t0 - BEAT_SNAP_SEC) / beatSec)) * beatSec;
+      const atSec = Math.min(next, this.untilSec ?? next);
+      const outgoing = this.piece!;
+      this.phase = 'starting';
+      this.piece = piece;
+      this.untilSec = null;
+      this.beat = null;
+      return [...due, { kind: 'fade', piece: outgoing, atSec, fadeSec: beatSec }, { kind: 'play', piece, atSec }];
+    }
+    if (this.phase === 'gap' || this.phase === 'silent') {
+      this.phase = 'starting';
+      this.piece = piece;
+      this.untilSec = null;
+      return [...due, { kind: 'play', piece, atSec: earliest }];
+    }
+    // Starting or fading: the moment is taken, as a settled one
+    return [...due, ...this.commit(nowSec)];
   }
 
   /**
@@ -110,6 +174,7 @@ export class SoundtrackDirector {
     const due = this.tick(nowSec);
     if (setting === this.setting) return due;
     this.setting = setting;
+    this.crossing = null;
     if (this.phase === 'stopped' || this.phase === 'fading') return due;
     if (isActivePiecePhase(this.phase)) {
       return isPieceAllowedBySetting(this.pieces, this.piece!, this.setting, this.moment)
@@ -120,12 +185,16 @@ export class SoundtrackDirector {
     return [...due, ...this.play(nowSec)];
   }
 
-  /** The music layer scheduled `piece` from `startSec` to `endSec`. A stale report is ignored. */
-  started(piece: string, startSec: number, endSec: number): void {
+  /**
+   * The music layer scheduled `piece` from `startSec` to `endSec`, its beat `beatSec` long (null for none). A stale
+   * report is ignored.
+   */
+  started(piece: string, startSec: number, endSec: number, beatSec: number | null = null): void {
     if (this.phase !== 'starting' || this.piece !== piece || !isValidPlaybackSpan(startSec, endSec)) return;
     this.phase = 'playing';
     this.last = piece;
     this.untilSec = endSec;
+    this.beat = beatSec !== null && Number.isFinite(beatSec) && beatSec > 0 ? { t0: startSec, beatSec } : null;
   }
 
   /** When `tick` next has something to do; null when nothing waits. */

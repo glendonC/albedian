@@ -465,7 +465,8 @@ export class MusicLayer {
   private async answer(commands: readonly DirectorCommand[]): Promise<void> {
     const plays: Promise<void>[] = [];
     for (const command of commands) {
-      if (command.kind === 'fade') this.fadePass(command.fadeSec);
+      if (command.kind === 'fade') this.fadePass(command.fadeSec, command.atSec);
+      else if (command.kind === 'prepare') void this.preparePass(command.piece);
       else plays.push(this.playPass(command.piece, command.atSec));
     }
     this.arm();
@@ -522,16 +523,43 @@ export class MusicLayer {
   }
 
   /** Fades the pass that sounds; a pass still loading is dropped. */
-  private fadePass(fadeSec: number): void {
+  /** Fades the pass out over `fadeSec` from `atSec` (a crossing's beat), or from now when that has passed. */
+  private fadePass(fadeSec: number, atSec = 0): void {
     this.passToken += 1;
     const pass = this.pass;
     this.pass = null;
     if (!pass || !this.ctx) return;
     const now = this.ctx.currentTime;
+    const from = Math.max(now, atSec);
     pass.gain.gain.cancelScheduledValues(now);
     pass.gain.gain.setValueAtTime(pass.gain.gain.value, now);
-    pass.gain.gain.linearRampToValueAtTime(0, now + fadeSec);
-    setTimeout(() => pass.gain.disconnect(), (fadeSec + 0.1) * 1000);
+    if (from > now) pass.gain.gain.setValueAtTime(pass.gain.gain.value, from);
+    pass.gain.gain.linearRampToValueAtTime(0, from + fadeSec);
+    setTimeout(() => pass.gain.disconnect(), (from - now + fadeSec + 0.1) * 1000);
+  }
+
+  /**
+   * Fetches a crossing's incoming piece now (music-crossing-1): its samples, its room and its recording go into the
+   * layer's caches, so the pass the crossing plays is scheduled at once on its beat; then tells the director it is
+   * ready. A file it lacks still lets the crossing turn: the pass's own fetch then says which.
+   */
+  private async preparePass(id: string): Promise<void> {
+    const run = this.run;
+    const ctx = this.ctx;
+    const base = this.options.sourcesBase;
+    if (!ctx || !base) return;
+    try {
+      const piece = this.pieces.find((p) => p.id === id);
+      if (!piece) throw new Error(`the soundtrack has no piece ${id}`);
+      const arrangement = await piece.arrange(this.stars, this.sources(base));
+      await this.loadZones(neededZones(arrangement));
+      await this.roomFor(ctx, arrangement.room);
+      if (arrangement.recording) await this.recordingFor(ctx, base, arrangement.recording.file);
+    } catch {
+      // Said by the pass's own fetch when the crossing plays it
+    }
+    if (run !== this.run) return;
+    await this.answer(this.director.prepared(id, this.clock(), this.lead));
   }
 
   private async playPass(id: string, atSec: number): Promise<void> {
@@ -571,7 +599,8 @@ export class MusicLayer {
       this.pass = { gain, piece: piece.id, arrangement, t0, dataBus: buses.get('data') ?? null };
       this.lastPass = this.pass;
       const played = new Set(arrangement.events.flatMap((e) => (e.type === 'sample' && e.star ? [e.star.starId] : [])));
-      this.director.started(piece.id, t0, t0 + arrangement.durationSec);
+      // Its beat, for a crossing on it (music-crossing-1)
+      this.director.started(piece.id, t0, t0 + arrangement.durationSec, 60 / arrangement.bpm);
       // Playing again after a missing file: the tries start over next time
       this.retries = 0;
       this.retrying = false;

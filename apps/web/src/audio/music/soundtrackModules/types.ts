@@ -15,6 +15,13 @@ export const SOUNDTRACK_MOMENTS: readonly SoundtrackMoment[] = [
   'back_to_moment',
 ];
 
+/**
+ * The moments that cross on the playing piece's next beat, each a single deliberate act (music-crossing-1,
+ * DECIDED-BY-LEAD 12:55 on 24 Nov): the reveal, Go there and Back to Moment. The star card and looking around keep the
+ * settle, so quick presses do not flap.
+ */
+export const CROSSING_MOMENTS: ReadonlySet<SoundtrackMoment> = new Set(['reveal', 'travel', 'back_to_moment']);
+
 /** Default visit moment before the app reports another. */
 export const DEFAULT_SOUNDTRACK_MOMENT: SoundtrackMoment = 'arrive';
 
@@ -56,7 +63,9 @@ export type DirectorCommand =
   /** Start a pass of `piece` at `atSec` (or as soon after as its files are ready). */
   | { readonly kind: 'play'; readonly piece: string; readonly atSec: number }
   /** Fade the piece that sounds (or is about to) out from `atSec` over `fadeSec`. */
-  | { readonly kind: 'fade'; readonly piece: string; readonly atSec: number; readonly fadeSec: number };
+  | { readonly kind: 'fade'; readonly piece: string; readonly atSec: number; readonly fadeSec: number }
+  /** Fetch and arrange `piece` now, so a crossing finds it ready; tell the director `prepared` when it is. */
+  | { readonly kind: 'prepare'; readonly piece: string };
 
 /**
  * stopped: Audio is off. silent: nothing to play (the setting is off). starting: a play was sent and

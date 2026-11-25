@@ -337,16 +337,17 @@ describe('MusicLayer playing the soundtrack', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const { fetch } = sourcesFetch({ analysis: ANALYSIS });
     const heard: string[] = [];
-    const layer = new MusicLayer({ moment: 'look_around', sourcesBase: BASE, fetch, random: () => 0, onPieceStarted: (piece) => heard.push(piece) });
+    const layer = new MusicLayer({ moment: 'back_to_moment', sourcesBase: BASE, fetch, random: () => 0, onPieceStarted: (piece) => heard.push(piece) });
     layer.setStars(STARS);
     const ctx = new FakeContext();
     const music = new FakeNode('music');
     await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
-    expect(layer.getStatus()).toMatchObject({ setting: 'soundtrack', moment: 'look_around', piece: 'ambient-beats', state: 'playing', passes: 1 });
+    expect(layer.getStatus()).toMatchObject({ setting: 'soundtrack', moment: 'back_to_moment', piece: 'organ-pulse', state: 'playing', passes: 1 });
 
-    // Travel: once it has held 1.5 s the ambient pass fades out over 3 s; the output stays up
+    // The star card (it settles; the crossing moments answer on the beat instead): once it has held 1.5 s the organ's
+    // pass fades out over 3 s; the output stays up
     await clockTo(ctx, 15);
-    layer.setMoment('travel');
+    layer.setMoment('star_card');
     await clockTo(ctx, 16.4);
     const [firstPass] = layerNodes(ctx, music).passes;
     expect((firstPass!.gain as FakeParam).events.filter((e) => e.call === 'linear')).toEqual([]);
@@ -359,16 +360,52 @@ describe('MusicLayer playing the soundtrack', () => {
     expect(ramp[0]!.time).toBeLessThanOrEqual(16.7 + 3);
     expect(layerNodes(ctx, music).output.disconnected).toBe(false);
 
-    // After the fade, the recording in a pass of its own
+    // After the fade, Ambient beats in a pass of its own
     await clockTo(ctx, 19.4);
-    expect(layer.getStatus()).toMatchObject({ moment: 'travel', passes: 1 });
+    expect(layer.getStatus()).toMatchObject({ moment: 'star_card', passes: 1 });
     await clockTo(ctx, 19.8);
-    expect(layer.getStatus()).toMatchObject({ moment: 'travel', piece: 'recording', state: 'playing', passes: 2 });
+    expect(layer.getStatus()).toMatchObject({ moment: 'star_card', piece: 'ambient-beats', state: 'playing', passes: 2 });
     const passes = layerNodes(ctx, music).passes;
     expect(passes).toHaveLength(2);
     expect(firstPass!.disconnected).toBe(true);
     expect(passes[1]!.disconnected).toBe(false);
+    expect(heard).toEqual(['organ-pulse', 'ambient-beats']);
+  });
+
+  // music-crossing-1 (DECIDED-BY-LEAD 12:55 on 24 Nov): Go there, the reveal and Back to Moment cross on the playing
+  // piece's next beat, the incoming piece fetched at once and entering at full, the outgoing fading across one beat
+  it("crosses Go there on the playing pass's next beat: fetched at once, the old pass fading across one beat", async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch, requests } = sourcesFetch({ analysis: ANALYSIS });
+    const heard: string[] = [];
+    const layer = new MusicLayer({ moment: 'look_around', sourcesBase: BASE, fetch, random: () => 0, onPieceStarted: (piece) => heard.push(piece) });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ piece: 'ambient-beats', state: 'playing', passes: 1 });
+    await clockTo(ctx, 15);
+    const sourcesBefore = ctx.sources().length;
+    layer.setMoment('travel');
+    // The recording and its analysis are asked for at once, while Ambient beats plays on
+    await vi.advanceTimersByTimeAsync(0);
+    expect(requests.some((url) => url.endsWith('recording-analysis.json'))).toBe(true);
+    await clockTo(ctx, 15.1);
+    expect(layer.getStatus()).toMatchObject({ moment: 'travel', piece: 'recording', state: 'playing', passes: 2 });
+    // Ambient beats started at 10.25 with a 0.625 s beat: ready at 15, schedulable from 15.25, its beat at 15.25
+    const [firstPass, secondPass] = layerNodes(ctx, music).passes;
+    const fade = (firstPass!.gain as FakeParam).events;
+    expect(fade.filter((e) => e.call === 'linear')).toEqual([{ call: 'linear', value: 0, time: 15.25 + 0.625 }]);
+    expect(fade.some((e) => e.call === 'set' && e.time === 15.25)).toBe(true);
+    // The recording's pass enters at full on that beat: no ramp of its own, its first sound at 15.25
+    expect((secondPass!.gain as FakeParam).events.filter((e) => e.call === 'linear')).toEqual([]);
+    const starts = ctx.sources().slice(sourcesBefore).flatMap((node) => node.starts);
+    expect(Math.min(...starts)).toBeCloseTo(15.25, 9);
     expect(heard).toEqual(['ambient-beats', 'recording']);
+    // The old pass is let go once its fade is over; the output stays up throughout
+    await clockTo(ctx, 16.1);
+    expect(firstPass!.disconnected).toBe(true);
+    expect(layerNodes(ctx, music).output.disconnected).toBe(false);
   });
 
   it('leaves a silence after a piece, then plays another, never the one just played', async () => {
