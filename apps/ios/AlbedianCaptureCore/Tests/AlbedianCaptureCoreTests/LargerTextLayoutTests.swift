@@ -375,4 +375,24 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(after.contains("action:model.changeAddress)}.padding(.top,CGFloat(UnreachableFrame.linesToButtons))}.padding(.horizontal,CGFloat(ButtonGeometry.margin))"))
         XCTAssertTrue(after.contains("ifmodel.unreachable&&!stacked{"), "at default sizes the row as recorded")
     }
+
+    /// largertext-refused-m (UIUX-iphone-largertext-sweep-READY item 5, DECIDED-BY-LEAD 24 Nov 19:56): at accessibility
+    /// sizes the laptop's sentence wraps whole, no ellipsis, its icon at its first line; Try again stands 16 pt under its
+    /// last line in the flow; the block stands on the foot and grows upward; the photo gives the room down to the floor
+    /// of Can't reach the laptop's column, past which the column scrolls; measured once, hidden, drawn once measured.
+    func testTheLaptopsRefusalStandsWholeWithTryAgainInItsFlowAtAccessibilitySizes() throws {
+        let stopped = compact(try body(of: "struct StoppedScreen: View", in: try code("Screens/AfterSendScreens.swift").code))
+        XCTAssertTrue(stopped.contains("@StateprivatevarcolumnRoom:Double?"))
+        XCTAssertTrue(stopped.contains("letframe=UnreachableFrame.size(screenWidth:width,screenHeight:Double(geometry.size.height),columnRoom:columnRoom??0)"))
+        XCTAssertTrue(stopped.contains("stoppedColumn.hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}"))
+        XCTAssertTrue(stopped.contains("ScrollView{VStack(spacing:0){ShotPhoto(shot:model.shot,width:frame.width)Spacer(minLength:CGFloat(UnreachableFrame.gap))stoppedColumn}.frame(maxWidth:.infinity,minHeight:geometry.size.height-CGFloat(UnreachableFrame.top+UnreachableFrame.foot))"),
+                      "the block on the foot, growing upward, the photo above it in its frame")
+        XCTAssertTrue(stopped.contains(".scrollBounceBehavior(.basedOnSize).opacity(columnRoom==nil?0:1)"), "scrolls past the floor; nothing drawn before it is measured")
+        XCTAssertTrue(stopped.contains("VStack(spacing:16){ifletsentence=model.stoppedSentence{sentenceLine(sentence).frame(maxWidth:.infinity,alignment:.leading)}MainButton("),
+                      "Try again 16 pt under the sentence, in the flow")
+        XCTAssertTrue(stopped.contains("HStack(alignment:.firstTextBaseline,spacing:8){AlbedianIcon.warning.image(18)"), "the icon at the first line")
+        XCTAssertFalse(stopped.contains(".lineLimit("), "the sentence never held to a line")
+        XCTAssertTrue(stopped.contains(".atTop(Arrive.photoTop+width*4/3+16)") && stopped.contains(".atBottom(Arrive.unreachableButtonsBottomGap)"),
+                      "at default sizes as recorded")
+    }
 }

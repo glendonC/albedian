@@ -341,28 +341,73 @@ private struct StepRow: View {
 /// verbatim (or the laptop's own words for a refused photo), and "Try again" alone at 730.
 struct StoppedScreen: View {
     let model: CompanionModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// largertext-refused-m: the room the sentence and Try again need at accessibility sizes, measured once from them,
+    /// hidden; nil until measured, and nothing of the column is drawn before
+    @State private var columnRoom: Double?
 
     var body: some View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
             ZStack {
-                ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                if dynamicTypeSize.isAccessibilitySize {
+                    // largertext-refused-m (UIUX-iphone-largertext-sweep-READY item 5, DECIDED-BY-LEAD 24 Nov 19:56): the
+                    // sentence whole, its icon at its first line, Try again 16 pt under it in the flow, on the foot and
+                    // growing upward; the photo gives the room down to the floor of Can't reach the laptop's column, as the
+                    // record's rule has it, and past it the column scrolls
+                    let frame = UnreachableFrame.size(screenWidth: width, screenHeight: Double(geometry.size.height),
+                                                      columnRoom: columnRoom ?? 0)
+                    stoppedColumn
+                        .hidden()
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { columnRoom = $0 }
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ShotPhoto(shot: model.shot, width: frame.width)
+                            Spacer(minLength: CGFloat(UnreachableFrame.gap))
+                            stoppedColumn
+                        }
+                        .frame(maxWidth: .infinity, minHeight: geometry.size.height - CGFloat(UnreachableFrame.top + UnreachableFrame.foot))
+                        .padding(.top, CGFloat(UnreachableFrame.top))
+                        .padding(.bottom, CGFloat(UnreachableFrame.foot))
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .opacity(columnRoom == nil ? 0 : 1)
+                } else {
+                    ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                    if let sentence = model.stoppedSentence {
+                        sentenceLine(sentence)
+                            .padding(.horizontal, CGFloat(Arrive.side))
+                            // 16 pt under the photo: 654 on the record's 390 pt screen
+                            .atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                    }
+                    MainButton(title: "Try again", icon: .send, action: model.tryAgainAfterStop).atBottom(Arrive.unreachableButtonsBottomGap)
+                }
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
-                if let sentence = model.stoppedSentence {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        AlbedianIcon.warning.image(18).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }.accessibilityHidden(true)
-                        Text(sentence).font(AlbedianFont.regular(17)).tracking(-0.01 * 17).multilineTextAlignment(.leading)
-                    }
-                    .foregroundStyle(Color(ControlStyle.ink))
-                    .padding(.horizontal, CGFloat(Arrive.side))
-                    // 16 pt under the photo: 654 on the record's 390 pt screen
-                    .atTop(Arrive.photoTop + width * 4 / 3 + 16)
-                }
-                MainButton(title: "Try again", icon: .send, action: model.tryAgainAfterStop).atBottom(Arrive.unreachableButtonsBottomGap)
             }
         }
         .ignoresSafeArea()
+    }
+
+    private func sentenceLine(_ sentence: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            AlbedianIcon.warning.image(18).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }.accessibilityHidden(true)
+            Text(sentence).font(AlbedianFont.regular(17)).tracking(-0.01 * 17).multilineTextAlignment(.leading)
+        }
+        .foregroundStyle(Color(ControlStyle.ink))
+    }
+
+    /// At accessibility sizes: the sentence whole on as many lines as it needs, then Try again 16 pt under it, centred,
+    /// within the screen's 24 pt margins.
+    private var stoppedColumn: some View {
+        VStack(spacing: 16) {
+            if let sentence = model.stoppedSentence {
+                sentenceLine(sentence).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            MainButton(title: "Try again", icon: .send, action: model.tryAgainAfterStop)
+        }
+        .padding(.horizontal, CGFloat(ButtonGeometry.margin))
     }
 }
 
