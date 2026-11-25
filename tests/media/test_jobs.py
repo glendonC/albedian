@@ -31,6 +31,7 @@ import struct
 import subprocess
 import time
 import zlib
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -561,6 +562,31 @@ def test_variants_and_attempts_are_listed_oldest_first(client) -> None:
     ]
     ties.sort(key=lambda r: media_router._utc_sort_key(r, "createdAtUTC"))
     assert [r["id"] for r in ties] == ["var_" + "a" * 16, "var_" + "b" * 16]
+
+
+def test_the_listing_converts_an_offset_and_reads_a_naive_instant_as_utc_in_any_local_zone(monkeypatch) -> None:
+    """AUDIT-B's notes one and two on export-utc-sort-1 (verdicts/export-utc-sort-1.md): an offset whose wall clock
+    reverses the order of the instants, and a naive instant read as UTC even where the machine's own zone is not UTC
+    (CI's Linux containers run in UTC, where reading it as local time would look the same)."""
+    from services.media import router as media_router
+
+    key = lambda r: media_router._utc_sort_key(r, "createdAtUTC")  # noqa: E731
+    # 01:30 at +02:00 is 23:30Z the day before: it comes before 00:00Z, though its wall clock is later
+    offset = [{"id": "var_" + "a" * 16, "createdAtUTC": "2026-11-20T00:00:00Z"},
+              {"id": "var_" + "b" * 16, "createdAtUTC": "2026-11-20T01:30:00+02:00"}]
+    assert [r["id"] for r in sorted(offset, key=key)] == ["var_" + "b" * 16, "var_" + "a" * 16]
+    # Fourteen hours east of UTC, a POSIX zone that needs no zone database: 00:30 the 20th read as local time would be
+    # 10:30Z the 19th, before 23:00Z the 19th; read as UTC it comes after
+    monkeypatch.setenv("TZ", "XYZ-14")
+    time.tzset()
+    try:
+        assert datetime.fromisoformat("2026-11-20T00:30:00").astimezone(timezone.utc).hour == 10
+        naive = [{"id": "var_" + "c" * 16, "createdAtUTC": "2026-11-20T00:30:00"},
+                 {"id": "var_" + "d" * 16, "createdAtUTC": "2026-11-19T23:00:00Z"}]
+        assert [r["id"] for r in sorted(naive, key=key)] == ["var_" + "d" * 16, "var_" + "c" * 16]
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 def test_post_publish_crash_serves_no_uncommitted_variant_sweeps_cleanly_and_lets_retry_succeed(
