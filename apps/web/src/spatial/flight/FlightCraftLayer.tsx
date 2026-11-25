@@ -10,7 +10,7 @@ import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUniforms } from './craftEdgeLight.js';
 import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
-import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
+import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, keyToFillOf, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 import { skyPictureSourceOf } from '../sky/skyPicture.js';
 
@@ -316,9 +316,10 @@ function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates
   gpu.key.position.copy(c).addScaledVector(new THREE.Vector3(...toKey), 10 * shown.cached.radius + 1);
   gpu.key.target.position.copy(c);
   gpu.key.target.updateMatrixWorld();
-  // craft-light-two: the sky's fill at four to one, the Milky Way's brightest sky as a second light, the meter counting both
+  // craft-light-two: the sky's fill, the Milky Way's brightest sky as a second light, the meter counting both
   // chase-light-one: the edge light while the key is behind the craft
-  const look = craftLighting({ craftFromCameraM: [c.x, c.y, c.z], keyDirection: toKey, sky: gpu.skyLight });
+  // craft-fill-eight-one: the fill at the key's ratio, eight to one far from any star, sixteen where it shines as the Sun on Earth
+  const look = craftLighting({ craftFromCameraM: [c.x, c.y, c.z], keyDirection: toKey, sky: gpu.skyLight, keyToFill: keyToFillOf(key) });
   const edge = edgeLightColor([c.x, c.y, c.z], toKey, key.tint);
   gpu.edge.uEdgeColor.value.setRGB(edge[0], edge[1], edge[2], THREE.LinearSRGBColorSpace);
   gpu.scene.environmentIntensity = look.environmentIntensity;

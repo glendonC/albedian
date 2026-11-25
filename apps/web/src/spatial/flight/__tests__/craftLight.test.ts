@@ -8,6 +8,12 @@ import {
   MIDDLE_GREY,
   CRAFT_GALAXY_TO_KEY,
   CRAFT_KEY_TO_FILL,
+  CRAFT_KEY_TO_FILL_AT_FLOOR,
+  CRAFT_WHITE_CAP_INPUT,
+  AU_PC,
+  LIGHT_YEAR_PC,
+  SUN_ON_EARTH_MAG,
+  keyToFillOf,
   craftLighting,
   seenSideKeyShare,
   SUN_ABSOLUTE_V_MAG,
@@ -79,17 +85,19 @@ describe('the key: the brightest real source where the camera is', () => {
   });
 });
 
-// craft-light-two (DECIDED-BY-LEAD on LOOK's pictures): the sky fills at four to one whatever the star, the Milky
+// craft-light-two (DECIDED-BY-LEAD on LOOK's pictures): the sky fills at a ruled ratio (since craft-fill-eight-one eight
+// to one far from any star, with the brightest lit white placed at the cap), the Milky
 // Way's brightest sky is a second light at half the key wherever it lies, and the meter counts every light
 describe('the ruled look', () => {
   const sky = { integral: 2.5, galaxy: { direction: [0, 0, 1] as const, tint: [1, 0.86, 0.85] as const } };
   const acesInput = (exposure: number, irradiance: number) => (exposure * irradiance) / Math.PI / ACES_INPUT_SCALE;
 
-  it('holds the sky at four to one against the key, whatever the star', () => {
-    expect(CRAFT_KEY_TO_FILL).toBe(4);
+  it('holds the sky at eight to one against the key far from any star, and at the ratio it is given', () => {
+    expect(CRAFT_KEY_TO_FILL).toBe(8);
     const look = craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky });
-    // A surface facing the sky takes a quarter of its whole light: the whole sky at 4 / 4 of the key, spread over the sky's own sum
-    expect(look.environmentIntensity).toBeCloseTo(1 / 2.5, 12);
+    // A surface facing the sky takes a quarter of its whole light: the whole sky at 4 / 8 of the key, spread over the sky's own sum
+    expect(look.environmentIntensity).toBeCloseTo(0.5 / 2.5, 12);
+    expect(craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky, keyToFill: 16 }).environmentIntensity).toBeCloseTo(0.25 / 2.5, 12);
     expect(craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky: null }).environmentIntensity).toBe(0);
   });
 
@@ -100,16 +108,21 @@ describe('the ruled look', () => {
     expect(craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [1, 0, 0], sky: { integral: 2.5, galaxy: null } }).galaxy).toBeNull();
   });
 
-  it('meters every light on the side the camera sees, so that side lands at middle grey and nothing more', () => {
+  it('places the brightest lit white at the cap, counting every light; the seen side at middle grey when it is the brightest', () => {
+    expect(CRAFT_WHITE_CAP_INPUT).toBe(1);
     // The camera looks along +z at the craft; the second light comes from the camera's side, the key from beside the craft
     const at: [number, number, number] = [0, 0, 10];
     const fromCameraSide = { integral: 2.5, galaxy: { direction: [0, 0, -1] as const, tint: [1, 1, 1] as const } };
+    const fill = 4 / CRAFT_KEY_TO_FILL;
     const look = craftLighting({ craftFromCameraM: at, keyDirection: [1, 0, 0], sky: fromCameraSide });
-    const seen = seenSideKeyShare(at, [1, 0, 0]) + 0.5 * seenSideKeyShare(at, [0, 0, -1]) + 1 / 4;
     expect(seenSideKeyShare(at, [1, 0, 0])).toBe(0);
-    expect(GREY_CARD_ALBEDO * acesInput(look.exposure, seen)).toBeCloseTo(MIDDLE_GREY, 12);
-    // Counting the second light lowers the exposure against a meter that left it out
-    expect(look.exposure).toBeLessThan(meteredExposure({ keyOnSeenSide: 0, fillRatio: 1 }));
+    // The brightest surface faces between the two lights
+    expect(acesInput(look.exposure, Math.hypot(1, 0.5) + fill / 4)).toBeCloseTo(CRAFT_WHITE_CAP_INPUT, 12);
+    // Counting the second light lowers the exposure against a cap that left it out
+    expect(look.exposure).toBeLessThan((CRAFT_WHITE_CAP_INPUT * ACES_INPUT_SCALE * Math.PI) / (1 + fill / 4));
+    // Every light from the camera's side: the seen side is the brightest, and a grey card there lands at middle grey
+    const front = craftLighting({ craftFromCameraM: at, keyDirection: [0, 0, -1], sky: fromCameraSide });
+    expect(GREY_CARD_ALBEDO * acesInput(front.exposure, 1.5 + fill / 4)).toBeCloseTo(MIDDLE_GREY, 12);
   });
 });
 
@@ -246,7 +259,7 @@ describe('the sky\'s light summed over the sphere (the craft\'s fill, from its s
 // chase-light-one (lead's word on LOOK's chase findings): (b) the exposure falls when the star is behind the craft so
 // the near side sits under white and the rim reads, and the brightest lit surface never clips
 describe('the chase light', async () => {
-  const { CRAFT_BACKLIT_STOPS, CRAFT_WHITE_CAP_INPUT, brightestIrradiance, keyBehindCraft } = await import('../craftLight.js');
+  const { CRAFT_BACKLIT_STOPS, brightestIrradiance, keyBehindCraft } = await import('../craftLight.js');
   const acesInput = (exposure: number, irradiance: number) => (exposure * irradiance) / Math.PI / ACES_INPUT_SCALE;
   const sky = { integral: 2.5, galaxy: { direction: [0, 1, 0] as const, tint: [1, 1, 1] as const } };
 
@@ -260,23 +273,72 @@ describe('the chase light', async () => {
   it('lets the near side fall one and a half stops under middle grey when the star is straight behind the craft', () => {
     expect(CRAFT_BACKLIT_STOPS).toBe(1.5);
     const at: [number, number, number] = [0, 0, 10];
-    // The second light from the camera's side lights the seen side, so the cap binds in neither case
+    // The second light from the camera's side lights the seen side, the key straight behind lights none of it
     const front = { integral: 2.5, galaxy: { direction: [0, 0, -1] as const, tint: [1, 1, 1] as const } };
     const behind = craftLighting({ craftFromCameraM: at, keyDirection: [0, 0, 1], sky: front });
-    const beside = craftLighting({ craftFromCameraM: at, keyDirection: [1, 0, 0], sky: front });
-    // The seen side's light is the same either way (no key on it); only the exposure falls
-    expect(behind.exposure / beside.exposure).toBeCloseTo(2 ** -1.5, 12);
+    // The meter's exposure for that seen side, one and a half stops down (the cap, on the brightest surface, not binding)
+    expect(behind.exposure).toBeCloseTo(meteredExposure({ keyOnSeenSide: 0.5, fillRatio: 4 / CRAFT_KEY_TO_FILL }) * 2 ** -1.5, 12);
   });
 
   it('never lets the brightest lit surface pass the cap, whatever the lights\' direction', () => {
-    expect(CRAFT_WHITE_CAP_INPUT).toBe(2.9);
     for (const keyDirection of [[0, 0, -1], [1, 0, 0], [0.6, 0.8, 0], [0, 0, 1]] as const) {
       const look = craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [...keyDirection], sky });
-      const most = brightestIrradiance([...keyDirection], sky.galaxy && { ...sky.galaxy, intensity: 0.5 }, 1);
+      const most = brightestIrradiance([...keyDirection], sky.galaxy && { ...sky.galaxy, intensity: 0.5 }, 4 / CRAFT_KEY_TO_FILL);
       expect(acesInput(look.exposure, most)).toBeLessThanOrEqual(CRAFT_WHITE_CAP_INPUT + 1e-9);
     }
     // The key and the second light together, plus the fill's quarter
     expect(brightestIrradiance([1, 0, 0], { direction: [1, 0, 0], intensity: 0.5 }, 1)).toBeCloseTo(1.75, 12);
     expect(brightestIrradiance([1, 0, 0], { direction: [-1, 0, 0], intensity: 0.5 }, 1)).toBeCloseTo(0.75, 12);
+  });
+});
+
+// craft-fill-eight-one (DECIDED-BY-LEAD on LOOK's near-star pictures): the craft's shadows deepen as the key's light
+// grows: eight to one a light year from the key and beyond, sixteen to one where it shines as our Sun does on Earth
+describe('the fill by the key\'s light', () => {
+  const key = (magnitude: number, distancePc: number) => ({ magnitude, distancePc });
+
+  it('is eight to one a light year from the key and beyond, for a star and for the Sun', () => {
+    expect(keyToFillOf(key(-12, LIGHT_YEAR_PC))).toBe(8);
+    expect(keyToFillOf(key(-3, 1))).toBe(8);
+    expect(keyToFillOf(key(SUN_ABSOLUTE_V_MAG, 10))).toBe(8);
+  });
+
+  it('is sixteen to one where the key shines as our Sun does on Earth, and nearer', () => {
+    expect(CRAFT_KEY_TO_FILL_AT_FLOOR).toBe(16);
+    expect(SUN_ON_EARTH_MAG).toBeCloseTo(-26.76, 2);
+    expect(LIGHT_YEAR_PC).toBeCloseTo(LY_PC, 8);
+    expect(keyToFillOf(key(SUN_ON_EARTH_MAG, 0.001))).toBeCloseTo(16, 12);
+    expect(keyToFillOf(key(SUN_ON_EARTH_MAG - 2, 0.0005))).toBe(16);
+    expect(keyToFillOf({ magnitude: sunMagnitudeAt([AU_PC, 0, 0]), distancePc: AU_PC })).toBeCloseTo(16, 9);
+  });
+
+  it('rises between on a log scale of the key\'s light, never falling as the key nears', () => {
+    // Five magnitudes brighter than at a light year, ten short of the floor there: halfway, eight times the square root of two
+    expect(keyToFillOf(key(SUN_ON_EARTH_MAG + 5, LIGHT_YEAR_PC / 10))).toBeCloseTo(8 * Math.SQRT2, 9);
+    // A star of absolute magnitude -7 coming in from a light year towards its floor (about 0.0036 ly)
+    const at = [1, 0.3, 0.1, 0.03, 0.01].map((ly) => ly * LIGHT_YEAR_PC);
+    const ratios = at.map((d) => keyToFillOf(key(-7 + 5 * Math.log10(d / 10), d)));
+    ratios.slice(1).forEach((r, i) => expect(r).toBeGreaterThan(ratios[i]!));
+    expect(ratios[0]).toBe(8);
+    expect(ratios.at(-1)!).toBeLessThan(16);
+  });
+
+  it('is sixteen when the key is already brighter at a light year than the Sun on Earth', () => {
+    expect(keyToFillOf(key(SUN_ON_EARTH_MAG - 10, LIGHT_YEAR_PC / 10))).toBe(16);
+  });
+
+  it('stays eight to one without a magnitude or a distance', () => {
+    expect(keyToFillOf(key(Number.NaN, 0.1))).toBe(8);
+    expect(keyToFillOf(key(-20, 0))).toBe(8);
+    expect(keyToFillOf(key(-20, Number.POSITIVE_INFINITY))).toBe(8);
+    expect(keyToFillOf(key(-20, Number.NaN))).toBe(8);
+  });
+
+  it('takes the key\'s distance from where the camera is: the star\'s, or the Sun\'s', () => {
+    const beside = keyLight(besideHadar, besideHadar, [plain, hadar]);
+    expect(beside.distancePc).toBeCloseTo(LY_PC, 9);
+    expect(keyToFillOf(beside)).toBeCloseTo(8, 6);
+    const near: [number, number, number] = [0.001, 0, 0];
+    expect(keyLight(near, near, [hadar, plain]).distancePc).toBeCloseTo(0.001, 12);
   });
 });

@@ -8,7 +8,7 @@ import type { Vec3 } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { FlightCraftLayer, type CraftRenderer } from '../FlightCraftLayer.js';
-import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, keyLight, type LightCandidate } from '../craftLight.js';
+import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, keyLight, keyToFillOf, type LightCandidate } from '../craftLight.js';
 import { edgeLightColor } from '../craftEdgeLight.js';
 import { CRAFTS } from '../crafts.js';
 import { flightCameraOf } from '../flightFrame.js';
@@ -85,7 +85,8 @@ function expectLitBy(d: Drawn, cameraPc: Vec3, candidates: readonly LightCandida
   d.toKey.forEach((c, k) => expect(c).toBeCloseTo(key.direction[k]!, 6));
   expect(d.toneMapping).toBe(THREE.ACESFilmicToneMapping);
   // craft-light-two: with no sky (a renderer that is not three's) the meter counts the key and the ruled fill, and the second light is out
-  expect(d.exposure).toBeCloseTo(craftLighting({ craftFromCameraM: d.craftAt, keyDirection: key.direction, sky: null }).exposure, 9);
+  // craft-fill-eight-one: the fill at the key's ratio
+  expect(d.exposure).toBeCloseTo(craftLighting({ craftFromCameraM: d.craftAt, keyDirection: key.direction, sky: null, keyToFill: keyToFillOf(key) }).exposure, 9);
   expect(d.galaxy).toBe(0);
 }
 
@@ -118,6 +119,19 @@ describe('the craft lit by the brightest real source where the camera is', () =>
     expectLitBy(last, at, [star]);
     expect(last.color[0]).toBeGreaterThan(last.color[2]);
     expect(last.environment).toBe(0);
+  });
+
+  it('nearer than a light year: the fill at the key\'s ratio, past eight to one (craft-fill-eight-one)', async () => {
+    const { drawn, makeRenderer } = recordingRenderer();
+    // The same red star a tenth of a light year from the camera
+    const near: LightCandidate = { ...star, positionPc: [at[0] + 0.03, at[1], at[2]] };
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['voyager-1']!, load: model, makeRenderer, keyCandidates: [near] })));
+    await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    const key = keyLight(at, at, [near]);
+    expect(keyToFillOf(key)).toBeGreaterThan(8);
+    const d = drawn.at(-1)!;
+    expectLitBy(d, at, [near]);
+    expect(d.exposure).not.toBeCloseTo(craftLighting({ craftFromCameraM: d.craftAt, keyDirection: key.direction, sky: null }).exposure, 6);
   });
 
   it('gives the model the star\'s edge light, its colour each frame from the key and how far it is behind the craft (chase-light-one)', async () => {

@@ -9,7 +9,8 @@ import { placeFinding } from './flightFrame.js';
  * - the key is the brightest real source where the camera is, by the flight's own magnitude rule (a catalog magnitude
  *   moved by the inverse square law to the camera, flightStarShader.ts:50), over the candidates the flight gives and the
  *   Sun; it shines from that source's true direction, in its catalog tint (catalogStarTint) made linear;
- * - the fill is the sky's own light, held since craft-light-two at CRAFT_KEY_TO_FILL to one (craftLighting, below);
+ * - the fill is the sky's own light, held since craft-light-two at a ruled ratio to the key, since craft-fill-eight-one
+ *   eight to one far from any star and rising to sixteen to one beside one (keyToFillOf, craftLighting, below);
  * - the exposure is metered as a camera meters, on the side of the craft the camera sees, at the photographic middle
  *   grey, and nothing holds it down: beside a very bright star the star-lit rim may reach white, as a backlit subject's
  *   rim does in any photograph, and the tone map's own shoulder takes it (the lead dropped the cap at 16:08, since
@@ -36,6 +37,8 @@ export interface KeyLight {
   readonly magnitude: number;
   /** Linear RGB, from the catalog tint; white for the Sun. */
   readonly tint: Vec3;
+  /** How far the source is from the camera (pc). */
+  readonly distancePc: number;
 }
 
 /** The Sun's absolute magnitude in Johnson V, Vega system: Willmer (2018), ApJS 236, 47 (arXiv 1804.07788), abstract. */
@@ -51,6 +54,12 @@ export const ACES_INPUT_SCALE = 0.6;
 export const CRAFT_SKY_URL = '/textures/eso_milkyway_diffuse_6k.webp';
 
 const PC_PER_10PC = 10;
+/** An astronomical unit in parsecs (a parsec is 648000 / pi AU, IAU 2015 B2). */
+export const AU_PC = Math.PI / 648000;
+/** A light year in parsecs: 9460730472580800 m (IAU) over 3.0856775814913673e16 m. */
+export const LIGHT_YEAR_PC = 9460730472580800 / 3.0856775814913673e16;
+/** The Sun's magnitude seen from Earth, from its absolute V magnitude at one AU: about -26.76. */
+export const SUN_ON_EARTH_MAG = SUN_ABSOLUTE_V_MAG + 5 * Math.log10(AU_PC / PC_PER_10PC);
 
 /** A candidate's magnitude at the camera, by the inverse square law from its catalog magnitude seen from Earth. */
 export function magnitudeAt(c: LightCandidate, cameraPc: Vec3): number {
@@ -74,12 +83,13 @@ function unitFrom(from: Vec3, to: Vec3): Vec3 {
 
 /** The brightest of the Sun and the candidates at the camera, as a light on the craft. */
 export function keyLight(cameraPc: Vec3, craftPc: Vec3, candidates: readonly LightCandidate[]): KeyLight {
-  let best: KeyLight = { source: 'sun', direction: unitFrom(craftPc, [0, 0, 0]), magnitude: sunMagnitudeAt(cameraPc), tint: [1, 1, 1] };
+  let best: KeyLight = { source: 'sun', direction: unitFrom(craftPc, [0, 0, 0]), magnitude: sunMagnitudeAt(cameraPc), tint: [1, 1, 1], distancePc: Math.hypot(cameraPc[0], cameraPc[1], cameraPc[2]) };
   for (const c of candidates) {
     const m = magnitudeAt(c, cameraPc);
     if (m < best.magnitude) {
       const t = catalogStarTint(c.colorIndex, c.isBMinusV);
-      best = { source: 'star', direction: unitFrom(craftPc, c.positionPc), magnitude: m, tint: [srgbToLinear(t[0]), srgbToLinear(t[1]), srgbToLinear(t[2])] };
+      const distancePc = Math.hypot(c.positionPc[0] - cameraPc[0], c.positionPc[1] - cameraPc[1], c.positionPc[2] - cameraPc[2]);
+      best = { source: 'star', direction: unitFrom(craftPc, c.positionPc), magnitude: m, tint: [srgbToLinear(t[0]), srgbToLinear(t[1]), srgbToLinear(t[2])], distancePc };
     }
   }
   return best;
@@ -212,8 +222,26 @@ export function brightestSkyDirection(px: ArrayLike<number>, width: number, heig
   return { direction, tint: [rgb[0] / top, rgb[1] / top, rgb[2] / top] };
 }
 
-/** craft-light-two (DECIDED-BY-LEAD on LOOK's pictures): the key to fill ratio the craft is lit at, whatever the star. */
-export const CRAFT_KEY_TO_FILL = 4;
+/** craft-fill-eight-one (DECIDED-BY-LEAD on LOOK's sheet far from any star): the key to fill ratio a light year from the key and beyond. */
+export const CRAFT_KEY_TO_FILL = 8;
+/** craft-fill-eight-one (DECIDED-BY-LEAD on LOOK's near-star pictures): the ratio where the key shines as our Sun does on Earth. */
+export const CRAFT_KEY_TO_FILL_AT_FLOOR = 16;
+
+/**
+ * craft-fill-eight-one: the craft's shadows deepen as the key's light grows, on one curve for a star and for the Sun:
+ * CRAFT_KEY_TO_FILL a light year from the key and beyond, rising on a log scale of the key's light (its magnitude at
+ * the camera) to CRAFT_KEY_TO_FILL_AT_FLOOR where it shines as our Sun does on Earth, and held there nearer.
+ */
+export function keyToFillOf(key: Pick<KeyLight, 'magnitude' | 'distancePc'>): number {
+  if (!Number.isFinite(key.magnitude) || !(key.distancePc > 0)) return CRAFT_KEY_TO_FILL;
+  // How many magnitudes brighter the key is here than a light year from it
+  const gained = 5 * Math.log10(LIGHT_YEAR_PC / key.distancePc);
+  if (!(gained > 0)) return CRAFT_KEY_TO_FILL;
+  // And from a light year to where it shines as our Sun does on Earth
+  const span = key.magnitude + gained - SUN_ON_EARTH_MAG;
+  const t = span > 0 ? Math.min(1, gained / span) : 1;
+  return CRAFT_KEY_TO_FILL * (CRAFT_KEY_TO_FILL_AT_FLOOR / CRAFT_KEY_TO_FILL) ** t;
+}
 /** craft-light-two: the Milky Way's brightest sky as the craft's second light, at this share of the key. */
 export const CRAFT_GALAXY_TO_KEY = 0.5;
 
@@ -234,12 +262,12 @@ export interface CraftLighting {
 /**
  * craft-light-two (DECIDED-BY-LEAD: every light keeps a source the scene has; their balance set for the figure to read,
  * the first-time person's wow deciding): the star stays the key; the Milky Way's brightest sky is a second light at
- * CRAFT_GALAXY_TO_KEY of it, wherever it lies; the rest of the sky fills at CRAFT_KEY_TO_FILL to one (a surface facing
- * the sky takes a quarter of its whole light, so the whole sky is held at 4 / CRAFT_KEY_TO_FILL of the key) in place of
- * its physical level; and the meter counts every light on the side the camera sees, so nothing blows to white.
+ * CRAFT_GALAXY_TO_KEY of it, wherever it lies; the rest of the sky fills at keyToFill to one (a surface facing the sky
+ * takes a quarter of its whole light, so the whole sky is held at 4 / keyToFill of the key) in place of its physical
+ * level, keyToFillOf the key since craft-fill-eight-one; and the meter counts every light on the side the camera sees.
  */
-export function craftLighting({ craftFromCameraM, keyDirection, sky }: { craftFromCameraM: Vec3; keyDirection: Vec3; sky: CraftSkyLight | null }): CraftLighting {
-  const fill = 4 / CRAFT_KEY_TO_FILL;
+export function craftLighting({ craftFromCameraM, keyDirection, sky, keyToFill = CRAFT_KEY_TO_FILL }: { craftFromCameraM: Vec3; keyDirection: Vec3; sky: CraftSkyLight | null; keyToFill?: number }): CraftLighting {
+  const fill = 4 / keyToFill;
   const galaxy = sky?.galaxy ? { direction: sky.galaxy.direction, tint: sky.galaxy.tint, intensity: CRAFT_GALAXY_TO_KEY } : null;
   const seen = seenSideKeyShare(craftFromCameraM, keyDirection) + (galaxy ? galaxy.intensity * seenSideKeyShare(craftFromCameraM, galaxy.direction) : 0);
   // chase-light-one (b): the exposure falls when the star is behind the craft, so the near side sits under white and
@@ -256,10 +284,12 @@ export function craftLighting({ craftFromCameraM, keyDirection, sky }: { craftFr
 /** chase-light-one (b): how far the exposure falls, in stops, when the key is straight behind the craft from the camera. */
 export const CRAFT_BACKLIT_STOPS = 1.5;
 /**
- * chase-light-one (b): the ACES input (exposure times radiance over 0.6) the brightest lit white surface may reach: three
- * r187's curve gives about 0.87 linear (code 240) there, so no lit surface clips to white whatever the light's direction.
+ * chase-light-one (b): the ACES input (exposure times radiance over 0.6) the brightest lit white surface may reach, so no
+ * lit surface clips to white whatever the light's direction; craft-fill-eight-one (DECIDED-BY-LEAD: the brightest lit
+ * white placed at the cap): 1, where the meter puts a white surface lit as the side the camera sees; three r187's curve
+ * gives about code 206 there.
  */
-export const CRAFT_WHITE_CAP_INPUT = 2.9;
+export const CRAFT_WHITE_CAP_INPUT = 1;
 
 /** How far the key is behind the craft from the camera: 1 straight behind, 0 beside it or behind the camera. */
 export function keyBehindCraft(craftFromCameraM: Vec3, keyDirection: Vec3): number {
