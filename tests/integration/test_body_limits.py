@@ -40,7 +40,7 @@ from services import api
 from services.ingest import router as ingest_router
 
 # A value for each path parameter the routes use, so every row is reached by a real path
-SAMPLE_PARAMS = {"sha256": "0" * 64, "job_id": "job_" + "0" * 16, "variant_id": "var_" + "0" * 16}
+SAMPLE_PARAMS = {"sha256": "0" * 64, "job_id": "job_" + "0" * 16, "variant_id": "var_" + "0" * 16, "sample_id": "night-rp-b-12"}
 UPLOAD_PATH = "/api/ingest"
 VOICE_PATH = "/api/voice/command"
 ANSWER_PATH = "/api/voice/answer/{sha256}"

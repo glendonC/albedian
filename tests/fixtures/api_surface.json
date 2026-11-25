@@ -1203,6 +1203,106 @@
             }
           }
         }
+      },
+      "/api/samples": {
+        "get": {
+          "summary": "Get Samples",
+          "description": "The tracked record of the sample nights.",
+          "operationId": "get_samples_api_samples_get",
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Get Samples Api Samples Get"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/samples/{sample_id}/original": {
+        "get": {
+          "summary": "Get Sample Original",
+          "description": "The sample's public photo, exactly as its recorded source served it.",
+          "operationId": "get_sample_original_api_samples__sample_id__original_get",
+          "parameters": [
+            {
+              "name": "sample_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^night-[a-z0-9-]{1,40}$",
+                "description": "A sample night's id, night-<name>",
+                "title": "Sample Id"
+              },
+              "description": "A sample night's id, night-<name>"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response"
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/samples/{sample_id}/solution": {
+        "get": {
+          "summary": "Get Sample Solution",
+          "description": "The app's own solve of the sample, made on this machine, whole.",
+          "operationId": "get_sample_solution_api_samples__sample_id__solution_get",
+          "parameters": [
+            {
+              "name": "sample_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^night-[a-z0-9-]{1,40}$",
+                "description": "A sample night's id, night-<name>",
+                "title": "Sample Id"
+              },
+              "description": "A sample night's id, night-<name>"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "title": "Response Get Sample Solution Api Samples  Sample Id  Solution Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "components": {
@@ -1847,6 +1947,33 @@
       "name": "get_ingest_pointing",
       "responseModel": null,
       "includeInSchema": true
+    },
+    {
+      "path": "/api/samples",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_samples",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/samples/{sample_id}/original",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_sample_original",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/samples/{sample_id}/solution",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_sample_solution",
+      "responseModel": "typing.Any",
+      "includeInSchema": true
     }
   ],
   "middleware": [
@@ -1923,7 +2050,10 @@
           "/api/ingest/jobs/{job_id}/predicted-sky": 0,
           "/api/ingest/jobs/{job_id}/cancel": 0,
           "/api/ingest/{sha256}/solution": 0,
-          "/api/ingest/{sha256}/pointing": 65536
+          "/api/ingest/{sha256}/pointing": 65536,
+          "/api/samples": 0,
+          "/api/samples/{sample_id}/original": 0,
+          "/api/samples/{sample_id}/solution": 0
         }
       }
     }

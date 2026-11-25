@@ -60,6 +60,7 @@ from services.science.catalog import (
     CONSTELLATION_EDGES,
     PINNED_CATALOG_STARS,
 )
+from services.samples.router import router as samples_router
 from services.science.router import router as science_router
 from services.voice.router import router as voice_router
 
@@ -232,6 +233,10 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/ingest/{sha256}/solution": 0,
     # Largest measured body 1,936 bytes (a pointing record of the fixture, indented); 4 times is 7,744
     "/api/ingest/{sha256}/pointing": BODY_LIMIT_FLOOR,
+    # The sample night, read-only (first-use-sample-one)
+    "/api/samples": 0,
+    "/api/samples/{sample_id}/original": 0,
+    "/api/samples/{sample_id}/solution": 0,
 }
 # Nothing reads the body of a request no route serves (it is answered 404, 405 or a redirect)
 UNROUTED_BODY_LIMIT = 0
@@ -418,7 +423,7 @@ def create_app(
 
     app.state.media_folders = media_folders or DEFAULT_MEDIA_FOLDERS
 
-    for domain_router in (health_router, science_router, media_router, voice_router, ingest_router):
+    for domain_router in (health_router, science_router, media_router, voice_router, ingest_router, samples_router):
         app.include_router(domain_router)
     check_body_limits(_route_paths(app), BODY_LIMITS)
 
