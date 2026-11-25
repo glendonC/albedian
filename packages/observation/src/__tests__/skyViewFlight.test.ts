@@ -89,6 +89,9 @@ describe('Back to Moment from the predicted sky\'s flight', () => {
     // Pressed again on the predicted sky: the photo, as before
     const photo = back(returned);
     expect(photo.spatialView.mode).toBe('source_2d');
+    // Shown afresh later, the sky opens as its design record says: the kept view is let go (lead, 04:47)
+    const again = dispatchAlbedianAction(returned, { type: 'sky.show', requestId: 'again', expectedViewRevision: returned.viewRevision, mode: 'predicted' }).session;
+    expect(again.spatialView.skyView).toBeUndefined();
     // The return takes the sky's checkpoint out of the history it leaves
     expect(returned.navigationHistory.checkpoints.some((c) => c.spatialView.skyView !== undefined)).toBe(false);
   });

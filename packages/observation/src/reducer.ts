@@ -311,6 +311,9 @@ export function dispatchAlbedianAction(
           machines: { ...base.machines, navigation: 'sky_registered' },
           spatialView: {
             ...base.spatialView,
+            // go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 04:47): a view kept by a flight's return is let go when the
+            // sky is shown afresh, so it opens as its design record says
+            skyView: undefined,
             mode: 'registered_sky',
             transitionPhase: 'at_registered_sky',
             transitionProgress: 1,
