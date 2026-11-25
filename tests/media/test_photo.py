@@ -483,6 +483,7 @@ def test_the_first_scale_step_feeds_the_stored_file(tmp_path, monkeypatch) -> No
     still = still_of(scene.codes, tmp_path)
     level = 0.05
     monkeypatch.setattr(gate, "smooth_first_scale", lambda working, kept: np.where(kept.core[..., None], working, level))
+    monkeypatch.setattr(photo, "FINE_NOISE_SHARE", 0.0)  # the grain would put the photo's own noise back on the flat sky
     result = photo.restore_still(still)
     outside = result.context.protected <= 0
     assert len(np.unique(result.stored[outside], axis=0)) == 1
@@ -756,6 +757,178 @@ def test_a_block_is_flat_in_codes_when_it_and_its_border_to_the_fine_scales_reac
     assert noise.flat_in_codes(codes, np.zeros(100, dtype=bool)) is False
 
 
+# fine-noise-floor-one [decided 2026-11-24 20:23 and 22:19 by the lead]: the sky keeps 0.35 of the photo's own finest
+# noise, less its Gaussian at the gate's star width, so it is not posterised and a kept star wears no collar; where the
+# gate refuses that result the still restores once more without it, exactly as before the unit
+
+
+def test_the_kept_grain_is_a_share_of_the_photos_own_finest_noise_less_its_star_shaped_part() -> None:
+    from scipy import ndimage
+
+    rng = np.random.default_rng(3)
+    linear = rng.random((48, 40, 3)) * 0.1
+    working = ndimage.uniform_filter(linear, size=(5, 5, 1))
+    grain = photo.kept_grain(linear, working, 0.35)
+    for c in range(3):
+        w1 = noise.fine_scale(linear[..., c] - working[..., c])
+        assert np.array_equal(grain[..., c], 0.35 * (w1 - ndimage.gaussian_filter(w1, gate.STAR_SIGMA_PX)))
+    assert photo.FINE_NOISE_SHARE == 0.35
+    assert not photo.kept_grain(linear, linear, 0.35).any()
+    assert not photo.kept_grain(linear, working, 0.0).any()
+
+
+def _grain_scene(tmp_path) -> decode.DecodedStill:
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    return still_of(scene.codes, tmp_path)
+
+
+def test_a_restored_sky_keeps_its_share_of_the_photos_grain_and_is_not_posterised(tmp_path, monkeypatch) -> None:
+    still = _grain_scene(tmp_path)
+    grained = photo.restore_still(still)
+    monkeypatch.setattr(photo, "FINE_NOISE_SHARE", 0.0)
+    plain = photo.restore_still(still)
+    assert grained.status == plain.status == "ready"
+    assert grained.measured["fineNoiseLeft"] > 10 * plain.measured["fineNoiseLeft"]
+    sky = grained.context.protected <= 0
+
+    def equal_neighbours(stored: np.ndarray) -> float:
+        q = np.round(stored[..., 1] / 257.0)
+        return float((q[:, 1:] == q[:, :-1])[sky[:, 1:] & sky[:, :-1]].mean())
+
+    assert equal_neighbours(grained.stored) < equal_neighbours(plain.stored) - 0.15
+    kept_step = next(s for s in grained.steps if s["kind"] == "spatial_denoise")
+    share_row = kept_step["parameters"][-1]
+    assert (share_row["name"], share_row["value"], share_row["origin"]) == ("keptFineNoiseShare", 0.35, "default")
+    # The grain at 0.35 would lift this scene's noise over the gate's floor, so the cap lowered it and says so
+    assert share_row["basis"] == contracts.GRAIN_CAPPED_BASIS
+    contracts.GraphStep.model_validate(kept_step)
+    assert not any(p["name"] == "keptFineNoiseShare" for s in plain.steps for p in s["parameters"])
+
+
+def _tile_noises(image: np.ndarray, kept: gate.Kept, to_stored) -> np.ndarray:
+    """The noise of the gate's search statistic of the stored luma on each block the grain is capped on, flattened."""
+    return photo.grain_block_noises(image, kept, to_stored).ravel()
+
+
+def test_the_grain_is_capped_block_by_block_where_it_would_raise_the_gates_noise_over_its_floor(honest) -> None:
+    # Ruling B at the floor [decided 2026-11-25 by the lead]: a grain under the floor goes in whole; a grain that would
+    # lift the gate statistic's noise over the floor is lowered on each 64 px block until the noises add to the floor
+    from services.media import tone
+
+    context = honest.context
+
+    def to_stored(light):
+        return context.transfer.encode16(tone.apply_lift(light, context.beta))
+
+    shape = honest.stored.shape
+    working = np.full(shape, 0.004)
+    grain = np.random.default_rng(9).normal(0.0, 0.0015, shape)
+    floor = gate.noise_floor()
+    faint, least = photo.capped_grain(working, grain, context.kept, to_stored, 0.01)
+    assert least == 0.01 and np.array_equal(faint, working + 0.01 * grain)
+    assert (_tile_noises(faint, context.kept, to_stored) <= floor).all()
+    assert (_tile_noises(working + 0.35 * grain, context.kept, to_stored) > floor).all()
+    capped, least = photo.capped_grain(working, grain, context.kept, to_stored, 0.35)
+    assert 0.0 < least < 0.35
+    assert (_tile_noises(capped, context.kept, to_stored) <= floor).all()
+    # Strong grain on the left 160 px only: the blocks clear of it keep the whole share, and the least share applied
+    # is a lowered one
+    left = 0.01 * grain
+    left[:, :160] = grain[:, :160]
+    assert photo.capped_grain(working, left, context.kept, to_stored, 0.35)[1] < 0.35
+    # With the image's own noise at 0.6 of the floor, every block still ends at or under the floor, the grain lowered
+    # where the two noises together would pass it
+    own = np.random.default_rng(10).normal(0.0, 1.0, shape)
+    per_unit = float(np.median(_tile_noises(working + 0.0005 * own, context.kept, to_stored))) / 0.0005
+    noisy = working + (0.6 * floor / per_unit) * own
+    landed = _tile_noises(photo.capped_grain(noisy, grain, context.kept, to_stored, 0.35)[0], context.kept, to_stored)
+    assert (landed <= floor).all()
+
+
+def test_a_blocks_noise_is_read_on_the_samples_the_gates_search_reads(honest) -> None:
+    # The search statistic is 0 on every sample a kept region leaves out (`gate.search_statistic`); counted, those zeros
+    # would pull a block's spread down beside every star and let more grain in there
+    from services.media import tone
+
+    context = honest.context
+
+    def to_stored(light):
+        return context.transfer.encode16(tone.apply_lift(light, context.beta))
+
+    image = np.full(honest.stored.shape, 0.004) + np.random.default_rng(11).normal(0.0, 0.0008, honest.stored.shape)
+    statistic = gate.search_statistic(gate.stored_luma(to_stored(image)), context.kept.left_out)
+    searched = ~np.asarray(context.kept.left_out, dtype=bool)
+    spreads = photo.grain_block_noises(image, context.kept, to_stored)
+    size = photo.GRAIN_BLOCK_PX
+    checked = 0
+    for r in range(spreads.shape[0]):
+        for c in range(spreads.shape[1]):
+            block = (slice(r * size, (r + 1) * size), slice(c * size, (c + 1) * size))
+            if searched[block].all() or not searched[block].any():
+                continue
+            values = statistic[block][searched[block]]
+            assert spreads[r, c] == 1.4826 * float(np.median(np.abs(values - np.median(values))))
+            checked += 1
+    assert checked > 0
+
+
+def test_where_the_gate_refuses_the_grained_result_the_still_restores_again_as_before(tmp_path, monkeypatch) -> None:
+    still = _grain_scene(tmp_path)
+    monkeypatch.setattr(photo, "FINE_NOISE_SHARE", 0.0)
+    plain = photo.restore_still(still)
+    # Three times the photo's own finest noise with no cap is sure to be refused, so the fallback runs
+    monkeypatch.setattr(photo, "FINE_NOISE_SHARE", 0.35)
+    monkeypatch.setattr(photo, "capped_grain", lambda working, grain, kept, to_stored, share: (working + 3.0 * grain, share))
+    statuses = []
+    real = photo._restore_picture
+
+    def spy(*args, **kwargs):
+        result = real(*args, **kwargs)
+        statuses.append(result.status)
+        return result
+
+    monkeypatch.setattr(photo, "_restore_picture", spy)
+    result = photo.restore_still(still)
+    assert statuses == ["rejected", "ready"]
+    assert np.array_equal(result.stored, plain.stored) and result.data == plain.data
+    assert (result.measured, result.gate) == (plain.measured, plain.gate)
+    # The record says the grain was refused: the spatial step names a share of 0, as measured on this file
+    refused_step = next(s for s in result.steps if s["kind"] == "spatial_denoise")
+    assert refused_step["parameters"][-1] == {"name": "keptFineNoiseShare", "value": 0.0, "origin": "measured",
+                                              "basis": contracts.GRAIN_REFUSED_BASIS}
+    assert [{**s, "parameters": s["parameters"][:-1]} if s is refused_step else s for s in result.steps] == plain.steps
+    contracts.GraphStep.model_validate(refused_step)
+
+
+def test_a_still_refused_without_the_grain_too_ends_as_before_and_a_not_measured_one_runs_once(
+        tmp_path, monkeypatch) -> None:
+    statuses = []
+    real = photo._restore_picture
+
+    def spy(*args, **kwargs):
+        result = real(*args, **kwargs)
+        statuses.append(result.status)
+        return result
+
+    still = _grain_scene(tmp_path)
+    clear = photo.painted_places(photo.restore_still(still), 1)[0]
+    smooth = gate.smooth_first_scale
+
+    def with_a_bump(working, kept):  # a filter's artifact the original does not hold, as the dissolve test paints it
+        out = smooth(working, kept)
+        yy, xx = np.mgrid[0:out.shape[0], 0:out.shape[1]].astype(np.float64)
+        return out + (0.004 * np.exp(-((xx - clear[0]) ** 2 + (yy - clear[1]) ** 2) / (2 * 1.3**2)))[..., None]
+
+    monkeypatch.setattr(gate, "smooth_first_scale", with_a_bump)
+    monkeypatch.setattr(photo, "_restore_picture", spy)
+    refused = photo.restore_still(still, max_passes=0)
+    assert refused.status == "rejected" and statuses == ["rejected", "rejected"]
+    monkeypatch.setattr(gate, "smooth_first_scale", smooth)
+    statuses.clear()
+    flat = photo.restore_still(_banded_still(tmp_path, "grain_flat.png", [(64, (24, 24, 24))], bits=8))
+    assert flat.measured["noiseNotMeasured"] == "dark_level_flat" and statuses == ["ready"]
+
+
 def test_a_dark_level_noise_that_is_not_a_number_stays_photo_error(tmp_path, monkeypatch) -> None:
     # Empty darkest-quarter blocks (`before` is NaN) and post-spatial `after` NaN on a dark sky stay PhotoError
     scene = star_field(33, size=192, count=8, sky=0.0004, noise_sigma=0.00035, bits=16, peaks=(0.02, 0.2))
@@ -1021,7 +1194,7 @@ def test_a_starry_sky_black_to_its_edges_has_no_bars_and_is_restored_whole_as_be
     assert not bars.find_bars([plane], 0)
     still = still_of(codes, tmp_path)
     result = photo.restore_still(still)
-    whole = photo._restore_picture(still, None, gate.MAX_PASSES)
+    whole = photo._restore_kept(still, None, gate.MAX_PASSES)
     assert not result.bars and result.stored.shape == codes.shape
     assert (result.status, result.gate, result.measured) == (whole.status, whole.gate, whole.measured)
     assert np.array_equal(result.stored, whole.stored)

@@ -1108,6 +1108,26 @@ def test_a_still_whose_darkest_quarter_is_a_flat_band_succeeds_as_dark_level_fla
     assert measured["notes"][0] == tone.NOTE_NOISE_NOT_MEASURED and media_jobs.NOTE_BLACK not in measured["notes"]
 
 
+def test_a_restored_still_records_the_share_of_its_own_grain_it_keeps_at_restore_revision_fifteen(client) -> None:
+    # fine-noise-floor-one [decided 2026-11-24 and 2026-11-25 by the lead]: the spatial step names the share of the
+    # photo's own finest noise the sky keeps (asked 0.35, lowered by the cap in places or not), and the fine noise left
+    # is measured after the grain
+    from services.media import photo, variants
+
+    assert media_jobs.MEDIA_PRODUCER.revision >= 15
+    assert variants.PIPELINE_VERSION == f"1.{media_jobs.MEDIA_PRODUCER.revision}.0"
+    scene = star_field(11, size=192, count=10, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    sha = upload(client, png16.write_png16(scene.codes.astype(np.uint16), None))
+    job = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": "restoration"}).json())
+    assert job["state"] == "succeeded", job
+    record = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()
+    spatial_step = next(s for s in record["graph"]["steps"] if s["kind"] == "spatial_denoise")
+    share = next(p for p in spatial_step["parameters"] if p["name"] == "keptFineNoiseShare")
+    assert (share["value"], share["origin"]) == (photo.FINE_NOISE_SHARE, "default")
+    assert share["basis"] in (contracts.GRAIN_KEPT_BASIS, contracts.GRAIN_CAPPED_BASIS)
+    assert record["attempt"]["measured"]["fineNoiseLeft"] > 0.01
+
+
 def _banded_clip_file(path: Path, sky_y: int, *, pix_fmt: str = "yuv420p", colour_range: str = "tv",
                       count: int = 12, size: int = 192) -> None:
     from fractions import Fraction

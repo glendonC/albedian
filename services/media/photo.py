@@ -20,6 +20,7 @@ from typing import Optional
 import numpy as np
 from scipy import ndimage
 
+from services.contracts.media import GRAIN_CAPPED_BASIS, GRAIN_KEPT_BASIS, GRAIN_REFUSED_BASIS
 from services.media import bars as bars_rule
 from services.media import chroma, decode, encode, gate, noise, png16, spatial, stars, tone
 
@@ -27,6 +28,21 @@ STEP_VERSION = "1.0.0"
 NOTE_DISSOLVED = "Points the original does not confirm were dissolved before the gate."
 NOTE_CLIPPED = "Clipped regions were left out of the gate."
 DESIGN_7 = "Proposed in design section 7."
+# The share of the photo's own finest noise the sky keeps after the first-scale smoothing (`kept_grain`): with none a
+# restored sky posterises at 8 and 10 bits and each kept star wears a collar of the original's grain; less of the
+# grain's star-shaped part, which the gate would count, so its points fall by four fifths; a still whose gate refuses
+# the grained result restores again without it [decided 2026-11-24 20:23 and 22:19 by the lead, fine-noise-floor-one;
+# tested: fine-noise-floor-probe and grain-gate-one, the 60 public design crops and rp-b-12]
+FINE_NOISE_SHARE = 0.35
+# The blocks on which the grain is capped: the window the stated sensitivity is measured in (32 px either side of a
+# place, `scripts/restore_review.stated_peak`) [tested: on the gate's 256 px tiles a 4-code star still passed at 5
+# places of the public corpus whose 64 px windows stood 1.7 to 2.5 times the floor; on 64 px blocks, at none more than
+# main's own, .lanetools/floor/passes.py and built.py]
+GRAIN_BLOCK_PX = 64
+# Halvings of a block's share after its solve before a block still over the floor keeps no grain: the solve lands a
+# block at the floor from above, give or take the stored codes' rounding, and half the share is sure to be under [tested:
+# the test suite's scene and the public corpus, .lanetools/floor/built.py]
+GRAIN_CAP_ROUNDS = 3
 # A painted place lies this far clear of every kept region and clipped region [proposed in design section 7]
 PAINT_CLEARANCE_PX = 12
 # and this far inside the frame's edges [proposed: past the detector's 4 px border and the patch's own reach]
@@ -154,8 +170,8 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     codes = np.asarray(still.samples)
     found = bars_rule.find_bars([codes.max(axis=-1)], 0)
     if not found:
-        return _restore_picture(still, exposure_ev, max_passes)
-    inner = _restore_picture(dataclasses.replace(still, samples=found.crop(codes)), exposure_ev, max_passes)
+        return _restore_kept(still, exposure_ev, max_passes)
+    inner = _restore_kept(dataclasses.replace(still, samples=found.crop(codes)), exposure_ev, max_passes)
     started = time.perf_counter()
     # Every bar sample is 0 in every channel (`find_bars` at black 0), and 0 is stored as 0 at 16 bits
     stored = found.put_back(np.zeros(codes.shape, dtype=np.uint16), inner.stored)
@@ -169,8 +185,88 @@ def restore_still(still: decode.DecodedStill, exposure_ev: Optional[float] = Non
     return dataclasses.replace(inner, data=data, stored=stored, bars=found, seconds=seconds)
 
 
-def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], max_passes: int) -> StillRestoration:
-    """`restore_still` on a picture with no bars."""
+def kept_grain(linear: np.ndarray, working: np.ndarray, share: float) -> np.ndarray:
+    """`share` of the photo's own finest noise that the smoothing took out, per channel: the residual (the original's
+    light less the working image), its finest B3 scale (`noise.fine_scale`) less that scale's Gaussian at the gate's
+    star width (`gate.STAR_SIGMA_PX`), so the grain holds no star shape for the gate to count [decided 2026-11-24
+    22:19 by the lead, grain-gate-one]. Nothing is invented: zero wherever the working image is the original."""
+    grain = np.asarray(linear, dtype=np.float64) - working
+    for c in range(grain.shape[-1]):
+        w1 = noise.fine_scale(grain[..., c])
+        grain[..., c] = share * (w1 - ndimage.gaussian_filter(w1, gate.STAR_SIGMA_PX))
+    return grain
+
+
+def grain_block_noises(image: np.ndarray, kept: gate.Kept, to_stored) -> np.ndarray:
+    """The robust spread (1.4826 x MAD) of the gate's search statistic of `image`'s stored luma on each GRAIN_BLOCK_PX
+    block, in codes of 255, the samples the search leaves out (`kept.left_out`) left out; 0 on a block with none."""
+    statistic = gate.search_statistic(gate.stored_luma(to_stored(image)), kept.left_out)
+    searched = ~np.asarray(kept.left_out, dtype=bool)
+    rows, columns = -(-image.shape[0] // GRAIN_BLOCK_PX), -(-image.shape[1] // GRAIN_BLOCK_PX)
+    spreads = np.zeros((rows, columns))
+    for r in range(rows):
+        for c in range(columns):
+            block = (slice(r * GRAIN_BLOCK_PX, (r + 1) * GRAIN_BLOCK_PX), slice(c * GRAIN_BLOCK_PX, (c + 1) * GRAIN_BLOCK_PX))
+            values = statistic[block][searched[block]]
+            if values.size:
+                spreads[r, c] = 1.4826 * float(np.median(np.abs(values - np.median(values))))
+    return spreads
+
+
+def capped_grain(working: np.ndarray, grain: np.ndarray, kept: gate.Kept, to_stored, share: float
+                 ) -> tuple[np.ndarray, float]:
+    """`working` with `grain` at `share`, lowered on each GRAIN_BLOCK_PX block where it would raise the noise of the
+    gate's search statistic of the stored luma (`grain_block_noises`) over the detector's floor (`gate.noise_floor()`):
+    under the floor a star at the stated sensitivity still reaches twice the threshold, so the gate's promise holds as it
+    does without grain [decided 2026-11-24 and 2026-11-25 by the lead, ruling B at the floor]. Each block's noise is
+    measured without the grain and with it at `share`; a block over the floor takes the share at which the grain's noise
+    and the image's own add to the floor (noises add as squares), and none where it is still over once measured again.
+    Returns the image and the least share applied."""
+    floor = gate.noise_floor()
+
+    def grained(per_block: np.ndarray) -> np.ndarray:
+        full = np.kron(per_block, np.ones((GRAIN_BLOCK_PX, GRAIN_BLOCK_PX)))[: working.shape[0], : working.shape[1]]
+        return working + full[..., None] * grain
+
+    own = grain_block_noises(working, kept, to_stored)
+    full = grain_block_noises(grained(np.full(own.shape, float(share))), kept, to_stored)
+    room = np.maximum(floor**2 - own**2, 0.0)
+    added = np.maximum(full**2 - own**2, 1e-30)
+    shares = np.where(full <= floor, float(share), float(share) * np.sqrt(np.minimum(room / added, 1.0)))
+    for _ in range(GRAIN_CAP_ROUNDS):
+        over = grain_block_noises(grained(shares), kept, to_stored) > floor
+        if not over.any():
+            return grained(shares), float(shares.min())
+        shares = np.where(over, shares / 2.0, shares)
+    shares = np.where(grain_block_noises(grained(shares), kept, to_stored) > floor, 0.0, shares)
+    return grained(shares), float(shares.min())
+
+
+def _grain_parameters(share: float, refused: bool) -> list[dict]:
+    """The spatial step's record of the grain its sky keeps: the share, or 0 where the gate refused the grained result
+    (grain-share-zero's row, `keptFineNoiseShare`)."""
+    if share:
+        return [_parameter("keptFineNoiseShare", share, "default", GRAIN_KEPT_BASIS)]
+    return [_parameter("keptFineNoiseShare", 0.0, "measured", GRAIN_REFUSED_BASIS)] if refused else []
+
+
+def _restore_kept(still: decode.DecodedStill, exposure_ev: Optional[float], max_passes: int) -> StillRestoration:
+    """`_restore_picture` keeping `FINE_NOISE_SHARE` of the photo's grain; where the gate refuses that result, once more
+    without it, so the person gets exactly the restoration of before fine-noise-floor-one and no photo that restored
+    is refused [decided 2026-11-24 22:19 by the lead]. The time both took is the result's."""
+    grained = _restore_picture(still, exposure_ev, max_passes, FINE_NOISE_SHARE)
+    if grained.status == "ready" or not FINE_NOISE_SHARE or "spatial_denoise" not in {s["kind"] for s in grained.steps}:
+        return grained
+    plain = _restore_picture(still, exposure_ev, max_passes, 0.0, refused=True)
+    seconds = {name: plain.seconds.get(name, 0.0) + grained.seconds.get(name, 0.0)
+               for name in {*plain.seconds, *grained.seconds}}
+    return dataclasses.replace(plain, seconds=seconds)
+
+
+def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], max_passes: int,
+                     share: float = 0.0, refused: bool = False) -> StillRestoration:
+    """`restore_still` on a picture with no bars, keeping `share` of its grain (`kept_grain`) where its noise is
+    measured."""
     seconds: dict = {}
     clock = [time.perf_counter()]
 
@@ -222,7 +318,9 @@ def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], m
         steps.append({"kind": "spatial_denoise", "version": spatial.STEP_VERSION, "parameters": spatial.parameters() + _settings(
             keptGrowPx=gate.KEPT_GROW_PX, firstScaleLevels=gate.FIRST_SCALE_LEVELS, brightSkyNoises=gate.BRIGHT_SKY_NOISES,
             brightHaloNoises=gate.BRIGHT_HALO_NOISES, brightLevels=gate.BRIGHT_LEVELS,
-            brightBackgroundPercentile=gate.BACKGROUND_PERCENTILE, brightBackgroundPx=gate.BACKGROUND_PX)})
+            brightBackgroundPercentile=gate.BACKGROUND_PERCENTILE, brightBackgroundPx=gate.BACKGROUND_PX)
+            + _grain_parameters(share, refused)})
+        spatial_step = steps[-1]
         lap("spatial")
         # Smooth sky colour blotches strictly before dissolve: placed after dissolve, nonlinear lifted luma shifts and
         # clamped samples bypass dissolve and drop gate tile reuse to zero [tested: chroma-measure report]
@@ -262,6 +360,13 @@ def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], m
         return out
 
     lap("lift")
+    if share and measurement.reason is None:
+        # The grain goes in after the lift is solved on the grainless image, capped tile by tile at the gate's floor
+        # (`capped_grain`), and the fine noise left is measured again so the record says what the stored file holds
+        working, least = capped_grain(working, kept_grain(linear, working, 1.0), kept, to_stored, share)
+        measured["fineNoiseLeft"] = noise.fine_noise(working @ np.asarray(stars.LUMA_WEIGHTS), blocks) / before
+        if least < share:  # the record carries the share asked, with the basis that says the cap lowered it in places
+            spatial_step["parameters"][-1] = _parameter("keptFineNoiseShare", share, "default", GRAIN_CAPPED_BASIS)
     expected = to_stored(linear)
     searches = gate.Searches()
     # Each whole-image array is let go once nothing after it reads it (a 24 MP photo's is 0.58 GB): the dissolve

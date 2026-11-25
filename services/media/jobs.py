@@ -73,8 +73,10 @@ MEDIA_PRODUCER_FILES = (
 # clip's flat test, now one helper in noise.py, border reach included (photo-flatband-one); 13, a clip with black bars
 # that open its picture on both opposite edges is measured, restored and gated inside them and keeps its own bars
 # (letterbox-2); 14, bars after a lossy encode keep up to one transform block of ringing next to the picture with
-# them (bars-lossy-one)
-MEDIA_PRODUCER = Producer("albedian.restore", 14, MEDIA_PRODUCER_FILES)
+# them (bars-lossy-one); 15, a still's sky keeps 0.35 of its own finest noise less its star-shaped part, put in after
+# the lift and capped block by block where it would lift the gate's noise over its floor, or none where the gate
+# refuses it (fine-noise-floor-one)
+MEDIA_PRODUCER = Producer("albedian.restore", 15, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
