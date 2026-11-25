@@ -270,4 +270,53 @@ final class LargerTextLayoutTests: XCTestCase {
         let source = compact(try body(of: "private struct EarlySource: View", in: file))
         XCTAssertFalse(row.contains(".lineLimit(") || source.contains(".lineLimit("), "no word of the column held to a line")
     }
+
+    /// mainbutton-scale-m (UIUX-iphone-largertext-sweep-READY item 6, DECIDED-BY-LEAD 24 Nov 19:56): one line of a pill is
+    /// its word's line at the current size with the space the default size leaves over and under it kept, so 44 pt at
+    /// Large and growing with the word, never less than the control's height; the screen's margins are 24 pt.
+    func testAPillsOneLineIsItsWordsLineWithTheDefaultsSpaceKept() {
+        XCTAssertEqual(ButtonGeometry.margin, 24)
+        XCTAssertEqual(ButtonGeometry.spaceOverUnder(lineHeightAtLarge: 20, controlHeight: 44), 12)
+        XCTAssertEqual(ButtonGeometry.oneLineHeight(lineHeight: 20, lineHeightAtLarge: 20, controlHeight: 44), 44, "44 pt at Large")
+        XCTAssertEqual(ButtonGeometry.oneLineHeight(lineHeight: 62, lineHeightAtLarge: 20, controlHeight: 44), 86, "the word's line and 12 over and under")
+        XCTAssertEqual(ButtonGeometry.oneLineHeight(lineHeight: 16, lineHeightAtLarge: 20, controlHeight: 44), 44, "never less than the control")
+        XCTAssertEqual(ButtonGeometry.spaceOverUnder(lineHeightAtLarge: 50, controlHeight: 44), 0, "never negative")
+        var g = SeededGenerator(seed: propertySeed())
+        for _ in 0..<2000 {
+            let control = g.double(in: 30...60), atLarge = g.double(in: 10...40), line = g.double(in: 8...120)
+            let one = ButtonGeometry.oneLineHeight(lineHeight: line, lineHeightAtLarge: atLarge, controlHeight: control)
+            let space = ButtonGeometry.spaceOverUnder(lineHeightAtLarge: atLarge, controlHeight: control)
+            let context = "\(control) \(atLarge) \(line)"
+            XCTAssertGreaterThanOrEqual(one, control, context)
+            XCTAssertGreaterThanOrEqual(one, line + 2 * space - 1e-9, context)
+            XCTAssertEqual(one, max(control, line + 2 * space), accuracy: 1e-9, context)
+            XCTAssertLessThanOrEqual(ButtonGeometry.oneLineHeight(lineHeight: line, lineHeightAtLarge: atLarge, controlHeight: control),
+                                     ButtonGeometry.oneLineHeight(lineHeight: line + 1, lineHeightAtLarge: atLarge, controlHeight: control), context)
+        }
+    }
+
+    /// The main button's pill and the outlined pill grow with their word: the pill one line high by that rule, the
+    /// circle keeping it and its icon growing with the text, the word wrapping, centred, inside the pill rather than held
+    /// to one line; a pill at the foot of a screen stands within the 24 pt margins, so it wraps rather than passing them.
+    func testTheMainButtonAndTheOutlinedPillGrowWithTheirWordAndWrapPastTheMargins() throws {
+        let main = compact(try code("UI/MainButton.swift").code)
+        XCTAssertTrue(main.contains("@ScaledMetric(relativeTo:.body)privatevariconSize=ControlStyle.iconSize"), "the icon grows with the text")
+        XCTAssertTrue(main.contains("letsize=ButtonLine.size(fontSize:ControlStyle.mainFontSize,controlHeight:ControlStyle.mainHeight,dynamicTypeSize)returnViewThatFits(in:.horizontal){row(pressed:pressed,size:size,wraps:false)row(pressed:pressed,size:size,wraps:true)}"),
+                      "on one line while the button fits, else wrapped")
+        XCTAssertTrue(main.contains("letheight=CGFloat(size.oneLine)letcircle=height"))
+        XCTAssertTrue(main.contains("ifwraps{text.multilineTextAlignment(.center).fixedSize(horizontal:false,vertical:true).padding(.vertical,space).frame(minHeight:height)}else{text.lineLimit(1).fixedSize().frame(height:height)}"),
+                      "wrapped, centred, with the default's space over and under; else exactly one line high")
+        XCTAssertTrue(main.contains(".padding(.trailing,pressed?pad+circle:pad)"), "the press still docks the circle in the pill")
+        XCTAssertTrue(main.contains("icon.image(iconSize)"))
+        XCTAssertTrue(main.contains("UIFontMetrics(forTextStyle:.body).scaledValue(for:CGFloat(fontSize),compatibleWith:traits)"),
+                      "the word's line from the font as Dynamic Type scales it")
+        let pill = compact(try code("UI/OutlinePill.swift").code)
+        XCTAssertTrue(pill.contains("letsize=ButtonLine.size(fontSize:fontSize,controlHeight:height,dynamicTypeSize)returnViewThatFits(in:.horizontal){pill(pressed:pressed,size:size,wraps:false)pill(pressed:pressed,size:size,wraps:true)}"))
+        XCTAssertTrue(pill.contains("ifwraps{text.multilineTextAlignment(.center).fixedSize(horizontal:false,vertical:true).padding(.vertical,space).frame(minHeight:height)}else{text.lineLimit(1).fixedSize().frame(height:height)}"))
+        XCTAssertTrue(pill.contains("returnword(wraps:wraps,height:oneLine,space:CGFloat(size.space)).padding(.horizontal,20)"))
+        XCTAssertFalse(pill.contains(".frame(height:CGFloat(height))"), "the pill's height grows with its word")
+        let screens = compact(try code("Screens/CompanionScreens.swift").code)
+        XCTAssertTrue(screens.contains("funcatBottom(_gap:Double)->someView{padding(.horizontal,CGFloat(ButtonGeometry.margin)).frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottom).padding(.bottom,CGFloat(gap))}"),
+                      "a pill at a screen's foot within the margins")
+    }
 }

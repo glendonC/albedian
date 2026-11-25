@@ -22,23 +22,42 @@ struct OutlinePillStyle: ButtonStyle {
     let height: Double
     let fontSize: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
-        return Text(title)
+        // mainbutton-scale-m: grown with its word as the main button's pill is; on one line while it fits, else wrapped
+        let size = ButtonLine.size(fontSize: fontSize, controlHeight: height, dynamicTypeSize)
+        return ViewThatFits(in: .horizontal) {
+            pill(pressed: pressed, size: size, wraps: false)
+            pill(pressed: pressed, size: size, wraps: true)
+        }
+        .frame(minHeight: CGFloat(ControlStyle.minTouchTarget))
+        .contentShape(Rectangle())
+        .scaleEffect(pressed ? CGFloat(ControlStyle.pressScale) : 1)
+        .animation(.control(ControlStyle.pressSeconds, ControlStyle.standardCurve, reduceMotion: reduceMotion), value: pressed)
+    }
+
+    private func pill(pressed: Bool, size: (oneLine: Double, space: Double), wraps: Bool) -> some View {
+        let oneLine = CGFloat(size.oneLine)
+        return word(wraps: wraps, height: oneLine, space: CGFloat(size.space))
+            .padding(.horizontal, 20)
+            .background(RoundedRectangle(cornerRadius: oneLine / 2).fill(pressed ? Color(ControlStyle.wash) : .clear))
+            .overlay(RoundedRectangle(cornerRadius: oneLine / 2).strokeBorder(Color(ControlStyle.line), lineWidth: CGFloat(ControlStyle.outlineWidth)))
+            .animation(.control(ControlStyle.colourSeconds, ControlStyle.standardCurve, reduceMotion: reduceMotion), value: pressed)
+    }
+
+    /// The word on one line, the pill exactly one line high; or wrapped, centred, with the space kept over and under it.
+    @ViewBuilder private func word(wraps: Bool, height: CGFloat, space: CGFloat) -> some View {
+        let text = Text(title)
             .font(AlbedianFont.regular(fontSize))
             .tracking(CGFloat(ControlStyle.letterSpacingEm * fontSize))
-            .lineLimit(1)
-            .fixedSize()
             .foregroundStyle(Color(ControlStyle.ink))
-            .padding(.horizontal, 20)
-            .frame(height: CGFloat(height))
-            .background(Capsule().fill(pressed ? Color(ControlStyle.wash) : .clear))
-            .overlay(Capsule().strokeBorder(Color(ControlStyle.line), lineWidth: CGFloat(ControlStyle.outlineWidth)))
-            .animation(.control(ControlStyle.colourSeconds, ControlStyle.standardCurve, reduceMotion: reduceMotion), value: pressed)
-            .frame(minHeight: CGFloat(ControlStyle.minTouchTarget))
-            .contentShape(Rectangle())
-            .scaleEffect(pressed ? CGFloat(ControlStyle.pressScale) : 1)
-            .animation(.control(ControlStyle.pressSeconds, ControlStyle.standardCurve, reduceMotion: reduceMotion), value: pressed)
+        if wraps {
+            text.multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, space).frame(minHeight: height)
+        } else {
+            text.lineLimit(1).fixedSize().frame(height: height)
+        }
     }
 }

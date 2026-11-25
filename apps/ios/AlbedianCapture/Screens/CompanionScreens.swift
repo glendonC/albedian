@@ -27,7 +27,9 @@ extension View {
 
     /// The view's bottom `gap` points above the screen's bottom, centred across.
     func atBottom(_ gap: Double) -> some View {
-        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom).padding(.bottom, CGFloat(gap))
+        // mainbutton-scale-m: within the screen's 24 pt margins, so a grown button wraps its word rather than passing them
+        padding(.horizontal, CGFloat(ButtonGeometry.margin))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom).padding(.bottom, CGFloat(gap))
     }
 
     func title() -> some View {
