@@ -29,7 +29,7 @@ import {
   uploadAndSolveMedia,
   type UploadEvent,
 } from './services/apiClient.js';
-import { openStoredUpload, readStoredReceipt, uploadAddressed } from './services/openUpload.js';
+import { openStoredUpload, readStoredReceipt, storedPhotoDecoded, uploadAddressed } from './services/openUpload.js';
 import { solveStoppedSentence } from './services/skyLayerWords.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
@@ -178,17 +178,27 @@ export const App: React.FC = () => {
   }, []);
 
   // The address may name one stored upload (?upload=<sha256>, as the iPhone's Open writes it): its stored reveal
-  // opens with no upload and no solve. A value that is no sha256 asks the server nothing, and an upload that cannot
-  // be opened leaves the home as it is. A photo chosen meanwhile wins: the stored one arriving later changes nothing
+  // opens with no upload and no solve. Until its records are read and its photo decoded the page shows the app's black
+  // with the logo, never the home (open-direct-one, UIUX-opendirect-READY.md). A value that is no sha256 asks the server
+  // nothing and shows the home at once; an upload that cannot be opened lands on the home after the black. A photo
+  // chosen meanwhile wins: the stored one arriving later changes nothing
+  const [opening, setOpening] = useState(() => uploadAddressed(window.location.search) !== null);
   useEffect(() => {
     const sha256 = uploadAddressed(window.location.search);
     if (sha256 === null) return undefined;
     let left = false;
-    void openStoredUpload(sha256).then((opened) => {
-      if (left || opened === null || latestChoiceRef.current !== null) return;
-      setSession(opened);
-      setUploadedMediaUrl(opened.sourceAsset?.uri ?? null);
-    });
+    void openStoredUpload(sha256)
+      .then(async (opened) => {
+        if (opened?.sourceAsset) await storedPhotoDecoded(opened.sourceAsset.uri, opened.sourceAsset.mediaKind);
+        return opened;
+      })
+      .then((opened) => {
+        if (left) return;
+        setOpening(false);
+        if (opened === null || latestChoiceRef.current !== null) return;
+        setSession(opened);
+        setUploadedMediaUrl(opened.sourceAsset?.uri ?? null);
+      });
     return () => {
       left = true;
     };
@@ -550,6 +560,7 @@ export const App: React.FC = () => {
         onPushToTalk={handlePushToTalk}
         onFileChosen={handleFileChosen}
         uploadRefusal={uploadRefusal}
+        opening={opening}
         arrival={arrival}
         lockOnSky={lockOnSky}
         lockOnAligned={lockOnAligned}

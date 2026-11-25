@@ -44,6 +44,19 @@ export async function readStoredReceipt(sha256: string): Promise<IngestReceipt |
 }
 
 /**
+ * Resolves once the browser has decoded the stored photo at `uri`, so it frames in whole rather than over the black it
+ * would still be loading on; at once for a clip or where the browser cannot decode ahead. It never rejects: a photo the
+ * browser cannot decode goes on to its stage, which says so itself.
+ */
+export async function storedPhotoDecoded(uri: string, mediaKind: string): Promise<void> {
+  if (mediaKind !== 'image' || typeof Image === 'undefined') return;
+  const image = new Image();
+  if (typeof image.decode !== 'function') return;
+  image.src = uri;
+  await image.decode().catch(() => undefined);
+}
+
+/**
  * The stored upload as a session ready to show, or null when it cannot be opened: the value is no sha256, no file
  * with that hash is stored, it has no stored solution, or an answer does not fit its contract or names another file.
  * The photo shown is the stored original, from the server's own route for that hash. It never throws.

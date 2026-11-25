@@ -48,6 +48,7 @@ import { HomeScreen } from './HomeScreen.js';
 import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
+import { OpenWait } from '../reveal/OpenWait.js';
 import { earlyPoseOf, type PlacedTarget } from '../reveal/earlyPose.js';
 import { PredictedSkyScreen } from '../reveal/PredictedSkyScreen.js';
 import { isPredictedSkyShown, predictedSkyStart } from '../reveal/predictedSky.js';
@@ -101,6 +102,8 @@ export interface SpatialObservatoryViewportProps {
   onTriggerUpload?: () => void;
   /** The upload the server last refused; a new one brings the home back to show it beside Upload. */
   uploadRefusal?: HomeRefusal | null;
+  /** The page was opened at an upload's address and its records are still being read: the app's black, never the home. */
+  opening?: boolean;
   /** The upload on its way to a solved sky: while there is one, the working screen shows in place of what follows the solve. */
   arrival?: Arrival | null;
   /** The sky the last solve predicted from an early pose, kept after its job ended, for the reveal's lock-on (D25). */
@@ -171,6 +174,7 @@ export const SpatialObservatoryViewport: React.FC<
   onFileChosen,
   onTriggerUpload,
   uploadRefusal = null,
+  opening = false,
   arrival = null,
   lockOnSky = null,
   lockOnAligned = null,
@@ -299,6 +303,28 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     setPhotoFrameMismatch(false);
   }, [session.sourceAsset?.uri]);
+
+  // A page opened at an upload's address (open-direct-one, UIUX-opendirect-READY.md): while its records are read the
+  // app's black with the logo, never the home; once read the sequence enters at its step 3, as if the drop had just
+  // happened: the photo frames in where the reveal places it and, the job being done, the reveal follows once the frame
+  // is in (marks brightest first, then the words), the working rows never drawn. An upload that cannot be opened lands
+  // on the home. Settled in the render the wait ends in, so no frame of the home is drawn between
+  const [openingSeen, setOpeningSeen] = useState(opening);
+  const [photoEntering, setPhotoEntering] = useState(false);
+  if (openingSeen !== opening) {
+    setOpeningSeen(opening);
+    if (!opening && uploadedMediaUrl) {
+      setEntryStageActive(false);
+      setPhotoEntering(true);
+    }
+  }
+  useEffect(() => {
+    if (!photoEntering) return undefined;
+    const framedIn = window.setTimeout(() => setPhotoEntering(false), resolveMotionTokens(reducedMotion()).frameInMs);
+    return () => window.clearTimeout(framedIn);
+  }, [photoEntering]);
+  // What follows the photo on screen: not while it frames in after the wait
+  const pastPhoto = !entryStageActive && !arrival && !photoEntering;
 
   // Choosing a file to upload leaves the landing, so the upload, its solve and the photo show at once
   useEffect(() => {
@@ -609,7 +635,7 @@ export const SpatialObservatoryViewport: React.FC<
   // sets the session's clock through the reducer, so what the reveal draws follows the frame on screen; at phone width
   // hidden while aligning or while a picked star's card sheet covers the lower screen [verified]
   const clipOnReveal = !entryStageActive && !arrival && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
-  const clipShown = clipOnReveal && (!phone || (!phoneAligning && pickedFinding === null));
+  const clipShown = clipOnReveal && !photoEntering && (!phone || (!phoneAligning && pickedFinding === null));
   // The first view pill names the recording's kind, as every result sentence does (C16)
   const firstViewLabel = session.sourceAsset?.mediaKind === 'video' ? 'Your clip' : 'Your photo';
   const seekClip = (sec: number) =>
@@ -702,12 +728,16 @@ export const SpatialObservatoryViewport: React.FC<
       />
 
       {/* While the home or the photo covers the canvas, the modeled scene's layers are not what is on screen */}
-      {renderLayers && !entryStageActive && !arrival && !isSourcePhotoShown(session) && !skyOver && !predictedSkyShown && (
+      {renderLayers && pastPhoto && !isSourcePhotoShown(session) && !skyOver && !predictedSkyShown && (
         <RenderLayerDisclosure layers={renderLayers} />
       )}
 
       {/* The home (arrive, 2026-11-12) shows until a photo is chosen; it covers the canvas, as a photo does */}
-      {entryStageActive && (
+      {/* The page opened at an upload's address: the app's black with the logo until its records are read, then the logo
+          alone over the photo while it frames in; at phone width the black alone */}
+      {(opening || photoEntering) && <OpenWait black={opening} phone={phone} />}
+
+      {entryStageActive && !opening && (
         <HomeScreen
           soundOn={soundEnabled}
           onToggleSound={handleToggleSound}
@@ -759,7 +789,11 @@ export const SpatialObservatoryViewport: React.FC<
             endsMask={slotMask}
             underSky={skyOver}
             onVideo={setClipVideo}
+            entering={photoEntering}
           />
+          {/* Everything over the photo follows once it has framed in after the wait */}
+          {!photoEntering && (
+          <>
           {revealShown && (
             <RevealPhoto
               lockOnSky={lockOnSky}
@@ -891,6 +925,8 @@ export const SpatialObservatoryViewport: React.FC<
             selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
           />
           )}
+          </>
+          )}
         </>
       )}
 
@@ -898,7 +934,7 @@ export const SpatialObservatoryViewport: React.FC<
           TOP BAR: Brand Wordmark + 03-B Mark on Left, Audio Control on Right (past the home only)
           ======================================================================= */}
       {/* No header strip over the phone's reveal: the iPhone's web view has no sound control (sound, approved) */}
-      {!entryStageActive && !arrival && !phoneReveal && (
+      {pastPhoto && !phoneReveal && (
         <header
           className="alb-lusion-header alb-visor-topright"
           data-hud-interactive="true"
@@ -1008,7 +1044,7 @@ export const SpatialObservatoryViewport: React.FC<
       )}
 
       {/* The phone reveal's top row (reveal, approved, iPhone 1): a 44 pt close circle, home as the laptop's logo, and the views */}
-      {phoneReveal && !entryStageActive && !arrival && (
+      {phoneReveal && pastPhoto && (
         <div className="reveal-phone-top" data-hud-interactive="true">
           <IconButton label="Close" icon="x" size="phone" onClick={() => (phoneAligning ? setCancelAligningToken((n) => n + 1) : setEntryStageActive(true))} />
           <ViewPills
@@ -1027,9 +1063,9 @@ export const SpatialObservatoryViewport: React.FC<
 
       {/* Keyboard help on "?" (INTERIM: UIUX-keys-QUESTION.md), on the laptop after the home; the 3D view's keys are
           listed only where that view is on screen */}
-      {!phone && !entryStageActive && !arrival && <KeyboardHelp threeD={!revealShown} />}
+      {!phone && pastPhoto && <KeyboardHelp threeD={!revealShown} />}
 
-      {!phone && !entryStageActive && !arrival && (
+      {!phone && pastPhoto && (
         <div className="reveal-nav" data-hud-interactive="true">
           {revealShown && (
             <ViewPills
@@ -1049,7 +1085,7 @@ export const SpatialObservatoryViewport: React.FC<
 
       {/* Credits on every laptop screen after the home, as map products keep their attribution on the map: always in
           view at the bottom right, in the disclosure lines' style; the home keeps its pill, the phone its audio strip */}
-      {!phone && !entryStageActive && !arrival && (
+      {!phone && pastPhoto && (
         <button
           ref={creditsLink}
           type="button"

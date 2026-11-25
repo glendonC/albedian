@@ -37,6 +37,26 @@
   background: var(--look-field);
 }
 
+/* A page opened at an upload's address (open-direct-one, UIUX-opendirect-READY.md item 1): until the upload's records
+   are read, the app's black over everything with the logo in its place, the reveal's own, and nothing else; once read
+   the photo frames in under the logo, which the reveal's own logo then replaces in the same place */
+.open-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.open-wait.is-black {
+  background: var(--look-field);
+}
+
+.open-wait__word {
+  position: absolute;
+  left: 36px;
+  top: 30px;
+}
+
 /* The logo, which returns to the home as the app's logo does: a button with no box of its own */
 .work-word {
   all: unset;

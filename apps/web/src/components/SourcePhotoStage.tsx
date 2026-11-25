@@ -39,6 +39,8 @@ export interface SourcePhotoStageProps {
   onVideo?: (video: HTMLVideoElement | null) => void;
   /** At phone width, the mask that fades the photo's slot top and bottom and hides it beyond (reveal, approved, iPhone 1). */
   endsMask?: string;
+  /** The photo framing in where the reveal places it, on a page opened at an upload's address (UIUX-opendirect-READY.md). */
+  entering?: boolean;
 }
 
 /**
@@ -84,6 +86,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   underSky = false,
   onVideo,
   endsMask,
+  entering = false,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -185,7 +188,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
 
   return (
     <div
-      className="alb-source-stage"
+      className={entering ? 'alb-source-stage is-entering' : 'alb-source-stage'}
       data-testid="source-photo-stage"
       data-evidence-class="observed"
       style={{

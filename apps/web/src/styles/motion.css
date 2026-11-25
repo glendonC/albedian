@@ -2,6 +2,12 @@
    Layout stays in each screen's own stylesheet; the movement of its parts is here, on the --look-mo-* tokens and the
    shared keyframes of look.css, so under reduced motion every one becomes the 270 ms dissolve with no rise. */
 
+/* A page opened at an upload's address, its records read (UIUX-opendirect-READY.md item 2, the record's step 3): the
+   photo frames in where the reveal places it; the reveal follows once it is in (SpatialObservatoryViewport.tsx) */
+.alb-source-stage.is-entering {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
 /* The working screen: the size line's words in, then each row 20 ms after the one above; a finished step's colour
    changes in the colour time. A stopped or waiting job's sentence comes in, its buttons 20 ms later. */
 .work-size {

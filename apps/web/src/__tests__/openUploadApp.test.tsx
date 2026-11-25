@@ -4,9 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IngestReceipt, ObservationSolution } from '@albedian/contracts';
 import { HOME_SCREEN } from '../components/__tests__/homeEntry.js';
+import { PHONE_QUERY } from '../components/phoneSheet.js';
 import { poseReceipt } from '../components/__tests__/poseSessions.js';
 
 // The app opened at ?upload=<sha256>: the stored upload's reveal shows with no upload and no solve, and an address
@@ -146,7 +148,8 @@ const settle = () => act(async () => await new Promise((r) => setTimeout(r, 30))
 describe('the app opened at ?upload=<sha256>', () => {
   it("leaves the home for the stored upload's photo and sky, with two reads and nothing sent", async () => {
     const calls = await openAppAt(`/?upload=${sha256}`);
-    await waitUntil(() => expect(q(HOME_SCREEN)).toBeNull());
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    expect(q(HOME_SCREEN)).toBeNull();
     const photo = q('[data-testid="source-photo-stage"] img') as HTMLImageElement;
     // The stored original, from the server's own route for that hash
     expect(photo.getAttribute('src')).toBe(`/api/ingest/${sha256}/original`);
@@ -181,23 +184,152 @@ describe('the app opened at ?upload=<sha256>', () => {
     expect(q(HOME_SCREEN)).not.toBeNull();
     expect(calls.some((call) => call.startsWith('POST'))).toBe(false);
   });
+});
 
-  it('gives way to a photo chosen before the stored one arrived: the later answer changes nothing', async () => {
+// open-direct-one (UIUX-opendirect-READY.md, asked by the lead at 22:19 on 24 Nov: MOBILE saw the web show its own home
+// for about a second before the reveal when opened at an upload's address): until the upload's records are read, the
+// app's black with the logo in its place and nothing else; then the sequence enters at its step 3, as if the drop had
+// just happened: the photo frames in where the reveal places it, and with the job already done the reveal follows at
+// once (marks brightest first, then the words), the working rows never drawn. An address whose upload is not stored
+// lands on the home, the one screen that can take a file.
+describe('a page opened at an upload\'s address, until the reveal is ready', () => {
+  const held = () => {
     let release: (response: Response) => void = () => {};
-    const held = new Promise<Response>((resolve) => (release = resolve));
-    await openAppAt(`/?upload=${sha256}`, { receipt: () => held });
-    const input = q('[data-testid="home-file-input"]') as HTMLInputElement;
-    const file = new File([new Uint8Array(4)], 'chosen.jpg', { type: 'image/jpeg' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    act(() => {
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    expect(q('[data-testid="working-screen"] .work-size')!.textContent).toBe('0.000004 MB');
-    release(json(receipt));
+    const answer = new Promise<Response>((resolve) => (release = resolve));
+    return { answer: () => answer, release: (response: Response) => release(response) };
+  };
+  const wait = (ms: number) => act(async () => await new Promise((r) => setTimeout(r, ms)));
+  const WAIT = '[data-testid="open-wait"]';
+  const STAGE = '[data-testid="source-photo-stage"]';
+
+  it("shows the app's black with the logo in its place and nothing else while the records are read", async () => {
+    const receiptRead = held();
+    await openAppAt(`/?upload=${sha256}`, { receipt: receiptRead.answer });
     await settle();
-    // Still the chosen file's screen: no stored photo took its place
-    expect(q('[data-testid="working-screen"]')).not.toBeNull();
-    expect(q('[data-testid="source-photo-stage"] img')).toBeNull();
+    expect(q(HOME_SCREEN)).toBeNull();
+    const shown = q(WAIT)!;
+    expect(shown.classList.contains('is-black')).toBe(true);
+    // The logo, at the laptop's 21 px, and no other words, no button, no field, no count
+    expect(shown.querySelector('.look-logo')!.getAttribute('style')).toContain('--look-logo-fs: 21px');
+    expect(container.textContent).toBe('albedian');
+    expect(container.querySelectorAll('button, input, [role="progressbar"], [role="status"]')).toHaveLength(0);
+    expect(q(STAGE)).toBeNull();
+    expect(q('[data-testid="working-screen"]')).toBeNull();
+    expect(q('[data-testid="reveal-photo"]')).toBeNull();
+    receiptRead.release(json(receipt));
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+  });
+
+  it('frames the photo in where the reveal places it, then the reveal follows once the frame is in, the working rows never drawn', async () => {
+    await openAppAt(`/?upload=${sha256}`);
+    await waitUntil(() => expect(q(STAGE)).not.toBeNull());
+    expect(q(STAGE)!.classList.contains('is-entering')).toBe(true);
+    expect(q(HOME_SCREEN)).toBeNull();
+    expect(q('[data-testid="working-screen"]')).toBeNull();
+    // The logo stays in its place on the photo's frame, the black gone: the photo is what comes in
+    expect(q(WAIT)!.classList.contains('is-black')).toBe(false);
+    expect(q(`${WAIT} .look-logo`)).not.toBeNull();
+    // Nothing of the reveal while the photo frames in (400 ms): no marks, no words, no views, no credits
+    expect(q('[data-testid="reveal-photo"]')).toBeNull();
+    await wait(300);
+    expect(q('[data-testid="reveal-photo"]')).toBeNull();
+    expect([...container.querySelectorAll('button')].map((b) => b.outerHTML)).toEqual([]);
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    expect(q(STAGE)!.classList.contains('is-entering')).toBe(false);
+    expect(q(WAIT)).toBeNull();
+    expect(q('[data-testid="reveal-home"] .look-logo')).not.toBeNull();
+    expect(q('[data-testid="working-screen"]')).toBeNull();
+    expect(q(HOME_SCREEN)).toBeNull();
+  });
+
+  it("shows the app's black alone at phone width, with no logo, until the photo comes in (UIUX for open-direct-one)", async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === PHONE_QUERY, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+    const receiptRead = held();
+    await openAppAt(`/?upload=${sha256}`, { receipt: receiptRead.answer });
+    await settle();
+    expect(q(HOME_SCREEN)).toBeNull();
+    expect(q(WAIT)!.classList.contains('is-black')).toBe(true);
+    expect(q(`${WAIT} .look-logo`)).toBeNull();
+    expect(container.textContent).toBe('');
+    receiptRead.release(json(receipt));
+    await waitUntil(() => expect(q(STAGE)?.classList.contains('is-entering')).toBe(true));
+    // The phone's reveal draws no logo, so none stands over the photo coming in either
+    expect(container.querySelector('.look-logo')).toBeNull();
+    await waitUntil(() => expect(q('[data-testid="reveal-photo"]')).not.toBeNull());
+    expect(q(WAIT)).toBeNull();
+  });
+
+  it('frames the photo in on the 270 ms dissolve under Reduce Motion', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+    await openAppAt(`/?upload=${sha256}`);
+    await waitUntil(() => expect(q(STAGE)).not.toBeNull());
+    expect(q('[data-testid="reveal-photo"]')).toBeNull();
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+  });
+
+  it('keeps the black until the browser has decoded the photo, so the photo frames in whole', async () => {
+    let decoded: () => void = () => {};
+    const decoding = new Promise<void>((resolve) => (decoded = resolve));
+    const decode = vi.fn(() => decoding);
+    Object.defineProperty(HTMLImageElement.prototype, 'decode', { value: decode, configurable: true, writable: true });
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(decode).toHaveBeenCalled());
+      await settle();
+      expect(q(WAIT)!.classList.contains('is-black')).toBe(true);
+      expect(q(STAGE)).toBeNull();
+      decoded();
+      await waitUntil(() => expect(q(STAGE)?.classList.contains('is-entering')).toBe(true));
+    } finally {
+      delete (HTMLImageElement.prototype as unknown as Record<string, unknown>).decode;
+    }
+  });
+
+  it('goes on to the photo when the browser cannot decode it: the stage says so itself', async () => {
+    Object.defineProperty(HTMLImageElement.prototype, 'decode', { value: () => Promise.reject(new Error('EncodingError')), configurable: true, writable: true });
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q(STAGE)).not.toBeNull());
+    } finally {
+      delete (HTMLImageElement.prototype as unknown as Record<string, unknown>).decode;
+    }
+  });
+
+  it.each<[string, { receipt?: () => Response; solution?: () => Response }]>([
+    ['no file with that hash is stored', { receipt: () => json({ detail: 'no file with that hash is stored' }, 404) }],
+    ['the upload has no stored solution', { solution: () => json({ detail: 'no solution is stored for that file' }, 404) }],
+  ])('lands on the home after the black when %s, never the home first', async (_label, routes) => {
+    const receiptRead = held();
+    await openAppAt(`/?upload=${sha256}`, { receipt: receiptRead.answer, ...(routes.solution ? { solution: routes.solution } : {}) });
+    await settle();
+    expect(q(HOME_SCREEN)).toBeNull();
+    expect(q(WAIT)).not.toBeNull();
+    receiptRead.release(routes.receipt ? routes.receipt() : json(receipt));
+    await waitUntil(() => expect(q(HOME_SCREEN)).not.toBeNull());
+    expect(q(WAIT)).toBeNull();
+    expect(q(STAGE)).toBeNull();
+  });
+
+  it('shows the home at once, with no black first, for an address that names no upload', async () => {
+    await openAppAt('/?upload=..%2F..%2Fetc');
+    expect(q(HOME_SCREEN)).not.toBeNull();
+    expect(q(WAIT)).toBeNull();
+  });
+
+  it('draws the black over everything at its place and the logo where the reveal draws its own; the photo frames in on the frame-in time', () => {
+    const declsOf = (file: string, selector: string) => {
+      const found: Record<string, string> = {};
+      postcss.parse(fs.readFileSync(path.resolve(here, `../styles/${file}`), 'utf8')).walkRules((rule) => {
+        if (rule.parent?.type !== 'root' || !rule.selectors.includes(selector)) return;
+        rule.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
+      });
+      return found;
+    };
+    expect(declsOf('reveal.css', '.open-wait')).toEqual({ position: 'fixed', inset: '0', 'z-index': '30', 'pointer-events': 'none' });
+    expect(declsOf('reveal.css', '.open-wait.is-black')).toEqual({ background: 'var(--look-field)' });
+    const reveal = declsOf('reveal.css', '.reveal-word');
+    expect(declsOf('reveal.css', '.open-wait__word')).toEqual({ position: reveal.position, left: reveal.left, top: reveal.top });
+    expect(declsOf('motion.css', '.alb-source-stage.is-entering')).toEqual({ animation: 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both' });
   });
 });
 
