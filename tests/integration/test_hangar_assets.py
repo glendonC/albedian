@@ -149,8 +149,10 @@ def test_levels_fall_in_triangles_and_need_no_decoder_or_transform() -> None:
             gltf = _gltf(HANGAR_DIR / model["files"][level]["path"])
             assert set(gltf.get("extensionsUsed", [])) <= {"EXT_texture_webp"}, (name, level)
             assert not set(gltf.get("extensionsRequired", [])) - {"EXT_texture_webp"}
-            for node in gltf["nodes"]:
-                assert not {"matrix", "rotation", "scale", "translation"} & set(node), (name, level)
+            # a rigged suit's joints carry their own places and turns; every other node none
+            joints = {j for skin in gltf.get("skins", []) for j in skin["joints"]}
+            for i, node in enumerate(gltf["nodes"]):
+                assert i in joints or not {"matrix", "rotation", "scale", "translation"} & set(node), (name, level)
             if CRAFTS[name].get("drop_animations"):
                 assert "animations" not in gltf, (name, level)
     assert CRAFTS["perseverance"].get("drop_animations") is True
@@ -486,6 +488,270 @@ def test_a_suit_given_level_normals_shades_flat_panels_flat_at_every_level() -> 
             assert share < (0.10 if level == "lod2" else 0.05), (name, level, round(share, 4))
             matched = _area_weighted_share(path, 2.0)
             assert matched >= 0.98, (name, level, round(matched, 4))
+
+
+def _glb(path: Path) -> tuple[dict, bytes]:
+    data = path.read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    return json.loads(data[20 : 20 + length]), data[20 + length + 8 :]
+
+
+def _accessor(gltf: dict, blob: bytes, i: int) -> "np.ndarray":
+    acc = gltf["accessors"][i]
+    view = gltf["bufferViews"][acc["bufferView"]]
+    width = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}[acc["type"]]
+    kind = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}[acc["componentType"]]
+    assert view.get("byteStride", np.dtype(kind).itemsize * width) == np.dtype(kind).itemsize * width
+    offset = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+    out = np.frombuffer(blob, kind, acc["count"] * width, offset).reshape(-1, width).astype(np.float64)
+    return out / np.iinfo(kind).max if acc.get("normalized") else out
+
+
+def _node_worlds(gltf: dict, turns: dict[int, "np.ndarray"] | None = None) -> list["np.ndarray"]:
+    """Each node's world matrix; `turns` replaces some nodes' rotations (a pose)."""
+    parent = {c: i for i, n in enumerate(gltf["nodes"]) for c in n.get("children", [])}
+    turns = turns or {}
+
+    def local(index: int) -> "np.ndarray":
+        node = gltf["nodes"][index]
+        x, y, z, w = turns[index] if index in turns else node.get("rotation", (0.0, 0.0, 0.0, 1.0))
+        turn = np.array(
+            [
+                [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+            ]
+        )
+        out = np.eye(4)
+        out[:3, :3] = turn @ np.diag(node.get("scale", (1.0, 1.0, 1.0)))
+        out[:3, 3] = node.get("translation", (0.0, 0.0, 0.0))
+        return out
+
+    worlds: dict[int, "np.ndarray"] = {}
+
+    def world(i: int) -> "np.ndarray":
+        if i not in worlds:
+            worlds[i] = (world(parent[i]) if i in parent else np.eye(4)) @ local(i)
+        return worlds[i]
+
+    return [world(i) for i in range(len(gltf["nodes"]))]
+
+
+def _whole_parts(points: "np.ndarray", triangles: "np.ndarray") -> "np.ndarray":
+    """A label per vertex: its loose part, joined by shared triangles and by shared places within 0.1 mm (as the build
+    finds a suit's parts to rig)."""
+    parent = np.arange(len(points))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    _, first, place = np.unique(np.round(points / 1e-4).astype(np.int64), axis=0, return_index=True, return_inverse=True)
+    same = np.stack([np.arange(len(points)), first[place.reshape(-1)]], axis=1)
+    for a, b in np.concatenate([triangles[:, [0, 1]], triangles[:, [1, 2]], same]):
+        ra, rb = find(int(a)), find(int(b))
+        if ra != rb:
+            parent[ra] = rb
+    return np.array([find(v) for v in range(len(points))])
+
+
+def _rigged_level(path: Path) -> dict:
+    """A rigged level read from its glTF alone: its points, joints and weights over all primitives, its whole parts,
+    the bone carrying each whole part (None for a weighted one), and its points in each pose, skinned as glTF draws
+    them (each joint's posed world matrix times its inverse bind matrix, blended by the weights)."""
+    gltf, blob = _glb(path)
+    (skin,) = gltf["skins"]
+    (mesh_node,) = [i for i, n in enumerate(gltf["nodes"]) if "skin" in n]
+    points, which, weight, triangles = [], [], [], []
+    for mesh in gltf["meshes"]:
+        for prim in mesh["primitives"]:
+            triangles.append(_accessor(gltf, blob, prim["indices"]).reshape(-1, 3).astype(np.int64) + sum(map(len, points)))
+            points.append(_accessor(gltf, blob, prim["attributes"]["POSITION"]))
+            which.append(_accessor(gltf, blob, prim["attributes"]["JOINTS_0"]).astype(np.int64))
+            weight.append(_accessor(gltf, blob, prim["attributes"]["WEIGHTS_0"]))
+    points, which, weight = np.concatenate(points), np.concatenate(which), np.concatenate(weight)
+    part = _whole_parts(points, np.concatenate(triangles))
+    inverse_bind = _accessor(gltf, blob, skin["inverseBindMatrices"]).reshape(-1, 4, 4).transpose(0, 2, 1)
+    names = [gltf["nodes"][j]["name"] for j in skin["joints"]]
+    carried = (weight > 1e-3).sum(axis=1)
+    bone_of = {}
+    for label in np.unique(part):
+        rows = part == label
+        on = set(which[rows][weight[rows] > 1e-3].tolist())
+        bone_of[int(label)] = names[on.pop()] if (carried[rows] == 1).all() and len(on) == 1 else None
+    posed = {}
+    for anim in gltf["animations"]:
+        turns = {
+            c["target"]["node"]: _accessor(gltf, blob, anim["samplers"][c["sampler"]]["output"])[0]
+            for c in anim["channels"]
+            if c["target"]["path"] == "rotation"
+        }
+        worlds = _node_worlds(gltf, turns)
+        to_mesh = np.linalg.inv(worlds[mesh_node])
+        matrices = np.array([to_mesh @ worlds[j] @ inverse_bind[k] for k, j in enumerate(skin["joints"])])
+        moved = np.zeros_like(points)
+        for k in range(4):
+            m = matrices[which[:, k]]
+            moved += weight[:, k, None] * (np.einsum("nij,nj->ni", m[:, :3, :3], points) + m[:, :3, 3])
+        posed[anim["name"]] = moved
+    return {"points": points, "part": part, "bone_of": bone_of, "posed": posed}
+
+
+def _openings(level: dict, touch_m: float = 0.005) -> dict[tuple[int, int], dict[str, float]]:
+    """For every two whole parts touching at rest (a corner of one within `touch_m` of the other), how far that contact
+    opens in each pose: the farthest any of its touching corners ends from the other part."""
+    from scipy.spatial import cKDTree
+
+    points, part = level["points"], level["part"]
+    pairs = cKDTree(points).query_pairs(touch_m, output_type="ndarray")
+    pairs = pairs[part[pairs[:, 0]] != part[pairs[:, 1]]]
+    contact: dict[tuple[int, int], set[int]] = {}
+    for a, b in pairs:
+        for x, y in ((a, b), (b, a)):
+            contact.setdefault((int(part[x]), int(part[y])), set()).add(int(x))
+    out: dict[tuple[int, int], dict[str, float]] = {}
+    for pose, moved in level["posed"].items():
+        trees: dict[int, "cKDTree"] = {}
+        for (pa, pb), corners in contact.items():
+            if pb not in trees:
+                trees[pb] = cKDTree(moved[part == pb])
+            gap = float(trees[pb].query(moved[sorted(corners)])[0].max())
+            out.setdefault((pa, pb), {})[pose] = gap
+    return out
+
+
+RIGGED = sorted(name for name, recipe in CRAFTS.items() if recipe.get("rig"))
+
+
+@pytest.mark.parametrize("name", RIGGED)
+def test_a_rigged_suit_carries_its_skeleton_and_three_poses_at_every_level(name: str) -> None:
+    # suit-rig-one (the lead's order of 01:01 on 25 Nov): both suits rigged in Blender by their own parts, nothing added
+    # or reshaped, the skeleton at every level, three poses the app blends: hover, cruise, brake; the record's sentence,
+    # rebuilt from NASA's model, says it was rigged and posed by the app (never the word "modified": the Credits row
+    # marks a changed file itself, test_provenance_changes.py). At rest every joint's matrix is the identity, so no
+    # vertex moves until a pose turns a bone; each vertex's weights sum to one in glTF's one set of four (the build
+    # weights the full mesh on two bones, and a level's reduction blends neighbours, so up to three at lod0); a whole
+    # part hangs on one bone (the EMU's fabric alone is weighted across a joint); and a part past a recipe's hold plane
+    # (the helmet above the shoulders, the EMU's pack behind them: in the first trial the pack's rails hung on the right
+    # upper arm and flew off in the cruise) hangs on the hold's bone.
+    assert RIGGED == ["emu", "z2"]
+    rig = CRAFTS[name]["rig"]
+    bones = [b["name"] for b in rig["bones"]]
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
+    sentence = record[f"hangar/{name}/{name}_lod0.glb"]["producedBy"]["changes"]
+    assert "Rigged and posed by the app: a skeleton of" in sentence, sentence
+    for level in ("lod0", "lod1", "lod2"):
+        gltf, blob = _glb(HANGAR_DIR / FACTS["models"][name]["files"][level]["path"])
+        (skin,) = gltf["skins"]
+        joints = [gltf["nodes"][j]["name"] for j in skin["joints"]]
+        assert sorted(joints) == sorted(bones), (name, level, joints)
+        assert sorted(a["name"] for a in gltf["animations"]) == ["brake", "cruise", "hover"], (name, level)
+        worlds = _node_worlds(gltf)
+        (mesh_node,) = [i for i, n in enumerate(gltf["nodes"]) if "skin" in n]
+        to_mesh = np.linalg.inv(worlds[mesh_node])
+        inverse_bind = _accessor(gltf, blob, skin["inverseBindMatrices"]).reshape(-1, 4, 4).transpose(0, 2, 1)
+        for k, j in enumerate(skin["joints"]):
+            assert np.allclose(to_mesh @ worlds[j] @ inverse_bind[k], np.eye(4), atol=1e-5), (name, level, joints[k])
+        turned: dict[tuple[str, str], float] = {}
+        for anim in gltf["animations"]:
+            for channel in anim["channels"]:
+                node = gltf["nodes"][channel["target"]["node"]]
+                values = _accessor(gltf, blob, anim["samplers"][channel["sampler"]]["output"])
+                # a pose only turns bones: any other channel holds the joint's rest
+                if channel["target"]["path"] == "translation":
+                    assert np.allclose(values, node.get("translation", (0, 0, 0)), atol=1e-5), (name, anim["name"])
+                elif channel["target"]["path"] == "scale":
+                    assert np.allclose(values, 1.0, atol=1e-5), (name, anim["name"])
+                else:
+                    rest_turn = np.array(node.get("rotation", (0.0, 0.0, 0.0, 1.0)))
+                    cosine = np.clip(np.abs(values @ rest_turn), 0.0, 1.0)
+                    turned[(anim["name"], node["name"])] = float(np.degrees(2 * np.arccos(cosine)).max())
+        for pose in ("hover", "cruise", "brake"):
+            # the app leans and banks the whole figure (MOTION's design as the lead decided it, 25 Nov 03:22), so a pose
+            # leaves the pelvis and the spine at rest and moves limbs: each upper arm turns more than 10 degrees from the
+            # stance NASA modelled (measured 23 to 52)
+            assert max(turned.get((pose, "pelvis"), 0.0), turned.get((pose, "spine"), 0.0)) < 0.5, (name, level, pose)
+            named = rig["poses"][pose]
+            if named:  # the EMU: the limbs it names turn, and nothing else
+                assert max(turned[(pose, bone)] for bone in named) > 10.0, (name, level, pose)
+            assert max(v for (a, bone), v in turned.items() if a == pose and bone not in named) < 0.5, (name, level, pose)
+        # the import frame from the joints: gltf = s R import + t, fitted on the recipe's bone heads
+        here = np.array([(to_mesh @ worlds[j])[:3, 3] for j in skin["joints"]])
+        there = np.array([next(b["head"] for b in rig["bones"] if b["name"] == n) for n in joints], dtype=np.float64)
+        u, sv, vt = np.linalg.svd((here - here.mean(0)).T @ (there - there.mean(0)))
+        turn = u @ np.diag([1.0, 1.0, np.sign(np.linalg.det(u @ vt))]) @ vt
+        scale = float(np.sum(sv * np.array([1.0, 1.0, np.sign(np.linalg.det(u @ vt))])) / np.sum((there - there.mean(0)) ** 2))
+        shift = here.mean(0) - scale * turn @ there.mean(0)
+        assert np.allclose(here, scale * there @ turn.T + shift, atol=1e-4), (name, level)
+        points, which, weight, triangles = [], [], [], []
+        for mesh in gltf["meshes"]:
+            for prim in mesh["primitives"]:
+                assert "WEIGHTS_1" not in prim["attributes"]
+                indices = _accessor(gltf, blob, prim["indices"]).reshape(-1, 3).astype(np.int64)
+                triangles.append(indices + sum(len(p) for p in points))
+                points.append(_accessor(gltf, blob, prim["attributes"]["POSITION"]))
+                which.append(_accessor(gltf, blob, prim["attributes"]["JOINTS_0"]).astype(np.int64))
+                weight.append(_accessor(gltf, blob, prim["attributes"]["WEIGHTS_0"]))
+        points, which, weight = np.concatenate(points), np.concatenate(which), np.concatenate(weight)
+        assert np.allclose(weight.sum(axis=1), 1.0, atol=2e-3), (name, level)
+        carried = (weight > 1e-3).sum(axis=1)
+        assert carried.max() <= 4 and carried.min() == 1, (name, level)
+        # only the EMU's fabric bends, and across a band at each joint: its second bone carries 0.1 or more on 0.074,
+        # 0.068 and 0.044 of the EMU's vertices at lod0, lod1 and lod2, each joint blended over 0.1 m (fabric weighted to
+        # one bone only, the blends of a level's reduction alone reach 0.008 at most, `.lanetools/weight_band.py`)
+        bend = float(np.mean(np.sort(weight, axis=1)[:, -2] >= 0.1))
+        if "skin_groups" in rig:
+            assert bend >= 0.02, (name, level, round(bend, 4))
+        else:
+            assert carried.max() == 1, (name, level, "a suit of separate parts bends nowhere")
+        single = np.where(carried == 1, which[np.arange(len(which)), weight.argmax(axis=1)], -1)
+        part = _whole_parts(points, np.concatenate(triangles))
+        for label in np.unique(part):
+            on = single[part == label]
+            if (on < 0).any():
+                # a weighted part is the EMU's fabric from boots to chest or an arm, never a lamp or a glove: in trial
+                # rig4 four helmet lamps, as dense as an arm, were weighted between spine and pelvis
+                assert np.ptp(points[part == label], axis=0).max() >= 0.4, (name, level, "a small part weighted")
+                continue
+            assert len(set(on.tolist())) == 1, (name, level, "a whole part split across bones")
+            # the pack and the helmet by the joints alone, whatever the recipe says (the suit faces +Z with +Y up): at
+            # lod0, where every part is whole, a part 0.1 m behind the spine's joint or 0.08 m above the shoulders' rides
+            # the spine (measured: the EMU's pack rails 0.15 m behind, its arms' bearings 0.07; helmets 0.15 m above the
+            # shoulders and more, arm parts 0.01 at most)
+            middle = points[part == label].mean(0)
+            spine = here[joints.index("spine")]
+            shoulders = max(here[joints.index("upperarm.L")][1], here[joints.index("upperarm.R")][1])
+            if level == "lod0" and (spine[2] - middle[2] > 0.1 or middle[1] - shoulders > 0.08):
+                assert joints[int(on[0])] == "spine", (name, level, np.round(middle, 3), joints[int(on[0])])
+            centre = np.linalg.inv(turn) @ ((middle - shift) / scale)
+            for hold in rig.get("hold", []):
+                value = centre["xyz".index(hold["axis"])]
+                past = value > hold.get("above", np.inf) or value < hold.get("below", -np.inf)
+                if past and "within_m" in hold:
+                    of = np.array(next(b["head"] for b in rig["bones"] if b["name"] == hold["of"]))
+                    across = np.delete(centre - of, "xyz".index(hold["axis"]))
+                    past = float(np.hypot(*across)) < hold["within_m"]
+                if past:
+                    assert joints[int(on[0])] == hold["bone"], (name, level, np.round(centre, 3), joints[int(on[0])])
+                    break
+
+
+@pytest.mark.parametrize("name", RIGGED)
+def test_no_two_touching_parts_of_a_rigged_suit_come_apart_in_any_pose(name: str) -> None:
+    # suit-rig-one version two (AUDIT-B's verdict of 25 Nov: in the cruise the Z-2's upper arms left their shoulder rings
+    # by 15 cm, and the EMU's right arm carried a chest fitting and its hose 24 cm away from the chest): every two whole
+    # parts touching at rest (within 5 mm) stay within 2 cm of each other in every pose, at every level, the app's own
+    # skinning done here from the file alone. No joint gap is excused: the EMU's fabric bends between bones, its hard
+    # parts at the torso ride the spine, and the Z-2, all hard segments meeting at rings, keeps NASA's stance.
+    for level in ("lod0", "lod1", "lod2"):
+        rigged = _rigged_level(HANGAR_DIR / FACTS["models"][name]["files"][level]["path"])
+        part, points = rigged["part"], rigged["points"]
+        for (a, b), gaps in _openings(rigged).items():
+            worst = max(gaps, key=gaps.get)
+            where = np.round(points[part == a].mean(0), 3).tolist()
+            assert gaps[worst] <= 0.02, (name, level, worst, round(gaps[worst], 3), rigged["bone_of"][a], where, rigged["bone_of"][b])
 
 
 @pytest.mark.parametrize("name", sorted(CRAFTS))

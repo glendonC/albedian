@@ -87,8 +87,11 @@ def glb_json(path: Path) -> dict:
 def glb_stats(path: Path) -> dict:
     """Triangles and the bounds in metres, from the accessors (glTF requires POSITION's min and max)."""
     gltf = glb_json(path)
-    for node in gltf.get("nodes", []):
-        if any(k in node for k in ("matrix", "rotation", "scale", "translation")):
+    # a rigged suit's joints carry their own places and turns (a skin's bones); every other node, the mesh's among
+    # them, none, so the accessors' bounds are the model's own
+    joints = {j for skin in gltf.get("skins", []) for j in skin["joints"]}
+    for i, node in enumerate(gltf.get("nodes", [])):
+        if i not in joints and any(k in node for k in ("matrix", "rotation", "scale", "translation")):
             raise SystemExit(f"{path}: node {node.get('name')} carries a transform; the build applies every transform")
     tris = 0
     lo = [float("inf")] * 3

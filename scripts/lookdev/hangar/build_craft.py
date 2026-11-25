@@ -32,7 +32,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -256,15 +256,19 @@ CHANGES = {
         "and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider "
         "angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
     ),
-    # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit")
-    # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked")
+    # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked": the Z-2)
     "lod0_baked": (
         "Rebuilt from NASA's model, not copied: turned so the suit faces along +Z with +Y up, at the metre scale "
         "NASA's model is built in; NASA's colour map kept as the base colour, NASA's bump map turned into a normal map and the "
         "roughness taken from NASA's specular map; the NASA insignia and an emblem patch, decals of their own, removed "
         "with their faces and painted over in all three maps, as are a logo and its credit line in unused texture "
-        "space, and the textures re-encoded as WebP."
+        "space, and the textures re-encoded as WebP. Rigged and posed by the app: a "
+        "skeleton of 12 bones added beside the mesh with each of the model's separate parts hanging whole on one "
+        "bone, nothing bent or reshaped, and three poses for the app to blend, hovering, cruising and braking, that "
+        "keep NASA's stance at the limbs: its parts are separate hard segments, which would part at any joint a pose "
+        "bent; at rest no vertex moves."
     ),
+    # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit": the EMU)
     "lod0_suit": (
         "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts "
         "joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is "
@@ -273,7 +277,13 @@ CHANGES = {
         "covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals "
         "made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are "
         "reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no "
-        "vertex or texture moved."
+        "vertex or texture moved. Rigged and posed by the app: a skeleton of 14 bones "
+        "added beside the mesh; the helmet, gloves, pack, chest controls and bearings each hang whole on one bone, and "
+        "the suit's continuous fabric, boots to chest and each arm, is weighted to blend from one bone to the next just "
+        "past each joint so it bends at hips, knees and elbows; three poses of the limbs for the app to blend, "
+        "hovering as NASA filmed a free flight with knees a little bent and forearms forward, cruising with forearms "
+        "down along the body and legs straight, and braking with knees up and forearms raised forward, the upper arms "
+        "kept where NASA modelled them; at rest no vertex moves."
     ),
     # lod0 for photo texture, gold and silver foils, solar wings and three baked parts ("changes": "clementine")
     "lod0_clementine": (
@@ -1058,9 +1068,186 @@ def render_picker(obj: bpy.types.Object, path: Path) -> None:
     bpy.ops.render.render(write_still=True)
 
 
-def export_level(obj: bpy.types.Object, level: str, path: Path) -> None:
+def _segment_distance(points: np.ndarray, head: np.ndarray, tail: np.ndarray) -> np.ndarray:
+    """Distance from each point to the segment head-tail."""
+    d = tail - head
+    t = np.clip(((points - head) @ d) / max(float(d @ d), 1e-12), 0.0, 1.0)
+    return np.linalg.norm(points - (head + t[:, None] * d), axis=1)
+
+
+def _held(hold: dict, at: Vector, rig: dict) -> bool:
+    """Whether a part whose centre is `at` (the import frame) lies where a recipe's hold takes it: past a plane (`axis`
+    with `above` or `below`), and, when the hold names `within_m`, also within that distance across of the line through
+    the head of the bone it names in `of` (the vertical through the spine's head: the chest's controls and hoses)."""
+    value = at["xyz".index(hold["axis"])]
+    if not (value > hold.get("above", math.inf) or value < hold.get("below", -math.inf)):
+        return False
+    if "within_m" not in hold:
+        return True
+    head = next(b["head"] for b in rig["bones"] if b["name"] == hold["of"])
+    across = [a - h for i, (a, h) in enumerate(zip(at, head)) if "xyz"[i] != hold["axis"]]
+    return math.hypot(*across) < hold["within_m"]
+
+
+def rig_suit(craft: bpy.types.Object, rig: dict, m: Matrix) -> bpy.types.Object:
+    """An armature for a suit, its bones given in the import frame and carried by the build's own matrix `m`, and the
+    suit's mesh weighted to it: a loose part whose centre lies past one of the recipe's `hold` planes in the import
+    frame hangs whole on that hold's bone (a pack rail nearer an arm than the spine, a helmet lamp); when the recipe
+    names `skin_groups`, a continuous part of at least `skin_from_vertices` vertices and `skin_from_m` metres on its
+    longest side (the EMU's fabric from boots to chest, each arm) is weighted vertex by vertex within its own limb's
+    chain, each vertex on its nearest bone blended back to that bone's parent over `skin_blend_m` past the joint, so it
+    bends at a joint and stays where the parent holds it at the joint itself; any other part hangs whole
+    on the bone nearest its centre (a glove, a bearing, a hard segment). Nothing is added to the mesh and no vertex
+    moves; posing does that, in the app."""
+    import bmesh
+
+    data = bpy.data.armatures.new(f"{craft.name}_rig")
+    arm = bpy.data.objects.new(f"{craft.name}_rig", data)
+    bpy.context.scene.collection.objects.link(arm)
+    bpy.ops.object.select_all(action="DESELECT")
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    for b in rig["bones"]:
+        eb = data.edit_bones.new(b["name"])
+        eb.head = m @ Vector(b["head"])
+        eb.tail = m @ Vector(b["tail"])
+        eb.roll = 0.0
+    for b in rig["bones"]:
+        if b.get("parent"):
+            data.edit_bones[b["name"]].parent = data.edit_bones[b["parent"]]
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    names = [b["name"] for b in rig["bones"]]
+    heads = np.array([list(m @ Vector(b["head"])) for b in rig["bones"]])
+    tails = np.array([list(m @ Vector(b["tail"])) for b in rig["bones"]])
+    groups = [craft.vertex_groups.new(name=n) for n in names]
+    bm = bmesh.new()
+    bm.from_mesh(craft.data)
+    bm.verts.ensure_lookup_table()
+    co = np.array([v.co[:] for v in bm.verts])
+    # Parts by shared edges and by shared places (0.1 mm): a file that keeps every face apart still hangs whole.
+    parent = np.arange(len(co))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    _, same_place = np.unique(np.round(co / 1e-4).astype(np.int64), axis=0, return_inverse=True)
+    first: dict[int, int] = {}
+    for vi, key in enumerate(same_place.reshape(-1)):
+        a, b = find(vi), find(first.setdefault(int(key), vi))
+        parent[a] = b
+    for e in bm.edges:
+        a, b = find(e.verts[0].index), find(e.verts[1].index)
+        parent[a] = b
+    roots = np.array([find(v) for v in range(len(co))])
+    order = np.argsort(roots, kind="stable")
+    cuts = np.nonzero(np.diff(roots[order]))[0] + 1
+    skin_sets = [[names.index(n) for n in g] for g in rig.get("skin_groups", [names])]
+    parent_index = [names.index(b["parent"]) if b.get("parent") else None for b in rig["bones"]]
+    to_import = m.inverted()
+    rigid_parts = held_parts = 0
+    skinned_sizes = []
+    for part_arr in np.split(order, cuts):
+        part = [int(v) for v in part_arr]
+        pts = co[part]
+        centre = pts.mean(axis=0, keepdims=True)
+        to_centre = [_segment_distance(centre, heads[j], tails[j])[0] for j in range(len(names))]
+        # a recipe's hold: a part whose centre lies past a plane in the import frame hangs whole on a named bone, however
+        # many vertices it has (the EMU's helmet lamps are as dense as an arm)
+        at = to_import @ Vector(centre[0])
+        held = next((names.index(hold["bone"]) for hold in rig.get("hold", []) if _held(hold, at, rig)), None)
+        weighted = (
+            held is None
+            and "skin_groups" in rig
+            and len(part) >= rig["skin_from_vertices"]
+            and float(np.ptp(pts, axis=0).max()) >= rig["skin_from_m"]
+        )
+        if not weighted:
+            groups[held if held is not None else int(np.argmin(to_centre))].add(part, 1.0, "REPLACE")
+            rigid_parts += 1
+            held_parts += held is not None
+        else:
+            # its own limb's chain only: the skin group holding the bone nearest the part's centre. Each vertex goes
+            # to its nearest bone of that chain; within `skin_blend_m` past that bone's head it blends back to the
+            # bone's parent (a smooth step), and before the head it is the parent's, so the fabric at a joint stays
+            # where its parent holds it (a sleeve's top under the shoulder's bearings) and bends over the blend
+            nearest = int(np.argmin(to_centre))
+            allowed = next(s for s in skin_sets if nearest in s)
+            dist = np.full((len(part), len(names)), np.inf)
+            for k in allowed:
+                dist[:, k] = _segment_distance(pts, heads[k], tails[k])
+            own = np.argmin(dist, axis=1)
+            for row, vi in enumerate(part):
+                k = int(own[row])
+                parent = parent_index[k]
+                axis = tails[k] - heads[k]
+                past = float((pts[row] - heads[k]) @ axis) / max(float(np.linalg.norm(axis)), 1e-9)
+                share = min(max(past / rig["skin_blend_m"], 0.0), 1.0) if parent is not None and parent in allowed else 1.0
+                share = share * share * (3.0 - 2.0 * share)
+                for kk, ww in ((k, share), (parent, 1.0 - share)):
+                    if kk is not None and ww > 1e-3:
+                        groups[int(kk)].add([vi], float(ww), "ADD")
+            skinned_sizes.append(len(part))
+    bm.free()
+    print(
+        f"HANGAR rig {len(names)} bones; {rigid_parts} parts each on one bone "
+        f"({held_parts} held by the recipe), {len(skinned_sizes)} weighted at their joints "
+        f"(vertices {sorted(skinned_sizes, reverse=True)})"
+    )
+    return arm
+
+
+def pose_suit(arm: bpy.types.Object, poses: dict) -> list[str]:
+    """One one-frame action per pose, each on its own NLA track named for it (glTF animations by those names). A pose
+    names, for some bones, the way the bone points (head to tail) in the suit's own frame (x its left, y its back, z
+    up, Blender's frame after the build); each such bone turns the least way from where its parent's turn left it to
+    point there, and every other bone keeps its rest against its parent. The pelvis is never named: the app leans and
+    banks the whole figure itself, so a pose only moves limbs, whatever stance NASA modelled the suit in."""
+    arm.animation_data_create()
+    made = []
+    bones = list(arm.data.bones)
+    for pose_name, aims in poses.items():
+        action = bpy.data.actions.new(pose_name)
+        arm.animation_data.action = action
+        total: dict[str, Quaternion] = {}  # each bone's turn in the armature's frame, its parent's included
+        for bone in sorted(bones, key=lambda b: len(b.parent_recursive)):  # each parent before its children
+            parent_turn = total[bone.parent.name] if bone.parent else Quaternion()
+            turn = parent_turn
+            if bone.name in aims:
+                now = parent_turn @ (bone.tail_local - bone.head_local).normalized()
+                turn = now.rotation_difference(Vector(aims[bone.name]).normalized()) @ parent_turn
+            total[bone.name] = turn
+            rest = bone.matrix_local.to_quaternion()
+            pb = arm.pose.bones[bone.name]
+            pb.rotation_mode = "QUATERNION"
+            pb.rotation_quaternion = rest.inverted() @ parent_turn.inverted() @ turn @ rest
+            pb.keyframe_insert("rotation_quaternion", frame=1)
+        track = arm.animation_data.nla_tracks.new()
+        track.name = pose_name
+        track.strips.new(pose_name, 1, action)
+        arm.animation_data.action = None
+        made.append(pose_name)
+    for pb in arm.pose.bones:
+        pb.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+    return made
+
+
+def export_level(obj: bpy.types.Object, level: str, path: Path, arm: bpy.types.Object | None = None) -> None:
+    rigged = {}
+    if arm is not None:
+        # a rigged suit: the level hangs on the armature, which goes out with it, its poses as one animation each
+        obj.parent = arm
+        mod = obj.modifiers.new("rig", "ARMATURE")
+        mod.object = arm
+        rigged = {"export_skins": True, "export_animations": True, "export_animation_mode": "NLA_TRACKS"}
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
+    if arm is not None:
+        arm.select_set(True)
     bpy.context.view_layer.objects.active = obj
     bpy.ops.export_scene.gltf(
         filepath=str(path),
@@ -1078,6 +1265,7 @@ def export_level(obj: bpy.types.Object, level: str, path: Path) -> None:
         export_cameras=False,
         export_lights=False,
         export_extras=False,
+        **rigged,
     )
 
 
@@ -1331,6 +1519,12 @@ def main() -> None:
             bpy.ops.mesh.customdata_custom_splitnormals_clear()
         bpy.ops.object.shade_smooth_by_angle(angle=math.radians(recipe["smooth_deg"]))
 
+    # A rigged suit: its skeleton and its weights, made once, every level carrying them.
+    arm = None
+    if recipe.get("rig"):
+        arm = rig_suit(craft, recipe["rig"], m)
+        print(f"HANGAR {args.craft} poses {pose_suit(arm, recipe['rig']['poses'])}")
+
     # Levels of detail.
     tris0 = sum(len(p.vertices) - 2 for p in me.polygons)
     hidden = hidden_bulky_faces(craft) if recipe.get("drop_hidden_faces") else []
@@ -1378,7 +1572,7 @@ def main() -> None:
         if recipe.get("level_normals"):
             remake_normals(obj, recipe["level_normals"]["smooth_deg"], recipe["level_normals"].get("weighted", False))
             print(f"HANGAR {args.craft} {level} normals made again: {recipe['level_normals']}")
-        export_level(obj, level, out / f"{args.craft}_{level}.glb")
+        export_level(obj, level, out / f"{args.craft}_{level}.glb", arm)
         tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
         print(f"HANGAR {args.craft} {level} triangles {tris} of {tris0}")
         bpy.data.objects.remove(obj, do_unlink=True)

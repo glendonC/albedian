@@ -25,6 +25,40 @@ TEXTURE_EDGE = {"lod0": 2048, "lod1": 1024, "lod2": 512}
 # Triangle share of the cleaned source kept per level (Blender's collapse decimation).
 LOD_RATIO = {"lod0": 1.0, "lod1": 0.5, "lod2": 0.18}
 PICKER_EDGE = 176  # the picker row's picture is 44 px; four times that for dense screens
+# The EMU's three poses (suit-rig-one): for some bones, the way the bone points, head to tail, in the suit's own frame
+# after the build (x its left, y its back, z up); the build turns each the least way to point there from where its
+# parent left it. MOTION's design as the lead decided it (25 Nov 03:22, `.lead/kiro/reports/MOTION/craft-alive-
+# proposal.md`): the app leans the whole figure with speed (20 to 75 degrees), back on the brake and into a turn, so no
+# pose turns the pelvis; the poses move limbs only. Hover as NASA filmed a free flight (knees a little bent, forearms
+# forward), cruise (arms along the body: the forearms straightened down; legs straight), brake (knees up: thighs 35
+# degrees forward, knees 42 bent; forearms raised forward). The upper arms keep NASA's stance (version two, AUDIT-B's
+# verdict of 25 Nov): the shoulder's two bearing rings, hard parts the hard upper torso carries, reach 0.15 m down an
+# upper arm 0.19 m long, so a turn at the shoulder tilts them out of the fabric by its radius times the angle's sine
+# (5 to 8 cm in the first poses) [tested: .lanetools/ring_reach.py and rig_gaps.py]; the elbows, hips and knees are
+# fabric alone. No pose turns the helmet: it is fixed to the hard upper torso, so it hangs on the spine.
+SUIT_POSES = {
+    "hover": {
+        "forearm.L": (0.12, -0.9, -0.42), "forearm.R": (-0.12, -0.9, -0.42),
+        "thigh.L": (0.06, -0.2, -0.98), "thigh.R": (-0.06, -0.2, -0.98),
+        "shin.L": (0.04, 0.2, -0.98), "shin.R": (-0.04, 0.2, -0.98),
+    },
+    "cruise": {
+        "forearm.L": (0.22, 0.18, -0.96), "forearm.R": (-0.22, 0.18, -0.96),
+        "thigh.L": (0.07, 0.03, -1.0), "thigh.R": (-0.07, 0.03, -1.0),
+        "shin.L": (0.05, 0.06, -1.0), "shin.R": (-0.05, 0.06, -1.0),
+    },
+    "brake": {
+        "forearm.L": (0.15, -0.95, -0.25), "forearm.R": (-0.15, -0.95, -0.25),
+        "thigh.L": (0.1, -0.57, -0.82), "thigh.R": (-0.1, -0.57, -0.82),
+        "shin.L": (0.02, 0.12, -0.99), "shin.R": (-0.02, 0.12, -0.99),
+    },
+}
+# The Z-2's three poses keep NASA's stance at the limbs (suit-rig-one version two): its parts are separate hard
+# segments, each touching the next at a ring, and no rigid turn keeps a ring shut: its knee and ankle rings lie flat and
+# its hip and shoulder contacts slant, so even 12 degrees at a knee opens a ring about 2 cm, and the first poses opened
+# its shoulders 17 cm and its hips 10 [tested: .lanetools/rig_rings.py and rig_gaps.py]. The app's lean and bank still
+# move the whole figure.
+Z2_POSES = {"hover": {}, "cruise": {}, "brake": {}}
 # The two plates in NASA's blade texture (1024 by 512, one file in the Ingenuity and Perseverance models), as
 # Perseverance's recipe paints them: the JPL logo and the NASA insignia, each filled from the surface beside it.
 BLADE_PLATES = [
@@ -231,7 +265,58 @@ CRAFTS: dict[str, dict] = {
         "level_normals": {"smooth_deg": 70.0, "weighted": True},
         # NASA's file keeps its faces apart at shared corners (each quad with its own vertices), which left the
         # fabric and visor blocky and the decimation streaked: welded within 0.1 mm first.
-        "lod_ratio": {"lod0": 0.45, "lod1": 0.15, "lod2": 0.05},
+        # lod1 and lod2 a little coarser than before the rig: its weights add about 20 bytes a vertex (suit-rig-one).
+        "lod_ratio": {"lod0": 0.42, "lod1": 0.13, "lod2": 0.033},
+        # Rigged and posed by the app (suit-rig-one): NASA's EMU is one continuous mesh from boots to chest and one piece
+        # per arm, weighted vertex by vertex along its own limb's chain so it bends at hips, knees, shoulders and elbows
+        # (the lead's ruling of 01:46 on 25 Nov); its other parts (helmet, gloves, pack, chest controls, bearings)
+        # hang whole on one bone. Joints from the limbs' centre lines in NASA's import frame (the suit faces +Y, its left
+        # is -X), each shoulder at the centre of its two bearing rings so they turn in place [tested:
+        # .lanetools/limb_lines.py, suit_parts.py and rig_parts.py]. Same poses as the Z-2.
+        "rig": {
+            # weighted: a part of 1,000 vertices or more and 0.4 m or more on its longest side, so the body (12,278
+            # vertices, 1.79 m) and the arms (4,723 and 4,724, about 0.5 m); the gloves (0.30 m at most), lamps and
+            # bearings hang whole [tested: .lanetools/suit_parts.py at full resolution]
+            "skin_from_vertices": 1_000,
+            "skin_from_m": 0.4,
+            # each fabric vertex on its nearest bone, blended back to the bone's parent over the first 0.1 m past the
+            # joint (suit-rig-one version two: weighted by distance to the two nearest bones, the sleeves' tops went
+            # with the arms and parted from the body by up to 10 cm, AUDIT-B's verdict of 25 Nov)
+            "skin_blend_m": 0.1,
+            "bones": [
+                {"name": "pelvis", "head": (0.0, -0.18, 0.98), "tail": (0.0, -0.2, 1.15)},
+                {"name": "spine", "head": (0.0, -0.2, 1.15), "tail": (-0.01, -0.21, 1.62), "parent": "pelvis"},
+                {"name": "thigh.L", "head": (-0.19, -0.18, 0.98), "tail": (-0.1, -0.06, 0.74), "parent": "pelvis"},
+                {"name": "shin.L", "head": (-0.1, -0.06, 0.74), "tail": (-0.11, -0.02, 0.22), "parent": "thigh.L"},
+                {"name": "foot.L", "head": (-0.11, -0.02, 0.22), "tail": (-0.09, 0.12, 0.06), "parent": "shin.L"},
+                {"name": "thigh.R", "head": (0.2, -0.22, 0.98), "tail": (0.165, -0.09, 0.74), "parent": "pelvis"},
+                {"name": "shin.R", "head": (0.165, -0.09, 0.74), "tail": (0.17, -0.1, 0.22), "parent": "thigh.R"},
+                {"name": "foot.R", "head": (0.17, -0.1, 0.22), "tail": (0.21, 0.03, 0.06), "parent": "shin.R"},
+                {"name": "upperarm.L", "head": (-0.257, -0.132, 1.532), "tail": (-0.36, -0.05, 1.41), "parent": "spine"},
+                {"name": "forearm.L", "head": (-0.36, -0.05, 1.41), "tail": (-0.41, 0.15, 1.28), "parent": "upperarm.L"},
+                {"name": "hand.L", "head": (-0.41, 0.15, 1.28), "tail": (-0.22, 0.33, 1.18), "parent": "forearm.L"},
+                {"name": "upperarm.R", "head": (0.241, -0.264, 1.536), "tail": (0.38, -0.25, 1.41), "parent": "spine"},
+                {"name": "forearm.R", "head": (0.38, -0.25, 1.41), "tail": (0.5, -0.08, 1.3), "parent": "upperarm.R"},
+                {"name": "hand.R", "head": (0.5, -0.08, 1.3), "tail": (0.44, 0.15, 1.17), "parent": "forearm.R"},
+            ],
+            "skin_groups": [
+                ["pelvis", "spine", "thigh.L", "shin.L", "foot.L", "thigh.R", "shin.R", "foot.R"],
+                ["spine", "upperarm.L", "forearm.L", "hand.L"],
+                ["spine", "upperarm.R", "forearm.R", "hand.R"],
+            ],
+            # whole parts held on the spine by where their centre lies, in the import frame: the helmet and its lamps
+            # above the shoulders, and the pack with its frame and rails behind them (NASA's right shoulder sits back,
+            # so the nearest bone to a pack rail was the right upper arm) [tested: .lanetools/rig_parts.py]
+            "hold": [
+                {"bone": "spine", "axis": "z", "above": 1.64},
+                {"bone": "spine", "axis": "y", "below": -0.31},
+                # the chest's controls, its fitting and hose, and the shoulders' bearings, which the HUT carries:
+                # within 0.32 m across of the spine's head and above the hips (the forearms' and gloves' parts lie
+                # 0.39 m and more out; the outer bearing 0.29; AUDIT-B found the fitting and hose on the right arm)
+                {"bone": "spine", "axis": "z", "above": 1.1, "within_m": 0.32, "of": "spine"},
+            ],
+            "poses": SUIT_POSES,
+        },
         "body_radius_m": 1.1,
         "changes": "suit",
     },
@@ -328,7 +413,31 @@ CRAFTS: dict[str, dict] = {
             {"box": (54, 3512, 214, 3678), "texture_edge": 4096, "what": "an emblem patch"},
             {"box": (208, 3450, 352, 3598), "texture_edge": 4096, "what": "the NASA insignia"},
         ],
-        "lod_ratio": {"lod0": 1.0, "lod1": 0.4, "lod2": 0.15},
+        # lod1 and lod2 a little coarser than before the rig: its weights add about 20 bytes a vertex (suit-rig-one).
+        "lod_ratio": {"lod0": 1.0, "lod1": 0.36, "lod2": 0.12},
+        # Rigged and posed by the app (suit-rig-one): the Z-2 is built of separate hard segments, so each hangs whole on
+        # one bone; joints placed from the segments' own boxes in NASA's import frame (the suit faces -Y, its left is +X)
+        # [tested: .lanetools/suit_parts.py]. Poses Z2_POSES (NASA's stance).
+        "rig": {
+            "bones": [
+                {"name": "pelvis", "head": (0.0, -0.02, 0.95), "tail": (0.0, -0.02, 1.12)},
+                {"name": "spine", "head": (0.0, -0.02, 1.12), "tail": (0.0, -0.02, 1.60), "parent": "pelvis"},
+                {"name": "thigh.L", "head": (0.15, -0.03, 1.0), "tail": (0.157, -0.03, 0.735), "parent": "pelvis"},
+                {"name": "shin.L", "head": (0.157, -0.03, 0.735), "tail": (0.2, -0.02, 0.236), "parent": "thigh.L"},
+                {"name": "foot.L", "head": (0.2, -0.02, 0.236), "tail": (0.205, -0.2, 0.05), "parent": "shin.L"},
+                {"name": "thigh.R", "head": (-0.15, -0.03, 1.0), "tail": (-0.157, -0.03, 0.735), "parent": "pelvis"},
+                {"name": "shin.R", "head": (-0.157, -0.03, 0.735), "tail": (-0.2, -0.02, 0.236), "parent": "thigh.R"},
+                {"name": "foot.R", "head": (-0.2, -0.02, 0.236), "tail": (-0.205, -0.2, 0.05), "parent": "shin.R"},
+                {"name": "upperarm.L", "head": (0.3, -0.08, 1.555), "tail": (0.3, -0.31, 1.3), "parent": "spine"},
+                {"name": "forearm.L", "head": (0.3, -0.31, 1.3), "tail": (0.28, -0.6, 1.06), "parent": "upperarm.L"},
+                {"name": "upperarm.R", "head": (-0.3, -0.08, 1.555), "tail": (-0.3, -0.31, 1.3), "parent": "spine"},
+                {"name": "forearm.R", "head": (-0.3, -0.31, 1.3), "tail": (-0.28, -0.6, 1.06), "parent": "upperarm.R"},
+            ],
+            # the helmet and its lamps, above the shoulders, held on the spine (a lamp's centre lies nearer the upper
+            # arm's bearing than the spine) [tested: .lanetools/rig_parts.py]
+            "hold": [{"bone": "spine", "axis": "z", "above": 1.64}],
+            "poses": Z2_POSES,
+        },
         "body_radius_m": 0.8,
         "changes": "baked",
     },

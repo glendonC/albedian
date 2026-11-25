@@ -191,22 +191,22 @@
       "files": {
         "lod0": {
           "path": "emu/emu_lod0.glb",
-          "bytes": 2804752,
-          "triangles": 102338,
+          "bytes": 3941296,
+          "triangles": 95516,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "emu/emu_lod1.glb",
-          "bytes": 1081100,
-          "triangles": 34113,
+          "bytes": 1467752,
+          "triangles": 29564,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "emu/emu_lod2.glb",
-          "bytes": 479792,
-          "triangles": 11361,
+          "bytes": 585572,
+          "triangles": 7492,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
         },
@@ -231,9 +231,9 @@
       },
       "bodyRadiusM": 1.1,
       "lodTriangleShare": {
-        "lod0": 0.45,
-        "lod1": 0.15,
-        "lod2": 0.05
+        "lod0": 0.42,
+        "lod1": 0.13,
+        "lod2": 0.033
       },
       "scaleFrom": {
         "native": true,
@@ -304,22 +304,22 @@
       "files": {
         "lod0": {
           "path": "z2/z2_lod0.glb",
-          "bytes": 2743644,
+          "bytes": 3762560,
           "triangles": 30244,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "z2/z2_lod1.glb",
-          "bytes": 1029468,
-          "triangles": 12097,
+          "bytes": 1386124,
+          "triangles": 10887,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "z2/z2_lod2.glb",
-          "bytes": 399232,
-          "triangles": 4536,
+          "bytes": 510068,
+          "triangles": 3629,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
         },
@@ -345,8 +345,8 @@
       "bodyRadiusM": 0.8,
       "lodTriangleShare": {
         "lod0": 1.0,
-        "lod1": 0.4,
-        "lod2": 0.15
+        "lod1": 0.36,
+        "lod2": 0.12
       },
       "scaleFrom": {
         "native": true,
