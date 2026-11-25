@@ -35,7 +35,7 @@ final class CreditsWordsTests: XCTestCase {
         let conditions = try XCTUnwrap((eso["license"] as? [String: Any])?["conditions"] as? String)
         XCTAssertTrue(conditions.contains("modifications must be indicated"))
         XCTAssertEqual(CreditsWords.milkyWayChange(),
-                       "On the home a part of it is shown, at most 23 percent of its width and all of its height, darkened toward the bottom, up to 90 percent black.")
+                       "On the home a part of it is shown, 23 percent of its width at the middle and all of its height, reprojected so its stars stay round toward the top and bottom, and darkened toward the bottom, up to 90 percent black.")
         XCTAssertEqual(try row("Milky Way photograph").lines.last, CreditsWords.milkyWayChange())
         // The crop is the one the record's recipe made
         let record = try String(contentsOf: repositoryRoot.appendingPathComponent("apps/ios/notices/eso/PROVENANCE.json"), encoding: .utf8)

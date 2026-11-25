@@ -21,13 +21,14 @@ public enum CreditsWords {
     /// The licence as the IAU record names it (the IAU gives no version).
     public static let starNamesLicence = "Creative Commons Attribution, as the IAU states it, with no version given"
 
-    /// What the app changes in the Milky Way panorama, whose terms ask that modifications be indicated: the crop it
-    /// ships (`HomeBackdrop`) and the shade the home draws over it.
+    /// What the app changes in the Milky Way panorama, whose terms ask that modifications be indicated: the part it
+    /// ships (`HomeBackdrop`), each row reprojected so the stars stay round toward the top and bottom
+    /// (home-edge-and-name-one), and the shade the home draws over it.
     public static func milkyWayChange(_ backdrop: HomeBackdrop.Type = HomeBackdrop.self) -> String {
         let width = Int((Double(backdrop.cropColumns) / Double(backdrop.panoramaColumns) * 100).rounded())
         let darkest = Int(((backdrop.shade.map(\.opacity).max() ?? 0) * 100).rounded())
-        return "On the home a part of it is shown, at most \(width) percent of its width and all of its height, "
-            + "darkened toward the bottom, up to \(darkest) percent black."
+        return "On the home a part of it is shown, \(width) percent of its width at the middle and all of its height, "
+            + "reprojected so its stars stay round toward the top and bottom, and darkened toward the bottom, up to \(darkest) percent black."
     }
 
     public static let rows: [Row] = [
@@ -43,7 +44,7 @@ public enum CreditsWords {
 }
 
 /// The home's Milky Way: the part of the ESO panorama the app ships (its record's recipe: the full height and 1386 of
-/// the 6000 columns, from column 2312) and the shade drawn over it, from the bottom up (arrive p-home's
+/// the 6000 columns about column 3005, each row in the sinusoidal projection) and the shade drawn over it, from the bottom up (arrive p-home's
 /// `linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)`).
 public enum HomeBackdrop {
     public static let cropColumns = 1386
