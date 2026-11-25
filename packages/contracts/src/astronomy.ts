@@ -665,16 +665,32 @@ export const CandidateSourceSchema = z.object({
 });
 export type CandidateSource = z.infer<typeof CandidateSourceSchema>;
 const CANDIDATE_STAGES_SOLVED = 'A pending solution names no candidate stage: no solver has run, so no stage was set to ask.';
+export const CANDIDATE_SOURCE_IN_STAGES =
+  "A solution that names a candidate's source names that program among its candidate stages.";
+
+/**
+ * Whether `candidateStages` names the program of `candidateSource` (true when no `candidateSource` is carried).
+ * CANDIDATE_PROGRAMS holds one program today, so any non-empty valid stage list on the wire holds it; checking
+ * membership here and in services/contracts/astronomy.py (`names_candidate_program`) keeps the rule true when another
+ * program enters CANDIDATE_PROGRAMS (anet-contract-tie-one).
+ */
+export function namesCandidateProgram(
+  candidateSource: { program: string } | undefined,
+  candidateStages: readonly string[] | undefined
+): boolean {
+  return candidateSource === undefined || (candidateStages !== undefined && candidateStages.includes(candidateSource.program));
+}
 
 /**
  * The outside programs a solve was set to ask for a first candidate once its own searches calibrated nothing
  * (anet-setting-record-one): the opt-in stage on and usable, the program found and an index file in the person's
  * folder. Present on every solve made with the stage on, whatever its status, and absent whenever it was off, so a
- * record made with it off is the record made before the field. With the stage on, a stored solution that did not
- * calibrate and does not name the program is solved again; a calibrated one never is. Never on a pending solution,
- * which no solver has run on. No path, time or place is in it. It is a setting, not an event: no word a person
- * reads may say on its strength that the outside program was tried; only candidateSource says a program gave the
- * candidate (the lead's decision of 2026-11-25).
+ * record made with it off is the record made before the field; any solution that names a candidateSource also names
+ * that program here (anet-contract-tie-one). With the stage on, a stored solution that did not calibrate and does not
+ * name the program is solved again; a calibrated one never is. Never on a pending solution, which no solver has run
+ * on. No path, time or place is in it. It is a setting, not an event: no word a person reads may say on its strength
+ * that the outside program was tried; only candidateSource says a program gave the candidate (the lead's decision of
+ * 2026-11-25).
  */
 export const CandidateStagesSchema = z.array(z.enum(CANDIDATE_PROGRAMS)).min(1).max(CANDIDATE_PROGRAMS.length);
 export type CandidateStages = z.infer<typeof CandidateStagesSchema>;
@@ -893,6 +909,10 @@ export const ObservationSolutionSchema = z
     // anet-setting-record-one: a stage is named only on a solve some solver ran
     if (solution.candidateStages !== undefined && solution.status === 'pending') {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['candidateStages'], message: CANDIDATE_STAGES_SOLVED });
+    }
+    // anet-contract-tie-one: a record naming a candidate's program names that program among its stages
+    if (!namesCandidateProgram(solution.candidateSource, solution.candidateStages)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['candidateStages'], message: CANDIDATE_SOURCE_IN_STAGES });
     }
     if (solution.status === 'pending') {
       if (quality !== undefined) {

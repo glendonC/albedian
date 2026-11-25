@@ -764,7 +764,10 @@ def _solve_from_anet(
     elif has_moment:
         words.append(BLIND_OWN_WORDS)
     source = CandidateSource(program=anet_stage.PROGRAM, version=found.version, index_file=found.index_file)
-    return _with_noise_words(replace(checked, candidate_source=source, warnings=[*checked.warnings, *words]), detections)
+    return _with_noise_words(
+        replace(checked, candidate_source=source, candidate_stages=(anet_stage.PROGRAM,), warnings=[*checked.warnings, *words]),
+        detections,
+    )
 
 
 def _solve_phone_photo_with_candidate(solve_image: np.ndarray, detections: list, candidate: Any, **solve: Any) -> Any:

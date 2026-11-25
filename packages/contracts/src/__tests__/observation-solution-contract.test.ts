@@ -31,7 +31,9 @@ import {
   PointingHintSchema,
   SHA256_HEX_PATTERN,
   CANDIDATE_PROGRAMS,
+  CANDIDATE_SOURCE_IN_STAGES,
   CandidateSourceSchema,
+  namesCandidateProgram,
   INDEX_FILE_PATTERN,
   VERSION_LINE_PATTERN,
   SWEPT_FOV_TOLERANCE_DEG,
@@ -108,6 +110,7 @@ interface Fixture {
     noiseLimits: string[];
   };
   noiseLimitOrderCases: { order: string[]; cases: { limits: string[]; listed: boolean }[] };
+  candidateStageTieCases: { source?: { program: string }; stages?: string[]; tied: boolean }[];
   integerRuleEdgeCases: { name: string; ge?: number; gt?: number; le?: number; entry: Rule }[];
   keyCases: { levels: number; dropped: number; refusedUnknown: number; refusedWhenRenamed: number; leftOutWhenRenamed: number };
   structureRefusals: { object: unknown[]; array: unknown[] };
@@ -303,6 +306,45 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     const { order, cases } = fixture.noiseLimitOrderCases;
     expect(cases.length).toBeGreaterThanOrEqual(14);
     for (const { limits, listed } of cases) expect(listsEachOnceInOrder(limits, order), JSON.stringify(limits)).toBe(listed);
+  });
+
+  it("ties a solution's candidateSource to candidateStages naming that program", () => {
+    const source = { program: 'astrometry.net', version: '0.97', indexFile: 'index-4117.fits' };
+    const withoutStages = ObservationSolutionSchema.safeParse(patched(fixture.valid['calibrated'], [put(['candidateSource'], source)]));
+    expect(withoutStages.success).toBe(false);
+    expect(issuePaths(withoutStages)).toEqual(['candidateStages']);
+    expect(issueMessages(withoutStages)).toEqual([
+      "A solution that names a candidate's source names that program among its candidate stages.",
+    ]);
+    expect(CANDIDATE_SOURCE_IN_STAGES).toBe(
+      "A solution that names a candidate's source names that program among its candidate stages.",
+    );
+
+    const emptyStages = ObservationSolutionSchema.safeParse(
+      patched(fixture.valid['calibrated'], [put(['candidateSource'], source), put(['candidateStages'], [])]),
+    );
+    expect(emptyStages.success).toBe(false);
+    expect(issuePaths(emptyStages)).toEqual(['candidateStages']);
+
+    const otherStage = ObservationSolutionSchema.safeParse(
+      patched(fixture.valid['calibrated'], [put(['candidateSource'], source), put(['candidateStages'], ['solve-field'])]),
+    );
+    expect(otherStage.success).toBe(false);
+    expect(issuePaths(otherStage)).toEqual(['candidateStages.0']);
+
+    const withItsStage = ObservationSolutionSchema.safeParse(
+      patched(fixture.valid['calibrated'], [put(['candidateSource'], source), put(['candidateStages'], ['astrometry.net'])]),
+    );
+    expect(withItsStage.error?.issues ?? []).toEqual([]);
+    expect(withItsStage.success).toBe(true);
+  });
+
+  it('holds namesCandidateProgram, as the Python parser does, to missing stages and a stage list omitting the program', () => {
+    // CANDIDATE_PROGRAMS holds one value today, so these cases also check a list of another program omitting it
+    expect(fixture.candidateStageTieCases.length).toBeGreaterThanOrEqual(6);
+    for (const { source, stages, tied } of fixture.candidateStageTieCases) {
+      expect(namesCandidateProgram(source, stages), JSON.stringify({ source, stages })).toBe(tied);
+    }
   });
 
   it('normalizes minus zero to zero on StarProfile.angleRad across StarProfile, DetectionQuality, and ObservationSolution', () => {

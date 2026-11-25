@@ -104,6 +104,7 @@ from services.science.ephemeris import compute_solar_system_ephemerides
 from services.science.predicted_sky import complete_sky
 from services.science.solver import render_synthetic_starfield
 from services.science.wcs_models import (
+    CandidateSource,
     CelestialFindingRecord,
     ContractRefusal,
     DetectionQualityRecord,
@@ -181,6 +182,16 @@ NOISE_LIMIT_ORDER_CASES = [
     {"limits": ["other"], "listed": False}, {"limits": ["other", "first"], "listed": False},
     {"limits": ["first", "other"], "listed": False}, {"limits": ["other", "other"], "listed": False},
 ]
+# The tie between candidateSource and candidateStages on its own, including a stage list of another program omitting
+# the candidate's while CANDIDATE_PROGRAMS holds one program today (anet-contract-tie-one)
+CANDIDATE_STAGE_TIE_CASES: list[dict[str, Any]] = [
+    {"tied": True},
+    {"stages": ["astrometry.net"], "tied": True},
+    {"source": {"program": "astrometry.net"}, "tied": False},
+    {"source": {"program": "astrometry.net"}, "stages": [], "tied": False},
+    {"source": {"program": "astrometry.net"}, "stages": ["other.program"], "tied": False},
+    {"source": {"program": "astrometry.net"}, "stages": ["other.program", "astrometry.net"], "tied": True},
+]
 # Integer rules across every combination of bounds: no lower bound, negative upper bound, narrow ranges, fractional
 # bounds, both lower bounds together, and bounds where float spacing reaches one whole unit
 INTEGER_RULE_EDGE_SPECS: list[dict[str, Any]] = [
@@ -232,6 +243,7 @@ SAYS = {
     ),
     "hint_person_pose": "A pointing hint gives the roll and the field of view exactly when a person aligned it.",
     "candidate_stages_solved": "A pending solution names no candidate stage: no solver has run, so no stage was set to ask.",
+    "candidate_source_in_stages": "A solution that names a candidate's source names that program among its candidate stages.",
     "candidate_calibrated": (
         "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and "
         "passed the held-out check."
@@ -558,12 +570,14 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     with_fit_residual = copy.deepcopy(valid["approximate"])
     with_fit_residual["findings"][0]["evidence"].update(OBSERVED_FIT_RESIDUAL)
     valid["approximate_with_an_observed_fit_residual"] = with_fit_residual
-    # anet-stage-zero: a calibration whose first candidate came from astrometry.net, refined and verified by the
-    # app's own check (the lead's decision of 2026-11-24 21:56)
-    valid["calibrated_with_a_candidate_source"] = {**copy.deepcopy(valid["calibrated"]), "candidateSource": {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}}
-    # anet-setting-record-one: solves made with the opt-in stage on, one it calibrated and one that calibrated nothing,
-    # and one the app's own search calibrated with the stage on
-    valid["calibrated_with_a_candidate_source_and_its_stage"] = {**copy.deepcopy(valid["calibrated_with_a_candidate_source"]), "candidateStages": ["astrometry.net"]}
+    # anet-stage-zero and anet-setting-record-one (tied by anet-contract-tie-one): solves made with the opt-in stage
+    # on, one whose first candidate came from astrometry.net and passed the app's own check, one that calibrated
+    # nothing, and one the app's own search calibrated with the stage on
+    valid["calibrated_with_a_candidate_source_and_its_stage"] = {
+        **copy.deepcopy(valid["calibrated"]),
+        "candidateSource": {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"},
+        "candidateStages": ["astrometry.net"],
+    }
     valid["unresolved_with_the_stage_on"] = {**copy.deepcopy(valid["unresolved_pixels_only"]), "candidateStages": ["astrometry.net"]}
     valid["calibrated_with_the_stage_on"] = {**copy.deepcopy(valid["calibrated"]), "candidateStages": ["astrometry.net"]}
     return valid, {"rigel": rigel, "simulated": simulated, "predicted_star": predicted_star, "pose": pose, "hint": hint}
@@ -898,9 +912,18 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
     bad("pending_with_a_detection", "pending", "a pending solution holding a detector's measures", ["quality"],
         put(["quality"], {**UNVERIFIED, "detection": MATCHED_AT_THE_CLIP}), says=(SAYS["pending_quality"],))
     # anet-stage-zero: an outside program's candidate is named only where it became a verified calibration
-    for base in ("predicted_only", "approximate", "ambiguous", "unresolved_pixels_only", "pending"):
+    for base in ("predicted_only", "approximate", "ambiguous", "unresolved_pixels_only"):
         bad(f"candidate_source_on_{base}", base, f"a candidate's source named on a {base} solution", ["candidateSource"],
-            put(["candidateSource"], {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}), says=(SAYS["candidate_calibrated"],))
+            put(["candidateSource"], {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}),
+            put(["candidateStages"], ["astrometry.net"]), says=(SAYS["candidate_calibrated"],))
+    bad("candidate_source_on_pending", "pending", "a candidate's source named on a pending solution",
+        ["candidateSource", "candidateStages"],
+        put(["candidateSource"], {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}),
+        says=(SAYS["candidate_calibrated"], SAYS["candidate_source_in_stages"]))
+    # anet-contract-tie-one: a solution naming a candidate's source must also name that program in candidateStages
+    bad("calibrated_with_a_candidate_source", "calibrated_with_a_candidate_source_and_its_stage",
+        "a calibration naming a candidate's source without candidateStages", ["candidateStages"],
+        drop(["candidateStages"]), says=(SAYS["candidate_source_in_stages"],))
     # anet-setting-record-one: the stages a solve was set to ask, named only by the closed list, once a solver ran
     bad("candidate_stages_on_pending", "pending", "a pending solution naming a candidate stage", ["candidateStages"],
         put(["candidateStages"], ["astrometry.net"]), says=(SAYS["candidate_stages_solved"],))
@@ -1167,7 +1190,7 @@ def build_fixture() -> dict[str, Any]:
         "PoseEstimate": {"sample": "approximate_with_pose", "path": ["poseEstimate"]},
         # A person's alignment holds every field of a hint (align-1b), so each field's edges are tried on it
         "PointingHint": {"sample": "predicted_only_with_a_persons_alignment", "path": ["pointingHint"]},
-        "CandidateSource": {"sample": "calibrated_with_a_candidate_source", "path": ["candidateSource"]},
+        "CandidateSource": {"sample": "calibrated_with_a_candidate_source_and_its_stage", "path": ["candidateSource"]},
     }
     with_unnamed_keys = patched(
         valid["approximate"],
@@ -1195,6 +1218,7 @@ def build_fixture() -> dict[str, Any]:
             "statistics": list(contract.DETECTION_STATISTICS), "noiseLimits": list(contract.NOISE_LIMITS),
         },
         "noiseLimitOrderCases": {"order": NOISE_LIMIT_ORDER, "cases": NOISE_LIMIT_ORDER_CASES},
+        "candidateStageTieCases": CANDIDATE_STAGE_TIE_CASES,
         "integerRuleEdgeCases": [
             {**spec, "entry": contract.NumberRule(spec["name"], ge=spec.get("ge"), gt=spec.get("gt"), le=spec.get("le"), integer=True).table_entry()}
             for spec in INTEGER_RULE_EDGE_SPECS
@@ -1256,6 +1280,26 @@ def test_the_gate_numbers_are_the_plate_solvers_own() -> None:
     assert gate_sentence().replace(str(least), "${MIN_HELD_OUT_INLIERS}").replace(
         f"{most:g} px", "${MAX_HELD_OUT_MEDIAN_RESIDUAL_PX} px"
     ) in ASTRONOMY_TS.read_text(encoding="utf-8")
+
+
+def test_a_solution_naming_a_candidate_source_names_its_program_in_candidate_stages() -> None:
+    calibrated = stored_python_solutions()["plate_calibrated"]
+    source = {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}
+    without_stages = refusal({**calibrated, "candidateSource": source})
+    assert without_stages is not None
+    assert contract.issue_paths(without_stages) == ["candidateStages"]
+    assert contract.issue_messages(without_stages) == [SAYS["candidate_source_in_stages"]]
+
+    empty_stages = refusal({**calibrated, "candidateSource": source, "candidateStages": []})
+    assert empty_stages is not None and contract.issue_paths(empty_stages) == ["candidateStages"]
+    other_stage = refusal({**calibrated, "candidateSource": source, "candidateStages": ["solve-field"]})
+    assert other_stage is not None and contract.issue_paths(other_stage) == ["candidateStages.0"]
+
+    accepted = {**calibrated, "candidateSource": source, "candidateStages": ["astrometry.net"]}
+    assert contract.parse_observation_solution(accepted).to_contract_dict() == accepted
+
+    for case in CANDIDATE_STAGE_TIE_CASES:
+        assert contract.names_candidate_program(case.get("source"), case.get("stages")) is case["tied"], case
 
 
 def test_the_detection_bounds_are_literals_both_sides_hold() -> None:
@@ -2278,6 +2322,8 @@ DATACLASS_FAULTS: dict[str, tuple[str, Any]] = {
     **{f"detection_{left_out}": ("ambiguous", lambda v=left_out: dataclass_solution(
         "ambiguous", quality=quality(detection=detection_quality(noise_limits=(v,)))))
        for left_out in ("quantised", "noise_tail")},
+    "candidate_source_without_its_stage": ("calibrated", lambda: dataclass_solution(
+        "calibrated", candidate_source=CandidateSource(program="astrometry.net", version="0.97", index_file="index-4117.fits"))),
 }
 
 

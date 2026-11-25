@@ -40,23 +40,30 @@ def _calibrated(**more) -> ObservationSolution:
 
 
 def test_a_calibration_from_an_outside_candidate_names_its_source_and_the_contract_takes_it() -> None:
-    written = _calibrated(candidate_source=ASTROMETRY).to_contract_dict()
+    written = _calibrated(candidate_source=ASTROMETRY, candidate_stages=("astrometry.net",)).to_contract_dict()
     assert written["candidateSource"] == {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}
+    assert written["candidateStages"] == ["astrometry.net"]
     parsed = contract.parse_observation_solution(written)
     assert parsed.candidate_source is not None and parsed.candidate_source.index_file == "index-4117.fits"
+
+
+def test_a_candidate_source_requires_its_program_among_the_candidate_stages() -> None:
+    with pytest.raises(ContractRefusal, match="among its candidate stages"):
+        _calibrated(candidate_source=ASTROMETRY)
 
 
 def test_a_solution_the_apps_own_search_made_writes_no_candidate_source() -> None:
     # With the stage off nothing changes: the record has the keys main's has, and no candidateSource
     written = _calibrated().to_contract_dict()
     assert "candidateSource" not in written
-    assert written == {k: v for k, v in _calibrated(candidate_source=ASTROMETRY).to_contract_dict().items() if k != "candidateSource"}
+    staged = _calibrated(candidate_source=ASTROMETRY, candidate_stages=("astrometry.net",)).to_contract_dict()
+    assert written == {k: v for k, v in staged.items() if k not in ("candidateSource", "candidateStages")}
 
 
 @pytest.mark.parametrize("status", ["unresolved", "ambiguous", "predicted_only"])
 def test_only_a_calibrated_solution_names_a_candidate_source(status: str) -> None:
     with pytest.raises(ContractRefusal, match="named only on a calibrated solution"):
-        replace(_calibrated(candidate_source=ASTROMETRY), status=status, quality=UNPASSED, wcs=None)
+        replace(_calibrated(candidate_source=ASTROMETRY, candidate_stages=("astrometry.net",)), status=status, quality=UNPASSED, wcs=None)
     assert contract.CANDIDATE_SOURCE_CALIBRATED.startswith("A candidate's source is named only on a calibrated solution")
 
 

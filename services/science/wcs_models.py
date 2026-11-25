@@ -1023,6 +1023,8 @@ class ObservationSolution:
                 require_contract_value(program, contract.CANDIDATE_PROGRAM, "A candidate stage's program")
             if self.status == "pending":
                 raise ContractRefusal(contract.CANDIDATE_STAGES_SOLVED)
+        if not contract.names_candidate_program(self.candidate_source, self.candidate_stages):
+            raise ContractRefusal(contract.CANDIDATE_SOURCE_IN_STAGES)
         if self.status == "pending":
             if self.quality is not None:
                 raise ContractRefusal("A pending solution has no quality: no solver has run, so nothing was counted.")

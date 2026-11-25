@@ -25,8 +25,8 @@ from services.contracts.astronomy import CANDIDATE_STAGES_SOLVED
 from services.ingest import jobs as ingest_jobs
 from services.science import anet_stage
 from services.science import phone_photo_solver as pps
-from services.science.wcs_models import ContractRefusal
-from tests.integration.test_anet_stage_chain import _frame, _header_for, _unresolved_like_the_search, client  # noqa: F401
+from services.science.wcs_models import CandidateSource, ContractRefusal
+from tests.integration.test_anet_stage_chain import _frame, _header_for, _truth, _unresolved_like_the_search, client  # noqa: F401
 from tests.science.test_anet_stage import stand_in  # noqa: F401 (the stand-in fixture)
 
 
@@ -186,3 +186,14 @@ def test_the_stages_a_solve_names_follow_the_contract_in_the_domain_record() -> 
             replace(refused, candidate_stages=wrong)
     with pytest.raises(ContractRefusal, match=CANDIDATE_STAGES_SOLVED[:40]):
         replace(refused, status="pending", candidate_stages=("astrometry.net",))
+
+
+def test_a_record_naming_a_candidate_source_names_its_program_among_its_stages() -> None:
+    from dataclasses import replace
+
+    source = CandidateSource(program="astrometry.net", version="0.97", index_file="index-4117.fits")
+    with pytest.raises(ContractRefusal, match="among its candidate stages"):
+        replace(_truth(), candidate_source=source)
+    tied = replace(_truth(), candidate_source=source, candidate_stages=("astrometry.net",)).to_contract_dict()
+    assert tied["candidateSource"]["program"] == "astrometry.net"
+    assert tied["candidateStages"] == ["astrometry.net"]
