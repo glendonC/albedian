@@ -2589,8 +2589,10 @@
 .predsky .reveal-answer.is-phone {
   left: 12px;
   right: 12px;
-  top: 469px;
+  /* In the card sheet's place, which stands by the window's foot since phone-card-foot-one */
+  top: auto;
   bottom: 30px;
+  height: min(345px, calc(100% - 148px));
   overflow-y: auto;
   padding: 22px 20px 0;
   border-radius: 28px;

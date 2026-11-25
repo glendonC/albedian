@@ -1117,7 +1117,7 @@ describe('an answer and a refusal on the predicted sky stand in the card\'s plac
     const surface = decls('.reveal-card.is-sky');
     expect(decls('.reveal-answer.is-sky:not(.is-phone)')).toEqual(surface);
     const sheet = decls('.reveal-card.is-phone');
-    expect(decls('.predsky .reveal-answer.is-phone')).toEqual({ left: sheet.left, right: sheet.right, top: sheet.top, bottom: sheet.bottom, 'overflow-y': 'auto', padding: sheet.padding, 'border-radius': sheet['border-radius'], background: sheet.background, border: sheet.border });
+    expect(decls('.predsky .reveal-answer.is-phone')).toEqual({ left: sheet.left, right: sheet.right, top: sheet.top, bottom: sheet.bottom, height: sheet.height, 'overflow-y': 'auto', padding: sheet.padding, 'border-radius': sheet['border-radius'], background: sheet.background, border: sheet.border });
     // No fade under it on the sky: the reveal's backing and the phone's darkening are the photo's
     expect(Object.keys(decls('.reveal-answer:not(.is-phone):not(.is-sky)::before'))).toContain('background');
     expect(decls('.reveal-answer:not(.is-phone)::before')).toEqual({});
