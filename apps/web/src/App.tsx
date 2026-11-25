@@ -248,6 +248,8 @@ export const App: React.FC = () => {
 
   // The playing clip's live time, handed over by the viewport (clip-playing-checkpoint-1)
   const clipClockRef = useRef<(() => number | null) | null>(null);
+  // The Restore button's own action, handed over by the viewport: true when it could act (voice-restore-two)
+  const restoreNowRef = useRef<(() => boolean) | null>(null);
 
   const runCommand = (utterance: string, modality: 'voice' | 'text' | 'pointer', pointer: ActionContext['recentPointer']) => {
     setAnswer(null);
@@ -255,6 +257,14 @@ export const App: React.FC = () => {
     // frame on screen and Back to Moment returns the clip playing there (LEAD ANSWER to WEB-UX 15:35 on 24 Nov)
     const asked = withClipClock(sessionRef.current, clipClockRef.current?.() ?? null);
     const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
+    // Voice is direct manipulation (DECIDED-BY-LEAD 18:21 on 24 Nov): asking to restore does what the Restore button
+    // does. Where the reducer finds no restored version on screen, the button's own action runs, and the compare shows
+    // when it is ready; the sentence that none exists stands only where the button itself could do nothing
+    const restoreRan =
+      result.voiceActionRecord.proposedAction?.type === 'media.restore' &&
+      result.outcome.status === 'rejected' &&
+      result.outcome.reason === 'missing_source' &&
+      restoreNowRef.current?.() === true;
     setSession(result.session);
     // A command it cannot carry out shows its refusal where answers show, over the laptop reveal (command, decided
     // 2026-11-12): the words as heard, then the app's own sentence; nothing lights up
@@ -264,7 +274,7 @@ export const App: React.FC = () => {
       }
     };
     if (result.outcome.status === 'needs_input') refuse(result.outcome.question);
-    if (result.outcome.status === 'rejected' && !backendMayResolve(result.outcome.reason)) refuse(result.outcome.explanation);
+    if (result.outcome.status === 'rejected' && !backendMayResolve(result.outcome.reason) && !restoreRan) refuse(result.outcome.explanation);
 
     if (result.outcome.status === 'completed') {
       audioBusRef.current?.playSelectionClick(isMuted);
@@ -535,6 +545,7 @@ export const App: React.FC = () => {
         setCommandText={setCommandText}
         onRunUtterance={(utt, mod) => runUtterance(utt, mod)}
         clipClockRef={clipClockRef}
+        restoreNowRef={restoreNowRef}
         onSelectFinding={(id, coords) => handleSelectFinding(id, coords)}
         onPushToTalk={handlePushToTalk}
         onFileChosen={handleFileChosen}

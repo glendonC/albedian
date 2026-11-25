@@ -71,6 +71,8 @@ export interface SpatialObservatoryViewportProps {
   setSession: React.Dispatch<React.SetStateAction<ObservationSession>>;
   /** Where the playing clip's live time is handed to App, so a command that leaves the recording saves it. */
   clipClockRef?: React.MutableRefObject<(() => number | null) | null>;
+  /** Where the Restore button's own action is handed to App, for asking to restore by voice (voice-restore-two). */
+  restoreNowRef?: React.MutableRefObject<(() => boolean) | null>;
   selectedFinding: CelestialFinding | null;
   discoveredMedia: DiscoveredMediaItem[];
   activeDiscoveredId: string | null;
@@ -151,6 +153,7 @@ export const SpatialObservatoryViewport: React.FC<
   session,
   setSession,
   clipClockRef,
+  restoreNowRef,
   selectedFinding,
   discoveredMedia,
   activeDiscoveredId,
@@ -408,6 +411,24 @@ export const SpatialObservatoryViewport: React.FC<
     orientation: session.sourceAsset?.displayOrientation,
     mediaKind: session.sourceAsset?.mediaKind,
   });
+  // voice-restore-two (DECIDED-BY-LEAD 18:21 on 24 Nov): the Restore button's own action, handed to App for asking to
+  // restore by voice. It acts where the button does (the recording on screen, no restoration running or shown, or a
+  // stop it can try again: start asks, joins the one running, or returns the stored one) and says whether it did
+  const restoreNow = useRef<() => boolean>(() => false);
+  restoreNow.current = () => {
+    if (!session.sourceAsset || !isSourcePhotoShown(session)) return false;
+    if (!(restoration.phase === 'idle' || (restoration.phase === 'stopped' && restoration.canTryAgain))) return false;
+    startRestore();
+    return true;
+  };
+  useEffect(() => {
+    if (!restoreNowRef) return undefined;
+    const press = () => restoreNow.current();
+    restoreNowRef.current = press;
+    return () => {
+      if (restoreNowRef.current === press) restoreNowRef.current = null;
+    };
+  }, [restoreNowRef]);
 
   // While audio is on, the catalog stars in view sound and the camera turns the listener
   useEffect(() => {

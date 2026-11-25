@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { MediaVariantSchema, type MediaVariant, type ObservationSession } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { choosePhotoOnHome } from './homeEntry.js';
@@ -121,5 +121,97 @@ describe('the viewport keeps the restored version on screen in the session', () 
     render('blob:photo');
     act(() => seen.props!.onShownRestoration!(null));
     expect(current.mediaVariants).toEqual([]);
+  });
+});
+
+// voice-restore-two (DECIDED-BY-LEAD 18:21 on 24 Nov): the viewport hands App the Restore button's own action, which
+// acts only where the button could: the recording on screen, no restoration running, and says whether it did
+describe("the viewport hands App the Restore button's own action", () => {
+  function mount(over: Partial<ObservationSession>, kind: 'image' | 'video' = 'image') {
+    const base = createSyntheticCalibratedSession();
+    let current = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, mediaKind: kind, mimeType: kind === 'image' ? 'image/jpeg' : 'video/mp4', uri: 'blob:photo', width: 3024, height: 4032 },
+      mediaVariants: [],
+      spatialView: { ...base.spatialView, mode: 'source_2d' },
+      ...over,
+    } as ObservationSession;
+    const restoreNowRef: { current: (() => boolean) | null } = { current: null };
+    const noop = () => {};
+    const render = (uploadedMediaUrl: string | null) =>
+      act(() =>
+        root.render(
+          createElement(SpatialObservatoryViewport, {
+            session: current,
+            setSession: (update: ObservationSession | ((prev: ObservationSession) => ObservationSession)) => {
+              current = typeof update === 'function' ? update(current) : update;
+            },
+            selectedFinding: null,
+            discoveredMedia: [],
+            activeDiscoveredId: null,
+            setActiveDiscoveredId: noop,
+            activeDiscoveredItem: null,
+            uploadedMediaUrl,
+            setUploadedMediaUrl: noop,
+            commandText: '',
+            setCommandText: noop,
+            onRunUtterance: noop,
+            onSelectFinding: noop,
+            onPushToTalk: noop,
+            restoreNowRef,
+          } as unknown as Parameters<typeof SpatialObservatoryViewport>[0]),
+        ),
+      );
+    render(null);
+    choosePhotoOnHome(container);
+    render('blob:photo');
+    return { restoreNowRef, session: () => current };
+  }
+  // The restoration route answers with a job that never ends here: the point is which press reaches it
+  const posts = () => fetchSpy.mock.calls.filter(([url, init]) => String(url).endsWith('/restore') && (init as RequestInit | undefined)?.method === 'POST');
+  let fetchSpy: MockInstance<typeof fetch>;
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+  });
+  afterEach(() => fetchSpy.mockRestore());
+
+  it('on the photo with nothing restoring: the press reaches the restoration route, once, and says it acted', () => {
+    const { restoreNowRef, session } = mount({});
+    expect(restoreNowRef.current).toBeTypeOf('function');
+    let acted = false;
+    act(() => {
+      acted = restoreNowRef.current!();
+    });
+    expect(acted).toBe(true);
+    expect(posts()).toHaveLength(1);
+    expect(String(posts()[0]![0])).toBe(`/api/media/${session().sourceAsset!.sha256}/restore`);
+    // Asked already: the button stands in its wait now, so a second ask does nothing
+    let again = true;
+    act(() => {
+      again = restoreNowRef.current!();
+    });
+    expect(again).toBe(false);
+    expect(posts()).toHaveLength(1);
+  });
+
+  it('on a clip, the same', () => {
+    const { restoreNowRef } = mount({}, 'video');
+    let acted = false;
+    act(() => {
+      acted = restoreNowRef.current!();
+    });
+    expect(acted).toBe(true);
+    expect(posts()).toHaveLength(1);
+  });
+
+  it('away from the recording (Real sky), where the button is not, it does nothing', () => {
+    const base = createSyntheticCalibratedSession();
+    const { restoreNowRef } = mount({ spatialView: { ...base.spatialView, mode: 'registered_sky' } } as Partial<ObservationSession>);
+    let acted = true;
+    act(() => {
+      acted = restoreNowRef.current?.() ?? false;
+    });
+    expect(acted).toBe(false);
+    expect(posts()).toHaveLength(0);
   });
 });
