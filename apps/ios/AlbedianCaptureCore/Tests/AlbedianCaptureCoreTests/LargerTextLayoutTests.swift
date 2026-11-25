@@ -200,4 +200,69 @@ final class LargerTextLayoutTests: XCTestCase {
         let count = compact(try body(of: "    private func count(_ value: Int, _ evidence: ControlStyle.Evidence) -> some View", in: screens + "\n}\n"))
         XCTAssertFalse(count.contains(".lineLimit("), "a tag's word is never held to a line")
     }
+
+    /// largertext-wait-m (UIUX-iphone-largertext-sweep-READY item 1, DECIDED-BY-LEAD 24 Nov 19:56): at accessibility sizes
+    /// the wait's photo is drawn whole in a smaller 3:4 frame from 118, centred across, as tall as what is left above the
+    /// step row and its line (30 pt under the photo, 34 pt kept at the foot), so the line stands whole at every size;
+    /// at default sizes the screen's width, as before; never wider than the screen, never less than nothing.
+    func testTheWaitsFrameIsTheRoomLeftAboveItsRowAndLineAtAccessibilitySizes() {
+        let normal = WaitFrame.size(screenWidth: 402, screenHeight: 874, columnRoom: nil)
+        XCTAssertEqual(normal.width, 402)
+        XCTAssertEqual(normal.height, 536)
+        let held = WaitFrame.size(screenWidth: 402, screenHeight: 874, columnRoom: 355)
+        XCTAssertEqual(held.height, 337, accuracy: 1e-9)
+        XCTAssertEqual(held.width, 252.75, accuracy: 1e-9)
+        var g = SeededGenerator(seed: propertySeed())
+        for _ in 0..<2000 {
+            let width = g.double(in: 300...460)
+            let height = g.double(in: 560...1000)
+            let room = g.pick([0, g.double(in: 0...700), 5000])
+            let frame = WaitFrame.size(screenWidth: width, screenHeight: height, columnRoom: room)
+            let context = "\(width) \(height) \(room)"
+            XCTAssertEqual(frame.width * 4 / 3, frame.height, accuracy: 1e-9, context)
+            XCTAssertLessThanOrEqual(frame.width, width + 1e-9, context)
+            XCTAssertGreaterThanOrEqual(frame.height, 0, context)
+            let left = height - WaitFrame.foot - room - WaitFrame.gap - WaitFrame.top
+            if left <= 0 { XCTAssertEqual(frame.height, 0, context) }
+            else if left >= width * 4 / 3 { XCTAssertEqual(frame.width, width, accuracy: 1e-9, context) }
+            else {
+                XCTAssertEqual(frame.height, left, accuracy: 1e-9, context)
+                XCTAssertEqual(WaitFrame.top + frame.height + WaitFrame.gap + room + WaitFrame.foot, height, accuracy: 1e-9, context)
+            }
+        }
+    }
+
+    /// The room is kept for the wait's own longest words: the longest step name the row can show, a count of five
+    /// digits a side, and the longest of the early line's sentences.
+    func testTheMostTheWaitsColumnCanShowIsItsLongestWords() {
+        let names = SolveJob.Stage.allCases.map(WaitRow.word) + [QueuedRow.word]
+        XCTAssertTrue(names.contains(WaitFrame.mostName))
+        XCTAssertTrue(names.allSatisfy { $0.count <= WaitFrame.mostName.count })
+        XCTAssertEqual(WaitFrame.mostCount, "88,888 of 88,888")
+        let sentences = [PredictedEarlySky.Source.pointing, .moon, .sun].map(PredictedEarlySky.sentence(for:))
+        XCTAssertEqual(WaitFrame.mostSentence, "Placed from where your iPhone pointed: predicted until matched.")
+        XCTAssertTrue(sentences.allSatisfy { $0.count <= WaitFrame.mostSentence.count })
+    }
+
+    /// The wait sizes its photo, rings and column from that frame, with the room measured once, hidden, from the most
+    /// the column can show; its row stacks the count under the name when the two do not fit on one line (the record's
+    /// rule: words side by side stack, never cut; 8 pt as the Result's stacked counts), and no word of it is held.
+    func testTheWaitSizesItsFrameOnceFromTheMostItsColumnCanShow() throws {
+        let file = try code("Screens/AfterSendScreens.swift").code
+        let wait = compact(try body(of: "struct WaitingScreen: View", in: file))
+        XCTAssertTrue(wait.contains("@Environment(\\.dynamicTypeSize)privatevardynamicTypeSize"))
+        XCTAssertTrue(wait.contains("@StateprivatevarcolumnRoom=0.0"))
+        XCTAssertTrue(wait.contains("letframe=WaitFrame.size(screenWidth:Double(geometry.size.width),screenHeight:Double(geometry.size.height),columnRoom:dynamicTypeSize.isAccessibilitySize?columnRoom:nil)letwidth=frame.width"))
+        XCTAssertTrue(wait.contains("ifdynamicTypeSize.isAccessibilitySize{VStack(alignment:.leading,spacing:14){StepRow(name:WaitFrame.mostName,count:WaitFrame.mostCount,fraction:nil)EarlySource(sentence:WaitFrame.mostSentence)}.hidden().accessibilityHidden(true).onGeometryChange(for:Double.self){Double($0.size.height)}action:{columnRoom=$0}}"),
+                      "the room measured from the most the column can show, never shown")
+        XCTAssertTrue(wait.contains("ShotPhoto(shot:model.shot,width:width).atTop(Arrive.photoTop)"), "the photo whole in the frame, centred across")
+        XCTAssertTrue(wait.contains("letearly=earlyPlaced(width:width,height:width*4/3)"), "the rings placed for the frame")
+        XCTAssertEqual(wait.components(separatedBy: ".atTop(Arrive.photoTop+width*4/3+30)").count - 1, 2, "the row and its line under the frame")
+        XCTAssertFalse(wait.contains("geometry.size.width*4/3"), "nothing drawn at the full width's height")
+        let row = compact(try body(of: "private struct StepRow: View", in: file))
+        XCTAssertTrue(row.contains("ViewThatFits(in:.horizontal){HStack(alignment:.firstTextBaseline){nameText"), "side by side while both fit")
+        XCTAssertTrue(row.contains("VStack(alignment:.leading,spacing:8){nameTextifletcount{countText(count)}}"), "else the count under the name")
+        let source = compact(try body(of: "private struct EarlySource: View", in: file))
+        XCTAssertFalse(row.contains(".lineLimit(") || source.contains(".lineLimit("), "no word of the column held to a line")
+    }
 }

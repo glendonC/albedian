@@ -16,10 +16,19 @@ struct WaitingScreen: View {
     /// words until they have gone (`EarlyLine.namedSource`).
     @State private var phoneRingsDrawn = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// largertext-wait-m: the room the row and its line need at most at accessibility sizes, measured once from the most
+    /// they can show (`WaitFrame.mostName`, `.mostCount`, `.mostSentence`), so the photo's frame never moves with them
+    @State private var columnRoom = 0.0
 
     var body: some View {
         GeometryReader { geometry in
-            let width = Double(geometry.size.width)
+            // largertext-wait-m (UIUX-iphone-largertext-sweep-READY item 1, DECIDED-BY-LEAD 24 Nov 19:56): at accessibility
+            // sizes the photo and its rings whole in a smaller 3:4 frame, centred across, as tall as what is left above the
+            // row and its line; at default sizes the screen's width, as before
+            let frame = WaitFrame.size(screenWidth: Double(geometry.size.width), screenHeight: Double(geometry.size.height),
+                                       columnRoom: dynamicTypeSize.isAccessibilitySize ? columnRoom : nil)
+            let width = frame.width
             // D31: the early rings that fall inside the photo: the laptop's early sky when its job serves one (lockon-m5),
             // else the phone's own projection of its record; the source sentence stands only beside at least one
             let early = earlyPlaced(width: width, height: width * 4 / 3)
@@ -32,6 +41,15 @@ struct WaitingScreen: View {
                                                                                   swapOver: model.laptopSwapOver,
                                                                                   reduceMotion: reduceMotion))
             ZStack {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 14) {
+                        StepRow(name: WaitFrame.mostName, count: WaitFrame.mostCount, fraction: nil)
+                        EarlySource(sentence: WaitFrame.mostSentence)
+                    }
+                    .hidden()
+                    .accessibilityHidden(true)
+                    .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { columnRoom = $0 }
+                }
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
                 if earlyDrawn {
@@ -268,14 +286,19 @@ private struct StepRow: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(name).font(AlbedianFont.light(28)).tracking(-0.035 * 28)
-                    .foregroundStyle(Color(ControlStyle.ink))
-                Spacer(minLength: 12)
-                if let count {
-                    Text(count).font(AlbedianFont.regular(15).monospacedDigit()).tracking(-0.01 * 15)
-                        .foregroundStyle(Color(ControlStyle.inkSecondary))
+            // largertext-wait-m: the name and its count side by side while both fit, else the count under the name, 8 pt
+            // under it as the Result's stacked counts (the sweep record's rule: words side by side stack, never cut)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    nameText
+                    Spacer(minLength: 12)
+                    if let count { countText(count) }
                 }
+                VStack(alignment: .leading, spacing: 8) {
+                    nameText
+                    if let count { countText(count) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             GeometryReader { line in
                 ZStack(alignment: .leading) {
@@ -292,6 +315,16 @@ private struct StepRow: View {
         }
         .accessibilityElement(children: .combine)
         .padding(.horizontal, CGFloat(Arrive.side))
+    }
+
+    private var nameText: some View {
+        Text(name).font(AlbedianFont.light(28)).tracking(-0.035 * 28)
+            .foregroundStyle(Color(ControlStyle.ink))
+    }
+
+    private func countText(_ count: String) -> some View {
+        Text(count).font(AlbedianFont.regular(15).monospacedDigit()).tracking(-0.01 * 15)
+            .foregroundStyle(Color(ControlStyle.inkSecondary))
     }
 }
 
