@@ -60,9 +60,12 @@ from services.science.detector import (
     stack_rounding_noise,
     stack_video_frames_for_calibration,
 )
+from services.science.binning import bin_factor, bin_frame, in_stored_pixels
 from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
+    PhoneCameraWCS,
+    refine_binned_phone_solution,
     PHONE_SOLVER_IDENTITY,
     camera_fov_hint_deg,
     solve_phone_photo,
@@ -568,6 +571,36 @@ class _PhoneDetectionsAlongside:
         self._thread.join()
 
 
+class _StoredPixels:
+    """bin-detect-v2: each search of a still searched binned by `k`, handed to the still's stored pixels where it ends,
+    in the child, so the chain reads every solution in the stored frame and goes on from a handover that does not
+    calibrate as from any search that did not (SOLVER's handover note). A calibrated phone solve is handed over by
+    refine-2's refit on the stored frame under the same 3 px gate (`refine_binned_phone_solution`: calibrated, or
+    unresolved with no WCS and every finding observed), given the binned frame and the phone solver's own detections
+    on it, the ones its search used; any other solution is restated block for block (`binning.in_stored_pixels`,
+    which takes a calibration past the gate down to unresolved)."""
+
+    def __init__(
+        self, stored_image: np.ndarray, k: int, width: int, height: int, binned_image: np.ndarray,
+        phone_detections: Callable[[], list | None],
+    ) -> None:
+        self._stored_image, self._k, self._width, self._height = stored_image, k, width, height
+        self._binned_image, self._phone_detections = binned_image, phone_detections
+
+    def phone(self, solution: ObservationSolution) -> ObservationSolution:
+        """A phone search's solution in the stored pixels."""
+        if solution.status == "calibrated" and isinstance(solution.wcs, PhoneCameraWCS):
+            return refine_binned_phone_solution(
+                self._stored_image, solution, self._k, binned_image=self._binned_image,
+                binned_detections=self._phone_detections(),
+            )
+        return self.restated(solution)
+
+    def restated(self, solution: ObservationSolution) -> ObservationSolution:
+        """Any other solution in the stored pixels, block for block."""
+        return in_stored_pixels(solution, self._k, self._width, self._height)
+
+
 def _solve_chain(
     solve_image: np.ndarray,
     detections: list,
@@ -582,6 +615,7 @@ def _solve_chain(
     moment_lent: str | None = None,
     person_axes: Sequence[tuple[float, float]] | None = None,
     person_fov_deg: float | None = None,
+    stored: tuple[np.ndarray, int, int, int] | None = None,
     **chain: Any,
 ):
     """The searches (`_solve_chain_once`), with a pointing record's centre hint first when there is one; when the
@@ -605,33 +639,39 @@ def _solve_chain(
     searches instead (`_solve_person_chain`). It runs no unhinted search: the upload's plain solve is its own job.
 
     Every pass shares one phone-solver detection of the frame (`_PhoneDetections`), made before the call when the job
-    had it made beside its own (`_PREPARED_PHONE`, detect-overlap-1)."""
+    had it made beside its own (`_PREPARED_PHONE`, detect-overlap-1).
+
+    A still searched binned (`stored`: its stored frame, the factor and the stored size) has each search's solution
+    handed to the stored pixels where that search ends (`_StoredPixels`, bin-detect-v2), so every solution the chain
+    reads and returns is in the stored frame."""
     phone_detections = _PhoneDetections(solve_image, chain.get("source_asset_id"))
     if chain.get("sha256") in _PREPARED_PHONE:
         phone_detections._found = _PREPARED_PHONE.pop(chain["sha256"])
+    to_stored = None if stored is None else _StoredPixels(*stored, solve_image, phone_detections)
     if person_fov_deg is not None:
         return _solve_person_chain(
             solve_image, detections, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
             hint_radius_deg=hint_radius_deg, person_axes=person_axes, person_fov_deg=person_fov_deg,
-            phone_detections=phone_detections, **chain,
+            phone_detections=phone_detections, to_stored=to_stored, **chain,
         )
     solution = _solve_chain_once(
         solve_image, detections, width, height, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
         hint_radius_deg=hint_radius_deg, triangle_radius_deg=triangle_radius_deg, phone_detections=phone_detections,
-        **chain,
+        to_stored=to_stored, **chain,
     )
     if solution.status == "calibrated":
         return solution
     if hint_ra_deg is not None:
         unhinted = _solve_chain_once(
-            solve_image, detections, width, height, on_event=on_event, phone_detections=phone_detections, **chain
+            solve_image, detections, width, height, on_event=on_event, phone_detections=phone_detections,
+            to_stored=to_stored, **chain,
         )
         if unhinted.status == "calibrated":
             return unhinted
     if moment_lent:
         blind = _solve_chain_once(
             solve_image, detections, width, height, on_event=on_event, phone_detections=phone_detections,
-            **{**chain, "obs_utc_iso": None, "lat_deg": None, "lon_deg": None},
+            to_stored=to_stored, **{**chain, "obs_utc_iso": None, "lat_deg": None, "lon_deg": None},
         )
         if blind.status == "calibrated":
             # The stars alone placed it; the solution states the solve's own (lent) time and place, as the hinted one
@@ -643,7 +683,7 @@ def _solve_chain(
     elif _searched_from_the_horizon(chain, detections):
         whole = _solve_chain_once(
             solve_image, detections, width, height, on_event=on_event, whole_sky=True, phone_detections=phone_detections,
-            **chain,
+            to_stored=to_stored, **chain,
         )
         if whole.status == "calibrated":
             return replace(whole, warnings=[*whole.warnings, BLIND_OWN_WORDS])
@@ -682,6 +722,7 @@ def _solve_person_chain(
     sha256: str,
     solution_id: str,
     phone_detections: Callable[[], list | None] | None = None,
+    to_stored: _StoredPixels | None = None,
     **_unused: Any,
 ):
     """The searches of a solve from a person's alignment (align-2w), in the order measured on public photos: the
@@ -709,6 +750,8 @@ def _solve_person_chain(
     for step in steps:
         on_event("solver", "phone_photo")
         solution = solve_phone_photo(solve_image, detections=phone_detections(), **phone, **step)
+        if to_stored is not None:
+            solution = to_stored.phone(solution)
         if solution.status == "calibrated":
             break
     return _with_noise_words(solution, detections)
@@ -748,6 +791,7 @@ def _solve_chain_once(
     display_turns: int = 0,
     whole_sky: bool = False,
     phone_detections: Callable[[], list | None] | None = None,
+    to_stored: _StoredPixels | None = None,
 ):
     """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child. A pointing
     record's centre hint (pointing-4) goes to each: the phone solver keeps rotations within `hint_radius_deg` of it,
@@ -757,10 +801,17 @@ def _solve_chain_once(
     moment (`solve_phone_photo`'s `whole_sky`); the plate solver searched the whole sky in the first run already.
 
     `on_event("solver", name)` comes before each search and `on_event("candidate", done, total)` reports its counts.
+    A binned still's searches are each handed to its stored pixels as they end (`to_stored`, bin-detect-v2).
     """
 
     def on_candidate(done: int, total: int) -> None:
         on_event("candidate", done, total)
+
+    def phone_found(solution: ObservationSolution) -> ObservationSolution:
+        return solution if to_stored is None else to_stored.phone(solution)
+
+    def plate_found(solution: ObservationSolution) -> ObservationSolution:
+        return solution if to_stored is None else to_stored.restated(solution)
 
     # The phone solver also takes how the picture is shown, for its upright pass (the cut for a turned frame)
     phone_hint = dict(
@@ -771,7 +822,7 @@ def _solve_chain_once(
     phone_detections = phone_detections or _PhoneDetections(solve_image, source_asset_id)
     if camera_meta:
         on_event("solver", "phone_photo")
-        solution = solve_phone_photo(
+        solution = phone_found(solve_phone_photo(
             solve_image,
             detections=phone_detections(),
             obs_utc_iso=obs_utc_iso,
@@ -784,11 +835,11 @@ def _solve_chain_once(
             solution_id=solution_id,
             on_candidate=on_candidate,
             **phone_hint,
-        )
+        ))
         if fov_hint is not None and solution.status != "calibrated":
             # A wrong or cropped 35 mm tag must not block the solve: retry with the generic field search
             on_event("solver", "phone_photo")
-            solution = solve_phone_photo(
+            solution = phone_found(solve_phone_photo(
                 solve_image,
                 detections=phone_detections(),
                 obs_utc_iso=obs_utc_iso,
@@ -800,10 +851,10 @@ def _solve_chain_once(
                 solution_id=solution_id,
                 on_candidate=on_candidate,
                 **phone_hint,
-            )
+            ))
         if solution.status != "calibrated" and not whole_sky:
             on_event("solver", "triangle")
-            plate_sol = solve_and_verify_field(
+            plate_sol = plate_found(solve_and_verify_field(
                 detections,
                 width,
                 height,
@@ -815,14 +866,14 @@ def _solve_chain_once(
                 solution_id=solution_id,
                 on_candidate=on_candidate,
                 **plate_hint,
-            )
+            ))
             if plate_sol.status == "calibrated":
                 solution = plate_sol
     else:
         solution = None
         if not whole_sky:
             on_event("solver", "triangle")
-            solution = solve_and_verify_field(
+            solution = plate_found(solve_and_verify_field(
                 detections,
                 width,
                 height,
@@ -834,10 +885,10 @@ def _solve_chain_once(
                 solution_id=solution_id,
                 on_candidate=on_candidate,
                 **plate_hint,
-            )
+            ))
         if (solution is None or solution.status != "calibrated") and len(detections) >= 10:
             on_event("solver", "phone_photo")
-            phone_sol = solve_phone_photo(
+            phone_sol = phone_found(solve_phone_photo(
                 solve_image,
                 detections=phone_detections(),
                 obs_utc_iso=obs_utc_iso,
@@ -849,7 +900,7 @@ def _solve_chain_once(
                 solution_id=solution_id,
                 on_candidate=on_candidate,
                 **phone_hint,
-            )
+            ))
             if solution is None or phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
                 solution = phone_sol
     if solution is None:
@@ -1182,10 +1233,12 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         limit_s = min(limit_s, ctx.remaining_s())
     prepared_key = sha256
     alongside: _PhoneDetectionsAlongside | None = None
+    bin_k = 1
     try:
         if frame_count > 1:
             composite = stack_video_frames_for_calibration(frames).composite_luma
             solve_image: np.ndarray = composite
+            stored_image = composite
             if _DETECT_ALONGSIDE:
                 alongside = _PhoneDetectionsAlongside(ctx, solve_image, asset["id"], prepared_key, limit_s)
             # The frames' own rounding noise floors the stack's (FIELD field-8): the stack sits on no whole-code grid,
@@ -1194,14 +1247,25 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
             detections = detect_point_sources(composite, asset_id=asset["id"], noise_floor=stack_rounding_noise(frames))
             ctx.report({"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count})
         else:
-            solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
+            # A still above the line is detected and searched binned (services/science/binning.py), each search handed
+            # to its stored pixels in the chain (`_StoredPixels`, bin-detect-v2); the pose reads the stored frame
+            stored_image = rgb_u8 if rgb_u8 is not None else frames[0]
+            bin_k = bin_factor(width, height) if media_kind == "image" else 1
+            if bin_k == 1:
+                solve_image, detect_luma = stored_image, frames[0]
+            elif rgb_u8 is not None:
+                solve_image = bin_frame(rgb_u8, bin_k)
+                detect_luma = _to_luma_2d(solve_image.astype(np.float64))
+            else:
+                solve_image = detect_luma = bin_frame(frames[0], bin_k)
             if _DETECT_ALONGSIDE:
                 alongside = _PhoneDetectionsAlongside(ctx, solve_image, asset["id"], prepared_key, limit_s)
-            detections = detect_point_sources(frames[0], asset_id=asset["id"])
+            detections = detect_point_sources(detect_luma, asset_id=asset["id"])
             ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
         ctx.check_cancel()
         return _solve_after_detection(ctx, asset, moment_hint, alignment, search, frames, media_kind, original, width,
-                                      height, sha256, solve_image, detections, alongside, prepared_key)
+                                      height, sha256, solve_image, detections, alongside, prepared_key, bin_k,
+                                      stored_image)
     finally:
         # A job leaving early (a fault, a cancel, the bound) stops the phone detection and waits for it
         if alongside is not None:
@@ -1224,6 +1288,8 @@ def _solve_after_detection(
     detections: list,
     alongside: "_PhoneDetectionsAlongside | None",
     prepared_key: str,
+    bin_k: int = 1,
+    stored_image: np.ndarray | None = None,
 ) -> ObservationSolution:
     """`solve_upload` from the job's detections on: the searches in the child under the bound, then the sky."""
     frame_count = len(frames)
@@ -1288,6 +1354,9 @@ def _solve_after_detection(
     )
     if alignment is not None:
         chain_kwargs.update(person_axes=person_pose_axes(asset, alignment), person_fov_deg=float(alignment.fov_diagonal_deg))
+    if bin_k > 1:
+        # A binned still's searches are handed to its stored pixels in the chain, search by search (bin-detect-v2)
+        chain_kwargs.update(stored=(stored_image, bin_k, width, height))
 
     read_for_pose: list[list[tuple[float, np.ndarray]]] = []
 
@@ -1313,10 +1382,13 @@ def _solve_after_detection(
     if ctx.remaining_s is not None:
         # The search keeps its own bound, and never runs past what is left of its job's
         limit_s = min(limit_s, ctx.remaining_s())
+    # The search reads the frame it is given at that frame's own size: a binned still's, whose solutions the chain
+    # hands to the stored pixels
+    solve_width, solve_height = (width, height) if bin_k == 1 else (int(solve_image.shape[1]), int(solve_image.shape[0]))
     if _SOLVE_IN_PROCESS:
         if alongside is not None:
             alongside.wait()
-        solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
+        solution = _solve_chain(solve_image, detections, solve_width, solve_height, **chain_kwargs, on_event=on_event)
     else:
         try:
             # The phone solver's detection made beside the server's: its fault, its child's exit, its bound or a stop
@@ -1327,7 +1399,7 @@ def _solve_after_detection(
             # process it started (WorkerStopped)
             solution = ctx.child().call(
                 _solve_chain,
-                (solve_image, detections, width, height),
+                (solve_image, detections, solve_width, solve_height),
                 chain_kwargs,
                 timeout_s=limit_s,
                 progress_kwarg="on_event",
@@ -1350,6 +1422,9 @@ def _solve_after_detection(
                 "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky.",
                 identity,
             )
+            if bin_k > 1:
+                # Made here from the binned still's detections: in the stored pixels before anything reads it
+                solution = in_stored_pixels(solution, bin_k, width, height)
 
     ctx.check_cancel()
     if not candidate_reported:
@@ -1447,6 +1522,7 @@ SOLVE_PRODUCER_FILES = (
     "services/science/ephemeris.py",
     "services/science/catalog.py",
     "services/science/bounded_worker.py",
+    "services/science/binning.py",
     "services/science/deep_sky_catalog.py",
     "services/science/deep_sky_projection.py",
     "services/science/deep_sky_selection.py",
@@ -1525,8 +1601,11 @@ SOLVE_PRODUCER_FILES = (
 # (own-moment-fallback-1), which calibrates photos whose own moment left them predicted only; 30, the phone solver's
 # distortion fit from three training pairs, shrunk toward its start below five (refine-2), which changes the fit and
 # the held-out counts of a photo with three or four training pairs (no public photo's status), and the binned frame's
-# stored-pixel handover functions it adds, which the upload path does not call yet
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 30, SOLVE_PRODUCER_FILES)
+# stored-pixel handover functions it adds, which the upload path does not call yet; 31, a still above 48 MP detected
+# and searched binned to at most 8 MP, each search handed to its stored pixels where it ends, in the chain: a
+# calibrated phone solve by refine-2's refit under the same 3 px gate, the chain going on from a refit that does not
+# calibrate, any other solution restated block for block (bin-detect-v2, `services/science/binning.py`)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 31, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

@@ -25,7 +25,7 @@
   "digest": "3ffd8c2f020fae3c8d568d48302be3c4152a13e24e75a34f7428ab4f181eb098"
  },
  "albedian.solve_chain": {
-  "revision": 30,
+  "revision": 31,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -38,6 +38,7 @@
    "services/science/ephemeris.py",
    "services/science/catalog.py",
    "services/science/bounded_worker.py",
+   "services/science/binning.py",
    "services/science/deep_sky_catalog.py",
    "services/science/deep_sky_projection.py",
    "services/science/deep_sky_selection.py",
@@ -71,6 +72,6 @@
    "services/science/person_hint.py",
    "services/science/sun_pose.py"
   ],
-  "digest": "e3cf37742ada19958fdc22002f7dcdf19955b724a6e9bb3b910c4ec85032e1f9"
+  "digest": "5b2aeb6caa9fedef96d9aab0c56e4c0cb1cd354df28b7b64cb26d46709f93def"
  }
 }
