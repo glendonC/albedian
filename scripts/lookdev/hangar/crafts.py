@@ -267,6 +267,9 @@ CRAFTS: dict[str, dict] = {
         # fabric and visor blocky and the decimation streaked: welded within 0.1 mm first.
         # lod1 and lod2 a little coarser than before the rig: its weights add about 20 bytes a vertex (suit-rig-one).
         "lod_ratio": {"lod0": 0.42, "lod1": 0.13, "lod2": 0.033},
+        # craft-ao-one: the sky fill's occlusion per vertex (the lead's ruling of 25 Nov on LOOK's (c): the EMU has no
+        # texture map of its own, and one made for it cost a third more geometry)
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         # Rigged and posed by the app (suit-rig-one): NASA's EMU is one continuous mesh from boots to chest and one piece
         # per arm, weighted vertex by vertex along its own limb's chain so it bends at hips, knees, shoulders and elbows
         # (the lead's ruling of 01:46 on 25 Nov); its other parts (helmet, gloves, pack, chest controls, bearings)
@@ -361,8 +364,11 @@ CRAFTS: dict[str, dict] = {
             "AO_dish": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
             "AO_1": {"role": "painted", "base": (0.10, 0.10, 0.10), "roughness": 0.5, "occlusion_from_source": True},
         },
+        # craft-ao-one: the sky fill's occlusion per vertex: NASA's map lays tiles over each other (81 percent of its
+        # covered map under two or more triangles, .lanetools/uv_unwrap.py), so no image can be baked into it
+        "vertex_ao": {"rays": 32, "distance_m": 0.5, "skip_m": 0.003},
         "body_radius_m": 1.6,
-        "changes": "photo",
+        "changes": "photo_ao",
     },
     "z2": {
         "title": "Z-2",
@@ -415,6 +421,9 @@ CRAFTS: dict[str, dict] = {
         ],
         # lod1 and lod2 a little coarser than before the rig: its weights add about 20 bytes a vertex (suit-rig-one).
         "lod_ratio": {"lod0": 1.0, "lod1": 0.36, "lod2": 0.12},
+        # craft-ao-one: the sky fill's occlusion per vertex (its own map is a true unwrap, but Cycles' bake into it came
+        # out mottled, shut by the near-touching layers of NASA's file, and the image cost as much as the vertices)
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         # Rigged and posed by the app (suit-rig-one): the Z-2 is built of separate hard segments, so each hangs whole on
         # one bone; joints placed from the segments' own boxes in NASA's import frame (the suit faces -Y, its left is +X)
         # [tested: .lanetools/suit_parts.py]. Poses Z2_POSES (NASA's stance).

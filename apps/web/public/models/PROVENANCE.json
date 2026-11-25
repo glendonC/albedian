@@ -538,7 +538,7 @@
     },
     {
       "path": "hangar/emu/emu_lod0.glb",
-      "sha256": "4e8a5e07fea99c3efdc8a947073367b824eea407d141ab7be6ea133439fec0d0",
+      "sha256": "25e693e4cc6e794b65cfe6c16565278e588d80a3820980ffe1e02ff64fafedbf",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -547,13 +547,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft emu --out apps/web/public/models/hangar/emu",
-        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. Rigged and posed by the app: a skeleton of 14 bones added beside the mesh; the helmet, gloves, pack, chest controls and bearings each hang whole on one bone, and the suit's continuous fabric, boots to chest and each arm, is weighted to blend from one bone to the next just past each joint so it bends at hips, knees and elbows; three poses of the limbs for the app to blend, hovering as NASA filmed a free flight with knees a little bent and forearms forward, cruising with forearms down along the body and legs straight, and braking with knees up and forearms raised forward, the upper arms kept where NASA modelled them; at rest no vertex moves."
+        "changes": "Rebuilt from NASA's model, not copied: the second copies of parts NASA's file holds twice removed, the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque (NASA's file marks them all as fully transmissive, like glass), keeping NASA's colours, with the visor given gold and the metal fittings metalness, the astronaut office's emblem covered with the suit's white fabric, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. Rigged and posed by the app: a skeleton of 14 bones added beside the mesh; the helmet, gloves, pack, chest controls and bearings each hang whole on one bone, and the suit's continuous fabric, boots to chest and each arm, is weighted to blend from one bone to the next just past each joint so it bends at hips, knees and elbows; three poses of the limbs for the app to blend, hovering as NASA filmed a free flight with knees a little bent and forearms forward, cruising with forearms down along the body and legs straight, and braking with knees up and forearms raised forward, the upper arms kept where NASA modelled them; at rest no vertex moves. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb (3448904 bytes, SHA-256 4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/emu/emu_lod1.glb",
-      "sha256": "eb60137318157235df1cc81792ab7fb4ff7e32c9c7cd9880463d10188b2df3ef",
+      "sha256": "2c078eefd9824df047748bce9e9bee84ab98ef26d756d5e37fe781b816bcd2fc",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -562,13 +562,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft emu --out apps/web/public/models/hangar/emu",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb (3448904 bytes, SHA-256 4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/emu/emu_lod2.glb",
-      "sha256": "ab3fe90453446e8a38f85617af206010d6fcdef91032297d260559f951ec3f6f",
+      "sha256": "d61289b1e78a417e91c2ff56654cb333ea566e73274afe852049adff7d25bd18",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -577,7 +577,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft emu --out apps/web/public/models/hangar/emu",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb (3448904 bytes, SHA-256 4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372); kept at the metre scale NASA's model is built in."
     },
@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "ea03aa0ff918a0065f30204eded43b56ffe0d3f2ed119477a1a80f3f06aaffa6",
+      "sha256": "58f6206036579587c86ceca30cd2db96b336e09d952c538664f7730a546ad7c1",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1614,7 +1614,7 @@
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod0.glb",
-      "sha256": "0234ff6f0c35d527e5799360c862c62cb50e690a59ea124cdf67484d13a15584",
+      "sha256": "04d8fa7aab021afd5d8db452cb0aa03f279140a00a77af7da90166a9b6825455",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1623,13 +1623,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
-        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb (3293532 bytes, SHA-256 cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod1.glb",
-      "sha256": "c8ff54a9ac5f65076a298adfcfa1327f7805d4631a695f941f2b119676a22379",
+      "sha256": "0cb30ae2f4ca69369de0eb30d8463512471c29f6a5f80cd38f3a6853a296692a",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1638,13 +1638,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb (3293532 bytes, SHA-256 cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod2.glb",
-      "sha256": "f32756252eaf17b13e51230e91c10287cef074c59cefd9c4c7fd7de7a84b7703",
+      "sha256": "51066a13023af76e0d910437e127d876f0e37f9e47299c4eb4cc1ff97b920301",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1653,7 +1653,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb (3293532 bytes, SHA-256 cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
@@ -2381,7 +2381,7 @@
     },
     {
       "path": "hangar/z2/z2_lod0.glb",
-      "sha256": "58ce0b1332da6859b623c419cc6b44898480faf7b75fc4fd1b86a91b29ba30a6",
+      "sha256": "260d54a530d6cf57b5338429cd339bb53d16b562342d042a65326d0c44563a29",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2390,13 +2390,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft z2 --out apps/web/public/models/hangar/z2",
-        "changes": "Rebuilt from NASA's model, not copied: turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; NASA's colour map kept as the base colour, NASA's bump map turned into a normal map and the roughness taken from NASA's specular map; the NASA insignia and an emblem patch, decals of their own, removed with their faces and painted over in all three maps, as are a logo and its credit line in unused texture space, and the textures re-encoded as WebP. Rigged and posed by the app: a skeleton of 12 bones added beside the mesh with each of the model's separate parts hanging whole on one bone, nothing bent or reshaped, and three poses for the app to blend, hovering, cruising and braking, that keep NASA's stance at the limbs: its parts are separate hard segments, which would part at any joint a pose bent; at rest no vertex moves."
+        "changes": "Rebuilt from NASA's model, not copied: turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; NASA's colour map kept as the base colour, NASA's bump map turned into a normal map and the roughness taken from NASA's specular map; the NASA insignia and an emblem patch, decals of their own, removed with their faces and painted over in all three maps, as are a logo and its credit line in unused texture space, and the textures re-encoded as WebP. Rigged and posed by the app: a skeleton of 12 bones added beside the mesh with each of the model's separate parts hanging whole on one bone, nothing bent or reshaped, and three poses for the app to blend, hovering, cruising and braking, that keep NASA's stance at the limbs: its parts are separate hard segments, which would part at any joint a pose bent; at rest no vertex moves. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Z2%20Spacesuit/Z2%20Spacesuit.glb (16933148 bytes, SHA-256 4199762c27f8e730030a7bf9f1a453c203457e84c33b36247c0237a74f9a0c2a); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/z2/z2_lod1.glb",
-      "sha256": "b093cbcef51b457591fa8d35a7d673b1914c252019bbf9256cd25f0530df0466",
+      "sha256": "dc2ca03b32780b3856485118e08b80ab336b668ba48c13ac994dc095003547de",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2405,13 +2405,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft z2 --out apps/web/public/models/hangar/z2",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Z2%20Spacesuit/Z2%20Spacesuit.glb (16933148 bytes, SHA-256 4199762c27f8e730030a7bf9f1a453c203457e84c33b36247c0237a74f9a0c2a); kept at the metre scale NASA's model is built in."
     },
     {
       "path": "hangar/z2/z2_lod2.glb",
-      "sha256": "ef14e70d9b98e6f9b8d67d313b50ca71df89c83fa597453a3230a91a441c0021",
+      "sha256": "752aacf880f61ceee51ae1ad9ccd2b1484d211fddc963a8e109d5595239444b5",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2420,7 +2420,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft z2 --out apps/web/public/models/hangar/z2",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Z2%20Spacesuit/Z2%20Spacesuit.glb (16933148 bytes, SHA-256 4199762c27f8e730030a7bf9f1a453c203457e84c33b36247c0237a74f9a0c2a); kept at the metre scale NASA's model is built in."
     },

@@ -93,20 +93,30 @@ def glb_stats(path: Path) -> dict:
     for i, node in enumerate(gltf.get("nodes", [])):
         if i not in joints and any(k in node for k in ("matrix", "rotation", "scale", "translation")):
             raise SystemExit(f"{path}: node {node.get('name')} carries a transform; the build applies every transform")
-    tris = 0
+    tris = occlusion = 0
     lo = [float("inf")] * 3
     hi = [float("-inf")] * 3
     for mesh in gltf["meshes"]:
         for prim in mesh["primitives"]:
             if prim.get("mode", 4) != 4:
                 raise SystemExit(f"{path}: a primitive is not triangles")
+            if "_AO" in prim["attributes"]:
+                # the sky fill's occlusion per vertex (craft-ao-one): one float a vertex
+                ao = gltf["accessors"][prim["attributes"]["_AO"]]
+                occlusion += ao["count"] * 4
             pos = gltf["accessors"][prim["attributes"]["POSITION"]]
             count = gltf["accessors"][prim["indices"]]["count"] if "indices" in prim else pos["count"]
             tris += count // 3
             lo = [min(a, b) for a, b in zip(lo, pos["min"])]
             hi = [max(a, b) for a, b in zip(hi, pos["max"])]
     exts = sorted(set(gltf.get("extensionsUsed", [])))
-    return {"triangles": tris, "min": [round(x, 3) for x in lo], "max": [round(x, 3) for x in hi], "extensions": exts}
+    return {
+        "triangles": tris,
+        "min": [round(x, 3) for x in lo],
+        "max": [round(x, 3) for x in hi],
+        "extensions": exts,
+        "occlusionBytes": occlusion,
+    }
 
 
 def built_models() -> list[str]:
@@ -127,8 +137,11 @@ def build_facts(models: list[str]) -> dict:
                 "bytes": p.stat().st_size,
                 "triangles": st["triangles"],
                 "textureEdgeMax": {**TEXTURE_EDGE, **recipe.get("texture_edge", {})}[level],
-                "budgetBytes": {**BUDGET_BYTES, **recipe.get("budget_bytes", {})}[level],
+                # a level's budget rises by its occlusion's own bytes and by nothing else (the lead's ruling of 25 Nov)
+                "budgetBytes": {**BUDGET_BYTES, **recipe.get("budget_bytes", {})}[level] + st["occlusionBytes"],
             }
+            if st["occlusionBytes"]:
+                files[level]["occlusionBytes"] = st["occlusionBytes"]
             if level == "lod0":
                 bounds = {"min": st["min"], "max": st["max"]}
         pic = HANGAR_DIR / m / f"{m}_picker.webp"
@@ -183,7 +196,9 @@ def _level_changes(model: str, level: str) -> str:
     """The key of build_craft.py's CHANGES sentence for one level of one model."""
     if level == "lod0":
         return f"lod0_{CRAFTS[model]['changes']}"
-    return f"{level}_by_part" if CRAFTS[model].get("decimate_by_part") else level
+    key = f"{level}_by_part" if CRAFTS[model].get("decimate_by_part") else level
+    # a craft given the sky fill's occlusion per vertex says so at every level (craft-ao-one)
+    return f"{key}_ao" if CRAFTS[model].get("vertex_ao") else key
 
 
 def _quoted(name: str) -> str:

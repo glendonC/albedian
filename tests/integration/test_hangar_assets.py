@@ -49,11 +49,20 @@ def test_every_built_file_is_within_its_budget() -> None:
     for name, model in FACTS["models"].items():
         for level, f in model["files"].items():
             size = (HANGAR_DIR / f["path"]).stat().st_size
-            budget = {**BUDGET_BYTES, **CRAFTS[name].get("budget_bytes", {})}[level]
-            assert size == f["bytes"] <= f["budgetBytes"] == budget, (name, level)
+            # a level's budget rises by its occlusion's own bytes and by nothing else (craft-ao-one, the lead's ruling)
+            occlusion = 0
+            if level != "picker":
+                gltf = _gltf(HANGAR_DIR / f["path"])
+                for mesh in gltf["meshes"]:
+                    for prim in mesh["primitives"]:
+                        if "_AO" in prim["attributes"]:
+                            occlusion += gltf["accessors"][prim["attributes"]["_AO"]]["count"] * 4
+            assert f.get("occlusionBytes", 0) == occlusion, (name, level)
+            base = {**BUDGET_BYTES, **CRAFTS[name].get("budget_bytes", {})}[level]
+            assert size == f["bytes"] <= f["budgetBytes"] == base + occlusion, (name, level)
             # a craft's own budget is only ever for its close view, and never past twice the shared one
-            assert level == "lod0" or budget == BUDGET_BYTES[level]
-            assert budget <= 2 * BUDGET_BYTES[level]
+            assert level == "lod0" or base == BUDGET_BYTES[level]
+            assert base <= 2 * BUDGET_BYTES[level]
 
 
 def test_over_budget_is_refused() -> None:
@@ -752,6 +761,44 @@ def test_no_two_touching_parts_of_a_rigged_suit_come_apart_in_any_pose(name: str
             worst = max(gaps, key=gaps.get)
             where = np.round(points[part == a].mean(0), 3).tolist()
             assert gaps[worst] <= 0.02, (name, level, worst, round(gaps[worst], 3), rigged["bone_of"][a], where, rigged["bone_of"][b])
+
+
+SHADED = sorted(name for name, recipe in CRAFTS.items() if recipe.get("vertex_ao"))
+
+
+@pytest.mark.parametrize("name", SHADED)
+def test_a_craft_given_fill_occlusion_carries_it_at_every_vertex_of_every_level(name: str) -> None:
+    # craft-ao-one (the lead's ruling of 25 Nov on LOOK's (c)): the sky fill's shadowing of the model itself, per vertex,
+    # as the attribute _AO the app applies to the fill alone: on every primitive of every level, one float a vertex
+    # between 0 and 1, varying over the model as real shadowing does (lit at the outside, shut in the creases), never a
+    # colour (three would darken the key with a COLOR_0), and the record's sentence says so. Measured means: EMU 0.42
+    # to 0.45, New Horizons 0.64 to 0.68.
+    assert SHADED == ["emu", "newhorizons", "z2"]
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
+    for level in ("lod0", "lod1", "lod2"):
+        path = HANGAR_DIR / FACTS["models"][name]["files"][level]["path"]
+        assert "_AO" in record[f"hangar/{name}/{path.name}"]["producedBy"]["changes"], (name, level)
+        gltf, blob = _glb(path)
+        shade = []
+        for mesh in gltf["meshes"]:
+            for prim in mesh["primitives"]:
+                assert "COLOR_0" not in prim["attributes"], (name, level)
+                acc = gltf["accessors"][prim["attributes"]["_AO"]]
+                assert (acc["type"], acc["componentType"]) == ("SCALAR", 5126), (name, level)
+                assert acc["count"] == gltf["accessors"][prim["attributes"]["POSITION"]]["count"], (name, level)
+                shade.append(_accessor(gltf, blob, prim["attributes"]["_AO"]).ravel())
+        shade = np.concatenate(shade)
+        assert shade.min() >= 0.0 and shade.max() <= 1.0, (name, level)
+        assert 0.3 < shade.mean() < 0.9 and shade.std() > 0.1, (name, level, round(shade.mean(), 3), round(shade.std(), 3))
+        # the right way round: the outermost vertices (the convex hull's) see the most sky, measured 0.95 to 1.00 against
+        # 0.43 to 0.75 over all vertices
+        from scipy.spatial import ConvexHull
+
+        points = np.concatenate(
+            [_accessor(gltf, blob, p["attributes"]["POSITION"]) for m in gltf["meshes"] for p in m["primitives"]]
+        )
+        outer = shade[np.unique(ConvexHull(points).vertices)].mean()
+        assert outer > 0.9 and outer > shade.mean() + 0.15, (name, level, round(outer, 3), round(shade.mean(), 3))
 
 
 @pytest.mark.parametrize("name", sorted(CRAFTS))

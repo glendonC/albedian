@@ -57,6 +57,18 @@ CHANGES = {
         "colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures "
         "re-encoded as WebP."
     ),
+    # the same with the sky fill's occlusion per vertex (recipe "changes": "photo_ao", craft-ao-one: New Horizons)
+    "lod0_photo_ao": (
+        "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the "
+        "craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture "
+        "kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, "
+        "metalness, roughness and surface relief added from the texture's own colours and shading, flat paint "
+        "colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures "
+        "re-encoded as WebP. "
+        "The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex "
+        "moved and no colour changed."
+    ),
     # lod0 for a model of flat colours whose materials NASA names by what they are (recipe "changes": "named")
     "lod0_named": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
@@ -266,7 +278,10 @@ CHANGES = {
         "skeleton of 12 bones added beside the mesh with each of the model's separate parts hanging whole on one "
         "bone, nothing bent or reshaped, and three poses for the app to blend, hovering, cruising and braking, that "
         "keep NASA's stance at the limbs: its parts are separate hard segments, which would part at any joint a pose "
-        "bent; at rest no vertex moves."
+        "bent; at rest no vertex moves. "
+        "The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex "
+        "moved and no colour changed."
     ),
     # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit": the EMU)
     "lod0_suit": (
@@ -283,7 +298,10 @@ CHANGES = {
         "past each joint so it bends at hips, knees and elbows; three poses of the limbs for the app to blend, "
         "hovering as NASA filmed a free flight with knees a little bent and forearms forward, cruising with forearms "
         "down along the body and legs straight, and braking with knees up and forearms raised forward, the upper arms "
-        "kept where NASA modelled them; at rest no vertex moves."
+        "kept where NASA modelled them; at rest no vertex moves. "
+        "The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex "
+        "moved and no colour changed."
     ),
     # lod0 for photo texture, gold and silver foils, solar wings and three baked parts ("changes": "clementine")
     "lod0_clementine": (
@@ -338,6 +356,21 @@ CHANGES = {
     "lod2": (
         "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept "
         "is listed with the craft's facts), and textures at most 512 pixels on a side."
+    ),
+    # lod1 and lod2 of a craft given the sky fill's occlusion per vertex ("vertex_ao", craft-ao-one)
+    "lod1_ao": (
+        "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
+        "with the craft's facts), and textures at most 1024 pixels on a side. "
+        "The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex "
+        "moved and no colour changed."
+    ),
+    "lod2_ao": (
+        "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept "
+        "is listed with the craft's facts), and textures at most 512 pixels on a side. "
+        "The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex "
+        "moved and no colour changed."
     ),
     # lod1 and lod2 of a craft decimated part by part ("decimate_by_part")
     "lod1_by_part": (
@@ -1236,6 +1269,49 @@ def pose_suit(arm: bpy.types.Object, poses: dict) -> list[str]:
     return made
 
 
+def vertex_ao(obj: bpy.types.Object, spec: dict) -> float:
+    """Ambient occlusion of the sky's fill at each vertex of one level (craft-ao-one; per vertex for every model: Cycles'
+    occlusion bake into a texture came out mottled on the suits, its rays shut by the near-touching layers NASA's files
+    keep, and on the Z-2 an image costs as much as the vertices): from each vertex, `rays` fixed directions spread over the half sphere about its normal (more
+    near the normal, as diffuse light weighs them), each blocked or open within `distance_m`; hits nearer than `skip_m`
+    are not counted, so the near-touching layers NASA's files keep (fabric over liner) do not shadow each other, and the
+    side of the surface with more open sky is kept, as NASA's files turn some faces inward. Stored as the vertex
+    attribute `_ao` (1 open, 0 shut), which the glTF exporter writes as `_AO`; three does not read it as a colour, so
+    the app applies it to the fill alone. No vertex moves and no colour changes. Returns the mean."""
+    from mathutils.bvhtree import BVHTree
+
+    me = obj.data
+    tree = BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
+    k = spec["rays"]
+    golden = math.pi * (3.0 - math.sqrt(5.0))
+    local = []
+    for i in range(k):
+        r = math.sqrt((i + 0.5) / k)  # cosine weighted: uniform on the disc, lifted to the half sphere
+        a = i * golden
+        local.append((r * math.cos(a), r * math.sin(a), math.sqrt(max(0.0, 1.0 - r * r))))
+    reach, skip = spec["distance_m"], spec["skip_m"]
+    shade = []
+    for v in me.vertices:
+        n = v.normal.normalized()
+        t = n.orthogonal().normalized()
+        u = n.cross(t)
+        best = 0.0
+        for side in (1.0, -1.0):
+            nn = n * side
+            free = 0
+            for x, y, z in local:
+                d = t * x + u * (y * side) + nn * z
+                hit = tree.ray_cast(v.co + d * skip, d, reach - skip)
+                free += hit[0] is None
+            best = max(best, free / k)
+        shade.append(best)
+    attr = me.attributes.new("_ao", "FLOAT", "POINT")
+    attr.data.foreach_set("value", shade)
+    mean = float(np.mean(shade))
+    print(f"HANGAR ao {obj.name}: per vertex, {len(shade)} vertices, {k} rays, mean openness {mean:.3f}")
+    return mean
+
+
 def export_level(obj: bpy.types.Object, level: str, path: Path, arm: bpy.types.Object | None = None) -> None:
     rigged = {}
     if arm is not None:
@@ -1244,6 +1320,8 @@ def export_level(obj: bpy.types.Object, level: str, path: Path, arm: bpy.types.O
         mod = obj.modifiers.new("rig", "ARMATURE")
         mod.object = arm
         rigged = {"export_skins": True, "export_animations": True, "export_animation_mode": "NLA_TRACKS"}
+    if obj.data.attributes.get("_ao") is not None:
+        rigged["export_attributes"] = True
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     if arm is not None:
@@ -1572,6 +1650,8 @@ def main() -> None:
         if recipe.get("level_normals"):
             remake_normals(obj, recipe["level_normals"]["smooth_deg"], recipe["level_normals"].get("weighted", False))
             print(f"HANGAR {args.craft} {level} normals made again: {recipe['level_normals']}")
+        if recipe.get("vertex_ao"):
+            vertex_ao(obj, recipe["vertex_ao"])
         export_level(obj, level, out / f"{args.craft}_{level}.glb", arm)
         tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
         print(f"HANGAR {args.craft} {level} triangles {tris} of {tris0}")

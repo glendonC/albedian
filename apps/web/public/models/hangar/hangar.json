@@ -191,24 +191,27 @@
       "files": {
         "lod0": {
           "path": "emu/emu_lod0.glb",
-          "bytes": 3941296,
+          "bytes": 4197792,
           "triangles": 95516,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4253448,
+          "occlusionBytes": 253448
         },
         "lod1": {
           "path": "emu/emu_lod1.glb",
-          "bytes": 1467752,
+          "bytes": 1564396,
           "triangles": 29564,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1593752,
+          "occlusionBytes": 93752
         },
         "lod2": {
           "path": "emu/emu_lod2.glb",
-          "bytes": 585572,
+          "bytes": 624952,
           "triangles": 7492,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 636524,
+          "occlusionBytes": 36524
         },
         "picker": {
           "path": "emu/emu_picker.webp",
@@ -247,24 +250,27 @@
       "files": {
         "lod0": {
           "path": "newhorizons/newhorizons_lod0.glb",
-          "bytes": 776948,
+          "bytes": 808920,
           "triangles": 8268,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4031260,
+          "occlusionBytes": 31260
         },
         "lod1": {
           "path": "newhorizons/newhorizons_lod1.glb",
-          "bytes": 660744,
+          "bytes": 681288,
           "triangles": 4134,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1519836,
+          "occlusionBytes": 19836
         },
         "lod2": {
           "path": "newhorizons/newhorizons_lod2.glb",
-          "bytes": 222416,
+          "bytes": 231276,
           "triangles": 1488,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 608156,
+          "occlusionBytes": 8156
         },
         "picker": {
           "path": "newhorizons/newhorizons_picker.webp",
@@ -304,24 +310,27 @@
       "files": {
         "lod0": {
           "path": "z2/z2_lod0.glb",
-          "bytes": 3762560,
+          "bytes": 3962744,
           "triangles": 30244,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4200036,
+          "occlusionBytes": 200036
         },
         "lod1": {
           "path": "z2/z2_lod1.glb",
-          "bytes": 1386124,
+          "bytes": 1467856,
           "triangles": 10887,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1581580,
+          "occlusionBytes": 81580
         },
         "lod2": {
           "path": "z2/z2_lod2.glb",
-          "bytes": 510068,
+          "bytes": 539920,
           "triangles": 3629,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 629704,
+          "occlusionBytes": 29704
         },
         "picker": {
           "path": "z2/z2_picker.webp",
