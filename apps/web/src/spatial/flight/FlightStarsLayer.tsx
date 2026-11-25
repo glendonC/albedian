@@ -21,8 +21,9 @@ import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomCone
 import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
 import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steering.js';
 import { ALIVE_AT_REST, aliveAsk, aliveFrame, capLead, maxLeadRad, stepAlive, type AliveSignals } from './craftAlive.js';
+import { READOUT_EVERY_MS, nearStarOf, nearStarStep, readoutDistance, startHandover, stepHandover, type NearStar } from './nearStar.js';
 import { threeFigures } from '../../reveal/flightView.js';
-import { changeSpeed, followRows, steerCamera, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
+import { changeSpeed, followRows, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
 
 /**
@@ -408,6 +409,9 @@ export const FlightStarsLayer: React.FC<{
   // craft-alive-one: the hands' smoothed signals while steering (craftAlive.ts), at rest otherwise
   const alive = useRef<AliveSignals>(ALIVE_AT_REST);
   const toldKey = useRef('');
+  // near-star-flight-one: the loop's own clock, and when the page was last told of the readout's numbers
+  const loopNow = useRef(0);
+  const toldAt = useRef(0);
   const [craftSeen, setCraftSeen] = useState(Boolean(craft));
   useEffect(() => {
     if (craft) setCraftSeen(true);
@@ -415,6 +419,9 @@ export const FlightStarsLayer: React.FC<{
   const reducedRef = useRef(session.reducedMotion === true);
   reducedRef.current = session.reducedMotion === true;
   const hands = useRef(new SteerHands(() => reducedRef.current));
+  // near-star-flight-one: the speed W and S set, which the star's distance paces
+  const setSpeed = useRef(STEER_START_SPEED_PC_S);
+  const pacedStar = useRef<NearStar | null>(null);
   const flying = steering && !cone && camera !== null;
   useEffect(() => {
     if (!flying || !cameraRef.current) {
@@ -423,26 +430,39 @@ export const FlightStarsLayer: React.FC<{
     }
     hands.current = new SteerHands(() => reducedRef.current);
     alive.current = ALIVE_AT_REST;
+    setSpeed.current = STEER_START_SPEED_PC_S;
     const start = steerStartOf(cameraRef.current);
     const first: SteerNow = { ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows };
     steerNow.current = first;
     toldKey.current = '';
     setSteer(first);
+    // near-star-flight-one (DECIDED-BY-LEAD 25 Nov 07:28): the hand-over heads at the star flown to (nearStar.ts)
+    // The star is chosen once, at the hand-over: its own catalog row (found during the flight there), else the place
+    // flown to; the aim, the pacing and the readout all go by it, so the flight never aims at one and is paced by another
+    pacedStar.current = nearStarOf(arrivalRef.current, cameraRef.current.referencePc);
+    let handover = startHandover(start, pacedStar.current);
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;
+      loopNow.current = now;
       const hand = hands.current.frame(dt);
       const { input, speedDirection } = hand;
       const prev = steerNow.current;
       if (prev) {
-        const next = steerCamera(prev, input, dt);
+        // The hands set a speed; the flight is paced by its distance to the star and kept outside the star's floor
+        setSpeed.current = changeSpeed(setSpeed.current, speedDirection, dt);
+        let rows = prev.rows;
+        if (handover && pacedStar.current) ({ rows, handover } = stepHandover(handover, { positionPc: prev.positionPc, rows }, pacedStar.current, dt, reducedRef.current));
+        const star = pacedStar.current;
+        const next = nearStarStep({ positionPc: prev.positionPc, rows }, setSpeed.current, input, dt, star);
+        layerEl.current?.setAttribute('data-near', `${next.distancePc.toExponential(9)} ${next.floorPc.toExponential(9)} ${next.pacedPcPerS.toExponential(9)} ${setSpeed.current.toExponential(9)}`);
         // craft-alive-shoulder-one (06:55): the craft's lead from its framing point held within a quarter of the width
         const cam = cameraRef.current;
         const pxPerRad = cam ? Math.hypot(cam.storedToScreen[0], cam.storedToScreen[3]) / ((cam.wcs.scaleDegPerPx * Math.PI) / 180) : Infinity;
         const chase = capLead(followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
-        const moved: SteerNow = { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase };
+        const moved: SteerNow = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase };
         alive.current = stepAlive(alive.current, aliveAsk(hand, moved.speedPcPerS, reducedRef.current), dt);
         steerNow.current = moved;
         frameDraw.current?.(moved);
@@ -480,15 +500,25 @@ export const FlightStarsLayer: React.FC<{
       toldSteer.current?.(null);
       return;
     }
-    const ref = cameraRef.current?.referencePc ?? [0, 0, 0];
+    // near-star-flight-one: the distance to the star as the flight draws it (its own catalog row), the one it is paced by
+    const reference = cameraRef.current?.referencePc ?? [0, 0, 0];
+    const ref = pacedStar.current?.positionPc ?? reference;
     const report = {
       fromEarthPc: Math.hypot(s.positionPc[0], s.positionPc[1], s.positionPc[2]),
       toStarPc: Math.hypot(s.positionPc[0] - ref[0], s.positionPc[1] - ref[1], s.positionPc[2] - ref[2]),
       speedPcPerS: s.speedPcPerS,
     };
-    const key = `${threeFigures(report.toStarPc * LY_PER_PC)}|${threeFigures(report.fromEarthPc * LY_PER_PC)}|${steeringSpeedLine(report.speedPcPerS)}`;
+    const shown = (pc: number) => {
+      const r = readoutDistance(pc * LY_PER_PC);
+      return `${threeFigures(r.value)} ${r.unit}`;
+    };
+    const key = `${shown(report.toStarPc)}|${shown(report.fromEarthPc)}|${steeringSpeedLine(report.speedPcPerS)}`;
     if (key === toldKey.current) return;
+    // near-star-flight-one: near the star the paced speed and the distance change in every frame; the page hears of
+    // them at most every READOUT_EVERY_MS of the loop's own clock, the latest numbers always told on the next frame after
+    if (toldKey.current !== '' && loopNow.current - toldAt.current < READOUT_EVERY_MS) return;
     toldKey.current = key;
+    toldAt.current = loopNow.current;
     toldSteer.current?.(report);
   };
   useEffect(() => {

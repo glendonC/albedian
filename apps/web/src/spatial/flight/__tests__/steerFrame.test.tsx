@@ -3,7 +3,7 @@ import { Profiler, act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { changeSpeed, followRows, raDecToUnitVector, steerCamera } from '@albedian/camera-rig';
+import { changeSpeed, followRows, raDecToUnitVector } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
@@ -12,6 +12,7 @@ import { flightCameraOf } from '../flightFrame.js';
 import { ALIVE_AT_REST, aliveAsk, rolledRows, stepAlive } from '../craftAlive.js';
 import { starViewOfSteer, steerStartOf } from '../starView.js';
 import { arrivalShiftOf, arrivedFlightCamera } from '../arrival.js';
+import { nearStarOf, nearStarStep, startHandover, stepHandover } from '../nearStar.js';
 import { RING_RADIUS_PX, flightRings } from '../flightRings.js';
 import { STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
 
@@ -108,6 +109,11 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
     const camera = flightCameraOf(session, 1440, 900)!;
     const start = steerStartOf(camera);
     let want = { ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows };
+    // near-star-flight-one: the hand-over heads at the star and the flight is paced by it, chosen when steering starts
+    // (its row not yet found here, so the place flown to)
+    let handover = startHandover(start, nearStarOf(null, camera.referencePc));
+    const paceStar = nearStarOf(null, camera.referencePc);
+    let setPc = STEER_START_SPEED_PC_S;
     // craft-alive-one: the hands' smoothed signals, which roll the drawn camera with a share of the bank
     let alive = ALIVE_AT_REST;
     const hands = new SteerHands(() => false);
@@ -126,8 +132,11 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
       const dt = 1 / 60;
       const hand = hands.frame(dt);
       const { input, speedDirection } = hand;
-      const next = steerCamera(want, input, dt);
-      want = { ...next, speedPcPerS: changeSpeed(want.speedPcPerS, speedDirection, dt), chase: followRows(want.chase, next.rows, dt, { reduced: false }) };
+      setPc = changeSpeed(setPc, speedDirection, dt);
+      let rows = want.rows;
+      if (handover && paceStar) ({ rows, handover } = stepHandover(handover, { positionPc: want.positionPc, rows }, paceStar, dt, false));
+      const next = nearStarStep({ positionPc: want.positionPc, rows }, setPc, input, dt, paceStar);
+      want = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase: followRows(want.chase, next.rows, dt, { reduced: false }) };
       alive = stepAlive(alive, aliveAsk(hand, want.speedPcPerS, false), dt);
     }
     clock.mockRestore();

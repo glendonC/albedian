@@ -34,6 +34,7 @@ import { noDistanceSentence } from '../spatial/flight/flightRings.js';
 import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
+import { readoutDistance } from '../spatial/flight/nearStar.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
@@ -1481,9 +1482,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <div className="flight-readout__stats">
                 {shownFlight.toStarLy !== null && (
                   <div className="flight-readout__stat">
+                    {/* near-star-flight-one: astronomical units below a tenth of a light year (nearStar.ts readoutDistance) */}
                     <b>
-                      {threeFigures(shownFlight.toStarLy)}
-                      <small>ly</small>
+                      {threeFigures(readoutDistance(shownFlight.toStarLy).value)}
+                      <small>{readoutDistance(shownFlight.toStarLy).unit}</small>
                     </b>
                     <span>{`to ${shownFlight.name}`}</span>
                   </div>
