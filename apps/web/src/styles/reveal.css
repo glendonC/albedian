@@ -3040,6 +3040,24 @@
     right: max(20px, env(safe-area-inset-right));
   }
 
+  /* Item 4: the counts at the leading foot, Ask out loud at the trailing foot; item 6: Back to Moment centred at the
+     foot; all inside the safe areas */
+  .reveal-phone-counts__big,
+  .reveal-phone-counts__more {
+    left: max(24px, env(safe-area-inset-left));
+  }
+
+  .ask-bar.is-phone {
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .ask-bar.is-phone:not(:has(> .look-main)) {
+    left: auto;
+    right: max(20px, env(safe-area-inset-right));
+    transform: none;
+  }
+
   .reveal-card.is-phone .reveal-card__acts {
     position: sticky;
     bottom: 0;

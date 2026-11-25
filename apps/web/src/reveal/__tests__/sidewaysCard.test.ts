@@ -33,6 +33,18 @@ describe('the top bar on a phone held on its side', () => {
   });
 });
 
+describe('the foot row on a phone held on its side', () => {
+  // Item 4: the counts with their tags at the leading foot, stacked (the record's fallback where they and Ask out loud
+  // do not share a row), Ask out loud at the trailing foot; item 6: Back to Moment centred at the foot; every pinned
+  // control inside the safe areas (62 px at each side and 20 at the foot on the 17 Pro)
+  it('stands the counts at the leading side and Ask out loud at the trailing foot, Back to Moment centred', () => {
+    expect(inSideways('.reveal-phone-counts__big')).toEqual({ left: 'max(24px, env(safe-area-inset-left))' });
+    expect(inSideways('.reveal-phone-counts__more')).toEqual({ left: 'max(24px, env(safe-area-inset-left))' });
+    expect(inSideways('.ask-bar.is-phone')).toEqual({ top: 'auto', bottom: 'max(12px, env(safe-area-inset-bottom))' });
+    expect(inSideways('.ask-bar.is-phone:not(:has(> .look-main))')).toEqual({ left: 'auto', right: 'max(20px, env(safe-area-inset-right))', transform: 'none' });
+  });
+});
+
 describe('the star card on a phone held on its side', () => {
   it('is a sheet on the bottom edge, centred, 390 wide, as tall as its content up to the window less 64 px', () => {
     expect(inSideways('.reveal-card.is-phone')).toEqual({
