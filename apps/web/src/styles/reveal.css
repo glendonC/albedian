@@ -1062,8 +1062,19 @@
   transition: opacity var(--look-mo-dur-view) var(--look-mo-ease-std);
 }
 
-.real-sky.is-there .real-sky__canvas,
 .real-sky__glow {
+  opacity: 0;
+}
+
+/* realsky-upload-one (DECIDED-BY-LEAD 19:45): no painted frame of Go there without a sky: the photograph stays at full
+   under the glow until the glow has drawn and come in over it, then gives way; where the glow fails it gives way at
+   once, as ruled */
+.real-sky.is-there.is-glow-drawn .real-sky__canvas {
+  opacity: 0;
+  transition-delay: var(--look-mo-dur-view);
+}
+
+.real-sky.is-there.is-glow-failed .real-sky__canvas {
   opacity: 0;
 }
 

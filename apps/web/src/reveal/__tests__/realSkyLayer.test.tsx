@@ -143,6 +143,7 @@ describe('RealSkyLayer in flight: the glow fills the planets', () => {
           if (p === 'shaderSource') return (_s: unknown, src: string) => compiled.set(canvas, [...(compiled.get(canvas) ?? []), src]);
           if (p === 'getShaderParameter' || p === 'getProgramParameter') return () => true;
           if (p === 'getError' || p === 'NO_ERROR') return p === 'NO_ERROR' ? 0 : () => 0;
+          if (p === 'isContextLost') return () => false;
           if (typeof p === 'string' && /^[A-Z_0-9]+$/.test(p)) return 1;
           return () => ({});
         },
@@ -176,6 +177,7 @@ describe('RealSkyLayer in flight: the glow fills the planets', () => {
           if (p === 'uniform2f') return (_l: unknown, x: number, y: number) => views.set(canvas, [...(views.get(canvas) ?? []), [x, y]]);
           if (p === 'getShaderParameter' || p === 'getProgramParameter') return () => true;
           if (p === 'getError' || p === 'NO_ERROR') return p === 'NO_ERROR' ? 0 : () => 0;
+          if (p === 'isContextLost') return () => false;
           if (typeof p === 'string' && /^[A-Z_0-9]+$/.test(p)) return 1;
           return () => ({});
         },
@@ -220,6 +222,7 @@ describe('RealSkyLayer in flight: says whether the glow drew', () => {
         get: (_t, p) => {
           if (p === 'getShaderParameter' || p === 'getProgramParameter') return () => true;
           if (p === 'getError' || p === 'NO_ERROR') return p === 'NO_ERROR' ? 0 : () => 0;
+          if (p === 'isContextLost') return () => false;
           if (typeof p === 'string' && /^[A-Z_0-9]+$/.test(p)) return 1;
           return () => ({});
         },
@@ -290,7 +293,10 @@ describe('the flight\'s Milky Way at its own level', () => {
       return css.slice(at, css.indexOf('}', at));
     };
     expect(rule('.real-sky.is-there .real-sky__glow.is-drawn')).toMatch(/opacity:\s*1;/);
-    expect(css).toMatch(/\.real-sky\.is-there \.real-sky__canvas,\s*\.real-sky__glow\s*\{[^}]*opacity:\s*0;/);
+    expect(css).toMatch(/\n\.real-sky__glow\s*\{\s*opacity:\s*0;\s*\}/);
+    // realsky-upload-one (19:45): the photograph gives way once the glow has drawn and come in over it, or at once if it fails
+    expect(rule('.real-sky.is-there.is-glow-drawn .real-sky__canvas')).toMatch(/opacity:\s*0;\s*transition-delay:\s*var\(--look-mo-dur-view\);/);
+    expect(rule('.real-sky.is-there.is-glow-failed .real-sky__canvas')).toMatch(/opacity:\s*0;/);
     expect(css).not.toMatch(/\.real-sky\.is-there\.is-shown\s*\{[^}]*opacity:\s*0\.3/);
   });
 });

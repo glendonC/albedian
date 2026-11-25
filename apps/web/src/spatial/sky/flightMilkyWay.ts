@@ -229,17 +229,10 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string): WebG
 
 /** The dome's program and textures in a flight context; none where the browser refuses a step. */
 export function createFlightDome(gl: WebGL2RenderingContext, glowImage: TexImageSource, registration: PanoramaRegistration): FlightDomeGpu | null {
-  const vs = compile(gl, gl.VERTEX_SHADER, FLIGHT_DOME_VERTEX);
-  const fs = compile(gl, gl.FRAGMENT_SHADER, FLIGHT_DOME_FRAGMENT);
-  const program = gl.createProgram();
-  const vao = gl.createVertexArray();
   const glow = gl.createTexture();
-  const offsets = gl.createTexture();
-  if (!vs || !fs || !program || !vao || !glow || !offsets) return null;
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+  if (!glow) return null;
+  const dome = createFlightDomeOn(gl, glow, registration);
+  if (!dome) return null;
   gl.bindTexture(gl.TEXTURE_2D, glow);
   // Row 0 of the image is the top, at v = 1, as Real sky uploads it
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -250,6 +243,24 @@ export function createFlightDome(gl: WebGL2RenderingContext, glowImage: TexImage
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  return dome;
+}
+
+/**
+ * realsky-upload-one: the dome's program, vertex array and offset table over a glow texture already up in this context
+ * (the page's kept glow, skyPicture.ts); none where the browser refuses a step.
+ */
+export function createFlightDomeOn(gl: WebGL2RenderingContext, glow: WebGLTexture, registration: PanoramaRegistration): FlightDomeGpu | null {
+  const vs = compile(gl, gl.VERTEX_SHADER, FLIGHT_DOME_VERTEX);
+  const fs = compile(gl, gl.FRAGMENT_SHADER, FLIGHT_DOME_FRAGMENT);
+  const program = gl.createProgram();
+  const vao = gl.createVertexArray();
+  const offsets = gl.createTexture();
+  if (!vs || !fs || !program || !vao || !offsets) return null;
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
   const t = registration.offsetTable;
   gl.bindTexture(gl.TEXTURE_2D, offsets);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);

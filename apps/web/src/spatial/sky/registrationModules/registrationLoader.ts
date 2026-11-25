@@ -73,3 +73,32 @@ export async function loadPanoramaRegistration(
   if (!response.ok) throw new Error(`sky panorama registration: HTTP ${response.status}`);
   return parsePanoramaRegistration(await response.json());
 }
+
+let registrationAsked: Promise<PanoramaRegistration> | null = null;
+let registrationHeld: PanoramaRegistration | null = null;
+
+/**
+ * realsky-upload-one: the registration read once a page and kept, so a draw in the frame that asks for it can use it
+ * (`heldPanoramaRegistration`); a failed read is asked again next time.
+ */
+export function panoramaRegistrationOnce(): Promise<PanoramaRegistration> {
+  registrationAsked ??= loadPanoramaRegistration().then(
+    (registration) => (registrationHeld = registration),
+    (error: unknown) => {
+      registrationAsked = null;
+      throw error;
+    }
+  );
+  return registrationAsked;
+}
+
+/** The registration if it has been read this page, now; null before. */
+export function heldPanoramaRegistration(): PanoramaRegistration | null {
+  return registrationHeld;
+}
+
+/** Tests only: read it again. */
+export function forgetPanoramaRegistration(): void {
+  registrationAsked = null;
+  registrationHeld = null;
+}

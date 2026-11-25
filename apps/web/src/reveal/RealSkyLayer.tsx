@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hasVerifiedWcs, type ObservationSession } from '@albedian/contracts';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { PHONE_SLOT } from './phoneSlot.js';
-import { loadPanoramaRegistration, type PanoramaRegistration } from '../spatial/sky/skyRegistration.js';
+import { heldPanoramaRegistration, panoramaRegistrationOnce } from '../spatial/sky/skyRegistration.js';
 import { realSkyGrid } from './realSkyGrid.js';
-import { FLIGHT_GLOW_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../spatial/sky/flightMilkyWay.js';
+import { keptSkyPicture, keptSkyPictureNow, prepareSkyPicture, skyProgram, warmPrograms } from '../spatial/sky/skyPicture.js';
+import { FLIGHT_DOME_FRAGMENT, FLIGHT_DOME_VERTEX, FLIGHT_GLOW_FRAGMENT, FLIGHT_MILKY_WAY_URL } from '../spatial/sky/flightMilkyWay.js';
 
 /** ESO's Milky Way panorama (eso0932a) as the app serves it, byte for byte as ESO's large file (textures/PROVENANCE.json). */
 export const REAL_SKY_PANORAMA_URL = '/textures/eso_milkyway_panorama.jpg';
@@ -117,15 +118,6 @@ void main() {
 
 type LayerState = 'loading' | 'drawn' | 'failed';
 
-function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
-  const shader = gl.createShader(type);
-  if (!shader) return null;
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
-}
-
-/** Draws the panorama through the grid into the canvas; false when the browser refuses any step. */
 /**
  * arrival-star-1: the window area the panorama covers while the flight brings the star flown to to its resting place
  * (look gap two): the window and the strip the whole move uncovers; the window alone with no move.
@@ -137,18 +129,15 @@ export function realSkyArea(viewW: number, viewH: number, fullShiftPx: readonly 
   return { x0, y0, widthPx: Math.max(viewW, viewW - dx) - x0, heightPx: Math.max(viewH, viewH - dy) - y0 };
 }
 
-function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: ObservationSession, registration: PanoramaRegistration, viewW: number, viewH: number, area = realSkyArea(viewW, viewH, null), fragment: string = FRAGMENT): boolean {
-  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
-  const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
-  if (!grid || !gl) return false;
-  const vs = compile(gl, gl.VERTEX_SHADER, VERTEX);
-  const fs = compile(gl, gl.FRAGMENT_SHADER, fragment);
-  const program = gl.createProgram();
-  if (!vs || !fs || !program) return false;
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return false;
+type RealSkyArea = ReturnType<typeof realSkyArea>;
+
+/**
+ * Draws the panorama's texture through the grid at `widthPx` by `heightPx` device pixels; false when the browser refuses
+ * the program or has lost the context. Nothing here waits for the GPU (realsky-upload-one: no getError on the frame).
+ */
+function drawGrid(gl: WebGL2RenderingContext, texture: WebGLTexture, grid: NonNullable<ReturnType<typeof realSkyGrid>>, area: RealSkyArea, widthPx: number, heightPx: number, fragment: string): boolean {
+  const program = skyProgram(gl, VERTEX, fragment);
+  if (!program) return false;
   gl.useProgram(program);
 
   // Two triangles per cell
@@ -164,8 +153,10 @@ function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: Obser
       n += 6;
     }
   }
+  const buffers: WebGLBuffer[] = [];
   const bind = (name: string, data: Float32Array) => {
     const buffer = gl.createBuffer();
+    if (buffer) buffers.push(buffer);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
     const at = gl.getAttribLocation(program, name);
@@ -175,10 +166,41 @@ function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: Obser
   bind('aPos', grid.positions);
   bind('aUv', grid.uvs);
   const elements = gl.createBuffer();
+  if (elements) buffers.push(elements);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elements);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.viewport(0, 0, widthPx, heightPx);
+  gl.uniform2f(gl.getUniformLocation(program, 'uView'), area.widthPx, area.heightPx);
+  gl.uniform2f(gl.getUniformLocation(program, 'uOrigin'), area.x0, area.y0);
+  gl.uniform1i(gl.getUniformLocation(program, 'uPanorama'), 0);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
+  // The draw keeps what it needs until the GPU is done with it; the kept context gathers no buffers across draws
+  for (const buffer of buffers) gl.deleteBuffer(buffer);
+  return !gl.isContextLost();
+}
+
+/** Where sky pictures cannot be kept: the image element uploaded whole into the canvas's own context, as before. */
+function loadImage(url: string): Promise<HTMLImageElement> {
+  const image = new Image();
+  image.decoding = 'async';
+  const loaded = new Promise<HTMLImageElement>((resolve, reject) => {
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('panorama'));
+  });
+  image.src = url;
+  return loaded;
+}
+
+function drawOwn(canvas: HTMLCanvasElement, image: HTMLImageElement, grid: NonNullable<ReturnType<typeof realSkyGrid>>, area: RealSkyArea, fragment: string): boolean {
+  const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
+  if (!gl) return false;
   const texture = gl.createTexture();
+  if (!texture) return false;
   gl.bindTexture(gl.TEXTURE_2D, texture);
   // Row 0 of the image is the top, at v = 1
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -189,15 +211,58 @@ function draw(canvas: HTMLCanvasElement, image: HTMLImageElement, session: Obser
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  return drawGrid(gl, texture, grid, area, canvas.width, canvas.height, fragment);
+}
 
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.uniform2f(gl.getUniformLocation(program, 'uView'), area.widthPx, area.heightPx);
-  gl.uniform2f(gl.getUniformLocation(program, 'uOrigin'), area.x0, area.y0);
-  gl.uniform1i(gl.getUniformLocation(program, 'uPanorama'), 0);
-  gl.clearColor(0, 0, 0, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
-  return gl.getError() === gl.NO_ERROR;
+/**
+ * DECIDED-BY-LEAD 19:45 (no painted frame of Go there or Back to Moment without a sky): a change that resizes the
+ * canvas clears it, so where the picture is already up the layer draws again at once, before the browser paints; null
+ * when it is not (the draw then waits for the picture, as before).
+ */
+function paintNow(canvas: HTMLCanvasElement, url: string, session: ObservationSession, viewW: number, viewH: number, area: RealSkyArea, fragment: string = FRAGMENT): boolean | null {
+  const picture = keptSkyPictureNow(url);
+  const registration = heldPanoramaRegistration();
+  if (!picture || !registration) return null;
+  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
+  if (!grid) return false;
+  return picture.paint(canvas, (gl, texture) => drawGrid(gl, texture, grid, area, canvas.width, canvas.height, fragment));
+}
+
+/**
+ * Draws `url`'s picture through the photo's solve into the canvas: from the page's kept context where this browser keeps
+ * sky pictures (realsky-upload-one), otherwise from an image element in the canvas's own context. Resolves false when
+ * the browser refuses a step, and undefined when the layer stopped wanting the draw first.
+ */
+async function drawRealSky(canvas: HTMLCanvasElement, url: string, session: ObservationSession, viewW: number, viewH: number, area: RealSkyArea, wanted: () => boolean, fragment: string = FRAGMENT): Promise<boolean | undefined> {
+  const [registration, picture] = await Promise.all([panoramaRegistrationOnce(), keptSkyPicture(url)]);
+  const grid = realSkyGrid(session, viewW, viewH, registration, REAL_SKY_STEP_PX, area);
+  if (!wanted()) return undefined;
+  if (!grid) return false;
+  if (picture) return picture.paint(canvas, (gl, texture) => drawGrid(gl, texture, grid, area, canvas.width, canvas.height, fragment));
+  const image = await loadImage(url);
+  if (!wanted()) return undefined;
+  return drawOwn(canvas, image, grid, area, fragment);
+}
+
+let realSkyWarmed = false;
+
+/**
+ * realsky-upload-one: starts the uploads of the photograph and of the flight's starless glow while the reveal is at rest,
+ * before Real sky or Go there asks for them.
+ */
+export function prepareRealSky(): void {
+  // The registration too where the pictures are kept, so a draw can use both in the frame that asks
+  void keptSkyPicture(REAL_SKY_PANORAMA_URL)
+    .then((picture) => (picture ? panoramaRegistrationOnce() : undefined))
+    .catch(() => undefined);
+  prepareSkyPicture(FLIGHT_MILKY_WAY_URL);
+  // Their programs, and the steering dome's over the same glow, linked once a page at rest too, so no first draw links
+  if (realSkyWarmed) return;
+  realSkyWarmed = warmPrograms([
+    [VERTEX, FRAGMENT],
+    [VERTEX, FLIGHT_GLOW_FRAGMENT],
+    [FLIGHT_DOME_VERTEX, FLIGHT_DOME_FRAGMENT],
+  ]);
 }
 
 /**
@@ -251,19 +316,19 @@ export const RealSkyLayer: React.FC<{
   }, [glowState]);
   useEffect(() => () => toldGlow.current?.(false), []);
 
-  useEffect(() => {
+  // A layout effect: a new size clears the canvas in this commit, so it is drawn again before the browser paints
+  useLayoutEffect(() => {
+    const target = canvas.current;
+    if (!target) return undefined;
+    const now = paintNow(target, REAL_SKY_PANORAMA_URL, session, viewportWidthPx, viewportHeightPx, area);
+    if (now !== null) {
+      setState(now ? 'drawn' : 'failed');
+      return undefined;
+    }
     let current = true;
-    const image = new Image();
-    image.decoding = 'async';
-    const loaded = new Promise<HTMLImageElement>((resolve, reject) => {
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('panorama'));
-    });
-    image.src = REAL_SKY_PANORAMA_URL;
-    void Promise.all([loaded, loadPanoramaRegistration()])
-      .then(([img, registration]) => {
-        if (!current || !canvas.current) return;
-        setState(draw(canvas.current, img, session, registration, viewportWidthPx, viewportHeightPx, area) ? 'drawn' : 'failed');
+    void drawRealSky(target, REAL_SKY_PANORAMA_URL, session, viewportWidthPx, viewportHeightPx, area, () => current && canvas.current === target)
+      .then((drawn) => {
+        if (drawn !== undefined) setState(drawn ? 'drawn' : 'failed');
       })
       .catch(() => {
         if (current) setState('failed');
@@ -273,21 +338,20 @@ export const RealSkyLayer: React.FC<{
     };
   }, [session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx, area.x0, area.y0, area.widthPx, area.heightPx]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!glowWanted) return undefined;
+    const target = glowCanvas.current;
+    if (!target) return undefined;
+    const now = paintNow(target, FLIGHT_MILKY_WAY_URL, session, viewportWidthPx, viewportHeightPx, area, FLIGHT_GLOW_FRAGMENT);
+    if (now !== null) {
+      setGlowState(now ? 'drawn' : 'failed');
+      return undefined;
+    }
     let current = true;
     setGlowState('loading');
-    const image = new Image();
-    image.decoding = 'async';
-    const loaded = new Promise<HTMLImageElement>((resolve, reject) => {
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('glow'));
-    });
-    image.src = FLIGHT_MILKY_WAY_URL;
-    void Promise.all([loaded, loadPanoramaRegistration()])
-      .then(([img, registration]) => {
-        if (!current || !glowCanvas.current) return;
-        setGlowState(draw(glowCanvas.current, img, session, registration, viewportWidthPx, viewportHeightPx, area, FLIGHT_GLOW_FRAGMENT) ? 'drawn' : 'failed');
+    void drawRealSky(target, FLIGHT_MILKY_WAY_URL, session, viewportWidthPx, viewportHeightPx, area, () => current && glowCanvas.current === target, FLIGHT_GLOW_FRAGMENT)
+      .then((drawn) => {
+        if (drawn !== undefined) setGlowState(drawn ? 'drawn' : 'failed');
       })
       .catch(() => {
         if (current) setGlowState('failed');
@@ -298,7 +362,7 @@ export const RealSkyLayer: React.FC<{
   }, [glowWanted, session.observationSolution, session.sourceAsset, session.cropTransform, viewportWidthPx, viewportHeightPx, area.x0, area.y0, area.widthPx, area.heightPx]);
 
   return (
-    <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
+    <div className={`real-sky${state === 'drawn' && !leaving ? ' is-shown' : ''}${there ? ' is-there' : ''}${glowState === 'drawn' ? ' is-glow-drawn' : glowState === 'failed' ? ' is-glow-failed' : ''}`} data-testid="real-sky" data-state={state} aria-hidden="true">
       <canvas
         ref={canvas}
         className="real-sky__canvas"

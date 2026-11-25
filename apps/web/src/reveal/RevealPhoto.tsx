@@ -19,9 +19,10 @@ import { PhotoCorners } from './PhotoCorners.js';
 import { leaderPath, markArrivalRanks, revealMarks, type RevealMark } from './revealMarks.js';
 import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
-import { RealSkyLayer } from './RealSkyLayer.js';
+import { RealSkyLayer, prepareRealSky } from './RealSkyLayer.js';
 import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
 import { arrivalShiftOf } from '../spatial/flight/arrival.js';
+import { prepareFlight } from '../spatial/flight/prepareFlight.js';
 import { FLIGHT_MILKY_WAY_LINE, flightMilkyWayLineShown } from '../spatial/sky/flightMilkyWay.js';
 import { CraftPicker, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
 import { phoneCraftFraming } from '../spatial/flight/craftScene.js';
@@ -438,6 +439,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const solution = session.observationSolution;
   const deepSkyWanted = solution?.status === 'calibrated' && hasVerifiedWcs(solution) && solution.findings.some(isDeepSky);
   const deepSky = useDeepSkyTable(deepSkyWanted);
+  // realsky-upload-one: on a verified solve the sky pictures go up, and the flight's programs link, while the photo is at
+  // rest, before Real sky or Go there asks for them
+  const skyPrepared = solution?.status === 'calibrated' && hasVerifiedWcs(solution);
+  useEffect(() => {
+    if (!skyPrepared) return;
+    prepareRealSky();
+    prepareFlight();
+  }, [skyPrepared]);
   const status = revealStatus(session);
   // Every ring and name drawn on the photo keeps clear of the controls (UIUX-keepclear-READY.md, its last section
   // decided 13:34): the reveal's marks here, the calibrated reveal's and Real sky's too, the picked star excepted; the

@@ -36,6 +36,9 @@ export {
   sampleOffsetTable,
 } from './registrationModules/panoramaProjection.js';
 export {
+  forgetPanoramaRegistration,
+  heldPanoramaRegistration,
   loadPanoramaRegistration,
+  panoramaRegistrationOnce,
   parsePanoramaRegistration,
 } from './registrationModules/registrationLoader.js';

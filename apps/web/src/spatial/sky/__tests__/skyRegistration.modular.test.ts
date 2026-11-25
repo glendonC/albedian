@@ -62,15 +62,19 @@ const mat3Arb: fc.Arbitrary<Mat3Rows> = fc
 const vec3Arb: fc.Arbitrary<Vec3> = fc.tuple(finiteScalar, finiteScalar, finiteScalar);
 
 describe('skyRegistration public module contract', () => {
-  it('exposes the exact 14 runtime exports with zero leaked internal helpers', () => {
+  it('exposes the exact 17 runtime exports with zero leaked internal helpers', () => {
     expect(Object.keys(skyRegistrationModule).sort()).toEqual([
       'ICRS_TO_GALACTIC',
       'SKY_PANORAMA_REGISTRATION_FORMAT',
       'SKY_PANORAMA_REGISTRATION_URL',
       'applyRows',
+      // realsky-upload-one: the registration read once a page and held, for a draw in the frame that asks
+      'forgetPanoramaRegistration',
+      'heldPanoramaRegistration',
       'icrsToPanoramaRows',
       'loadPanoramaRegistration',
       'multiplyRows',
+      'panoramaRegistrationOnce',
       'panoramaUv',
       'parsePanoramaRegistration',
       'plateCarreeUv',
