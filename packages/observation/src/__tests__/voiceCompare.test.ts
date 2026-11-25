@@ -149,7 +149,7 @@ describe.each(NOUNS)('Restore asked off the %s', (noun) => {
   it('Real sky takes the recording\'s place too (version two): refused, its way back being the views pill', () => {
     const off = realSky(recording(noun).session);
     const { result } = said(off, 'make the sky clearer');
-    expect(result.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected', explanation: `The restored version shows on this ${noun} itself.` });
+    expect(result.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected', explanation: `The restored version shows on this ${noun} itself; ${noun === 'clip' ? 'Your clip' : 'Your photo'} returns to it.` });
     expect(result.session).toBe(off);
   });
 

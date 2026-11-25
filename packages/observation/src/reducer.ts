@@ -181,10 +181,9 @@ export function dispatchAlbedianAction(
           action.requestId,
           'not_connected',
           // UIUX-voice-compare-restore-words-READY.md item 2, DECIDED-BY-LEAD 24 Nov 19:42; where Back to Moment is not
-          // the screen's control (Real sky), its first clause alone (DECIDED-BY-LEAD 25 Nov 00:06)
-          backToMomentShown(base)
-            ? `The restored version shows on this ${mediaNoun(base)} itself; Back to Moment returns to it.`
-            : `The restored version shows on this ${mediaNoun(base)} itself.`,
+          // the screen's control (Real sky), the views pill's own word for the first view, as SpatialObservatoryViewport.tsx
+          // names it (UIUX-realsky-restore-words-READY.md, voice-realsky-words-one)
+          `The restored version shows on this ${mediaNoun(base)} itself; ${backToMomentShown(base) ? 'Back to Moment' : mediaNoun(base) === 'clip' ? 'Your clip' : 'Your photo'} returns to it.`,
           ['Return to the recording with Back to Moment']
         );
       }

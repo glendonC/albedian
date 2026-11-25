@@ -122,7 +122,7 @@ describe('asked to make the sky clearer off the recording, after Restore', () =>
     await r.show({ realSky: true });
     expect(r.compareShown()).toBe(false);
     const outcome = r.ask('make the sky clearer');
-    expect(outcome).toMatchObject({ status: 'rejected', reason: 'not_connected', explanation: 'The restored version shows on this photo itself.' });
+    expect(outcome).toMatchObject({ status: 'rejected', reason: 'not_connected', explanation: 'The restored version shows on this photo itself; Your photo returns to it.' });
     expect(r.session().spatialView.mode).toBe('registered_sky');
   });
 
