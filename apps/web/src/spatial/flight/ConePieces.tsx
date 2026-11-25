@@ -66,8 +66,10 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
         data-hud-interactive="true"
         // column-foot-fade-one: stepped up above the ask bar, the row's fade clears below it too (reveal.css)
         data-stepped={!phone && bottomPx !== LAPTOP_PILLS_BOTTOM_PX ? '' : undefined}
-        // D30 item 3 on the phone: one row at top 712, left 24, 10 apart, 44 px high; laptop: left 36, bottom 32 or stepped 16 px above .ask-bar
-        style={phone ? { position: 'absolute', left: 24, right: 24, top: 712, display: 'flex', gap: 10, pointerEvents: 'auto' } : { position: 'absolute', left: LAPTOP_PILLS_LEFT_PX, bottom: bottomPx, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
+        // D30 item 3 on the phone: one row at 712 in 844, left 24, 10 apart, 44 px high, standing by the window's foot as the
+        // ask bar does (flight-pills-foot-one, DECIDED-BY-LEAD 07:21), so it is inside every window; laptop: left 36, bottom
+        // 32 or stepped 16 px above .ask-bar
+        style={phone ? { position: 'absolute', left: 24, right: 24, top: 'calc(100% - 132px)', display: 'flex', gap: 10, pointerEvents: 'auto' } : { position: 'absolute', left: LAPTOP_PILLS_LEFT_PX, bottom: bottomPx, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
       >
         {/* On the laptop the craft pill leaves in the cone view (D28); D30's phone row keeps both */}
         {(!cone || phone) && craftPill}
