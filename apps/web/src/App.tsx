@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionContext,
+  AlbedianAction,
   CelestialFinding,
   IngestReceipt,
   ObservationSession,
@@ -35,6 +36,7 @@ import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
 import { isSourcePhotoShown } from './components/sourcePhotoRect.js';
 import { isPhoneRevealShown } from './reveal/phoneSlot.js';
+import { beyondFrameSentence } from './reveal/beyondFrame.js';
 import { isRealSkyShown } from './reveal/RealSkyLayer.js';
 import { isFlightShown } from './reveal/flightView.js';
 import { askVoiceAnswer, isQuestion } from './services/voiceAnswer.js';
@@ -283,11 +285,20 @@ export const App: React.FC = () => {
         setAnswer({ photoKey: photoKeyOf(asked), heard: utterance, sentence, answer: null });
       }
     };
+    // outside-frame-words-one (DECIDED-BY-LEAD 24 Nov 20:09): a select or describe of a predicted object beyond the
+    // frame opens its card as before and says, where answers show, that it lies beyond the edges with no mark on it
+    const sayIfBeyondFrame = (now: ObservationSession, action: AlbedianAction | undefined) => {
+      if (action?.type !== 'finding.select' && action?.type !== 'finding.describe') return;
+      const finding = now.observationSolution?.findings.find((f) => f.id === action.findingId);
+      const sentence = finding ? beyondFrameSentence(now, finding) : null;
+      if (sentence !== null) refuse(sentence);
+    };
     if (result.outcome.status === 'needs_input') refuse(result.outcome.question);
     if (result.outcome.status === 'rejected' && !backendMayResolve(result.outcome.reason) && !restoreRan) refuse(result.outcome.explanation);
 
     if (result.outcome.status === 'completed') {
       audioBusRef.current?.playSelectionClick(isMuted);
+      sayIfBeyondFrame(result.session, result.voiceActionRecord.proposedAction);
       if (result.voiceActionRecord.proposedAction?.type === 'space.enter') {
         animatePhaseAToPhaseBSpaceFlight(result.voiceActionRecord.proposedAction.findingId);
       }
@@ -325,6 +336,7 @@ export const App: React.FC = () => {
         else if (outcome?.status === 'needs_input') refuse(outcome.question);
         if (applied.outcome?.status === 'completed') {
           audioBusRef.current?.playSelectionClick(isMuted);
+          sayIfBeyondFrame(applied.session, reply.proposedAction);
           if (applied.flyToFindingId) animatePhaseAToPhaseBSpaceFlight(applied.flyToFindingId);
         }
       });
