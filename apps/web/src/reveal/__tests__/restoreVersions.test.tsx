@@ -216,6 +216,69 @@ describe('the list under Download (D36)', () => {
     expect((q('[data-testid="restore-compare"] .restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe(copyUri);
   });
 
+  it('never draws a clip version while its copy is made: the older one is drawn and checked and Download saves it, then the copy is drawn (playback-firstneed)', async () => {
+    const bareClip = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.mimeType === 'video/mp4' && v.playbackCopy === undefined)!;
+    const withCopy = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.playbackCopy !== undefined)!;
+    const newest = { ...bareClip, id: NEWER.id, createdAtUTC: NEWER.createdAtUTC, byteSize: NEWER.byteSize, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: NEWER.uri };
+    const copyUri = `/api/media/${sha}/variants/${NEWER.id}/playback`;
+    let release: (answer: Response) => void = () => {};
+    const started = new Promise<Response>((resolve) => (release = resolve));
+    const posts: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (init?.method === 'POST' && url === copyUri) {
+        posts.push(url);
+        return started;
+      }
+      if (url === copyUri) return new Response('x', { status: 206, headers: { 'content-type': 'video/mp4' } });
+      if (url === `/api/media/${sha}/variants/${NEWER.id}`) {
+        return new Response(JSON.stringify({ variant: { ...newest, playbackCopy: { ...(withCopy.playbackCopy as Record<string, unknown>), uri: copyUri } } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ variants: [newest, OLDER], attempts: [] }), { status: 200 });
+    });
+    await showDone();
+    const img = () => (q('[data-testid="restore-compare"] .restore-compare__pic img') as HTMLImageElement).getAttribute('src');
+    const rows = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    expect(posts).toEqual([copyUri]);
+    expect(img()).toBe(`/api/media/${sha}/variants/${OLDER.id}/file`);
+    expect(rows().map((r) => r.getAttribute('aria-busy'))).toEqual(['true', null]);
+    expect(rows().map((r) => r.querySelector('.restore-versions__mark svg') !== null)).toEqual([false, true]);
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+    const saved: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.getAttribute('href')!);
+    });
+    act(() => ([...container.querySelectorAll('button')].find((b) => b.textContent === 'Download') as HTMLButtonElement).click());
+    expect(saved).toEqual([`/api/media/${sha}/variants/${OLDER.id}/export`]);
+    // The copy in place: the newest is drawn from it and takes the check
+    release(new Response(JSON.stringify({ detail: 'that variant has a playback copy' }), { status: 409 }));
+    for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    expect(img()).toBe(copyUri);
+    expect(rows().map((r) => r.getAttribute('aria-busy'))).toEqual([null, null]);
+    expect(rows().map((r) => r.querySelector('.restore-versions__mark svg') !== null)).toEqual([true, false]);
+  });
+
+  it('keeps the version drawn while a pressed row waits for its copy, not the newest that can be drawn (versionwait 22:20 item 2)', async () => {
+    const bareClip = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.mimeType === 'video/mp4' && v.playbackCopy === undefined)!;
+    const newest = { ...bareClip, id: NEWER.id, createdAtUTC: '2026-11-20T18:20:00Z', byteSize: NEWER.byteSize, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: NEWER.uri };
+    const middle = variant('var_0000000000000002', '2026-11-19T00:00:00Z', 14_300_000);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      init?.method === 'POST' ? new Promise<Response>(() => {}) : new Response(JSON.stringify({ variants: [newest, middle, OLDER], attempts: [] }), { status: 200 })
+    );
+    await showDone();
+    const img = () => (q('[data-testid="restore-compare"] .restore-compare__pic img') as HTMLImageElement).getAttribute('src');
+    const rows = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    expect(img()).toBe(`/api/media/${sha}/variants/${middle.id}/file`);
+    act(() => rows()[2]!.click());
+    expect(img()).toBe(`/api/media/${sha}/variants/${OLDER.id}/file`);
+    // The newest pressed while its copy is made: the oldest stays drawn and checked, the newest pressed and pending
+    act(() => rows()[0]!.click());
+    expect(img()).toBe(`/api/media/${sha}/variants/${OLDER.id}/file`);
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+    expect(rows().map((r) => r.getAttribute('aria-busy'))).toEqual(['true', null, null]);
+    expect(rows().map((r) => r.querySelector('.restore-versions__mark svg') !== null)).toEqual([false, false, true]);
+  });
+
   it('supports 3+ pipeline revisions (1.6 -> 1.7 -> 1.8), keeps the wipe split steady across version switches, and exports each selected variant', async () => {
     const V16 = variant('var_0000000000000016', '2026-11-18T18:20:00Z', 13_800_000);
     const V17 = {

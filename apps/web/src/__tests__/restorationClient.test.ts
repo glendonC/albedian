@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UploadJob } from '@albedian/contracts';
-import { NO_PLAYBACK_NOTE, followJob, playbackCopyUrl, readRestorations, readVariantOrientation, readVariantShown, restoredSource, startRestoration, variantExportUrl, variantFileUrl } from '../services/apiClient';
+import { NO_PLAYBACK_NOTE, followJob, playbackCopyUrl, startPlaybackCopy, readRestorations, readVariantOrientation, readVariantShown, restoredSource, startRestoration, variantExportUrl, variantFileUrl } from '../services/apiClient';
 
 // The restoration's routes (restore-2b, restoration design sections 9 and 11): a restoration job started, joined or
 // returned at POST /api/media/{sha256}/restore, followed at GET /api/ingest/jobs/{id} once a second like a solve,
@@ -213,5 +213,32 @@ describe('the playback copy', () => {
       [vid(8), false],
     ]);
     expect((await readVariantShown(sha256, vid(9))).noCopy).toBe(true);
+  });
+});
+
+// playback-firstneed (REQ-JOB-10): a stored restored clip's copy asked for at first need
+describe('startPlaybackCopy', () => {
+  const copyJob = (state: UploadJob['state']) => structuredClone(jobs.find((job) => job.kind === 'playback_copy' && job.state === state)!);
+  it('posts the variant\'s own playback route and hands back its job', async () => {
+    const seen: Array<{ url: string; method?: string }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      seen.push({ url: String(input), method: init?.method });
+      return json(copyJob('running'), 202);
+    });
+    const vid = (copyJob('running').request as { variantId: string }).variantId;
+    const answer = await startPlaybackCopy(sha256, vid);
+    expect(seen).toEqual([{ url: `/api/media/${sha256}/variants/${vid}/playback`, method: 'POST' }]);
+    expect(answer.kind === 'job' && answer.job.state).toBe('running');
+  });
+
+  it('says when the copy is in place or the clip cannot be copied, and refuses a job of another kind', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ detail: 'that variant has a playback copy' }, 409));
+    expect(await startPlaybackCopy(sha256, 'var_0000000000000001')).toEqual({ kind: 'exists' });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ detail: 'No playback copy is made for a clip stored this way yet.' }, 422));
+    expect(await startPlaybackCopy(sha256, 'var_0000000000000001')).toEqual({ kind: 'not_copyable' });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(succeeded, 200));
+    await expect(startPlaybackCopy(sha256, 'var_0000000000000001')).rejects.toThrow('a restoration job is not a playback copy');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ detail: 'no variant with that id is stored for that file' }, 404));
+    await expect(startPlaybackCopy(sha256, 'var_0000000000000001')).rejects.toThrow('no variant with that id is stored');
   });
 });

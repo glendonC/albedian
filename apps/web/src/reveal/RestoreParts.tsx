@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useElapsedRows } from './elapsedRows.js';
+import { elapsedWords, useElapsedRows } from './elapsedRows.js';
+import { drawableVersion, standsAlone, type ListedVersion } from './firstNeedCopies.js';
 import { followParent, onFrameAtParent } from './clipSync.js';
 import { useCompareArrival } from '../audio/music/soundtrackMoment.js';
 import { DISCLOSURES, type DisplayOrientation, type UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { restorationRows, type RestoreRow } from './restoration.js';
-import { madeAtWords, type StoredRestoration } from '../services/apiClient.js';
+import { madeAtWords } from '../services/apiClient.js';
 import { megabytes } from './arrival.js';
 
 const ROW_CLASS: Readonly<Record<RestoreRow['state'], string>> = {
@@ -563,27 +564,74 @@ export const RestorePhoneStopped: React.FC<{
 /** The second line of a restored version no copy that plays here matched (UIUX-versionwait-READY.md, addition stamped 02:22). */
 export const NO_COPY_LINE = 'No copy that plays here matched it closely enough, so it is not shown; Download saves it.';
 
-export const RestoreVersions: React.FC<{ versions: readonly StoredRestoration[]; shownId: string; onShow: (id: string) => void }> = ({ versions, shownId, onShow }) =>
-  // D36: no list with one ready restoration, unless that one has no copy, so its row says why it is not shown
-  versions.length < 2 && !versions[0]?.noCopy ? null : (
+/**
+ * The second line of a restored version whose copy stopped some other way than its gate's refusal; a press tries again
+ * (UIUX-versionwait-READY.md, addition stamped 04:47).
+ */
+export const COPY_STOPPED_LINE = 'The copy that plays here stopped before it was finished, so it is not shown; press to try again.';
+
+export const RestoreVersions: React.FC<{
+  versions: readonly ListedVersion[];
+  /** The version drawn, which takes the check (D36's "the one shown"). */
+  shownId: string | null;
+  /** The row pressed, which `aria-pressed` follows; the drawn one when none was (UIUX-versionwait-READY.md item 6). */
+  pressedId?: string | null;
+  onShow: (id: string) => void;
+  /** A row whose copy stopped asks for it again when pressed. */
+  onRetry?: (id: string) => void;
+}> = ({ versions, shownId, pressedId = shownId, onShow, onRetry }) => {
+  // The pending row's seconds, once a second while any copy is being made (C19 item 1), under Reduce Motion too
+  const making = versions.some((version) => version.copy === 'making');
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!making) return undefined;
+    const timer = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [making]);
+  // D36: no list with one ready restoration, unless that one is not drawn here, so its row says what it is waiting for
+  if (versions.length < 2 && !(versions[0] !== undefined && standsAlone(versions[0]))) return null;
+  return (
     <ul className="restore-versions" data-testid="restore-versions">
-      {versions.map((version, i) => (
-        <li key={version.id}>
-          {/* A version with no copy keeps its row: no check, not pressable to show, its second line saying why */}
-          <button
-            type="button"
-            className="restore-versions__row"
-            aria-pressed={!version.noCopy && version.id === shownId}
-            aria-disabled={version.noCopy ? true : undefined}
-            onClick={() => !version.noCopy && onShow(version.id)}
-          >
-            <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
-            <span className="restore-versions__size">{megabytes(version.byteSize)}</span>
-            <span className="restore-versions__mark">{!version.noCopy && version.id === shownId ? <LookIcon name="check" /> : null}</span>
-            {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
-            {version.noCopy && <span className="restore-versions__older">{NO_COPY_LINE}</span>}
-          </button>
-        </li>
-      ))}
+      {versions.map((version, i) => {
+        const drawn = drawableVersion(version);
+        // A version not drawn keeps its row: one whose copy is being made or stopped is pressable (the swap waits for
+        // its copy); one no copy matched, or the route cannot copy, is not (aria-disabled), with no check
+        const pressable = drawn || version.copy === 'making' || version.copy === 'stopped';
+        const press = () => {
+          if (!pressable) return;
+          if (version.copy === 'stopped') onRetry?.(version.id);
+          onShow(version.id);
+        };
+        return (
+          <li key={version.id}>
+            <button
+              type="button"
+              className="restore-versions__row"
+              aria-pressed={pressable && version.id === pressedId}
+              aria-disabled={pressable ? undefined : true}
+              aria-busy={version.copy === 'making' ? true : undefined}
+              onClick={press}
+            >
+              <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
+              <span className="restore-versions__size">
+                {version.copy === 'making' ? elapsedWords((Date.now() - (version.copySince ?? Date.now())) / 1000) : megabytes(version.byteSize)}
+              </span>
+              <span className="restore-versions__mark">
+                {drawn && version.id === shownId ? (
+                  <LookIcon name="check" />
+                ) : version.copy === 'making' ? (
+                  <i className="work-step__dot restore-versions__dot" />
+                ) : version.copy === 'stopped' ? (
+                  <LookIcon name="x" />
+                ) : null}
+              </span>
+              {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
+              {version.noCopy && <span className="restore-versions__older">{NO_COPY_LINE}</span>}
+              {version.copy === 'stopped' && <span className="restore-versions__older">{COPY_STOPPED_LINE}</span>}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
+};

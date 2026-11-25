@@ -21,7 +21,9 @@ export type Restoration =
   | { phase: 'idle' }
   | { phase: 'asking' }
   | { phase: 'working'; job: UploadJob }
-  | { phase: 'done'; job: UploadJob; variantUrl: string; orientation: DisplayOrientation; noCopy?: boolean }
+  // noCopy: its record says no copy met its gate; firstNeed: a clip with no copy served and no note, never drawn here
+  // until the versions list has its copy made at first need (playback-firstneed)
+  | { phase: 'done'; job: UploadJob; variantUrl: string; orientation: DisplayOrientation; noCopy?: boolean; firstNeed?: boolean }
   | { phase: 'stopped'; job: UploadJob | null; sentence: string | null; subline: string | null; canTryAgain: boolean };
 
 const UNTURNED: DisplayOrientation = { quarterTurnsClockwise: 0, mirrored: false };
@@ -145,7 +147,14 @@ export function useRestoration(
           // A restored clip plays from its playback copy where its route serves it (clip-display-copy), else its file
           const shown = await readVariantShown(sha256, ended.variantId!).catch(() => ({ orientation: fallback, playbackUrl: null, noCopy: false }));
           if (!stop.signal.aborted) {
-            setRestoration({ ...view, orientation: shown.orientation, variantUrl: shown.playbackUrl ?? view.variantUrl, ...(shown.noCopy ? { noCopy: true } : {}) });
+            const firstNeed = mediaKind === 'video' && shown.playbackUrl === null && !shown.noCopy;
+            setRestoration({
+              ...view,
+              orientation: shown.orientation,
+              variantUrl: shown.playbackUrl ?? view.variantUrl,
+              ...(shown.noCopy ? { noCopy: true } : {}),
+              ...(firstNeed ? { firstNeed: true } : {}),
+            });
           }
           return;
         }

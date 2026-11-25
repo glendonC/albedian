@@ -2686,6 +2686,15 @@
   --look-ic: 14px;
 }
 
+/* A version whose playback copy is being made (UIUX-versionwait-READY.md item 2 and its addition of 22:20): the
+   working rows' now dot, 7 px and filled ink as .work-step.is-now, centred in the check's 14 px place, still */
+.restore-versions__dot {
+  display: block;
+  margin: 0 auto;
+  background: var(--look-ink);
+  border-color: var(--look-ink);
+}
+
 .restore-versions__older {
   grid-column: 1 / -1;
   padding-bottom: 8px;

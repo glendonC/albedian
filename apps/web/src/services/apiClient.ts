@@ -575,6 +575,22 @@ export async function startRestoration(sha256: string): Promise<UploadJob> {
 }
 
 /**
+ * What a stored restored clip's copy at first need answers (playback-firstneed, REQ-JOB-10): its job (202 new, 200
+ * joined or a stored gate refusal under its revision), that the copy is already in place (409), or that the clip
+ * cannot be copied at all (422, `PLAYBACK_NOT_COPYABLE`, no job made).
+ */
+export type PlaybackStart = { kind: 'job'; job: UploadJob } | { kind: 'exists' } | { kind: 'not_copyable' };
+export async function startPlaybackCopy(sha256: string, variantId: string): Promise<PlaybackStart> {
+  const res = await fetchAnswer(`/api/media/${sha256}/variants/${encodeURIComponent(variantId)}/playback`, { method: 'POST' });
+  if (res.status === 409) return { kind: 'exists' };
+  if (res.status === 422) return { kind: 'not_copyable' };
+  if (!res.ok) throw new Error(await serverReason(res));
+  const job = UploadJobSchema.parse(await res.json());
+  if (job.kind !== 'playback_copy') throw new Error(`a ${job.kind} job is not a playback copy`);
+  return { kind: 'job', job };
+}
+
+/**
  * Follows a job of any kind at `GET /api/ingest/jobs/{id}` while it is queued or running, once per `pollMs`
  * (JOB_POLL_MS), telling each record, and resolves with the record it ended in. A job that already ended is read no
  * further. Throws with the server's reason when a read is refused, and "stopped following" once `signal` aborts.

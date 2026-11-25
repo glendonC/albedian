@@ -8,6 +8,7 @@ import type { MediaVariant, ObservationSolution, PersonAlignment } from '@albedi
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { readRestorations, restoredSource, saveFromServer, variantExportUrl, type StoredRestoration } from '../services/apiClient.js';
+import { drawableVersion, standsAlone, useFirstNeedCopies } from './firstNeedCopies.js';
 import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
@@ -358,6 +359,9 @@ const MarkGlyph: React.FC<{ mark: RevealMark; phone?: boolean }> = ({ mark, phon
   </svg>
 );
 
+/** No restorations listed yet: one array, so the versions read from it keep their identity between renders. */
+const NO_VERSIONS: readonly StoredRestoration[] = [];
+
 /**
  * The reveal's "your photo" on the laptop (reveal, approved 2026-11-12): over the photo, which SourcePhotoStage draws
  * under it, the viewfinder corners at its exact frame and a mark on each catalog matched star; top left the logo and
@@ -605,7 +609,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
   });
   const [storedVersions, setStoredVersions] = useState<{ sha256: string; list: StoredRestoration[] } | null>(null);
-  const versions = asset && storedVersions !== null && storedVersions.sha256 === asset.sha256 ? storedVersions.list : [];
+  const listedVersions = asset && storedVersions !== null && storedVersions.sha256 === asset.sha256 ? storedVersions.list : NO_VERSIONS;
+  // playback-firstneed: a listed restored clip with no copy asks for one at once, and is drawn once its copy is served
+  const { versions, retry: retryCopy } = useFirstNeedCopies(asset?.sha256 ?? null, listedVersions);
   const phoneRestoring = phoneMedia && !there && !skyShown && !skyLeaving && restoration?.phase === 'working';
   const phoneRerunStopped = phoneMedia && !there && !skyShown && !skyLeaving && restoration?.phase === 'stopped';
   const phoneCompare =
@@ -700,7 +706,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => () => onPhoneFootChange?.(false), []);
   // D36 item 5: two or more ready restorations are listed under the phone's Download, reached by scrolling too
   // D36 item 5, and with one ready restoration that has no copy, its row (UIUX-versionwait-READY.md, addition stamped 02:22)
-  const phoneVersionsShown = phoneCompare && (versions.length >= 2 || versions[0]?.noCopy === true) && picked === null && !answer;
+  const phoneVersionsShown = phoneCompare && (versions.length >= 2 || (versions[0] !== undefined && standsAlone(versions[0]))) && picked === null && !answer;
   // The whole screen scrolls to Restore or to the list: the photo and Ask out loud move with it (as the no-match
   // screen's photo does)
   const phoneScroll = phoneRestoreOffered || phoneVersionsShown;
@@ -802,10 +808,24 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     setPickedVersionState(null);
   }, [asset?.sha256]);
-  // The newest version that can be drawn here is shown first; one whose record says no copy met its gate never is
-  const shownVersionId = pickedVersion ?? versions.find((v) => !v.noCopy)?.id ?? versions[0]?.id ?? doneVariant;
+  // The version drawn, which takes the check: the row pressed once it can be drawn; while a pressed row's copy is made,
+  // the one drawn before it; else the newest that can be drawn here. One with no copy served is never drawn (the 22:19
+  // ruling; UIUX-versionwait-READY.md, its addition of 22:20, item 2)
+  const lastDrawn = useRef<string | null>(null);
+  const pickedListed = pickedVersion === null ? undefined : versions.find((v) => v.id === pickedVersion);
+  const drawnVersion =
+    pickedListed !== undefined && drawableVersion(pickedListed)
+      ? pickedListed
+      : ((pickedListed !== undefined ? versions.find((v) => v.id === lastDrawn.current && drawableVersion(v)) : undefined) ??
+        versions.find(drawableVersion));
+  if (drawnVersion !== undefined) lastDrawn.current = drawnVersion.id;
+  const shownVersionId = drawnVersion?.id ?? pickedVersion ?? versions[0]?.id ?? doneVariant;
   const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
-  const drawable = shownVersion ? !shownVersion.noCopy : !(restoration?.phase === 'done' && restoration.noCopy);
+  const drawable = shownVersion
+    ? drawableVersion(shownVersion)
+    : !(restoration?.phase === 'done' && (restoration.noCopy === true || restoration.firstNeed === true));
+  // aria-pressed follows the press, and the drawn row when none was (item 6)
+  const pressedVersionId = pickedVersion ?? shownVersionId ?? null;
   // voice-restore-one: the restored version on screen, for the session, so "make the sky clearer" finds what is shown.
   // voice-compare-one version two (AUDIT-C's FAIL): away from the recording (the flight, Real sky, the sky leaving) the
   // version last shown stays the session's, so voice there answers what the session holds; on the recording, only the
@@ -826,7 +846,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     shownVersion ? shownVersion.orientation : restoration?.phase === 'done' ? restoration.orientation : undefined;
   const ready = compareShown && restoration?.phase === 'done' ? shownVersionId : undefined;
   const versionsList =
-    ready !== undefined ? <RestoreVersions versions={versions} shownId={ready} onShow={setPickedVersion} /> : null;
+    ready !== undefined ? (
+      <RestoreVersions versions={versions} shownId={ready} pressedId={pressedVersionId} onShow={setPickedVersion} onRetry={retryCopy} />
+    ) : null;
   const downloadAction =
     ready !== undefined && asset ? (
       <>
@@ -1213,7 +1235,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <RestoreCompare
           key={asset.sha256}
           rect={frame}
-          src={shownVersion && shownVersion.id !== restoration.job.variantId ? restoredSource(asset.sha256, shownVersion) : restoration.variantUrl}
+          src={shownVersion ? restoredSource(asset.sha256, shownVersion) : restoration.variantUrl}
           originalSrc={asset.uri}
           fade={SIDE_FADE}
           orientation={shownVersion && shownVersion.id !== restoration.job.variantId ? shownVersion.orientation : restoration.orientation}
@@ -1608,7 +1630,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* D36 item 5: the list under Download, reached by scrolling, its rows 44 px */}
       {phoneVersionsShown && shownVersion && (
         <div className="restore-phone-versions">
-          <RestoreVersions versions={versions} shownId={shownVersion.id} onShow={setPickedVersion} />
+          <RestoreVersions versions={versions} shownId={shownVersion.id} pressedId={pressedVersionId} onShow={setPickedVersion} onRetry={retryCopy} />
         </div>
       )}
 
