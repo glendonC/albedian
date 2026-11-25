@@ -452,6 +452,56 @@ def test_on_a_clear_frame_the_lattice_runs_to_the_frames_edges_and_stays_inside(
     assert places == expected and len(places) < stars.EMPTY_APERTURES
 
 
+def clear_lattice(shape: tuple[int, int], radius: int, footprint: np.ndarray, clipped: np.ndarray) -> list[tuple[int, int]]:
+    """Every point (x, y) of the fixed lattice, in row order, EMPTY_CLEARANCE_PX clear of every footprint and clipped
+    region, its aperture and annulus inside the frame: what the empty places are taken from."""
+    margin = max(radius, stars.APERTURE_MIN_PX) + stars.ANNULUS_OUTER_PX
+    clearance = stars.clearance_map(footprint, clipped)
+    return [(x, y) for y in range(margin, shape[0] - margin, 2 * margin + 1)
+            for x in range(margin, shape[1] - margin, 2 * margin + 1) if clearance[y, x] >= stars.EMPTY_CLEARANCE_PX]
+
+
+def test_the_empty_places_spread_over_the_whole_frame_not_its_top_rows() -> None:
+    # gate-flux-floor-one (decided by the lead at the 22:38 and 01:34 stamps): the first sixty lattice points in row
+    # order all lay on the top rows of a frame, so sigma_F was the top strip's noise; a 1080 line frame's places now
+    # reach from its top rows to its bottom ones
+    shape, radius = (1080, 1920), 2
+    nothing = np.zeros(shape)
+    places = stars.empty_places(shape, radius, nothing, nothing.astype(bool))
+    clear = clear_lattice(shape, radius, nothing, nothing.astype(bool))
+    assert len(places) == stars.EMPTY_APERTURES and len(set(places)) == len(places)
+    assert places[0] == clear[0] and places[-1] == clear[-1]
+    rows = {y for _, y in places}
+    assert min(rows) == clear[0][1] and max(rows) == clear[-1][1] and len(rows) > 20
+
+
+@settings(max_examples=60, deadline=None)
+@given(height=st.integers(40, 700), width=st.integers(40, 700), radius=st.integers(1, stars.FOOTPRINT_MAX_PX),
+       blots=st.lists(st.tuples(st.floats(0, 1), st.floats(0, 1), st.integers(1, 60)), max_size=6), clip_one=st.booleans())
+def test_the_empty_places_are_every_clear_lattice_point_or_sixty_taken_evenly_from_them(height, width, radius, blots,
+                                                                                        clip_one) -> None:
+    # All of the clear points where there are no more than sixty; otherwise sixty of them, the first and the last
+    # among them, in row order, never one twice, each step along the clear points the same to within one
+    footprint, clipped = np.zeros((height, width)), np.zeros((height, width), bool)
+    for k, (fy, fx, side) in enumerate(blots):
+        y, x = int(fy * (height - 1)), int(fx * (width - 1))
+        target = clipped if clip_one and k == 0 else footprint
+        target[max(0, y - side):y + side, max(0, x - side):x + side] = 1
+    places = stars.empty_places((height, width), radius, footprint, clipped)
+    clear = clear_lattice((height, width), radius, footprint, clipped)
+    # Guard 1's own rule keeps the first sixty in row order (QUESTION-3)
+    assert stars.first_empty_places((height, width), radius, footprint, clipped) == clear[:stars.EMPTY_APERTURES]
+    if len(clear) <= stars.EMPTY_APERTURES:
+        assert places == clear
+        return
+    assert len(places) == stars.EMPTY_APERTURES
+    index = [clear.index(place) for place in places]
+    assert index[0] == 0 and index[-1] == len(clear) - 1
+    steps = np.diff(index)
+    even = (len(clear) - 1) / (stars.EMPTY_APERTURES - 1)
+    assert steps.min() >= math.floor(even) and steps.max() <= math.ceil(even) and steps.min() >= 1, steps
+
+
 def test_the_empty_aperture_noise_of_one_or_two_places_is_their_mad() -> None:
     # sigma_F is 1.4826 x MAD of the sums at the places found: one place gives 0, two give half their difference;
     # restore-4's gate must not compare a flux change with either (design section 7), nor with the NaN of none.

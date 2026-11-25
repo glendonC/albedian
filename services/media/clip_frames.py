@@ -674,6 +674,21 @@ class FrameGate:
     fixed: int
 
 
+def code_light(clip: ClipColour, beta: float) -> gate.CodeLight:
+    """The light of one stored Y' code at a light of the gate's original luminance (the original lifted, stored as the
+    job stores it and the lift undone): one code over the encode's slope at the lifted light, back through the lift's
+    slope, as the noise measure's rounding floor takes a code (`noise.measure_noise`), so the gate's flux noise is never
+    under the codes' rounding (gate-flux-floor-one, decided by the lead at the 01:34 stamp). One Y' code moves R', G'
+    and B' alike, so the luminance by the same light."""
+
+    def light_of_one_code(light: float) -> float:
+        level = np.asarray(max(float(light), noise.DARK_LIGHT_FLOOR))
+        lifted = tone.curve(level, beta)
+        return float(1.0 / (clip.code_steps() * clip.encode_slope(lifted) * tone.slope(level, beta)))
+
+    return light_of_one_code
+
+
 def gate_frame(settings: ClipSettings, side: OriginalSide, stored_planes: Sequence[np.ndarray],
                searches: Optional[gate.Searches] = None) -> gate.GateOutcome:
     """Design section 7's gate on one stored frame: its points in the stored Y' codes confirmed on its original pixels
@@ -691,7 +706,8 @@ def gate_frame(settings: ClipSettings, side: OriginalSide, stored_planes: Sequen
                          expected=clip.stored(lifted), original_luminance=as_stored,
                          variant_luminance=tone.undo_lift(clip.to_linear(stored_planes), beta) @ np.asarray(LUMA),
                          luma_of=stored_luma, code_step=clip.stored_step(), together=side.found.together,
-                         together_luminance=None if together is None else together.luminance, searches=searches)
+                         together_luminance=None if together is None else together.luminance, searches=searches,
+                         code_light=code_light(clip, beta))
 
 
 def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:

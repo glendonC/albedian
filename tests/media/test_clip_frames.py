@@ -1216,3 +1216,40 @@ def test_a_clip_whose_frames_have_a_side_under_min_side_px_reports_frame_too_sma
     assert tone.NOTE_NOISE_NOT_MEASURED in measured.lift.notes
     results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 2, tuple(frames[:2])))
     assert all(r.neighbours == 0 for r in results)
+
+
+def test_a_clips_gate_floors_its_noise_at_one_luma_code_through_its_transfer_and_its_lift() -> None:
+    # gate-flux-floor-one (decided by the lead at the 01:34 stamp): the flux is compared on the original lifted, stored
+    # and the lift undone, so one code's light is one Y' code at the lifted light over the encode's slope there, back
+    # through the lift's slope. On BT.709's linear segment the slope is 4.5 [verified: BT.709-6 item 1.2], so with no
+    # lift one 8 bit limited range code there is 1 / (219 x 4.5) of white
+    clip = clip_frames.clip_colour(video(tags=clip_io.ColourTags(range="tv", matrix="bt709", transfer="bt709", primaries="bt709")))
+    assert clip_frames.code_light(clip, math.inf)(0.001) == pytest.approx(1 / (219 * 4.5), rel=1e-6)
+    beta = 0.01
+    assert clip_frames.code_light(clip, beta)(0.0) == pytest.approx(1 / (219 * 4.5 * tone.gain_at_black(beta)), rel=1e-6)
+    light = 0.002
+    lifted = float(tone.curve(np.asarray(light), beta))
+    slope = float(clip.encode_slope(np.asarray(lifted)))
+    assert clip_frames.code_light(clip, beta)(light) == pytest.approx(
+        1 / (219 * slope * float(tone.slope(np.asarray(light), beta))), rel=1e-9)
+
+
+def test_a_clip_frame_on_a_sky_of_one_code_measures_its_stars_against_the_floor_and_passes() -> None:
+    # Every sample of the sky one code, as a codec leaves a dark sky: every empty sum the same, so without the floor no
+    # star was measured
+    clip = clip_frames.clip_colour(video(width=160, height=160))
+    frames = []
+    for _ in range(4):
+        y = np.full((160, 160), 40.0)
+        for x0, y0 in ((50.3, 60.6), (110.7, 90.2), (80.1, 120.4)):
+            y += 150.0 * np.exp(-((np.arange(160)[None, :] - x0) ** 2 + (np.arange(160)[:, None] - y0) ** 2) / (2 * 1.3**2))
+        frames.append((np.clip(np.round(y), 0, 255).astype(np.uint8), np.full((80, 80), 128, np.uint8),
+                       np.full((80, 80), 128, np.uint8)))
+    measured = clip_frames.measure_clip(clip, frames)
+    results = clip_frames.restore_run(measured, frame_pool.Run(0, 0, 4, tuple(frames)))
+    gated = clip_frames.gate_run(measured, frame_pool.Run(0, 0, 4, tuple(zip(frames, [r.planes for r in results]))))
+    assert all(g.outcome.record["starsMeasured"] >= 3 for g in gated), [g.outcome.record for g in gated]
+    assert all(g.outcome.record["passed"] for g in gated)
+    # Each frame's stars, measured and not, are its confirmed stars, its own and its frames together's
+    assert all(g.outcome.record["starsMeasured"] + g.outcome.record["starsNotMeasured"] == g.stars_confirmed for g in gated)
+    assert all(g.outcome.record["framesFluxNotChecked"] == 0 for g in gated)

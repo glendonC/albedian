@@ -72,6 +72,11 @@ class PhotoRefusal(Exception):
         self.sentence = sentence
 
 
+def stored_luminance(transfer: encode.StillTransfer, stored: np.ndarray, beta: float) -> np.ndarray:
+    """The linear luminance of 16 bit stored codes, the lift undone."""
+    return tone.undo_lift(transfer.decode(stored / encode.CODE_STEPS), beta) @ np.asarray(stars.LUMA_WEIGHTS)
+
+
 @dataclass(frozen=True)
 class Context:
     """What checking a stored file against the original needs."""
@@ -81,6 +86,10 @@ class Context:
     transfer: encode.StillTransfer
     beta: float
     top: float
+    # The original lifted and stored as the job stores it, the lift undone (`stored_luminance` of `expected`): the
+    # flux is compared on it, as a clip's is, so only what the restoration did is measured. Against the original as
+    # decoded, the store's rounding at a bright star's core made one honest star of a 16 bit still whose sky is one
+    # code 3.9 sigma_F once the floor measured it, and 0.00 against this (gate-flux-floor-one)
     original_luminance: np.ndarray
     expected: np.ndarray  # the original lifted and stored as the job stores it, 16 bit codes
     # The restoration's tile searches, which the gate answers each tile of the same values from (`gate.Searches`)
@@ -95,7 +104,15 @@ class Context:
         return self.kept.weight
 
     def variant_luminance(self, stored: np.ndarray) -> np.ndarray:
-        return tone.undo_lift(self.transfer.decode(stored / encode.CODE_STEPS), self.beta) @ np.asarray(stars.LUMA_WEIGHTS)
+        return stored_luminance(self.transfer, stored, self.beta)
+
+    def code_light(self, light: float) -> float:
+        """The light of one of the original's codes at `light` of its luminance: one code step over the encode's slope
+        there, the lift's channel's, as the noise measure's rounding floor takes it (`noise.measure_noise`), so the
+        gate's flux noise is never under the codes' rounding (gate-flux-floor-one, decided by the lead at the 01:34
+        stamp)."""
+        slope = float(self.transfer.luma_encode_slope(np.asarray(max(float(light), noise.DARK_LIGHT_FLOOR))))
+        return 1.0 / (self.top * slope)
 
 
 @dataclass(frozen=True)
@@ -402,7 +419,9 @@ def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], m
     del stored
     read_back = encode.read_still(data)
     lap("encode")
-    context = Context(original, kept, transfer, lift.beta, top, luminance, expected, searches)
+    del luminance
+    context = Context(original, kept, transfer, lift.beta, top, stored_luminance(transfer, expected, lift.beta), expected,
+                      searches)
     verdict = check_full(context, read_back)
     lap("gate")
     measured["dissolvedPerPass"] = per_pass
@@ -425,7 +444,8 @@ def check_full(context: Context, stored: np.ndarray) -> Verdict:
     """The gate on a whole stored file."""
     outcome = gate.run_gate(stored, original=context.original, kept=context.kept, expected=context.expected,
                             original_luminance=context.original_luminance,
-                            variant_luminance=context.variant_luminance(stored), searches=context.searches)
+                            variant_luminance=context.variant_luminance(stored), searches=context.searches,
+                            code_light=context.code_light)
     return Verdict(outcome.record, outcome.unconfirmed)
 
 

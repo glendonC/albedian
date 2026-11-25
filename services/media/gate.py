@@ -31,7 +31,7 @@ import math
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from functools import cached_property, lru_cache
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 from scipy import ndimage
@@ -588,18 +588,55 @@ def aperture_flux(image: np.ndarray, x: float, y: float, radius: int, occupied: 
     return float(window[inside].sum() - inside.sum() * ring.mean())
 
 
+CodeLight = Callable[[float], float]
+
+
+@lru_cache(maxsize=None)
+def _disc(aperture: int) -> np.ndarray:
+    """The aperture's samples about a whole pixel: those within `aperture` px of it, as `aperture_flux` takes them."""
+    yy, xx = np.mgrid[-aperture:aperture + 1, -aperture:aperture + 1]
+    disc = np.hypot(xx, yy) <= aperture
+    disc.flags.writeable = False
+    return disc
+
+
+def rounding_sigma(radius: int, light_of_one_code: float) -> float:
+    """The rounding noise of an aperture's sum: sqrt(N) times one code's light times 1 / sqrt(12), N the aperture's
+    samples, each rounded to its code on its own (`noise.ROUNDING_SIGMA`). The annulus's mean adds its own share, so
+    the sum's rounding noise is at least this [inference]."""
+    return math.sqrt(int(_disc(max(radius, stars.APERTURE_MIN_PX)).sum())) * light_of_one_code * noise.ROUNDING_SIGMA
+
+
 def empty_aperture_sigma(image: np.ndarray, radius: int, occupied: np.ndarray, clipped: np.ndarray,
-                         clearance: np.ndarray | None = None) -> float:
+                         clearance: np.ndarray | None = None, code_light: CodeLight | None = None,
+                         places_rule=None) -> float:
     """sigma_F: 1.4826 x MAD of `aperture_flux` at design section 7's empty places of the frame (`clearance`, when
-    given, is `stars.clearance_map(occupied, clipped)`, measured once for every radius)."""
-    places = stars.empty_places(np.shape(image), radius, occupied, clipped, clearance)
+    given, is `stars.clearance_map(occupied, clipped)`, measured once for every radius), and never under the
+    aperture's rounding noise (`rounding_sigma`) where `code_light` gives one of the image's codes' light at a light:
+    at the median light of the empty apertures' samples. Where more than half of the empty sums are the same, the MAD
+    is 0 and no star was measured: ten of twelve frames of the public sample [tested: gate-zero-stars-probe; the
+    floor decided by the lead at the 01:34 stamp after gate-flux-table, gate-flux-floor-one]. `places_rule` is
+    `stars.empty_places` unless given (guard 1 gives `stars.first_empty_places`)."""
+    rule = stars.empty_places if places_rule is None else places_rule
+    places = rule(np.shape(image), radius, occupied, clipped, clearance)
     # The mask once for every place: a frame-sized comparison per place cost 5.7 s of photo 1's 35 s gate
     # [tested: .lanetools/speed/cprofile_photo.py]
     mask = np.asarray(occupied) > 0
     sums = np.array([aperture_flux(image, x, y, radius, mask) for x, y in places])
     if sums.size == 0:
         return math.nan
-    return stars.MAD_TO_SIGMA * float(np.median(np.abs(sums - np.median(sums))))
+    sigma = stars.MAD_TO_SIGMA * float(np.median(np.abs(sums - np.median(sums))))
+    if code_light is None:
+        return sigma
+    aperture = max(radius, stars.APERTURE_MIN_PX)
+    disc = _disc(aperture)
+    samples = np.asarray(image, dtype=np.float64)
+    level = float(np.median(np.concatenate([samples[y - aperture:y + aperture + 1, x - aperture:x + aperture + 1][disc]
+                                            for x, y in places])))
+    light = float(code_light(level))
+    if not (math.isfinite(light) and light > 0.0):
+        return sigma
+    return max(sigma, rounding_sigma(radius, light))
 
 
 def flux_change_sigma(star: stars.Star, original_luminance: np.ndarray, variant_luminance: np.ndarray,
@@ -1059,8 +1096,9 @@ def _flux_summary(changes: list[float], ratios: list[float]) -> tuple[int, int, 
 
 
 def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant_luminance: np.ndarray,
-                 kept_weight: np.ndarray) -> tuple[list[float], list[float]]:
-    """Each measured star's |F_v - F_o| over sigma_F and its F_v / F_o (`flux_check`'s stars)."""
+                 kept_weight: np.ndarray, code_light: CodeLight | None = None) -> tuple[list[float], list[float]]:
+    """Each measured star's |F_v - F_o| over sigma_F and its F_v / F_o (`flux_check`'s stars), sigma_F floored at the
+    rounding noise of the original's codes where `code_light` gives their light (`empty_aperture_sigma`)."""
     height, width = original_luminance.shape
     changes, ratios = [], []
     occupied = np.maximum(kept_weight, field.footprint)
@@ -1085,7 +1123,8 @@ def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant
         if radius not in sigmas:
             if clearance is None:
                 clearance = stars.clearance_map(occupied, field.clipped)
-            sigmas[radius] = empty_aperture_sigma(original_luminance, radius, occupied, field.clipped, clearance)
+            sigmas[radius] = empty_aperture_sigma(original_luminance, radius, occupied, field.clipped, clearance,
+                                                  code_light)
         change = flux_change_sigma(star, original_luminance, variant_luminance, occupied, field.clipped, sigmas[radius],
                                    occupied_mask=mask)
         before = aperture_flux(original_luminance, star.x_px, star.y_px, star.radius_px, mask)
@@ -1099,7 +1138,8 @@ def flux_changes(field: stars.StarField, original_luminance: np.ndarray, variant
 def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np.ndarray,
              original_luminance: np.ndarray, variant_luminance: np.ndarray, luma_of=None,
              together: stars.StarField | None = None, together_luminance: np.ndarray | None = None,
-             code_step: float = 1.0, searches: Searches | None = None) -> GateOutcome:
+             code_step: float = 1.0, searches: Searches | None = None,
+             code_light: CodeLight | None = None) -> GateOutcome:
     """The gate on the stored file's codes: every point confirmed, a raised sample or small cluster among the points
     (`raised_places`), every kept region's samples what they must be (`kept_samples`), and every measured star's flux
     within the tolerance. A place where a kept region's samples changed counts among the variant's points and its
@@ -1109,7 +1149,10 @@ def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np
     stored file's own code step in 16 bit codes (`kept_samples`: 1 for a still, 257 for an 8 bit clip's Y'). A clip
     frame's stars that only its original frames together confirm (`together`) have their flux compared with the frames
     together's own (`together_luminance`), against the noise of empty apertures there (design section 7). `searches`
-    answers each tile whose values a search of the same restoration already read (`Searches`)."""
+    answers each tile whose values a search of the same restoration already read (`Searches`). `code_light` gives the
+    light of one of the original's stored codes at a light of `original_luminance`, from the stream's own transfer, so
+    the flux check's noise is never under the codes' rounding (`empty_aperture_sigma`); the frames together's mean is
+    not on the stream's codes and gets no floor."""
     read_luma = stored_luma if luma_of is None else luma_of
     luma = read_luma(stored)
     points, left_out = variant_points(luma, kept.field.clipped, kept=kept, searches=searches)
@@ -1118,7 +1161,7 @@ def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np
     changed = kept_changed(stored, kept_samples(stored, expected, kept.weight, code_step), kept.left_out)
     unconfirmed_points = [p for p, good in zip(points, ok) if not good] + changed
     points = points + changed
-    changes, ratios = flux_changes(kept.field, original_luminance, variant_luminance, kept.weight)
+    changes, ratios = flux_changes(kept.field, original_luminance, variant_luminance, kept.weight, code_light)
     considered = len(kept.field.stars)
     if together is not None and together.stars:
         more_changes, more_ratios = flux_changes(together, together_luminance, variant_luminance, kept.weight)
@@ -1205,7 +1248,9 @@ class Together:
         places gave nan, 0 and a quarter of frame k's, and the guard refused a faint star of the scene]."""
         key = ("sigma", index, radius)
         if key not in self._cache:
-            self._cache[key] = empty_aperture_sigma(self.originals[index], radius, occupied, clipped)
+            # Guard 1's own places, the first sixty, as before gate-flux-floor-one (`stars.first_empty_places`)
+            self._cache[key] = empty_aperture_sigma(self.originals[index], radius, occupied, clipped,
+                                                    places_rule=stars.first_empty_places)
         return self._cache[key]
 
     def responses(self, tile_index: int, tile: stars.Tile) -> tuple[np.ndarray, np.ndarray, float]:

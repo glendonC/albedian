@@ -1436,6 +1436,54 @@ def test_the_flux_checks_one_mask_measures_each_star_as_the_star_alone_is_measur
     assert handed and all(np.array_equal(mask, occupied > 0) for mask in handed)
 
 
+def aperture_samples(radius: int) -> int:
+    aperture = max(radius, stars.APERTURE_MIN_PX)
+    return int(np.sum(np.hypot(*np.mgrid[-aperture:aperture + 1, -aperture:aperture + 1]) <= aperture))
+
+
+def test_sigma_f_is_never_under_the_apertures_rounding_noise_at_the_empty_apertures_light() -> None:
+    # gate-flux-floor-one (decided by the lead at the 01:34 stamp): where more than half the empty apertures hold the
+    # same sum, the MAD is 0 and the flux check measured no star. sigma_F is at least the aperture's rounding noise,
+    # sqrt(N) times one code's light over sqrt(12) (N the aperture's samples), one code's light given by the caller at
+    # the median light of the empty apertures' samples
+    shape = (240, 320)
+    yy = np.mgrid[0:240, 0:320][0].astype(np.float64)
+    sky = 0.002 + 1e-5 * yy  # a gradient the annulus takes out: every empty sum is 0 to the float
+    nothing = np.zeros(shape)
+    clipped = nothing.astype(bool)
+    asked: list[float] = []
+
+    def one_code(light: float) -> float:
+        asked.append(light)
+        return 2.5e-4
+
+    for radius in (1, 2, 5):
+        floor = math.sqrt(aperture_samples(radius)) * 2.5e-4 / math.sqrt(12)
+        assert gate.empty_aperture_sigma(sky, radius, nothing, clipped) < 1e-12 * floor
+        assert gate.empty_aperture_sigma(sky, radius, nothing, clipped, code_light=one_code) == pytest.approx(floor, rel=1e-12)
+        aperture = max(radius, stars.APERTURE_MIN_PX)
+        disc = np.hypot(*np.mgrid[-aperture:aperture + 1, -aperture:aperture + 1]) <= aperture
+        level = np.median(np.concatenate([sky[y - aperture:y + aperture + 1, x - aperture:x + aperture + 1][disc]
+                                          for x, y in stars.empty_places(shape, radius, nothing, clipped)]))
+        assert asked[-1] == pytest.approx(level, rel=1e-12) and asked[-1] != pytest.approx(float(np.median(sky)), rel=1e-3)
+    # A sky noisier than the floor keeps its own MAD, and one just under it takes the floor
+    rng = np.random.default_rng(71)
+    floor = math.sqrt(aperture_samples(3)) * 2.5e-4 / math.sqrt(12)
+    noisy = 0.004 + 1e-3 * rng.standard_normal(shape)
+    own = gate.empty_aperture_sigma(noisy, 3, nothing, clipped)
+    assert own > 2 * floor and gate.empty_aperture_sigma(noisy, 3, nothing, clipped, code_light=one_code) == own
+    quiet = 0.004 + 2e-5 * rng.standard_normal(shape)
+    under = gate.empty_aperture_sigma(quiet, 3, nothing, clipped)
+    assert 0.0 < under < floor
+    assert gate.empty_aperture_sigma(quiet, 3, nothing, clipped, code_light=one_code) == pytest.approx(floor, rel=1e-12)
+    # No empty place: nothing to measure the noise or the light at, floor or not
+    full = np.ones(shape)
+    assert math.isnan(gate.empty_aperture_sigma(sky, 3, full, clipped, code_light=one_code))
+    # A code's light that is not a positive number leaves the MAD as it is
+    for light in (0.0, -1.0, math.nan, math.inf):
+        assert gate.empty_aperture_sigma(quiet, 3, nothing, clipped, code_light=lambda _, v=light: v) == under
+
+
 def flat_sky_scene() -> tuple:
     """One star on a sky of one light everywhere else: every empty sum the same."""
     light = 0.003 + gaussian((256, 256), 100.0, 100.0, 0.3)
@@ -1444,6 +1492,33 @@ def flat_sky_scene() -> tuple:
     field = stars.StarField((star,), footprint, np.zeros((256, 256), bool), 1, 1, 0)
     expected = np.repeat(np.round(light * 65535)[..., None], 3, axis=-1)
     return light, field, gate.Kept(field, footprint), gate.Original.of(field), expected
+
+
+def test_a_star_on_a_sky_of_one_light_is_measured_against_the_floor_and_the_record_counts_it(monkeypatch) -> None:
+    light, field, kept, original, expected = flat_sky_scene()
+    stored = gate.kept_samples(expected, expected, kept.weight).astype(np.uint16)
+    gone = light - gaussian((256, 256), 100.0, 100.0, 0.3)
+    args = dict(original=original, kept=kept, expected=expected, original_luminance=light, variant_luminance=gone)
+    unfloored = gate.run_gate(stored, **args)
+    assert unfloored.record["starsMeasured"] == 0, "the control: today the star goes unmeasured"
+    floored = gate.run_gate(stored, **args, code_light=lambda _: 1.0 / 65535)
+    assert floored.record["starsMeasured"] == 1 and floored.record["starsOutsideFluxTolerance"] == 1
+    assert floored.rejection == "star_flux_changed"
+    # The floor is the frame's own: a frame's stars that only its frames together confirm are measured on their mean,
+    # which is not on the stream's codes, and get none
+    handed: list = []
+    real = gate.flux_changes
+
+    def noted(field_, original_luminance, variant_luminance, kept_weight, code_light=None):
+        handed.append((field_, code_light))
+        return real(field_, original_luminance, variant_luminance, kept_weight, code_light)
+
+    monkeypatch.setattr(gate, "flux_changes", noted)
+    together = stars.StarField((stars.Star(180.0, 60.0, 20.0, 2),), np.zeros((256, 256)), field.clipped, 1, 1, 0)
+    one = lambda _: 1.0 / 65535  # noqa: E731
+    gate.run_gate(stored, **args, code_light=one, together=together, together_luminance=light)
+    assert [(f is field, c is one) for f, c in handed] == [(True, True)] + [(False, False)]
+    assert handed[1][0] is together and handed[1][1] is None
 
 
 def test_the_record_counts_the_stars_it_could_not_measure_and_a_frame_whose_flux_it_did_not_check() -> None:
@@ -1483,6 +1558,24 @@ def test_the_record_counts_the_stars_it_could_not_measure_and_a_frame_whose_flux
     contracts.IntegrityGateResult.model_validate(record)
     assert record["starsNotMeasured"] == 2 + 1 + 3 and record["framesFluxNotChecked"] == 1 and record["passed"]
     assert gate.clip_record([unchecked, unchecked])["framesFluxNotChecked"] == 2
+def test_a_frame_whose_top_rows_hold_one_light_measures_its_stars_against_the_whole_frames_noise() -> None:
+    # The root cause (gate-zero-stars-probe's addendum): the sixty empty places were the lattice's first sixty in row
+    # order, all on the top rows, so a frame whose top strip is one light (a bar, a black band) measured no star. Spread
+    # over the frame they measure its noise, with no floor given
+    rng = np.random.default_rng(72)
+    light = 0.01 + 4e-4 * rng.standard_normal((480, 640)) + gaussian((480, 640), 300.0, 300.0, 0.05)
+    light[:60] = 0.002
+    star = stars.Star(300.0, 300.0, 50.0, 4)
+    footprint = stars.footprint_map((480, 640), [star])
+    field = stars.StarField((star,), footprint, np.zeros((480, 640), bool), 1, 1, 0)
+    places = stars.empty_places((480, 640), star.radius_px, footprint, field.clipped)
+    assert any(y < 60 for _, y in places) and any(y > 400 for _, y in places)
+    sigma = gate.empty_aperture_sigma(light, star.radius_px, footprint, field.clipped)
+    pixels = aperture_samples(star.radius_px)
+    assert sigma == pytest.approx(4e-4 * math.sqrt(pixels), rel=0.35)
+    variant = light + 2e-4 * rng.standard_normal((480, 640))
+    measured, outside, _, _ = gate.flux_check(field, light, variant, footprint)
+    assert (measured, outside) == (1, 0)
 # ---------------------------------------------------------------------------------------------------------------
 # A clip frame's points confirmed on its original frames together, with the two guards (restore-7; design
 # section 7; REQ-RST-6.10, 6.11; P-RST-14, 23 and 24 on arrays: the job's own run on stored clips is in test_jobs.py)
@@ -1539,6 +1632,22 @@ def nothing_unchanged() -> tuple[np.ndarray, np.ndarray]:
     """A variant and an expected frame that differ everywhere: no point is confirmed by being the original's own."""
     expected = np.zeros((CLIP_PX, CLIP_PX, 3))
     return expected + 1000.0, expected
+
+
+def test_guard_one_measures_each_frames_noise_at_its_own_first_sixty_places() -> None:
+    # gate-flux-floor-one spread the flux check's empty places; guard 1 keeps the first sixty in row order for each
+    # original frame's sigma_F (QUESTION-3 and its addendum: spread, its sigmas moved by about a tenth and one job
+    # test's faint star at its edge flipped; guard 1 on the spread places is a unit of its own)
+    frames, window = clip_window(panning(), at_scene(96.3, 95.7, 25.0), 2)
+    together = gate.Together.of(frames, frames, CENTRE, window)
+    occupied = np.zeros((CLIP_PX, CLIP_PX))
+    clipped = occupied.astype(bool)
+    assert stars.first_empty_places((CLIP_PX, CLIP_PX), 3, occupied, clipped) != stars.empty_places(
+        (CLIP_PX, CLIP_PX), 3, occupied, clipped), "the control: the two rules take other places here"
+    for index, original in enumerate(together.originals):
+        first = gate.empty_aperture_sigma(original, 3, occupied, clipped, places_rule=stars.first_empty_places)
+        assert together.frame_sigma(index, 3, occupied, clipped) == first
+        assert first != gate.empty_aperture_sigma(original, 3, occupied, clipped)
 
 
 def test_p_rst_23_a_star_too_faint_for_its_frame_is_confirmed_on_the_frames_together() -> None:

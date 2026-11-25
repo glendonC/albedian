@@ -335,24 +335,45 @@ def clearance_map(footprint: np.ndarray, clipped: np.ndarray) -> np.ndarray:
 
 def empty_places(shape: tuple[int, int], radius: int, footprint: np.ndarray, clipped: np.ndarray,
                  clearance: np.ndarray | None = None) -> list[tuple[int, int]]:
-    """The first EMPTY_APERTURES points (x, y) of a fixed lattice, in row order, EMPTY_CLEARANCE_PX clear of every
-    footprint and clipped region, with the aperture and its annulus inside the frame. The lattice spaces apertures
-    so that no two annuli overlap; it is the same for every call. `clearance` is `clearance_map(footprint, clipped)`
-    when the caller measured it once for several radii (restore-7s)."""
+    """EMPTY_APERTURES points (x, y) spread evenly over a fixed lattice's points EMPTY_CLEARANCE_PX clear of every
+    footprint and clipped region, with the aperture and its annulus inside the frame: of those clear points in row
+    order, the first, the last and evenly between, never one twice; every one of them where there are no more. The
+    lattice spaces apertures so that no two annuli overlap; it is the same for every call. The first sixty in row
+    order lay on a frame's top rows, so sigma_F was the top strip's noise and a flat top strip measured no star
+    [tested: gate-zero-stars-probe; decided by the lead at the 22:38 stamp, gate-flux-table, gate-flux-floor-one].
+    `clearance` is `clearance_map(footprint, clipped)` when the caller measured it once for several radii (restore-7s)."""
     aperture = max(radius, APERTURE_MIN_PX)
     margin = aperture + ANNULUS_OUTER_PX
     spacing = 2 * margin + 1
     if clearance is None:
         clearance = clearance_map(footprint, clipped)
     height, width = shape
-    places = []
-    for y in range(margin, height - margin, spacing):
-        for x in range(margin, width - margin, spacing):
-            if clearance[y, x] >= EMPTY_CLEARANCE_PX:
-                places.append((x, y))
-                if len(places) == EMPTY_APERTURES:
-                    return places
-    return places
+    rows = np.arange(margin, height - margin, spacing)
+    columns = np.arange(margin, width - margin, spacing)
+    ys, xs = np.nonzero(np.asarray(clearance)[np.ix_(rows, columns)] >= EMPTY_CLEARANCE_PX)  # in row order
+    clear = list(zip(columns[xs].tolist(), rows[ys].tolist()))
+    if len(clear) <= EMPTY_APERTURES:
+        return clear
+    return [clear[i] for i in np.linspace(0, len(clear) - 1, EMPTY_APERTURES).round().astype(int)]
+
+
+def first_empty_places(shape: tuple[int, int], radius: int, footprint: np.ndarray, clipped: np.ndarray,
+                       clearance: np.ndarray | None = None) -> list[tuple[int, int]]:
+    """The first EMPTY_APERTURES clear points of `empty_places`' lattice in row order: guard 1's places for each
+    original frame's sigma_F (`gate.Together.frame_sigma`), kept as they were when the flux check's spread, since
+    spreading them moved guard 1's sigmas by about a tenth and flipped one job test's faint star at guard 1's edge
+    [tested: RESTORE-CLIP-gate-flux-floor-1-QUESTION-3 and its addendum; guard 1 on the spread places is its own
+    unit]."""
+    aperture = max(radius, APERTURE_MIN_PX)
+    margin = aperture + ANNULUS_OUTER_PX
+    spacing = 2 * margin + 1
+    if clearance is None:
+        clearance = clearance_map(footprint, clipped)
+    height, width = shape
+    rows = np.arange(margin, height - margin, spacing)
+    columns = np.arange(margin, width - margin, spacing)
+    ys, xs = np.nonzero(np.asarray(clearance)[np.ix_(rows, columns)] >= EMPTY_CLEARANCE_PX)  # in row order
+    return list(zip(columns[xs].tolist(), rows[ys].tolist()))[:EMPTY_APERTURES]
 
 
 def empty_aperture_sigma(image: np.ndarray, radius: int, footprint: np.ndarray, clipped: np.ndarray) -> float:

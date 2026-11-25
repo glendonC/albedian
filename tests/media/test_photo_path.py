@@ -71,7 +71,7 @@ DESIGN_VALUES = [
     (stars, "MERGE_RADIUS_PX", r"overlapping tiles within ([\d.]+) px are merged"), (stars, "CLIPPED_GROW_PX", r"grown by (\d+) px"),
     (stars, "FOOTPRINT_MAX_PX", r"at most (\d+) px \[proposed cap"), (stars, "FOOTPRINT_EDGE_PX", r"with a (\d+) px cosine edge"),
     (stars, "APERTURE_MIN_PX", r"\(at least (\d+) px\)"), (stars, "ANNULUS_INNER_PX", r"annulus from (\d+) to \d+ px beyond"),
-    (stars, "ANNULUS_OUTER_PX", r"annulus from \d+ to (\d+) px beyond"), (stars, "EMPTY_APERTURES", r"the first (\d+) points of a fixed lattice"),
+    (stars, "ANNULUS_OUTER_PX", r"annulus from \d+ to (\d+) px beyond"), (stars, "EMPTY_APERTURES", r"(\d+) points spread evenly over the points of a fixed lattice"),
     (stars, "EMPTY_CLEARANCE_PX", r"lattice that are (\d+) px clear"),
     (noise, "BLOCK_PX", r"Blocks of (\d+) by"), (noise, "BINS", r"(Twelve) intensity bins"),
     (noise, "MIN_BLOCKS_PER_BIN", r"fewer than (\d+) blocks is dropped"), (noise, "MIN_BINS", r"fewer than (\d+) bins survive"),

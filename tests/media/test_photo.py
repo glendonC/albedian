@@ -1213,3 +1213,30 @@ def test_a_starry_sky_black_to_its_edges_has_no_bars_and_is_restored_whole_as_be
     assert not result.bars and result.stored.shape == codes.shape
     assert (result.status, result.gate, result.measured) == (whole.status, whole.gate, whole.measured)
     assert np.array_equal(result.stored, whole.stored)
+
+
+def test_a_stills_gate_floors_its_noise_at_one_of_its_own_codes_through_its_transfer(tmp_path, monkeypatch) -> None:
+    # gate-flux-floor-one (decided by the lead at the 01:34 stamp): one code's light is the still's own, from its
+    # transfer, as the noise measure's rounding floor takes it: one code step over the encode's slope at that light.
+    # On the sRGB encode's linear segment the slope is 12.92 [verified: IEC 61966-2-1], so one 16 bit code there is
+    # 1 / (65535 x 12.92) of white
+    scene = star_field(13, size=256, count=12, sky=0.003, noise_sigma=0.0, peaks=(0.05, 0.2))
+    handed: list = []
+    real = gate.run_gate
+
+    def noted(*args, **kwargs):
+        handed.append(kwargs.get("code_light"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(gate, "run_gate", noted)
+    result = photo.restore_still(still_of(scene.codes, tmp_path))
+    assert handed and all(callable(light) for light in handed)
+    assert handed[-1](0.001) == pytest.approx(1 / (65535 * 12.92), rel=1e-3)
+    assert handed[-1](0.1) == pytest.approx(1 / (65535 * 1.055 / 2.4 * 0.1 ** (1 / 2.4 - 1)), rel=1e-3)
+    # Its sky is one code everywhere, so without the floor no star was measured; with it, every star clear of the
+    # border is, and the honest restoration passes
+    assert result.status == "ready", result.gate
+    assert result.gate["starsMeasured"] >= 6, result.gate
+    # The gate's stars, measured and not, are the photo's confirmed stars, and its flux was checked
+    assert result.gate["starsMeasured"] + result.gate["starsNotMeasured"] == result.measured["stars"]["confirmed"]
+    assert result.gate["framesFluxNotChecked"] == 0

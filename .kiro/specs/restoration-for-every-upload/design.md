@@ -529,7 +529,10 @@ registered neighbours:
     frame k alone are frame k's.
   - Guard 1 measures each frame that gives every sample of the star's aperture. It uses the frame's own annulus
     where the frame gives all of it, and `J_k`'s annulus otherwise. A neighbour that gives only part of the aperture
-    is not measured. Each frame's sigma_F is taken on that original frame unmoved. On a test clip, the moved
+    is not measured. Each frame's sigma_F is taken on that original frame unmoved, at the first 60 clear lattice
+    places in row order (guard 1's own rule since gate-flux-floor-one, which spread the flux check's: spread, one
+    job test's faint star at guard 1's edge flipped; guard 1 on the spread places is its own unit). On a test
+    clip, the moved
     neighbours' lattice gave nan, 0 or a quarter of frame k's sigma_F there, and refused the scene's faint star. A
     light fixed to the sensor leaves a copy in `J_k` for each neighbour. That copy fails guard 1 on its own
     neighbour, once that neighbour is measured with part of its annulus outside the frame.
@@ -558,12 +561,21 @@ works tile by tile). Each pass's count goes into the record.
 frame. Then flux: for every confirmed star of section 3 whose aperture and annulus touch neither the border nor a
 clipped region, the aperture sum of the linear luminance minus the mean of an annulus outside every other kept region,
 aperture radius the star's footprint radius (at least 2 px), annulus from 3 to 7 px beyond it [proposed]. `F_o` on the
-original; `F_v` on the variant with the lift undone, against the original's own annulus, so the star's own light is
+original lifted and stored as the job stores it, the lift undone, so only what the restoration did is measured (a
+clip's since restore-7; a still's since gate-flux-floor-one, where against the original as decoded the 16 bit store's
+rounding at a bright star's core refused an honest star of a still whose sky is one code) [tested]; `F_v` on the
+variant with the lift undone, against the original's own annulus, so the star's own light is
 compared and not the sky the restoration smoothed around it [tested: against each image's own annulus median, a
 noisy sky's median under its mean dimmed 364 of 1571 stars of photo 1 by up to 90 sigma_F with every aperture sample
 the original's]. `sigma_F`: 1.4826 x MAD of the same flux at empty places of the original,
-the first 60 points of a fixed lattice that are 12 px clear of every footprint and clipped region (no random draw),
-measured once per radius
+60 points spread evenly over the points of a fixed lattice that are 12 px clear of every footprint and clipped region
+(of those in row order the first, the last and evenly between; no random draw), and at least the aperture's rounding
+noise: sqrt(N) times one of the original's codes' light at the median light of the empty apertures' samples, over
+`sqrt(12)`, N the aperture's samples, one code's light from the file's own transfer (one code step over the encode's
+slope there, as the noise floor of section 4, through the lift's slope for a clip) [decided by the lead at the
+22:38 and 01:34 stamps of 2026-11-24 and 25, gate-flux-floor-one: the first 60 points in row order all lay on a
+frame's top rows, and where more than half of their sums were equal, ten of twelve frames of the public sample, no
+star was measured; the frames together's mean is not on the file's codes and gets no floor], measured once per radius
 and not compared against where it is not a positive number. `rejected` with `star_flux_changed` when any star has
 `|F_v - F_o| > 3 sigma_F` [proposed: measured worst 0.013 over 5736 stars of the five photos]. A star painted onto a
 real one changes the real one's kept core and is refused as an unconfirmed place (restore-4e); the flux check stays,
