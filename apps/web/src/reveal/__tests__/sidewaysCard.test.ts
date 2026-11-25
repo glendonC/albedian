@@ -38,8 +38,9 @@ describe('the foot row on a phone held on its side', () => {
   // do not share a row), Ask out loud at the trailing foot; item 6: Back to Moment centred at the foot; every pinned
   // control inside the safe areas (62 px at each side and 20 at the foot on the 17 Pro)
   it('stands the counts at the leading side and Ask out loud at the trailing foot, Back to Moment centred', () => {
-    expect(inSideways('.reveal-phone-counts__big')).toEqual({ left: 'max(24px, env(safe-area-inset-left))' });
-    expect(inSideways('.reveal-phone-counts__more')).toEqual({ left: 'max(24px, env(safe-area-inset-left))' });
+    // By the foot, as Ask out loud: the smaller counts on the foot's line, the big count 54 px above them (their upright gap)
+    expect(inSideways('.reveal-phone-counts__big')).toEqual({ left: 'max(24px, env(safe-area-inset-left))', top: 'auto', bottom: 'calc(max(12px, env(safe-area-inset-bottom)) + 54px)' });
+    expect(inSideways('.reveal-phone-counts__more')).toEqual({ left: 'max(24px, env(safe-area-inset-left))', top: 'auto', bottom: 'max(12px, env(safe-area-inset-bottom))' });
     expect(inSideways('.ask-bar.is-phone')).toEqual({ top: 'auto', bottom: 'max(12px, env(safe-area-inset-bottom))' });
     expect(inSideways('.ask-bar.is-phone:not(:has(> .look-main))')).toEqual({ left: 'auto', right: 'max(20px, env(safe-area-inset-right))', transform: 'none' });
   });

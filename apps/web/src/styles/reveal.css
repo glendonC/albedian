@@ -3045,6 +3045,15 @@
   .reveal-phone-counts__big,
   .reveal-phone-counts__more {
     left: max(24px, env(safe-area-inset-left));
+    top: auto;
+  }
+
+  .reveal-phone-counts__big {
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 54px);
+  }
+
+  .reveal-phone-counts__more {
+    bottom: max(12px, env(safe-area-inset-bottom));
   }
 
   .ask-bar.is-phone {
