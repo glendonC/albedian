@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
 // is never drawn without its block. Each fade takes its block's own entrance, the same animation as the block's first
 // words (the same opacity on the same frames), and where the block's words leave one after another, it leaves with the
 // last of them. A block that comes in whole (the predicted sky's column, the ask bar on the reveal) carries its fade with
-// it already; a block whose words stand at once (the views row, the pill row) needs nothing.
+// it already; a block whose words stand at once (the views row) needs nothing. The flight's pill row words in one
+// stagger after the readout, as the motion record's Go there step 3 has it (motion-seams-one), so its fade does too.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const motion = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
@@ -50,6 +51,9 @@ describe('each fade takes its block\'s own entrance: the same animation as its f
     // The ask bar after Go there: in with Back to Moment, once the camera is still (on the predicted sky, at the words' delay)
     ['.ask-bar:has(> .look-main)::before', '.ask-bar > .look-main'],
     ['.predsky ~ .ask-bar:has(> .look-main)::before', '.predsky ~ .ask-bar > .look-main'],
+    // The flight's pill row on the laptop: in one stagger after the readout; out with its pills at Back to Moment's press
+    ['.flight-pills:not(.is-phone)::before', '.flight-pills > *'],
+    ['.flight-pills-host.is-leaving .flight-pills:not(.is-phone)::before', '.flight-pills-host.is-leaving .flight-pills > *'],
   ];
 
   for (const [fade, words, media] of pairs) {

@@ -480,6 +480,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // Left at once from there (reduced motion), no Real sky line came before the fade: one is shown for it, its tag with it
   const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly;
   const skyLineShown = skyOnScreen || skyLeaving;
+  // Whether Real sky's layer is mounted, as its mount below reads it: fading in, drawn or fading out (its line's tag
+  // lives exactly as long)
+  const skyLayerOn = skyMounted && !originalPixels && !earthOnly;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
   const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
   const marked = lit === undefined ? framed : { ...framed, selectedFindingId: lit };
@@ -1087,6 +1090,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     const before = latestLine.current;
     if (!before || before.key === lineKey || !(before.props as { 'data-moment'?: string })['data-moment']) return undefined;
+    // motion-seams-one (AUDIT-D on flight-anim-one version two): a tag leaves on its layer's last frame, never after, so
+    // Real sky's line plays no words out of its own once its layer has gone (faded out, or taken at once)
+    if (before.key === 'real-sky' && !skyLayerOn) return undefined;
     setOutgoing(before);
     const timer = setTimeout(() => setOutgoing(null), leaveMotion.wordsOutMs);
     return () => clearTimeout(timer);
@@ -1325,7 +1331,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {(!answer || phone) && shownFlight && !cone && (
         <section
           ref={readoutRef}
-          className={phone ? 'flight-readout is-phone' : returning ? 'flight-readout is-leaving' : 'flight-readout'}
+          className={phone ? (returning ? 'flight-readout is-phone is-returning' : 'flight-readout is-phone') : returning ? 'flight-readout is-leaving' : 'flight-readout'}
           inert={returning && !phone}
           data-testid="flight-readout"
           aria-label={shownFlight.name}
@@ -1394,8 +1400,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </section>
       )}
 
+      {/* motion-seams-one: at Back to Moment the views row leaves on words out at the press, taking no input as it goes (a
+          host with no box of its own, so the row stands where it stood) */}
       {there && (
-        <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} />
+        <div className={returning ? 'flight-pills-host is-leaving' : 'flight-pills-host'} inert={returning} style={{ display: 'contents' }}>
+          <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} />
+        </div>
       )}
       {phone && there && details && (
         <DetailsSheet

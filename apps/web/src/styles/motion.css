@@ -392,6 +392,18 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
 }
 
+/* motion-seams-one (MOTION's flight-anim-one report, seen items 2 and 4): the views row leaves with them at both widths,
+   its fade with its words; at phone width, where the readout carries the disclosure, its words leave too while its tag
+   row and first sentence stay until the there screen has gone */
+.flight-pills-host.is-leaving .flight-pills > *,
+.flight-readout.is-phone.is-returning > :not(.flight-readout__tagrow, .flight-readout__note) {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
+.flight-pills-host.is-leaving .flight-pills:not(.is-phone)::before {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
 /* Fly on your own is offered only once the flight has arrived, so it words in as it mounts, with Back to Moment */
 .ask-bar__fly {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
@@ -451,6 +463,14 @@
    arrives on the words-in time, no later (the 17:38 rule; AUDIT-C's tag sweep of 21 Nov, item 8, found it 20 ms late) */
 .flight-readout > .flight-readout__note {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+/* Go there's step 3 (the motion record): the views row words in with the disclosure and the readout, one stagger after
+   the readout, so it comes in once Real sky's line has left (motion-seams-one; MOTION saw the two overlap for three
+   frames at 390); its fade (reveal.css) takes the same entrance (fade-with-words-one) */
+.flight-pills > *,
+.flight-pills:not(.is-phone)::before {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both;
 }
 
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this

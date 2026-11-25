@@ -1450,6 +1450,9 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
       expect(q('[data-testid="real-sky"]')).toBeNull();
       // The photo's line on the laptop; at phone width none shows over the photo
       expect(momentOf()).toBe(phone ? null : 'photo');
+      // motion-seams-one: the tag ends on the layer's last frame; the Real sky line plays no words out of its own after it
+      expect(q('[data-testid="reveal-status-leaving"]')).toBeNull();
+      expect(q('[data-evidence-class="simulated"]')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -1473,6 +1476,9 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
       act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS));
       expect(q('[data-testid="real-sky"]')).toBeNull();
       expect(momentOf()).toBe(phone ? null : 'photo');
+      // motion-seams-one (MOTION measured 70 ms of it at 390 after Back to Moment): nothing of the tag after the layer
+      expect(q('[data-testid="reveal-status-leaving"]')).toBeNull();
+      expect(q('[data-evidence-class="simulated"]')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -1484,6 +1490,10 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     show(calibrated(), { realSky: true, originalPixels: true });
     expect(q('[data-testid="real-sky"]')).toBeNull();
     expect(momentOf()).toBe('photo');
+    // motion-seams-one: the line goes on the layer's last frame, so no words out leaves its tag over the bare photo (the
+    // photo's own line may still be leaving from Real sky's arrival here, the test's clock being real)
+    expect(q('[data-testid="reveal-status-leaving"][data-moment="real-sky"]')).toBeNull();
+    expect(q('[data-evidence-class="simulated"]')).toBeNull();
     // Real sky let go while Original pixels is held: no layer is drawn, so no Simulated line is kept for it
     show(calibrated(), { realSky: true });
     show(calibrated(), { realSky: false, originalPixels: true });
@@ -1861,5 +1871,70 @@ describe('the status line that gives way leaves as the motion record says', () =
     // after the status rules it overrides, so the leaving wins over the arriving delays
     const order = [...motionCss.matchAll(/^(\.reveal-status\.is-leaving|\.reveal-status\[data-moment="there"\]|\[data-arriving\] \.reveal-status) \{/gm)].map((m) => m[1]);
     expect(order.at(-1)).toBe('.reveal-status.is-leaving');
+  });
+});
+
+// motion-seams-one (MOTION's flight-anim-one report, seen items 2 and 4; the lead's answer stamped 00:21): the motion
+// record's Go there step 3 brings the views row in on words in with the disclosure and the readout, one stagger after
+// the readout, so it never stands over Real sky's leaving line; its Back to Moment takes the views row out on words out
+// at the press, at both widths, and at phone width the readout's words with it, while the tag row and the first
+// sentence, the there screen's disclosure (D30), stay to the layer's last frame.
+describe('the views row and the phone readout at the flight\'s seams', () => {
+  const flight = { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 };
+  const picked = () => {
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    return { ...session, selectedFindingId: rigel.id } as ObservationSession;
+  };
+  const host = () => q('[data-testid="flight-pills"]')!.parentElement as HTMLElement;
+  const motionRules = () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      for (const sel of rule.selectors.map((s) => s.replace(/\s+/g, ' '))) {
+        rule.walkDecls((decl) => void (rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') }));
+      }
+    });
+    return rules;
+  };
+  const WORDS_OUT = 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both';
+
+  for (const phone of [false, true])
+  it(`takes the views row out at Back to Moment's press, taking no input as it goes${phone ? ', at phone width' : ''}`, () => {
+    show(picked(), { flight, phone });
+    expect(host().className).toBe('flight-pills-host');
+    expect(host().style.display).toBe('contents');
+    expect(host().hasAttribute('inert')).toBe(false);
+    show(picked(), { flight, phone, returning: true });
+    expect(q('[data-testid="flight-pills"]')).not.toBeNull();
+    expect(host().className).toBe('flight-pills-host is-leaving');
+    expect(host().hasAttribute('inert')).toBe(true);
+  });
+
+  it("at phone width takes the readout's words out at the press and keeps its tag row and first sentence", () => {
+    show(picked(), { flight, phone: true, returning: true });
+    const readout = q('[data-testid="flight-readout"]')!;
+    expect(readout.className).toBe('flight-readout is-phone is-returning');
+    expect(readout.querySelector(':scope > .flight-readout__tagrow [data-evidence-class="simulated"]')).not.toBeNull();
+    expect(readout.querySelector(':scope > .flight-readout__note')!.textContent).toBe('Drawn or computed by the app; not measured in the source recording.');
+    // The laptop's readout leaves whole, as before, while its status column keeps the disclosure
+    show(picked(), { flight, returning: true });
+    expect(q('[data-testid="flight-readout"]')!.className).toBe('flight-readout is-leaving');
+  });
+
+  it('times both in motion.css: words out at once, the fade with its words; the disclosure left standing', () => {
+    const rules = motionRules();
+    expect(rules['.flight-pills-host.is-leaving .flight-pills > *']).toEqual({ animation: WORDS_OUT });
+    expect(rules['.flight-readout.is-phone.is-returning > :not(.flight-readout__tagrow, .flight-readout__note)']).toEqual({ animation: WORDS_OUT });
+    expect(rules['.flight-pills-host.is-leaving .flight-pills:not(.is-phone)::before']).toEqual({ animation: WORDS_OUT });
+  });
+
+  it('brings the views row in on words in one stagger after the readout, its fade with its words', () => {
+    const rules = motionRules();
+    const entrance = 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both';
+    expect(rules['.flight-pills > *']).toEqual({ animation: entrance });
+    expect(rules['.flight-pills:not(.is-phone)::before']).toEqual({ animation: entrance });
+    // One stagger after the readout's words, which come one stagger after the line's
+    expect(rules['.flight-readout > *']!.animation).toContain('calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger))');
   });
 });
