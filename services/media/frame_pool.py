@@ -30,6 +30,13 @@ CORE_SHARE = 2
 # The name of the environment variable that holds the pool under its default [decided 2026-11-11 in design section
 # 10: the limit of two processes is for agents' test runs; the product sets nothing]
 WORKERS_LIMIT_ENV = "ALBEDIAN_MEDIA_WORKERS"
+# Each worker's maths libraries run on one thread: a library that threads each worker (OpenBLAS on Linux) would ask
+# for workers times cores [decided 2026-11-25 by the lead, pool-threads-one: on the public clip at the default pool the
+# cap at one was no slower than none and the stored file and records identical to the byte; numpy on this laptop's
+# Accelerate threads none of these calls, so it is a guard]. Set for the workers as they start, never for the caller.
+INNER_THREAD_VARIABLES = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS",
+                          "NUMEXPR_NUM_THREADS")
+INNER_THREADS = "1"  # [decided 2026-11-25 by the lead, pool-threads-one]
 
 
 @dataclass(frozen=True)
@@ -112,6 +119,7 @@ class FramePool:
         self._workers = workers
         self._executor: Optional[ProcessPoolExecutor] = None
         self._worker_pids: set[int] = set()
+        self._callers_threads: dict[str, Optional[str]] = {}
         # The largest peak resident size any worker reported, in bytes
         self.worker_peak_bytes = 0
 
@@ -123,6 +131,10 @@ class FramePool:
         current = multiprocessing.current_process()
         if current.daemon:
             current.daemon = False
+        # The workers start with `spawn` from this process's environment, so the cap is set here for the pool's life
+        # (a worker may start late) and the caller's own values come back at its end
+        self._callers_threads = {name: os.environ.get(name) for name in INNER_THREAD_VARIABLES}
+        os.environ.update({name: INNER_THREADS for name in INNER_THREAD_VARIABLES})
         self._executor = ProcessPoolExecutor(max_workers=self._workers, mp_context=multiprocessing.get_context("spawn"))
         return self
 
@@ -131,6 +143,12 @@ class FramePool:
             self._note_workers()
             self._executor.shutdown(wait=True, cancel_futures=True)
             self._executor = None
+        for name, value in self._callers_threads.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        self._callers_threads = {}
 
     def _note_workers(self) -> None:
         """Keep the process ids of the executor's workers, read before it shuts down. CPython's

@@ -112,6 +112,10 @@ def own_pid(run: frame_pool.Run) -> list[int]:
     return [os.getpid() for _ in run.own()]
 
 
+def inner_threads(run: frame_pool.Run) -> list[tuple]:
+    return [tuple(os.environ.get(name) for name in frame_pool.INNER_THREAD_VARIABLES) for _ in run.own()]
+
+
 # A worker's exit is waited for at most this long [proposed: the executor joins its workers on shutdown, so they are gone
 # at once; ten seconds covers a loaded machine]
 EXIT_BOUND_SEC = 10.0
@@ -168,6 +172,19 @@ def test_no_more_runs_are_handed_out_than_there_are_workers() -> None:
             # When result k is handed back, runs 0 to k are done and at most two more are in the pool
             assert len(drawn) <= k + 1 + 2
     assert len(drawn) == 40
+
+
+def test_each_worker_runs_its_maths_libraries_on_one_thread_and_the_callers_environment_stays(monkeypatch) -> None:
+    # pool-threads-one [decided 2026-11-25 by the lead at the 01:40 stamp]: a worker's maths libraries are held to one
+    # thread each, so a library that threads (OpenBLAS on Linux) never asks for workers times cores; measured no slower
+    # and identical to the byte on the public clip at the default pool; the caller's own environment is left as it was
+    assert set(frame_pool.INNER_THREAD_VARIABLES) >= {"OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"}
+    monkeypatch.setenv("OMP_NUM_THREADS", "7")
+    monkeypatch.delenv("VECLIB_MAXIMUM_THREADS", raising=False)
+    with frame_pool.FramePool(inner_threads, workers=2) as pool:
+        seen = list(pool.map(frame_pool.runs(iter(frame_numbers(6)), run_frames=1, window=0)))
+    assert seen == [("1",) * len(frame_pool.INNER_THREAD_VARIABLES)] * 6
+    assert os.environ["OMP_NUM_THREADS"] == "7" and "VECLIB_MAXIMUM_THREADS" not in os.environ
 
 
 def test_the_work_runs_in_the_pools_own_processes() -> None:
