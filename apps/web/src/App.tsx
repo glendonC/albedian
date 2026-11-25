@@ -27,6 +27,7 @@ import {
   failureReason,
   fetchDiscoveredMedia,
   followStoredSolve,
+  readRestorations,
   solveStoredUpload,
   uploadAndSolveMedia,
   type FollowedJob,
@@ -34,6 +35,7 @@ import {
   type UploadEvent,
 } from './services/apiClient.js';
 import { openAddressedUpload, readStoredReceipt, storedPhotoDecoded, uploadAddressed } from './services/openUpload.js';
+import { withStoredRestorations } from './reveal/shownRestoration.js';
 import { solveStoppedSentence } from './services/skyLayerWords.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
@@ -163,6 +165,21 @@ export const App: React.FC = () => {
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+  // voice-restore-known-one (DECIDED-BY-LEAD 25 Nov 02:37): the session learns the upload's stored restorations when its
+  // records are read (its hash appears), not only when one is shown, so what voice says of them is true on a first visit
+  const recordsSha = session.sourceAsset?.sha256 ?? null;
+  useEffect(() => {
+    if (recordsSha === null) return undefined;
+    let live = true;
+    readRestorations(recordsSha)
+      .then((list) => {
+        if (live) setSession((cur) => (cur.sourceAsset?.sha256 === recordsSha ? withStoredRestorations(cur, list.flatMap((r) => (r.variant ? [r.variant] : []))) : cur));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [recordsSha]);
   const recentPointerRef = useRef(recentPointer);
   useEffect(() => {
     recentPointerRef.current = recentPointer;
@@ -281,11 +298,15 @@ export const App: React.FC = () => {
     const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
     // Voice is direct manipulation (DECIDED-BY-LEAD 18:21 on 24 Nov): asking to restore does what the Restore button
     // does. Where the reducer finds no restored version on screen, the button's own action runs, and the compare shows
-    // when it is ready; the sentence that none exists stands only where the button itself could do nothing
+    // when it is ready; the sentence that none exists stands only where the button itself could do nothing.
+    // voice-restore-known-one (DECIDED-BY-LEAD 25 Nov 02:37): a restore or a compare the reducer completes, from a
+    // version the session knows is stored, runs the screen's own control too, so the restored compare is on screen as
+    // the outcome says (the control does nothing where it is already up)
+    const acted = result.voiceActionRecord.proposedAction?.type;
     const restoreRan =
-      result.voiceActionRecord.proposedAction?.type === 'media.restore' &&
-      result.outcome.status === 'rejected' &&
-      result.outcome.reason === 'missing_source' &&
+      (acted === 'media.restore' || acted === 'media.compare') &&
+      ((acted === 'media.restore' && result.outcome.status === 'rejected' && result.outcome.reason === 'missing_source') ||
+        result.outcome.status === 'completed') &&
       restoreNowRef.current?.() === true;
     setSession(result.session);
     // A command it cannot carry out shows its refusal where answers show, over the laptop reveal (command, decided

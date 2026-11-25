@@ -123,13 +123,15 @@ describe('voice finds the restored version the screen shows', () => {
 });
 
 describe('withShownRestoration', () => {
-  it('puts in the version shown, swaps the one it put in before, takes it out when none is shown, and hands back the same session when nothing changes', () => {
+  it('puts in the version shown and keeps it once held (voice-restore-known-one: the session holds what is held), handing back the same session when nothing changes', () => {
     const one = withShownRestoration(session, NEWER, null);
     expect(one.mediaVariants.map((v) => v.id)).toEqual([NEWER.id]);
     expect(withShownRestoration(one, NEWER, NEWER.id)).toBe(one);
+    // Another version shown: put beside the first, which stays held
     const other = withShownRestoration(one, OLDER, NEWER.id);
-    expect(other.mediaVariants.map((v) => v.id)).toEqual([OLDER.id]);
-    expect(withShownRestoration(other, null, OLDER.id).mediaVariants).toEqual([]);
+    expect(other.mediaVariants.map((v) => v.id)).toEqual([NEWER.id, OLDER.id]);
+    // None shown any more: nothing is taken out
+    expect(withShownRestoration(other, null, OLDER.id)).toBe(other);
     expect(withShownRestoration(session, null, null)).toBe(session);
   });
 
@@ -139,10 +141,10 @@ describe('withShownRestoration', () => {
     expect(withShownRestoration(own, null, null)).toBe(own);
     // Shown and already held: nothing to add
     expect(withShownRestoration(own, OLDER, null)).toBe(own);
-    // Another shown: put beside it; then taken out again, the session's own one stays
+    // Another shown: put beside it; none shown again, both stay
     const both = withShownRestoration(own, NEWER, null);
     expect(both.mediaVariants.map((v) => v.id)).toEqual([OLDER.id, NEWER.id]);
-    expect(withShownRestoration(both, null, NEWER.id).mediaVariants.map((v) => v.id)).toEqual([OLDER.id]);
+    expect(withShownRestoration(both, null, NEWER.id)).toBe(both);
   });
 
   it("never takes another recording's variant, nor anything but a restoration", () => {

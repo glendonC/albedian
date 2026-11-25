@@ -102,13 +102,13 @@ describe('asking to restore does what the Restore button does', () => {
     expect(seen.props.answer?.sentence).toBe('This photo has not been restored.');
   });
 
-  it('a restored version already on screen: the reducer finds it, and the button is not pressed again', () => {
+  it('a restored version already on screen: the reducer finds it, and the screen\'s own control is asked, which does nothing where the compare is up (the viewport\'s test)', () => {
     const photo = recording('image');
     const sha = photo.sourceAsset!.sha256;
     const shown = MediaVariantSchema.parse({ ...template, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: `/api/media/${sha}/variants/${String(template.id)}/file` });
     load({ ...photo, mediaVariants: [shown] } as ObservationSession);
     ask('make the sky clearer');
-    expect(pressed).not.toHaveBeenCalled();
+    expect(pressed).toHaveBeenCalledTimes(1);
     expect(seen.props.answer).toBeNull();
     expect(seen.props.session.activeVariantId).toBe(shown.id);
   });

@@ -473,7 +473,11 @@ export const SpatialObservatoryViewport: React.FC<
   const restoreNow = useRef<() => boolean>(() => false);
   restoreNow.current = () => {
     if (!session.sourceAsset || !isSourcePhotoShown(session)) return false;
-    if (!(restoration.phase === 'idle' || (restoration.phase === 'stopped' && restoration.canTryAgain))) return false;
+    // voice-restore-known-one (DECIDED-BY-LEAD 25 Nov 02:37): Original pixels shows the photo whole, the compare hidden;
+    // asking for the restored version turns them off, as pressing Original pixels again does
+    const pixelsOff = originalPixels;
+    if (pixelsOff) setOriginalPixels(false);
+    if (!(restoration.phase === 'idle' || (restoration.phase === 'stopped' && restoration.canTryAgain))) return pixelsOff;
     startRestore();
     return true;
   };

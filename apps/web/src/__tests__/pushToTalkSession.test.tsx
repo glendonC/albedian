@@ -188,12 +188,16 @@ describe('@albedian/web push-to-talk: the voice state and the session a spoken c
 
   it('drops a backend reply asked about the previous photo, even when the view revision matches by coincidence', async () => {
     let answer: (value: unknown) => void = () => {};
-    const fetchMock = vi.fn(() => new Promise((resolve) => (answer = resolve)));
+    // The stored-versions read a new photo's records start (voice-restore-known-one) is answered at once with none, so
+    // the one answer held back is the backend's
+    const fetchMock = vi.fn((input: RequestInfo | URL) =>
+      String(input).endsWith('/variants') ? Promise.resolve(new Response('{}', { status: 404 })) : new Promise((resolve) => (answer = resolve))
+    );
     vi.stubGlobal('fetch', fetchMock);
     const before = seen.props.session;
     // Nothing is selected, so the app's parser refuses and asks the backend
     act(() => seen.props.onRunUtterance('what is that', 'text'));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.filter(([input]) => !String(input).endsWith('/variants'))).toHaveLength(1);
     const newPhoto = anotherPhoto(seen.props.session);
     act(() => seen.props.setSession(newPhoto));
     expect(newPhoto.viewRevision).toBe(seen.props.session.viewRevision);

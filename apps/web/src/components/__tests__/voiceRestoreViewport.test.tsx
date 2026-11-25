@@ -72,7 +72,7 @@ afterEach(() => {
 });
 
 describe('the viewport keeps the restored version on screen in the session', () => {
-  it('takes what RevealPhoto reports, and lets it go when RevealPhoto reports none', () => {
+  it('takes what RevealPhoto reports, and keeps it when RevealPhoto reports none (voice-restore-known-one)', () => {
     const base = createSyntheticCalibratedSession();
     let current = {
       ...base,
@@ -119,8 +119,10 @@ describe('the viewport keeps the restored version on screen in the session', () 
     expect(current.mediaVariants.map((v) => v.id)).toEqual([variant.id]);
     // The app draws again with the new session, as React does
     render('blob:photo');
+    const held = current;
     act(() => seen.props!.onShownRestoration!(null));
-    expect(current.mediaVariants).toEqual([]);
+    expect(current).toBe(held);
+    expect(current.mediaVariants.map((v) => v.id)).toEqual([variant.id]);
   });
 });
 

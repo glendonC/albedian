@@ -287,7 +287,8 @@ describe('the app follows an upload on the working screen', () => {
     await waitUntil(() => expect(q(WORKING)).toBeNull());
     expect(q('[data-testid="source-photo-stage"] img')!.getAttribute('src')).toBe('blob:arrival-1');
     expect(q('.alb-lusion-header')).not.toBeNull();
-    expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve?wait=false`, `GET /api/ingest/${sha256}/solution`]);
+    // The upload's stored restorations are read once its receipt is (voice-restore-known-one)
+    expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve?wait=false`, `GET /api/media/${sha256}/variants`, `GET /api/ingest/${sha256}/solution`]);
   });
 
   it('shows a queued job with its count ahead and Cancel, which asks the server to cancel that job; the canceled job then reads "Canceled" (D2, INTERIM)', async () => {
@@ -332,6 +333,7 @@ describe('the app follows an upload on the working screen', () => {
     expect(calls).toEqual([
       'POST /api/ingest',
       `POST /api/ingest/${sha256}/solve?wait=false`,
+      `GET /api/media/${sha256}/variants`,
       `POST /api/ingest/${sha256}/solve?wait=false`,
       `GET /api/ingest/${sha256}/solution`,
     ]);

@@ -146,7 +146,7 @@ async function waitUntil(check: () => void) {
 const settle = () => act(async () => await new Promise((r) => setTimeout(r, 30)));
 
 describe('the app opened at ?upload=<sha256>', () => {
-  it("leaves the home for the stored upload's photo and sky, with two reads and nothing sent", async () => {
+  it("leaves the home for the stored upload's photo and sky, with three reads and nothing sent", async () => {
     const calls = await openAppAt(`/?upload=${sha256}`);
     await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
     expect(q(HOME_SCREEN)).toBeNull();
@@ -155,7 +155,9 @@ describe('the app opened at ?upload=<sha256>', () => {
     expect(photo.getAttribute('src')).toBe(`/api/ingest/${sha256}/original`);
     expect(q('[data-testid="working-screen"]')).toBeNull();
     expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
-    expect(calls).toEqual([`GET /api/ingest/${sha256}`, `GET /api/ingest/${sha256}/solution`]);
+    // The receipt, the solution, and the upload's stored restorations, which the session learns as its records are read
+    // (voice-restore-known-one)
+    expect(calls).toEqual([`GET /api/ingest/${sha256}`, `GET /api/ingest/${sha256}/solution`, `GET /api/media/${sha256}/variants`]);
   });
 
   it.each([
