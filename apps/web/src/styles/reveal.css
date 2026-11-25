@@ -544,6 +544,22 @@
   pointer-events: auto;
 }
 
+/* phone-sideways-one (rule one, DECIDED-BY-LEAD at the line stamped 04:47: nothing a person can press lies outside the
+   window unless a scroll reaches it): in a window too short for it, the laptop's card stands from its top to 16 px above
+   the ask bar (bottom 32, 44 high) at most, its body scrolling inside under its tag row and Close, so Go there is always
+   inside the window or one scroll inside the card; at the design size the card is shorter than that room */
+.reveal-card:not(.is-phone) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 210px);
+}
+
+.reveal-card:not(.is-phone) .reveal-card__scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* The answer in the card's place (ask, approved 2026-11-12; #l-answer in .cache/uiux/ask/index.html): it fades in
    and rises 10 px on the spring, with the card's own timings */
 .reveal-answer {
