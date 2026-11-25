@@ -663,7 +663,7 @@
 }
 
 .ask-bar:has(> .look-main)::before {
-  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--ask-bar-rest) both;
 }
 
 .predsky ~ .ask-bar:has(> .look-main)::before {
