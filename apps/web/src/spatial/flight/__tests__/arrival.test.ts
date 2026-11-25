@@ -283,7 +283,7 @@ describe('the craft at the arrival (the chase camera addition, DECIDED-BY-LEAD 1
     const s = inPhase(there(), 'at_space', 1);
     const base = laptopCraftFraming(flightCameraOf(s, 1440, 900)!);
     expect(arrivalCraftFraming(base, 1440, 900, false, 0)).toEqual(base);
-    expect(arrivalCraftFraming(base, 1440, 900, false, 1)).toEqual({ xPx: expect.closeTo(0.361 * 1440, 9), yPx: expect.closeTo(0.711 * 900, 9), diameterPx: base.diameterPx });
+    expect(arrivalCraftFraming(base, 1440, 900, false, 1)).toEqual({ xPx: expect.closeTo(0.361 * 1440, 9), yPx: expect.closeTo(0.711 * 900, 9), diameterPx: base.diameterPx, frameHeightPx: 900 });
     const half = arrivalCraftFraming(base, 1440, 900, false, 0.5);
     expect(half.xPx).toBeCloseTo((base.xPx + 0.361 * 1440) / 2, 9);
     // The phone (16:40): the ruled 0.308 across and 0.787 down the sky band (104 px to the readout's top), moved left

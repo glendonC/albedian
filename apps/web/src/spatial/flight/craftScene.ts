@@ -26,11 +26,13 @@ export interface CraftFraming {
   readonly xPx: number;
   readonly yPx: number;
   readonly diameterPx: number;
+  /** The height of the frame the craft is framed in, px: the window on the laptop, the sky above the readout on a phone. */
+  readonly frameHeightPx?: number;
 }
 
 /** D26 item 2 on the laptop: centred across, its middle at 62 percent of the window's height, 320 px across. */
 export function laptopCraftFraming(camera: FlightCamera): CraftFraming {
-  return { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx, diameterPx: CRAFT_FRAMING.diameterPx };
+  return { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx, diameterPx: CRAFT_FRAMING.diameterPx, frameHeightPx: camera.viewportHeightPx };
 }
 
 /**
@@ -45,6 +47,7 @@ export function phoneCraftFraming(viewportWidthPx: number, readoutTopPx: number)
     xPx: viewportWidthPx / 2,
     yPx: PHONE_SKY_TOP_PX + CRAFT_FRAMING.yFraction * (readoutTopPx - PHONE_SKY_TOP_PX),
     diameterPx: PHONE_CRAFT_DIAMETER_PX,
+    frameHeightPx: readoutTopPx - PHONE_SKY_TOP_PX,
   };
 }
 

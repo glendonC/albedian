@@ -61,8 +61,12 @@ export function changeSpeed(speedPcPerS: number, direction: -1 | 0 | 1, seconds:
   return Math.max(STEER_SPEED_LIMITS_PC_S.min, Math.min(STEER_SPEED_LIMITS_PC_S.max, next));
 }
 
-/** MOTION k13 (decided 08:12): the chase camera's look follows the craft's heading with this time constant, seconds. */
-export const CHASE_FOLLOW_SECONDS = 0.25;
+/**
+ * The chase camera's look follows the craft's heading with this time constant, seconds: MOTION k13's 0.25 s, then
+ * 0.12 s for the alive craft (craft-alive-one, DECIDED-BY-LEAD 25 Nov 03:22), so the craft answers and the look follows
+ * on a short spring without the craft running to the frame's edge in a turn.
+ */
+export const CHASE_FOLLOW_SECONDS = 0.12;
 
 /** Rodrigues' rotation of `v` about the unit axis `k` by `angle` radians. */
 function rotateAbout(v: Vec3, k: Vec3, angle: number): Vec3 {
@@ -75,7 +79,7 @@ function rotateAbout(v: Vec3, k: Vec3, angle: number): Vec3 {
 
 /**
  * The chase camera's axes one frame of `dt` seconds on: turned toward the craft's axes along the shortest rotation by
- * the fraction 1 - exp(-dt / 0.25 s) of it (first order, frame-rate independent, never past the craft); locked to the
+ * the fraction 1 - exp(-dt / CHASE_FOLLOW_SECONDS) of it (first order, frame-rate independent, never past the craft); locked to the
  * craft at once under reduced motion.
  */
 export function followRows(camera: WcsCameraRows, craft: WcsCameraRows, dt: number, options: { reduced?: boolean } = {}): WcsCameraRows {

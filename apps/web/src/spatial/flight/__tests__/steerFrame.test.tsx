@@ -9,10 +9,11 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
 import { flightCameraOf } from '../flightFrame.js';
+import { ALIVE_AT_REST, rolledRows, stepAlive } from '../craftAlive.js';
 import { starViewOfSteer, steerStartOf } from '../starView.js';
 import { arrivalShiftOf, arrivedFlightCamera } from '../arrival.js';
 import { RING_RADIUS_PX, flightRings } from '../flightRings.js';
-import { STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
+import { STEER_KEY_TURN_RAD_S, STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
 
 // steer-frame-one (DECIDED-BY-LEAD 24 Nov 15:59): while the person steers, each frame's camera is held in a ref and drawn
 // by the one frame loop, with no React render per frame; the page is told only when the readout's numbers change; the
@@ -107,6 +108,8 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
     const camera = flightCameraOf(session, 1440, 900)!;
     const start = steerStartOf(camera);
     let want = { ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows };
+    // craft-alive-one: the hands' smoothed signals, which roll the drawn camera with a share of the bank
+    let alive = ALIVE_AT_REST;
     const hands = new SteerHands(() => false);
     const before = commits;
     const drawsBefore = eyes.length;
@@ -124,6 +127,7 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
       const { input, speedDirection } = hands.frame(dt);
       const next = steerCamera(want, input, dt);
       want = { ...next, speedPcPerS: changeSpeed(want.speedPcPerS, speedDirection, dt), chase: followRows(want.chase, next.rows, dt, { reduced: false }) };
+      alive = stepAlive(alive, { turnShare: input.yawRadPerS / STEER_KEY_TURN_RAD_S, speedPcPerS: want.speedPcPerS, startPcPerS: STEER_START_SPEED_PC_S, braking: speedDirection < 0, reduced: false }, dt);
     }
     clock.mockRestore();
     // No React render while the loop draws
@@ -145,7 +149,10 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
     // The rings while steering: drawn by the loop where the steering camera sees the matched stars
     const shift = arrivalShiftOf(session, 1440, 900, false);
     const cam = shift ? arrivedFlightCamera(camera, shift.nowPx) : camera;
-    const wantRings = flightRings(session, starViewOfSteer(cam, { positionPc: want.positionPc, rows: want.chase }), [], RING_RADIUS_PX);
+    // The turn banks the craft and rolls the drawn camera with it: the layer reports the signals it drew with
+    expect(Math.abs(alive.bank)).toBeGreaterThan(0.5);
+    expect(container.querySelector('[data-testid="flight-stars"]')!.getAttribute('data-alive')).toBe(`${alive.bank.toFixed(3)} ${alive.speed.toFixed(3)} ${alive.brake.toFixed(3)} ${alive.roll.toFixed(3)}`);
+    const wantRings = flightRings(session, starViewOfSteer(cam, { positionPc: want.positionPc, rows: rolledRows(want.chase, alive) }), [], RING_RADIUS_PX);
     expect(wantRings.length).toBeGreaterThan(0);
     const circles = [...container.querySelectorAll('[data-testid="flight-rings"] circle')];
     expect(circles.map((c) => c.getAttribute('data-finding-id'))).toEqual(wantRings.map((r) => r.findingId));

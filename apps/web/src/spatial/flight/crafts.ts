@@ -39,6 +39,9 @@ export interface Craft {
   /** In the model's own axes (the hangar's frame): the way the craft flies, and its up. */
   readonly modelForward: Vec3;
   readonly modelUp: Vec3;
+  /** craft-alive-one: the hangar's own frame, its line of flight (forward) and up, the chase view's axes. */
+  readonly flightForward: Vec3;
+  readonly flightUp: Vec3;
   readonly speed: CraftSpeed | null;
   /** The keys of the NASA facts the hangar's record holds for this entry. */
   readonly factKeys: readonly string[];
@@ -253,7 +256,7 @@ export function craftsOfHangar(file: HangarFile, base = '/models/hangar/'): Craf
     const t = entry.travel;
     const speed: CraftSpeed | null =
       t && t.relativeTo === 'Sun' && Number.isFinite(t.speedKmS) && t.speedKmS > 0 ? { kmS: t.speedKmS, relativeTo: 'the Sun', sourceUrl: t.page, asOf: t.asOf } : null;
-    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, ...(lod0 ? { fineModelUrl: base + lod0 } : {}), pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, speed, factKeys: (entry.facts ?? []).map((fact) => fact.key), frameByBodyRadiusM: FRAME_BY_BODY.has(entry.model) && model.bodyRadiusM && model.bodyRadiusM > 0 ? model.bodyRadiusM : null }];
+    return [{ id: entry.id, name: entry.name, kind: model.kind, modelUrl: base + lod1, phoneModelUrl: base + lod2, ...(lod0 ? { fineModelUrl: base + lod0 } : {}), pictureUrl: base + picture, modelForward: REST_ATTITUDE[entry.model]?.forward ?? forward, modelUp: REST_ATTITUDE[entry.model]?.up ?? up, flightForward: forward, flightUp: up, speed, factKeys: (entry.facts ?? []).map((fact) => fact.key), frameByBodyRadiusM: FRAME_BY_BODY.has(entry.model) && model.bodyRadiusM && model.bodyRadiusM > 0 ? model.bodyRadiusM : null }];
   });
 }
 

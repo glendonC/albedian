@@ -184,7 +184,7 @@ export function arrivalCraftFraming(base: CraftFraming, viewportWidthPx: number,
     x = ARRIVAL_CRAFT_SHARE.laptop[0] * viewportWidthPx;
     y = ARRIVAL_CRAFT_SHARE.laptop[1] * viewportHeightPx;
   }
-  return { xPx: base.xPx + (x - base.xPx) * p, yPx: base.yPx + (y - base.yPx) * p, diameterPx: base.diameterPx };
+  return { ...base, xPx: base.xPx + (x - base.xPx) * p, yPx: base.yPx + (y - base.yPx) * p };
 }
 
 /** The flight camera with its frame on the window moved by `shiftPx`: every star, ring and craft moves together. */

@@ -7,7 +7,8 @@ import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
-import { craftFrameRadiusM, craftSceneOf, type CraftFraming } from './craftScene.js';
+import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
+import { aliveFraming, aliveRotation, chaseAxes, rotatedAboutCentre, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 
@@ -167,7 +168,7 @@ interface Shown {
   readonly frameRadius: number;
 }
 
-type Steer = { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows };
+type Steer = { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows; alive?: AliveSignals };
 
 interface CraftSkySource {
   readonly copy: HTMLCanvasElement;
@@ -279,13 +280,18 @@ function drawFrame(gpu: CraftGpu, camera: FlightCamera, candidates: readonly Lig
 }
 
 function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates: readonly LightCandidate[], steer?: Steer, framing?: CraftFraming): boolean {
-  const scene = craftSceneOf(camera, shown.craft, shown.cached.centre, shown.cached.radius, steer, framing, shown.frameRadius);
+  // craft-alive-one: while steered, the craft seen from behind along its line of flight, framed to a third of the
+  // frame's height and falling back with speed, then leaning and banking about its own centre (craftAlive.ts)
+  const alive = steer?.alive && steer.craftRows ? steer.alive : null;
+  const seen = alive ? { ...shown.craft, modelForward: chaseAxes(shown.craft.flightForward, shown.craft.flightUp).forward, modelUp: chaseAxes(shown.craft.flightForward, shown.craft.flightUp).up } : shown.craft;
+  const frameNow = alive ? aliveFraming(framing ?? laptopCraftFraming(camera), alive) : framing;
+  const scene = craftSceneOf(camera, seen, shown.cached.centre, shown.cached.radius, steer, frameNow, shown.frameRadius);
   if (!scene) return false;
   if (gpu.holder.children.length !== 1 || gpu.holder.children[0] !== shown.cached.model) {
     gpu.holder.clear();
     gpu.holder.add(shown.cached.model);
   }
-  gpu.holder.matrix.fromArray(scene.modelMatrix);
+  gpu.holder.matrix.fromArray(alive && steer?.craftRows ? rotatedAboutCentre(scene.modelMatrix, shown.cached.centre, aliveRotation(shown.craft.kind, steer.craftRows, alive)) : scene.modelMatrix);
   gpu.holder.matrixWorldNeedsUpdate = true;
   gpu.camera.projectionMatrix.fromArray(scene.clipMatrix);
   gpu.camera.projectionMatrixInverse.copy(gpu.camera.projectionMatrix).invert();

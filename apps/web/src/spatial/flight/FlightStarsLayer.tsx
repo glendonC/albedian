@@ -19,6 +19,7 @@ import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
 import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
 import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steering.js';
+import { ALIVE_AT_REST, aliveAsk, aliveFrame, stepAlive, type AliveSignals } from './craftAlive.js';
 import { threeFigures } from '../../reveal/flightView.js';
 import { changeSpeed, followRows, steerCamera, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
@@ -389,7 +390,7 @@ export const FlightStarsLayer: React.FC<{
     if (cone) setOrbit(CONE_ORBIT_START);
   }, [cone]);
   // pilot-1e: the person's own camera, handed over where the flight's stands, turned and moved each frame
-  // The person's input turns the craft (steer.rows); the chase camera's look follows it (MOTION k13: 0.25 s, locked
+  // The person's input turns the craft (steer.rows); the chase camera's look follows it (CHASE_FOLLOW_SECONDS, 0.12 s since craft-alive-one, locked
   // under reduced motion), so in a turn the craft leads off the centre
   // steer-frame-one (DECIDED-BY-LEAD 15:59): the state React holds is the hand-over's start only; each frame's camera is
   // held in a ref and drawn by the one frame loop (stars, bloom, rings, craft), the page told only when the readout's
@@ -397,7 +398,9 @@ export const FlightStarsLayer: React.FC<{
   const [steer, setSteer] = useState<SteerNow | null>(null);
   const steerNow = useRef<SteerNow | null>(null);
   const frameDraw = useRef<((s: SteerNow) => void) | null>(null);
-  const craftDraw = useRef<((s: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }) => void) | null>(null);
+  const craftDraw = useRef<((s: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows; alive?: AliveSignals }) => void) | null>(null);
+  // craft-alive-one: the hands' smoothed signals while steering (craftAlive.ts), at rest otherwise
+  const alive = useRef<AliveSignals>(ALIVE_AT_REST);
   const toldKey = useRef('');
   const [craftSeen, setCraftSeen] = useState(Boolean(craft));
   useEffect(() => {
@@ -413,6 +416,7 @@ export const FlightStarsLayer: React.FC<{
       return undefined;
     }
     hands.current = new SteerHands(() => reducedRef.current);
+    alive.current = ALIVE_AT_REST;
     const start = steerStartOf(cameraRef.current);
     const first: SteerNow = { ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows };
     steerNow.current = first;
@@ -428,6 +432,7 @@ export const FlightStarsLayer: React.FC<{
       if (prev) {
         const next = steerCamera(prev, input, dt);
         const moved: SteerNow = { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase: followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }) };
+        alive.current = stepAlive(alive.current, aliveAsk(input.yawRadPerS, speedDirection, moved.speedPcPerS, reducedRef.current), dt);
         steerNow.current = moved;
         frameDraw.current?.(moved);
       }
@@ -688,14 +693,18 @@ export const FlightStarsLayer: React.FC<{
     frameDraw.current = (s) => {
       const cam = cameraRef.current;
       if (!cam) return;
-      const v = starViewOfSteer(cam, { positionPc: s.positionPc, rows: s.chase });
+      // craft-alive-one: the drawn camera rolls with a share of the craft's bank; the chase keeps its own axes
+      const a = alive.current;
+      const { drawn, craft: craftNow } = aliveFrame(s, a);
+      const v = starViewOfSteer(cam, { positionPc: s.positionPc, rows: drawn });
       const g = gpu.current;
       const star = arrivalRef.current;
       domeDraw.current?.(v);
       if (g && canvas.current && g.tiles.size > 0) drawFrame(g, v, canvas.current, dpr, gainRef.current, star ? arrivalBloomOf(star, v) : null, star, true);
       const svg = steerRings.current;
       if (svg) svg.innerHTML = flightRings(session, v, keepOutBoxes(), ringRadius).map((r) => `<circle data-finding-id="${r.findingId}" cx="${r.xPx}" cy="${r.yPx}" r="${ringRadius}" fill="none" stroke="${RING_STROKE}" stroke-width="1"></circle>`).join('');
-      craftDraw.current?.({ positionPc: s.positionPc, rows: s.chase, craftRows: s.rows });
+      craftDraw.current?.(craftNow);
+      layerEl.current?.setAttribute('data-alive', `${a.bank.toFixed(3)} ${a.speed.toFixed(3)} ${a.brake.toFixed(3)} ${a.roll.toFixed(3)}`);
       layerEl.current?.setAttribute('data-from-earth-pc', Math.hypot(s.positionPc[0], s.positionPc[1], s.positionPc[2]).toFixed(4));
       tell(s);
     };

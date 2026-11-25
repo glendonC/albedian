@@ -71,7 +71,7 @@ describe('the chase camera following the craft (MOTION k13, decided 08:12)', () 
   const level: WcsCameraRows = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
   const turned = steerCamera({ positionPc: [0, 0, 0], rows: level, speedPcPerS: 0 }, { yawRadPerS: 1, pitchRadPerS: 0.3 }, 0.5).rows;
 
-  it('closes the gap to the craft\'s heading by 1 - exp(-dt / 0.25 s) a frame, at any frame rate, never past it', () => {
+  it('closes the gap to the craft\'s heading by 1 - exp(-dt / 0.12 s) a frame, at any frame rate, never past it', () => {
     const start = angle(level.z, turned.z);
     const one = followRows(level, turned, 0.1);
     expect(angle(one.z, turned.z)).toBeCloseTo(start * Math.exp(-0.1 / CHASE_FOLLOW_SECONDS), 3);
@@ -87,11 +87,12 @@ describe('the chase camera following the craft (MOTION k13, decided 08:12)', () 
       expect(now).toBeLessThanOrEqual(last + 1e-12);
       last = now;
     }
-    // About a second later it has caught up: the record's time constant is 0.25 s, so after 1 s the gap is e^-4
-    expect(CHASE_FOLLOW_SECONDS).toBe(0.25);
-    let oneSecond = level;
-    for (let i = 0; i < 60; i++) oneSecond = followRows(oneSecond, turned, 1 / 60);
-    expect(angle(oneSecond.z, turned.z) / start).toBeCloseTo(Math.exp(-4), 2);
+    // A quarter second later it has nearly caught up: the time constant is 0.12 s (craft-alive-one), so after 0.24 s
+    // the gap is e^-2
+    expect(CHASE_FOLLOW_SECONDS).toBe(0.12);
+    let quarter = level;
+    for (let i = 0; i < 60 * 0.24 - 0.5; i++) quarter = followRows(quarter, turned, 1 / 60);
+    expect(angle(quarter.z, turned.z) / start).toBeCloseTo(Math.exp(-2), 1);
     expect(last).toBeLessThan(start * 0.02);
   });
 
