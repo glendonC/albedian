@@ -1570,7 +1570,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           style={{ '--legend-n': counts.length, ...(legendGivesWay ? { visibility: 'hidden' } : {}) } as React.CSSProperties}
         >
           {/* A clip names its kind, as "your clip" does (INTERIM: UIUX-clip-QUESTION.md, a new word for the owner) */}
-          <p className="reveal-legend__title">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</p>
+          {/* The word in its own box, which stands on its own line box over the photograph at rest (words-on-photo-one) */}
+          <p className="reveal-legend__title">
+            <span className="reveal-legend__word">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</span>
+          </p>
           {counts.map((row, i) => (
             <p key={row.evidenceClass} className="reveal-legend__row" style={{ '--legend-i': i } as React.CSSProperties}>
               <span className="reveal-legend__count">{row.text}</span>

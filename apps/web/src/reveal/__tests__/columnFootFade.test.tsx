@@ -35,6 +35,9 @@ const ASK_FADE = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-mo
 // The views row's too (the lead's widening, on VIDEO's whole frame: its fade darkened the photo's top right corner); it
 // stays wherever no photo is under it, as on the modeled scene
 const VIEWS_DRAWN = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .reveal-nav::before";
+// fade-off-photo-two (DECIDED-BY-LEAD on WEB-UX's flag: the same rule at phone width): the phone's top bar fade stands over
+// Real sky and the flight only
+const PHONE_TOP_FADE = ":root:has(.reveal-status[data-moment='real-sky'], .flight-readout) .reveal-phone-top::before";
 const VIEWS_NO_PHOTO = ":root:not(:has(.reveal-photo)) .reveal-nav::before";
 
 // column-foot-fade-one (UIUX-reveal-READY.md, the addition of 24 Nov 21:47; DECIDED-BY-LEAD 21:49, on WEB-UX's walk at
@@ -146,7 +149,7 @@ describe('no fade over the photo at rest: the legend, the ask bar and the views 
     postcss.parse(css).walkRules((rule) => {
       for (const selector of rule.selectors) {
         const s = selector.replace(/\s+/g, ' ').trim();
-        if (/::before$/.test(s) && /reveal-legend|ask-bar|reveal-nav/.test(s)) found.push(s);
+        if (/::before$/.test(s) && /reveal-legend|ask-bar|reveal-nav|reveal-phone-top/.test(s)) found.push(s);
       }
     });
     return found;
@@ -189,6 +192,33 @@ describe('no fade over the photo at rest: the legend, the ask bar and the views 
       expect(faded(ask), String(moment)).toEqual([]);
       expect(faded(nav), String(moment)).toEqual([]);
     }
+  });
+
+  it("draws no fade behind the phone's top bar on the photo at rest; keeps it over Real sky and the flight", () => {
+    const phone = (moment: string | null, flight = false) => {
+      document.body.innerHTML = '';
+      const photo = document.createElement('div');
+      photo.className = 'reveal-photo is-phone';
+      if (moment) {
+        const status = document.createElement('div');
+        status.className = 'reveal-status is-phone';
+        status.dataset.moment = moment;
+        photo.appendChild(status);
+      }
+      if (flight) {
+        const readout = document.createElement('div');
+        readout.className = 'flight-readout is-phone';
+        photo.appendChild(readout);
+      }
+      document.body.appendChild(photo);
+      const top = document.createElement('div');
+      top.className = 'reveal-phone-top';
+      document.body.appendChild(top);
+      return top;
+    };
+    for (const moment of ['photo', 'unmatched', null]) expect(faded(phone(moment)), String(moment)).toEqual([]);
+    expect(faded(phone('real-sky'))).toEqual([PHONE_TOP_FADE]);
+    expect(faded(phone(null, true))).toEqual([PHONE_TOP_FADE]);
   });
 
   it("keeps the views row's over Real sky, there and the predicted sky, and where no photo is under it", () => {

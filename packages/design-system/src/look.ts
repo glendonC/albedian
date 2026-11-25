@@ -24,8 +24,8 @@ export const LOOK_FIELD = '#000000';
 export const LOOK_INK_LEVELS = {
   /** Secondary text. */
   ink2: [...INK_RGB, 0.66],
-  /** Quiet labels, never body text. */
-  ink3: [...INK_RGB, 0.44],
+  /** Quiet labels, never body text: 0.48, the least alpha that measures 4.5 to 1 over the field (words-on-photo-one). */
+  ink3: [...INK_RGB, 0.48],
   /** Hairlines between sections. */
   hair: [...INK_RGB, 0.14],
   /** A control's 1 px outline. */

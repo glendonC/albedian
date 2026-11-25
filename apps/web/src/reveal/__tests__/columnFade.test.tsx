@@ -73,7 +73,8 @@ const READOUT = '.flight-readout:not(.is-phone)::before';
 // fade-off-photo-one: the views row's fade stands over a drawn view or where no photo is (the modeled scene), never over
 // the photo at rest
 const VIEWS = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .reveal-nav::before, :root:not(:has(.reveal-photo)) .reveal-nav::before";
-const PHONE_TOP = '.reveal-phone-top::before';
+// fade-off-photo-two: the phone's top bar fade stands over Real sky and the flight only, never over the photo at rest
+const PHONE_TOP = ":root:has(.reveal-status[data-moment='real-sky'], .flight-readout) .reveal-phone-top::before";
 
 describe("D19's fade behind the laptop's columns, the flight's readout and the views row", () => {
   it("stands behind the flight's disclosure column and the predicted sky's status column, reaching the window's left edge", () => {
@@ -116,7 +117,7 @@ describe("D19's fade behind the laptop's columns, the flight's readout and the v
     expect(rules()['.reveal-nav']!).toMatchObject({ right: '32px', top: '26px' });
   });
 
-  it("stands behind the phone's whole top bar, from the window's top and sides, clearing over 44 px below its foot", () => {
+  it("stands behind the phone's whole top bar over the drawn views, from the window's top and sides, clearing over 44 px below its foot", () => {
     expect(rules()[PHONE_TOP]).toEqual({
       ...base,
       left: '-20px',

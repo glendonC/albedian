@@ -659,7 +659,10 @@
   mask-composite: intersect;
 }
 
-.reveal-phone-top::before {
+/* fade-off-photo-two (DECIDED-BY-LEAD on WEB-UX's flag: while the person's photograph shows no D19 fade is drawn over
+   it, at phone width too): the phone's top bar fade stands over Real sky and the flight only, never over the photo at
+   rest */
+:root:has(.reveal-status[data-moment='real-sky'], .flight-readout) .reveal-phone-top::before {
   content: '';
   position: absolute;
   left: -20px;
@@ -740,6 +743,60 @@
   bottom: -44px;
   -webkit-mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
   mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+}
+
+/* words-on-photo-one (UIUX-words-over-photo-READY.md kind two, B; DECIDED-BY-LEAD at the line stamped 23:32): while the
+   person's photograph shows at rest, each word over it stands on its own body, drawn as it looks over the app's black, so
+   a bright part of the photo never shows through behind its letters; no body wider than its word, nothing that reads as
+   a panel. "At rest" is a reveal on screen with none of the drawn views (Real sky, there, the phone's flight readout, the
+   predicted sky), whose fades stand there instead: these rules and the fades' never meet. A card and an answer keep their
+   own ground. The tags' class tint, glyph and words are unchanged, only laid over the field */
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-photo .look-tag--observed:not(.reveal-card .look-tag, .reveal-answer .look-tag) {
+  background: linear-gradient(var(--look-ev-observed-tint), var(--look-ev-observed-tint)), var(--look-field);
+}
+
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-photo .look-tag--catalog:not(.reveal-card .look-tag, .reveal-answer .look-tag) {
+  background: linear-gradient(var(--look-ev-catalog-tint), var(--look-ev-catalog-tint)), var(--look-field);
+}
+
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-photo .look-tag--predicted:not(.reveal-card .look-tag, .reveal-answer .look-tag) {
+  background: linear-gradient(var(--look-ev-predicted-tint), var(--look-ev-predicted-tint)), var(--look-field);
+}
+
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-photo .look-tag--simulated:not(.reveal-card .look-tag, .reveal-answer .look-tag) {
+  background: linear-gradient(var(--look-ev-simulated-tint), var(--look-ev-simulated-tint)), var(--look-field);
+}
+
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-photo .look-second:not(.reveal-card .look-second, .is-on),
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-nav .look-views__item:not(.is-current),
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-phone-top .look-views__item:not(.is-current) {
+  background-color: var(--look-field);
+}
+
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-photo .look-second:is(:hover:not(:disabled), .is-on):not(.reveal-card .look-second),
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-nav .look-views__item:hover:not(:disabled):not(.is-current),
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-phone-top .look-views__item:hover:not(:disabled):not(.is-current) {
+  background: linear-gradient(var(--look-wash), var(--look-wash)), var(--look-field);
+}
+
+/* The ask bar's approved body (55 percent, 14 px blur) as it looks over black, opaque, with no blur to show through */
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .ask-bar__ask:not(.is-listening),
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .ask-bar__type {
+  background: linear-gradient(rgba(10, 10, 12, 0.55), rgba(10, 10, 12, 0.55)), var(--look-field);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .ask-bar__ask:hover:not(:disabled):not(.is-listening),
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .ask-bar__type:hover:not(:disabled) {
+  background: linear-gradient(var(--look-wash), var(--look-wash)), var(--look-field);
+}
+
+/* The legend's title (DECIDED-BY-LEAD at the line stamped 00:40, item 4 of the record): no body, a thin dark rim round its
+   letters alone, the least that still measures the bar by UIUX's method: a 1 px rim with a 2 px soft edge (4.52 to 1 at
+   device scale 2 and 4.57 at 3 on the hero's Moon; the 1 px rim alone 4.47 at 2, every softer rim 3.0 to 3.6) */
+:root:has(.reveal-photo):not(:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .flight-readout, .predsky)) .reveal-legend__word {
+  text-shadow: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000, 0 0 2px #000;
 }
 
 .reveal-answer__q {

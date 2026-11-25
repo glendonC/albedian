@@ -10,7 +10,7 @@ export const LOOK_DECLARATIONS: ReadonlyArray<LookDeclaration> = [
   ['look-tokens.css', ':root', '--look-ink', '#f4f3ef'],
   ['look-tokens.css', ':root', '--look-night', '#0b0b0b'],
   ['look-tokens.css', ':root', '--look-ink-2', 'rgba(244, 243, 239, 0.66)'],
-  ['look-tokens.css', ':root', '--look-ink-3', 'rgba(244, 243, 239, 0.44)'],
+  ['look-tokens.css', ':root', '--look-ink-3', 'rgba(244, 243, 239, 0.48)'],
   ['look-tokens.css', ':root', '--look-hair', 'rgba(244, 243, 239, 0.14)'],
   ['look-tokens.css', ':root', '--look-line', 'rgba(244, 243, 239, 0.88)'],
   ['look-tokens.css', ':root', '--look-wash', 'rgba(244, 243, 239, 0.1)'],
