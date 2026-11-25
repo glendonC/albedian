@@ -34,7 +34,8 @@ public struct SkyMark: Equatable, Sendable {
     }
 
     public let id: String
-    /// The name to draw: a star's common name, a body's name.
+    /// The name to draw: a star's title by the title order (its proper name, else its Bayer, else its Flamsteed
+    /// designation, else its catalog id: aim-names-title-one), a body's name.
     public let name: String
     public let altDeg: Double
     public let azDeg: Double
@@ -63,7 +64,8 @@ public enum SkyContextReader {
         var out: [SkyMark] = []
         for star in stars {
             guard star["evidenceClass"]?.stringValue == "predicted", let release = star["releaseVersion"]?.stringValue,
-                  var mark = mark(star, name: star["commonName"]?.stringValue, source: .catalog(release: release)),
+                  var mark = mark(star, name: star["title"]?.stringValue, source: .catalog(release: release)),
+                  let commonName = star["commonName"]?.stringValue, !commonName.isEmpty,
                   let mag = star["mag"]?.numberValue, mag.isFinite,
                   let catalogSourceId = star["catalogSourceId"]?.stringValue, !catalogSourceId.isEmpty else { return nil }
             mark.mag = mag

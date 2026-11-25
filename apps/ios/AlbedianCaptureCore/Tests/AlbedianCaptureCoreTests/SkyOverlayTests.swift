@@ -67,7 +67,7 @@ final class SkyOverlayTests: XCTestCase {
         }
     }
 
-    func testAStarIsDrawnByItsCommonNameFromItsReleaseAndABodyFromTheEphemeris() throws {
+    func testAStarIsDrawnByItsTitleFromItsReleaseAndABodyFromTheEphemeris() throws {
         let marks = try XCTUnwrap(SkyContextReader.marks(base()))
         let vega = try XCTUnwrap(marks.first { $0.id == "star-vega" })
         XCTAssertEqual(vega.name, "Vega")
@@ -108,6 +108,8 @@ final class SkyOverlayTests: XCTestCase {
             ("a star with no release", changed { star(&$0, "releaseVersion", nil) }),
             ("a star with no name", changed { star(&$0, "commonName", nil) }),
             ("a star with an empty name", changed { star(&$0, "commonName", .string("")) }),
+            ("a star with no title", changed { star(&$0, "title", nil) }),
+            ("a star with an empty title", changed { star(&$0, "title", .string("")) }),
             ("a star's altitude past 90", changed { star(&$0, "altDeg", .number(JSONNumber(91))) }),
             ("a star's azimuth as text", changed { star(&$0, "azDeg", .string("10")) }),
             ("a star with no magnitude", changed { star(&$0, "mag", nil) }),
@@ -322,6 +324,38 @@ final class SkyOverlayTests: XCTestCase {
         XCTAssertNil(marks.first { $0.source == .ephemeris }?.catalogSourceId)
         XCTAssertNil(marks.first { $0.source == .ephemeris }?.mag)
         XCTAssertTrue(marks.filter { if case .catalog = $0.source { true } else { false } }.allSatisfy { $0.mag != nil })
+    }
+
+    /// aim-names-title-one (DECIDED-BY-LEAD 24 Nov 18:53): a mark is named by the title order (the proper name, then the
+    /// Bayer designation, then the Flamsteed), never by a catalog number. A bright star with a designation and no proper
+    /// name, the field's case in the southern sky, is named by its title; a star whose title is its catalog id is not.
+    func testABrightStarWithADesignationAndNoProperNameIsNamedByItsTitle() throws {
+        var reply = try base()
+        var stars = try XCTUnwrap(reply["stars"]?.arrayValue)
+        let index = try XCTUnwrap(stars.firstIndex { $0["id"]?.stringValue == "star-vega" })
+        var row = try XCTUnwrap(stars[index].objectValue)
+        for (key, value) in [("id", "star-hip-66657"), ("commonName", "HIP 66657"), ("catalogSourceId", "HIP 66657"),
+                             ("bayerDesignation", "Epsilon Centauri"), ("title", "Epsilon Centauri")] {
+            row.set(JSONString(key), .string(value))
+        }
+        row.set("mag", .number(try XCTUnwrap(JSONNumber(2.3))))
+        stars[index] = .object(row)
+        var bare = row
+        for (key, value) in [("id", "star-hip-99999"), ("commonName", "HIP 99999"), ("catalogSourceId", "HIP 99999"),
+                             ("title", "HIP 99999")] {
+            bare.set(JSONString(key), .string(value))
+        }
+        bare.remove("bayerDesignation")
+        stars.append(.object(bare))
+        reply["stars"] = .array(stars)
+        let marks = try XCTUnwrap(SkyContextReader.marks(reply))
+        let named = try XCTUnwrap(marks.first { $0.id == "star-hip-66657" })
+        XCTAssertEqual(named.name, "Epsilon Centauri", "named by its title, not its catalog number")
+        XCTAssertEqual(named.catalogSourceId, "HIP 66657")
+        let unnamed = try XCTUnwrap(marks.first { $0.id == "star-hip-99999" })
+        XCTAssertEqual(unnamed.name, "HIP 99999")
+        XCTAssertEqual(names([at(named, 100, 100), at(unnamed, 100, 300)]), ["star-hip-66657": false],
+                       "the designation drawn beside its ring; the catalog number never")
     }
 
     // MARK: The client
