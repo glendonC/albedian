@@ -167,6 +167,8 @@ CRAFTS: dict[str, dict] = {
             "Pioneer_silver_02": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
             "norm_trans": {"role": "nasa_flat"},
         },
+        # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
+        "texture_edge": {"lod2": 384},
         "body_radius_m": 1.8,
         "changes": "photo",
     },
@@ -444,6 +446,8 @@ CRAFTS: dict[str, dict] = {
         "weld_m": 0.0001,
         "smooth_deg": 35.0,
         "lod_ratio": {"lod0": 0.6, "lod1": 0.2, "lod2": 0.07},
+        # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
+        "texture_edge": {"lod2": 384},
         "body_radius_m": 3.0,
         "changes": "flat",
     },
@@ -946,6 +950,8 @@ CRAFTS: dict[str, dict] = {
             "AO_other2": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
         },
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
+        "texture_edge": {"lod2": 384},
         "body_radius_m": 1.5,
         "changes": "photo",
     },
@@ -1121,6 +1127,8 @@ CRAFTS: dict[str, dict] = {
         },
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "smooth_deg": 35.0,
+        # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
+        "texture_edge": {"lod2": 384},
         "body_radius_m": 1.4,
         "changes": "photo_foil",
     },
@@ -2038,7 +2046,7 @@ CRAFTS: dict[str, dict] = {
         "decimate_by_material": True,
         # Five 1024 px photo atlases each carry metal-roughness and normal maps: 768 px at lod1 and 384 px at lod2
         # keep both levels well within the 1.5 MB and 600 KB budgets with all 10 primitives preserved.
-        "texture_edge": {"lod1": 768, "lod2": 384},
+        "texture_edge": {"lod1": 768, "lod2": 288},  # the phone level decodes under 8 MB (tex-budget-one)
         # Frames the bus, propulsion module, high-gain dish and three-panel solar array inside the 8.2 m boom length.
         "body_radius_m": 2.8,
         "changes": "odyssey",

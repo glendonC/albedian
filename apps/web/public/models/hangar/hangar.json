@@ -148,9 +148,9 @@
         },
         "lod2": {
           "path": "pioneer10/pioneer10_lod2.glb",
-          "bytes": 174352,
+          "bytes": 144040,
           "triangles": 1474,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {
@@ -489,9 +489,9 @@
         },
         "lod2": {
           "path": "gemini/gemini_lod2.glb",
-          "bytes": 222812,
+          "bytes": 201144,
           "triangles": 2713,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {
@@ -1073,9 +1073,9 @@
         },
         "lod2": {
           "path": "messenger/messenger_lod2.glb",
-          "bytes": 272380,
+          "bytes": 211576,
           "triangles": 2080,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {
@@ -1304,9 +1304,9 @@
         },
         "lod2": {
           "path": "stardust/stardust_lod2.glb",
-          "bytes": 489332,
+          "bytes": 349780,
           "triangles": 2602,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {
@@ -2234,9 +2234,9 @@
         },
         "lod2": {
           "path": "odyssey/odyssey_lod2.glb",
-          "bytes": 467708,
+          "bytes": 370404,
           "triangles": 2739,
-          "textureEdgeMax": 384,
+          "textureEdgeMax": 288,
           "budgetBytes": 600000
         },
         "picker": {

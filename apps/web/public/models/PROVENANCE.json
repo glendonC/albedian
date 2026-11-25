@@ -627,7 +627,7 @@
     },
     {
       "path": "hangar/gemini/gemini_lod2.glb",
-      "sha256": "1880587bcee18b729c9e4623bcab592118d1fab51488b5c7ba3711a8b1364606",
+      "sha256": "0d36c52fd39f259059d34d9c06c356778dba6e11502cb68a4d039c11c1683692",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "205ed62022a98380531e0322a569ac5f32aa7ad4cfd32f78eb7f3bde1e85f936",
+      "sha256": "8fd26fb9433a0419127b524cfaff68cf9313bfad549ce5db07cb145a300f5916",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1349,7 +1349,7 @@
     },
     {
       "path": "hangar/messenger/messenger_lod2.glb",
-      "sha256": "3c5b622bfe21ed0955c80054b05af767a8df5d52e67b385a8a03333b4394018b",
+      "sha256": "fd7d0012f72ba3f8cdfe2e00a2294290f3c519b9f770df33438b1896ae3f170a",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1644,7 +1644,7 @@
     },
     {
       "path": "hangar/odyssey/odyssey_lod2.glb",
-      "sha256": "0c85e595b08f838dc958b1e9d1015cace45ce0215e691203fcb5b817fd5970d8",
+      "sha256": "f62b0325e879a5eeba13d4f9f14d93a7bf002c145d8d9a99971786ab354c625d",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1880,7 +1880,7 @@
     },
     {
       "path": "hangar/pioneer10/pioneer10_lod2.glb",
-      "sha256": "58a5b5eb56b33386b410d23d6fe22e31a4f3a335f7e7800f7c74d1eb9ab5768f",
+      "sha256": "79e570e5528ac7bf3045cca0f4145f6da57daf860a42b4e623b4f9f0bdafc690",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -2057,7 +2057,7 @@
     },
     {
       "path": "hangar/stardust/stardust_lod2.glb",
-      "sha256": "1d951dcd2a8ce94dbc1876ca2482d089d02608a6ff62015ca077cb41c4bd5588",
+      "sha256": "57064c49b749f2b716d863202f0a6f8fbddc073f47e331cc3920c345687bfe79",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

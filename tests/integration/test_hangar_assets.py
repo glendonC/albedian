@@ -295,6 +295,19 @@ def _glb_images(path: Path) -> dict[str, "np.ndarray"]:
     return out
 
 
+@pytest.mark.parametrize("name", ["gemini", "odyssey", "pioneer10", "messenger", "stardust"])
+def test_the_phone_level_textures_decode_under_eight_megabytes(name: str) -> None:
+    # tex-budget-one (the lead, 15:59 on 24 Nov, from SPATIAL's flight-perf-audit): these five crafts' phone levels
+    # decoded 10.7 to 13.9 MB of textures (width x height x 4 bytes each); their recipes now cap the phone level's
+    # texture edge, by resizing only, so each decodes under 8 MB. The recipe names its cap.
+    edge = CRAFTS[name].get("texture_edge", {}).get("lod2")
+    assert edge is not None and edge <= 384, (name, edge)
+    images = _glb_images(HANGAR_DIR / FACTS["models"][name]["files"]["lod2"]["path"])
+    assert images and all(max(px.shape[:2]) <= edge for px in images.values()), name
+    decoded = sum(px.shape[0] * px.shape[1] * 4 for px in images.values())
+    assert decoded < 8_000_000, (name, decoded)
+
+
 @pytest.mark.parametrize("name", ["ingenuity", "perseverance"])
 def test_the_blade_texture_ships_without_the_jpl_and_nasa_plates_at_every_level(name: str) -> None:
     # SUBMISSION's risks R1.1 on 24 Nov: Ingenuity's files carried both plates while the record said no NASA mark is
