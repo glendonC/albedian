@@ -3067,6 +3067,25 @@
     transform: none;
   }
 
+  /* Version two (AUDIT-C's FAIL, the lead's line stamped 07:39): the predicted sky's own top bar at 12 like the reveal's,
+     never across its Predicted tag; with a card open, the sheet at the trailing side (the card's place on that sky, as
+     the laptop's) and the status whole by the foot at the leading side, 16 px clear of the sheet */
+  .predsky-top {
+    top: 12px;
+    left: max(20px, env(safe-area-inset-left));
+  }
+
+  .predsky.is-phone .reveal-card.is-phone {
+    left: auto;
+    right: max(12px, env(safe-area-inset-right));
+  }
+
+  .predsky.is-phone .predsky-status.is-above-card {
+    left: max(24px, env(safe-area-inset-left));
+    right: calc(max(12px, env(safe-area-inset-right)) + 390px + 16px);
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
   .reveal-card.is-phone .reveal-card__acts {
     position: sticky;
     bottom: 0;

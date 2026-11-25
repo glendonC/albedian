@@ -46,6 +46,26 @@ describe('the foot row on a phone held on its side', () => {
   });
 });
 
+// phone-sideways-two version two (AUDIT-C's FAIL; the lead's line stamped 07:39: the tag rule decides it): on the
+// predicted sky held sideways its own top bar stands at 12 like the reveal's, so it never crosses the Predicted tag; and
+// with a star's card open the sheet stands at the trailing side (the card's place on that sky, as the laptop's), while
+// the status block (the Predicted tag, its sentence and the Simulated Milky Way's line) stands whole by the foot at the
+// leading side, 16 px clear of the sheet
+describe('the predicted sky on a phone held on its side', () => {
+  it('stands its top bar 12 px from the top inside the side inset', () => {
+    expect(inSideways('.predsky-top')).toEqual({ top: '12px', left: 'max(20px, env(safe-area-inset-left))' });
+  });
+
+  it('with a card open, stands the sheet at the trailing side and the status whole beside it, by the foot', () => {
+    expect(inSideways('.predsky.is-phone .reveal-card.is-phone')).toEqual({ left: 'auto', right: 'max(12px, env(safe-area-inset-right))' });
+    expect(inSideways('.predsky.is-phone .predsky-status.is-above-card')).toEqual({
+      left: 'max(24px, env(safe-area-inset-left))',
+      right: 'calc(max(12px, env(safe-area-inset-right)) + 390px + 16px)',
+      bottom: 'max(12px, env(safe-area-inset-bottom))',
+    });
+  });
+});
+
 describe('the star card on a phone held on its side', () => {
   it('is a sheet on the bottom edge, centred, 390 wide, as tall as its content up to the window less 64 px', () => {
     expect(inSideways('.reveal-card.is-phone')).toEqual({
