@@ -642,6 +642,27 @@ const PERSON_POINTING_USES_LENT = 'search_hint,moment';
 const HINT_MOMENT =
   'A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation.';
 
+/** The outside programs a calibration's first candidate may come from (anet-stage-zero): astrometry.net alone. */
+export const CANDIDATE_PROGRAMS = ['astrometry.net'] as const;
+/** An astrometry.net index file named by its file name alone (index-4117.fits, index-5206-03.fits): never a path. */
+export const INDEX_FILE_PATTERN = /^index-[0-9]{4}(-[0-9]{2})?\.fits$/;
+const CANDIDATE_SOURCE_CALIBRATED =
+  "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and passed the held-out check.";
+
+/**
+ * Where a calibration's first candidate came from when an outside program gave it (anet-stage-zero, decided by the
+ * lead on 2026-11-24 at 21:56): the program, its own version line, and the index file that matched, by file name.
+ * The candidate is only ever a start: the app's own association, refinement and held-out check made the WCS, and the
+ * findings are catalog matched by that check. Absent on every solution the app's own searches made and whenever the
+ * stage was off, did not run or was refused. No time, place or path is in it. Its Python mirror is `CandidateSource`.
+ */
+export const CandidateSourceSchema = z.object({
+  program: z.enum(CANDIDATE_PROGRAMS),
+  version: z.string().min(1),
+  indexFile: z.string().regex(INDEX_FILE_PATTERN),
+});
+export type CandidateSource = z.infer<typeof CandidateSourceSchema>;
+
 /**
  * How a solve used the phone's pointing record (ios-capture-companion design component 6): the record's photo, what
  * it was used as (a search hint, the pose, and the moment: its time or place standing in for the file's), the hinted frame centre in altitude and azimuth with its stated uncertainty, the verified centre's
@@ -782,6 +803,8 @@ export const ObservationSolutionSchema = z
     poseEstimate: PoseEstimateSchema.optional(),
     // How the solve used the phone's pointing record, when it had one
     pointingHint: PointingHintSchema.optional(),
+    // Where the calibration's first candidate came from, when an outside program gave it (anet-stage-zero)
+    candidateSource: CandidateSourceSchema.optional(),
   })
   .superRefine((solution, ctx) => {
     const quality = solution.quality;
@@ -844,6 +867,10 @@ export const ObservationSolutionSchema = z
           }
         });
       }
+    }
+    // anet-stage-zero: an outside program's candidate is named only where it became a verified calibration
+    if (solution.candidateSource !== undefined && solution.status !== 'calibrated') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['candidateSource'], message: CANDIDATE_SOURCE_CALIBRATED });
     }
     if (solution.status === 'pending') {
       if (quality !== undefined) {

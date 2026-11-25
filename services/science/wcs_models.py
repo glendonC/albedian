@@ -920,6 +920,26 @@ class PointingHint:
 
 
 @dataclass(frozen=True)
+class CandidateSource:
+    """Where a calibration's first candidate came from when an outside program gave it (`candidateSource`,
+    anet-stage-zero): the program, its own version line, and the index file that matched, by file name. The WCS is
+    the app's own association, refinement and held-out check's, never the program's; no time, place or path is in it.
+    The contract's rules, through its own text and choice rules."""
+
+    program: str
+    version: str
+    index_file: str
+
+    def __post_init__(self) -> None:
+        require_contract_value(self.program, contract.CANDIDATE_PROGRAM, "A candidate source's program")
+        require_contract_value(self.version, contract.NON_EMPTY_TEXT, "A candidate source's version")
+        require_contract_value(self.index_file, contract.INDEX_FILE, "A candidate source's index file")
+
+    def to_contract_dict(self) -> dict:
+        return {"program": self.program, "version": self.version, "indexFile": self.index_file}
+
+
+@dataclass(frozen=True)
 class ObservationSolution:
     """Authoritative WCS calibration and epistemic finding record."""
 
@@ -944,6 +964,8 @@ class ObservationSolution:
     pose_estimate: PoseEstimate | None = field(default=None, kw_only=True)
     # How the solve used the phone's pointing record, when it had one (the contract's rules, through its own parser)
     pointing_hint: PointingHint | None = field(default=None, kw_only=True)
+    # Where the calibration's first candidate came from, when an outside program gave it (anet-stage-zero)
+    candidate_source: CandidateSource | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         # What the contract holds each of these to on its own: ids that are not empty, a real hash for the recording,
@@ -990,6 +1012,8 @@ class ObservationSolution:
         )
         if hint_issues:
             raise ContractRefusal(hint_issues[0][1])
+        if self.candidate_source is not None and self.status != "calibrated":
+            raise ContractRefusal(contract.CANDIDATE_SOURCE_CALIBRATED)
         if self.status == "pending":
             if self.quality is not None:
                 raise ContractRefusal("A pending solution has no quality: no solver has run, so nothing was counted.")
@@ -1114,6 +1138,8 @@ class ObservationSolution:
             result["poseEstimate"] = self.pose_estimate.to_contract_dict()
         if self.pointing_hint is not None:
             result["pointingHint"] = self.pointing_hint.to_contract_dict()
+        if self.candidate_source is not None:
+            result["candidateSource"] = self.candidate_source.to_contract_dict()
         # Judged by the contract's own parser before it leaves: nothing is stored or served that the TypeScript
         # schema would refuse. A refusal names the path and the rule, never the value
         contract.parse_observation_solution(result)

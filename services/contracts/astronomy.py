@@ -65,6 +65,10 @@ POINTING_USES = ("search_hint", "pose_estimate", "moment")
 MOMENT_SOURCES = ("file", "record")
 # Where a pointing hint came from: the phone's pointing record, or a person's alignment of the predicted sky (align-1b)
 POINTING_HINT_SOURCES = ("record", "person")
+# The outside programs a calibration's first candidate may come from (anet-stage-zero), and an astrometry.net index
+# file named by its file name alone (index-4117.fits, index-5206-03.fits), never a path
+CANDIDATE_PROGRAMS = ("astrometry.net",)
+INDEX_FILE_PATTERN = r"^index-[0-9]{4}(-[0-9]{2})?\.fits$"
 MIN_SWEPT_WCS = 2
 MAX_SWEPT_WCS = 27
 # Rounding room when a swept WCS's field of view is compared with the nominal one's, in degrees [proposed: a
@@ -384,6 +388,10 @@ SWEPT_OF_THE_NOMINAL_SIZE = (
 )
 PENDING_HAS_NO_QUALITY = "A pending solution has no quality: no solver has run, so nothing was counted."
 PENDING_NAMES_NO_SOLVER = "A pending solution names no solver: none has run."
+CANDIDATE_SOURCE_CALIBRATED = (
+    "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and "
+    "passed the held-out check."
+)
 NAMES_ITS_SOLVER = "Only a pending solution, or an unresolved one no solver reached, names no solver."
 REPORTS_ITS_QUALITY = "A calibrated or approximate solution reports the quality it was judged on."
 RESIDUAL_IS_REPORTED = "Held-out stars were paired, so their residual is reported."
@@ -675,6 +683,13 @@ COUNT = NumberRule("count", ge=0.0, le=MAX_SAFE_INTEGER, integer=True)
 POSITIVE_COUNT = NumberRule("positiveCount", gt=0.0, le=MAX_SAFE_INTEGER, integer=True)
 TEXT = TextRule("text")
 NON_EMPTY_TEXT = TextRule("nonEmptyText", min_length=1)
+INDEX_FILE = TextRule(
+    "indexFile",
+    pattern=INDEX_FILE_PATTERN,
+    form="an astrometry.net index file's name, never a path",
+    accept=("index-4117.fits", "index-4107.fits", "index-5206-03.fits"),
+    refuse=("/opt/astrometry/index-4117.fits", "index-4117", "index-41170.fits", "index-4117.fits\n", "4117.fits", ""),
+)
 SHA256 = TextRule(
     "sha256",
     pattern=SHA256_HEX_PATTERN,
@@ -709,6 +724,7 @@ POSE_BEACON = ChoiceRule("poseBeacon", POSE_BEACONS)
 POINTING_USE = ChoiceRule("pointingUse", POINTING_USES)
 MOMENT_SOURCE = ChoiceRule("momentSource", MOMENT_SOURCES)
 POINTING_HINT_SOURCE = ChoiceRule("pointingHintSource", POINTING_HINT_SOURCES)
+CANDIDATE_PROGRAM = ChoiceRule("candidateProgram", CANDIDATE_PROGRAMS)
 PROJECTION = ChoiceRule("projection", ("TAN",))
 PARITY = ChoiceRule("parity", (1, -1))
 CATALOG_PROVIDER = ChoiceRule("catalogProvider", tuple(CATALOG_PROVIDERS))
@@ -917,6 +933,16 @@ class PoseEstimate(_Contract):
         return self
 
 
+class CandidateSource(_Contract):
+    """Where a calibration's first candidate came from when an outside program gave it (`candidateSource`,
+    anet-stage-zero): the program, its own version line, and the index file that matched, by file name. The WCS is
+    the app's own association, refinement and held-out check's; no time, place or path is in it."""
+
+    program: Annotated[str, CANDIDATE_PROGRAM]
+    version: NonEmptyText
+    index_file: Annotated[str, INDEX_FILE]
+
+
 class PointingHint(_Contract):
     """How a solve used a pointing hint (`pointingHint`): where it came from (the phone's pointing record, or a person's
     alignment of the predicted sky, align-1b), the photo, what it was used as, the hinted frame centre in altitude and
@@ -1048,6 +1074,7 @@ class ObservationSolution(_Contract):
     warnings: _listed(Text)
     pose_estimate: Optional[PoseEstimate] = None
     pointing_hint: Optional[PointingHint] = None
+    candidate_source: Optional[CandidateSource] = None
 
     @property
     def has_verified_wcs(self) -> bool:
@@ -1228,6 +1255,9 @@ def _solution_issues(solution: ObservationSolution) -> list[Issue]:
                     issues.append((("poseEstimate", "sweptWcs", index), SWEPT_ON_THE_NOMINAL_CRPIX))
                 if _of_another_image_size(swept, nominal):
                     issues.append((("poseEstimate", "sweptWcs", index), SWEPT_OF_THE_NOMINAL_SIZE))
+    # anet-stage-zero: an outside program's candidate is named only where it became a verified calibration
+    if solution.candidate_source is not None and status != "calibrated":
+        issues.append((("candidateSource",), CANDIDATE_SOURCE_CALIBRATED))
     if status == "pending":
         if quality is not None:
             issues.append((("quality",), PENDING_HAS_NO_QUALITY))
@@ -1327,6 +1357,7 @@ FAMILY: dict[str, type[BaseModel]] = {
     "WCSCalibrationModel": WCSCalibrationModel,
     "PoseEstimate": PoseEstimate,
     "PointingHint": PointingHint,
+    "CandidateSource": CandidateSource,
     "ObserverLocation": ObserverLocation,
     "SolverIdentity": SolverIdentity,
     "SolutionQuality": SolutionQuality,

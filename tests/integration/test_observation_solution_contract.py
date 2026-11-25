@@ -231,6 +231,10 @@ SAYS = {
         "whose hint gives one."
     ),
     "hint_person_pose": "A pointing hint gives the roll and the field of view exactly when a person aligned it.",
+    "candidate_calibrated": (
+        "A candidate's source is named only on a calibrated solution, whose WCS was refined from that candidate and "
+        "passed the held-out check."
+    ),
     "hint_person_use": (
         "A person's alignment is used only as a search hint and lends no time or place of its own: it lists moment "
         "exactly when the photo's pointing record lent the time or the place."
@@ -553,6 +557,9 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     with_fit_residual = copy.deepcopy(valid["approximate"])
     with_fit_residual["findings"][0]["evidence"].update(OBSERVED_FIT_RESIDUAL)
     valid["approximate_with_an_observed_fit_residual"] = with_fit_residual
+    # anet-stage-zero: a calibration whose first candidate came from astrometry.net, refined and verified by the
+    # app's own check (the lead's decision of 2026-11-24 21:56)
+    valid["calibrated_with_a_candidate_source"] = {**copy.deepcopy(valid["calibrated"]), "candidateSource": {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}}
     return valid, {"rigel": rigel, "simulated": simulated, "predicted_star": predicted_star, "pose": pose, "hint": hint}
 
 
@@ -884,6 +891,10 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         says=("Unrecognized key(s) in object: 'sigma_major_px', 'sigma_minor_px', 'angle_rad'",))
     bad("pending_with_a_detection", "pending", "a pending solution holding a detector's measures", ["quality"],
         put(["quality"], {**UNVERIFIED, "detection": MATCHED_AT_THE_CLIP}), says=(SAYS["pending_quality"],))
+    # anet-stage-zero: an outside program's candidate is named only where it became a verified calibration
+    for base in ("predicted_only", "approximate", "ambiguous", "unresolved_pixels_only", "pending"):
+        bad(f"candidate_source_on_{base}", base, f"a candidate's source named on a {base} solution", ["candidateSource"],
+            put(["candidateSource"], {"program": "astrometry.net", "version": "0.97", "indexFile": "index-4117.fits"}), says=(SAYS["candidate_calibrated"],))
     cases += _class_evidence_cases(valid)
     return cases
 
@@ -1137,6 +1148,7 @@ def build_fixture() -> dict[str, Any]:
         "PoseEstimate": {"sample": "approximate_with_pose", "path": ["poseEstimate"]},
         # A person's alignment holds every field of a hint (align-1b), so each field's edges are tried on it
         "PointingHint": {"sample": "predicted_only_with_a_persons_alignment", "path": ["pointingHint"]},
+        "CandidateSource": {"sample": "calibrated_with_a_candidate_source", "path": ["candidateSource"]},
     }
     with_unnamed_keys = patched(
         valid["approximate"],
@@ -1150,7 +1162,8 @@ def build_fixture() -> dict[str, Any]:
             "(packages/contracts/src/astronomy.ts) and the Python parser (services/contracts/astronomy.py). "
             'A number JSON cannot carry is written {"$number": "NaN"}, {"$number": "Infinity"} or {"$number": "-Infinity"}.'
         ),
-        "patterns": {"sha256": ingest.SHA256_HEX_PATTERN, "utcInstant": ingest.ZOD_DATETIME_PATTERN},
+        "patterns": {"sha256": ingest.SHA256_HEX_PATTERN, "utcInstant": ingest.ZOD_DATETIME_PATTERN,
+                     "indexFile": contract.INDEX_FILE_PATTERN},
         # Read from services/science/solver.py, never retyped here
         "heldOutGate": {"minHeldOutInliers": least, "maxMedianResidualPx": most},
         "sweptFovToleranceDeg": contract.SWEPT_FOV_TOLERANCE_DEG,
@@ -1794,7 +1807,9 @@ def test_the_field_table_names_every_field_of_the_family() -> None:
     # Every object the valid samples hold sits where the table says a schema of the family does
     seen = {schema for sample in table["valid"].values() for schema, _ in instances(table["fields"], "ObservationSolution", sample)}
     assert seen == set(contract.FAMILY)
-    assert table["patterns"] == {"sha256": ingest.SHA256_HEX_PATTERN, "utcInstant": ingest.ZOD_DATETIME_PATTERN}
+    assert table["patterns"] == {
+        "sha256": ingest.SHA256_HEX_PATTERN, "utcInstant": ingest.ZOD_DATETIME_PATTERN, "indexFile": contract.INDEX_FILE_PATTERN,
+    }
 
 
 def edge_cases(table: dict[str, Any], schema: str) -> Iterator[tuple[str, dict[str, Any], bool]]:
@@ -2633,7 +2648,7 @@ def test_a_pattern_rule_refuses_a_text_it_takes_with_a_line_break_before_or_afte
     pattern takes the texts it lists and refuses each of them with a line break before or after it, as Zod's anchors
     do (the Vitest file tries the same through each field that follows such a rule)."""
     patterned = [value for value in vars(contract).values() if isinstance(value, contract.TextRule) and value.pattern is not None]
-    assert {rule.name for rule in patterned} == {"sha256", "utcInstant"}
+    assert {rule.name for rule in patterned} == {"sha256", "utcInstant", "indexFile"}
     for rule in patterned:
         assert rule.accept, rule.name
         for text in rule.accept:

@@ -30,6 +30,9 @@ import {
   PoseEstimateSchema,
   PointingHintSchema,
   SHA256_HEX_PATTERN,
+  CANDIDATE_PROGRAMS,
+  CandidateSourceSchema,
+  INDEX_FILE_PATTERN,
   SWEPT_FOV_TOLERANCE_DEG,
   ScientificEvidenceSchema,
   SkyPositionSchema,
@@ -84,7 +87,7 @@ interface Case {
   messages: string[];
 }
 interface Fixture {
-  patterns: { sha256: string; utcInstant: string };
+  patterns: { sha256: string; utcInstant: string; indexFile: string };
   heldOutGate: { minHeldOutInliers: number; maxMedianResidualPx: number };
   sweptFovToleranceDeg: number;
   findingClassEvidence: Record<string, { source: string[]; must: Record<string, string>; mustNot: Record<string, string>; may: string[] }>;
@@ -177,6 +180,7 @@ const SCHEMAS: Record<string, z.ZodTypeAny> = {
   ObserverLocation: solutionShape.observerLocation.unwrap(),
   PoseEstimate: PoseEstimateSchema,
   PointingHint: PointingHintSchema,
+  CandidateSource: CandidateSourceSchema,
 };
 /** The objects whose keys the contract states, by schema: a closed one (z.object().strict()) refuses any other key. */
 const OBJECTS: Record<string, z.AnyZodObject> = {
@@ -196,6 +200,7 @@ const OBJECTS: Record<string, z.AnyZodObject> = {
   ObserverLocation: solutionShape.observerLocation.unwrap(),
   PoseEstimate: PoseEstimateSchema.innerType(),
   PointingHint: PointingHintSchema.innerType(),
+  CandidateSource: CandidateSourceSchema,
 };
 const SHAPES: Record<string, z.ZodRawShape> = {
   ObservationSolution: solutionShape,
@@ -214,6 +219,7 @@ const SHAPES: Record<string, z.ZodRawShape> = {
   ObserverLocation: solutionShape.observerLocation.unwrap().shape,
   PoseEstimate: PoseEstimateSchema.innerType().shape,
   PointingHint: PointingHintSchema.innerType().shape,
+  CandidateSource: CandidateSourceSchema.shape,
 };
 
 /** Every object of the family inside `value`, as the schema that judges it and where it is. */
@@ -253,6 +259,10 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     expect(fixture.rules['momentSource']!.values).toEqual(PointingHintSchema.innerType().shape.timeFrom.options);
     expect(fixture.rules['momentSource']!.values).toEqual(PointingHintSchema.innerType().shape.placeFrom.options);
     expect(fixture.rules['pointingHintSource']!.values).toEqual(PointingHintSchema.innerType().shape.source.options);
+    // anet-stage-zero: the one outside program a candidate may come from, and its index file by name alone
+    expect(fixture.rules['candidateProgram']!.values).toEqual([...CANDIDATE_PROGRAMS]);
+    expect(fixture.rules['candidateProgram']!.values).toEqual(CandidateSourceSchema.shape.program.options);
+    expect(fixture.patterns.indexFile).toBe(INDEX_FILE_PATTERN.source);
     expect(fixture.rules['catalogProvider']!.values).toEqual(referenceShape.provider.options);
     expect(fixture.rules['catalogObjectType']!.values).toEqual(referenceShape.objectType.options);
     expect(fixture.rules['catalogDistanceMethod']!.values).toEqual(referenceShape.bailerJonesDistancePc.unwrap().shape.method.options);
