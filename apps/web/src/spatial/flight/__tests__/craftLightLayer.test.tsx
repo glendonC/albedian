@@ -9,6 +9,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { FlightCraftLayer, type CraftRenderer } from '../FlightCraftLayer.js';
 import { CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, keyLight, type LightCandidate } from '../craftLight.js';
+import { edgeLightColor } from '../craftEdgeLight.js';
 import { CRAFTS } from '../crafts.js';
 import { flightCameraOf } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
@@ -117,6 +118,26 @@ describe('the craft lit by the brightest real source where the camera is', () =>
     expectLitBy(last, at, [star]);
     expect(last.color[0]).toBeGreaterThan(last.color[2]);
     expect(last.environment).toBe(0);
+  });
+
+  it('gives the model the star\'s edge light, its colour each frame from the key and how far it is behind the craft (chase-light-one)', async () => {
+    const { drawn, makeRenderer } = recordingRenderer();
+    const material = new THREE.MeshStandardMaterial();
+    const load = async () => {
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1), material));
+      return g;
+    };
+    await act(async () => root.render(createElement(FlightCraftLayer, { camera, craft: CRAFTS['voyager-1']!, load, makeRenderer, keyCandidates: [star] })));
+    await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    expect(material.customProgramCacheKey()).toBe('craft-edge-light');
+    const shader = { uniforms: {} as Record<string, { value: THREE.Color }>, fragmentShader: THREE.ShaderLib.physical.fragmentShader, vertexShader: '' };
+    material.onBeforeCompile(shader as never, undefined as never);
+    const d = drawn.at(-1)!;
+    const key = keyLight(at, at, [star]);
+    const want = edgeLightColor(d.craftAt, key.direction, key.tint);
+    const got = shader.uniforms.uEdgeColor!.value;
+    [got.r, got.g, got.b].forEach((v, k) => expect(v).toBeCloseTo(want[k]!, 6));
   });
 
   it('with no star given: the Sun, white, from where it is', async () => {

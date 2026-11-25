@@ -8,6 +8,7 @@ import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
+import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUniforms } from './craftEdgeLight.js';
 import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
@@ -151,6 +152,8 @@ interface CraftGpu {
   key: THREE.DirectionalLight;
   /** craft-light-two: the second light, from the Milky Way's brightest sky. */
   galaxy: THREE.DirectionalLight;
+  /** chase-light-one: the edge light every model of this renderer shares (craftEdgeLight.ts). */
+  edge: EdgeLightUniforms;
   /** The sky the craft takes its fill from, loading once a flight: its light summed over the sphere and where it is brightest, or none. */
   sky: Promise<CraftSkyLight | null>;
   /** That light once a craft is drawn with it; none until then (no fill, no second light). */
@@ -314,7 +317,10 @@ function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates
   gpu.key.target.position.copy(c);
   gpu.key.target.updateMatrixWorld();
   // craft-light-two: the sky's fill at four to one, the Milky Way's brightest sky as a second light, the meter counting both
+  // chase-light-one: the edge light while the key is behind the craft
   const look = craftLighting({ craftFromCameraM: [c.x, c.y, c.z], keyDirection: toKey, sky: gpu.skyLight });
+  const edge = edgeLightColor([c.x, c.y, c.z], toKey, key.tint);
+  gpu.edge.uEdgeColor.value.setRGB(edge[0], edge[1], edge[2], THREE.LinearSRGBColorSpace);
   gpu.scene.environmentIntensity = look.environmentIntensity;
   gpu.renderer.toneMappingExposure = look.exposure;
   gpu.galaxy.intensity = look.galaxy ? look.galaxy.intensity : 0;
@@ -419,7 +425,7 @@ export const FlightCraftLayer: React.FC<{
     // A sky that fails (or a renderer that is not three's) leaves the craft lit by its key alone
     let alive = true;
     const sky = renderer instanceof THREE.WebGLRenderer ? loadCraftSky(renderer, scene, () => alive).catch(() => null) : Promise.resolve(null);
-    gpu.current = { renderer, scene, camera: cam, holder, key, galaxy, sky, skyLight: null, shown: null, leaving: null, ready: new WeakMap() };
+    gpu.current = { renderer, scene, camera: cam, holder, key, galaxy, edge: createEdgeLightUniforms(), sky, skyLight: null, shown: null, leaving: null, ready: new WeakMap() };
     const cache = models.current;
     return () => {
       alive = false;
@@ -477,6 +483,8 @@ export const FlightCraftLayer: React.FC<{
         model.traverse((o) => {
           o.frustumCulled = false;
         });
+        // chase-light-one: the edge light in each standard material, before the model's programs are made
+        addEdgeLight(model, g.edge);
         const box = new THREE.Box3().setFromObject(model);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         const size = box.getSize(new THREE.Vector3());

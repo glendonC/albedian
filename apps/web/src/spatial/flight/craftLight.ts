@@ -242,9 +242,34 @@ export function craftLighting({ craftFromCameraM, keyDirection, sky }: { craftFr
   const fill = 4 / CRAFT_KEY_TO_FILL;
   const galaxy = sky?.galaxy ? { direction: sky.galaxy.direction, tint: sky.galaxy.tint, intensity: CRAFT_GALAXY_TO_KEY } : null;
   const seen = seenSideKeyShare(craftFromCameraM, keyDirection) + (galaxy ? galaxy.intensity * seenSideKeyShare(craftFromCameraM, galaxy.direction) : 0);
+  // chase-light-one (b): the exposure falls when the star is behind the craft, so the near side sits under white and
+  // the rim reads; and never so high that the brightest lit surface clips
+  const incident = meteredExposure({ keyOnSeenSide: seen, fillRatio: fill }) * 2 ** (-CRAFT_BACKLIT_STOPS * keyBehindCraft(craftFromCameraM, keyDirection));
+  const brightest = brightestIrradiance(keyDirection, galaxy, fill);
   return {
     environmentIntensity: sky ? environmentIntensity(fill, sky.integral) : 0,
-    exposure: meteredExposure({ keyOnSeenSide: seen, fillRatio: fill }),
+    exposure: Math.min(incident, (CRAFT_WHITE_CAP_INPUT * ACES_INPUT_SCALE * Math.PI) / brightest),
     galaxy,
   };
+}
+
+/** chase-light-one (b): how far the exposure falls, in stops, when the key is straight behind the craft from the camera. */
+export const CRAFT_BACKLIT_STOPS = 1.5;
+/**
+ * chase-light-one (b): the ACES input (exposure times radiance over 0.6) the brightest lit white surface may reach: three
+ * r187's curve gives about 0.87 linear (code 240) there, so no lit surface clips to white whatever the light's direction.
+ */
+export const CRAFT_WHITE_CAP_INPUT = 2.9;
+
+/** How far the key is behind the craft from the camera: 1 straight behind, 0 beside it or behind the camera. */
+export function keyBehindCraft(craftFromCameraM: Vec3, keyDirection: Vec3): number {
+  const n = Math.hypot(craftFromCameraM[0], craftFromCameraM[1], craftFromCameraM[2]) || 1;
+  return Math.max(0, (craftFromCameraM[0] * keyDirection[0] + craftFromCameraM[1] * keyDirection[1] + craftFromCameraM[2] * keyDirection[2]) / n);
+}
+
+/** The irradiance on the surface facing the frame's lights best: the key and the second light together, and the fill's quarter. */
+export function brightestIrradiance(keyDirection: Vec3, galaxy: { direction: Vec3; intensity: number } | null, fill: number): number {
+  const v = [keyDirection[0], keyDirection[1], keyDirection[2]];
+  if (galaxy) for (let k = 0; k < 3; k++) v[k]! += galaxy.intensity * galaxy.direction[k]!;
+  return Math.hypot(v[0]!, v[1]!, v[2]!) + fill / 4;
 }

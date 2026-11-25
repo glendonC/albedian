@@ -101,12 +101,12 @@ describe('the ruled look', () => {
   });
 
   it('meters every light on the side the camera sees, so that side lands at middle grey and nothing more', () => {
-    // The camera looks along +z at the craft; the second light comes from the camera's side, the key from behind the craft
+    // The camera looks along +z at the craft; the second light comes from the camera's side, the key from beside the craft
     const at: [number, number, number] = [0, 0, 10];
     const fromCameraSide = { integral: 2.5, galaxy: { direction: [0, 0, -1] as const, tint: [1, 1, 1] as const } };
-    const look = craftLighting({ craftFromCameraM: at, keyDirection: [0, 0, 1], sky: fromCameraSide });
-    const seen = seenSideKeyShare(at, [0, 0, 1]) + 0.5 * seenSideKeyShare(at, [0, 0, -1]) + 1 / 4;
-    expect(seenSideKeyShare(at, [0, 0, 1])).toBe(0);
+    const look = craftLighting({ craftFromCameraM: at, keyDirection: [1, 0, 0], sky: fromCameraSide });
+    const seen = seenSideKeyShare(at, [1, 0, 0]) + 0.5 * seenSideKeyShare(at, [0, 0, -1]) + 1 / 4;
+    expect(seenSideKeyShare(at, [1, 0, 0])).toBe(0);
     expect(GREY_CARD_ALBEDO * acesInput(look.exposure, seen)).toBeCloseTo(MIDDLE_GREY, 12);
     // Counting the second light lowers the exposure against a meter that left it out
     expect(look.exposure).toBeLessThan(meteredExposure({ keyOnSeenSide: 0, fillRatio: 1 }));
@@ -240,5 +240,43 @@ describe('the sky\'s light summed over the sphere (the craft\'s fill, from its s
   });
   it('is made at 720 by 360', () => {
     expect(CRAFT_SKY_SIZE).toEqual({ width: 720, height: 360 });
+  });
+});
+
+// chase-light-one (lead's word on LOOK's chase findings): (b) the exposure falls when the star is behind the craft so
+// the near side sits under white and the rim reads, and the brightest lit surface never clips
+describe('the chase light', async () => {
+  const { CRAFT_BACKLIT_STOPS, CRAFT_WHITE_CAP_INPUT, brightestIrradiance, keyBehindCraft } = await import('../craftLight.js');
+  const acesInput = (exposure: number, irradiance: number) => (exposure * irradiance) / Math.PI / ACES_INPUT_SCALE;
+  const sky = { integral: 2.5, galaxy: { direction: [0, 1, 0] as const, tint: [1, 1, 1] as const } };
+
+  it('knows how far the key is behind the craft: straight behind 1, beside or behind the camera 0', () => {
+    expect(keyBehindCraft([0, 0, 10], [0, 0, 1])).toBe(1);
+    expect(keyBehindCraft([0, 0, 10], [Math.sin(Math.PI / 3), 0, Math.cos(Math.PI / 3)])).toBeCloseTo(0.5, 12);
+    expect(keyBehindCraft([0, 0, 10], [1, 0, 0])).toBe(0);
+    expect(keyBehindCraft([0, 0, 10], [0, 0, -1])).toBe(0);
+  });
+
+  it('lets the near side fall one and a half stops under middle grey when the star is straight behind the craft', () => {
+    expect(CRAFT_BACKLIT_STOPS).toBe(1.5);
+    const at: [number, number, number] = [0, 0, 10];
+    // The second light from the camera's side lights the seen side, so the cap binds in neither case
+    const front = { integral: 2.5, galaxy: { direction: [0, 0, -1] as const, tint: [1, 1, 1] as const } };
+    const behind = craftLighting({ craftFromCameraM: at, keyDirection: [0, 0, 1], sky: front });
+    const beside = craftLighting({ craftFromCameraM: at, keyDirection: [1, 0, 0], sky: front });
+    // The seen side's light is the same either way (no key on it); only the exposure falls
+    expect(behind.exposure / beside.exposure).toBeCloseTo(2 ** -1.5, 12);
+  });
+
+  it('never lets the brightest lit surface pass the cap, whatever the lights\' direction', () => {
+    expect(CRAFT_WHITE_CAP_INPUT).toBe(2.9);
+    for (const keyDirection of [[0, 0, -1], [1, 0, 0], [0.6, 0.8, 0], [0, 0, 1]] as const) {
+      const look = craftLighting({ craftFromCameraM: [0, 0, 10], keyDirection: [...keyDirection], sky });
+      const most = brightestIrradiance([...keyDirection], sky.galaxy && { ...sky.galaxy, intensity: 0.5 }, 1);
+      expect(acesInput(look.exposure, most)).toBeLessThanOrEqual(CRAFT_WHITE_CAP_INPUT + 1e-9);
+    }
+    // The key and the second light together, plus the fill's quarter
+    expect(brightestIrradiance([1, 0, 0], { direction: [1, 0, 0], intensity: 0.5 }, 1)).toBeCloseTo(1.75, 12);
+    expect(brightestIrradiance([1, 0, 0], { direction: [-1, 0, 0], intensity: 0.5 }, 1)).toBeCloseTo(0.75, 12);
   });
 });
