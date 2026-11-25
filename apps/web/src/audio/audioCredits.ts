@@ -9,11 +9,14 @@
  * - The St. Nicholas Chapel impulse response the reverb loads, measured by Martin Zerwas and
  *   Selin Kayku, CC BY 4.0, changed for Albedian as `assets/ATTRIBUTION.txt` records.
  *
- * `AUDIO_CREDIT_LINES` are shown beside the canvas while audio is on, with a link to
- * `AUDIO_NOTICES_URL`: the Apache License 2.0 text, Omnitone's NOTICE and the response's
- * attribution, served as a text file the way the reverb's response is. `SpatialObservatoryViewport.tsx`
- * renders the disclosure, the credit lines and the Notices link while audio is enabled, and the
- * notices file ships in the build (`dist/assets/THIRD_PARTY_NOTICES-*.txt`).
+ * `AUDIO_CREDIT_LINES` are shown in two places. At phone width, in the audio strip while sound is on
+ * (`SpatialObservatoryViewport.tsx`), with a link to `AUDIO_NOTICES_URL`: the Apache License 2.0 text,
+ * Omnitone's NOTICE and the response's attribution, served as a text file the way the reverb's response
+ * is. And on the Credits page's Sound row (`CreditsPage.tsx`), reached from the home's Credits pill and,
+ * on the laptop after the home, from the Credits link at the bottom right, which opens the page over the
+ * moment at that row once music has played (credits-reach-one); the laptop's Sound circle carries the
+ * disclosure only (the owner's yes of 18 Nov). The notices file ships in the build
+ * (`dist/assets/THIRD_PARTY_NOTICES-*.txt`).
  *
  * Each soundtrack piece heard this visit adds its own lines (`pieceCreditLines`, music/soundtrack.ts):
  * VCSL's samples (CC0 1.0) for the organ and pulse and the ambient beats, and for Signal to Noise

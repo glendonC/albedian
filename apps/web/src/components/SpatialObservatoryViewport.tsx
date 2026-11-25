@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { resolveMotionTokens } from '@albedian/design-system';
 import {
   CelestialFinding,
   ObservationSession,
@@ -24,7 +26,9 @@ import {
   observatoryAudio,
 } from '../audio/ObservatoryAudioEngine.js';
 import { skyAudio } from '../audio/SkyAudioFeed.js';
-import { AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
+import { AUDIO_NOTICES_URL, appHeardMusic } from '../audio/audioCredits.js';
+import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
+import { CreditsPage } from './CreditsPage.js';
 import { useSoundtrackMoment } from '../audio/music/soundtrackMoment.js';
 import { useSelectionTone } from '../audio/useSelectionTone.js';
 import { MusicSettingControl } from '../audio/MusicSettingControl.js';
@@ -249,6 +253,23 @@ export const SpatialObservatoryViewport: React.FC<
   // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
   // only while that card is open
   const [originalPixels, setOriginalPixels] = useState(false);
+  // credits-reach-one (UIUX-credits-reach-READY.md, ruled 17:39 on 24 Nov): Credits over the moment, from the link at the
+  // laptop's bottom right; the moment stands unchanged under it, and back returns to it with the link focused
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const creditsShown = useLeaving(creditsOpen, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
+  const creditsAtSound = useRef(false);
+  const creditsLink = useRef<HTMLButtonElement>(null);
+  // Back from Credits puts the keyboard where it was, on the link, once the moment takes input again
+  const creditsWasOpen = useRef(false);
+  useEffect(() => {
+    if (creditsOpen) {
+      creditsWasOpen.current = true;
+      return;
+    }
+    if (!creditsWasOpen.current) return;
+    creditsWasOpen.current = false;
+    creditsLink.current?.focus();
+  }, [creditsOpen]);
   const cardOpen = revealShown && session.selectedFindingId != null;
   useEffect(() => {
     if (!cardOpen) setOriginalPixels(false);
@@ -667,6 +688,7 @@ export const SpatialObservatoryViewport: React.FC<
   return (
     <div
       className="alb-root"
+      inert={creditsOpen}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -1024,6 +1046,30 @@ export const SpatialObservatoryViewport: React.FC<
           <SoundControl on={soundEnabled} onToggle={handleToggleSound} level={volumeLevel} onLevel={setVolumeLevel} disclosure={audioDisclosure} />
         </div>
       )}
+
+      {/* Credits on every laptop screen after the home, as map products keep their attribution on the map: always in
+          view at the bottom right, in the disclosure lines' style; the home keeps its pill, the phone its audio strip */}
+      {!phone && !entryStageActive && !arrival && (
+        <button
+          ref={creditsLink}
+          type="button"
+          className="reveal-credits"
+          aria-label="Credits"
+          data-hud-interactive="true"
+          onClick={() => {
+            // Once music has played this visit the page starts at its Sound row, where the playing piece's credit is
+            creditsAtSound.current = appHeardMusic.get().length > 0;
+            setCreditsOpen(true);
+          }}
+        >
+          Credits
+        </button>
+      )}
+      {creditsShown.mounted &&
+        createPortal(
+          <CreditsPage over startAtSound={creditsAtSound.current} leaving={creditsShown.leaving} onBack={() => setCreditsOpen(false)} />,
+          document.body
+        )}
     </div>
   );
 };

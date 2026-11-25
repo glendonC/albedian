@@ -4,6 +4,9 @@ import { useAudioCreditLines } from '../audio/useAudioCreditLines.js';
 import { IconButton, LookIcon } from '../look/index.js';
 import { PROVENANCE_RECORD_URLS, UnmappedSourceError, creditRows, type CreditRow, type LoadedRecord } from './creditRows.js';
 
+/** The page's own top padding (home.css, .credits-page): a row it starts at stands this far below the page's top. */
+const PAGE_TOP_PAD_PX = 32;
+
 /** How long the page waits for each record before it says that one did not arrive. */
 export const CREDITS_WAIT_MS = 10_000;
 
@@ -73,11 +76,24 @@ async function readRecords(): Promise<{ loaded: LoadedRecord[] } | { failures: s
  * ask that changes be indicated (the verdict on credits-1). Until the records arrive the page shows only its title: no
  * count, no spinner.
  */
-export const CreditsPage: React.FC<{ onBack: () => void; leaving?: boolean }> = ({ onBack, leaving = false }) => {
+export const CreditsPage: React.FC<{
+  onBack: () => void;
+  leaving?: boolean;
+  /**
+   * Opened over a moment after the home (credits-reach-one, UIUX-credits-reach-READY.md): the moment stands unchanged
+   * under the page, so the page takes every key while it is over it (Esc goes back), none reaching the moment.
+   */
+  over?: boolean;
+  /** Opened once music has played this visit: the page starts at its Sound row, where the playing piece's credit is. */
+  startAtSound?: boolean;
+}> = ({ onBack, leaving = false, over = false, startAtSound = false }) => {
   const [state, setState] = useState<CreditsState>({ kind: 'reading' });
   const back = useRef(onBack);
   // Leaving (the motion record), the page goes over the home and takes nothing: Esc is the home's again
   back.current = leaving ? () => {} : onBack;
+  // Over a moment, the page keeps keys from it until it starts to leave; leaving, the moment's keys are its own again
+  const keepsKeys = useRef(over && !leaving);
+  keepsKeys.current = over && !leaving;
   const pageRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -105,20 +121,41 @@ export const CreditsPage: React.FC<{ onBack: () => void; leaving?: boolean }> = 
     }
   }, [state, soundLines]);
 
-  // Esc goes back, as the back button does; the page takes focus so a keyboard starts on it
+  // Esc goes back, as the back button does; the page takes focus so a keyboard starts on it. Over a moment the page
+  // hears each key first and keeps it from the moment beneath (its own scrolling and buttons still take their keys)
   useEffect(() => {
     pageRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
+      if (keepsKeys.current) event.stopPropagation();
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       event.preventDefault();
       back.current();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, over);
+    return () => window.removeEventListener('keydown', onKeyDown, over);
   }, []);
 
+  // Once its rows are laid out, a page asked to start at Sound puts that row's top at the page's own top padding
+  const startedAtSound = useRef(false);
+  useEffect(() => {
+    if (!startAtSound || startedAtSound.current || !laid || !('rows' in laid)) return;
+    const page = pageRef.current;
+    const sound = page?.querySelector<HTMLElement>('li[data-row="Sound"]');
+    if (!page || !sound) return;
+    startedAtSound.current = true;
+    page.scrollTop = Math.max(0, sound.offsetTop - PAGE_TOP_PAD_PX);
+  }, [laid, startAtSound]);
+
   return (
-    <section className={leaving ? 'credits-page is-leaving' : 'credits-page'} data-testid="credits-page" aria-labelledby="credits-title" ref={pageRef} tabIndex={-1} inert={leaving}>
+    <section
+      className={leaving ? 'credits-page is-leaving' : 'credits-page'}
+      data-testid="credits-page"
+      data-start={startAtSound ? 'sound' : 'top'}
+      aria-labelledby="credits-title"
+      ref={pageRef}
+      tabIndex={-1}
+      inert={leaving}
+    >
       <IconButton label="Back" icon="arrow-left" onClick={() => back.current()} />
       <h1 id="credits-title" className="credits-title">
         Credits
@@ -134,7 +171,7 @@ export const CreditsPage: React.FC<{ onBack: () => void; leaving?: boolean }> = 
       {laid && 'rows' in laid && (
         <ul className="credits-rows">
           {laid.rows.map((row, i) => (
-            <li key={row.key} className="credits-row" style={{ '--credits-i': i } as React.CSSProperties}>
+            <li key={row.key} className="credits-row" data-row={row.name} style={{ '--credits-i': i } as React.CSSProperties}>
               <span className="credits-label">{row.name}</span>
               {row.blocks.map((block) => (
                 <div key={block.key} className="credits-block">
