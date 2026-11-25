@@ -1659,11 +1659,15 @@
   --look-fs: var(--look-fs-phone);
 }
 
-/* Real sky's note at phone width, under the photo (reveal, approved 2026-11-12, iPhone 2; #p-real .note) */
+/* Real sky's note at phone width, under the photo (reveal, approved 2026-11-12, iPhone 2; #p-real .note). By its foot
+   from the window's own foot (phone-textsize-tag-one, UIUX-phone-textsize-READY.md item 1, the tag rule): 81 px, where
+   its foot stands at 390 by 844 (its top at 660 as approved), so at a browser's larger text its words wrap upward and
+   the Simulated tag stays whole inside the window */
 .reveal-status.is-phone {
   left: 24px;
   right: 24px;
-  top: 660px;
+  top: auto;
+  bottom: 81px;
   width: auto;
   font: 400 14px / 1.5 var(--look-font-sans);
 }
@@ -1729,6 +1733,7 @@
   left: auto;
   right: auto;
   top: auto;
+  bottom: auto;
   width: auto;
   padding: 654px 24px 40px;
 }
@@ -2412,11 +2417,13 @@
   pointer-events: auto;
 }
 
+/* By its foot from the window's own foot, 88 px as at 390 by 844, never from the 844 px design height, so a shorter
+   window (a browser's larger text) keeps its tags inside it (phone-textsize-tag-one, UIUX-phone-textsize-READY.md item 1) */
 .predsky.is-phone .predsky-status {
   left: 24px;
   right: 24px;
   top: auto;
-  bottom: calc(100% - 756px);
+  bottom: 88px;
   width: auto;
 }
 

@@ -601,7 +601,10 @@ describe("the predicted sky's rules are the record's", () => {
 
   it('anchors the phone readout by its foot 16 px above Back to Moment (y 756), growing upward, 24 px from the sides, the heading at 20 px, names at 11 px', () => {
     // F2, as D19 and D30: the foot at y 756, so the two tags, ESO's line and the catalogues push the block up, not down
-    expect(declarationsOf('.predsky.is-phone .predsky-status')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 756px)', width: 'auto' });
+    // phone-textsize-tag-one (UIUX-phone-textsize-READY.md item 1): from the window's own foot, 88 px as at 390 by 844,
+    // never from the 844 px design height, so a shorter window (a browser's larger text) keeps the tags inside it
+    expect(declarationsOf('.predsky.is-phone .predsky-status')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: '88px', width: 'auto' });
+    expect(844 - 756).toBe(88);
     expect(declarationsOf('.predsky.is-phone .predsky-status__lead')).toEqual({ 'font-size': '20px' });
     expect(declarationsOf('.predsky.is-phone .align-layer__name')).toEqual({ 'font-size': '11px' });
     expect(declarationsOf('.predsky-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', 'pointer-events': 'auto' });

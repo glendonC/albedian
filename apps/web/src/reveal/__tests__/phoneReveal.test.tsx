@@ -489,7 +489,14 @@ describe("the phone reveal's rules are the approved page's", () => {
   });
 
   it('sets the Real sky note as #p-real does', () => {
-    expect(declarationsOf('.reveal-status.is-phone')).toEqual({ left: '24px', right: '24px', top: '660px', width: 'auto', font: '400 14px / 1.5 var(--look-font-sans)' });
+    // phone-textsize-tag-one (UIUX-phone-textsize-READY.md item 1, the tag rule): the note stands by its foot from the
+    // window's own foot, where it stands today at 390 by 844 (its top at 660: the 28 px tag, 12 px, three 21 px lines,
+    // so its foot at 763, 81 px above the window's), so at a browser's larger text its words wrap upward with the
+    // Simulated tag whole inside the window
+    expect(declarationsOf('.reveal-status.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: '81px', width: 'auto', font: '400 14px / 1.5 var(--look-font-sans)' });
+    expect(844 - 81 - (28 + 12 + 3 * 21)).toBe(660);
+    // The no-match column keeps its own place: it is a scrolling column, not a block by its foot
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone')).toMatchObject({ position: 'relative', top: 'auto', bottom: 'auto' });
   });
 
   it('sets the readout there as #p-there does', () => {
@@ -506,7 +513,7 @@ describe("the phone reveal's rules are the approved page's", () => {
 
   it('sets the no-match screen as #ump-photo does, its warnings under the button, the photo moving with it', () => {
     expect(declarationsOf('.reveal-phone-scroll')).toEqual({ position: 'fixed', inset: '0', 'overflow-y': 'auto', 'overscroll-behavior': 'contain', 'pointer-events': 'auto' });
-    expect(declarationsOf('.reveal-status.is-unmatched.is-phone')).toEqual({ position: 'relative', left: 'auto', right: 'auto', top: 'auto', width: 'auto', padding: '654px 24px 40px' });
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone')).toEqual({ position: 'relative', left: 'auto', right: 'auto', top: 'auto', bottom: 'auto', width: 'auto', padding: '654px 24px 40px' });
     expect(declarationsOf('.reveal-phone-lead')).toEqual({ 'min-height': '118px' });
     expect(declarationsOf('.reveal-status.is-phone .reveal-status__lead')).toEqual({ margin: '0', font: '300 22px / 1.2 var(--look-font-sans)' });
     expect(declarationsOf('.reveal-phone-go')).toEqual({ display: 'flex', 'justify-content': 'center' });
