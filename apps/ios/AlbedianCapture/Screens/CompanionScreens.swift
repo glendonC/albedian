@@ -511,60 +511,129 @@ struct AfterShotScreen: View {
 struct ConnectScreen: View {
     @Bindable var model: CompanionModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @FocusState private var focused: Bool
 
     var body: some View {
         ZStack {
+            if dynamicTypeSize.isAccessibilitySize {
+                // largertext-connect-m (UIUX-iphone-largertext-sweep-READY item 3, DECIDED-BY-LEAD 24 Nov 19:56): one column
+                // that scrolls: the title wraps, "Address" over the field, the field wraps its whole address with
+                // "http://" grey first, the hint or the refused line wraps under it, Connect 16 pt under that in the flow,
+                // never over a word; the spaces between them as the record's picture has them
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Connect to your laptop").title()
+                            .fixedSize(horizontal: false, vertical: true)
+                        addressLabel.padding(.top, 14)
+                        field(wraps: true).padding(.top, 6)
+                        message.padding(.top, 12)
+                        MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 16)
+                    }
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .padding(.top, 118)
+                    .padding(.bottom, 34)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            } else {
+                Lines(lines: ["Connect to your", "laptop"], font: AlbedianFont.light(Arrive.titleSize), size: Arrive.titleSize, lineHeight: 1.05, tracking: Arrive.titleTracking).title().atTop(Arrive.titleTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                addressLabel
+                    .atTop(238, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                field(wraps: false)
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .atTop(262)
+                message
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .atTop(336)
+                MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress).atTop(404)
+            }
             IconButton(icon: .back, label: "Back", action: model.back)
                 .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
-            Lines(lines: ["Connect to your", "laptop"], font: AlbedianFont.light(Arrive.titleSize), size: Arrive.titleSize, lineHeight: 1.05, tracking: Arrive.titleTracking).title().atTop(Arrive.titleTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
-            Text("Address").font(AlbedianFont.regular(13)).foregroundStyle(Color(ControlStyle.inkQuiet))
-                .atTop(238, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+        }
+        .ignoresSafeArea(.container)
+        .onAppear { focused = true }
+    }
+
+    private var addressLabel: some View {
+        Text("Address").font(AlbedianFont.regular(13)).foregroundStyle(Color(ControlStyle.inkQuiet))
+    }
+
+    /// The address field: at default sizes one line 60 pt high, the scheme in grey before the address, as before; at
+    /// accessibility sizes the scheme whole on its own first line and the address wrapping under it at the field's width.
+    @ViewBuilder private func field(wraps: Bool) -> some View {
+        if wraps {
+            VStack(alignment: .leading, spacing: 0) {
+                if !PairingKeeper.typedHasScheme(model.typedAddress) {
+                    Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet)).fixedSize()
+                }
+                addressText(wraps: true)
+            }
+            .font(AlbedianFont.regular(20).monospacedDigit())
+            .tracking(-0.01 * 20)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .frame(minHeight: 60)
+            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(ControlStyle.line), lineWidth: 1))
+        } else {
             HStack(spacing: 0) {
                 // The address reads once: no fixed scheme in front of a typed one (LEAD ANSWER 12:57)
                 if !PairingKeeper.typedHasScheme(model.typedAddress) {
                     Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet))
                 }
-                TextField("", text: $model.typedAddress)
-                    .accessibilityLabel("Address")
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($focused)
-                    .foregroundStyle(Color(ControlStyle.ink))
-                    .tint(Color(ControlStyle.ink))
+                addressText(wraps: false)
             }
             .font(AlbedianFont.regular(20).monospacedDigit())
             .tracking(-0.01 * 20)
             .padding(.horizontal, 18)
             .frame(height: 60)
             .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(ControlStyle.line), lineWidth: 1))
-            .padding(.horizontal, CGFloat(Arrive.side))
-            .atTop(262)
-            Group {
-                if model.addressRefused {
-                    // INTERIM (D11): the warning-circle icon and one line in ink at 15 pt, words for the owner to judge
-                    HStack(alignment: .top, spacing: 8) {
-                        AlbedianIcon.warning.image(18).padding(.top, 1).accessibilityHidden(true)
-                        Text("Type the address Albedian shows on the laptop.").font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
-                    }
-                    .foregroundStyle(Color(ControlStyle.ink))
-                    // MOTION-READY-iphone: the message words in under the field
-                    .transition(.words(reduceMotion: reduceMotion))
-                } else {
-                    Text("Albedian shows this address on the laptop when it starts.")
-                        .font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
-                        .foregroundStyle(Color(ControlStyle.inkSecondary))
-                        .transition(.words(reduceMotion: reduceMotion))
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, CGFloat(Arrive.side))
-            .atTop(336)
-            MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress).atTop(404)
         }
-        .ignoresSafeArea(.container)
-        .onAppear { focused = true }
+    }
+
+    /// The field's text: one line as before, or at accessibility sizes the whole address wrapping.
+    @ViewBuilder private func addressText(wraps: Bool) -> some View {
+        if wraps {
+            TextField("", text: $model.typedAddress, axis: .vertical)
+                .accessibilityLabel("Address")
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focused)
+                .foregroundStyle(Color(ControlStyle.ink))
+                .tint(Color(ControlStyle.ink))
+        } else {
+            TextField("", text: $model.typedAddress)
+                .accessibilityLabel("Address")
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focused)
+                .foregroundStyle(Color(ControlStyle.ink))
+                .tint(Color(ControlStyle.ink))
+        }
+    }
+
+    private var message: some View {
+        Group {
+            if model.addressRefused {
+                // INTERIM (D11): the warning-circle icon and one line in ink at 15 pt, words for the owner to judge
+                HStack(alignment: .top, spacing: 8) {
+                    AlbedianIcon.warning.image(18).padding(.top, 1).accessibilityHidden(true)
+                    Text("Type the address Albedian shows on the laptop.").font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
+                }
+                .foregroundStyle(Color(ControlStyle.ink))
+                // MOTION-READY-iphone: the message words in under the field
+                .transition(.words(reduceMotion: reduceMotion))
+            } else {
+                Text("Albedian shows this address on the laptop when it starts.")
+                    .font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
+                    .foregroundStyle(Color(ControlStyle.inkSecondary))
+                    .transition(.words(reduceMotion: reduceMotion))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
