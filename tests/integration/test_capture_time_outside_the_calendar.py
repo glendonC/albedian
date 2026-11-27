@@ -319,9 +319,10 @@ def stop_own_child(child: subprocess.Popen) -> None:
         os.killpg(child.pid, signal.SIGKILL)
 
 
-def discover_within_bound(folders: Any) -> Any:
+def discover_within_bound(folders: Any, after: threading.Event | None = None) -> Any:
     """GET /api/media/discover, waited for within CHILD_BOUND_SEC by a thread of its own: a route that never answers
-    fails the test by an assertion instead of holding it, and leaves nothing running.
+    fails the test by an assertion instead of holding it, and leaves nothing running. With `after`, the wait counts
+    from when that event is set (within STANDIN_READY_SEC), so what the route was to start is known to have started.
 
     When the wait runs out, the helper refuses any further child (subprocess.Popen, which subprocess.run also uses, is
     wrapped while the route runs), tells every guard discovery has running to end its group
@@ -354,6 +355,8 @@ def discover_within_bound(folders: Any) -> Any:
     subprocess.Popen = Refusing  # type: ignore[misc]
     try:
         worker.start()
+        if after is not None:
+            assert after.wait(STANDIN_READY_SEC), f"what the route was to start had not started {STANDIN_READY_SEC:g} s on"
         worker.join(CHILD_BOUND_SEC)
         if worker.is_alive():
             with lock:
@@ -508,6 +511,7 @@ import os, signal, subprocess, sys, time
 args = sys.argv[1:]
 named = "hang" in " ".join(args)
 met = named and {when}
+time.sleep({start_delay} if met else {plain_delay})
 
 
 def log(kind, pid):
@@ -536,13 +540,61 @@ BEHAVIOURS = {
 }
 
 
-def make_standin(folder: Path, tool: str, when: str, behaviour: str, calls: Path) -> Path:
+def make_standin(folder: Path, tool: str, when: str, behaviour: str, calls: Path, start_delay: float = 0.0,
+                 plain_delay: float = 0.0) -> Path:
+    """A stand-in for `tool` first on PATH; seconds of sleep before it logs, `start_delay` at the call it meets and
+    `plain_delay` at every other call, stand for a machine so loaded that an interpreter takes that long to start."""
     folder.mkdir(exist_ok=True)
     standin = folder / tool
     standin.write_text(STANDIN.format(python=sys.executable, when=when, calls=str(calls), behave=BEHAVIOURS[behaviour],
-                                      real=shutil.which(tool)))
+                                      real=shutil.which(tool), start_delay=float(start_delay),
+                                      plain_delay=float(plain_delay)))
     standin.chmod(0o755)
     return standin
+
+
+# How long a stand-in may take, on the most loaded machine, to start, log that it met its call and start its own
+# child: a ceiling only, never waited out by a stand-in that starts (it is seen within milliseconds of its line)
+STANDIN_READY_SEC = 60.0
+
+
+def bound_from_the_standins_child(calls: Path, site: str, set_attr: Callable[[str, Any], None]) -> threading.Event:
+    """Make the case's bound fall on the one call the stand-in meets, and only once the stand-in has logged that it
+    met it and started its own child (the RULE stamped 27 Nov 00:21: a test that bounds a child and then reads what the
+    child was to write makes the child's progress known before the bound can end it). guarded_call.run starts its clock
+    when guarded_call.start returns, so `start` is wrapped to wait, after that call's guard is started, for the next
+    "kid" line of the log; and `run` gives every other call discovery makes (the plain clip's, and the hung clip's at
+    the sites the stand-in does not meet, all handed to the real tool) a ceiling of STANDIN_READY_SEC in place of the
+    case's short bound, so none of them depends on the machine's load either. Both are set through `set_attr` (a
+    monkeypatch's setattr on guarded_call, or a plain assignment in a child interpreter). The event is set once the
+    stand-in's child is seen."""
+    from services.media import guarded_call
+
+    real_start, real_run = guarded_call.start, guarded_call.run
+    seen = threading.Event()
+
+    def met(command: list[str]) -> bool:
+        return "hang" in " ".join(command[1:]) and site_of(command) == site
+
+    def start(command: list[str], **kwargs: Any) -> Any:
+        kids = len(logged(calls, "kid"))
+        call = real_start(command, **kwargs)
+        if met(command):
+            deadline = time.monotonic() + STANDIN_READY_SEC
+            while len(logged(calls, "kid")) <= kids:
+                assert time.monotonic() < deadline, f"the stand-in had not started its own child {STANDIN_READY_SEC:g} s after its guard"
+                time.sleep(0.01)
+            seen.set()
+        return call
+
+    def run(command: list[str], *, bound_sec: float | None, **kwargs: Any) -> Any:
+        if not met(command) and bound_sec is not None:
+            bound_sec = max(bound_sec, STANDIN_READY_SEC)
+        return real_run(command, bound_sec=bound_sec, **kwargs)
+
+    set_attr("start", start)
+    set_attr("run", run)
+    return seen
 
 
 def logged(calls: Path, kind: str) -> list[int]:
@@ -614,20 +666,28 @@ def test_the_check_for_what_is_left_sees_a_running_child_a_zombie_and_an_end(tmp
     assert left_running(calls, within=0.0) == []
 
 
-@pytest.mark.parametrize("site", sorted(CALL_SITES))
+# Each site at once; and the probe with the stand-in slower to start than the bound at the call it meets, and then at
+# every other call (as a machine past a load of 45 was, twice on 26 November)
+STANDIN_CASES = [*((site, 0.0, 0.0) for site in sorted(CALL_SITES)), ("the probe", 3.0, 0.0), ("the probe", 0.0, 3.0)]
+
+
+@pytest.mark.parametrize(("site", "start_delay", "plain_delay"), STANDIN_CASES)
 def test_a_child_of_discovery_that_never_answers_is_ended_with_its_group_and_the_route_answers(
-        site: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        site: str, start_delay: float, plain_delay: float, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Discovery waits on each ffprobe and ffmpeg call no longer than its bound (here 2 s), then has the call's guard
     end the whole group, so the tool's own child is gone too; it lists the file with a plain reason that it could not
     be read in time, still lists the clip beside it, and keeps no record of the timed-out read, so the next discovery
-    tries again, while the clip it read in time is kept and not read again."""
-    from services.media import discovery
+    tries again, while the clip it read in time is kept and not read again. The bound begins once the stand-in has met
+    the call and started its child (discovery-standin-load-one): a stand-in that takes longer than the bound to start,
+    as on a machine past a load of 45, is met all the same."""
+    from services.media import discovery, guarded_call
     from services.media.router import MediaFolders
 
     tool, when = CALL_SITES[site]
     calls = tmp_path / "calls.txt"
     standins = tmp_path / "standins"
-    make_standin(standins, tool, when, "never answers", calls)
+    make_standin(standins, tool, when, "never answers", calls, start_delay=start_delay, plain_delay=plain_delay)
+    bound_from_the_standins_child(calls, site, lambda name, value: monkeypatch.setattr(guarded_call, name, value))
     uploads = tmp_path / "uploads"
     uploads.mkdir()
     beacon_clip(uploads / "hang.mov", "2030-06-01T12:00:00Z")
@@ -859,19 +919,22 @@ from pathlib import Path
 
 sys.path.insert(0, sys.argv[1])
 import tests.integration.test_capture_time_outside_the_calendar as unit
-from services.media import discovery
+from services.media import discovery, guarded_call
 from services.media.router import MediaFolders
 
 work, case = Path(sys.argv[2]), sys.argv[3]
 # In this interpreter only: discovery's time limit taken away, or its probe stuck in its own code, and the helper's
 # wait cut to 3 s
-if case == "a child that never answers":
+after = None
+if case.endswith("never answers"):
     discovery.CHILD_TIME_LIMIT_SEC = None
+    # The helper's 3 s count from the stand-in's own child, so it is known to have met the call (the RULE of 00:21)
+    after = unit.bound_from_the_standins_child(work.parent / "calls.txt", "the probe", lambda name, value: setattr(guarded_call, name, value))
 else:
     discovery._probe_media_metadata = lambda path: time.sleep(10 ** 6)
 unit.CHILD_BOUND_SEC = 3
 try:
-    unit.discover_within_bound(MediaFolders(uploads=work / "uploads", public=work / "public", artifacts=work / "artifacts"))
+    unit.discover_within_bound(MediaFolders(uploads=work / "uploads", public=work / "public", artifacts=work / "artifacts"), after)
     print("the route answered", flush=True)
 except BaseException as exc:
     print(type(exc).__name__ + ": " + str(exc), flush=True)
@@ -914,6 +977,8 @@ GAVE_UP = "Failed: GET /api/media/discover did not answer within 3 s; the test e
 GIVE_UP_CASES = {
     # Two hung files: once the helper gives up, the route starts no child for the second
     "a child that never answers": (["hang1.mov", "hang2.mov"], GAVE_UP + "1 call(s) discovery had running"),
+    # The same with a stand-in slower to start than the helper's 3 s: it is met all the same
+    "a child slow to start that never answers": (["hang1.mov", "hang2.mov"], GAVE_UP + "1 call(s) discovery had running"),
     # No call to end, and a thread that does not end: a daemon, so the process ends all the same
     "the route's own code": (["hang1.mov"], GAVE_UP + "0 call(s) discovery had running; its thread had not ended 3 s after that"),
 }
@@ -928,7 +993,7 @@ def test_a_test_that_gives_up_on_the_route_ends_what_it_started_and_its_process_
     files, said = GIVE_UP_CASES[case]
     calls = tmp_path / "calls.txt"
     standins = tmp_path / "standins"
-    make_standin(standins, "ffprobe", "True", "never answers", calls)
+    make_standin(standins, "ffprobe", "True", "never answers", calls, start_delay=4.0 if case.startswith("a child slow") else 0.0)
     uploads = tmp_path / "work" / "uploads"
     uploads.mkdir(parents=True)
     for second, name in enumerate(files):
@@ -939,8 +1004,8 @@ def test_a_test_that_gives_up_on_the_route_ends_what_it_started_and_its_process_
                                          env={**os.environ, "PATH": f"{standins}{os.pathsep}{os.environ['PATH']}"})
     assert printed[-2:] == [said, "script end reached"], printed
     assert after_end < INTERPRETER_END_SEC
-    assert len(logged(calls, "met")) == (case == "a child that never answers")
-    assert len(logged(calls, "kid")) == (case == "a child that never answers")
+    assert len(logged(calls, "met")) == case.endswith("never answers")
+    assert len(logged(calls, "kid")) == case.endswith("never answers")
     assert left_running(calls) == []
 
 
