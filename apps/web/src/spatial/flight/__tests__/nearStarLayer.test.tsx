@@ -252,6 +252,36 @@ describe('free flight has no star (near-star-flight-one version two; UIUX-pilot-
     expect(near()[1]).toBe(0);
   });
 
+  for (const [w, h, phone] of [[1440, 900, false], [390, 844, true]] as const) {
+    it(`keeps the camera where it is across the switch to free flight, only the star dropped (version three, ${phone ? 'phone' : 'laptop'})`, async () => {
+      const openTiles: OpenFlightTiles = async (onTile) => {
+        onTile(rowAtThePlace().tile);
+        return { setView: () => {}, dispose: () => {} };
+      };
+      const tree = (steering: boolean, freeFlight: boolean) => createElement(FlightStarsLayer, { session: there(false), viewportWidthPx: w, viewportHeightPx: h, phone, openTiles, steering, freeFlight });
+      const fromEarth = () => Number(container.querySelector('[data-testid="flight-stars"]')!.getAttribute('data-from-earth-pc'));
+      await act(async () => root.render(tree(false, false)));
+      await tick(4);
+      await act(async () => root.render(tree(true, false)));
+      await tick(1);
+      const start = fromEarth();
+      await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w' })));
+      await tick(120);
+      await act(async () => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', key: 'w' })));
+      const before = fromEarth();
+      // Free flight then flies the set speed W set, no longer paced by the star
+      const speed = Math.max(near()[2]!, near()[3]!);
+      expect(Math.abs(before - start)).toBeGreaterThan(0.05);
+      await act(async () => root.render(tree(true, true)));
+      await tick(1);
+      // One frame on from where it stood: at most one frame's flight, nowhere near the place it started from
+      expect(Math.abs(fromEarth() - before)).toBeLessThanOrEqual(speed / 60 + 1e-9);
+      // and the star dropped in place: no distance, no floor, the set speed kept
+      expect(Number.isNaN(near()[0]!)).toBe(true);
+      expect(near()[1]).toBe(0);
+    });
+  }
+
   it('is never paced and has no floor: W held flies the set speed all the way, with no distance to a star', async () => {
     const row = rowAtThePlace();
     await steerFrom(false, vi.fn(), row.tile, true);

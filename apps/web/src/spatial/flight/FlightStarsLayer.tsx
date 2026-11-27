@@ -499,7 +499,12 @@ export const FlightStarsLayer: React.FC<{
       window.removeEventListener('keydown', down, true);
       window.removeEventListener('keyup', up, true);
     };
-  }, [flying, freeFlight]);
+  }, [flying]);
+  // version three (AUDIT-D and the lead, 27 Nov 01:16): Fly on your own pressed while the person steers keeps the flight
+  // where it is and drops only its star, in place: no hand-over turn from then on, no pacing, no floor
+  useEffect(() => {
+    if (freeFlight) pacedStar.current = null;
+  }, [freeFlight]);
   const toldSteer = useRef(onSteer);
   toldSteer.current = onSteer;
   // The page hears of the camera only when a number the readout shows would change (its three figures, its speed line)
