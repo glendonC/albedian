@@ -1353,3 +1353,83 @@ def test_a_letterboxed_clip_is_restored_by_the_job_inside_its_bars_and_not_refus
     assert (variant["width"], variant["height"], variant["frameCount"]) == (192, 192, 8)
     assert attempt["status"] == "ready" and attempt["gate"]["passed"] is True
     assert "noise" in attempt["measured"] and attempt["measured"]["fineNoiseLeft"] is not None
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# A ten-bit clip restores as its eight-bit twin does, and is stored exactly (tenbit-exact-one; AUDIT-B's verdict
+# main-playback-live: x265 at crf 0 is not lossless, so the gate read the encoder's loss as points of light)
+# ---------------------------------------------------------------------------------------------------------------
+
+
+def starry_planes(size: int = 128, count: int = 7, seed: int = 5) -> list[tuple[np.ndarray, ...]]:
+    """A panning starry night with noise of its own in every frame, as 8 bit 4:2:0 codes (synthetic)."""
+    from test_temporal import pan, render, star_list
+
+    rng = np.random.default_rng(seed)
+    offsets = pan(rng, frames=count)
+    placed = star_list(rng, 160, 2.0 * size + 60)
+    clip = clip_frames.clip_colour(clip_io.VideoFormat(size, size, "yuv420p", BT709_TV))
+    return [clip.to_planes(np.clip(np.repeat(render(o, placed, 128, sky=0.03)[..., None], 3, axis=-1)
+                                   + rng.normal(0.0, 0.003, (size, size, 3)), 0, 1)) for o in offsets]
+
+
+def ten_bit_upload(path: Path, planes: list[tuple[np.ndarray, ...]], size: int) -> None:
+    """The same pixels at 10 bits, each code four times the 8 bit one (BT.709's limited range at 10 bits), written
+    without loss by ffv1, so the upload holds them exactly whatever the restore's own encoder does."""
+    raw = b"".join(b"".join(np.ascontiguousarray(plane.astype("<u2") * 4).tobytes() for plane in frame) for frame in planes)
+    made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "rawvideo", "-pix_fmt", "yuv420p10le", "-s",
+                           f"{size}x{size}", "-framerate", "30", "-i", "pipe:0", "-c:v", "ffv1", "-pix_fmt", "yuv420p10le",
+                           "-color_range", "tv", "-colorspace", "bt709", "-color_trc", "bt709", "-color_primaries", "bt709",
+                           str(path)], input=raw, capture_output=True)
+    assert made.returncode == 0, made.stderr[-400:]
+
+
+def restored_in_child(tmp_path: Path, source: Path, monkeypatch) -> tuple[dict, Path, list]:
+    """One clip restored in this process as the job's child restores it: its result, its upload's folder, and the
+    frames the restore handed its encoder."""
+    root = tmp_path / source.stem / "store"
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = root / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / f"original{source.suffix}"
+    original.write_bytes(source.read_bytes())
+    (root / ".partial").mkdir()
+    written: list = []
+    real_write = clip_io.ClipEncoder.write
+
+    def keep(self, planes):
+        written.append(tuple(np.array(plane) for plane in planes))
+        return real_write(self, planes)
+
+    monkeypatch.setattr(clip_io.ClipEncoder, "write", keep)
+    job_id = "job_" + "e" * 16
+    ext = source.suffix.lstrip(".")
+    partials = [str(root / ".partial" / f"{job_id}-{name}.part")
+                for name in (f"clip_encoded.{ext}", f"variant.{ext}", "playback_encoded.mp4", "playback.mp4")]
+    facts = {"mimeType": "video/quicktime", "durationMs": 233.0, "audioStreams": []}
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, job_id, {"kind": "restoration"},
+                                               None, facts, partials, lambda *args: None, workers=1)
+    monkeypatch.setattr(clip_io.ClipEncoder, "write", real_write)
+    return out, folder, written
+
+
+def test_a_starry_ten_bit_clip_restores_as_its_eight_bit_twin_does_and_is_stored_code_for_code(tmp_path, monkeypatch) -> None:
+    planes = starry_planes()
+    eight, ten = tmp_path / "eight.mov", tmp_path / "ten.mov"
+    lossless_clip(eight, planes, width=128, height=128)
+    ten_bit_upload(ten, planes, 128)
+    assert clip_io.probe_clip(ten).video.pix_fmt == "yuv420p10le"
+    passed, _, _ = restored_in_child(tmp_path, eight, monkeypatch)
+    assert passed["status"] == "ready", passed
+    out, folder, written = restored_in_child(tmp_path, ten, monkeypatch)
+    attempt = json.loads(next((folder / "attempts").glob("*.json")).read_bytes())
+    assert out["status"] == "ready", (out, attempt.get("rejection"), attempt.get("gate"))
+    assert attempt["gate"]["unconfirmedPointCount"] == 0 and attempt["gate"]["starsMeasured"] > 0
+    stored = folder / "variants" / out["variantId"] / "variant.mov"
+    assert clip_io.probe_clip(stored).video.pix_fmt == "yuv420p10le"
+    # The stored file is the frames the restore handed its encoder, code for code
+    back = decoded(stored)
+    assert len(written) == len(back) == len(planes)
+    for k, (given, got) in enumerate(zip(written, back)):
+        for index, (a, b) in enumerate(zip(given, got)):
+            assert np.array_equal(a, b), (k, index, int(np.count_nonzero(a != b)), a.size)

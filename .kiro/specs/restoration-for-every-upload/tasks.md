@@ -224,7 +224,8 @@ pictures under `.cache/restore-review/<unit>/`.
   - As built [decided 2026-11-19 by the lead; landed on `main` as `585ce1a3` (`frame_pool.py`), `0570b9b1`
     (`clip_frames.py`) and `756ec666` (end-to-end clip job and gate), with answer-preserving speed follow-ups
     restore-7s (`292202a6`) and restore-searches (`380a8676`)]:
-    - The gated clip is stored without loss (x264 crf 0), so the variant is the file the gate ran on, and the
+    - The gated clip is stored without loss (x264 crf 0; x265 crf 0 with `lossless=1` for a 10 bit clip, from
+      tenbit-exact-one), so the variant is the file the gate ran on, and the
       gate's exact rules hold on it. On the owner's lifted clips, crf 16 moved samples by up to 40 codes of 255.
     - `variants.py` names a variant's file by its type and takes a clip's finished file by path. `router.py` starts
       a clip's restoration and serves the file by its type.

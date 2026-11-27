@@ -836,7 +836,11 @@ class ClipEncoder:
         command += ["-vf", ",".join(chain), "-fps_mode", "passthrough", "-enc_time_base", f"1:{den}",
                     "-c:v", self.codec, "-preset", self._preset, "-crf", str(self._crf), "-pix_fmt", video.pix_fmt]
         if self.codec == TEN_BIT_ENCODER:
-            command += ["-x265-params", "log-level=error", "-tag:v", "hvc1"]
+            # crf 0 is the stored form, exact: x264 is exact there and x265 only with its own lossless switch [tested:
+            # AUDIT-B, verdict main-playback-live, x265 at crf 0 alone moved 42.65 percent of a ten-bit clip's samples by
+            # up to 12 codes; tenbit-exact-one]
+            lossless = ":lossless=1" if self._crf == 0 else ""
+            command += ["-x265-params", f"log-level=error{lossless}", "-tag:v", "hvc1"]
         # No container or stream tag of the original reaches the variant (REQ-RST-9.4)
         command += ["-map_metadata", "-1", "-video_track_timescale", str(den), "-movie_timescale", str(self._movie_timescale),
                     "-f", self._container, _file_url(self._out)]

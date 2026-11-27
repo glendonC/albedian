@@ -2763,3 +2763,45 @@ def test_a_copy_the_checks_refuse_is_removed_and_cannot_be_taken_for_a_kept_one(
     assert (kept.kept, kept.check.rejection) == (True, None) and (tmp_path / "kept.mov").is_file()
     # The process's peak, named for what it is: at least what the process holds now
     assert kept.process_peak.self_bytes >= refused.process_peak.self_bytes > 0
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# The stored form: crf 0 is exact at 8 and at 10 bits (tenbit-exact-one)
+# ---------------------------------------------------------------------------------------------------------------
+
+# The restore stores a clip at crf 0 (`jobs.CLIP_CRF`) so the gate runs on the file it serves. x264 is exact there;
+# x265 is not without its own lossless switch [tested by AUDIT-B, verdict main-playback-live: x265 at crf 0 moved 42.65
+# percent of a ten-bit clip's samples by up to 12 codes, and its gate refused every ten-bit restoration]
+EXACT_CASES = ["yuv420p", "yuv422p", "yuv444p", "yuv420p10le", "yuv422p10le", "yuv444p10le"]
+
+
+@pytest.mark.parametrize("pix_fmt", EXACT_CASES)
+def test_a_crf_0_encode_decodes_code_for_code_to_the_frames_it_was_given(tmp_path: Path, pix_fmt: str) -> None:
+    assert not pix_fmt.endswith("10le") or libx265_can(pix_fmt), "this ffmpeg has libx265 for every 10 bit case"
+    video = synthetic_format(64, 48, pix_fmt)
+    frames = [synthetic_planes(video, k) for k in range(6)]
+    out = tmp_path / "exact.mov"
+    with clip_io.ClipEncoder(out, video, time_base=Fraction(1, 600), frame_times=[20 * k for k in range(6)], container="mov",
+                             crf=0) as encoder:
+        for planes in frames:
+            encoder.write(planes)
+        encoder.finish()
+    with clip_io.ClipDecoder(out, clip_io.probe_clip(out)) as decoder:
+        back = [tuple(np.array(plane) for plane in frame.planes) for frame in decoder]
+    assert len(back) == len(frames)
+    for k, (given, decoded) in enumerate(zip(frames, back)):
+        for index, (a, b) in enumerate(zip(given, decoded)):
+            assert np.array_equal(a, b), (pix_fmt, k, index, int(np.count_nonzero(a != b)), a.size)
+
+
+@pytest.mark.parametrize("crf", [0, 16])
+def test_x265_is_asked_for_its_lossless_switch_at_crf_0_and_only_there(tmp_path: Path, crf: int) -> None:
+    # The lossless switch is the stored form's; any other quality asked of the encoder is encoded at that quality
+    video = synthetic_format(64, 48, "yuv420p10le")
+    encoder = clip_io.ClipEncoder(tmp_path / "out.mov", video, time_base=Fraction(1, 600), frame_times=[0], container="mov",
+                                  crf=crf)
+    encoder.codec = clip_io.TEN_BIT_ENCODER
+    command = encoder.command()
+    params = command[command.index("-x265-params") + 1].split(":")
+    assert ("lossless=1" in params) == (crf == 0) and "log-level=error" in params
+    assert command[command.index("-crf") + 1] == str(crf)

@@ -792,7 +792,10 @@ ffmpeg -y -v error -copyts
   flux; if 16 fails the tolerance on real clips the unit lowers it and says so. The value stays [proposed] until
   it is set from restore-7's before and after pictures (section 6).
   - As built: crf 0, which x264 makes lossless [decided 2026-11-19 by the lead: what is served is the file the gate
-    ran on; a smaller viewing copy would need a gate of its own and is not built now].
+    ran on; a smaller viewing copy would need a gate of its own and is not built now]. A 10 bit clip, stored by
+    x265, is lossless only with x265's own `lossless=1`, which the encoder adds at crf 0 [tested: AUDIT-B's verdict
+    main-playback-live, x265 at crf 0 alone moved 42.65 percent of a 10 bit clip's samples by up to 12 codes and
+    its gate refused every 10 bit restoration; tenbit-exact-one, a 10 bit encode at crf 0 decodes code for code].
   - The still's gate compares the stored file with the original lifted to within one 16 bit code. On synthetic
     frames, crf 16 moved a star core's samples by up to 15 codes of 255 between two encodes that were equal there.
     On the owner's clips, lifted as the job lifts them, it moved a sample by up to 24 to 40 codes. crf 0 moved

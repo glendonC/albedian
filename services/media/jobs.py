@@ -78,8 +78,10 @@ MEDIA_PRODUCER_FILES = (
 # the lift and capped block by block where it would lift the gate's noise over its floor, or none where the gate
 # refuses it (fine-noise-floor-one); 16, a restored clip's playback copy beside its published variant, H.264 High
 # behind its own PSNR gate in the stored file's own format (playback-job-one); 17, a 10-bit restored clip's playback copy
-# in its own bit depth, HEVC Main 10 (playback-tenbit-job; the number is the next free one in the order of passes)
-MEDIA_PRODUCER = Producer("albedian.restore", 17, MEDIA_PRODUCER_FILES)
+# in its own bit depth, HEVC Main 10 (playback-tenbit-job; the number is the next free one in the order of passes); 18,
+# a 10-bit clip stored exactly, x265 with its lossless switch at crf 0, so its gate no longer reads the encoder's loss
+# as points of light (tenbit-exact-one); a ten-bit record stored before stays as it is, gated on the file it stores
+MEDIA_PRODUCER = Producer("albedian.restore", 18, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -303,9 +305,10 @@ def restoration_in_child(store_root: str, folder: str, original: str, sha256: st
 # A clip, in the child (restore-7; design sections 10 and 11)
 # =============================================================================================
 
-# A clip's variant is stored without loss, x264 at this quality being lossless, so the gate's exact rules hold on the
-# stored clip as on a still's PNG [tested: restore-7, the owner's clips lifted as the job lifts them: crf 16 moved a
-# sample by up to 24 to 40 codes of 255, crf 0 by none, at 1.6 to 3.7 times the bytes; decided 2026-11-19 by the lead:
+# A clip's variant is stored without loss, x264 at this quality being lossless and x265 with the lossless switch the
+# encoder adds at it (tenbit-exact-one), so the gate's exact rules hold on the stored clip as on a still's PNG [tested:
+# restore-7, the owner's clips lifted as the job lifts them: crf 16 moved a sample by up to 24 to 40 codes of 255, crf
+# 0 by none, at 1.6 to 3.7 times the bytes; decided 2026-11-19 by the lead:
 # what is served is the file the gate ran on, and a smaller viewing copy would need a gate of its own]
 CLIP_CRF = 0
 CLIP_PRESET = clip_io.DEFAULT_PRESET
