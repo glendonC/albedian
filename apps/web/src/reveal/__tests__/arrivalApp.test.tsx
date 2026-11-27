@@ -163,6 +163,8 @@ async function renderApp(routes: {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === '/api/media/discover') return json({ items: [] });
+      // The sample's readiness read as the app starts (sample-pill-one): not offered here
+      if (url === '/api/samples') return json({ detail: 'not found' }, 404);
       calls.push(`${init?.method ?? 'GET'} ${url}`);
       const queue =
         url === '/api/ingest'

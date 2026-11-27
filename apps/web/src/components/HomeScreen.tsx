@@ -24,6 +24,11 @@ export interface HomeScreenProps {
   onUploadPressed?: () => void;
   /** The last upload the server refused, shown beside Upload until the next one; none when nothing was refused. */
   refusal?: HomeRefusal | null;
+  /**
+   * Try a sample night, pressed (sample-pill-one, UIUX-first-use-wow-READY.md item 2 and P1 to P5): given only once the
+   * sample's asset and its kept solve both answer; none draws no pill and nothing takes its place.
+   */
+  onTrySample?: () => void;
 }
 
 /**
@@ -39,7 +44,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onFileChosen,
   onUploadPressed,
   refusal = null,
+  onTrySample,
 }) => {
+  // P2: there from the first frame when the sample answered before the home was drawn; when it answers later, the pill
+  // words in as it mounts, as Fly on your own does
+  const [sampleAtFirst] = useState(() => onTrySample !== undefined);
   const [creditsOpen, setCreditsOpen] = useState(false);
   // The status region is on screen empty first and gets its words after, so a screen reader announces them
   const [shownRefusal, setShownRefusal] = useState<HomeRefusal | null>(null);
@@ -168,6 +177,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               fileInput.current?.click();
             }}
           />
+          {onTrySample && (
+            // P1: SecondAction at the home size, 10 px after Upload on its row; P5: it stays while a refusal shows
+            <SecondAction label="Try a sample night" size="home" part={sampleAtFirst ? 'home-sample' : 'home-sample is-arriving'} onClick={() => fileOver || onTrySample()} />
+          )}
           <div className="home-refusal" role="status">
             {shownRefusal && (
               <>

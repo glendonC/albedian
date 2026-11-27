@@ -65,6 +65,16 @@ export async function openSample(id: string): Promise<OpenedSample | null> {
   }
 }
 
+/**
+ * The sample the home offers (sample-pill-one): the record's first night, opened as its address opens it (its asset and
+ * its kept solve both answering, each checked), or null when any of them does not answer. It never throws.
+ */
+export async function readySample(): Promise<OpenedSample | null> {
+  const record = SampleRecordSchema.safeParse(await readJson('/api/samples'));
+  const first = record.success ? record.data.samples[0] : undefined;
+  return first ? openSample(first.id) : null;
+}
+
 /** Whether the session shows this sample night's photo: a public sample whose bytes the night's record names. */
 export function isSampleShown(session: ObservationSession, night: SampleNight | null | undefined): night is SampleNight {
   const asset = session.sourceAsset;

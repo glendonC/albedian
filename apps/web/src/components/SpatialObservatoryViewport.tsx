@@ -115,6 +115,8 @@ export interface SpatialObservatoryViewportProps {
   opening?: boolean;
   /** The sample night shown (sample-reveal-one, UIUX-sample-reveal-READY.md): its photo is named "the sample photo", it carries its credit, and Restore is not offered; null for anyone's own photo. */
   sample?: SampleNight | null;
+  /** Try a sample night (sample-pill-one): given only once the sample's asset and its kept solve both answer. */
+  onTrySample?: () => void;
   /** The upload on its way to a solved sky: while there is one, the working screen shows in place of what follows the solve. */
   arrival?: Arrival | null;
   /** The sky the last solve predicted from an early pose, kept after its job ended, for the reveal's lock-on (D25). */
@@ -190,6 +192,7 @@ export const SpatialObservatoryViewport: React.FC<
   uploadRefusal = null,
   opening = false,
   sample = null,
+  onTrySample,
   arrival = null,
   lockOnSky = null,
   lockOnAligned = null,
@@ -819,6 +822,8 @@ export const SpatialObservatoryViewport: React.FC<
             onFileChosen?.(file);
           }}
           refusal={uploadRefusal}
+          // The home leaves as for any photo once App sets the sample's (its photo decoded first): the effect on the photo's address
+          onTrySample={onTrySample}
         />
       )}
 

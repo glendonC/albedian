@@ -122,6 +122,8 @@ async function openAppAt(address: string, routes: { receipt?: () => Response | P
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === '/api/media/discover') return json({ items: [] });
+      // The sample's readiness read as the app starts (sample-pill-one): not offered here
+      if (url === '/api/samples') return json({ detail: 'not found' }, 404);
       calls.push(`${init?.method ?? 'GET'} ${url}`);
       if (url === `/api/ingest/${sha256}`) return (routes.receipt ?? (() => json(receipt)))();
       if (url === `/api/ingest/${sha256}/solution`) return (routes.solution ?? (() => json(solution)))();
@@ -364,6 +366,8 @@ describe("a page opened at the address of an upload whose solve has not ended, o
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         if (url === '/api/media/discover') return json({ items: [] });
+        // The sample's readiness read as the app starts (sample-pill-one): not offered here
+        if (url === '/api/samples') return json({ detail: 'not found' }, 404);
         const method = init?.method ?? 'GET';
         calls.push(`${method} ${url}`);
         if (method === 'GET' && url === `/api/ingest/${sha256}`) return json(receipt);
@@ -510,6 +514,8 @@ describe('Solve from here on an upload opened by its address', () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         if (url === '/api/media/discover') return json({ items: [] });
+        // The sample's readiness read as the app starts (sample-pill-one): not offered here
+        if (url === '/api/samples') return json({ detail: 'not found' }, 404);
         if (url === `/api/ingest/${sha256}`) return ++reads === 1 ? json(stored) : receiptRead();
         if (url === `/api/ingest/${sha256}/solution`) return json(sky);
         if ((init?.method ?? 'GET') === 'POST') sent.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });

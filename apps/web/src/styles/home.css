@@ -71,6 +71,41 @@
 .home-row {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* sample-pill-one (UIUX-first-use-wow-READY.md item 2, P1 to P5, RULED 12:25 on 27 Nov): Try a sample night, the outlined
+   pill at the home size, 10 px after Upload on its row and centred on it (laptop [194, 796, 378, 844] at 1440 by 900);
+   a refused upload's message hangs after it (P3: the message's max-width above already measures from the row's end).
+   When the sample answers after the home is drawn the pill words in as it mounts, as Fly on your own does (P2) */
+.home-sample.is-arriving {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
+/* P3: on the laptop while the message's room after the pill is narrower than 240 px (838 px wide down to 721), the
+   message stands under the row as at phone width, 18 px below it, its widest edge 22 px before the credit's left edge;
+   the logo and the row rise by its height as the phone's do */
+@media (min-width: 721px) and (max-width: 838px) {
+  .home-row:has(.home-sample) {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 10px;
+    row-gap: 18px;
+    justify-items: start;
+  }
+
+  .home-row:has(.home-sample) .home-refusal:not(:empty) {
+    position: static;
+    grid-column: 1 / -1;
+    transform: none;
+    width: auto;
+    max-width: calc(100vw - 48px - 22px - var(--home-credit-w, 0px) - 32px);
+  }
+
+  .home-row:has(.home-sample) .home-refusal:empty {
+    display: none;
+  }
 }
 
 .home-refusal {
@@ -395,6 +430,22 @@
     justify-items: start;
   }
 
+  /* P1 and P4 on the phone: the pill beside Upload at the phone's size (176 by 44 at 390 wide), the message under the
+     row, 18 px below it, the full width less the gutters */
+  .home-hero .look-second {
+    --look-h: var(--look-h-phone);
+    --look-fs: var(--look-fs-phone);
+  }
+
+  .home-row:has(.home-sample) {
+    grid-template-columns: auto auto;
+    column-gap: 10px;
+  }
+
+  .home-row:has(.home-sample) .home-refusal:not(:empty) {
+    grid-column: 1 / -1;
+  }
+
   .home-refusal {
     position: static;
     transform: none;
@@ -409,6 +460,19 @@
   .home-refusal__reason {
     display: block;
     -webkit-line-clamp: unset;
+  }
+}
+
+/* P1: narrower than Upload, 10 px and the pill within the 16 px gutters (347 px), the pill stands 10 px under Upload, left
+   aligned, and the message 18 px under the pill (P4) */
+@media (max-width: 346px) {
+  .home-row:has(.home-sample) {
+    grid-template-columns: auto;
+    row-gap: 10px;
+  }
+
+  .home-row:has(.home-sample) .home-refusal:not(:empty) {
+    margin-top: 8px;
   }
 }
 

@@ -428,6 +428,8 @@ describe('the app: a refusal brings the home back with the message, until the ne
         const url = String(input);
         calls.push(url);
         if (url === '/api/media/discover') return new Response(JSON.stringify({ items: [] }), { status: 200 });
+        // The sample's readiness read as the app starts (sample-pill-one): not offered here
+        if (url === '/api/samples') return new Response(JSON.stringify({ detail: 'not found' }), { status: 404 });
         const next = answers.shift();
         if (!next) throw new Error(`no answer planned for ${url}`);
         return next();
@@ -467,7 +469,7 @@ describe('the app: a refusal brings the home back with the message, until the ne
       "Albedian can't open notes.pdfNot a JPEG, PNG, TIFF, HEIC, QuickTime or MP4 file."
     );
     // Refused, so nothing is solved
-    expect(calls.filter((c) => c !== '/api/media/discover')).toEqual(['/api/ingest']);
+    expect(calls.filter((c) => c !== '/api/media/discover' && c !== '/api/samples')).toEqual(['/api/ingest']);
   });
 
   it('clears the message with the next upload, and a later home shows none', async () => {

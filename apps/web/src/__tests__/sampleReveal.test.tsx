@@ -8,7 +8,8 @@ import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SampleRecordSchema, type ObservationSession, type ObservationSolution, type SampleAsset } from '@albedian/contracts';
 import { HOME_SCREEN } from '../components/__tests__/homeEntry.js';
-import { isSampleShown, openSample, sampleAddressed } from '../services/openSample.js';
+import { isSampleShown, openSample, readySample, sampleAddressed } from '../services/openSample.js';
+import { HomeScreen } from '../components/HomeScreen.js';
 import { OWN_PHOTO, photoNames, SAMPLE_PHOTO } from '../reveal/sampleWords.js';
 import { SampleCredit, sampleCreditLine } from '../reveal/SampleCredit.js';
 
@@ -227,7 +228,7 @@ describe('the app opened at ?sample=<id>', () => {
     expect([...container.querySelectorAll('.reveal-nav .look-views__item')].map((b) => b.textContent)).toEqual(['Sample photo', 'Real sky', '3D']);
     // Item 3: the credit, a link to the source page in a new tab, 24 px left of the Credits link (no width in jsdom)
     const credit = q('[data-testid="sample-credit"]') as HTMLAnchorElement;
-    expect(credit.textContent).toBe('YagnKambariya / Wikimedia Commons / CC0');
+    expect(credit.textContent).toBe(`${night.credit.author} / Wikimedia Commons / ${night.credit.licence}`);
     expect(credit.getAttribute('href')).toBe(night.credit.sourceUrl);
     expect(credit.getAttribute('target')).toBe('_blank');
     expect(credit.getAttribute('rel')).toBe('noopener noreferrer');
@@ -238,7 +239,8 @@ describe('the app opened at ?sample=<id>', () => {
     // Item 1: keyboard help names the views as the pill does
     act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' })));
     expect(container.textContent).toContain('Sample photo, Real sky, 3D');
-    expect(calls.slice(0, 3)).toEqual(['GET /api/samples', `GET /api/samples/${ID}/asset`, `GET /api/samples/${ID}/solution`]);
+    // The address's three reads (beside the home's readiness read of the same three), and nothing sent
+    for (const read of ['GET /api/samples', `GET /api/samples/${ID}/asset`, `GET /api/samples/${ID}/solution`]) expect(calls).toContain(read);
     expect(calls.some((call) => call.startsWith('POST') || call.includes('/api/ingest'))).toBe(false);
   });
 
@@ -251,8 +253,11 @@ describe('the app opened at ?sample=<id>', () => {
 
   it('never takes a sample with ?upload=: an upload named beside it is the one opened', async () => {
     const calls = await openAppAt(`/?upload=${sha256}&sample=${ID}`);
-    await settle();
-    expect(calls.some((call) => call.includes('/api/samples'))).toBe(false);
+    await waitUntil(() => expect(q(HOME_SCREEN)).not.toBeNull());
+    // The upload was asked for (and is not stored here); the sample's reveal never opened
+    expect(calls).toContain(`GET /api/ingest/${sha256}`);
+    expect(q('[data-testid="sample-credit"]')).toBeNull();
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
   });
 });
 
@@ -265,7 +270,7 @@ describe('the sample photo\'s names and credit (items 1 to 3)', () => {
   });
 
   it('writes the credit in Commons\' courtesy form from the record, and none for a site it cannot name', () => {
-    expect(sampleCreditLine(night)).toBe('YagnKambariya / Wikimedia Commons / CC0');
+    expect(sampleCreditLine(night)).toBe(`${night.credit.author} / Wikimedia Commons / ${night.credit.licence}`);
     expect(sampleCreditLine({ ...night, credit: { ...night.credit, sourceUrl: 'https://example.org/photo' } })).toBeNull();
     act(() => root.render(createElement(SampleCredit, { night, topPx: 638 })));
     const phone = q('[data-testid="sample-credit"]')!;
@@ -450,5 +455,95 @@ describe('the flight names the sample photo (item 2, in SPATIAL\'s files by the 
       act(() => root.render(createElement(ConeReadout, { geometry, phone })));
       expect(q('[data-testid="cone-readout"]')!.getAttribute('aria-label')).toBe("Your photo's view");
     }
+  });
+});
+
+// sample-pill-one (UIUX-first-use-wow-READY.md item 2 and P1 to P5, RULED 12:25 on 27 Nov): Try a sample night beside
+// Upload, shown only once the sample's asset and its kept solve both answer; its press opens the sample's finished reveal
+// and the address names it
+describe('sample-pill-one: Try a sample night on the home', () => {
+  const homeCss = fs.readFileSync(path.resolve(here, '../styles/home.css'), 'utf8');
+  const rulesIn = (params: string | null, selector: string) => {
+    const found: Record<string, string> = {};
+    postcss.parse(homeCss).walkRules((r) => {
+      const parent = r.parent as postcss.AtRule | postcss.Root;
+      const inParams = parent.type === 'atrule' ? (parent as postcss.AtRule).params : null;
+      if (r.selector === selector && inParams === params) r.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
+    });
+    return found;
+  };
+  const pill = () => [...container.querySelectorAll('button')].find((b) => b.textContent === 'Try a sample night');
+
+  it('stands after Upload on its row at the home size, only once offered, and takes the press', () => {
+    const onTrySample = vi.fn();
+    act(() => root.render(createElement(HomeScreen, { soundOn: false, onToggleSound: () => {}, onFileChosen: () => {}, onTrySample })));
+    const row = q('.home-hero .home-row')!;
+    expect([...row.children].map((c) => c.className)).toEqual([expect.stringContaining('look-main'), 'look-second look-size-home home-sample', 'home-refusal']);
+    act(() => pill()!.click());
+    expect(onTrySample).toHaveBeenCalledTimes(1);
+    act(() => root.render(createElement(HomeScreen, { soundOn: false, onToggleSound: () => {}, onFileChosen: () => {} })));
+    expect(pill()).toBeUndefined();
+  });
+
+  it('words in as it mounts when the sample answers after the home is drawn (P2)', () => {
+    act(() => root.render(createElement(HomeScreen, { soundOn: false, onToggleSound: () => {}, onFileChosen: () => {} })));
+    act(() => root.render(createElement(HomeScreen, { soundOn: false, onToggleSound: () => {}, onFileChosen: () => {}, onTrySample: () => {} })));
+    expect(pill()!.className).toBe('look-second look-size-home home-sample is-arriving');
+    expect(rulesIn(null, '.home-sample.is-arriving')).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both' });
+  });
+
+  it('takes no press while a file is held over the window (P5)', () => {
+    const onTrySample = vi.fn();
+    act(() => root.render(createElement(HomeScreen, { soundOn: false, onToggleSound: () => {}, onFileChosen: () => {}, onTrySample })));
+    const enter = new Event('dragenter') as DragEvent;
+    Object.defineProperty(enter, 'dataTransfer', { value: { types: ['Files'], items: [{ kind: 'file' }] } });
+    act(() => void window.dispatchEvent(enter));
+    expect(q('[data-testid="home-drop"]')).not.toBeNull();
+    act(() => pill()!.click());
+    expect(onTrySample).not.toHaveBeenCalled();
+  });
+
+  it('holds its place: 10 px after Upload, the message under the row in the narrow band, beside or under Upload on the phone', () => {
+    expect(rulesIn(null, '.home-row')).toMatchObject({ 'align-items': 'center', gap: '10px' });
+    expect(rulesIn('(min-width: 721px) and (max-width: 838px)', '.home-row:has(.home-sample)')).toEqual({ display: 'grid', 'grid-template-columns': 'auto auto', 'column-gap': '10px', 'row-gap': '18px', 'justify-items': 'start' });
+    expect(rulesIn('(min-width: 721px) and (max-width: 838px)', '.home-row:has(.home-sample) .home-refusal:not(:empty)')).toEqual({
+      position: 'static',
+      'grid-column': '1 / -1',
+      transform: 'none',
+      width: 'auto',
+      'max-width': 'calc(100vw - 48px - 22px - var(--home-credit-w, 0px) - 32px)',
+    });
+    expect(rulesIn('(max-width: 720px)', '.home-row:has(.home-sample)')).toEqual({ 'grid-template-columns': 'auto auto', 'column-gap': '10px' });
+    expect(rulesIn('(max-width: 720px)', '.home-hero .look-second')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)' });
+    expect(rulesIn('(max-width: 346px)', '.home-row:has(.home-sample)')).toEqual({ 'grid-template-columns': 'auto', 'row-gap': '10px' });
+    expect(rulesIn('(max-width: 346px)', '.home-row:has(.home-sample) .home-refusal:not(:empty)')).toEqual({ 'margin-top': '8px' });
+  });
+
+  it('offers the record\'s first night only when its asset and its solve both answer', async () => {
+    serve();
+    expect((await readySample())!.night.id).toBe(ID);
+    serve({ solution: () => json({ detail: 'not found' }, 404) });
+    expect(await readySample()).toBeNull();
+    serve({ record: () => json({ detail: 'down' }, 503) });
+    expect(await readySample()).toBeNull();
+  });
+
+  it('opens the sample\'s finished reveal from the home and names it in the address', async () => {
+    await openAppAt('/');
+    await waitUntil(() => expect(pill()).not.toBeUndefined());
+    await act(async () => pill()!.click());
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    expect(window.location.search).toBe(`?sample=${ID}`);
+    expect([...container.querySelectorAll('.reveal-nav .look-views__item')].map((b) => b.textContent)[0]).toBe('Sample photo');
+    expect(q('[data-testid="sample-credit"]')).not.toBeNull();
+    expect(button('Restore')).toBeUndefined();
+  });
+
+  it('draws no pill when the sample does not answer', async () => {
+    await openAppAt('/', { asset: () => json({ detail: 'not found' }, 404) });
+    await settle();
+    await settle();
+    expect(q(HOME_SCREEN)).not.toBeNull();
+    expect(pill()).toBeUndefined();
   });
 });

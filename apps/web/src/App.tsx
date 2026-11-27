@@ -37,7 +37,7 @@ import {
   type UploadEvent,
 } from './services/apiClient.js';
 import { openAddressedUpload, readStoredReceipt, storedPhotoDecoded, uploadAddressed } from './services/openUpload.js';
-import { isSampleShown, openSample, sampleAddressed } from './services/openSample.js';
+import { isSampleShown, openSample, readySample, sampleAddressed, type OpenedSample } from './services/openSample.js';
 
 /** The sample night the page's address names, when it names no upload: a sample never takes ?upload= (item 4). */
 function addressedSample(): string | null {
@@ -235,6 +235,30 @@ export const App: React.FC = () => {
   // reveal as ?upload= reopens an upload's, behind the same black; if its asset or solution does not answer, the home.
   // The night's record stays with the session for the reveal's words and its photo's credit
   const [sampleNight, setSampleNight] = useState<SampleNight | null>(null);
+  // sample-pill-one (UIUX-first-use-wow-READY.md item 2, P2; PLATFORM's routes note): the pill shows only once the sample's
+  // asset and its kept solve both answer, read once as the app starts; the opened sample is kept so the press shows its
+  // finished reveal at once
+  const [sampleOffered, setSampleOffered] = useState<OpenedSample | null>(null);
+  useEffect(() => {
+    let left = false;
+    void readySample().then((opened) => {
+      if (!left) setSampleOffered(opened);
+    });
+    return () => {
+      left = true;
+    };
+  }, []);
+  const trySample = async (): Promise<void> => {
+    const opened = sampleOffered;
+    if (opened === null || !opened.session.sourceAsset) return;
+    // Item 4: the address names the sample, so a reload reopens its reveal; a sample never takes ?upload=
+    window.history.replaceState(window.history.state, '', `?sample=${opened.night.id}`);
+    await storedPhotoDecoded(opened.session.sourceAsset.uri, opened.session.sourceAsset.mediaKind);
+    latestChoiceRef.current = null;
+    setSampleNight(opened.night);
+    setSession(opened.session);
+    setUploadedMediaUrl(opened.session.sourceAsset.uri);
+  };
   useEffect(() => {
     const id = addressedSample();
     if (id === null) return undefined;
@@ -701,6 +725,7 @@ export const App: React.FC = () => {
         uploadRefusal={uploadRefusal}
         opening={opening}
         sample={isSampleShown(session, sampleNight) ? sampleNight : null}
+        onTrySample={sampleOffered ? () => void trySample() : undefined}
         arrival={arrival}
         lockOnSky={lockOnSky}
         lockOnAligned={lockOnAligned}
