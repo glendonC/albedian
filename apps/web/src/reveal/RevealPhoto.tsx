@@ -1106,12 +1106,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const lastSkyLine = useRef<React.ReactElement | null>(null);
   // The status line for this moment (each moment its own element, keyed: motion-14)
   // The phone's restoration holds the foot: its compare's sentence and Download (D10 item 5), or its wait's row and Cancel (D38)
-  const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring || phoneStopped ? null : phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
+  // nomatch-leaves-flight-one (DECIDED-BY-LEAD 11:43 and 12:05 on 27 Nov): the phone's no-match screens stand only with no
+  // flight on. A flight's sky counts as on screen once its layer reports it drawn, so keyed on that alone they stood over
+  // the flight's readout until then (seconds before batch 195's glow, still a moment on a slow phone), and Back to Moment
+  // keeps the readout in frame while the flight returns
+  const noMatchShown = phone && !skyOnScreen && !there && status.kind === 'unmatched';
+  const statusLine: React.ReactElement | null = phoneCompare || phoneRestoring || phoneStopped ? null : noMatchShown && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700, "Solve from here"
         // centred at 772 at the approved phone size, 44 px (C30); the close circle cancels
         // UIUX-tagphone-READY.md item C: the person's rings carry the Predicted tag, at full from their first frame
         <PhoneAligningBlock onSolve={onSolveFromHere ? () => onSolveFromHere(personAlignmentOf(aligning.pose), aligning.pose, aligning.from) : undefined} />
-      ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' && keptRefused ? (
+      ) : noMatchShown && !answer && keptRefused ? (
         <PhoneAlignRefused
           assetKey={asset?.sha256}
           clip={phoneClip}
@@ -1121,7 +1126,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onShowPredictedSky={status.predictedSky ? () => onShowPredictedSky?.() : undefined}
           onRestore={restoreOffered || phoneNoMatchRestore ? () => onRestore?.() : undefined}
         />
-      ) : phone && !skyOnScreen && !answer && status.kind === 'unmatched' ? (
+      ) : noMatchShown && !answer ? (
         <PhoneNoMatch
           assetKey={asset?.sha256}
           clip={phoneClip}
