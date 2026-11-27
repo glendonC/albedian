@@ -1,5 +1,6 @@
-// The docs gate's link check (scripts/verify-docs.mjs): every relative Markdown link in README.md and docs/ must
-// name a file or folder that exists. Scratch folders are made outside the repository.
+// The docs gate (scripts/verify-docs.mjs): every relative Markdown link in README.md and docs/ must name a file or
+// folder that exists, and every Kiro spec, the twelve listed and any other folder under .kiro/specs/, must hold its
+// three documents. Scratch folders are made outside the repository.
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -23,6 +24,32 @@ function scratch(files) {
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
+
+// The twelve specs .kiro/specs/ holds on main 927612bd3, the four of 11 November last.
+const TWELVE_SPECS = [
+  'observation-session',
+  'media-experiment-runtime',
+  'observation-solution',
+  'spatial-camera-navigation',
+  'voice-native-actions',
+  'design-system-accessibility',
+  'export-and-provenance',
+  'integration-and-testing',
+  'predicted-sky-for-every-upload',
+  'ios-capture-companion',
+  'upload-jobs',
+  'restoration-for-every-upload',
+];
+const LONG_ENOUGH = '# A spec document\n\nLong enough to pass the gate: fifty bytes or more of text.\n';
+
+/** The three documents of each named spec, each long enough to pass. */
+function specFiles(specs) {
+  const files = {};
+  for (const spec of specs) {
+    for (const doc of ['requirements.md', 'design.md', 'tasks.md']) files[`.kiro/specs/${spec}/${doc}`] = LONG_ENOUGH;
+  }
+  return files;
+}
 
 describe('the docs gate link check', () => {
   it('reports a dead relative link by file, line and target', () => {
@@ -84,6 +111,50 @@ describe('the docs gate link check', () => {
       'AGENTS.md:3: services/science/',
     ]);
     expect(docsGate(root).errors).toContain('Missing path in AGENTS.md: AGENTS.md:2: docs/adr/');
+  });
+
+  it('checks the three documents of every one of the twelve Kiro specs, the four of 11 November among them', () => {
+    const all = scratch(specFiles(TWELVE_SPECS));
+    expect(docsGate(all).errors.filter((e) => e.startsWith('Missing or empty Kiro spec'))).toEqual([]);
+    for (const spec of ['predicted-sky-for-every-upload', 'ios-capture-companion', 'upload-jobs', 'restoration-for-every-upload']) {
+      const files = specFiles(TWELVE_SPECS);
+      delete files[`.kiro/specs/${spec}/tasks.md`];
+      files[`.kiro/specs/${spec}/design.md`] = 'too short';
+      expect(docsGate(scratch(files)).errors.filter((e) => e.startsWith('Missing or empty Kiro spec'))).toEqual([
+        `Missing or empty Kiro spec document: .kiro/specs/${spec}/design.md`,
+        `Missing or empty Kiro spec document: .kiro/specs/${spec}/tasks.md`,
+      ]);
+    }
+  });
+
+  it('fails when a whole expected spec folder is gone, the four of 11 November among them', () => {
+    for (const spec of ['predicted-sky-for-every-upload', 'ios-capture-companion', 'upload-jobs', 'restoration-for-every-upload']) {
+      const files = specFiles(TWELVE_SPECS.filter((name) => name !== spec));
+      expect(docsGate(scratch(files)).errors.filter((e) => e.startsWith('Missing or empty Kiro spec'))).toEqual([
+        `Missing or empty Kiro spec document: .kiro/specs/${spec}/requirements.md`,
+        `Missing or empty Kiro spec document: .kiro/specs/${spec}/design.md`,
+        `Missing or empty Kiro spec document: .kiro/specs/${spec}/tasks.md`,
+      ]);
+    }
+  });
+
+  it('checks a spec folder that is on no list, so a new spec cannot pass unread, and reads no file there as a spec', () => {
+    const files = specFiles(TWELVE_SPECS);
+    files['.kiro/specs/README.md'] = LONG_ENOUGH;
+    files['.kiro/specs/a-new-spec/requirements.md'] = LONG_ENOUGH;
+    expect(docsGate(scratch(files)).errors.filter((e) => e.startsWith('Missing or empty Kiro spec'))).toEqual([
+      'Missing or empty Kiro spec document: .kiro/specs/a-new-spec/design.md',
+      'Missing or empty Kiro spec document: .kiro/specs/a-new-spec/tasks.md',
+    ]);
+  });
+
+  it('counts the specs and their documents it checked in its summary', () => {
+    const files = specFiles(TWELVE_SPECS);
+    files['.kiro/specs/a-new-spec/requirements.md'] = LONG_ENOUGH;
+    files['.kiro/specs/a-new-spec/design.md'] = LONG_ENOUGH;
+    files['.kiro/specs/a-new-spec/tasks.md'] = LONG_ENOUGH;
+    expect(docsGate(scratch(files)).summary).toContain('verified 13 Kiro specs (39 documents)');
+    expect(docsGate(repoRoot).summary).toContain('verified 12 Kiro specs (36 documents)');
   });
 
   it('fails the gate on a dead link, and passes this repository', () => {

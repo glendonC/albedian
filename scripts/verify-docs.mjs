@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * The docs gate (`pnpm verify:docs`). It checks that:
- * - each of the 8 Kiro specs has requirements.md, design.md and tasks.md under .kiro/specs/<spec>/, none under 50 bytes;
+ * - each of the 12 Kiro specs, and any other folder under .kiro/specs/, has requirements.md, design.md and tasks.md
+ *   under .kiro/specs/<spec>/, none under 50 bytes;
  * - .kiro/steering/ holds at least 4 steering files, each starting with `inclusion:` frontmatter;
  * - the 4 preserved research reports exist in research/originals/;
  * - every backticked repository path in AGENTS.md names a file or directory that exists on disk;
@@ -23,7 +24,12 @@ const EXPECTED_SPECS = [
   'design-system-accessibility',
   'export-and-provenance',
   'integration-and-testing',
+  'predicted-sky-for-every-upload',
+  'ios-capture-companion',
+  'upload-jobs',
+  'restoration-for-every-upload',
 ];
+const SPEC_DOCUMENTS = ['requirements.md', 'design.md', 'tasks.md'];
 const PRESERVED_REPORTS = [
   'Frontier_Media_Restoration_Research_2026-10-31.md',
   'Observable_Universe_Research_Extension_2026-10-31.md',
@@ -52,6 +58,15 @@ export function markdownFiles(root) {
     files.push('research/experiments/EXPERIMENT_REGISTRY.md');
   }
   return files;
+}
+
+/** The specs the gate checks: the expected ones, then every other folder under .kiro/specs/, by name. */
+export function kiroSpecs(root) {
+  const specsDir = path.join(root, '.kiro/specs');
+  const onDisk = fs.existsSync(specsDir)
+    ? fs.readdirSync(specsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+    : [];
+  return [...EXPECTED_SPECS, ...onDisk.filter((name) => !EXPECTED_SPECS.includes(name)).sort()];
 }
 
 /** Backticked repository paths in AGENTS.md, each as { file, line, target }. */
@@ -116,8 +131,9 @@ export function deadLinks(root, links = relativeLinks(root)) {
 /** Every problem the docs gate finds under root, and the summary it prints when there is none. */
 export function docsGate(root) {
   const errors = [];
-  for (const spec of EXPECTED_SPECS) {
-    for (const doc of ['requirements.md', 'design.md', 'tasks.md']) {
+  const specs = kiroSpecs(root);
+  for (const spec of specs) {
+    for (const doc of SPEC_DOCUMENTS) {
       const p = path.join(root, '.kiro/specs', spec, doc);
       if (!fs.existsSync(p) || fs.statSync(p).size < 50) errors.push(`Missing or empty Kiro spec document: .kiro/specs/${spec}/${doc}`);
     }
@@ -145,7 +161,7 @@ export function docsGate(root) {
   for (const dead of deadLinks(root, links)) errors.push(`Dead relative link: ${dead}`);
 
   const summary =
-    `[verify:docs] OK: verified ${EXPECTED_SPECS.length} Kiro specs (24 documents), ${steeringFiles.length} steering files, ` +
+    `[verify:docs] OK: verified ${specs.length} Kiro specs (${specs.length * SPEC_DOCUMENTS.length} documents), ${steeringFiles.length} steering files, ` +
     `${PRESERVED_REPORTS.length} preserved research reports, ${agentPaths.length} AGENTS.md paths and ${links.length} relative links in ${files.length} Markdown files.`;
   return { errors, summary };
 }
