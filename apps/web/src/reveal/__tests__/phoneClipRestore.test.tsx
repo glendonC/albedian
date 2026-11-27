@@ -162,6 +162,38 @@ const flush = async () => {
   for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
 };
 
+// badge-note-one (the lead's order of 03:32 on 27 Nov; UIUX-phone-textsize-READY.md item 2 and its rule: the foot block
+// stands by its foot from the window's foot and grows upward, words never drawn over; the foot ruled 6 px above the
+// player's time chip in UIUX-versionwait-READY.md, its addition of 03:48, item 2):
+// the player stands from the window's foot (phone-foot-one) and its time chip rides above its line, so the sentence
+// above the player stands by its foot from the window's foot too, clear of the chip at any height (EXPORT's live take
+// at 375 by 812 found the chip over the sentence's second line while the sentence stood 604 px from the top)
+describe("the Restored sentence over a phone clip, clear of the player's time chip", () => {
+  const px = (value: string) => Number(/^(-?[\d.]+)px$/.exec(value)?.[1] ?? NaN);
+  it('stands by its foot 6 px above the chip at every window height', () => {
+    const note = declarationsOf('.restore-phone-note');
+    const clipNote = declarationsOf('.restore-phone-note.is-clip');
+    const player = declarationsOf('.clip-player.is-phone');
+    const line = declarationsOf('.clip-player.is-phone .clip-player__line');
+    const chip = declarationsOf('.clip-player__time');
+    // The player's top, the chip's foot and its height, each measured up from the window's foot
+    const playerTop = Number(/^calc\(100% - ([\d.]+)px\)$/.exec(player.top ?? '')?.[1] ?? NaN);
+    const chipGap = Number(/^calc\(100% \+ ([\d.]+)px\)$/.exec(chip.bottom ?? '')?.[1] ?? NaN);
+    const [padY] = (chip.padding ?? '').split(' ').map(px);
+    const chipFont = /(\d+)px \/ 1 /.exec(chip.font ?? '')!;
+    const chipTop = playerTop + chipGap + Number(chipFont[1]) + 2 * padY!;
+    expect([playerTop, px(line.height ?? ''), chipTop]).toEqual([168, 44, 193]);
+    const noteFoot = px(clipNote.bottom ?? '');
+    expect(clipNote.top).toBe('auto');
+    // 6 px above the chip as drawn: its top is 1 px lower than this chain of rules gives (192 px up, measured live),
+    // since the 44 px line sits 1 px into the player's row
+    expect(noteFoot - (chipTop - 1)).toBe(6);
+    // At 390 by 844 the two-line sentence (13 px at 1.45) has its top 608.3 px down, 4.3 px under where main drew it
+    const [, size, lineHeight] = /^400 (\d+)px \/ ([\d.]+) /.exec(note.font ?? '')!;
+    expect(Math.round((844 - noteFoot - 2 * Number(size) * Number(lineHeight)) * 10) / 10).toBe(608.3);
+  });
+});
+
 describe('D34 and D38 phone clip restoration wait, compare, and stopped states', () => {
   it('wait while restoring a clip: keeps player at 676, places row at 590 and Cancel at 772, and anchors Predicted lead at y 576 when predicted rings draw', async () => {
     const estClip = slottedClip(poseSession(clipPoseSolution(3, 5), 'video'));
@@ -505,7 +537,7 @@ describe('D34 and D38 phone clip restoration wait, compare, and stopped states',
     });
     expect(declarationsOf('.restore-compare.is-clip.is-phone .restore-compare__label.is-left')).toEqual({ left: '10px' });
     expect(declarationsOf('.restore-compare.is-clip.is-phone .restore-compare__label.is-right')).toEqual({ right: '10px' });
-    expect(declarationsOf('.restore-phone-note.is-clip')).toEqual({ top: '604px' });
+    expect(declarationsOf('.restore-phone-note.is-clip')).toEqual({ top: 'auto', bottom: '198px' });
     expect(declarationsOf('.restore-phone-note.is-clip::before')).toEqual(d19);
     expect(declarationsOf('.restore-phone-stopped.is-clip .work-phone-row.is-stopped')).toEqual({ top: '590px' });
     expect(declarationsOf('.restore-phone-stopped.is-clip .restore-phone-why')).toEqual({ bottom: 'calc(100% - 576px)' });

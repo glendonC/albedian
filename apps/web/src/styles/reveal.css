@@ -2968,8 +2968,14 @@
 .restore-compare.is-clip.is-phone .restore-compare__label.is-right {
   right: 10px;
 }
+/* badge-note-one (UIUX-phone-textsize-READY.md item 2 and its rule, as phone-foot-one placed the player; the foot ruled
+   in UIUX-versionwait-READY.md, its addition of 03:48 on 27 Nov, item 2): the sentence above the player stands by its
+   foot from the window's foot and grows upward, its foot 6 px above the player's time chip, whose top is drawn 192 px
+   up from the window's foot (measured; the 44 px line sits 1 px into the player's row), so the chip never draws over
+   it at any window height */
 .restore-phone-note.is-clip {
-  top: 604px;
+  top: auto;
+  bottom: 198px;
 }
 .restore-phone-note.is-clip::before {
   content: '';
