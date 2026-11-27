@@ -470,7 +470,8 @@ describe('credits-change-lines-one: a source whose licence asks shows every chan
   it('CC BY-NC 3.0 IGO: the Gaia, Hipparcos and Bailer-Jones blocks show every sentence of every record, the Gaia tiles\' file set included', () => {
     const loaded = served();
     expect(licenseAsksChangesIndicated('CC-BY-NC-3.0-IGO')).toBe(true);
-    for (const credit of ['ESA/Gaia/DPAC', 'ESA Hipparcos', 'ESA', 'Bailer-Jones et al. 2021']) expectShowsAll(loaded, credit);
+    // Hipparcos is credited ESA, as its catalogue page asks, so both releases' records fall in one ESA block
+    for (const credit of ['ESA/Gaia/DPAC', 'ESA', 'Bailer-Jones et al. 2021']) expectShowsAll(loaded, credit);
     const tiles = loaded.find((r) => r.url === '/catalog/stars/gaia-dr3/PROVENANCE.json')!.record.fileSets[0]!;
     expect(tiles.producedBy.method).toBe('script');
     expect(blockOf(loaded, 'ESA/Gaia/DPAC').changes).toContain(tiles.producedBy.method === 'script' ? tiles.producedBy.changes : '');

@@ -539,7 +539,7 @@ def build_links_record(links_dir: Path, tiles: Path = DEFAULT_TILES) -> AssetPro
         f"{counts['hips']:,} designated HIP numbers, set aside: {aside['no-best-neighbour']} with no best neighbour, "
         f"{aside['best-neighbour-not-in-tiles']} whose neighbour is not a tile row, {aside['fainter-than-half-light']} "
         f"fainter than half the light, {aside['no-colour-in-range']} without a colour in range. Offered under CC "
-        "BY-NC 3.0 IGO with credit ESA/Gaia/DPAC and ESA Hipparcos, as its sources are."
+        "BY-NC 3.0 IGO with credit ESA/Gaia/DPAC and ESA, as its sources are."
     )
     return _record(sources, LINKS_NAME, out_bytes, note)
 

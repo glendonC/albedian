@@ -656,6 +656,16 @@ def test_release_record_credits_and_licences():
         assert by_id[archive].license.spdx == "CC-BY-NC-3.0-IGO"
         assert "prior authorisation" in by_id[archive].license.conditions
     assert by_id["hipparcos-2007"].citation == "van Leeuwen, F. 2007, A&A 474, 653"
+    # As ESA asks (AUDIT-B's catalog read of main 927612bd3): Hipparcos credited "ESA", its catalogue page's form, and
+    # Gaia DR3 cited by both papers its DR3 credit page asks research to cite, which the terms say, so Credits shows it.
+    assert by_id["hipparcos-2007"].credit == "ESA"
+    assert by_id["gaia-dr3"].citation == (
+        "Gaia Collaboration, Prusti, T., et al. 2016, A&A 595, A1; Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1"
+    )
+    assert "cite the Gaia mission paper and the Gaia DR3 release paper" in by_id["gaia-dr3"].license.conditions
+    assert "Mission citation" not in (by_id["gaia-dr3"].note or "")
+    for other in ("gaia-dr3-astrophysical-parameters", "bailer-jones-2021", "hipparcos-2007", "gaia-dr3-hipparcos2-best-neighbour"):
+        assert "cite" not in by_id[other].license.conditions, other
     assert by_id["iau-csn"].license.spdx.startswith("LicenseRef-")
     assert by_id["iau-csn"].version == "Last updated 2022-04-04"
 

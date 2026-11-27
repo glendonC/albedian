@@ -26,7 +26,7 @@ describe('render layer credits', () => {
 
   it('words each credit as its source asks', () => {
     expect(LAYER_CREDITS['cislunar.sky']).toEqual(['ESO/S. Brunier']);
-    expect(LAYER_CREDITS['cislunar.catalog-stars']).toEqual(['ESA/Gaia/DPAC', 'ESA Hipparcos']);
+    expect(LAYER_CREDITS['cislunar.catalog-stars']).toEqual(['ESA/Gaia/DPAC', 'ESA']);
     expect(LAYER_CREDITS['cislunar.earth']).toEqual(['NASA Earth Observatory']);
     expect(LAYER_CREDITS['cislunar.moon']).toEqual(["NASA's Scientific Visualization Studio"]);
     // No credit for the Local Bubble mesh until its origin is traced (data-1e)
@@ -42,7 +42,7 @@ describe('render layer credits', () => {
     expect(creditsFor(CISLUNAR_RENDER_LAYERS)).toEqual([
       'ESO/S. Brunier',
       'ESA/Gaia/DPAC',
-      'ESA Hipparcos',
+      'ESA',
       'NASA Earth Observatory',
       "NASA's Scientific Visualization Studio",
     ]);

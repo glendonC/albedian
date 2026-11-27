@@ -8,13 +8,13 @@ import type { RenderLayerSet } from '@albedian/contracts';
  * table stands in until the data lane's PROVENANCE.json records carry the credits.
  *
  * - ESO/S. Brunier: ESO's credit for the Milky Way panorama eso0932a (textures/PROVENANCE.json).
- * - ESA/Gaia/DPAC and ESA Hipparcos: the catalog stars (Gaia DR3 and Hipparcos 2007).
+ * - ESA/Gaia/DPAC and ESA: the catalog stars (Gaia DR3, and Hipparcos 2007, whose catalogue page asks "Credit: ESA").
  * - NASA Earth Observatory: Blue Marble and Black Marble (textures/PROVENANCE.json).
  * - NASA's Scientific Visualization Studio: the CGI Moon Kit maps (SVS 4720) the Moon draws.
  */
 export const LAYER_CREDITS: Readonly<Record<string, readonly string[]>> = {
   'cislunar.sky': ['ESO/S. Brunier'],
-  'cislunar.catalog-stars': ['ESA/Gaia/DPAC', 'ESA Hipparcos'],
+  'cislunar.catalog-stars': ['ESA/Gaia/DPAC', 'ESA'],
   'cislunar.earth': ['NASA Earth Observatory'],
   'cislunar.moon': ["NASA's Scientific Visualization Studio"],
 };

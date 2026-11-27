@@ -141,14 +141,16 @@ describe('creditRows: rows by what a person sees, every source credited from the
 
   it("shows a record's own citation word for word wherever its terms ask to cite", () => {
     const asked = sources.filter((s) => /\bcite\b/i.test(s.license.conditions ?? ''));
-    expect(asked.map((s) => s.id).sort()).toEqual(['iau-csn', 'iau-csn', 'nasa-exoplanet-archive-pscomppars']);
+    // Gaia DR3's terms say ESA asks research to cite its two papers (credits-esa-form-one); three records copy it
+    expect(asked.map((s) => s.id).sort()).toEqual(['gaia-dr3', 'gaia-dr3', 'gaia-dr3', 'iau-csn', 'iau-csn', 'nasa-exoplanet-archive-pscomppars']);
     for (const source of asked) {
       const row = rowNamed(SOURCE_ROW[source.id]!);
       expect(source.citation, source.id).toBeTruthy();
       expect(row?.blocks.some((b) => b.citations.includes(source.citation!)), source.id).toBe(true);
     }
-    // A citation the terms do not ask for is not shown; the one other is the reference Horizons suggests (its own row)
-    expect(rows.filter((r) => r.name !== 'Positions of the Sun, Earth and Moon').flatMap((r) => r.blocks.flatMap((b) => b.citations))).toHaveLength(2);
+    // A citation the terms do not ask for is not shown: three are, the IAU's, the exoplanet archive's and Gaia DR3's;
+    // the one other is the reference Horizons suggests (its own row)
+    expect(rows.filter((r) => r.name !== 'Positions of the Sun, Earth and Moon').flatMap((r) => r.blocks.flatMap((b) => b.citations))).toHaveLength(3);
     expect(rowNamed('Positions of the Sun, Earth and Moon')?.blocks.flatMap((b) => b.citations)).toHaveLength(1);
   });
 
@@ -188,8 +190,17 @@ describe('creditRows: rows by what a person sees, every source credited from the
     expect(rowNamed('Milky Way photograph')?.blocks[0]?.href).toBe('https://www.eso.org/public/images/eso0932a/');
   });
 
-  it('orders Star catalogs as the approved page does: ESA Hipparcos, then ESA/Gaia/DPAC', () => {
-    expect(rowNamed('Star catalogs')?.blocks.slice(0, 2).map((b) => b.credits[0])).toEqual(['ESA Hipparcos', 'ESA/Gaia/DPAC']);
+  it('orders Star catalogs as the approved page does: Hipparcos (credited ESA, once), then ESA/Gaia/DPAC', () => {
+    const credits = rowNamed('Star catalogs')?.blocks.map((b) => b.credits[0] ?? '') ?? [];
+    expect(credits.slice(0, 2)).toEqual(['ESA', 'ESA/Gaia/DPAC']);
+    expect(credits.filter((c) => c === 'ESA' || c.includes('Hipparcos'))).toEqual(['ESA']);
+  });
+
+  it('cites the two papers ESA asks research using Gaia DR3 to cite', () => {
+    const gaia = rowNamed('Star catalogs')?.blocks.find((b) => b.credits[0] === 'ESA/Gaia/DPAC');
+    expect(gaia?.citations).toContain(
+      'Gaia Collaboration, Prusti, T., et al. 2016, A&A 595, A1; Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1'
+    );
   });
 
   it('links each notice a record serves beside its files from that source\'s row, and only those', () => {

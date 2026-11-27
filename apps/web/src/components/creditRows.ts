@@ -176,9 +176,9 @@ export function servedNotices(loaded: readonly LoadedRecord[]): Map<string, stri
   return notices;
 }
 
-/** The approved page's order inside a row, by credit: Hipparcos, then Gaia. */
+/** The approved page's order inside a row, by credit: Hipparcos (credited ESA, as its catalogue page asks), then Gaia. */
 const FIRST_CREDITS: Partial<Record<CreditRowName, readonly string[]>> = {
-  'Star catalogs': ['ESA Hipparcos', 'ESA/Gaia/DPAC'],
+  'Star catalogs': ['ESA', 'ESA/Gaia/DPAC'],
 };
 
 export interface CreditLicence {

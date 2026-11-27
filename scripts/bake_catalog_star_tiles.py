@@ -986,6 +986,16 @@ ESA_ARCHIVE_LICENCE = {
         "needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
     ),
 }
+# Gaia DR3's credit and citation instructions (ESA's DR3 documentation, linked from cosmos.esa.int/web/gaia-users/credits;
+# read 2026-11-26 on the Wayback copy of 2026-07-01, the live archive pages being offline): research using DR3 data is
+# asked to cite both the Gaia mission paper and the DR3 release paper, which the record's citation gives.
+GAIA_DR3_LICENCE = {
+    **ESA_ARCHIVE_LICENCE,
+    "conditions": (
+        ESA_ARCHIVE_LICENCE["conditions"] + " ESA asks research using Gaia DR3 data to cite the Gaia mission paper "
+        "and the Gaia DR3 release paper (https://www.cosmos.esa.int/web/gaia-users/credits)."
+    ),
+}
 IAU_CSN_TERMS = {
     "spdx": "LicenseRef-IAU-Creative-Commons-Attribution",
     "name": "Creative Commons Attribution, as the IAU states it, with no version given",
@@ -997,10 +1007,11 @@ IAU_CSN_TERMS = {
 }
 # Per manifest source id: the edition, the credit line to display, and the licence
 RECORD_TERMS = {
-    "gaia-dr3": ("DR3", "ESA/Gaia/DPAC", ESA_ARCHIVE_LICENCE),
+    "gaia-dr3": ("DR3", "ESA/Gaia/DPAC", GAIA_DR3_LICENCE),
     "gaia-dr3-astrophysical-parameters": ("DR3", "ESA/Gaia/DPAC", ESA_ARCHIVE_LICENCE),
     "bailer-jones-2021": ("EDR3 distances (2021)", "Bailer-Jones et al. 2021", ESA_ARCHIVE_LICENCE),
-    "hipparcos-2007": ("2007 new reduction", "ESA Hipparcos", ESA_ARCHIVE_LICENCE),
+    # Hipparcos's catalogue page asks "Credit: ESA" (cosmos.esa.int/web/hipparcos/catalogues, read 2026-11-26)
+    "hipparcos-2007": ("2007 new reduction", "ESA", ESA_ARCHIVE_LICENCE),
     "gaia-dr3-hipparcos2-best-neighbour": ("DR3", "ESA/Gaia/DPAC", ESA_ARCHIVE_LICENCE),
     "iau-csn": (None, "IAU Working Group on Star Names (WGSN)", IAU_CSN_TERMS),
 }
@@ -1027,11 +1038,7 @@ def provenance_record(cfg: ReleaseConfig, checksums_sha256: str, *, names_update
             part
             for part in (
                 f"Table {source['table']}." if "table" in source else None,
-                (
-                    f"Mission citation: {source['missionCitation']} (doi:{source['missionDoi']})."
-                    if "missionCitation" in source
-                    else None
-                ),
+                f"Mission paper doi:{source['missionDoi']}." if "missionDoi" in source else None,
                 source.get("note"),
             )
             if part
@@ -1043,7 +1050,8 @@ def provenance_record(cfg: ReleaseConfig, checksums_sha256: str, *, names_update
             "version": version or f"Last updated {names_updated}",
             "license": licence,
             "credit": credit,
-            "citation": source.get("citation"),
+            # the mission paper first, then the release's own, as ESA lists them
+            "citation": "; ".join(c for c in (source.get("missionCitation"), source.get("citation")) if c) or None,
             "doi": source.get("doi"),
             "acknowledgement": source.get("acknowledgement"),
             "note": note or None,
