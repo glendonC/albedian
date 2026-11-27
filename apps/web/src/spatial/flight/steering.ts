@@ -28,6 +28,8 @@ export const DRAG_BANK_TAU_S = 0.08;
 /** What the hands do in one frame: the turn rates, the speed's direction, and the turn's share of a full bank. */
 export interface SteerFrame {
   readonly input: SteerInput;
+  /** phone-orbit-one: the drag's own part of `input` (its move this frame, or its carry after a release), the keys' left out. */
+  readonly dragInput: SteerInput;
   readonly speedDirection: -1 | 0 | 1;
   /**
    * The turn as a share of each hand's full bank, unclamped: the arrow keys' share of their turn rate, and a drag's
@@ -119,6 +121,7 @@ export class SteerHands {
       }
     }
     const keysYaw = yaw;
+    const keysPitch = pitch;
     let dragYaw = 0;
     if (dt > 0) {
       // What the hand turned since the last frame, applied in this one
@@ -148,6 +151,7 @@ export class SteerHands {
     const s = this.held.has('KeyS');
     return {
       input: { yawRadPerS: yaw, pitchRadPerS: pitch },
+      dragInput: { yawRadPerS: yaw - keysYaw, pitchRadPerS: pitch - keysPitch },
       speedDirection: w === s ? 0 : w ? 1 : -1,
       turnShare: keysYaw / STEER_KEY_TURN_RAD_S + dragYaw / (DRAG_FULL_BANK_PX_S * STEER_DRAG_RAD_PER_PX),
       dragHeld: this.dragging,

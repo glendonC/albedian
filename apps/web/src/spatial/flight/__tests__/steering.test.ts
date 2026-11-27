@@ -11,13 +11,36 @@ describe('SteerHands: what the hands do while steering (D26 item 6)', () => {
     const hands = new SteerHands();
     hands.keyDown('ArrowRight');
     hands.keyDown('KeyW');
-    expect(hands.frame(1 / 60)).toEqual({ input: { yawRadPerS: STEER_KEY_TURN_RAD_S, pitchRadPerS: 0 }, speedDirection: 1, turnShare: 1, dragHeld: false });
+    expect(hands.frame(1 / 60)).toEqual({ input: { yawRadPerS: STEER_KEY_TURN_RAD_S, pitchRadPerS: 0 }, dragInput: { yawRadPerS: 0, pitchRadPerS: 0 }, speedDirection: 1, turnShare: 1, dragHeld: false });
     hands.keyDown('KeyS');
     expect(hands.frame(1 / 60).speedDirection).toBe(0);
     hands.keyUp('KeyW');
     hands.keyUp('ArrowRight');
     hands.keyDown('ArrowUp');
-    expect(hands.frame(1 / 60)).toEqual({ input: { yawRadPerS: 0, pitchRadPerS: STEER_KEY_TURN_RAD_S }, speedDirection: -1, turnShare: 0, dragHeld: false });
+    expect(hands.frame(1 / 60)).toEqual({ input: { yawRadPerS: 0, pitchRadPerS: STEER_KEY_TURN_RAD_S }, dragInput: { yawRadPerS: 0, pitchRadPerS: 0 }, speedDirection: -1, turnShare: 0, dragHeld: false });
+  });
+
+  // phone-orbit-one: in a flight to a star the drag goes round the star and the keys turn, so the drag's part is its own
+  it('gives the drag\'s own part of the turn apart from the keys\', its carry after the release with it', () => {
+    const hands = new SteerHands();
+    const dt = 1 / 60;
+    hands.keyDown('ArrowLeft');
+    hands.drag(-60, 30, dt);
+    const f = hands.frame(dt);
+    expect(f.dragInput.yawRadPerS * dt).toBeCloseTo(60 * STEER_DRAG_RAD_PER_PX, 12);
+    expect(f.dragInput.pitchRadPerS * dt).toBeCloseTo(30 * STEER_DRAG_RAD_PER_PX, 12);
+    // the whole turn is the keys' and the drag's together
+    expect(f.input.yawRadPerS).toBeCloseTo(f.dragInput.yawRadPerS - STEER_KEY_TURN_RAD_S, 9);
+    hands.release();
+    const carry = hands.frame(dt);
+    expect(carry.dragInput.yawRadPerS).toBeCloseTo((60 * STEER_DRAG_RAD_PER_PX) / dt, 9);
+    expect(carry.input.yawRadPerS - carry.dragInput.yawRadPerS).toBeCloseTo(-STEER_KEY_TURN_RAD_S, 9);
+    // Under Reduce Motion no carry, in the drag's part as in the whole
+    const reduced = new SteerHands(() => true);
+    reduced.drag(-60, 0, dt);
+    reduced.frame(dt);
+    reduced.release();
+    expect(reduced.frame(dt).dragInput).toEqual({ yawRadPerS: 0, pitchRadPerS: 0 });
   });
 
   it('turns with a drag exactly as far as the hand moved, then slows by k10 after release', () => {

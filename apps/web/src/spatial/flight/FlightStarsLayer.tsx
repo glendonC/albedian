@@ -23,6 +23,7 @@ import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steerin
 import { ALIVE_AT_REST, aliveAsk, aliveFrame, capLead, maxLeadRad, stepAlive, type AliveSignals } from './craftAlive.js';
 import { READOUT_EVERY_MS, nearStarOf, nearStarStep, readoutDistance, startHandover, stepHandover, type NearStar } from './nearStar.js';
 import { frameShiftAt, handoverShiftError, restPointPx, screenThrough } from './heldStar.js';
+import { orbitAngles, orbitStep, orbitUpNext } from './orbit.js';
 import { threeFigures } from '../../reveal/flightView.js';
 import { changeSpeed, followRows, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
@@ -450,6 +451,7 @@ export const FlightStarsLayer: React.FC<{
   // phone-star-open-one: the photo's frame on the window while steering (heldStar.ts): the arrival's own shift at the
   // start, moved through the hand-over so the star flown to holds its resting place, then left where it stands
   const hold = useRef<{ active: boolean; errorPx: [number, number]; shiftPx: [number, number] }>({ active: false, errorPx: [0, 0], shiftPx: [0, 0] });
+  const orbitUp = useRef<Vec3>([0, 1, 0]);
   /** The steering frame's shift beyond the arrival's own, which the camera the layers are given already carries. */
   const steerShift = (): [number, number] => (steering ? [hold.current.shiftPx[0] - nowShiftRef.current[0], hold.current.shiftPx[1] - nowShiftRef.current[1]] : [0, 0]);
   const flying = steering && !cone && camera !== null;
@@ -472,6 +474,9 @@ export const FlightStarsLayer: React.FC<{
     // version two (DECIDED-BY-LEAD 26 Nov 23:54): free flight has no star, so no hand-over turn, no pacing and no floor
     pacedStar.current = freeRef.current ? null : nearStarOf(arrivalRef.current, cameraRef.current.referencePc);
     let handover = startHandover(start, pacedStar.current);
+    // phone-orbit-one: the up the orbit goes round across, taken anew as each drag begins (below)
+    orbitUp.current = [start.rows.y[0], start.rows.y[1], start.rows.y[2]];
+    let wasDragging = false;
     // phone-star-open-one: the star at its resting place (the arrival record's) on the hand-over's first frame, the
     // hair between where the arrival put it and that place faded out over the turn
     const restPx = restPointPx(viewportWidthPx, viewportHeightPx, phone);
@@ -494,12 +499,28 @@ export const FlightStarsLayer: React.FC<{
         let rows = prev.rows;
         if (handover && pacedStar.current) ({ rows, handover } = stepHandover(handover, { positionPc: prev.positionPc, rows }, pacedStar.current, dt, reducedRef.current));
         const star = pacedStar.current;
-        const next = nearStarStep({ positionPc: prev.positionPc, rows }, setSpeed.current, input, dt, star);
+        // phone-orbit-one (DECIDED-BY-LEAD 27 Nov 03:19 and 03:29): in a flight to a star every drag, the finger's and the
+        // mouse's, goes round the star with the look held on it and the chase view turned with it (orbit.ts); the keys
+        // still turn; free flight, with no star, keeps turning by the drag as before
+        let from = prev.positionPc;
+        let chaseFrom = prev.chase;
+        const drag = hand.dragInput;
+        const keys = { yawRadPerS: input.yawRadPerS - drag.yawRadPerS, pitchRadPerS: input.pitchRadPerS - drag.pitchRadPerS };
+        // Across goes round the view's up (MOTION's item two): taken while the hand-over turns the view and as each drag
+        // begins, then kept through the drag and its carry, so a drag across swings the sky sideways and the hold short
+        // of the top is a hold within the drag
+        orbitUp.current = orbitUpNext(orbitUp.current, rows.y, handover !== null, hand.dragHeld && !wasDragging);
+        wasDragging = hand.dragHeld;
+        if (star && (drag.yawRadPerS !== 0 || drag.pitchRadPerS !== 0)) {
+          const { yawRad, pitchRad } = orbitAngles(drag, dt, viewportWidthPx, viewportHeightPx);
+          ({ positionPc: from, rows, chase: chaseFrom } = orbitStep({ positionPc: from, rows, chase: chaseFrom }, star.positionPc, orbitUp.current, yawRad, pitchRad));
+        }
+        const next = nearStarStep({ positionPc: from, rows }, setSpeed.current, star ? keys : input, dt, star);
         layerEl.current?.setAttribute('data-near', `${next.distancePc.toExponential(9)} ${next.floorPc.toExponential(9)} ${next.pacedPcPerS.toExponential(9)} ${setSpeed.current.toExponential(9)}`);
         // craft-alive-shoulder-one (06:55): the craft's lead from its framing point held within a quarter of the width
         const cam = cameraRef.current;
         const pxPerRad = cam ? Math.hypot(cam.storedToScreen[0], cam.storedToScreen[3]) / ((cam.wcs.scaleDegPerPx * Math.PI) / 180) : Infinity;
-        const chase = capLead(followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
+        const chase = capLead(followRows(chaseFrom, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
         const moved: SteerNow = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase };
         alive.current = stepAlive(alive.current, aliveAsk(hand, moved.speedPcPerS, reducedRef.current), dt);
         // phone-star-open-one: through the hand-over and after it, while the drawn camera catches up with the heading,
@@ -509,7 +530,9 @@ export const FlightStarsLayer: React.FC<{
         if (h.active && star && photoCameraRef.current) {
           const at = screenThrough(photoCameraRef.current, moved.positionPc, aliveFrame(moved, alive.current).drawn, star.positionPc);
           h.shiftPx = frameShiftAt({ restPx, starPx: at, errorPx: h.errorPx, share: handover ? handover.made : 1, fallbackPx: h.shiftPx });
-          if (!handover && (input.yawRadPerS !== 0 || input.pitchRadPerS !== 0)) h.active = false;
+          // (a drag round the star keeps the star where it stands, so only a turn of the keys, or free flight's drag, lets go)
+          const turning = star ? keys : input;
+          if (!handover && (turning.yawRadPerS !== 0 || turning.pitchRadPerS !== 0)) h.active = false;
         }
         steerNow.current = moved;
         frameDraw.current?.(moved);
