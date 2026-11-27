@@ -167,23 +167,43 @@ export const HEAD_ON_RAD = 1e-4;
 const HEAD_ON_COS = Math.cos(HEAD_ON_RAD);
 
 /**
- * A steering frame at the set speed, paced by the star: no faster than its distance over 2.5 s, and moved back out to
- * the floor's sphere when the frame would end inside it, so a flight straight at the star stops there and a turned one
- * slides round it. With no star, the set speed as before.
+ * craft-alive-three version two (DECIDED-BY-LEAD 27 Nov 11:59; MOTION's approach-curve-numbers.md item 1): the arrival
+ * eased as the owner's reference stops its scene, no faster in toward the star than the way left to the floor over this
+ * many seconds. It takes over from the 2.5 s pace below 1 / (1 - 0.07 / 2.5) = 1.029 floors and closes 95 percent of
+ * the way left in 0.2 s, where the pace alone stopped dead at the floor.
+ */
+export const ARRIVAL_EASE_S = 0.07;
+
+/**
+ * A steering frame at the set speed, paced by the star: no faster than its distance over 2.5 s, and in toward the star
+ * no further than the way left to the floor allows on ARRIVAL_EASE_S (the frame's own share of an e-fold every 0.07 s,
+ * so a long frame keeps the same curve and never crosses). Only the part of the step that goes in is held: a flight
+ * straight at the star (within HEAD_ON_RAD) keeps to its line and comes to rest at the floor, a turned one keeps its
+ * part across and slides round the floor's sphere, and one heading away is never held. A place inside the floor's
+ * sphere is moved back out to it. With no star, the set speed as before.
  */
 export function nearStarStep(state: Pick<SteerState, 'positionPc' | 'rows'>, setPcPerS: number, input: SteerInput, dt: number, star: NearStar | null): NearStep {
   const floorPc = star ? nearStarFloorPc(star) : 0;
   const pacedPcPerS = star ? pacedSpeed(setPcPerS, distance(state.positionPc, star.positionPc), floorPc) : setPcPerS;
   const next = steerCamera({ positionPc: state.positionPc, rows: state.rows, speedPcPerS: pacedPcPerS }, input, dt);
-  let positionPc = star ? keptOutside(next.positionPc, star.positionPc, floorPc) : next.positionPc;
-  if (star && distance(next.positionPc, star.positionPc) < floorPc) {
-    // Into the floor: straight at the star the craft comes to the sphere on its own line and holds there
+  let positionPc = next.positionPc;
+  if (star) {
     const to: Vec3 = [star.positionPc[0] - state.positionPc[0], star.positionPc[1] - state.positionPc[1], star.positionPc[2] - state.positionPc[2]];
     const tn = Math.hypot(to[0], to[1], to[2]);
-    if (tn > 0 && dot(next.rows.z, to) / tn > HEAD_ON_COS) {
-      const k = floorPc / tn;
-      positionPc = [star.positionPc[0] - to[0] * k, star.positionPc[1] - to[1] * k, star.positionPc[2] - to[2] * k];
+    if (tn > 0) {
+      const u: Vec3 = [to[0] / tn, to[1] / tn, to[2] / tn];
+      const step: Vec3 = [next.positionPc[0] - state.positionPc[0], next.positionPc[1] - state.positionPc[1], next.positionPc[2] - state.positionPc[2]];
+      const inward = dot(step, u);
+      const room = dt > 0 ? Math.max(0, tn - floorPc) * (1 - Math.exp(-dt / ARRIVAL_EASE_S)) : 0;
+      if (inward > room) {
+        // Straight at the star the step keeps to the line (rounding off it would slide the craft round the star and
+        // away, e-fold every 2.5 s); turned, the part across is kept
+        const headOn = dot(next.rows.z, u) > HEAD_ON_COS;
+        const s: Vec3 = headOn ? [u[0] * room, u[1] * room, u[2] * room] : [step[0] - u[0] * (inward - room), step[1] - u[1] * (inward - room), step[2] - u[2] * (inward - room)];
+        positionPc = [state.positionPc[0] + s[0], state.positionPc[1] + s[1], state.positionPc[2] + s[2]];
+      }
     }
+    positionPc = keptOutside(positionPc, star.positionPc, floorPc);
   }
   return {
     positionPc,
