@@ -104,6 +104,29 @@ describe('Back to Moment from the predicted sky\'s flight', () => {
     expect(returnCheckpointOf(notFlying)?.spatialView.skyView).toBeUndefined();
   });
 
+  // go-there-predicted-words-one (UIUX-predsky-READY.md, the lead's line stamped 04:47): the return to the predicted sky
+  // speaks of the sky and the view, not of the recording it does not reach; no class words; the photo's return unchanged
+  it('says it returned to the predicted sky at the view left, and the photo\'s words when it goes on to the photo', () => {
+    const say = (s: ObservationSession) => {
+      const r = dispatchAlbedianAction(s, { type: 'source.return', requestId: `back-${s.viewRevision}`, expectedViewRevision: s.viewRevision, checkpointId: returnCheckpointOf(s)?.id, restoreAudio: true });
+      if (r.outcome.status !== 'completed') throw new Error(`not completed: ${r.outcome.status}`);
+      return { session: r.session, outcome: r.outcome };
+    };
+    const flown = enter(onPredictedSky(), VIEW).session;
+    const toSky = say(flown);
+    expect(toSky.outcome.spokenFeedback).toBe('Returned to the predicted sky, at the view you left.');
+    expect(toSky.outcome.visualStatus).toBe('Returned to the predicted sky · The view you left restored.');
+    expect(toSky.session.lastStatusBanner).toBe('Returned to the predicted sky · The view you left restored.');
+    const toPhoto = say(toSky.session);
+    expect(toPhoto.outcome.spokenFeedback).toBe('Returned to your original recorded moment.');
+    expect(toPhoto.outcome.visualStatus).toMatch(/^Returned to Moment \(\d+\.\ds\) · Audio & frame restored\.$/);
+    expect(toPhoto.session.lastStatusBanner).toBe(toPhoto.outcome.visualStatus);
+    // A flight with no sky view returns to the photo with the photo's words
+    const plain = say(enter(onPredictedSky()).session);
+    expect(plain.outcome.spokenFeedback).toBe('Returned to your original recorded moment.');
+    expect(plain.outcome.visualStatus).toMatch(/^Returned to Moment /);
+  });
+
   it('returns to the photo from a flight that carried no sky view, as before', () => {
     const returned = back(enter(onPredictedSky()).session);
     expect(returned.spatialView.skyView).toBeUndefined();

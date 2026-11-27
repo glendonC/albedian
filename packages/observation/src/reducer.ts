@@ -568,10 +568,14 @@ export function dispatchAlbedianAction(
         named && named.sourceAssetId === base.sourceAsset?.id
           ? named
           : (returnCheckpointOf(base) ?? base.navigationHistory.anchorMomentCheckpoint);
-      const status = `Returned to Moment (${target.sourceTimeSec.toFixed(1)}s) · Audio & frame restored.`;
       // go-there-predicted-2 (DECIDED-BY-LEAD 25 Nov 02:45): the predicted sky a flight left from comes back as it was,
       // its view kept; the photo's moment stays the anchor, so Back to Moment on that sky goes on to the photo
       const toSky = target.spatialView.skyView !== undefined && !savedOnRecording(target);
+      // go-there-predicted-words-one (UIUX-predsky-READY.md, the lead's line stamped 04:47): that return speaks of the
+      // sky and the view it restores, not of the recording it does not reach; no class words, the sky's own Predicted tag
+      // stands from its first frame; the photo's return keeps its sentences
+      const status = toSky ? 'Returned to the predicted sky · The view you left restored.' : `Returned to Moment (${target.sourceTimeSec.toFixed(1)}s) · Audio & frame restored.`;
+      const answer = toSky ? 'Returned to the predicted sky, at the view you left.' : 'Returned to your original recorded moment.';
       const kept = base.navigationHistory.checkpoints;
       return completeAction(
         toSky
@@ -579,7 +583,7 @@ export function dispatchAlbedianAction(
           : restoreSessionToCheckpoint(base, nextRev, target, true, [target], status),
         action.requestId,
         nextRev,
-        'Returned to your original recorded moment.',
+        answer,
         status
       );
     }
