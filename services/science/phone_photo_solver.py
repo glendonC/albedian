@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from functools import lru_cache
+import hashlib
 import itertools
 import json
 import math
@@ -2654,6 +2655,78 @@ def refine_binned_phone_solution(
     return refitted
 
 
+def _frame_luma_and_background(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The luma a pass reads (over 255 for 8-bit codes or codes above 1.5) and its background, as every pass made them."""
+    raw_luma = _to_luma_2d(image)
+    luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
+    bg, _ = _estimate_background_and_noise(luma)
+    return luma, bg
+
+
+def _frame_key(image: np.ndarray) -> str:
+    """The SHA-256 of a frame's type, shape and bytes (as the detector's `DetectionField` keys its image)."""
+    values = np.ascontiguousarray(image)
+    digest = hashlib.sha256(f"{values.dtype.str}{values.shape};".encode())
+    digest.update(values)
+    return digest.hexdigest()
+
+
+def _detections_key(detections: Sequence[SourceDetection]) -> str:
+    """The SHA-256 of every value a detection was measured with, in the list's order. The ranking reads the position
+    and the flux; the other measures are keyed too, so a later reading of any of them cannot meet a stale pool."""
+    rows = np.array(
+        [
+            (d.x_px, d.y_px, d.flux, d.snr, d.fwhm_px, d.centroid_uncertainty_px, d.peak_to_total_ratio,
+             float(d.saturated), float(d.saturated_area_px))
+            for d in detections
+        ],
+        dtype=np.float64,
+    ).reshape(-1, 9)
+    return hashlib.sha256(f"{rows.shape};".encode() + rows.tobytes()).hexdigest()
+
+
+class _PreparedFrame:
+    """One frame's luma and background, and its ranked pool for each list of detections it was asked for."""
+
+    def __init__(self, key: str, luma: np.ndarray, bg: np.ndarray) -> None:
+        self.key, self.luma, self.bg = key, luma, bg
+        self._pools: dict[str, tuple[tuple[int, ...], float]] = {}
+
+    def ranked_pool(self, image: np.ndarray, detections: Sequence[SourceDetection]) -> tuple[list[SourceDetection], float]:
+        """`_rank_stellar_candidates(image, luma, bg, detections, max_pool=85)` of this frame, ranked the first time
+        a list of these measures is asked for and kept as places in the list: a new list each time, of the given
+        list's own detections."""
+        key = _detections_key(detections)
+        kept = self._pools.get(key)
+        if kept is None:
+            ranked, sky_fraction = _rank_stellar_candidates(image, self.luma, self.bg, detections, max_pool=85)
+            place = {id(d): i for i, d in enumerate(detections)}
+            kept = (tuple(place[id(d)] for d in ranked), sky_fraction)
+            self._pools[key] = kept
+        order, sky_fraction = kept
+        return [detections[i] for i in order], sky_fraction
+
+
+class PhoneFrameSetup:
+    """frame-once-1: the luma, the background and the ranked pool every pass of the phone solver reads, made the first
+    time a pass asks and handed to every later pass on the same frame (SCIENCE-INGEST pass-repeats-1: a solve's four
+    to six passes made all three again from one input, to one output each). Each is kept under a key of what it reads:
+    the frame's type, shape and bytes (`_frame_key`), and the detections' measures in order (`_detections_key`). A
+    frame changed in place, or a list with another star, is made again, so a pass gets what it would make itself.
+    One frame is held, the last asked for."""
+
+    def __init__(self) -> None:
+        self._prepared: _PreparedFrame | None = None
+
+    def frame(self, image: np.ndarray) -> _PreparedFrame:
+        """This frame's setup, made now unless the one held is of these bytes."""
+        key = _frame_key(image)
+        if self._prepared is None or self._prepared.key != key:
+            luma, bg = _frame_luma_and_background(image)
+            self._prepared = _PreparedFrame(key, luma, bg)
+        return self._prepared
+
+
 def solve_phone_photo(
     image: np.ndarray,
     *,
@@ -2676,6 +2749,7 @@ def solve_phone_photo(
     fov_candidates_deg: Sequence[float] | None = None,
     display_turns: int = 0,
     whole_sky: bool = False,
+    frame_setup: PhoneFrameSetup | None = None,
 ) -> ObservationSolution:
     """Solve a phone night photo against the G 12 catalog tiles with coincidence-weighed held-out verification.
 
@@ -2704,7 +2778,11 @@ def solve_phone_photo(
     in place of the horizon search: the search the photo gets with no moment, its stars verified with no horizon cut,
     so a wrong clock or place cannot lose it; the stars are still moved to the photo's own epoch and each match is
     given its altitude and azimuth at the photo's moment. One solve, with no second prior; it takes no centre hint and
-    no pose to try, which narrow only the horizon search."""
+    no pose to try, which narrow only the horizon search.
+
+    `frame_setup` (frame-once-1) is the frame's luma, background and ranked pool, made once for every pass on
+    the frame (`PhoneFrameSetup`): a chain hands one to each of its calls; without one, the solve makes its own for
+    its two passes."""
     if detections is None:
         raw_luma = _to_luma_2d(image)
         luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
@@ -2715,6 +2793,7 @@ def solve_phone_photo(
         source_asset_id=source_asset_id, source_sha256=source_sha256, frame_time_sec=frame_time_sec,
         solution_id=solution_id, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg,
         seed_axes_icrs=seed_axes_icrs, fov_candidates_deg=fov_candidates_deg, whole_sky=whole_sky,
+        _frame_setup=frame_setup if frame_setup is not None else PhoneFrameSetup(),
     )
     first_total = [0]
 
@@ -2765,9 +2844,11 @@ def _solve_phone_photo_with(
     _preset_ranked: tuple[list[SourceDetection], float] | None = None,
     _preset_initial_radius_px: float | None = None,
     _precomputed_luma_bg: tuple[np.ndarray, np.ndarray] | None = None,
+    _frame_setup: PhoneFrameSetup | None = None,
 ) -> ObservationSolution:
     """One solve of `solve_phone_photo`, the horizon search keeping the rotations `attitude_prior` takes (with
-    `whole_sky`, the blind search in its place)."""
+    `whole_sky`, the blind search in its place). The frame's luma, background and ranked pool come from
+    `_frame_setup` when there is one (frame-once-1), else the pass makes them itself."""
     require_source_sha256(source_sha256)
     if whole_sky and (seed_axes_icrs is not None or hint_radius_deg is not None):
         raise ValueError("A centre hint or a pose to try narrows the horizon search, never the whole sky search.")
@@ -2785,12 +2866,14 @@ def _solve_phone_photo_with(
     ):
         raise ValueError(f"A field-of-view sweep names one or more fields in (0, {SEED_FOV_MAX_DEG:g}] degrees.")
 
+    prepared: _PreparedFrame | None = None
     if _precomputed_luma_bg is not None:
         luma, bg = _precomputed_luma_bg
+    elif _frame_setup is not None:
+        prepared = _frame_setup.frame(image)
+        luma, bg = prepared.luma, prepared.bg
     else:
-        raw_luma = _to_luma_2d(image)
-        luma = raw_luma / 255.0 if (image.dtype == np.uint8 or float(np.max(raw_luma)) > 1.5) else raw_luma
-        bg, _ = _estimate_background_and_noise(luma)
+        luma, bg = _frame_luma_and_background(image)
     height, width = luma.shape
     if detections is None:
         detections = detect_point_sources(
@@ -2816,6 +2899,8 @@ def _solve_phone_photo_with(
 
     if _preset_ranked is not None:
         ranked_candidates, sky_fraction = _preset_ranked
+    elif prepared is not None:
+        ranked_candidates, sky_fraction = prepared.ranked_pool(image, detections)
     else:
         ranked_candidates, sky_fraction = _rank_stellar_candidates(image, luma, bg, detections, max_pool=85)
     if len(ranked_candidates) < 6:

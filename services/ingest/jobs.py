@@ -65,6 +65,7 @@ from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
     PhoneCameraWCS,
+    PhoneFrameSetup,
     refine_binned_phone_solution,
     PHONE_SOLVER_IDENTITY,
     camera_fov_hint_deg,
@@ -496,11 +497,15 @@ class _PhoneDetections:
     """The phone solver's own detections of a chain's frame, made the first time a pass asks and the same list handed to
     every later pass (detect-once-1, lever two of solve-wall-profile). `solve_phone_photo` given none detects the
     frame itself, the same way at every call: the luma, over 255 for 8-bit codes, at frame time 0. So each pass after
-    the first gets the list it would have made, and a chain that never reaches the phone solver detects nothing."""
+    the first gets the list it would have made, and a chain that never reaches the phone solver detects nothing.
+
+    `setup` is the frame's luma, background and ranked pool (`PhoneFrameSetup`, frame-once-1), handed with the list
+    to every phone pass of the chain, which makes them at its first pass and only then."""
 
     def __init__(self, image: np.ndarray, source_asset_id: str | None) -> None:
         self._image, self._source_asset_id = image, source_asset_id
         self._found: list | None = None
+        self.setup = PhoneFrameSetup()
 
     def __call__(self) -> list:
         if self._found is None:
@@ -752,6 +757,7 @@ def _solve_from_anet(
         solve_image, phone_detections(), found.wcs, obs_utc_iso=obs, observer_lat=lat, observer_lon=lon,
         camera_label=chain.get("camera_label"), source_asset_id=chain["source_asset_id"],
         source_sha256=chain["sha256"], solution_id=chain["solution_id"], whole_sky=has_moment,
+        _frame_setup=getattr(phone_detections, "setup", None),
     )
     if checked.status == "calibrated" and to_stored is not None:
         # A still searched binned: handed to its stored pixels as every phone search's is (bin-detect-v2)
@@ -849,9 +855,10 @@ def _solve_person_chain(
     steps.append({"fov_candidates_deg": [person_fov_deg * k for k in PERSON_FOV_SWEEP]})
     solution = None
     phone_detections = phone_detections or _PhoneDetections(solve_image, source_asset_id)
+    setup = getattr(phone_detections, "setup", None)
     for step in steps:
         on_event("solver", "phone_photo")
-        solution = solve_phone_photo(solve_image, detections=phone_detections(), **phone, **step)
+        solution = solve_phone_photo(solve_image, detections=phone_detections(), frame_setup=setup, **phone, **step)
         if to_stored is not None:
             solution = to_stored.phone(solution)
         if solution.status == "calibrated":
@@ -916,12 +923,13 @@ def _solve_chain_once(
         return solution if to_stored is None else to_stored.restated(solution)
 
     # The phone solver also takes how the picture is shown, for its upright pass (the cut for a turned frame)
+    phone_detections = phone_detections or _PhoneDetections(solve_image, source_asset_id)
+    # Every phone pass on the frame takes the chain's one setup with its one list (frame-once-1)
     phone_hint = dict(
         hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=hint_radius_deg, display_turns=display_turns,
-        whole_sky=whole_sky,
+        whole_sky=whole_sky, frame_setup=getattr(phone_detections, "setup", None),
     )
     plate_hint = dict(hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg, hint_radius_deg=triangle_radius_deg)
-    phone_detections = phone_detections or _PhoneDetections(solve_image, source_asset_id)
     if camera_meta:
         on_event("solver", "phone_photo")
         solution = phone_found(solve_phone_photo(
