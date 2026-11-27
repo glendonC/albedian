@@ -25,7 +25,7 @@ import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
 import { arrivalShiftOf } from '../spatial/flight/arrival.js';
 import { prepareFlight } from '../spatial/flight/prepareFlight.js';
 import { FLIGHT_MILKY_WAY_LINE, flightSkyLineOf } from '../spatial/sky/flightMilkyWay.js';
-import { CraftPicker, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
+import { CraftPicker, DetailsCircle, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
 import { phoneCraftFraming } from '../spatial/flight/craftScene.js';
 import { CRAFT_PICKER_FOOT, craftSpeedSource } from '../spatial/flight/pilotReadout.js';
 import { FlightClock } from '../spatial/flight/pilotReadout.js';
@@ -916,6 +916,31 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // whichever move is shorter, and slide back on its exit (reveal.css moves the photo stage and the marks by
   // --card-mark-x and --card-mark-y on the sheet's own curve). The sheet's height is its content's, read from its layout
   const sideways = phone && isSideways(viewW, viewH);
+  // phone-sideways-four (UIUX-phone-sideways-READY.md items 6a to 6e, DECIDED-BY-LEAD 00:11 on 27 Nov): the flight at rest
+  // held on its side: the tag line under the top bar (the Simulated tag, the first sentence, the caret, one line), the
+  // two numbers in the leading foot block and the two pills at the trailing foot, each pair side by side only where it
+  // fits beside Back to Moment's 16 px gap, else stacked; the caret opens the other source lines in place under the line,
+  // a block that scrolls inside itself down to 8 px above the highest foot block. Read from their own layouts
+  const flightLine = sideways && flight !== null;
+  const [sidewaysFit, setSidewaysFit] = useState<{ numbers: boolean; pills: boolean; detailsMaxPx: number | null }>({ numbers: true, pills: true, detailsMaxPx: null });
+  useLayoutEffect(() => {
+    if (!flightLine) return;
+    const ask = document.querySelector('[data-testid="ask-bar"]')?.getBoundingClientRect();
+    const block = readoutRef.current?.getBoundingClientRect();
+    const line = readoutRef.current?.querySelector('.flight-readout__line')?.getBoundingClientRect();
+    const stats = [...(readoutRef.current?.querySelectorAll<HTMLElement>('.flight-readout__stat') ?? [])];
+    const pillsRow = document.querySelector<HTMLElement>('[data-testid="flight-pills"]');
+    const row = pillsRow?.getBoundingClientRect();
+    const pills = [...(pillsRow?.children ?? [])] as HTMLElement[];
+    const measured = (r: DOMRect | undefined): r is DOMRect => r !== undefined && r.width > 0 && r.height > 0;
+    const numbers = !(measured(ask) && measured(block) && stats.length === 2) || block.left + stats[0]!.offsetWidth + 12 + stats[1]!.offsetWidth <= ask.left - 16;
+    const pillsFit = !(measured(ask) && measured(row) && pills.length === 2) || row.right - (pills[0]!.offsetWidth + 10 + pills[1]!.offsetWidth) >= ask.right + 16;
+    const feet = [ask, block, row].filter(measured).map((r) => r.top);
+    const detailsMaxPx = measured(line) && feet.length > 0 ? Math.max(0, Math.min(...feet) - 8 - (line.bottom + 14)) : null;
+    if (numbers !== sidewaysFit.numbers || pillsFit !== sidewaysFit.pills || detailsMaxPx !== sidewaysFit.detailsMaxPx) {
+      setSidewaysFit({ numbers, pills: pillsFit, detailsMaxPx });
+    }
+  });
   const [cardHeightPx, setCardHeightPx] = useState(0);
   useLayoutEffect(() => {
     const el = sideways && card.mounted ? revealRoot.current?.querySelector<HTMLElement>('[data-testid="star-card"]') : null;
@@ -1267,6 +1292,16 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       })
     : null;
 
+  // The flight's other source lines, as the phone's details words them (D30 item 5); held on its side, in place under the line
+  const flightDetailLines = [
+    FLIGHT_LINES.spec,
+    FLIGHT_LINES.stars,
+    ...(ringsMatched ? [FLIGHT_LINES.rings] : []),
+    ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
+    ...(flightSkyLine ? [flightSkyLine] : []),
+    ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
+    ...(craft ? [CRAFT_PICKER_FOOT] : []),
+  ];
 
   return (
     <div
@@ -1502,9 +1537,29 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           inert={returning && !phone}
           data-testid="flight-readout"
           aria-label={shownFlight.name}
-          style={phone && details ? { visibility: 'hidden' } : undefined}
+          style={phone && details && !flightLine ? { visibility: 'hidden' } : undefined}
+          data-stacked={flightLine && !sidewaysFit.numbers ? '' : undefined}
         >
-          {phone ? <PhoneTagRow open={false} onToggle={() => setDetails(true)} /> : <EvidenceTag evidenceClass="simulated" />}
+          {flightLine ? (
+            // 6a: the Simulated tag, D27's first sentence 10 px after it on one line, the caret 12 px after the sentence
+            <div className="flight-readout__line">
+              <EvidenceTag evidenceClass="simulated" />
+              <p className="flight-readout__note">{FLIGHT_LINES.spec}</p>
+              <DetailsCircle open={details} onToggle={() => setDetails((on) => !on)} />
+            </div>
+          ) : phone ? (
+            <PhoneTagRow open={false} onToggle={() => setDetails(true)} />
+          ) : (
+            <EvidenceTag evidenceClass="simulated" />
+          )}
+          {flightLine && details && (
+            // The other source lines in place under the tag line, as the phone's details sheet words them
+            <ul className="flight-readout__details" data-testid="flight-details" style={sidewaysFit.detailsMaxPx === null ? undefined : { maxHeight: `${sidewaysFit.detailsMaxPx}px` }}>
+              {flightDetailLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
           {/* D26 item 7: while the person steers, the flight's own speed under the Simulated tag */}
           {steering && steered && !phone && (
             <p data-testid="steer-speed" style={{ margin: '10px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>
@@ -1513,7 +1568,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )}
           {/* On the phone, where no status line shows, the readout keeps D27's first sentence in view and the rest one
               press away behind the circle (D30 items 2b and 5; AGENTS.md 1.2) */}
-          {phone && (
+          {phone && !flightLine && (
             <p className="flight-readout__note">
               {FLIGHT_LINES.spec}
               {/* D30 item 6: while steering, its line under the first sentence, at ink 66 percent */}
@@ -1570,31 +1625,27 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               Drag to look around.
             </p>
           )}
+          {/* Version two (AUDIT-D's second finding): held on its side the steering line (D30 item 6) stands in the rest
+              hint's place, the foot line of the leading block, at ink 66 percent as upright; the rest hint is not shown
+              while the person steers */}
+          {flightLine && steering && !answer && (
+            <p className="flight-readout__hint" data-testid="steer-line" style={{ color: 'var(--look-ink-2)' }}>
+              {PHONE_STEER_LINE}
+            </p>
+          )}
         </section>
       )}
 
       {/* motion-seams-one: at Back to Moment the views row leaves on words out at the press, taking no input as it goes (a
           host with no box of its own, so the row stands where it stood) */}
       {there && (
-        <div className={returning ? 'flight-pills-host is-leaving' : 'flight-pills-host'} inert={returning} style={{ display: 'contents' }}>
+        <div className={returning ? 'flight-pills-host is-leaving' : 'flight-pills-host'} inert={returning} style={{ display: 'contents' }} data-stacked={flightLine && !cone && !sidewaysFit.pills ? '' : undefined}>
           <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} />
         </div>
       )}
-      {phone && there && details && (
+      {phone && there && details && (cone || !flightLine) && (
         <DetailsSheet
-          lines={
-            cone
-              ? [CONE_LINES.spec, CONE_LINES.view, CONE_LINES.stars, ...(ringsMatched ? [CONE_LINES.rings] : []), ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : [])]
-              : [
-                  FLIGHT_LINES.spec,
-                  FLIGHT_LINES.stars,
-                  ...(ringsMatched ? [FLIGHT_LINES.rings] : []),
-                  ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
-                  ...(flightSkyLine ? [flightSkyLine] : []),
-                  ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
-                  ...(craft ? [CRAFT_PICKER_FOOT] : []),
-                ]
-          }
+          lines={cone ? [CONE_LINES.spec, CONE_LINES.view, CONE_LINES.stars, ...(ringsMatched ? [CONE_LINES.rings] : []), ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : [])] : flightDetailLines}
           onClose={() => setDetails(false)}
         />
       )}

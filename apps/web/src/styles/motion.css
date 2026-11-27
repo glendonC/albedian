@@ -396,7 +396,7 @@
    its fade with its words; at phone width, where the readout carries the disclosure, its words leave too while its tag
    row and first sentence stay until the there screen has gone */
 .flight-pills-host.is-leaving .flight-pills > *,
-.flight-readout.is-phone.is-returning > :not(.flight-readout__tagrow, .flight-readout__note) {
+.flight-readout.is-phone.is-returning > :not(.flight-readout__tagrow, .flight-readout__note, .flight-readout__line) {
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
 }
 
@@ -464,8 +464,12 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
 }
 
+/* phone-sideways-four version two (AUDIT-D's FAIL on the tag rule): held on its side the tag row is the tag line, the
+   Simulated tag with D27's first sentence and the caret on one line; it stands at full from the readout's first frame and
+   stays until the there screen has gone, as the upright tag row does */
 .flight-readout > [data-evidence-class="simulated"],
-.flight-readout > .flight-readout__tagrow {
+.flight-readout > .flight-readout__tagrow,
+.flight-readout > .flight-readout__line {
   animation: none;
 }
 

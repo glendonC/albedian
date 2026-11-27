@@ -707,6 +707,19 @@
   isolation: isolate;
 }
 
+/* D30 item 3 on the phone: one row at 712 in 844, left 24, 10 apart, 44 px high, standing by the window's foot as the ask
+   bar does (flight-pills-foot-one, DECIDED-BY-LEAD 07:21), so it is inside every window; moved here from ConePieces.tsx's
+   inline style, unchanged (phone-sideways-four's FILES note, DECIDED-BY-LEAD 23:54 on 26 Nov) */
+.flight-pills.is-phone {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: calc(100% - 132px);
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
 .reveal-photo:has(.reveal-status[data-moment='real-sky']) .reveal-legend::before {
   content: '';
   position: absolute;
@@ -3172,5 +3185,82 @@
   .reveal-photo.is-phone .restore-compare.is-phone,
   .reveal-photo.is-phone .align-layer {
     transition: none;
+  }
+}
+
+/* phone-sideways-four (UIUX-phone-sideways-READY.md items 6a to 6e, DECIDED-BY-LEAD 00:11 on 27 Nov): the flight at rest
+   held on its side. 6a: the tag line under the top bar, its top at 64 (12 + 44 + 8), at the leading margin: the Simulated
+   tag, D27's first sentence on one line 10 px after it, the caret circle 12 px after the sentence; the caret opens the
+   other source lines in place under it, the details sheet's lines, a block that scrolls inside itself. 6c: the two pills
+   at the trailing foot, side by side when both fit right of Back to Moment's 16 px gap, else stacked against the trailing
+   margin, Your photo's view on the foot line and the craft pill 8 px above it. 6d: the readout's numbers in the leading
+   block by its foot, Drag to look around. on the foot line while it stands and the numbers 8 px above it, side by side
+   with the phone's 12 px gap when both fit left of Back to Moment's 16 px gap, else stacked 8 px apart (RevealPhoto.tsx
+   reads both fits). 6b, Back to Moment centred at the foot, stands from phone-sideways-two. */
+@media (max-height: 500px) and (pointer: coarse) and (orientation: landscape) {
+  .flight-readout.is-phone {
+    left: max(24px, env(safe-area-inset-left));
+    right: auto;
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .flight-readout.is-phone .flight-readout__line {
+    position: fixed;
+    top: 64px;
+    left: max(24px, env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .flight-readout.is-phone .flight-readout__line .flight-readout__note {
+    margin: 0 12px 0 10px;
+    max-width: none;
+  }
+
+  .flight-readout.is-phone .flight-readout__details {
+    position: fixed;
+    top: 114px;
+    left: max(24px, env(safe-area-inset-left));
+    max-width: calc(100% - max(24px, env(safe-area-inset-left)) - max(20px, env(safe-area-inset-right)));
+    display: grid;
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--look-ink-2);
+  }
+
+  .flight-readout.is-phone .flight-readout__stats {
+    grid-template-columns: max-content max-content;
+    column-gap: 12px;
+  }
+
+  .flight-readout.is-phone[data-stacked] .flight-readout__stats {
+    grid-template-columns: max-content;
+    row-gap: 8px;
+  }
+
+  .flight-readout.is-phone .flight-readout__hint {
+    margin-top: 8px;
+  }
+
+  .flight-pills.is-phone {
+    left: auto;
+    right: max(20px, env(safe-area-inset-right));
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    align-items: flex-end;
+  }
+
+  .flight-pills-host[data-stacked] .flight-pills.is-phone {
+    flex-direction: column;
+    gap: 8px;
   }
 }

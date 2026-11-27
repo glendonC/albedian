@@ -25,6 +25,14 @@ function phoneRow(): HTMLElement {
   act(() => root.render(createElement(FlightPills, { craftPill: null, cone: false, onCone: () => {}, phone: true })));
   return host.querySelector('[data-testid="flight-pills"]') as HTMLElement;
 }
+/** The phone row's top as reveal.css places it (phone-sideways-four moved it there from ConePieces.tsx's inline style). */
+function phoneTop(): string {
+  let top = '';
+  postcss.parse(css).walkRules((rule) => {
+    if (rule.parent?.type === 'root' && rule.selector === '.flight-pills.is-phone') rule.walkDecls('top', (d) => void (top = d.value));
+  });
+  return top;
+}
 const at = (value: string, h: number) => {
   const m = /^calc\(100% - (\d+)px\)$/.exec(value);
   if (!m) throw new Error(value);
@@ -34,10 +42,12 @@ const at = (value: string, h: number) => {
 describe("the phone flight's pill row stands by the window's foot", () => {
   it('stands 132 px above the foot: 712 in 844 as approved, inside every phone window', () => {
     const row = phoneRow();
-    expect(row.style.top).toBe('calc(100% - 132px)');
-    expect(at(row.style.top, 844)).toBe(712);
+    expect(row.className).toBe('flight-pills is-phone');
+    expect(row.getAttribute('style')).toBeNull();
+    expect(phoneTop()).toBe('calc(100% - 132px)');
+    expect(at(phoneTop(), 844)).toBe(712);
     for (const h of [292, 320, 402, 650, 714, 844, 932]) {
-      const top = at(row.style.top, h);
+      const top = at(phoneTop(), h);
       expect(top + 44, String(h)).toBeLessThanOrEqual(h);
       expect(top, String(h)).toBeGreaterThanOrEqual(0);
     }
@@ -49,6 +59,6 @@ describe("the phone flight's pill row stands by the window's foot", () => {
       if (rule.parent?.type === 'root' && rule.selector === '.flight-readout.is-phone') rule.walkDecls('bottom', (d) => void (bottom = d.value));
     });
     expect(bottom).toBe('148px');
-    expect(at(phoneRow().style.top, 844) - (844 - 148)).toBe(16);
+    expect(at(phoneTop(), 844) - (844 - 148)).toBe(16);
   });
 });

@@ -1455,7 +1455,8 @@ describe('the Simulated tag shows whenever a simulated layer does', () => {
     // status line shows): the tag at full as it mounts, the rest on its words' time; under reduced motion the readout is
     // the only disclosure until the sky layer has drawn (measured 21 Nov)
     expect(rules['.flight-readout > *']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both' });
-    expect(rules['.flight-readout > [data-evidence-class="simulated"], .flight-readout > .flight-readout__tagrow']).toEqual({ animation: 'none' });
+    // phone-sideways-four v2 (AUDIT-D): held sideways the tag row is the tag line, at full from its first frame too
+    expect(rules['.flight-readout > [data-evidence-class="simulated"], .flight-readout > .flight-readout__tagrow, .flight-readout > .flight-readout__line']).toEqual({ animation: 'none' });
     // Its first sentence (D27's, and D28's in the cone view) is the disclosure's first sentence: on the words-in time, no
     // later (the 17:38 rule; AUDIT-C's tag sweep of 21 Nov, item 8, found it 20 ms late)
     expect(rules['.flight-readout > .flight-readout__note']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
@@ -1955,7 +1956,7 @@ describe('the views row and the phone readout at the flight\'s seams', () => {
   it('times both in motion.css: words out at once, the fade with its words; the disclosure left standing', () => {
     const rules = motionRules();
     expect(rules['.flight-pills-host.is-leaving .flight-pills > *']).toEqual({ animation: WORDS_OUT });
-    expect(rules['.flight-readout.is-phone.is-returning > :not(.flight-readout__tagrow, .flight-readout__note)']).toEqual({ animation: WORDS_OUT });
+    expect(rules['.flight-readout.is-phone.is-returning > :not(.flight-readout__tagrow, .flight-readout__note, .flight-readout__line)']).toEqual({ animation: WORDS_OUT });
     expect(rules['.flight-pills-host.is-leaving .flight-pills:not(.is-phone)::before']).toEqual({ animation: WORDS_OUT });
   });
 

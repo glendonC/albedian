@@ -69,7 +69,8 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
         // D30 item 3 on the phone: one row at 712 in 844, left 24, 10 apart, 44 px high, standing by the window's foot as the
         // ask bar does (flight-pills-foot-one, DECIDED-BY-LEAD 07:21), so it is inside every window; laptop: left 36, bottom
         // 32 or stepped 16 px above .ask-bar
-        style={phone ? { position: 'absolute', left: 24, right: 24, top: 'calc(100% - 132px)', display: 'flex', gap: 10, pointerEvents: 'auto' } : { position: 'absolute', left: LAPTOP_PILLS_LEFT_PX, bottom: bottomPx, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
+        // phone-sideways-four (FILES, DECIDED-BY-LEAD 23:54 on 26 Nov): the phone row's place is reveal.css's .flight-pills.is-phone
+        style={phone ? undefined : { position: 'absolute', left: LAPTOP_PILLS_LEFT_PX, bottom: bottomPx, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
       >
         {/* On the laptop the craft pill leaves in the cone view (D28); D30's phone row keeps both */}
         {(!cone || phone) && craftPill}
