@@ -6,6 +6,7 @@ import {
   AlbedianAction,
   AlbedianActionSchema,
   CelestialFinding,
+  NO_PREDICTION_WARNINGS,
   ObservationSession,
   VoiceAction,
   VoiceActionSchema,
@@ -305,6 +306,19 @@ export const UNPREDICTED_BODY_NAMES: Readonly<Record<string, string>> = {
   mercury: 'Mercury',
   neptune: 'Neptune',
 };
+
+/**
+ * The refusal for a body the predicted sky would place (PREDICTED_BODY_NAMES), when this recording's solve says the
+ * file gives no place, no capture time or neither to predict it from (C38 and C38n: the predicted sky's own warning,
+ * NO_PREDICTION_WARNINGS), or undefined when the solve says no such thing. services/voice/answers.py says the same
+ * sentence to a question about the body.
+ */
+function noPredictionKind(session: ObservationSession): (typeof NO_PREDICTION_WARNINGS)[keyof typeof NO_PREDICTION_WARNINGS] | undefined {
+  for (const warning of session.observationSolution?.warnings ?? []) {
+    if (Object.hasOwn(NO_PREDICTION_WARNINGS, warning)) return NO_PREDICTION_WARNINGS[warning as keyof typeof NO_PREDICTION_WARNINGS];
+  }
+  return undefined;
+}
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -933,8 +947,11 @@ function whatIsNotHeld(
       const reason = context.calibrationState === 'unresolved' ? 'unresolved_sky' : 'ambiguous_target';
       return refused({ kind: 'sky_not_worked_out' }, reason, session);
     }
-    // A planet the predicted sky never places is said as only what the app knows (DECIDED-BY-LEAD 24 Nov 20:16)
-    const kind = Object.hasOwn(UNPREDICTED_BODY_NAMES, missing.spoken) ? 'not_predicted' : 'not_in_this_sky';
+    // A planet the predicted sky never places is said as only what the app knows (DECIDED-BY-LEAD 24 Nov 20:16); a body
+    // it places, in a file that gives nothing to predict it from, in the solve's own words (C38)
+    const kind = Object.hasOwn(UNPREDICTED_BODY_NAMES, missing.spoken)
+      ? 'not_predicted'
+      : (Object.hasOwn(PREDICTED_BODY_NAMES, missing.spoken) ? noPredictionKind(session) : undefined) ?? 'not_in_this_sky';
     return refused({ kind, said: missing.spoken, name: missing.shown }, 'ambiguous_target', session);
   }
   if (unknown) return refused({ kind: 'not_understood', said: unknown }, 'ambiguous_target', session);

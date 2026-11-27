@@ -207,6 +207,24 @@ def refusal_sentence(reason: str, question: str | None = None, name: str | None 
     }[reason]
 
 
+def no_prediction_sentence(name: str, solution: dict[str, Any], noun: str = "photo") -> str | None:
+    """The sentence for a body the predicted sky would place, named `name` as the answer's targets name it ("Moon",
+    "Mars"), when the stored solve says the file gives no place, no capture time or neither to predict it from (C38
+    and C38n: the predicted sky's own warning, the contract's NO_PREDICTION_WARNINGS); None when either is not so. It
+    is the app parser's refusal of a command about the same body (packages/observation/src/voiceParser.ts)."""
+    if name not in PREDICTED_BODY_LABELS:
+        return None
+    warnings = solution.get("warnings")
+    kind = next((contract.NO_PREDICTION_WARNINGS[warning] for warning in warnings or []
+                 if isinstance(warning, str) and warning in contract.NO_PREDICTION_WARNINGS), None)
+    if kind is None:
+        return None
+    # The Moon and the Sun take their article in a sentence, as the app's refusals name them; a planet takes none
+    shown = f"the {name}" if name in ("Moon", "Sun") else name
+    media = "video" if noun == "clip" else "photo"
+    return contract.refusal_sentence({"kind": kind, "said": lower_case(name), "name": shown}, media)
+
+
 def _refused(question: str, reason: str, solution: dict[str, Any] | None, name: str | None = None,
              sentence: str | None = None, noun: str = "photo") -> dict[str, Any]:
     answer: dict[str, Any] = {"status": "unanswerable", "question": question, "reason": reason,
@@ -287,6 +305,10 @@ class _MatchedTarget:
 # services/science/predicted_sky.py): an answer about one says the app does not predict where it is (DECIDED-BY-LEAD
 # 24 Nov 20:16). tests/integration/test_voice_unpredicted_bodies.py keeps it equal to the two lists.
 UNPREDICTED_BODIES: tuple[str, ...] = ("Mercury", "Neptune")
+# The bodies the predicted sky places (PREDICTED_BODIES in services/science/predicted_sky.py), as the answer's targets
+# name them: one asked of a file that gives nothing to predict it from says so (C38, no_prediction_sentence).
+# tests/integration/test_voice_no_place_bodies.py keeps it equal to that list.
+PREDICTED_BODY_LABELS: tuple[str, ...] = tuple(names.ascii_capitalized(key) for key in intent.PREDICTED_BODY_KEYS)
 _EXTRA_SOLAR_BODIES: tuple[tuple[str, str], ...] = (
     ("mercury", "Mercury"),
     ("neptune", "Neptune"),
@@ -725,6 +747,9 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
     else:
         index, missing = _target(question, solution, selected)
         if missing is not None:
+            unpredicted = no_prediction_sentence(missing, solution, noun)
+            if unpredicted is not None:
+                return _refused(kind, "no_time_or_place", solution, sentence=unpredicted, noun=noun)
             return _refused(kind, "not_found_in_this_sky", solution, missing, noun=noun)
         if index is None:
             return _refused(kind, "not_in_the_data", solution, noun=noun)
