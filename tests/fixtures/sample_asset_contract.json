@@ -1,0 +1,300 @@
+{
+ "about": "sample-asset-zero: a sample night's photo as the app reads it, answered alike",
+ "night": {
+  "id": "night-rp-b-12",
+  "kind": "sample",
+  "title": "Venus, Moon, Orion",
+  "photo": {
+   "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+   "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+   "bytes": 2496548,
+   "mimeType": "image/jpeg"
+  },
+  "credit": {
+   "author": "YagnKambariya",
+   "licence": "CC0",
+   "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+   "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+  },
+  "solution": {
+   "path": ".cache/samples/rp-b-12/solution.json",
+   "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+  }
+ },
+ "cases": [
+  {
+   "what": "the night's photo",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": true,
+   "matchesTheNight": true
+  },
+  {
+   "what": "an upload's privacy",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "a demo's privacy",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "consented_demo",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "a clip",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "video",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "an upload's route",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/ingest/cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "its route with a newline after it",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original\n",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "a night id in capitals",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-RP-B-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "the solution's route",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/solution",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "another hash's id",
+   "value": {
+    "id": "src_0000000000000000",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": false,
+   "matchesTheNight": false
+  },
+  {
+   "what": "an unknown key, dropped as every SourceAsset drops it",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true,
+    "extra": 1
+   },
+   "accepted": true,
+   "matchesTheNight": true
+  },
+  {
+   "what": "another night's route",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-other/original",
+    "byteSize": 2496548,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": true,
+   "matchesTheNight": false
+  },
+  {
+   "what": "one byte more",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496549,
+    "mimeType": "image/jpeg",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": true,
+   "matchesTheNight": false
+  },
+  {
+   "what": "another type",
+   "value": {
+    "id": "src_cde1cbe46a87d771",
+    "title": "Venus, Moon, Orion",
+    "mediaKind": "image",
+    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+    "uri": "/api/samples/night-rp-b-12/original",
+    "byteSize": 2496548,
+    "mimeType": "image/png",
+    "width": 4000,
+    "height": 3000,
+    "durationMs": 0,
+    "videoCodec": "jpeg",
+    "audioStreams": [],
+    "privacyClass": "public_sample",
+    "immutable": true
+   },
+   "accepted": true,
+   "matchesTheNight": false
+  }
+ ]
+}
