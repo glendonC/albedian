@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRAG_BANK_TAU_S, DRAG_DECAY_PER_60TH, DRAG_FULL_BANK_PX_S, STEER_DRAG_RAD_PER_PX, STEER_KEY_TURN_RAD_S, STEER_LINES, SteerHands, steeringSpeedLine } from '../steering.js';
+import { DRAG_BANK_TAU_S, DRAG_DECAY_PER_60TH, DRAG_FULL_BANK_PX_S, STEER_DRAG_RAD_PER_PX, STEER_KEY_TURN_RAD_S, STEER_LINES, SteerHands, phoneSteerLine, restHintLine, steerLines, steeringSpeedLine } from '../steering.js';
 
 describe('SteerHands: what the hands do while steering (D26 item 6)', () => {
   it('takes W, S and the arrows, and leaves Space to Ask out loud', () => {
@@ -202,5 +202,28 @@ describe('the words while steering', () => {
     expect(STEER_LINES).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
     expect(steeringSpeedLine(1 / 3.261563777)).toBe('this flight: 1.00 ly each second');
     expect(steeringSpeedLine(10)).toBe('this flight: 32.6 ly each second');
+  });
+
+  // phone-orbit-one's words (UIUX-flight-READY.md S1 to S7, DECIDED-BY-LEAD 11:58 and 12:09 on 27 Nov): in a flight to a
+  // star a drag goes round the star, so the drag's line and the keys' are parted and the drag's names the star
+  it('parts the drag from the keys in a flight to a star, naming the star (S3), and keeps free flight\'s four (S4)', () => {
+    expect(steerLines('Rigel')).toEqual(['W and S: faster and slower', 'Drag: orbit Rigel', 'Arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(steerLines('HIP 27989')).toContain('Drag: orbit HIP 27989');
+    expect(steerLines(null)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(steerLines(null)).toBe(STEER_LINES);
+  });
+
+  it('gives the phone one line: Drag: orbit and the star in a flight to a star (S2), Drag: turn with none (S6)', () => {
+    expect(phoneSteerLine('Rigel')).toBe('Drag: orbit Rigel');
+    expect(phoneSteerLine('Alpha Centauri A')).toBe('Drag: orbit Alpha Centauri A');
+    expect(phoneSteerLine(null)).toBe('Drag: turn');
+  });
+
+  it('words the rest hint by what a drag does: orbit the star (S1), orbit Earth in Your photo\'s view (S7), look around in free flight (S4)', () => {
+    expect(restHintLine({ cone: false, starName: 'Rigel' })).toBe('Drag to orbit Rigel.');
+    expect(restHintLine({ cone: false, starName: 'Betelgeuse' })).toBe('Drag to orbit Betelgeuse.');
+    expect(restHintLine({ cone: true, starName: 'Rigel' })).toBe('Drag to orbit Earth.');
+    expect(restHintLine({ cone: true, starName: null })).toBe('Drag to orbit Earth.');
+    expect(restHintLine({ cone: false, starName: null })).toBe('Drag to look around.');
   });
 });

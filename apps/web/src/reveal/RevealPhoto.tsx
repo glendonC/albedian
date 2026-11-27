@@ -33,7 +33,7 @@ import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
 import { noDistanceSentence } from '../spatial/flight/flightRings.js';
 import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
-import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
+import { phoneSteerLine, restHintLine, steerLines, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { readoutDistance } from '../spatial/flight/nearStar.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { isSideways, phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
@@ -530,6 +530,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     flight && steering && steered
       ? { ...flight, toStarLy: freeFlight || flight.toStarLy === null ? null : steered.toStarPc * 3.261563777, fromEarthLy: steered.fromEarthPc * 3.261563777 }
       : flight;
+  // phone-orbit-one's words (UIUX-flight-READY.md S1 to S6): in a flight to a star the drag's lines and the rest hint
+  // name the readout's own star, which a drag goes round. Free flight has no star, and neither has a flight to a target
+  // placed with no distance (flightFrame.ts keeps the star layer's reference at Earth, so it flies to no star): a drag
+  // turns there. The target is the flight's own (the session's), never a star an answer lights
+  const flownTarget = session.observationSolution?.findings.find((finding) => finding.id === session.selectedFindingId) ?? null;
+  const flownStarName = freeFlight || !shownFlight || !flownTarget || placeFinding(flownTarget).kind !== 'at_distance' ? null : shownFlight.name;
   const coneGeometry = cone ? coneGeometryOf(session) : null;
   const skyOnScreen = skyShown && skyDrawn && !originalPixels;
   // Left at once from there (reduced motion), no Real sky line came before the fade: one is shown for it, its tag with it
@@ -660,7 +666,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     keepHint(PRESS_HINT_KEY);
     setPressHintUsed(true);
   }, [picked, pressHintUsed]);
-  // first-use-hints-one, item four: when the flight's camera rests, "Drag to look around." at the readout's foot; it
+  // first-use-hints-one, item four: when the flight's camera rests, the rest hint at the readout's foot (its words by
+  // what a drag does there, steering.ts restHintLine); it
   // leaves at the first drag (a pointer moved with a button held) or key that moves the view, kept used on the device
   const [dragHintUsed, setDragHintUsed] = useState(() => readHint(DRAG_HINT_KEY));
   const flightAtRest = there && phase === 'at_space' && !returning;
@@ -1171,7 +1178,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               )}
               {/* While steering, D26 item 6's plain lines at 13 px, ink 66 percent */}
               {steering &&
-                STEER_LINES.map((line) => (
+                steerLines(flownStarName).map((line) => (
                   <p key={line} className="reveal-status__line" data-testid="steer-line" style={{ fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>
                     {line}
                   </p>
@@ -1655,7 +1662,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 <>
                   <br />
                   <span data-testid="steer-line" style={{ color: 'var(--look-ink-2)' }}>
-                    {PHONE_STEER_LINE}
+                    {phoneSteerLine(flownStarName)}
                   </span>
                 </>
               )}
@@ -1701,7 +1708,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )}
           {dragHintShown && !answer && (
             <p className="flight-readout__hint" data-testid="drag-hint">
-              Drag to look around.
+              {restHintLine({ cone: false, starName: flownStarName })}
             </p>
           )}
           {/* Version two (AUDIT-D's second finding): held on its side the steering line (D30 item 6) stands in the rest
@@ -1709,7 +1716,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               while the person steers */}
           {flightLine && steering && !answer && (
             <p className="flight-readout__hint" data-testid="steer-line" style={{ color: 'var(--look-ink-2)' }}>
-              {PHONE_STEER_LINE}
+              {phoneSteerLine(flownStarName)}
             </p>
           )}
         </section>
@@ -1728,7 +1735,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onClose={() => setDetails(false)}
         />
       )}
-      {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} />}
+      {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} restHint={dragHintShown ? restHintLine({ cone: true, starName: null }) : undefined} />}
 
       {phone && !nonPredictedCardOpen && !phoneCompare && !phoneRestoring && !phoneStopped && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md items A and B; UIUX-clipphone-READY.md section 3): one

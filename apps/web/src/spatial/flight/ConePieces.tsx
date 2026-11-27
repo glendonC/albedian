@@ -95,10 +95,15 @@ export interface ConeReadoutProps {
   answerOpen?: boolean;
   hidden?: boolean;
   onDetails?: () => void;
+  /**
+   * phone-orbit-one's words, S7 (UIUX-flight-READY.md): while the view rests and the hint is unused, its words at the
+   * readout's foot, as the flight readout's own (S1's rule), "Drag to orbit Earth." since a drag there goes round Earth
+   */
+  restHint?: string;
 }
 
 export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(function ConeReadout(
-  { geometry, phone = false, answerOpen = false, hidden = false, onDetails },
+  { geometry, phone = false, answerOpen = false, hidden = false, onDetails, restHint },
   ref,
 ) {
   const r = coneReadout(geometry);
@@ -132,6 +137,7 @@ export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(funct
             {r.nearestLine && <p style={{ margin: '12px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>{r.nearestLine}</p>}
           </>
         )}
+        {restHint && !answerOpen && <p className="flight-readout__hint" data-testid="drag-hint">{restHint}</p>}
       </section>
     );
   }
@@ -155,6 +161,7 @@ export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(funct
         )}
       </div>
       {r.nearestLine && <p style={{ margin: '16px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>{r.nearestLine}</p>}
+      {restHint && !answerOpen && <p className="flight-readout__hint" data-testid="drag-hint">{restHint}</p>}
     </section>
   );
 });

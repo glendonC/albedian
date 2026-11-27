@@ -821,7 +821,7 @@ describe('asking about the photo on the laptop reveal', () => {
         sky.dispatchEvent(new MouseEvent('pointermove', { clientX: 230, clientY: 310 }));
         sky.dispatchEvent(new MouseEvent('pointerup', { clientX: 230, clientY: 310 }));
       });
-      expect(q('[data-testid="steer-line"]')!.textContent).toBe('Drag: turn');
+      expect(q('[data-testid="steer-line"]')!.textContent).toBe('Drag: orbit Rigel');
       await act(async () => (autopilot() as HTMLButtonElement).click());
       expect(q('[data-testid="steer-line"]')).toBeNull();
       expect(autopilot()).toBeNull();

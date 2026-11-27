@@ -258,7 +258,7 @@ describe('phone-sideways-four: the flight at rest held on its side, in the revea
       )
     );
     const steer = q('[data-testid="steer-line"]') as HTMLElement;
-    expect(steer.textContent).toBe('Drag: turn');
+    expect(steer.textContent).toBe('Drag: orbit Rigel');
     expect(steer.className).toBe('flight-readout__hint');
     expect(steer.style.color).toBe('var(--look-ink-2)');
     expect(steer.parentElement!.getAttribute('data-testid')).toBe('flight-readout');

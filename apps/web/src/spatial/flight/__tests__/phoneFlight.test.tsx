@@ -273,14 +273,14 @@ describe('Steering on a touch screen (D30 item 6)', () => {
     expect(onPhoneSteer).toHaveBeenCalledTimes(1);
   });
 
-  it('while steering: "Drag: turn" on its own line under the first sentence, no speed line, nothing only true from Earth', () => {
+  it('while steering: "Drag: orbit Rigel" on its own line under the first sentence, no speed line, nothing only true from Earth', () => {
     showPhone({ phoneSteering: true, onPhoneSteer: () => {} });
     expect(seen.steering).toBe(true);
     expect(seen.onDragSky).toBeUndefined();
     const note = q('[data-testid="flight-readout"] .flight-readout__note')!;
-    expect(note.textContent).toBe('Drawn or computed by the app; not measured in the source recording.Drag: turn');
+    expect(note.textContent).toBe('Drawn or computed by the app; not measured in the source recording.Drag: orbit Rigel');
     const line = note.querySelector('[data-testid="steer-line"]') as HTMLElement;
-    expect(line.textContent).toBe('Drag: turn');
+    expect(line.textContent).toBe('Drag: orbit Rigel');
     expect(line.previousElementSibling!.tagName).toBe('BR');
     expect(line.style.color).toBe('var(--look-ink-2)');
     expect(q('[data-testid="steer-speed"]')).toBeNull();

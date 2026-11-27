@@ -40,11 +40,35 @@ export interface SteerFrame {
   readonly dragHeld: boolean;
 }
 
-/** D26 item 6's lines while steering, the third reworded for a press on the sky [proposed words: the lead decides]. */
-/** D30 item 6: the phone's one steering line, under the first sentence (no keys on a touch screen). */
+/** D30 item 6: the phone's one steering line, under the first sentence (no keys on a touch screen), with no star (S6). */
 export const PHONE_STEER_LINE = 'Drag: turn';
 
+/** D26 item 6's lines while steering, which free flight keeps (UIUX-flight-READY.md S4): a drag there turns. */
 export const STEER_LINES = ['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment'] as const;
+
+/**
+ * phone-orbit-one's words (UIUX-flight-READY.md S1 to S7, DECIDED-BY-LEAD 11:58 and 12:09 on 27 Nov): in a flight to a
+ * star a drag goes round the star, so the laptop's drag and keys get a line each, the drag's naming the star (S3).
+ * `starName` is the readout's own name in a flight to a star, null in free flight.
+ */
+export function steerLines(starName: string | null): readonly string[] {
+  if (starName === null) return STEER_LINES;
+  return ['W and S: faster and slower', `Drag: orbit ${starName}`, 'Arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment'];
+}
+
+/** The phone's one steering line: the orbit round the star in a flight to a star (S2), the turn with none (S6). */
+export function phoneSteerLine(starName: string | null): string {
+  return starName === null ? PHONE_STEER_LINE : `Drag: orbit ${starName}`;
+}
+
+/**
+ * The rest hint at the readout's foot, by what a drag does in the view it stands in: round the star in a flight to it
+ * (S1), round Earth on Your photo's view (S7, coneView.ts dragConeOrbit), the turn in place in free flight (S4).
+ */
+export function restHintLine(view: { readonly cone: boolean; readonly starName: string | null }): string {
+  if (view.cone) return 'Drag to orbit Earth.';
+  return view.starName === null ? 'Drag to look around.' : `Drag to orbit ${view.starName}.`;
+}
 
 const TURN_KEYS: Readonly<Record<string, [number, number]>> = {
   ArrowLeft: [-1, 0],

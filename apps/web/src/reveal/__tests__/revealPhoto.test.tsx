@@ -641,7 +641,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     };
     expect(q('[data-testid="real-sky"]')).not.toBeNull();
     press();
-    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag: orbit Rigel', 'Arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
     expect(q('[data-testid="flight-stars"]')!.getAttribute('data-steer')).toBe('star');
     expect(q('[data-testid="real-sky"]')).toBeNull();
     expect(q('[data-testid="reveal-marks"]')).toBeNull();
@@ -658,7 +658,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     const { session } = rigelPicked();
     const onEndFreeFlight = vi.fn();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, freeFlight: true, onEndFreeFlight });
-    expect(all('[data-testid="steer-line"]')).toHaveLength(4);
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
     expect(q(READOUT)!.textContent).toContain('from Earth');
     expect(q(READOUT)!.textContent).not.toContain('to Rigel');
     expect(q('[data-testid="pilot-trip"]')).toBeNull();
@@ -2115,9 +2115,125 @@ describe('the second hint: drag to look around', () => {
     expect(q(HINT)).toBeNull();
     show(atRest(), { flight, phone });
     const hint = q(HINT)!;
-    expect(hint.textContent).toBe('Drag to look around.');
+    expect(hint.textContent).toBe('Drag to orbit Rigel.');
     expect(hint.parentElement!.getAttribute('data-testid')).toBe('flight-readout');
     expect(hint.parentElement!.lastElementChild).toBe(hint);
+  });
+
+  // phone-orbit-one's words (UIUX-flight-READY.md S1, S4 and S7): the hint says what a drag does in the view it stands in
+  it('names the readout\'s own star in a flight to it, and keeps Drag to look around. in free flight (S1, S4)', () => {
+    show(atRest(), { flight: { name: 'Alpha Centauri A', toStarLy: 4.37, fromEarthLy: 4.37 } });
+    expect(q('[data-testid="flight-readout"] h1')!.textContent).toBe('Alpha Centauri A');
+    expect(q(HINT)!.textContent).toBe('Drag to orbit Alpha Centauri A.');
+    show(atRest(), { flight, freeFlight: true });
+    expect(q(HINT)!.textContent).toBe('Drag to look around.');
+  });
+
+  it('changes the steering lines and the hint in the frame Fly on your own changes the drag (S4)', () => {
+    show(atRest(), { flight });
+    const sky = q('[data-testid="flight-sky"]')!;
+    act(() => {
+      sky.dispatchEvent(new MouseEvent('pointerdown', { clientX: 400, clientY: 300 }));
+      sky.dispatchEvent(new MouseEvent('pointerup', { clientX: 400, clientY: 300 }));
+    });
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toContain('Drag: orbit Rigel');
+    expect(q(HINT)!.textContent).toBe('Drag to orbit Rigel.');
+    show(atRest(), { flight, freeFlight: true });
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(q(HINT)!.textContent).toBe('Drag to look around.');
+  });
+
+  // Version two (AUDIT-D's finding): a target with no distance (a cluster, or a star whose row gives none) puts no star in
+  // the layer (flightFrame.ts keeps the reference at Earth), so a drag turns there and the words are S4's and S6's
+  const noDistance = (s: ObservationSession): ObservationSession => {
+    const solution = s.observationSolution!;
+    const findings = solution.findings.map((f) =>
+      f.id === s.selectedFindingId ? { ...f, inferredDistancePc: undefined, catalogRef: f.catalogRef ? { ...f.catalogRef, bailerJonesDistancePc: undefined } : f.catalogRef } : f
+    );
+    return { ...s, observationSolution: { ...solution, findings } } as ObservationSession;
+  };
+  const omega = { name: 'Omega Centauri', toStarLy: null, fromEarthLy: 391.2 };
+
+  it('names no target with no distance on the laptop: Drag to look around. and today\'s four lines (S4)', () => {
+    const resting = noDistance(atRest());
+    show(resting, { flight: omega });
+    expect(q(HINT)!.textContent).toBe('Drag to look around.');
+    const sky = q('[data-testid="flight-sky"]')!;
+    act(() => {
+      sky.dispatchEvent(new MouseEvent('pointerdown', { clientX: 400, clientY: 300 }));
+      sky.dispatchEvent(new MouseEvent('pointerup', { clientX: 400, clientY: 300 }));
+    });
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(q(HINT)!.textContent).toBe('Drag to look around.');
+  });
+
+  it('names no target with no distance on the phone: Drag: turn while steering, upright and on its side (S6)', () => {
+    const resting = noDistance(atRest());
+    show(resting, { flight: omega, phone: true });
+    expect(q(HINT)!.textContent).toBe('Drag to look around.');
+    show(resting, { flight: omega, phone: true, phoneSteering: true });
+    expect(q('[data-testid="steer-line"]')!.textContent).toBe('Drag: turn');
+    show(resting, { flight: omega, phone: true, phoneSteering: true, viewportWidthPx: 844, viewportHeightPx: 390 });
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['Drag: turn']);
+  });
+
+  it('reads the flight\'s own target for the words, not a star an answer lights (the layer flies to the former)', () => {
+    const resting = noDistance(atRest());
+    const findings = resting.observationSolution!.findings;
+    const index = findings.findIndex((f) => f.id !== resting.selectedFindingId && f.evidenceClass === 'catalog_matched' && (f.inferredDistancePc ?? f.catalogRef?.bailerJonesDistancePc));
+    expect(index).toBeGreaterThanOrEqual(0);
+    const other = findings[index]!;
+    const sentence = `${other.title} is a star.`;
+    const answer = {
+      heard: `How far away is ${other.title}?`,
+      sentence,
+      answer: {
+        status: 'answered',
+        question: 'distance',
+        observationSolutionId: 'sol-synthetic-1',
+        sentence,
+        statements: [
+          {
+            subject: { kind: 'finding', findingId: other.id, evidenceClass: 'catalog_matched' },
+            quantity: 'detection_snr',
+            value: { kind: 'number', amount: 50, unit: 'ratio' },
+            evidenceClass: 'observed',
+            source: { kind: 'solution_field', path: ['findings', index, 'sourceDetection', 'snr'] },
+          },
+        ],
+      },
+    } as never;
+    show(resting, { flight: omega, answer, phone: true, phoneSteering: true });
+    expect(q('[data-testid="steer-line"]')!.textContent).toBe('Drag: turn');
+  });
+
+  for (const phone of [false, true])
+  it(`reads Drag to orbit Earth. at the foot of Your photo's view, and leaves with the first drag as in flight (S7)${phone ? ', at phone width' : ''}`, () => {
+    const resting = atRest();
+    const flying = { ...resting, spatialView: { ...resting.spatialView, mode: 'catalog_3d' }, machines: { ...resting.machines, navigation: 'space' } } as ObservationSession;
+    (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    try {
+      show(flying, { flight, phone });
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
+      const cone = q('[data-testid="cone-readout"]')!;
+      const hint = cone.querySelector(HINT)!;
+      expect(hint.textContent).toBe('Drag to orbit Earth.');
+      expect(hint.className).toBe('flight-readout__hint');
+      expect(cone.lastElementChild).toBe(hint);
+      expect(all(HINT)).toHaveLength(1);
+      // Under an open answer the hint goes with the rest of the readout's foot, as in flight
+      const answer = { heard: 'Is that a plane?', sentence: "Nothing in this photo's data answers that.", answer: { status: 'unanswerable', question: 'unanswerable', reason: 'outside_the_data', sentence: "Nothing in this photo's data answers that." } } as const;
+      show(flying, { flight, phone, answer });
+      expect(q(HINT)).toBeNull();
+      show(flying, { flight, phone });
+      expect(q(HINT)!.textContent).toBe('Drag to orbit Earth.');
+      act(() => void window.dispatchEvent(new MouseEvent('pointermove', { buttons: 1 })));
+      expect(q(HINT)).toBeNull();
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
+      expect(q(HINT)).toBeNull();
+    } finally {
+      delete (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
   });
 
   it('leaves at the first drag and does not come back', () => {
