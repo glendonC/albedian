@@ -959,14 +959,25 @@ def _blender_version() -> str | None:
 
 
 def _rebuild_inputs(craft: str) -> list[str]:
-    """The NASA files the build reads for one craft, as the shared cache holds them and data/downloads.json lists them."""
+    """The NASA files the build reads for one craft, as the shared cache holds them and data/downloads.json lists them
+    (a craft whose picker is rendered from the build reads no NASA picture)."""
     src = CRAFTS[craft]["source"]
-    return [f"{CACHE}/{src['local']}/{src[key]}" for key in ("file", "picture")]
+    return [f"{CACHE}/{src['local']}/{src[key]}" for key in ("file", "picture") if src.get(key) is not None]
 
 
-@pytest.mark.parametrize(
-    "craft", [pytest.param(c, marks=pytest.mark.local_dataset(*_rebuild_inputs(c))) for c in ("hubble", "newhorizons")]
-)
+# Every craft built again since the hangar moved to Blender 5.2.3: each that carries the sky fill's occlusion, the
+# station, the Shuttle, Cassini and OSIRIS-REx (their phone and chase levels decimated part by part) and Hubble (its
+# phone textures capped). A recipe change to any of them that the committed models do not follow fails here.
+LEVELS_REBUILT = {"cassini", "hubble", "iss", "osirisrex", "shuttle"}
+REBUILT = sorted(set(SHADED) | LEVELS_REBUILT)
+
+
+def test_the_rebuild_covers_every_craft_rebuilt_in_blender_5_2_3() -> None:
+    assert set(REBUILT) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | LEVELS_REBUILT
+    assert set(REBUILT) <= set(CRAFTS)
+
+
+@pytest.mark.parametrize("craft", [pytest.param(c, marks=pytest.mark.local_dataset(*_rebuild_inputs(c))) for c in REBUILT])
 def test_an_unchanged_craft_rebuilds_byte_for_byte(craft: str, tmp_path: Path) -> None:
     # Hubble's one mesh sits under a transformed parent in NASA's file: a build that drops that transform when it
     # unparents the meshes comes out at another scale and shape (AUDIT-B's read of hangar-20); New Horizons' picker is
