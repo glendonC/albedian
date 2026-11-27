@@ -406,9 +406,11 @@
 
 /* The Restored sentence (restored-disclosure-one, ruled 00:44 on 27 Nov) comes with the restored picture's first drawn
    frame, after its status block or foot is already standing: it words in on its own as it mounts, with the words'
-   timing and no motion of its own; it goes with the picture, at once */
+   timing and no motion of its own; it goes with the picture, at once. The phone's slot row that holds its place while
+   the original stands alone swaps with it on the same timing (pending-row-phone-one) */
 .reveal-status__note,
-.restore-phone-note {
+.restore-phone-note,
+.restore-phone-slot {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
 

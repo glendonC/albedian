@@ -13,7 +13,7 @@ import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedi
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
-import { RestoreCompare, RestorePhoneFoot, RestorePhoneStopped, RestorePhoneWait, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
+import { RestoreCompare, RestorePhoneFoot, RestorePhoneStopped, RestorePhoneWait, RestoreSteps, RestoreVersionRow, RestoreVersions, RestoreWhy } from './RestoreParts.js';
 import type { Restoration } from './restoration.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -706,27 +706,6 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     onPhoneFootChange?.(phoneFoot);
   }, [phoneFoot]);
   useEffect(() => () => onPhoneFootChange?.(false), []);
-  // D36 item 5: two or more ready restorations are listed under the phone's Download, reached by scrolling too
-  // D36 item 5, and with one ready restoration that has no copy, its row (UIUX-versionwait-READY.md, addition stamped 02:22)
-  const phoneVersionsShown = phoneCompare && (versions.length >= 2 || (versions[0] !== undefined && standsAlone(versions[0]))) && picked === null && !answer;
-  // The whole screen scrolls to Restore or to the list: the photo and Ask out loud move with it (as the no-match
-  // screen's photo does)
-  const phoneScroll = phoneRestoreOffered || phoneVersionsShown;
-  const revealRoot = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!phoneScroll) return undefined;
-    if (revealRoot.current) revealRoot.current.scrollTop = 0;
-    const doc = document.documentElement;
-    doc.dataset.phoneScroll = '';
-    doc.style.removeProperty('--phone-scroll');
-    return () => {
-      delete doc.dataset.phoneScroll;
-      doc.style.removeProperty('--phone-scroll');
-    };
-  }, [phoneScroll, asset?.sha256]);
-  const onRevealScroll = phoneScroll
-    ? () => document.documentElement.style.setProperty('--phone-scroll', `${revealRoot.current?.scrollTop ?? 0}px`)
-    : undefined;
   // While the compare is zoomed in, the marks step aside (D15)
   const [compareZoomed, setCompareZoomed] = useState(false);
   // The compare's labels are drawn here, after the marks (AUDIT-B's finding, the lead 04:27 on 22 Nov)
@@ -828,6 +807,36 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     : !(restoration?.phase === 'done' && (restoration.noCopy === true || restoration.firstNeed === true));
   // aria-pressed follows the press, and the drawn row when none was (item 6)
   const pressedVersionId = pickedVersion ?? shownVersionId ?? null;
+  // The phone clip's slot row: the chosen version, while nothing restored can be drawn because of it
+  const slotVersion = phoneClip && shownVersion !== null && !drawableVersion(shownVersion) ? shownVersion : null;
+  // D36 item 5: two or more ready restorations are listed under the phone's Download, reached by scrolling too
+  // D36 item 5, and with one ready restoration that has no copy, its row (UIUX-versionwait-READY.md, addition stamped 02:22)
+  // pending-row-phone-one: on a phone clip, while the original stands alone because of the chosen version, that
+  // version's row stands in the disclosure's place above the player and is left out of the list under Download
+  const listedHere = versions.filter((v) => v.id !== slotVersion?.id);
+  const phoneVersionsShown =
+    phoneCompare &&
+    (versions.length >= 2 ? listedHere.length > 0 : listedHere[0] !== undefined && standsAlone(listedHere[0])) &&
+    picked === null &&
+    !answer;
+  // The whole screen scrolls to Restore or to the list: the photo and Ask out loud move with it (as the no-match
+  // screen's photo does)
+  const phoneScroll = phoneRestoreOffered || phoneVersionsShown;
+  const revealRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!phoneScroll) return undefined;
+    if (revealRoot.current) revealRoot.current.scrollTop = 0;
+    const doc = document.documentElement;
+    doc.dataset.phoneScroll = '';
+    doc.style.removeProperty('--phone-scroll');
+    return () => {
+      delete doc.dataset.phoneScroll;
+      doc.style.removeProperty('--phone-scroll');
+    };
+  }, [phoneScroll, asset?.sha256]);
+  const onRevealScroll = phoneScroll
+    ? () => document.documentElement.style.setProperty('--phone-scroll', `${revealRoot.current?.scrollTop ?? 0}px`)
+    : undefined;
   // restored-disclosure-one (UIUX-cliprestore-READY.md, ruled 00:44 on 27 Nov): the Restored sentence stands from the
   // restored picture's first drawn frame while the compare draws it, never while the original is drawn alone
   const [restoredDrawn, setRestoredDrawn] = useState(false);
@@ -1679,12 +1688,35 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* The phone's compare: the fixed sentence in the counts' place and Download in Ask out loud's (D10 item 5, D34); a
           picked star's card covers the foot, as it covers Ask out loud */}
       {phoneCompare && !answer && !picked && asset && shownVersionId !== undefined && (
-        <RestorePhoneFoot clip={phoneClip} restoredDrawn={restoredDrawn} onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersionId))} />
+        <RestorePhoneFoot
+          clip={phoneClip}
+          restoredDrawn={restoredDrawn}
+          slotRow={
+            slotVersion ? (
+              <RestoreVersionRow
+                version={slotVersion}
+                index={versions.indexOf(slotVersion)}
+                shownId={shownVersion?.id ?? null}
+                pressedId={pressedVersionId}
+                onShow={setPickedVersion}
+                onRetry={retryCopy}
+              />
+            ) : null
+          }
+          onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersionId))}
+        />
       )}
       {/* D36 item 5: the list under Download, reached by scrolling, its rows 44 px */}
       {phoneVersionsShown && shownVersion && (
         <div className="restore-phone-versions">
-          <RestoreVersions versions={versions} shownId={shownVersion.id} pressedId={pressedVersionId} onShow={setPickedVersion} onRetry={retryCopy} />
+          <RestoreVersions
+            versions={versions}
+            shownId={shownVersion.id}
+            pressedId={pressedVersionId}
+            onShow={setPickedVersion}
+            onRetry={retryCopy}
+            hiddenId={slotVersion?.id ?? null}
+          />
         </div>
       )}
 

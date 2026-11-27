@@ -483,8 +483,14 @@ export const RestorePhoneFoot: React.FC<{
   clip?: boolean;
   /** Whether a restored version is drawn: the sentence stands only then (restored-disclosure-one); Download stays. */
   restoredDrawn: boolean;
-}> = ({ onDownload, clip = false, restoredDrawn }) => (
+  /**
+   * A clip's chosen version's row while the original stands alone because of it (pending-row-phone-one,
+   * UIUX-versionwait-READY.md, its addition of 03:48): it stands in the sentence's place above the player.
+   */
+  slotRow?: React.ReactNode;
+}> = ({ onDownload, clip = false, restoredDrawn, slotRow = null }) => (
   <>
+    {!restoredDrawn && clip && slotRow !== null && <div className="restore-phone-slot">{slotRow}</div>}
     {restoredDrawn && (
       <p className={clip ? 'restore-phone-note is-clip' : 'restore-phone-note'}>
         <LookIcon name="info" />
@@ -621,6 +627,71 @@ export const COPY_STOPPED_LINE = 'The copy that plays here stopped before it was
  */
 export const NOT_COPYABLE_LINE = 'No copy that plays here is made for a clip stored this way, so it is not shown; Download saves it.';
 
+type VersionRowProps = {
+  version: ListedVersion;
+  /** Its place in the list, newest first: an older one says it was made by an earlier version (D36). */
+  index: number;
+  /** The version drawn, which takes the check (D36's "the one shown"). */
+  shownId: string | null;
+  /** The row pressed, which `aria-pressed` follows; the drawn one when none was (UIUX-versionwait-READY.md item 6). */
+  pressedId: string | null;
+  onShow: (id: string) => void;
+  /** A row whose copy stopped asks for it again when pressed. */
+  onRetry?: (id: string) => void;
+};
+
+/**
+ * One version's row, in the list under Download or, on the phone, in the disclosure's place above the player
+ * (pending-row-phone-one): its time, its size or the seconds its copy has taken, its mark and its second lines.
+ */
+export const RestoreVersionRow: React.FC<VersionRowProps> = ({ version, index, shownId, pressedId, onShow, onRetry }) => {
+  // The pending row's seconds, once a second while its copy is being made (C19 item 1), under Reduce Motion too
+  const making = version.copy === 'making';
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!making) return undefined;
+    const timer = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [making]);
+  const drawn = drawableVersion(version);
+  // A version not drawn keeps its row: one whose copy is being made or stopped is pressable (the swap waits for its
+  // copy); one no copy matched, the route cannot copy, or whose copy is not served is not (aria-disabled), with no check
+  const pressable = drawn || making || version.copy === 'stopped';
+  const press = () => {
+    if (!pressable) return;
+    if (version.copy === 'stopped') onRetry?.(version.id);
+    onShow(version.id);
+  };
+  return (
+    <button
+      type="button"
+      className="restore-versions__row"
+      aria-pressed={pressable && version.id === pressedId}
+      aria-disabled={pressable ? undefined : true}
+      aria-busy={making ? true : undefined}
+      onClick={press}
+    >
+      <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
+      <span className="restore-versions__size">
+        {making ? elapsedWords((Date.now() - (version.copySince ?? Date.now())) / 1000) : megabytes(version.byteSize)}
+      </span>
+      <span className="restore-versions__mark">
+        {drawn && version.id === shownId ? (
+          <LookIcon name="check" />
+        ) : making ? (
+          <i className="work-step__dot restore-versions__dot" />
+        ) : version.copy === 'stopped' ? (
+          <LookIcon name="x" />
+        ) : null}
+      </span>
+      {index > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
+      {version.noCopy && <span className="restore-versions__older">{NO_COPY_LINE}</span>}
+      {version.copy === 'stopped' && <span className="restore-versions__older">{COPY_STOPPED_LINE}</span>}
+      {version.copy === 'not_copyable' && <span className="restore-versions__older">{NOT_COPYABLE_LINE}</span>}
+    </button>
+  );
+};
+
 export const RestoreVersions: React.FC<{
   versions: readonly ListedVersion[];
   /** The version drawn, which takes the check (D36's "the one shown"). */
@@ -630,61 +701,24 @@ export const RestoreVersions: React.FC<{
   onShow: (id: string) => void;
   /** A row whose copy stopped asks for it again when pressed. */
   onRetry?: (id: string) => void;
-}> = ({ versions, shownId, pressedId = shownId, onShow, onRetry }) => {
-  // The pending row's seconds, once a second while any copy is being made (C19 item 1), under Reduce Motion too
-  const making = versions.some((version) => version.copy === 'making');
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!making) return undefined;
-    const timer = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(timer);
-  }, [making]);
+  /**
+   * A version whose row stands elsewhere (on the phone, in the disclosure's place above the player): left out here,
+   * the others keeping their places, newest first (pending-row-phone-one).
+   */
+  hiddenId?: string | null;
+}> = ({ versions, shownId, pressedId = shownId, onShow, onRetry, hiddenId = null }) => {
   // D36: no list with one ready restoration, unless that one is not drawn here, so its row says what it is waiting for
   if (versions.length < 2 && !(versions[0] !== undefined && standsAlone(versions[0]))) return null;
+  if (!versions.some((version) => version.id !== hiddenId)) return null;
   return (
     <ul className="restore-versions" data-testid="restore-versions">
-      {versions.map((version, i) => {
-        const drawn = drawableVersion(version);
-        // A version not drawn keeps its row: one whose copy is being made or stopped is pressable (the swap waits for
-        // its copy); one no copy matched, the route cannot copy, or whose copy is not served is not (aria-disabled),
-        // with no check
-        const pressable = drawn || version.copy === 'making' || version.copy === 'stopped';
-        const press = () => {
-          if (!pressable) return;
-          if (version.copy === 'stopped') onRetry?.(version.id);
-          onShow(version.id);
-        };
-        return (
+      {versions.map((version, i) =>
+        version.id === hiddenId ? null : (
           <li key={version.id}>
-            <button
-              type="button"
-              className="restore-versions__row"
-              aria-pressed={pressable && version.id === pressedId}
-              aria-disabled={pressable ? undefined : true}
-              aria-busy={version.copy === 'making' ? true : undefined}
-              onClick={press}
-            >
-              <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
-              <span className="restore-versions__size">
-                {version.copy === 'making' ? elapsedWords((Date.now() - (version.copySince ?? Date.now())) / 1000) : megabytes(version.byteSize)}
-              </span>
-              <span className="restore-versions__mark">
-                {drawn && version.id === shownId ? (
-                  <LookIcon name="check" />
-                ) : version.copy === 'making' ? (
-                  <i className="work-step__dot restore-versions__dot" />
-                ) : version.copy === 'stopped' ? (
-                  <LookIcon name="x" />
-                ) : null}
-              </span>
-              {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
-              {version.noCopy && <span className="restore-versions__older">{NO_COPY_LINE}</span>}
-              {version.copy === 'stopped' && <span className="restore-versions__older">{COPY_STOPPED_LINE}</span>}
-              {version.copy === 'not_copyable' && <span className="restore-versions__older">{NOT_COPYABLE_LINE}</span>}
-            </button>
+            <RestoreVersionRow version={version} index={i} shownId={shownId} pressedId={pressedId} onShow={onShow} onRetry={onRetry} />
           </li>
-        );
-      })}
+        )
+      )}
     </ul>
   );
 };
