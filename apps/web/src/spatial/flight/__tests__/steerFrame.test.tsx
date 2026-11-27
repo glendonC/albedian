@@ -14,6 +14,7 @@ import { starViewOfSteer, steerStartOf } from '../starView.js';
 import { arrivalShiftOf, arrivedFlightCamera } from '../arrival.js';
 import { nearStarOf, nearStarStep, startHandover, stepHandover } from '../nearStar.js';
 import { RING_RADIUS_PX, flightRings } from '../flightRings.js';
+import { frameShiftAt, handoverShiftError, restPointPx, screenThrough } from '../heldStar.js';
 import { STEER_START_SPEED_PC_S, SteerHands } from '../steering.js';
 
 // steer-frame-one (DECIDED-BY-LEAD 24 Nov 15:59): while the person steers, each frame's camera is held in a ref and drawn
@@ -113,6 +114,14 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
     // (its row not yet found here, so the place flown to)
     let handover = startHandover(start, nearStarOf(null, camera.referencePc));
     const paceStar = nearStarOf(null, camera.referencePc);
+    // phone-star-open-one: the frame on the window holds the star at its resting place through the hand-over (heldStar.ts)
+    const shift0 = arrivalShiftOf(session, 1440, 900, false);
+    const now0: [number, number] = shift0 ? [shift0.nowPx[0], shift0.nowPx[1]] : [0, 0];
+    const restPx = restPointPx(1440, 900, false);
+    const atStart = screenThrough(camera, start.positionPc, start.rows, paceStar!.positionPc);
+    const errorPx: [number, number] = atStart ? handoverShiftError(now0, restPx, atStart) : [0, 0];
+    let holding = atStart !== null;
+    let shiftPx: [number, number] = now0;
     let setPc = STEER_START_SPEED_PC_S;
     // craft-alive-one: the hands' smoothed signals, which roll the drawn camera with a share of the bank
     let alive = ALIVE_AT_REST;
@@ -138,6 +147,10 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
       const next = nearStarStep({ positionPc: want.positionPc, rows }, setPc, input, dt, paceStar);
       want = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase: followRows(want.chase, next.rows, dt, { reduced: false }) };
       alive = stepAlive(alive, aliveAsk(hand, want.speedPcPerS, false), dt);
+      if (holding && paceStar) {
+        shiftPx = frameShiftAt({ restPx, starPx: screenThrough(camera, want.positionPc, rolledRows(want.chase, alive), paceStar.positionPc), errorPx, share: handover ? handover.made : 1, fallbackPx: shiftPx });
+        if (!handover && (input.yawRadPerS !== 0 || input.pitchRadPerS !== 0)) holding = false;
+      }
     }
     clock.mockRestore();
     // No React render while the loop draws
@@ -157,8 +170,8 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
     expect(reports.length - reportsBefore).toBeLessThan(ticks);
     expect(reports.at(-1)!.fromEarthPc).toBeLessThanOrEqual(fromEarth + 1e-9);
     // The rings while steering: drawn by the loop where the steering camera sees the matched stars
-    const shift = arrivalShiftOf(session, 1440, 900, false);
-    const cam = shift ? arrivedFlightCamera(camera, shift.nowPx) : camera;
+    // phone-star-open-one: through the frame on the window the hold moved, as the loop does
+    const cam = arrivedFlightCamera(camera, shiftPx);
     // The turn banks the craft and rolls the drawn camera with it: the layer reports the signals it drew with
     expect(Math.abs(alive.bank)).toBeGreaterThan(0.5);
     expect(container.querySelector('[data-testid="flight-stars"]')!.getAttribute('data-alive')).toBe(`${alive.bank.toFixed(3)} ${alive.speed.toFixed(3)} ${alive.brake.toFixed(3)} ${alive.roll.toFixed(3)}`);

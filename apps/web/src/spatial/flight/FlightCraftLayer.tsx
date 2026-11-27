@@ -12,6 +12,7 @@ import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUn
 import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, keyToFillOf, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
+import { arrivedFlightCamera } from './arrival.js';
 import { skyPictureSourceOf } from '../sky/skyPicture.js';
 
 /**
@@ -174,7 +175,8 @@ interface Shown {
   readonly frameRadius: number;
 }
 
-type Steer = { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows; alive?: AliveSignals };
+/** phone-star-open-one: `shiftPx`, the steering frame's shift on the window beyond the camera's own (heldStar.ts). */
+type Steer = { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows; alive?: AliveSignals; shiftPx?: readonly [number, number] };
 
 interface CraftSkySource {
   readonly copy: HTMLCanvasElement;
@@ -286,7 +288,9 @@ function drawFrame(gpu: CraftGpu, camera: FlightCamera, candidates: readonly Lig
   return drawCraft(gpu, gpu.shown, camera, candidates, steer, framing);
 }
 
-function drawCraft(gpu: CraftGpu, shown: Shown, camera: FlightCamera, candidates: readonly LightCandidate[], steer?: Steer, framing?: CraftFraming): boolean {
+function drawCraft(gpu: CraftGpu, shown: Shown, flightCamera: FlightCamera, candidates: readonly LightCandidate[], steer?: Steer, framing?: CraftFraming): boolean {
+  // phone-star-open-one: drawn through the steering frame's shift, as the stars are
+  const camera = steer?.shiftPx ? arrivedFlightCamera(flightCamera, steer.shiftPx) : flightCamera;
   // craft-alive-one: while steered, the craft seen from behind along its line of flight, framed to a third of the
   // frame's height and falling back with speed, then leaning and banking about its own centre (craftAlive.ts)
   const alive = steer?.alive && steer.craftRows ? steer.alive : null;
@@ -345,7 +349,7 @@ export const FlightCraftLayer: React.FC<{
   /** Makes the layer's one renderer; three's WebGLRenderer by default. */
   makeRenderer?: (canvas: HTMLCanvasElement) => CraftRenderer;
   /** While the person steers: the camera they turn and move. */
-  steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows } | null;
+  steer?: Steer | null;
   /** Where the screen frames the craft; the laptop's (D26 item 2) by default. */
   framing?: CraftFraming;
   /** At phone width the hangar's far level is drawn. */

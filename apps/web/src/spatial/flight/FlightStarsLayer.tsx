@@ -22,6 +22,7 @@ import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from '
 import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steering.js';
 import { ALIVE_AT_REST, aliveAsk, aliveFrame, capLead, maxLeadRad, stepAlive, type AliveSignals } from './craftAlive.js';
 import { READOUT_EVERY_MS, nearStarOf, nearStarStep, readoutDistance, startHandover, stepHandover, type NearStar } from './nearStar.js';
+import { frameShiftAt, handoverShiftError, restPointPx, screenThrough } from './heldStar.js';
 import { threeFigures } from '../../reveal/flightView.js';
 import { changeSpeed, followRows, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
@@ -383,6 +384,9 @@ export const FlightStarsLayer: React.FC<{
   photoCameraRef.current = photoCamera;
   const fullShiftRef = useRef(fullShift);
   fullShiftRef.current = fullShift;
+  // phone-star-open-one: the shift the camera the layers are given carries now (all of it at rest)
+  const nowShiftRef = useRef<readonly [number, number]>(shift ? shift.nowPx : [0, 0]);
+  nowShiftRef.current = shift ? shift.nowPx : [0, 0];
   const geometry = useMemo(() => coneGeometryOf(session), [session.observationSolution, session.sourceAsset]);
   // craft-light-one: the star flown to, as the craft's key where it is the brightest source
   const keyCandidates = useMemo((): readonly LightCandidate[] => {
@@ -411,7 +415,7 @@ export const FlightStarsLayer: React.FC<{
   const [steer, setSteer] = useState<SteerNow | null>(null);
   const steerNow = useRef<SteerNow | null>(null);
   const frameDraw = useRef<((s: SteerNow) => void) | null>(null);
-  const craftDraw = useRef<((s: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows; alive?: AliveSignals }) => void) | null>(null);
+  const craftDraw = useRef<((s: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows; alive?: AliveSignals; shiftPx?: readonly [number, number] }) => void) | null>(null);
   // craft-alive-one: the hands' smoothed signals while steering (craftAlive.ts), at rest otherwise
   const alive = useRef<AliveSignals>(ALIVE_AT_REST);
   const toldKey = useRef('');
@@ -430,6 +434,11 @@ export const FlightStarsLayer: React.FC<{
   const pacedStar = useRef<NearStar | null>(null);
   const freeRef = useRef(freeFlight);
   freeRef.current = freeFlight;
+  // phone-star-open-one: the photo's frame on the window while steering (heldStar.ts): the arrival's own shift at the
+  // start, moved through the hand-over so the star flown to holds its resting place, then left where it stands
+  const hold = useRef<{ active: boolean; errorPx: [number, number]; shiftPx: [number, number] }>({ active: false, errorPx: [0, 0], shiftPx: [0, 0] });
+  /** The steering frame's shift beyond the arrival's own, which the camera the layers are given already carries. */
+  const steerShift = (): [number, number] => (steering ? [hold.current.shiftPx[0] - nowShiftRef.current[0], hold.current.shiftPx[1] - nowShiftRef.current[1]] : [0, 0]);
   const flying = steering && !cone && camera !== null;
   useEffect(() => {
     if (!flying || !cameraRef.current) {
@@ -450,6 +459,13 @@ export const FlightStarsLayer: React.FC<{
     // version two (DECIDED-BY-LEAD 26 Nov 23:54): free flight has no star, so no hand-over turn, no pacing and no floor
     pacedStar.current = freeRef.current ? null : nearStarOf(arrivalRef.current, cameraRef.current.referencePc);
     let handover = startHandover(start, pacedStar.current);
+    // phone-star-open-one: the star at its resting place (the arrival record's) on the hand-over's first frame, the
+    // hair between where the arrival put it and that place faded out over the turn
+    const restPx = restPointPx(viewportWidthPx, viewportHeightPx, phone);
+    const full: [number, number] = [nowShiftRef.current[0], nowShiftRef.current[1]];
+    const photo = photoCameraRef.current;
+    const atStart = pacedStar.current && photo ? screenThrough(photo, start.positionPc, start.rows, pacedStar.current.positionPc) : null;
+    hold.current = { active: atStart !== null, errorPx: atStart ? handoverShiftError(full, restPx, atStart) : [0, 0], shiftPx: full };
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -473,6 +489,15 @@ export const FlightStarsLayer: React.FC<{
         const chase = capLead(followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
         const moved: SteerNow = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase };
         alive.current = stepAlive(alive.current, aliveAsk(hand, moved.speedPcPerS, reducedRef.current), dt);
+        // phone-star-open-one: through the hand-over and after it, while the drawn camera catches up with the heading,
+        // the frame moves so the star holds its resting place in the drawn view; at the person's first turn once the
+        // hand-over is made the frame stays where it stands, so the turn moves the star
+        const h = hold.current;
+        if (h.active && star && photoCameraRef.current) {
+          const at = screenThrough(photoCameraRef.current, moved.positionPc, aliveFrame(moved, alive.current).drawn, star.positionPc);
+          h.shiftPx = frameShiftAt({ restPx, starPx: at, errorPx: h.errorPx, share: handover ? handover.made : 1, fallbackPx: h.shiftPx });
+          if (!handover && (input.yawRadPerS !== 0 || input.pitchRadPerS !== 0)) h.active = false;
+        }
         steerNow.current = moved;
         frameDraw.current?.(moved);
       }
@@ -589,7 +614,7 @@ export const FlightStarsLayer: React.FC<{
   coneRef.current = cone;
   // The camera the stars are drawn through: the photo's own in the flight, the orbit camera in the cone view
   const view = useMemo<StarView | null>(
-    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx, phone) : steer ? starViewOfSteer(camera, { positionPc: steer.positionPc, rows: steer.chase }) : starViewOfFlight(camera)) : null),
+    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx, phone) : steer ? starViewOfSteer(arrivedFlightCamera(camera, steerShift()), { positionPc: steer.positionPc, rows: steer.chase }) : starViewOfFlight(camera)) : null),
     [camera, cone, orbit, phone, steer, session.observationSolution, viewportWidthPx, viewportHeightPx]
   );
   const viewRef = useRef(view);
@@ -746,12 +771,20 @@ export const FlightStarsLayer: React.FC<{
   // rings (set in their own svg), the craft, the layer's distance, and the page's numbers when they change
   useEffect(() => {
     frameDraw.current = (s) => {
-      const cam = cameraRef.current;
-      if (!cam) return;
+      if (!cameraRef.current) return;
+      // phone-star-open-one: every layer draws through the steering frame's shift (the stars, rings, dome and craft)
+      const shiftPx = steerShift();
+      const cam = arrivedFlightCamera(cameraRef.current, shiftPx);
       // craft-alive-one: the drawn camera rolls with a share of the craft's bank; the chase keeps its own axes
       const a = alive.current;
-      const { drawn, craft: craftNow } = aliveFrame(s, a);
+      const { drawn, craft: craftAlive } = aliveFrame(s, a);
+      const craftNow = { ...craftAlive, shiftPx };
       const v = starViewOfSteer(cam, { positionPc: s.positionPc, rows: drawn });
+      // Where the star flown to stands in the drawn view, for a take and a test to read
+      const held = pacedStar.current;
+      const seen = held ? screenThrough(cam, s.positionPc, drawn, held.positionPc) : null;
+      if (seen) layerEl.current?.setAttribute('data-star-px', `${seen[0].toFixed(2)},${seen[1].toFixed(2)}`);
+      else layerEl.current?.removeAttribute('data-star-px');
       const g = gpu.current;
       const star = arrivalRef.current;
       domeDraw.current?.(v);
@@ -815,7 +848,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={keyCandidates} framing={craftPlace} phone={phone} steer={steer ? aliveFrame(steerNow.current ?? steer, alive.current).craft : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={keyCandidates} framing={craftPlace} phone={phone} steer={steer ? { ...aliveFrame(steerNow.current ?? steer, alive.current).craft, shiftPx: steerShift() } : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
     </>
   );
 };
