@@ -8,7 +8,7 @@ import {
   SHA256_HEX_PATTERN,
   SourceAssetSchema,
 } from './media.js';
-import { UTC_INSTANT_PATTERN, WIRE_MESSAGES, isRealCalendarDay } from './wire.js';
+import { UTC_INSTANT_PATTERN, WIRE_MESSAGES, isRealCalendarDay, wireInt } from './wire.js';
 
 /**
  * Ingest contracts (roadmap Track 1 M1): what the backend returns when a photo or clip is uploaded,
@@ -84,7 +84,7 @@ export const NAMED_OFFSET_TAG_MESSAGE = 'a capture time that names its offset ta
 export const CaptureTimeHintSchema = z
   .object({
     localDateTime: localDateTime().nullable(),
-    utcOffsetMinutes: z.number().int().min(-UTC_OFFSET_LIMIT_MINUTES).max(UTC_OFFSET_LIMIT_MINUTES).nullable(),
+    utcOffsetMinutes: wireInt().min(-UTC_OFFSET_LIMIT_MINUTES).max(UTC_OFFSET_LIMIT_MINUTES).nullable(),
     utc: utcInstant().nullable(),
     marks: z.enum(CAPTURE_TIME_MARKS),
     source: MetadataSourceSchema,
@@ -215,8 +215,8 @@ export const JobStageProgressSchema = z
   .object({
     stage: z.enum(JOB_STAGES),
     unit: z.enum(PROGRESS_UNITS),
-    done: z.number().int().nonnegative(),
-    total: z.number().int().positive().nullable(),
+    done: wireInt().nonnegative(),
+    total: wireInt().positive().nullable(),
   })
   .strict()
   .refine((progress) => progress.total === null || progress.done <= progress.total, {

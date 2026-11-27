@@ -14,6 +14,7 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import io
 
@@ -285,3 +286,121 @@ def test_pbt_ingest_2_job_records_obey_their_state_rules(
     else:
         with pytest.raises(ValidationError):
             ingest.SolveJob.model_validate(job)
+
+
+# source-asset-parity-one (by .lead/kiro/verdicts/main-source-asset-parity.md, AUDIT's audit of main 927612bd3): one
+# reading in both languages. A field is read under its wire name only, never under its Python name; and a whole
+# number written with a decimal point is that whole number, in every integer field of the ingest family, as Zod reads
+# it, while a fraction, a size past 2^53 - 1 and a boolean are refused. The cases are held in a fixture the
+# TypeScript test reads (packages/contracts/src/__tests__/ingest.test.ts); ALBEDIAN_UPDATE_INGEST_PARITY_FIXTURE=1
+# writes it.
+PARITY_PATH = ROOT / "tests" / "fixtures" / "ingest_parity_contract.json"
+PARITY_MODELS = {"SourceAsset": ingest.SourceAsset, "CaptureTimeHint": ingest.CaptureTimeHint, "SolveJob": ingest.SolveJob,
+                 "OrientationHint": ingest.OrientationHint}
+
+
+def _renamed(sample: dict, wire: str, python: str) -> dict:
+    return {(python if key == wire else key): value for key, value in sample.items()}
+
+
+def _at(value: Any, path: list) -> Any:
+    for step in path:
+        if isinstance(value, dict):
+            if step not in value:
+                return None
+            value = value[step]
+        else:
+            value = value[step]
+    return value
+
+
+def _parity_cases() -> list[dict]:
+    valid = json.loads(FIXTURE.read_text(encoding="utf-8"))["valid"]
+    still = next(a for a in valid["SourceAsset"] if a["mediaKind"] == "image" and "byteSize" in a)
+    clip = next(a for a in valid["SourceAsset"] if a["mediaKind"] == "video" and "fpsNumerator" in a)
+    hint = next(h for h in valid["CaptureTimeHint"] if h.get("utcOffsetMinutes") is not None)
+    job = next(j for j in valid["SolveJob"] if j.get("stages"))
+    turned = next(o for o in valid["OrientationHint"] if o["quarterTurnsClockwise"] > 0)
+    staged = json.loads(json.dumps(job))
+    staged["stages"][0]["done"] = float(staged["stages"][0]["done"])
+    huge = json.loads(json.dumps(job))
+    huge["stages"][0]["done"] = huge["stages"][0]["total"] = 2**53
+    # A stage with no total yet, and one whose total is known, each given a size past 2^53 - 1 alone
+    open_stage = next(i for i, s in enumerate(job["stages"]) if s["total"] is None)
+    known_stage = next(i for i, s in enumerate(job["stages"]) if s["total"] is not None and s["done"] < s["total"])
+    huge_done = json.loads(json.dumps(job))
+    huge_done["stages"][open_stage]["done"] = 2**53
+    huge_total = json.loads(json.dumps(job))
+    huge_total["stages"][known_stage]["total"] = 2**53
+    rows = [
+        ("privacy class under its Python name", "SourceAsset", _renamed(still, "privacyClass", "privacy_class"), ["privacyClass"]),
+        ("media kind under its Python name", "SourceAsset", _renamed(still, "mediaKind", "media_kind"), ["mediaKind"]),
+        ("byte size under its Python name", "SourceAsset", _renamed(still, "byteSize", "byte_size"), ["byteSize"]),
+        ("width written with a decimal point", "SourceAsset", {**still, "width": float(still["width"])}, ["width"]),
+        ("byte size written with a decimal point", "SourceAsset", {**still, "byteSize": float(still["byteSize"])}, ["byteSize"]),
+        ("a clip's frame rate written with decimal points", "SourceAsset",
+         {**clip, "fpsNumerator": float(clip["fpsNumerator"]), "fpsDenominator": float(clip["fpsDenominator"])}, ["fpsNumerator"]),
+        ("width with a fraction", "SourceAsset", {**still, "width": still["width"] + 0.5}, ["width"]),
+        ("width past 2^53 - 1", "SourceAsset", {**still, "width": 2**53}, ["width"]),
+        ("width as a boolean", "SourceAsset", {**still, "width": True}, ["width"]),
+        ("height past 2^53 - 1", "SourceAsset", {**still, "height": 2**53}, ["height"]),
+        ("byte size past 2^53 - 1", "SourceAsset", {**still, "byteSize": 2**53}, ["byteSize"]),
+        ("a clip's frame rate past 2^53 - 1", "SourceAsset", {**clip, "fpsNumerator": 2**53}, ["fpsNumerator"]),
+        ("a clip's frame rate denominator past 2^53 - 1", "SourceAsset", {**clip, "fpsDenominator": 2**53}, ["fpsDenominator"]),
+        ("a stage's counts past 2^53 - 1", "SolveJob", huge, ["stages", 0, "done"]),
+        ("a stage's count past 2^53 - 1 with no total yet", "SolveJob", huge_done, ["stages", open_stage, "done"]),
+        ("a stage's total past 2^53 - 1", "SolveJob", huge_total, ["stages", known_stage, "total"]),
+        ("an offset in minutes written with a decimal point", "CaptureTimeHint",
+         {**hint, "utcOffsetMinutes": float(hint["utcOffsetMinutes"])}, ["utcOffsetMinutes"]),
+        ("an offset in minutes under its Python name", "CaptureTimeHint",
+         _renamed(hint, "utcOffsetMinutes", "utc_offset_minutes"), ["utcOffsetMinutes"]),
+        ("a stage's count written with a decimal point", "SolveJob", staged, ["stages", 0, "done"]),
+        ("an orientation's quarter turns written with a decimal point", "OrientationHint",
+         {**turned, "quarterTurnsClockwise": float(turned["quarterTurnsClockwise"])}, ["quarterTurnsClockwise"]),
+        ("a job's state under its Python name", "SolveJob", _renamed(job, "sourceAssetSha256", "source_asset_sha256"), ["sourceAssetSha256"]),
+    ]
+    cases = []
+    for what, schema, value, path in rows:
+        try:
+            read = PARITY_MODELS[schema].model_validate(value).model_dump(mode="json", by_alias=True, exclude_none=True)
+        except ValidationError:
+            cases.append({"what": what, "schema": schema, "value": value, "accepted": False, "path": path, "read": None})
+            continue
+        cases.append({"what": what, "schema": schema, "value": value, "accepted": True, "path": path, "read": _at(read, path)})
+    return cases
+
+
+def test_both_languages_read_the_ingest_family_one_way() -> None:
+    cases = _parity_cases()
+    turned_by = next(o for o in json.loads(FIXTURE.read_text(encoding="utf-8"))["valid"]["OrientationHint"] if o["quarterTurnsClockwise"] > 0)["quarterTurnsClockwise"]
+    still_bytes = next(a for a in json.loads(FIXTURE.read_text(encoding="utf-8"))["valid"]["SourceAsset"] if a["mediaKind"] == "image" and "byteSize" in a)
+    assert {c["what"]: (c["accepted"], c["read"]) for c in cases} == {
+        "privacy class under its Python name": (False, None),
+        "media kind under its Python name": (False, None),
+        "byte size under its Python name": (True, None),
+        "width written with a decimal point": (True, still_bytes["width"]),
+        "byte size written with a decimal point": (True, still_bytes["byteSize"]),
+        "a clip's frame rate written with decimal points": (True, 30000),
+        "width with a fraction": (False, None),
+        "width past 2^53 - 1": (False, None),
+        "width as a boolean": (False, None),
+        "height past 2^53 - 1": (False, None),
+        "byte size past 2^53 - 1": (False, None),
+        "a clip's frame rate past 2^53 - 1": (False, None),
+        "a clip's frame rate denominator past 2^53 - 1": (False, None),
+        "a stage's counts past 2^53 - 1": (False, None),
+        "a stage's count past 2^53 - 1 with no total yet": (False, None),
+        "a stage's total past 2^53 - 1": (False, None),
+        "an offset in minutes written with a decimal point": (True, 120),
+        "an offset in minutes under its Python name": (False, None),
+        "a stage's count written with a decimal point": (True, 52811776),
+        "an orientation's quarter turns written with a decimal point": (True, turned_by),
+        "a job's state under its Python name": (False, None),
+    }
+    # A whole number read from a decimal point is an integer, never a float
+    assert all(isinstance(c["read"], int) for c in cases if c["accepted"] and c["read"] is not None)
+    text = json.dumps({"about": "source-asset-parity-one: the ingest family read one way in both languages", "cases": cases},
+                      indent=1, ensure_ascii=True) + "\n"
+    if os.environ.get("ALBEDIAN_UPDATE_INGEST_PARITY_FIXTURE") == "1":
+        PARITY_PATH.write_text(text, encoding="utf-8")
+    assert PARITY_PATH.read_text(encoding="utf-8") == text, "regenerate with ALBEDIAN_UPDATE_INGEST_PARITY_FIXTURE=1"

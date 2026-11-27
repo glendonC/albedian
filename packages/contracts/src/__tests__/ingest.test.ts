@@ -443,3 +443,27 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
     expect(CaptureTimeHintSchema.safeParse(withBasis('more_than_one_offset_fits', 'more_than_one_offset_fits')).success).toBe(false);
   });
 });
+
+/**
+ * source-asset-parity-one (.lead/kiro/verdicts/main-source-asset-parity.md): the ingest family read one way in both
+ * languages, from the cases tests/integration/test_ingest_contract.py writes: a field under its Python name is never
+ * read, and a whole number written with a decimal point is that whole number, in every integer field.
+ */
+describe('@albedian/contracts: the ingest family read as Python reads it', () => {
+  const PARITY = path.resolve(__dirname, '../../../../tests/fixtures/ingest_parity_contract.json');
+  const parity = JSON.parse(fs.readFileSync(PARITY, 'utf8')) as {
+    cases: Array<{ what: string; schema: 'SourceAsset' | 'CaptureTimeHint' | 'SolveJob' | 'OrientationHint'; value: unknown; accepted: boolean; path: Array<string | number>; read: unknown }>;
+  };
+  const schemas = { SourceAsset: SourceAssetSchema, CaptureTimeHint: CaptureTimeHintSchema, SolveJob: SolveJobSchema, OrientationHint: OrientationHintSchema };
+  const at = (value: unknown, steps: Array<string | number>): unknown =>
+    steps.reduce<unknown>((node, step) => (node !== null && typeof node === 'object' ? (node as Record<string | number, unknown>)[step] : undefined), value);
+
+  it('accepts and refuses every case as Python does, and reads the same value', () => {
+    expect(parity.cases.length).toBeGreaterThanOrEqual(13);
+    for (const c of parity.cases) {
+      const parsed = schemas[c.schema].safeParse(c.value);
+      expect(parsed.success, c.what).toBe(c.accepted);
+      if (parsed.success) expect(at(parsed.data, c.path) ?? null, c.what).toBe(c.read);
+    }
+  });
+});

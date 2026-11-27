@@ -207,9 +207,11 @@ def _parse_utc(text: str) -> datetime:
 
 
 class _Model(BaseModel):
-    """Strict, camelCase on the wire; no unknown keys; null only where the Zod field is nullable."""
+    """Strict, camelCase on the wire and only there (a Python name is never read from the wire, as Zod reads none:
+    source-asset-parity-one); no unknown keys; null only where the Zod field is nullable."""
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, strict=True, extra="forbid")
+    model_config = ConfigDict(alias_generator=to_camel, validate_by_alias=True, validate_by_name=False, strict=True,
+                              extra="forbid")
     nullable: ClassVar[frozenset[str]] = frozenset()
 
     @model_validator(mode="before")
@@ -225,7 +227,8 @@ class _Model(BaseModel):
 class _Loose(_Model):
     """Like a non-strict z.object: unknown keys are dropped rather than refused."""
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, strict=True, extra="ignore")
+    model_config = ConfigDict(alias_generator=to_camel, validate_by_alias=True, validate_by_name=False, strict=True,
+                              extra="ignore")
 
 
 class CaptureTimeBasis(WireModel):
@@ -308,14 +311,14 @@ class SourceAsset(_Loose):
     media_kind: Literal["image", "video"]
     sha256: Sha256
     uri: Text
-    byte_size: Optional[Annotated[int, Field(gt=0)]] = None
+    byte_size: Optional[Annotated[WireInt, Field(gt=0)]] = None
     mime_type: Optional[Annotated[str, StringConstraints(pattern=MIME_TYPE_PATTERN)]] = None
-    width: Annotated[int, Field(gt=0)]
-    height: Annotated[int, Field(gt=0)]
+    width: Annotated[WireInt, Field(gt=0)]
+    height: Annotated[WireInt, Field(gt=0)]
     duration_ms: Annotated[float, Field(ge=0)]
     # A clip's frame rate, both fields once probed, neither until then; a still has none
-    fps_numerator: Optional[Annotated[int, Field(gt=0)]] = None
-    fps_denominator: Optional[Annotated[int, Field(gt=0)]] = None
+    fps_numerator: Optional[Annotated[WireInt, Field(gt=0)]] = None
+    fps_denominator: Optional[Annotated[WireInt, Field(gt=0)]] = None
     video_codec: Text
     audio_streams: list[AudioStreamDescriptor]
     # Zod's datetime pattern, and a real day as the wire module judges it: the pattern alone takes year 0000
@@ -360,7 +363,7 @@ class CaptureTimeHint(_Model):
         {"localDateTime", "local_date_time", "utcOffsetMinutes", "utc_offset_minutes", "utc"}
     )
     local_date_time: Optional[LocalDateTime]
-    utc_offset_minutes: Optional[Annotated[int, Field(ge=-UTC_OFFSET_LIMIT_MINUTES, le=UTC_OFFSET_LIMIT_MINUTES)]]
+    utc_offset_minutes: Optional[Annotated[WireInt, Field(ge=-UTC_OFFSET_LIMIT_MINUTES, le=UTC_OFFSET_LIMIT_MINUTES)]]
     utc: Optional[UtcInstant]
     marks: Literal["recorded", "file_written"]
     source: MetadataSource
@@ -444,7 +447,7 @@ class CameraHint(_Model):
 class OrientationHint(_Model):
     """How to show the stored pixels, as the file says, with where it says so."""
 
-    quarter_turns_clockwise: Annotated[int, Field(ge=0, le=3)]
+    quarter_turns_clockwise: Annotated[WireInt, Field(ge=0, le=3)]
     mirrored: bool
     source: MetadataSource
 
@@ -467,8 +470,8 @@ class JobStageProgress(_Model):
     nullable: ClassVar[frozenset[str]] = frozenset({"total"})
     stage: Literal["store", "decode", "detect", "solve", "verify"]
     unit: Literal["bytes", "frames", "candidates", "steps"]
-    done: Annotated[int, Field(ge=0)]
-    total: Optional[Annotated[int, Field(gt=0)]]
+    done: Annotated[WireInt, Field(ge=0)]
+    total: Optional[Annotated[WireInt, Field(gt=0)]]
 
     @model_validator(mode="after")
     def _done_within_total(self) -> "JobStageProgress":

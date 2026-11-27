@@ -700,9 +700,17 @@ def _unplaced(value: Any) -> Any:
     return value
 
 
+def _parity_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool, Any]]:
+    """ingest_parity_contract.json (source-asset-parity-one): its SolveJob cases, read as ingest_contract.json's: a whole
+    count written with a decimal point taken, one past 2^53 - 1 or a field under its Python name refused."""
+    out = [(f"cases[{i}] {c['what']}", c["value"], c["accepted"]) for i, c in enumerate(data["cases"]) if c["schema"] == "SolveJob"]
+    return [(where, sample, accepted, _todays_record_but_its_gap(sample)) for where, sample, accepted in out]
+
+
 JOB_FIXTURE_READERS: dict[str, Any] = {"job_contract.json": _job_verdicts, "ingest_contract.json": _ingest_verdicts,
                                        "observation_solution_contract.json": _solution_ingest_verdicts,
-                                       "solve_upload_characterization.json": _characterization_verdicts}
+                                       "solve_upload_characterization.json": _characterization_verdicts,
+                                       "ingest_parity_contract.json": _parity_verdicts}
 
 
 def _fixture_disagreements(folder: Path) -> tuple[list[str], list[str], int]:

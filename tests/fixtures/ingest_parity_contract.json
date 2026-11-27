@@ -1,0 +1,1083 @@
+{
+ "about": "source-asset-parity-one: the ingest family read one way in both languages",
+ "cases": [
+  {
+   "what": "privacy class under its Python name",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 4032,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacy_class": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "privacyClass"
+   ],
+   "read": null
+  },
+  {
+   "what": "media kind under its Python name",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "media_kind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 4032,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "mediaKind"
+   ],
+   "read": null
+  },
+  {
+   "what": "byte size under its Python name",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byte_size": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 4032,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": true,
+   "path": [
+    "byteSize"
+   ],
+   "read": null
+  },
+  {
+   "what": "width written with a decimal point",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 4032.0,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": true,
+   "path": [
+    "width"
+   ],
+   "read": 4032
+  },
+  {
+   "what": "byte size written with a decimal point",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211.0,
+    "mimeType": "image/jpeg",
+    "width": 4032,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": true,
+   "path": [
+    "byteSize"
+   ],
+   "read": 3184211
+  },
+  {
+   "what": "a clip's frame rate written with decimal points",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_0a1b2c3d4e5f6071",
+    "title": "Night clip (synthetic)",
+    "mediaKind": "video",
+    "sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "uri": "/api/ingest/assets/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "width": 1080,
+    "height": 1920,
+    "durationMs": 12000,
+    "fpsNumerator": 30000.0,
+    "fpsDenominator": 1001.0,
+    "videoCodec": "hevc",
+    "audioStreams": [
+     {
+      "index": 1,
+      "codec": "aac",
+      "sampleRateHz": 48000,
+      "channels": 2,
+      "startPtsMs": 0,
+      "durationMs": 12000,
+      "sha256": "aa11bb22cc33dd44"
+     }
+    ],
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": true,
+   "path": [
+    "fpsNumerator"
+   ],
+   "read": 30000
+  },
+  {
+   "what": "width with a fraction",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 4032.5,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "width"
+   ],
+   "read": null
+  },
+  {
+   "what": "width past 2^53 - 1",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 9007199254740992,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "width"
+   ],
+   "read": null
+  },
+  {
+   "what": "width as a boolean",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": true,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "width"
+   ],
+   "read": null
+  },
+  {
+   "what": "height past 2^53 - 1",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 3184211,
+    "mimeType": "image/jpeg",
+    "width": 4032,
+    "height": 9007199254740992,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "height"
+   ],
+   "read": null
+  },
+  {
+   "what": "byte size past 2^53 - 1",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_5f2b0c9a7d31e448",
+    "title": "Field photo (synthetic)",
+    "mediaKind": "image",
+    "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+    "byteSize": 9007199254740992,
+    "mimeType": "image/jpeg",
+    "width": 4032,
+    "height": 3024,
+    "durationMs": 0,
+    "videoCodec": "mjpeg",
+    "audioStreams": [],
+    "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+    "observerLocation": {
+     "latDeg": 46.5197,
+     "lonDeg": 7.9861
+    },
+    "cameraMetadata": {
+     "make": "Synthetic",
+     "model": "Test Phone",
+     "lensModel": "Main 24 mm",
+     "focalLengthMm": 6.9,
+     "focalLength35mmMm": 24,
+     "exposureTimeSec": 10,
+     "fNumber": 1.78,
+     "iso": 1600
+    },
+    "metadataSources": {
+     "capturedAtUTC": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal",
+       "SubSecTimeOriginal",
+       "OffsetTimeOriginal"
+      ]
+     },
+     "observerLocation": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLatitudeRef",
+       "GPSLongitude",
+       "GPSLongitudeRef"
+      ]
+     },
+     "cameraMetadata": {
+      "container": "exif",
+      "tags": [
+       "Make",
+       "Model",
+       "LensModel",
+       "FocalLength",
+       "FocalLengthIn35mmFilm",
+       "FNumber",
+       "ExposureTime",
+       "ISO"
+      ]
+     }
+    },
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "byteSize"
+   ],
+   "read": null
+  },
+  {
+   "what": "a clip's frame rate past 2^53 - 1",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_0a1b2c3d4e5f6071",
+    "title": "Night clip (synthetic)",
+    "mediaKind": "video",
+    "sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "uri": "/api/ingest/assets/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "width": 1080,
+    "height": 1920,
+    "durationMs": 12000,
+    "fpsNumerator": 9007199254740992,
+    "fpsDenominator": 1001,
+    "videoCodec": "hevc",
+    "audioStreams": [
+     {
+      "index": 1,
+      "codec": "aac",
+      "sampleRateHz": 48000,
+      "channels": 2,
+      "startPtsMs": 0,
+      "durationMs": 12000,
+      "sha256": "aa11bb22cc33dd44"
+     }
+    ],
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "fpsNumerator"
+   ],
+   "read": null
+  },
+  {
+   "what": "a clip's frame rate denominator past 2^53 - 1",
+   "schema": "SourceAsset",
+   "value": {
+    "id": "src_0a1b2c3d4e5f6071",
+    "title": "Night clip (synthetic)",
+    "mediaKind": "video",
+    "sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "uri": "/api/ingest/assets/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "width": 1080,
+    "height": 1920,
+    "durationMs": 12000,
+    "fpsNumerator": 30000,
+    "fpsDenominator": 9007199254740992,
+    "videoCodec": "hevc",
+    "audioStreams": [
+     {
+      "index": 1,
+      "codec": "aac",
+      "sampleRateHz": 48000,
+      "channels": 2,
+      "startPtsMs": 0,
+      "durationMs": 12000,
+      "sha256": "aa11bb22cc33dd44"
+     }
+    ],
+    "privacyClass": "private",
+    "immutable": true
+   },
+   "accepted": false,
+   "path": [
+    "fpsDenominator"
+   ],
+   "read": null
+  },
+  {
+   "what": "a stage's counts past 2^53 - 1",
+   "schema": "SolveJob",
+   "value": {
+    "id": "job_0a1b2c3d4e5f6071",
+    "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "state": "running",
+    "createdAtUTC": "2031-05-02T19:20:00Z",
+    "startedAtUTC": "2031-05-02T19:20:01.250Z",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": 9007199254740992,
+      "total": 9007199254740992
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 12,
+      "total": 36
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 0,
+      "total": null
+     }
+    ]
+   },
+   "accepted": false,
+   "path": [
+    "stages",
+    0,
+    "done"
+   ],
+   "read": null
+  },
+  {
+   "what": "a stage's count past 2^53 - 1 with no total yet",
+   "schema": "SolveJob",
+   "value": {
+    "id": "job_0a1b2c3d4e5f6071",
+    "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "state": "running",
+    "createdAtUTC": "2031-05-02T19:20:00Z",
+    "startedAtUTC": "2031-05-02T19:20:01.250Z",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": 52811776,
+      "total": 52811776
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 12,
+      "total": 36
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 9007199254740992,
+      "total": null
+     }
+    ]
+   },
+   "accepted": false,
+   "path": [
+    "stages",
+    2,
+    "done"
+   ],
+   "read": null
+  },
+  {
+   "what": "a stage's total past 2^53 - 1",
+   "schema": "SolveJob",
+   "value": {
+    "id": "job_0a1b2c3d4e5f6071",
+    "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "state": "running",
+    "createdAtUTC": "2031-05-02T19:20:00Z",
+    "startedAtUTC": "2031-05-02T19:20:01.250Z",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": 52811776,
+      "total": 52811776
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 12,
+      "total": 9007199254740992
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 0,
+      "total": null
+     }
+    ]
+   },
+   "accepted": false,
+   "path": [
+    "stages",
+    1,
+    "total"
+   ],
+   "read": null
+  },
+  {
+   "what": "an offset in minutes written with a decimal point",
+   "schema": "CaptureTimeHint",
+   "value": {
+    "localDateTime": "2031-05-02T05:42:18.120",
+    "utcOffsetMinutes": 120.0,
+    "utc": "2031-05-02T03:42:18.120Z",
+    "marks": "recorded",
+    "source": {
+     "container": "exif",
+     "tags": [
+      "DateTimeOriginal",
+      "SubSecTimeOriginal",
+      "OffsetTimeOriginal"
+     ]
+    }
+   },
+   "accepted": true,
+   "path": [
+    "utcOffsetMinutes"
+   ],
+   "read": 120
+  },
+  {
+   "what": "an offset in minutes under its Python name",
+   "schema": "CaptureTimeHint",
+   "value": {
+    "localDateTime": "2031-05-02T05:42:18.120",
+    "utc_offset_minutes": 120,
+    "utc": "2031-05-02T03:42:18.120Z",
+    "marks": "recorded",
+    "source": {
+     "container": "exif",
+     "tags": [
+      "DateTimeOriginal",
+      "SubSecTimeOriginal",
+      "OffsetTimeOriginal"
+     ]
+    }
+   },
+   "accepted": false,
+   "path": [
+    "utcOffsetMinutes"
+   ],
+   "read": null
+  },
+  {
+   "what": "a stage's count written with a decimal point",
+   "schema": "SolveJob",
+   "value": {
+    "id": "job_0a1b2c3d4e5f6071",
+    "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "state": "running",
+    "createdAtUTC": "2031-05-02T19:20:00Z",
+    "startedAtUTC": "2031-05-02T19:20:01.250Z",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": 52811776.0,
+      "total": 52811776
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 12,
+      "total": 36
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 0,
+      "total": null
+     }
+    ]
+   },
+   "accepted": true,
+   "path": [
+    "stages",
+    0,
+    "done"
+   ],
+   "read": 52811776
+  },
+  {
+   "what": "an orientation's quarter turns written with a decimal point",
+   "schema": "OrientationHint",
+   "value": {
+    "quarterTurnsClockwise": 1.0,
+    "mirrored": false,
+    "source": {
+     "container": "exif",
+     "tags": [
+      "Orientation"
+     ]
+    }
+   },
+   "accepted": true,
+   "path": [
+    "quarterTurnsClockwise"
+   ],
+   "read": 1
+  },
+  {
+   "what": "a job's state under its Python name",
+   "schema": "SolveJob",
+   "value": {
+    "id": "job_0a1b2c3d4e5f6071",
+    "source_asset_sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "state": "running",
+    "createdAtUTC": "2031-05-02T19:20:00Z",
+    "startedAtUTC": "2031-05-02T19:20:01.250Z",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": 52811776,
+      "total": 52811776
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 12,
+      "total": 36
+     },
+     {
+      "stage": "solve",
+      "unit": "steps",
+      "done": 0,
+      "total": null
+     }
+    ]
+   },
+   "accepted": false,
+   "path": [
+    "sourceAssetSha256"
+   ],
+   "read": null
+  }
+ ]
+}
