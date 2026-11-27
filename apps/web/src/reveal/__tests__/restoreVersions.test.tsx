@@ -282,6 +282,18 @@ describe('the list under Download (D36)', () => {
     expect(q('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
   });
 
+  it('draws no restored clip that has just finished with no copy while its versions are still being read (T19)', async () => {
+    // AUDIT-C's T19 on playback-firstneed-web: the restoration marked firstNeed is not drawn before the list arrives
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const restoration = { phase: 'done', job: succeeded, variantUrl: `/api/media/${sha}/variants/${succeeded.variantId}/file`, orientation: { quarterTurnsClockwise: 0, mirrored: false } };
+    await showDone({ restoration: { ...restoration, firstNeed: true } });
+    expect(q('[data-testid="restore-compare"]')).toBeNull();
+    expect(q('.reveal-status__note')).toBeNull();
+    // Without the mark the same restoration is drawn at once, as before
+    await showDone({ restoration });
+    expect(q('[data-testid="restore-compare"]')).not.toBeNull();
+  });
+
   it('keeps the version drawn while a pressed row waits for its copy, not the newest that can be drawn (versionwait 22:20 item 2)', async () => {
     const bareClip = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.mimeType === 'video/mp4' && v.playbackCopy === undefined)!;
     const newest = { ...bareClip, id: NEWER.id, createdAtUTC: '2026-11-20T18:20:00Z', byteSize: NEWER.byteSize, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: NEWER.uri };

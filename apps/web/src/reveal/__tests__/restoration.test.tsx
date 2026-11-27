@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FAILURE_SENTENCES, INTERRUPTED_SENTENCE, type UploadJob } from '@albedian/contracts';
 import { CLIP_UNCHANGED, UNCHANGED, preRestorationRefusalsOf, refusalSentence, restorationOf, useRestoration, type Restoration } from '../restoration.js';
+import { NOTES } from '@albedian/contracts';
 
 // What the restoration shows, from its job's own record (UIUX-restoration-READY.md, D10): the job's steps while it
 // works, the compare once it succeeded, and why it stopped; canceled and interrupted as D2 says (INTERIM).
@@ -348,6 +349,26 @@ describe('useRestoration', () => {
       subline: 'Your clip is unchanged.',
       canTryAgain: false,
     });
+  });
+
+  it('marks a clip just restored with no copy served and no note as waiting for its copy at first need, and only that (T19)', async () => {
+    // AUDIT-C's T19 on playback-firstneed-web: before the versions list is read, the restoration itself says the clip
+    // is not to be drawn yet (the lead's 22:19 ruling); a still, or a clip whose record notes no copy, is not marked so
+    const finish = async (sha: string, mediaKind: 'image' | 'video' | undefined, shown: unknown) => {
+      const answers = [json(running, 202), json(succeeded), json(shown)];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => answers.shift()!);
+      act(() => root.render(createElement(Probe, { sha, mediaKind })));
+      act(() => latest.start());
+      await until(() => phase() === 'done');
+      const done = latest.restoration.phase === 'done' ? latest.restoration : null;
+      vi.restoreAllMocks();
+      return { firstNeed: done?.firstNeed === true, noCopy: done?.noCopy === true };
+    };
+    const bare = { variant: {}, attempt: { measured: { notes: [] } } };
+    expect(await finish('1'.repeat(64), 'video', bare)).toEqual({ firstNeed: true, noCopy: false });
+    expect(await finish('2'.repeat(64), 'video', { variant: {}, attempt: { measured: { notes: [NOTES[8]] } } })).toEqual({ firstNeed: false, noCopy: true });
+    expect(await finish('3'.repeat(64), 'image', bare)).toEqual({ firstNeed: false, noCopy: false });
+    expect(await finish('4'.repeat(64), undefined, bare)).toEqual({ firstNeed: false, noCopy: false });
   });
 
   it('forgets everything, and stops following, when the photo changes', async () => {
