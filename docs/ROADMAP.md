@@ -24,7 +24,7 @@ Labels, as AGENTS.md section 3 asks:
 
 ### The gap that matters most
 
-Most real phone photos still do not calibrate. Upload, the solve job and the reveal run end to end in the browser (`apps/web/src/App.tsx`, `services/ingest/jobs.py`), and the phone photo solver searches the Gaia DR3 and Hipparcos tiles under the held-out gate (`services/science/phone_photo_solver.py`), but the last count kept in the repository is 2 of the 60 public photos calibrated, both correct, on 19 November ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested]
+Most real phone photos still do not calibrate. Upload, the solve job and the reveal run end to end in the browser (`apps/web/src/App.tsx`, `services/ingest/jobs.py`), and the phone photo solver searches the Gaia DR3 and Hipparcos tiles under the held-out gate (`services/science/phone_photo_solver.py`), but on main at `5653cb0ee` (27 November) 12 of the 60 public photos calibrate: astrometry.net judges 11 of them correct and cannot check the twelfth, none is wrong or a false solve, and one matched star among them is not there ([REAL_PHOTO_BENCHMARK.md](science/REAL_PHOTO_BENCHMARK.md)). [tested]
 
 - A photo that does not calibrate gets the predicted sky for its recorded time and place, labelled `predicted` ([PREDICTED_SKY.md](science/PREDICTED_SKY.md)). [tested]
 - The horizon and Moon pose returns `approximate` or `predicted_only`, never `calibrated` (`services/science/horizon_solver.py`).
