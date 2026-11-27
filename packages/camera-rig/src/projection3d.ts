@@ -218,8 +218,27 @@ export function computeAnchorLockedPhaseAState(
 }
 
 /**
+ * flight3d-bound-one (EXPORT's counterexample; LEAD ANSWER 26 Nov 23:14): the direction error a float32 floating origin
+ * leaves on a star seen from the camera, radians. Each offset from the reference and the camera's own offset are cast to
+ * float32 (half an ulp, 2^-24 of each, apiece) before the shader subtracts them, so the star's offset from the camera
+ * carries up to 2^-24 (|star - reference| + |eye - reference|), turned into a direction over |star - eye|; doubled for
+ * the shader's own float32 steps after it. Near the reference, where the flight ends, this is nothing; a star near the
+ * camera at Go there's start, with the star flown to far away, can reach a few tenths of a pixel at a narrow photo's
+ * scale (0.0955 px on EXPORT's input, 7.7 pc from the camera and 386 pc from the reference, at 0.002 degrees a pixel).
+ * Keeping each offset as two float32s (high and low) does not tighten it on this laptop's GPU: read back by transform
+ * feedback, ANGLE on Metal regroups (high - eye's high) + (low - eye's low) into one float32 sum and drops the low parts
+ * (.lanetools/gpu_split_check.mjs in SPATIAL's worktree).
+ */
+export function floatingOriginBoundRad(starPc: Vec3, eyePc: Vec3, referencePc: Vec3): number {
+  const d = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const fromCamera = d(starPc, eyePc);
+  return fromCamera > 0 ? (2 ** -23 * (d(starPc, referencePc) + d(eyePc, referencePc))) / fromCamera : Number.POSITIVE_INFINITY;
+}
+
+/**
  * Subtracts `observerOriginParsec` in 64-bit IEEE-754 floating point before
  * casting relative star positions to `Float32Array` for GPU vertex buffer upload.
+ * Its precision seen from a camera elsewhere: floatingOriginBoundRad.
  */
 export function rebaseFloatingOrigin(
   catalogPositionsParsec: Float64Array,

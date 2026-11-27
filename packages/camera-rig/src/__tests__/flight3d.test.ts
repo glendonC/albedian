@@ -4,6 +4,7 @@ import type { WCSCalibrationModel } from '@albedian/contracts';
 import {
   apparentMagnitudeFrom,
   distortionFoldRadiusRad,
+  floatingOriginBoundRad,
   placeStar,
   projectPlacementThroughWcs,
   raDecToUnitVector,
@@ -265,13 +266,15 @@ function projectInFloat32(
 }
 
 describe('flight-1: the floating origin holds precision over light years', () => {
-  it('rebased on the star flown to, float32 stays within 0.05 px of float64 all along the flight', () => {
+  // flight3d-bound-one: within 0.05 px plus the floating origin's own float32 bound (floatingOriginBoundRad), which is
+  // nothing near the star flown to and a few tenths of a pixel at most for a star near the camera at Go there's start
+  it('rebased on the star flown to, float32 stays within its floating origin\'s bound of float64 all along the flight', () => {
     fc.assert(
       fc.property(
         wcsArb,
         fc.double({ min: 2, max: 5000, noNaN: true }),
         fc.double({ min: 0, max: 1, noNaN: true }),
-        fc.array(fc.tuple(fc.double({ min: -20, max: 20, noNaN: true }), fc.double({ min: -15, max: 15, noNaN: true }), fc.double({ min: 0.02, max: 3, noNaN: true })), { minLength: 1, maxLength: 12 }),
+        fc.array(fc.tuple(fc.double({ min: -20, max: 20, noNaN: true }), fc.double({ min: -15, max: 15, noNaN: true }), fc.double({ min: 0.005, max: 3, noNaN: true })), { minLength: 1, maxLength: 12 }),
         (w, targetPc, t, field) => {
           const wcs = wcsOf(w);
           const target = placeStar(directionNear(wcs, 0, 0), { medianPc: targetPc });
@@ -296,12 +299,54 @@ describe('flight-1: the floating origin holds precision over light years', () =>
             if (norm(sub(s.positionPc, observer)) < 0.05) return;
             const single = projectInFloat32(rebased, i, true, eye, wcs);
             expect(single.visible).toBe(true);
-            expect(Math.hypot(single.uPx - exact.uPx, single.vPx - exact.vPx)).toBeLessThan(0.05);
+            const boundPx = 0.05 + floatingOriginBoundRad(s.positionPc, observer, target.positionPc) / ((wcs.scaleDegPerPx * Math.PI) / 180);
+            expect(Math.hypot(single.uPx - exact.uPx, single.vPx - exact.vPx)).toBeLessThan(boundPx);
           });
         }
       ),
       RUNS
     );
+  });
+
+  // flight3d-bound-one (EXPORT's NOTE, seed 2031239712): the camera still at Earth, the star flown to 385.88 pc away, two
+  // neighbours 7.7 and 8.2 pc from the camera: 0.0955 px off, past the old flat 0.05 px, inside the floating origin's bound
+  it('EXPORT\'s counterexample: past a flat 0.05 px, inside the floating origin\'s own bound', () => {
+    const wcs = wcsOf({ crvalRaDeg: 58.21276877823974, crvalDecDeg: 0, rotationDeg: 0, scaleDegPerPx: 0.002, parity: 1, radialDistortionK1: 0, radialDistortionK2: 0 });
+    const targetPc = 385.87918242398644;
+    const target = placeStar(directionNear(wcs, 0, 0), { medianPc: targetPc });
+    if (target.kind !== 'at_distance') throw new Error('target');
+    const observer: Vec3 = [0, 0, 0];
+    const stars = [target, ...[0.021129251377251933, 0.02].map((k) => placeStar(directionNear(wcs, 0, 0), { medianPc: targetPc * k }))];
+    const positions = new Float64Array(stars.length * 3);
+    stars.forEach((s, i) => s.kind === 'at_distance' && positions.set(s.positionPc, 3 * i));
+    const rebased = rebaseFloatingOrigin(positions, target.positionPc);
+    const eye = sub(observer, target.positionPc);
+    const pxPerRad = 1 / ((wcs.scaleDegPerPx * Math.PI) / 180);
+    let worst = 0;
+    let worstBound = 0;
+    stars.forEach((s, i) => {
+      if (s.kind !== 'at_distance') return;
+      const exact = projectPlacementThroughWcs(s, observer, wcs);
+      const single = projectInFloat32(rebased, i, true, eye, wcs);
+      const off = Math.hypot(single.uPx - exact.uPx, single.vPx - exact.vPx);
+      const bound = 0.05 + floatingOriginBoundRad(s.positionPc, observer, target.positionPc) * pxPerRad;
+      expect(off).toBeLessThan(bound);
+      if (off > worst) {
+        worst = off;
+        worstBound = bound;
+      }
+    });
+    expect(worst).toBeGreaterThan(0.05);
+    expect(worst).toBeLessThan(worstBound);
+  });
+
+  it('bounds a star\'s direction by 2^-23 of its and the camera\'s distances from the reference, over its distance from the camera', () => {
+    expect(floatingOriginBoundRad([0, 0, 10], [0, 0, 0], [0, 0, 400])).toBeCloseTo((2 ** -23 * (390 + 400)) / 10, 18);
+    // At the reference itself the camera's own offset is nothing
+    expect(floatingOriginBoundRad([3, 4, 0], [0, 0, 0], [0, 0, 0])).toBeCloseTo((2 ** -23 * 5) / 5, 18);
+    expect(floatingOriginBoundRad([1, 1, 1], [1, 1, 1], [0, 0, 0])).toBe(Number.POSITIVE_INFINITY);
+    // A star where the camera stands has no direction to bound, even at the reference itself
+    expect(floatingOriginBoundRad([0, 0, 0], [0, 0, 0], [0, 0, 0])).toBe(Number.POSITIVE_INFINITY);
   });
 
   it('without the floating origin (positions from the Sun in float32) a far flight misses that bound', () => {

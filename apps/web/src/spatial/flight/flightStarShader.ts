@@ -4,7 +4,8 @@ import { BLOOM_YIELD_RAMP_PX } from './arrival.js';
 /**
  * The flight layer's shaders (WebGL 2). The vertex shader is `projectPlacementThroughWcs` (packages/camera-rig
  * flight3d.ts) in float32 on positions the CPU rebased in float64 on the camera's reference point (the floating
- * origin; flight3d.test.ts checks this very arithmetic within 0.05 px), followed by the photo's frame on the window.
+ * origin; flight3d.test.ts checks this very arithmetic within 0.05 px plus the floating origin's own float32 bound,
+ * floatingOriginBoundRad), followed by the photo's frame on the window.
  * A star's magnitude is its catalog magnitude seen from Earth moved by the inverse square law to the camera's
  * distance. The look per magnitude (size, opacity, gain, spikes below magnitude 1, the core and halo) is the app's
  * catalog star look, copied from catalogStars/field/starPointMaterial.ts so the flight's stars read as the sky view's.
