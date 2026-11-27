@@ -157,7 +157,7 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     // D35 item 3: on the phone the sheet runs from top 150, its list scrolling inside it
     expect(sheet.style.top).toBe('150px');
     expect((q('[data-testid="craft-picker-list"]') as HTMLElement).style.overflowY).toBe('auto');
-    expect(sheet.textContent).toContain("NASA's own 3D models. Drawn by the app, not measured.");
+    expect(sheet.textContent).toContain("Models from NASA 3D Resources. Drawn by the app, not measured.");
   });
 
   it("carries the readout's Simulated tag at the sheet's top, no caret circle, 10 px above the list (E, UIUX-tagphone-READY.md)", () => {
@@ -216,7 +216,7 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
       '3 stars have no measured distance, so they stay where they appear from Earth.',
       "Milky Way: ESO/S. Brunier's photograph as seen from Earth, with its own stars removed.",
       'Speed: NASA, 17.0 km/s relative to the Sun (August 2024).',
-      "NASA's own 3D models. Drawn by the app, not measured.",
+      "Models from NASA 3D Resources. Drawn by the app, not measured.",
     ]);
     expect((q('[data-testid="flight-readout"]') as HTMLElement).style.visibility).toBe('hidden');
     click(pressed);
@@ -259,7 +259,7 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     const lines = all('[data-testid="details-sheet"] li').map((li) => li.textContent);
     expect(lines).toHaveLength(5);
     expect(lines.some((l) => l?.startsWith('Speed:'))).toBe(false);
-    expect(lines).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
+    expect(lines).not.toContain("Models from NASA 3D Resources. Drawn by the app, not measured.");
   });
 });
 

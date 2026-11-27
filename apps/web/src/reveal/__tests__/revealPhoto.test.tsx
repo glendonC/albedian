@@ -600,10 +600,10 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     const lines = () => [...q('[data-testid="reveal-status"]')!.querySelectorAll('.reveal-status__line')].map((p) => p.textContent);
     // Behind the caret (flight-column-one): opened, the column holds it
     act(() => caret()!.click());
-    expect(lines()).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
+    expect(lines()).not.toContain("Models from NASA 3D Resources. Drawn by the app, not measured.");
     act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
     act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
-    expect(lines().at(-1)).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+    expect(lines().at(-1)).toBe("Models from NASA 3D Resources. Drawn by the app, not measured.");
     // Closed, the craft's line waits behind the caret with the rest
     act(() => caret()!.click());
     expect(lines()).toEqual(['Drawn or computed by the app; not measured in the source recording.']);
@@ -612,7 +612,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
     const yours = [...container.querySelectorAll('[role="option"]')].find((o) => o.textContent?.startsWith('Your view')) as HTMLButtonElement;
     act(() => yours.click());
-    expect(lines()).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
+    expect(lines()).not.toContain("Models from NASA 3D Resources. Drawn by the app, not measured.");
   });
 
   it('offers the craft picker there on the laptop, and the craft\'s real trip under the distances once one flies (D26)', () => {
@@ -893,7 +893,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
       ]);
       act(() => (q('[data-testid="craft-picker"] > button') as HTMLButtonElement).click());
       act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
-      expect(lines().at(-1)).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+      expect(lines().at(-1)).toBe("Models from NASA 3D Resources. Drawn by the app, not measured.");
       // Back to Moment while the panorama has not drawn: the readout leaves, while the status column keeps Simulated
       show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, returning: true });
       expect(q(READOUT)!.classList.contains('is-leaving')).toBe(true);

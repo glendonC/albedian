@@ -241,8 +241,12 @@ export const CRAFT_GROUPS: readonly CraftGroup[] = craftGroups(HANGAR_CRAFTS);
 /** Every row, your view first, in the picker's order. */
 export const CRAFT_CHOICES: readonly CraftChoice[] = [YOUR_VIEW_CHOICE, ...CRAFT_GROUPS.flatMap((g) => g.choices)];
 
-/** The picker's foot line. */
-export const CRAFT_PICKER_FOOT = "NASA's own 3D models. Drawn by the app, not measured.";
+/**
+ * The picker's foot line, true of every craft (UIUX-hangarpick-READY.md, the picker's foot, ruled 03:48 on 27 Nov):
+ * every hangar model comes from the NASA 3D Resources collection, whose makers include DigitalSpace Corporation (Hubble),
+ * so not every model is NASA's own; each maker is named on Credits.
+ */
+export const CRAFT_PICKER_FOOT = 'Models from NASA 3D Resources. Drawn by the app, not measured.';
 
 /**
  * How long the flight took on screen, measured: from the first frame of Go there's flight (either half) to arrival.

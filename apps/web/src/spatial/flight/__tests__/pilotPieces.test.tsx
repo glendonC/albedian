@@ -58,7 +58,7 @@ describe('CraftPicker (D26 item 3, D35)', () => {
     expect(panel.style.padding).toBe('8px');
     const img = rows[1]!.querySelector('img') as HTMLImageElement;
     expect([img.getAttribute('src'), img.style.background, img.style.borderRadius, img.style.objectFit]).toEqual(['/models/hangar/voyager/voyager_picker.webp', 'rgb(0, 0, 0)', '8px', 'contain']);
-    expect([...container.querySelectorAll('[data-testid="craft-picker-panel"] p')].at(-1)!.textContent).toBe("NASA's own 3D models. Drawn by the app, not measured.");
+    expect([...container.querySelectorAll('[data-testid="craft-picker-panel"] p')].at(-1)!.textContent).toBe("Models from NASA 3D Resources. Drawn by the app, not measured.");
     await act(async () => (rows.find((r) => r.getAttribute('data-craft') === 'astronaut-emu') as HTMLButtonElement).click());
     expect(onPick).toHaveBeenLastCalledWith(CRAFTS['astronaut-emu']!);
     // craft-switch-motion-1: the list leaves as a card (section eight), inert from the press, gone when its exit ends
