@@ -46,6 +46,8 @@ export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => {
           {row.state === 'done' ? <LookIcon name="check" /> : row.state === 'failed' ? <LookIcon name="x" /> : <i className="work-step__dot" />}
         </span>
         <span className="work-step__word">{row.word}</span>
+        {/* C19 item 1a: the seconds passed beside a count that has stood still for 10 s */}
+        {row.since !== null && <span className="work-step__since">{row.since}</span>}
         <span className="work-step__value">{row.value}</span>
         {row.fraction !== null && (
           <span className="work-step__bar">
@@ -545,6 +547,7 @@ export const RestorePhoneWait: React.FC<{ job: UploadJob; onCancel: () => Promis
       ) : now ? (
         <div className="work-phone-row">
           <b>{now.word}</b>
+          {now.since !== null && <span className="work-phone-row__since">{now.since}</span>}
           <span className="work-phone-row__v">{now.value}</span>
           {now.fraction !== null && (
             <span className="work-phone-row__bar">

@@ -19,6 +19,14 @@
   transition: color var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
+/* C19 item 1a (UIUX-walkasks-READY.md, DECIDED-BY-LEAD 12:28 on 27 Nov; row-seconds-one): the seconds passed beside a
+   count that has stood still for 10 s word in once, as they first appear; after that only their figures change, once
+   a second, under Reduced motion too */
+.work-step__since,
+.work-phone-row__since {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
 /* A stage's bar follows each report the job sends in 150 ms (boltz.com's width transition); no pulse, no shimmer,
    nothing counted up. Reduced motion: it moves to each report at once. */
 .work-step__bar b {

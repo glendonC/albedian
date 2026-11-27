@@ -139,7 +139,7 @@
 
 .work-step {
   display: grid;
-  grid-template-columns: 24px 1fr auto;
+  grid-template-columns: 24px 1fr auto auto;
   grid-template-rows: 30px auto;
   align-items: center;
   font: 400 15px / 1 var(--look-font-sans);
@@ -177,7 +177,7 @@
 }
 
 .work-step__bar {
-  grid-column: 2 / 4;
+  grid-column: 2 / -1;
   height: 2px;
   margin: 2px 0 8px;
   overflow: hidden;
@@ -189,6 +189,14 @@
   display: block;
   height: 100%;
   background: var(--look-ink);
+}
+
+/* C19 item 1a (UIUX-walkasks-READY.md, DECIDED-BY-LEAD 12:28 on 27 Nov): a count unmoved for 10 s has the seconds
+   passed since its step began beside it, in item 1's type at ink 44 percent, 12 px left of the count in a column of
+   their own, so the count's right edge stays the row's (their words in are in motion.css) */
+.work-step__since {
+  margin-right: 12px;
+  color: rgba(244, 243, 239, 0.44);
 }
 
 /* A failed job (decided 2026-11-12): the stage it stopped at in ink with an x and a grey bar, the job's own sentence
@@ -2341,7 +2349,7 @@
   right: 24px;
   top: 668px;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   row-gap: 12px;
   align-items: baseline;
   font-variant-numeric: tabular-nums;
@@ -2358,8 +2366,15 @@
   letter-spacing: -0.01em;
   color: var(--look-ink-2);
 }
+/* C19 item 1a on the phone's one row: as on the laptop's rows, in the count's own type */
+.work-phone-row__since {
+  margin-right: 12px;
+  font: 400 15px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+  color: rgba(244, 243, 239, 0.44);
+}
 .work-phone-row__bar {
-  grid-column: 1 / 3;
+  grid-column: 1 / -1;
   height: 2px;
   background: var(--look-hair);
   border-radius: 2px;

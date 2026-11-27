@@ -291,9 +291,10 @@ describe("the working screen's rules are the approved pages'", () => {
   });
 
   it('lays a row out as a 24 px mark, the word, and the count at the right, 15 px type with even figures', () => {
+    // C19 item 1a (row-seconds-one): a column of its own before the count's for the seconds beside a still count
     expect(declarationsOf('.work-step')).toEqual({
       display: 'grid',
-      'grid-template-columns': '24px 1fr auto',
+      'grid-template-columns': '24px 1fr auto auto',
       'grid-template-rows': '30px auto',
       'align-items': 'center',
       font: '400 15px / 1 var(--look-font-sans)',
@@ -321,7 +322,7 @@ describe("the working screen's rules are the approved pages'", () => {
 
   it('draws the bar 2 px high under the word and the count, in ink, and grey on a stopped row', () => {
     expect(declarationsOf('.work-step__bar')).toEqual({
-      'grid-column': '2 / 4',
+      'grid-column': '2 / -1',
       height: '2px',
       margin: '2px 0 8px',
       overflow: 'hidden',
@@ -539,6 +540,7 @@ describe('the working screen at phone width (D2)', () => {
   });
 
   it('sets the row and the button as jp-run does', () => {
+    // C19 item 1a (row-seconds-one): the seconds beside a still count take a column before the count's, the bar spans all
     expect(declarationsOf('.work-phone-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', height: '44px', display: 'flex', 'align-items': 'center' });
     expect(declarationsOf('.work-phone-row')).toEqual({
       position: 'absolute',
@@ -546,7 +548,7 @@ describe('the working screen at phone width (D2)', () => {
       right: '24px',
       top: '668px',
       display: 'grid',
-      'grid-template-columns': '1fr auto',
+      'grid-template-columns': '1fr auto auto',
       'row-gap': '12px',
       'align-items': 'baseline',
       'font-variant-numeric': 'tabular-nums',
@@ -554,7 +556,7 @@ describe('the working screen at phone width (D2)', () => {
     expect(declarationsOf('.work-phone-row > b')).toEqual({ font: '300 28px / 1 var(--look-font-sans)', 'letter-spacing': '-0.035em' });
     expect(declarationsOf('.work-phone-row > b span')).toEqual({ color: 'var(--look-ink-3)' });
     expect(declarationsOf('.work-phone-row__v')).toEqual({ font: '400 15px / 1 var(--look-font-sans)', 'letter-spacing': '-0.01em', color: 'var(--look-ink-2)' });
-    expect(declarationsOf('.work-phone-row__bar')).toEqual({ 'grid-column': '1 / 3', height: '2px', background: 'var(--look-hair)', 'border-radius': '2px', overflow: 'hidden' });
+    expect(declarationsOf('.work-phone-row__bar')).toEqual({ 'grid-column': '1 / -1', height: '2px', background: 'var(--look-hair)', 'border-radius': '2px', overflow: 'hidden' });
     expect(declarationsOf('.work-phone-row__bar b')).toEqual({ display: 'block', height: '100%', background: 'var(--look-ink)' });
     expect(declarationsOf('.work-phone-go')).toEqual({
       position: 'absolute',

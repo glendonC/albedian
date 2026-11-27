@@ -137,6 +137,8 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
       ) : now ? (
         <div className="work-phone-row">
           <b>{now.word}</b>
+          {/* C19 item 1a: the seconds passed beside a count that has stood still for 10 s */}
+          {now.since !== null && <span className="work-phone-row__since">{now.since}</span>}
           <span className="work-phone-row__v">{now.value}</span>
           {now.fraction !== null && (
             <span className="work-phone-row__bar">
@@ -232,6 +234,7 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
                 )}
               </span>
               <span className="work-step__word">{row.word}</span>
+              {row.since !== null && <span className="work-step__since">{row.since}</span>}
               <span className="work-step__value">{row.value}</span>
               {row.fraction !== null && (
                 <span className="work-step__bar">
