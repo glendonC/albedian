@@ -821,19 +821,22 @@ export const SpatialObservatoryViewport: React.FC<
           />
           {/* wait-measured-one (UIUX-first-use-wow-READY.md item 3 and M1 to M5): once Measured ends, the brightest hundred
               points of light it measured on the photo as Observed marks, from the job's own route; a failure or Cancel
-              (the stopped screen) takes every one away on frame out with the wait's words */}
-          <MeasuredMarks
-            session={phoneWorking ? slotted : session}
-            jobId={arrival.job?.id}
-            measuredAtUTC={arrival.job?.measuredAtUTC}
-            viewportWidthPx={windowSize.widthPx}
-            viewportHeightPx={windowSize.heightPx}
-            phone={phone}
-            leaving={arrival.failure !== null}
-            onDrawn={(marks) => {
-              waitMarks.current = { sha256: session.sourceAsset?.sha256 ?? '', marks };
-            }}
-          />
+              (the stopped screen) takes every one away on frame out with the wait's words. None while the browser shows
+              the photo in another frame than its receipt, where the reveal draws no mark either (AUDIT-C's verdict) */}
+          {!photoFrameMismatch && (
+            <MeasuredMarks
+              session={phoneWorking ? slotted : session}
+              jobId={arrival.job?.id}
+              measuredAtUTC={arrival.job?.measuredAtUTC}
+              viewportWidthPx={windowSize.widthPx}
+              viewportHeightPx={windowSize.heightPx}
+              phone={phone}
+              leaving={arrival.failure !== null}
+              onDrawn={(marks) => {
+                waitMarks.current = { sha256: session.sourceAsset?.sha256 ?? '', marks };
+              }}
+            />
+          )}
           <WorkingScreen
             phone={phone}
             arrival={arrival}

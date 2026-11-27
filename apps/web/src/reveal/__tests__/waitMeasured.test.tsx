@@ -309,6 +309,28 @@ describe('wait-measured-one: on the working screen', () => {
       vi.useRealTimers();
     }
   });
+
+  // AUDIT-C's reproduction (its verdict on wait-measured-one): the reveal hides its marks while the browser shows the
+  // photo in another frame than its receipt, so the wait draws none there either, and hands none to the reveal
+  it('draws no measured mark while the browser shows the photo in another frame than its receipt, and hands none over', async () => {
+    past({ arrival: arrival() });
+    await settle();
+    expect(q('[data-testid="measured-marks"]')).not.toBeNull();
+    const img = q('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+    // The browser decoded it landscape although the receipt says 3024 x 4032 portrait
+    Object.defineProperty(img, 'naturalWidth', { value: 4032 });
+    Object.defineProperty(img, 'naturalHeight', { value: 3024 });
+    act(() => {
+      img.dispatchEvent(new Event('load'));
+    });
+    await settle();
+    // Counted first: a failed toBeNull on an SVG element trips the printer, not the assertion
+    expect(container.querySelectorAll('.measured-mark')).toHaveLength(0);
+    expect(q('[data-testid="measured-marks"]') === null).toBe(true);
+    render({ arrival: null });
+    expect(container.querySelectorAll('.measured-mark')).toHaveLength(0);
+    expect(q('[data-testid="measured-handover"]') === null).toBe(true);
+  });
 });
 
 describe('wait-measured-one, M1: the brightest hundred, none under a kept place', () => {
