@@ -1012,6 +1012,44 @@ def test_raised_samples_2_px_apart_do_not_hide_each_other(step: tuple[int, int],
         assert len(places) == count, (step, count, codes, places)
 
 
+# The stored file's own code step in 16 bit codes at each depth the gate reads: an 8-bit and a ten-bit clip's Y', a
+# 16-bit still
+STORED_STEPS = {"8 bit": 65535 / 255, "10 bit": 65535 / 1023, "16 bit": 1.0}
+
+
+@pytest.mark.parametrize("depth", sorted(STORED_STEPS))
+def test_the_gate_refuses_a_star_of_the_stated_codes_rounded_to_the_stored_codes_at_every_sub_pixel_centre(depth) -> None:
+    # gate-rounded-sensitivity-one: every other sensitivity test paints an unrounded patch. Rounded to the file's own
+    # codes, the point search alone misses the stated 4 codes at 14 of these 36 centres at 8 bits and at 1 at ten bits;
+    # the raised places find it there, so the gate refuses it at every centre [tested: the gate without its raised
+    # places fails this test so, .lanetools/rounded/mutant_no_raised.txt; RESTORE-CLIP's correction NOTE, 27 Nov]
+    rng = np.random.default_rng(44)
+    size, step = 96, STORED_STEPS[depth]
+    light = 0.02 + 0.0005 * rng.standard_normal((size, size))
+    nothing = stars.StarField((), np.zeros((size, size)), np.zeros((size, size), bool), 0, 0, 0)
+    kept, original = gate.Kept(nothing, np.zeros((size, size))), gate.Original.of(nothing)
+
+    def stored(codes255: np.ndarray) -> np.ndarray:
+        return np.repeat(np.round(codes255 * gate.CODES_PER_8_BIT / step)[..., None] * step, 3, axis=-1)
+
+    sky = light * 255.0
+    expected = stored(sky)
+    honest = gate.run_gate(expected, original=original, kept=kept, expected=expected, original_luminance=light,
+                           variant_luminance=light, code_step=step)
+    assert honest.record["passed"], "the control: the honest frame passes"
+    escaped = []
+    for dx in np.linspace(0.0, 0.5, 6):
+        for dy in np.linspace(0.0, 0.5, 6):
+            x, y = 48.0 + dx, 40.0 + dy
+            painted = stored(sky + gaussian((size, size), x, y, gate.SENSITIVITY_PEAK_CODES))
+            outcome = gate.run_gate(painted, original=original, kept=kept, expected=expected, original_luminance=light,
+                                    variant_luminance=light, code_step=step)
+            if outcome.record["passed"] or not any(math.hypot(p.x_px - x, p.y_px - y) <= stars.MATCH_RADIUS_PX
+                                                    for p in outcome.unconfirmed):
+                escaped.append((round(float(dx), 1), round(float(dy), 1)))
+    assert escaped == [], (depth, len(escaped), escaped)
+
+
 def test_a_dense_pattern_of_raised_samples_is_raised_although_its_rings_hold_little_else() -> None:
     # Every second sample raised over a patch: each ring is mostly the others, so a ring left without them is too
     # sparse to read; such a sample is a raise all the same
