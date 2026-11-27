@@ -98,6 +98,8 @@ class Neighbour:
     offset: int
     shift: Shift
     usable: np.ndarray
+    # Inside the frame once moved and not a codec copy, its blocks held or not: guard 2's samples (`gate.Together`)
+    uncopied: Optional[np.ndarray] = None
 
 
 @dataclass(frozen=True)
@@ -267,11 +269,12 @@ def register_window(lumas: Sequence[np.ndarray], centre: int,
         for i in range(low, high):
             chain = chain + steps[i]
         shift = chain if index > centre else -chain
-        usable = overlap(shape, shift) & held_blocks(details[centre], move(details[index], shift))
+        uncopied = overlap(shape, shift)
         if copies is not None and copies[index] is not None:
-            usable &= move(np.asarray(copies[index], dtype=np.float64), shift) == 0.0
+            uncopied &= move(np.asarray(copies[index], dtype=np.float64), shift) == 0.0
+        usable = uncopied & held_blocks(details[centre], move(details[index], shift))
         if usable.any():
-            neighbours.append(Neighbour(index - centre, shift, usable))
+            neighbours.append(Neighbour(index - centre, shift, usable, uncopied))
     places = [(0.0, 0.0)] + [(n.shift.dy, n.shift.dx) for n in neighbours]
     travel = max(math.dist(p, q) for p in places for q in places)
     return Window(tuple(neighbours), errors, travel)

@@ -1743,6 +1743,56 @@ def test_p_rst_24_a_patch_on_one_sensor_place_while_the_scene_moves_is_no_star()
     assert gate.confirmed([point(*fixed), point(*star_place)], original, expected.copy(), expected) == [False, True]
 
 
+def test_p_rst_24_a_patch_on_one_sensor_place_is_no_star_where_no_neighbours_block_held() -> None:
+    # guard-one-places-one: in the job scene's draws a bright fixed patch kept its 128 px block from holding for every
+    # neighbour (31 of 100 at the faint star's peak 0.005), and there J_k and U_k were both frame k alone, so guard 2
+    # read nothing and the patch was kept as a star. Guard 2 compares the frames wherever they overlap
+    from services.media import temporal
+
+    offsets = panning()
+    fixed, moving = (100.2, 90.6), (60.4, 130.3)
+    draw = lambda k, o: at_sensor(*fixed, 25.0)(k, o) + at_scene(*moving, 25.0)(k, o)
+    frames, window = clip_window(offsets, draw, 5)
+    star_place = (moving[0] - offsets[CENTRE][1], moving[1] - offsets[CENTRE][0])
+    held = np.ones((CLIP_PX, CLIP_PX), dtype=bool)
+    held[70:140, 40:120] = False
+    assert not held[int(fixed[1]), int(fixed[0])] and not held[int(star_place[1]), int(star_place[0])], "the control"
+    window = temporal.Window(tuple(temporal.Neighbour(n.offset, n.shift, n.usable & held) for n in window.neighbours),
+                             window.closure_errors, window.travel_px)
+    assert window.travel_px > gate.SENSOR_TRAVEL_PX
+    frames_together = gate.Together.of(frames, frames, CENTRE, window)
+    found = gate.clip_stars(frames[CENTRE], 255.0, frames_together)
+    assert near(found.field.stars, *star_place), "a star of the scene in that block stays a star"
+    assert not near(found.field.stars, *fixed) and found.fixed >= 1
+
+
+def test_guard_2_leaves_a_codec_copy_out_of_its_means_so_a_star_in_a_block_every_neighbour_repeated_stays_a_star() -> None:
+    from services.media import temporal
+
+    offsets = panning()
+    x, y = 96.3, 95.7
+    frames, window = clip_window(offsets, at_scene(x, y, 25.0), 7)
+    star_place = (x - offsets[CENTRE][1], y - offsets[CENTRE][0])
+    # The codec repeated frame k's block round the star in every neighbour, at the same sensor place
+    block = np.zeros((CLIP_PX, CLIP_PX), dtype=bool)
+    block[int(star_place[1]) - 20:int(star_place[1]) + 20, int(star_place[0]) - 20:int(star_place[0]) + 20] = True
+    frames = [np.where(block, frames[CENTRE], frame) for frame in frames]
+
+    def neighbours(leave_out: bool):
+        kept = []
+        for n in window.neighbours:
+            copied = temporal.move(block.astype(np.float64), n.shift) != 0.0 if leave_out else np.zeros_like(block)
+            uncopied = temporal.overlap(block.shape, n.shift) & ~copied
+            kept.append(temporal.Neighbour(n.offset, n.shift, uncopied, uncopied))
+        return temporal.Window(tuple(kept), window.closure_errors, window.travel_px)
+
+    assert window.travel_px > gate.SENSOR_TRAVEL_PX
+    counted = gate.clip_stars(frames[CENTRE], 255.0, gate.Together.of(frames, frames, CENTRE, neighbours(False)))
+    assert not near(counted.field.stars, *star_place) and counted.fixed >= 1, "the control: counted, the copies refuse it"
+    found = gate.clip_stars(frames[CENTRE], 255.0, gate.Together.of(frames, frames, CENTRE, neighbours(True)))
+    assert near(found.field.stars, *star_place) and found.fixed == 0
+
+
 def test_where_the_scene_moves_less_than_the_guards_distance_the_frames_own_pixels_decide() -> None:
     fixed = (100.2, 90.6)
     offsets = panning((0.3, 0.4))

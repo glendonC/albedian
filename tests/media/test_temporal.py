@@ -321,6 +321,11 @@ def test_a_codec_copy_is_left_out_of_the_neighbours_usable_samples() -> None:
     assert not after.usable[moved].any()
     assert np.array_equal(after.usable[~ndimage.binary_dilation(moved, iterations=2)],
                           before.usable[~ndimage.binary_dilation(moved, iterations=2)])
+    # Guard 2's samples (guard-one-places-one): inside the frame once moved and not a codec copy, its blocks held or not
+    copied = temporal.move(copies[1].astype(np.float64), after.shift) != 0.0
+    assert np.array_equal(after.uncopied, temporal.overlap((SIZE, SIZE), after.shift) & ~copied)
+    assert np.array_equal(before.uncopied, temporal.overlap((SIZE, SIZE), before.shift))
+    assert not (after.usable & ~after.uncopied).any()
 
 
 # ---------------------------------------------------------------------------------------------------------------

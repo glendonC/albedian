@@ -85,8 +85,11 @@ MEDIA_PRODUCER_FILES = (
 # photo's or a clip's note says when a frame's flux was not checked (gate-flux-floor-zero); a record made before 19
 # has neither count, and stays valid and exports; 20, the flux check's
 # sixty empty places spread over the whole frame, its noise at least the aperture's rounding noise of the original's
-# own codes, and a still's flux compared on its original as the job stores it, the lift undone (gate-flux-floor-one)
-MEDIA_PRODUCER = Producer("albedian.restore", 20, MEDIA_PRODUCER_FILES)
+# own codes, and a still's flux compared on its original as the job stores it, the lift undone (gate-flux-floor-one);
+# 21, guard 2 compares the frames together and unmoved over every registered neighbour wherever it overlaps once
+# moved and is not a codec copy, its blocks held or not, so a bright light fixed to the sensor that keeps its own
+# block from holding is no star (guard-one-places-one, its guard 2 commit)
+MEDIA_PRODUCER = Producer("albedian.restore", 21, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a

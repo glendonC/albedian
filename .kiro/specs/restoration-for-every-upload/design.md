@@ -538,6 +538,13 @@ registered neighbours:
     neighbour, once that neighbour is measured with part of its annulus outside the frame.
   - Guard 2 runs at every point the dissolve passes and the gate find, whichever rule confirmed it. A star that it
     or guard 1 refuses gets no footprint.
+  - Guard 2's `J_k` and `U_k` take every registered neighbour wherever it overlaps frame k once moved and is not a
+    codec copy, its blocks held or not (`temporal.Neighbour.uncopied`). A bright light fixed to the sensor can keep
+    its own 128 px block from holding for every neighbour; there both means were frame k alone, guard 2 read
+    nothing and the patch was kept as a star [tested: guard-one-places-one, the job scene's patch kept in 31 of 100
+    draws, each such a block; over the overlap, in none of 400]. `J_k` for confirmation, guard 1 and the flux keeps
+    the held blocks. Its known cost: a bright star of the scene that crosses a faint star's sensor place in a
+    neighbour raises `U_k` there, and the faint star is refused [tested: as above, 1 of 91 faint stars].
   - A star only `J_k` confirms has no footprint. The filter and the first-scale smoothing leave it whole, and its
     flux in the variant is compared with its flux on `J_k`.
   - In a merged frame, every kept region takes back frame k's own original samples before the filter, so the exact

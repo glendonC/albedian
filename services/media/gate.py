@@ -1209,11 +1209,17 @@ RESPONSE_REACH_PX = 1
 @dataclass(frozen=True)
 class Together:
     """A clip frame's original frames together (design section 7), rebuilt from original pixels alone: J_k, the plain
-    mean of frame k and of each registered neighbour moved onto it, and U_k, the same frames unmoved, both of the luma
-    codes the detector reads; J_k of linear luminance, for the flux; the window's travel; and each original luma on
-    frame k's grid with where it gives samples, frame k first."""
+    mean of frame k and of each registered neighbour moved onto it, of the luma codes the detector reads; J_k of
+    linear luminance, for the flux; guard 2's two means, the same frames moved and unmoved (U_k) wherever each
+    overlaps frame k; the window's travel; and each original luma on frame k's grid with where it gives samples,
+    frame k first."""
 
     luma: np.ndarray
+    # Guard 2's J_k and U_k: every registered neighbour wherever it overlaps once moved, its blocks held or not. A
+    # bright light fixed to the sensor can keep its own block from holding for every neighbour, and there the means
+    # of the usable samples are frame k alone on both, so guard 2 read nothing [tested: guard-one-places-one, the
+    # job scene's patch kept in 31 of 100 draws, each such a block; read over the overlap, 70 to 82 sigma_m]
+    sensor_moved: np.ndarray
     unshifted: np.ndarray
     luminance: np.ndarray
     travel_px: float
@@ -1233,7 +1239,11 @@ class Together:
         frames = [own] + [temporal.move(lumas[centre + n.offset], n.shift) for n in window.neighbours]
         usable = [np.ones(own.shape, dtype=bool)] + [np.asarray(n.usable, dtype=bool) for n in window.neighbours]
         originals = [own] + [np.asarray(lumas[centre + n.offset], dtype=np.float64) for n in window.neighbours]
-        return cls(temporal.frames_together(lumas, centre, window), temporal.unshifted_mean(lumas, centre, window),
+        overlapping = temporal.Window(tuple(temporal.Neighbour(
+            n.offset, n.shift, temporal.overlap(own.shape, n.shift) if n.uncopied is None else np.asarray(n.uncopied))
+            for n in window.neighbours), window.closure_errors, window.travel_px)
+        return cls(temporal.frames_together(lumas, centre, window), temporal.frames_together(lumas, centre, overlapping),
+                   temporal.unshifted_mean(lumas, centre, overlapping),
                    temporal.frames_together(luminances, centre, window), float(window.travel_px), tuple(frames),
                    tuple(usable), tuple(originals))
 
@@ -1254,11 +1264,12 @@ class Together:
         return self._cache[key]
 
     def responses(self, tile_index: int, tile: stars.Tile) -> tuple[np.ndarray, np.ndarray, float]:
-        """The detector's matched response (design section 3, step 2) on J_k's and U_k's tile, and sigma_m of J_k's."""
+        """The detector's matched response (design section 3, step 2) on guard 2's J_k's and U_k's tile, and sigma_m of
+        that J_k's."""
         key = ("response", tile_index)
         if key not in self._cache:
             kernel = _build_gaussian_psf_kernel()
-            on_mean = stars.tile_noise(self.luma[tile.y0:tile.y1, tile.x0:tile.x1])
+            on_mean = stars.tile_noise(self.sensor_moved[tile.y0:tile.y1, tile.x0:tile.x1])
             unmoved = stars.tile_noise(self.unshifted[tile.y0:tile.y1, tile.x0:tile.x1])
             self._cache[key] = (ndimage.convolve(on_mean.residual, kernel, mode="nearest"),
                                 ndimage.convolve(unmoved.residual, kernel, mode="nearest"), on_mean.matched)

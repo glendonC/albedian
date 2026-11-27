@@ -22,6 +22,8 @@ from services.media import clip_frames, clip_io, colour, frame_pool, gate, noise
 from services.media import bars as bars_rule
 from test_photo_path import SOURCE_MARKERS, numeric_constants
 from test_temporal import pan, render, star_list
+from guarded_scene import GUARDED_CLEAR_PX, GUARDED_CROWD_PX, GUARDED_DRAWS, GUARDED_FAINT_KEPT, GUARDED_PLACES  # noqa: E402
+from guarded_scene import guarded_frames, guarded_side, near_any  # noqa: E402
 
 OWNER_TAGS = clip_io.ColourTags(range="tv", matrix="bt2020nc", transfer="arib-std-b67", primaries="bt2020", chroma_location="left")
 
@@ -259,6 +261,60 @@ def test_the_lift_is_solved_once_for_the_clip_from_its_measure_frames() -> None:
 def run_all(measured: clip_frames.ClipSettings, frames, workers: int, run_frames: int = 4) -> list[clip_frames.FrameResult]:
     with frame_pool.FramePool(functools.partial(clip_frames.restore_run, measured), workers=workers) as pool:
         return list(pool.map(frame_pool.runs(iter(frames), run_frames=run_frames, window=clip_frames.RUN_WINDOW)))
+
+
+# The job scene of P-RST-14, 23 and 24 (guarded_scene.py) over draws, on the original side and on the middle frame
+# restored in process; test_jobs.py restores a few draws through the job (guard-one-places-one)
+def test_p_rst_14_23_24_over_draws_the_frames_together_keep_the_faint_star_and_neither_guard_lets_the_rest_through() -> None:
+    # A rate over draws, never one seed (the lead's ruling at the 04:47 stamp of 25 Nov): the job test before this
+    # held by its seed, its faint star kept in 2 of 20 other draws and its patch in 5
+    places, kept, cases, alone, refused, set_aside = GUARDED_PLACES, 0, 0, 0, 0, 0
+    for seed in GUARDED_DRAWS:
+        clip, frames, nearest = guarded_frames(seed)
+        side = guarded_side(clip, frames)
+        assert side.together is not None and side.together.guards_the_sensor, seed
+        shown = {name: near_any(side.found.field.stars, p) or near_any(side.found.together.stars, p)
+                 for name, p in places.items()}
+        if min(nearest[name] for name in ("neighbours", "sensor")) <= GUARDED_CLEAR_PX:
+            set_aside += 1
+        else:
+            assert not shown["neighbours"], f"P-RST-14, draw {seed}: what only the neighbours carry is no star"
+            assert not shown["sensor"], f"P-RST-24, draw {seed}: what stays on a sensor place is no star"
+        if nearest["faint"] <= GUARDED_CROWD_PX:
+            continue
+        if near_any(side.own.stars, places["faint"]):
+            alone += 1  # frame k alone confirms it: not a case of P-RST-23
+            continue
+        cases += 1
+        kept += shown["faint"]
+        mean = gate.original_stars(side.together.luma, clip.peak_code())
+        # Found on the frames together and refused: guard 1, meant to refuse when one frame's own noise breaks it
+        refused += near_any(mean.stars, places["faint"]) and not shown["faint"]
+    assert set_aside <= len(GUARDED_DRAWS) // 10, set_aside
+    assert alone <= len(GUARDED_DRAWS) // 10, alone
+    assert cases >= len(GUARDED_DRAWS) * 8 // 10, cases
+    assert kept >= GUARDED_FAINT_KEPT * cases, (kept, cases, refused)
+
+
+def test_p_rst_23_over_draws_a_faint_star_the_frames_together_keep_is_in_the_restored_frame() -> None:
+    # Looked for with the detector, as on the frames together. The gate's own point search counts a star of about 3
+    # codes only where its 8-bit samples keep the shape its test asks, which each draw's noise and rounding decide
+    # [tested: guard-one-places-one, draws 1 to 20: kept in 19, the detector finds it restored in all 19 at SNR 22 to
+    # 99, its peak 3 to 4 codes; the gate's search in 9]
+    place, kept, shown = GUARDED_PLACES["faint"], 0, 0
+    for seed in range(1, 11):
+        clip, frames, nearest = guarded_frames(seed)
+        measured = clip_frames.measure_clip(clip, [frames[i] for i in clip_frames.sample_indices(len(frames))])
+        side = clip_frames.original_side(measured, clip_frames._RunFrames(clip, frames, [True] * 7, True), 3)
+        if nearest["faint"] <= GUARDED_CROWD_PX or not near_any(side.found.together.stars, place):
+            continue
+        # The middle frame restored alone with its window, as the pool restores it in a run of one
+        planes = clip_frames.restore_run(measured, frame_pool.Run(3, 3, 1, tuple(frames)))[0].planes
+        luma = clip_frames.stored_luma(clip.stored(planes))
+        kept += 1
+        shown += near_any(gate.original_stars(luma, clip.peak_code()).stars, place)
+    assert kept >= 8, kept
+    assert shown >= 0.9 * kept, (shown, kept)
 
 
 def test_every_frame_comes_out_once_in_order_and_the_same_whatever_the_pools_size() -> None:
