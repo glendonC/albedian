@@ -27,9 +27,9 @@ def _download(path: str) -> dict:
 
 def test_the_record_holds_the_one_sample_night() -> None:
     record = samples.load_samples()
-    assert [s.id for s in record] == ["night-rp-b-12"]
+    assert [s.id for s in record] == ["night-rp-b-16"]
     night = record[0]
-    assert (night.kind, night.title) == ("sample", "Venus, Moon, Orion")
+    assert (night.kind, night.title) == ("sample", "Starry sky 2")
 
 
 def test_the_photo_is_the_corpus_photo_as_its_own_source_records_it() -> None:

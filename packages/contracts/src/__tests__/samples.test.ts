@@ -13,8 +13,8 @@ const record = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/samples.json'), 
 describe('@albedian/contracts: the sample night', () => {
   it('the tracked record meets the contract: one sample, said to be one', () => {
     const parsed = SampleRecordSchema.parse(record);
-    expect(parsed.samples.map((s) => [s.id, s.kind, s.title])).toEqual([['night-rp-b-12', 'sample', 'Venus, Moon, Orion']]);
-    expect(parsed.samples[0]!.credit).toMatchObject({ author: 'YagnKambariya', licence: 'CC0' });
+    expect(parsed.samples.map((s) => [s.id, s.kind, s.title])).toEqual([['night-rp-b-16', 'sample', 'Starry sky 2']]);
+    expect(parsed.samples[0]!.credit).toMatchObject({ author: 'TBOE PC Ohm', licence: 'CC0' });
   });
 
   it.each([

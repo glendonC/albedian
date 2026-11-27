@@ -2,24 +2,24 @@
  "about": "The sample nights the app opens with no photo of the person's own (first-use-sample-one, DECIDED-BY-LEAD 25 Nov 03:22 and 03:43). Each names a public photo as the corpus photos come (its entry in data/downloads.json, fetched from its own recorded source and nothing else), its credit and licence, and where on this machine the app's own solve of it is kept with its SHA-256 beside it. The solution is never tracked and never cut: the app's own solver makes it at setup or on the first press. Read by services/contracts/samples.py and packages/contracts/src/samples.ts.",
  "samples": [
   {
-   "id": "night-rp-b-12",
+   "id": "night-rp-b-16",
    "kind": "sample",
-   "title": "Venus, Moon, Orion",
+   "title": "Starry sky 2",
    "photo": {
-    "downloadPath": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
-    "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
-    "bytes": 2496548,
+    "downloadPath": ".cache/real-photos/rp-b-16/rp-b-16.jpg",
+    "sha256": "a97af11b3cbd09a0b258f638e797b0cd46d92a5027e31a5a11ef0423811d3b1e",
+    "bytes": 5086516,
     "mimeType": "image/jpeg"
    },
    "credit": {
-    "author": "YagnKambariya",
+    "author": "TBOE PC Ohm",
     "licence": "CC0",
     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg"
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Starry_sky2.jpg"
    },
    "solution": {
-    "path": ".cache/samples/rp-b-12/solution.json",
-    "sha256Path": ".cache/samples/rp-b-12/solution.sha256"
+    "path": ".cache/samples/rp-b-16/solution.json",
+    "sha256Path": ".cache/samples/rp-b-16/solution.sha256"
    }
   }
  ]
