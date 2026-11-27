@@ -1,0 +1,62 @@
+{
+  "id": "var_c80651551b2602fa",
+  "kind": "restoration",
+  "sourceSha256": "36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2",
+  "sourceAssetId": "src_36c340638c0e397f",
+  "graphId": "graph_c80651551b2602fa",
+  "attemptId": "att_65528d6c13d005b0",
+  "sha256": "16e08128ab503919f3a0535e8edc078ffb008260e8251cb521624068107b1b07",
+  "uri": "/api/media/36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2/variants/var_c80651551b2602fa/file",
+  "byteSize": 17821,
+  "mimeType": "video/quicktime",
+  "width": 96,
+  "height": 64,
+  "durationMs": 500.0,
+  "frameCount": 15,
+  "frameTimesSha256": "bc5eb12b691ba2eccf4f4e2cb2d41bd7d580729fe8fc3e33063abd14a0252d91",
+  "audioStreams": [
+    {
+      "index": 1,
+      "codec": "aac",
+      "sampleRateHz": 44100,
+      "channels": 1,
+      "startPtsMs": 0.0,
+      "durationMs": 500.0,
+      "sha256": "605ba3011901369f5df5c0f10229e5c7ee582b2b353c9b2de5ee0611faf4d9cb"
+    }
+  ],
+  "colour": {
+    "model": "ycbcr",
+    "bitDepth": 8,
+    "range": "limited",
+    "matrix": "bt601",
+    "transfer": "bt709",
+    "primaries": "unspecified",
+    "chromaSubsampling": "420",
+    "assumptions": [
+      {
+        "field": "transfer",
+        "assumed": "bt709",
+        "reason": "The clip does not state its transfer, so BT.709 is assumed."
+      },
+      {
+        "field": "primaries",
+        "assumed": "unspecified",
+        "reason": "The file does not state its primaries, so they stay unspecified and are never converted."
+      },
+      {
+        "field": "matrix",
+        "assumed": "bt601",
+        "reason": "The file does not state its matrix, and a frame under 720 lines or a JPEG or HEIC still is taken as BT.601."
+      },
+      {
+        "field": "range",
+        "assumed": "limited",
+        "reason": "The file does not state its range, and Y'CbCr video is taken as limited range."
+      }
+    ],
+    "chromaSiting": "left"
+  },
+  "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+  "createdAtUTC": "2026-11-27T06:13:06.257Z"
+}

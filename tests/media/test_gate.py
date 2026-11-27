@@ -1434,6 +1434,55 @@ def test_the_flux_checks_one_mask_measures_each_star_as_the_star_alone_is_measur
     assert measured == 3 and worst == pytest.approx(max(changes), rel=1e-12)
     # Every star is handed the one mask of every occupied sample, a kept edge's included
     assert handed and all(np.array_equal(mask, occupied > 0) for mask in handed)
+
+
+def flat_sky_scene() -> tuple:
+    """One star on a sky of one light everywhere else: every empty sum the same."""
+    light = 0.003 + gaussian((256, 256), 100.0, 100.0, 0.3)
+    star = stars.Star(100.0, 100.0, 80.0, 5)
+    footprint = stars.footprint_map((256, 256), [star])
+    field = stars.StarField((star,), footprint, np.zeros((256, 256), bool), 1, 1, 0)
+    expected = np.repeat(np.round(light * 65535)[..., None], 3, axis=-1)
+    return light, field, gate.Kept(field, footprint), gate.Original.of(field), expected
+
+
+def test_the_record_counts_the_stars_it_could_not_measure_and_a_frame_whose_flux_it_did_not_check() -> None:
+    # Decided by the lead at the 22:24 and 01:34 stamps: a gate never passes a check it did not run. Its record counts
+    # the stars it measured and those it could not, and a frame where none was measured is a frame whose flux was not
+    # checked; the verdict stays the points' and the measured stars'
+    rng = np.random.default_rng(73)
+    light = 0.02 + 0.0005 * rng.standard_normal((256, 256)) + gaussian((256, 256), 100.0, 100.0, 0.3)
+    placed = (stars.Star(100.0, 100.0, 80.0, 5), stars.Star(6.0, 200.0, 20.0, 2), stars.Star(200.0, 60.0, 20.0, 2))
+    footprint = stars.footprint_map((256, 256), list(placed))
+    clipped = np.zeros((256, 256), bool)
+    clipped[60:64, 206:209] = True  # inside the third star's annulus
+    field = stars.StarField(placed, footprint, clipped, 3, 3, 0)
+    kept = gate.Kept(field, footprint)
+    expected = np.repeat(np.round(light * 65535)[..., None], 3, axis=-1)
+    stored = gate.kept_samples(expected, expected, kept.weight).astype(np.uint16)
+    args = dict(original=gate.Original.of(field), kept=kept, expected=expected, original_luminance=light,
+                variant_luminance=light)
+    checked = gate.run_gate(stored, **args)
+    assert checked.record["starsMeasured"] == 1 and checked.record["starsNotMeasured"] == 2
+    assert checked.record["framesFluxNotChecked"] == 0 and checked.record["passed"]
+    contracts.IntegrityGateResult.model_validate(checked.record)
+    # The frames together's stars are counted alike: one at the border is not measured
+    together = stars.StarField((stars.Star(250.0, 128.0, 20.0, 2),), np.zeros((256, 256)), clipped, 1, 1, 0)
+    with_together = gate.run_gate(stored, **args, together=together, together_luminance=light)
+    assert (with_together.record["starsMeasured"], with_together.record["starsNotMeasured"]) == (1, 3)
+    # A sky of one light and no floor: no star measured, the frame's flux not checked, and the points still pass it
+    flat, flat_field, flat_kept, flat_original, flat_expected = flat_sky_scene()
+    flat_stored = gate.kept_samples(flat_expected, flat_expected, flat_kept.weight).astype(np.uint16)
+    unchecked = gate.run_gate(flat_stored, original=flat_original, kept=flat_kept, expected=flat_expected,
+                              original_luminance=flat, variant_luminance=flat)
+    assert (unchecked.record["starsMeasured"], unchecked.record["starsNotMeasured"]) == (0, 1)
+    assert unchecked.record["framesFluxNotChecked"] == 1 and unchecked.record["passed"]
+    contracts.IntegrityGateResult.model_validate(unchecked.record)
+    # A clip's record adds them up over its frames
+    record = gate.clip_record([checked, unchecked, with_together])
+    contracts.IntegrityGateResult.model_validate(record)
+    assert record["starsNotMeasured"] == 2 + 1 + 3 and record["framesFluxNotChecked"] == 1 and record["passed"]
+    assert gate.clip_record([unchecked, unchecked])["framesFluxNotChecked"] == 2
 # ---------------------------------------------------------------------------------------------------------------
 # A clip frame's points confirmed on its original frames together, with the two guards (restore-7; design
 # section 7; REQ-RST-6.10, 6.11; P-RST-14, 23 and 24 on arrays: the job's own run on stored clips is in test_jobs.py)
@@ -1609,6 +1658,8 @@ def test_a_clips_gate_record_adds_its_frames_up_and_the_contract_takes_it() -> N
     assert record["variantPointCount"] == 2 * honest.record["variantPointCount"] + refused.record["variantPointCount"]
     assert record["unconfirmedPointCount"] == refused.record["unconfirmedPointCount"] and not record["passed"]
     assert record["starsMeasured"] == 2 * honest.record["starsMeasured"] + refused.record["starsMeasured"]
+    assert record["starsNotMeasured"] == 2 * honest.record["starsNotMeasured"] + refused.record["starsNotMeasured"]
+    assert record["framesFluxNotChecked"] == 2 * honest.record["framesFluxNotChecked"] + refused.record["framesFluxNotChecked"]
 
 
 def test_a_clip_whose_one_fault_is_a_frames_star_flux_is_refused_by_its_record() -> None:

@@ -6,10 +6,10 @@
    "services/media/clip_io.py",
    "services/media/variants.py"
   ],
-  "digest": "de9e10b7344ec6ba34a669e9ac92c7bda6c32c6f21811f4db93eebdec8d061b6"
+  "digest": "6cd214001820b659d51692339eebaef074cec12cf28167497c4bd691358dab13"
  },
  "albedian.restore": {
-  "revision": 18,
+  "revision": 19,
   "files": [
    "services/media/jobs.py",
    "services/media/photo.py",
@@ -31,7 +31,7 @@
    "services/media/frame_pool.py",
    "services/media/temporal.py"
   ],
-  "digest": "2c1265949aeb80a2c307855b511218ee390a19d6b8a03496a4666c814b3bff5a"
+  "digest": "442363318c01a54e4caf685a36ff501f65985605d184689362869d6a15b74f6b"
  },
  "albedian.solve_chain": {
   "revision": 34,

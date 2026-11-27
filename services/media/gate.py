@@ -1119,16 +1119,22 @@ def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np
     unconfirmed_points = [p for p, good in zip(points, ok) if not good] + changed
     points = points + changed
     changes, ratios = flux_changes(kept.field, original_luminance, variant_luminance, kept.weight)
+    considered = len(kept.field.stars)
     if together is not None and together.stars:
         more_changes, more_ratios = flux_changes(together, together_luminance, variant_luminance, kept.weight)
         changes, ratios = changes + more_changes, ratios + more_ratios
+        considered += len(together.stars)
     measured, outside, worst, median = _flux_summary(changes, ratios)
     record = {
         "statistic": STATISTIC, "variantThresholdSnr": VARIANT_THRESHOLD_SNR,
         "confirmThresholdSnr": stars.CONFIRM_THRESHOLD_SNR, "tilePx": stars.TILE_PX, "matchRadiusPx": stars.MATCH_RADIUS_PX,
         "framesChecked": 1, "variantPointCount": len(points), "unconfirmedPointCount": len(unconfirmed_points),
         "framesWithUnconfirmed": 1 if unconfirmed_points else 0, "clippedPointsLeftOut": left_out,
-        "starsMeasured": measured, "starsOutsideFluxTolerance": outside, "fluxToleranceSigma": FLUX_TOLERANCE_SIGMA,
+        "starsMeasured": measured, "starsNotMeasured": considered - measured, "starsOutsideFluxTolerance": outside,
+        "fluxToleranceSigma": FLUX_TOLERANCE_SIGMA,
+        # A gate never passes a check it did not run: a frame where no star was measured says so (decided by the lead
+        # at the 22:24 and 01:34 stamps, gate-flux-floor-one); its verdict stays the points' and the measured stars'
+        "framesFluxNotChecked": 0 if measured else 1,
         "passed": not unconfirmed_points and outside == 0,
     }
     if measured:
@@ -1329,7 +1335,9 @@ def clip_record(outcomes: Sequence[GateOutcome]) -> dict:
         "framesChecked": len(outcomes), "variantPointCount": sum(o.record["variantPointCount"] for o in outcomes),
         "unconfirmedPointCount": unconfirmed, "framesWithUnconfirmed": sum(o.record["framesWithUnconfirmed"] for o in outcomes),
         "clippedPointsLeftOut": sum(o.record["clippedPointsLeftOut"] for o in outcomes), "starsMeasured": measured,
-        "starsOutsideFluxTolerance": outside, "fluxToleranceSigma": FLUX_TOLERANCE_SIGMA,
+        "starsNotMeasured": sum(o.record["starsNotMeasured"] for o in outcomes), "starsOutsideFluxTolerance": outside,
+        "fluxToleranceSigma": FLUX_TOLERANCE_SIGMA,
+        "framesFluxNotChecked": sum(o.record["framesFluxNotChecked"] for o in outcomes),
         "passed": unconfirmed == 0 and outside == 0,
     })
     if measured:

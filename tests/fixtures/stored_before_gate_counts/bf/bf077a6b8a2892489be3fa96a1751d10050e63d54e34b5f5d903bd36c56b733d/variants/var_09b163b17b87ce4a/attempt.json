@@ -1,0 +1,142 @@
+{
+  "id": "att_02de3129dcd01cf1",
+  "sourceSha256": "bf077a6b8a2892489be3fa96a1751d10050e63d54e34b5f5d903bd36c56b733d",
+  "graphId": "graph_09b163b17b87ce4a",
+  "jobId": "job_bf077a6b8a2892482a02d7338c593ff0",
+  "status": "ready",
+  "startedAtUTC": "2026-11-27T06:12:50.694Z",
+  "finishedAtUTC": "2026-11-27T06:12:51.192Z",
+  "elapsedMs": 499,
+  "cpuMs": 328,
+  "variantId": "var_09b163b17b87ce4a",
+  "measured": {
+    "colour": {
+      "model": "rgb",
+      "bitDepth": 16,
+      "range": "full",
+      "matrix": "identity",
+      "transfer": "srgb",
+      "primaries": "unspecified",
+      "chromaSubsampling": "444",
+      "assumptions": [
+        {
+          "field": "transfer",
+          "assumed": "srgb",
+          "reason": "The file has no ICC profile and no EXIF ColorSpace, so sRGB is assumed."
+        },
+        {
+          "field": "primaries",
+          "assumed": "unspecified",
+          "reason": "The file does not state its primaries, so they stay unspecified and are never converted."
+        }
+      ]
+    },
+    "stars": {
+      "found": 12,
+      "confirmed": 12
+    },
+    "notes": [],
+    "noise": {
+      "intensities": [
+        0.003814654138334369,
+        0.003877528220926413,
+        0.003907155125507251,
+        0.003933052903997723,
+        0.0039587499041446,
+        0.003983073548762428,
+        0.004004768068911592,
+        0.004031433769472399,
+        0.004053461653367457,
+        0.004079762147051791,
+        0.004115030203280466,
+        0.004201576520932349
+      ],
+      "sigma": {
+        "r": [
+          0.001314686144504703,
+          0.001314686144504703,
+          0.001314686144504703,
+          0.001314686144504703,
+          0.001314686144504703,
+          0.001314686144504703,
+          0.001314686144504703,
+          0.0013369299080509527,
+          0.0013369299080509527,
+          0.0013427397005299979,
+          0.0013575575740944917,
+          0.0013575575740944917
+        ],
+        "g": [
+          0.001071992594854321,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282,
+          0.0010842684225417282
+        ],
+        "b": [
+          0.0015762124013692033,
+          0.0015762124013692033,
+          0.001584195982545476,
+          0.001584195982545476,
+          0.001584195982545476,
+          0.001584195982545476,
+          0.001584195982545476,
+          0.001584195982545476,
+          0.001604262678826362,
+          0.001604262678826362,
+          0.001606802485750875,
+          0.001606802485750875
+        ]
+      },
+      "blockCounts": [
+        29,
+        28,
+        28,
+        28,
+        28,
+        28,
+        28,
+        28,
+        28,
+        28,
+        28,
+        28
+      ]
+    },
+    "chroma": {
+      "heldSamples": 830,
+      "clampedSamples": 8
+    },
+    "fineNoiseLeft": 0.03743190725107768,
+    "dissolvedPerPass": [],
+    "lift": {
+      "gainAtBlack": 6.016394904027115,
+      "decidedBy": "target"
+    }
+  },
+  "gate": {
+    "statistic": "detector_local_background_removed",
+    "variantThresholdSnr": 5.0,
+    "confirmThresholdSnr": 4.75,
+    "tilePx": 256,
+    "matchRadiusPx": 2.5,
+    "framesChecked": 1,
+    "variantPointCount": 0,
+    "unconfirmedPointCount": 0,
+    "framesWithUnconfirmed": 0,
+    "clippedPointsLeftOut": 0,
+    "starsMeasured": 12,
+    "starsOutsideFluxTolerance": 0,
+    "fluxToleranceSigma": 3.0,
+    "passed": true,
+    "worstFluxChangeSigma": 0.00044344651154583885,
+    "medianFluxRatio": 1.000002119667109
+  }
+}

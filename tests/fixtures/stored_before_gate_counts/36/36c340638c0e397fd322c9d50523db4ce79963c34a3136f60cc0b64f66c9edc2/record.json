@@ -1,0 +1,31 @@
+{
+  "sourceAsset": {
+    "id": "src_36c340638c0e397f",
+    "title": "Upload 36c340638c0e",
+    "mediaKind": "video",
+    "sha256": "36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2",
+    "uri": "/api/ingest/36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2/original",
+    "byteSize": 22020,
+    "mimeType": "video/quicktime",
+    "width": 96,
+    "height": 64,
+    "durationMs": 500.0,
+    "fpsNumerator": 30,
+    "fpsDenominator": 1,
+    "videoCodec": "h264",
+    "audioStreams": [
+      {
+        "index": 1,
+        "codec": "aac",
+        "sampleRateHz": 44100,
+        "channels": 1,
+        "startPtsMs": 0.0,
+        "durationMs": 500.0,
+        "sha256": "605ba3011901369f5df5c0f10229e5c7ee582b2b353c9b2de5ee0611faf4d9cb"
+      }
+    ],
+    "privacyClass": "private",
+    "immutable": true
+  },
+  "hints": {}
+}

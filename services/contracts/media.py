@@ -132,6 +132,11 @@ EXPOSURE_EV_MAX = 6
 # [proposed: the public clip's copy at CRF 18 had its lowest frame at 49.3 dB, 24 Nov; restore-7's decision asks a
 # smaller viewing copy for a gate of its own]
 PLAYBACK_COPY_MIN_PSNR_DB = 45
+# The pipeline version from which a restoration's gate counts the stars it could not measure and the frames whose
+# flux it did not check (restore revision 19, gate-flux-floor-zero). A record made before has neither count and stays
+# valid as it was written, so a restoration a person already has still exports [decided: AUDIT-B's verdict
+# gate-flux-floor-zero and the lead's answer at the 23:14 stamp of 2026-11-26]
+GATE_COUNTS_SINCE = "1.19.0"
 
 MEDIA_ENUMS = {
     "variantKinds": list(VARIANT_KINDS),
@@ -334,7 +339,12 @@ NOTES = (
     # A restored clip with no playback copy (playback-job-one version three, DECIDED-BY-LEAD 02:22 on 25 Nov): none passed
     # its gate in the stored file's own format, or the copy could not be made; the restoration stands with its restored file
     "No playback copy could be made within its gate, so this restoration has none.",
+    # A gate that measured no star's light on a photo, and on some or all of a clip's frames (UIUX's words, read by the
+    # lead at the 02:51 stamp of 2026-11-25, gate-flux-floor-one): a gate never passes a check it did not run
+    "No star could be measured, so the gate did not check how bright the stars stayed.",
+    "On frames where no star could be measured, the gate did not check how bright the stars stayed.",
 )
+NOTE_FLUX_NOT_CHECKED_PHOTO, NOTE_FLUX_NOT_CHECKED_CLIP = NOTES[9], NOTES[10]
 # Why a colour field was assumed: one sentence per field and assumed value (design section 1)
 ASSUMPTION_REASONS = (
     {"field": "range", "assumed": "limited", "reason": "The file does not state its range, and Y'CbCr video is taken as limited range."},
@@ -474,6 +484,8 @@ M_GATE_FRAME_POINTS = "each frame counted holds at least one unconfirmed point"
 M_GATE_STARS = "stars outside the tolerance are stars measured"
 M_GATE_FLUX_GIVEN = "the flux change is given exactly when a star was measured"
 M_GATE_WORST = "a star is outside the tolerance exactly when the worst change exceeds it"
+M_GATE_FLUX_FRAMES = "frames whose flux was not checked are frames checked"
+M_GATE_FLUX_NOT_CHECKED = "every frame's flux is unchecked exactly when no star was measured"
 M_STARS_CONFIRMED = "confirmed stars are stars found"
 M_NO_LIFT = "no lift is a gain of one"
 M_CLIP_NEIGHBOURS = "frames with neighbours are frames of the clip"
@@ -488,6 +500,10 @@ M_GATE_REJECTION = "a rejection by the gate carries the gate that refused"
 M_REJECTION_NAMED = "the rejection names what the gate found"
 M_NO_GATE_BEFORE = "a rejection made before or without the gate carries no gate result"
 M_GATE_STARS_FOUND = "a gate measures no more stars than were found"
+M_GATE_STARS_CONFIRMED = "a gate's stars, measured and not, are the confirmed stars"
+M_FLUX_NOTE = "a frame whose flux was not checked is said by its kind's note, and only then"
+M_GATE_COUNTS_TOGETHER = "a gate counts the stars it could not measure exactly when it counts the frames it did not check"
+M_MANIFEST_GATE_COUNTS = "a restoration made since its gate counted what it could not check carries both counts"
 M_ATTEMPT_TIMES = "an attempt finishes after it starts"
 M_DISCLOSURE = "the disclosure is the fixed sentence of its kind"
 M_SOURCE_ASSET = "the asset id is the source's own"
@@ -520,9 +536,11 @@ REFINEMENT_MESSAGES = (
     M_FIRST_DECODE, M_DISPLAY_COPY_STEPS, M_CONVERT_DISPLAY_ONLY, M_PIPELINE_ORDER, M_LIFT_AND_ENCODE, M_RGB, M_YCBCR, M_SITING, M_BIT_DEPTH,
     M_PROFILE, M_ASSUMED_ONCE, M_ASSUMED_VALUE, M_ASSUMPTION_REASON, M_NOISE_COLUMNS, M_NOISE_INCREASING,
     M_GATE_PASSED, M_GATE_POINTS, M_GATE_FRAMES, M_GATE_ANY_FRAME, M_GATE_FRAME_POINTS, M_GATE_STARS,
-    M_GATE_FLUX_GIVEN, M_GATE_WORST, M_STARS_CONFIRMED, M_NO_LIFT, M_CLIP_NEIGHBOURS, M_FRAMES_TOGETHER, M_NOTE,
+    M_GATE_FLUX_GIVEN, M_GATE_WORST, M_GATE_FLUX_FRAMES, M_GATE_FLUX_NOT_CHECKED, M_STARS_CONFIRMED, M_NO_LIFT,
+    M_CLIP_NEIGHBOURS, M_FRAMES_TOGETHER, M_NOTE,
     M_MEASURED_NOISE, M_CHROMA_NOISE, M_FAILURE_SENTENCE, *(_attempt_fit(s) for s in ATTEMPT_STATUSES), M_READY_PASSED,
-    M_REFUSED_IS_REJECTED, M_GATE_REJECTION, M_REJECTION_NAMED, M_NO_GATE_BEFORE, M_GATE_STARS_FOUND,
+    M_REFUSED_IS_REJECTED, M_GATE_REJECTION, M_REJECTION_NAMED, M_NO_GATE_BEFORE, M_GATE_STARS_FOUND, M_GATE_STARS_CONFIRMED,
+    M_FLUX_NOTE, M_GATE_COUNTS_TOGETHER, M_MANIFEST_GATE_COUNTS,
     M_ATTEMPT_TIMES, M_DISCLOSURE, M_SOURCE_ASSET, M_STILL, M_CLIP_TIMES, M_DISPLAY_COPY_STILL, M_VARIANT_URI,
     M_PLAYBACK_CLIP, M_PLAYBACK_URI, M_PLAYBACK_GATE, M_PLAYBACK_DEPTH,
     M_VARIANT_COLOUR, M_MANIFEST_SOURCE, M_MANIFEST_IDS, M_MANIFEST_READY, M_MANIFEST_DISCLOSURE, M_MANIFEST_GATE,
@@ -561,6 +579,11 @@ def _from_templates(templates: Any, message: str) -> Any:
         return text
 
     return Annotated[StrictStr, AfterValidator(check)]
+
+
+def _version(text: str) -> tuple[int, ...]:
+    """A major.minor.patch version as numbers, so 1.9.0 comes before 1.17.0 and 10.0.0 after."""
+    return tuple(int(part) for part in text.split("."))
 
 
 def _instant(text: str) -> datetime:
@@ -843,8 +866,15 @@ class IntegrityGateResult(_Record):
     frames_with_unconfirmed: Count
     clipped_points_left_out: Count
     stars_measured: Count
+    # The confirmed stars the flux check could not measure: an aperture or annulus at the border or on a clipped region,
+    # an empty-aperture noise that is not a positive number, or no light on the original [decided by the lead at the
+    # 22:24 and 01:34 stamps, gate-flux-floor-one: a gate never passes a check it did not run]. Absent, with the next,
+    # from a gate recorded before them (GATE_COUNTS_SINCE)
+    stars_not_measured: Optional[Count] = None
     stars_outside_flux_tolerance: Count
     flux_tolerance_sigma: PositiveNumber
+    # The frames where no star's flux was measured: their flux was not checked [decided as above]
+    frames_flux_not_checked: Optional[Count] = None
     # Absent when no star was measured
     worst_flux_change_sigma: Optional[NonNegative] = None
     # Any finite number: a star that lost all its light has a ratio of 0 or below, and the gate still counts it
@@ -867,6 +897,13 @@ class IntegrityGateResult(_Record):
             failures.append(M_GATE_FRAME_POINTS)
         if outside > self.stars_measured:
             failures.append(M_GATE_STARS)
+        unchecked = self.frames_flux_not_checked
+        if (self.stars_not_measured is None) != (unchecked is None):
+            failures.append(M_GATE_COUNTS_TOGETHER)
+        if unchecked is not None and unchecked > self.frames_checked:
+            failures.append(M_GATE_FLUX_FRAMES)
+        if unchecked is not None and (self.stars_measured == 0) != (unchecked == self.frames_checked):
+            failures.append(M_GATE_FLUX_NOT_CHECKED)
         measured = self.stars_measured > 0
         if (self.worst_flux_change_sigma is not None) != measured or (self.median_flux_ratio is not None) != measured:
             failures.append(M_GATE_FLUX_GIVEN)
@@ -1003,6 +1040,17 @@ class ProcessingAttempt(_Record):
         stars = self.measured.stars if self.measured is not None else None
         if gate is not None and stars is not None and gate.stars_measured > stars.found:
             failures.append(M_GATE_STARS_FOUND)
+        not_measured = gate.stars_not_measured if gate is not None else None
+        if not_measured is not None and stars is not None and gate.stars_measured + not_measured != stars.confirmed:
+            failures.append(M_GATE_STARS_CONFIRMED)
+        if self.measured is not None:
+            # A gate recorded before the counts wrote neither note
+            unchecked = gate is not None and bool(gate.frames_flux_not_checked)
+            clip = self.measured.clip is not None
+            if (NOTE_FLUX_NOT_CHECKED_PHOTO in self.measured.notes) != (unchecked and not clip) or (
+                NOTE_FLUX_NOT_CHECKED_CLIP in self.measured.notes
+            ) != (unchecked and clip):
+                failures.append(M_FLUX_NOTE)
         if _instant(self.finished_at_utc) < _instant(self.started_at_utc):
             failures.append(M_ATTEMPT_TIMES)
         _refuse(failures)
@@ -1120,6 +1168,10 @@ class ExportManifest(_Record):
             failures.append(M_CONVERTED_DISCLOSURE)
         if (attempt.gate is not None) != (graph.kind == "restoration"):
             failures.append(M_MANIFEST_GATE)
+        # A restoration made at the counts' version or later has them; one made before has neither and stays valid
+        if (attempt.gate is not None and attempt.gate.frames_flux_not_checked is None
+                and _version(graph.pipeline_version) >= _version(GATE_COUNTS_SINCE)):
+            failures.append(M_MANIFEST_GATE_COUNTS)
         measured = attempt.measured
         if graph.kind == "restoration" and measured is not None and (measured.noise is None) == (measured.noise_not_measured is None):
             failures.append(M_MANIFEST_NOISE)
@@ -1313,6 +1365,8 @@ def build_media_samples() -> dict[str, Any]:
                           "pipelineVersion": "1.0.0", "request": requests[1],
                           "steps": [_step("decode", _parameter("transfer", "icc_parametric", "measured", "Read from the file's ICC profile.")),
                                     find_stars, measure_noise, spatial, chroma_step, dissolve, lift_still, encode_png16]}
+    # A still restored at revision 16, before the two counts
+    graph_before = {**graph_still, "id": _id("graph", "still before the counts"), "pipelineVersion": "1.16.0"}
 
     colour_heic = {"model": "ycbcr", "bitDepth": 8, "range": "full", "matrix": "bt601", "transfer": "srgb",
                    "primaries": "p3_d65", "chromaSubsampling": "420", "chromaSiting": "left",
@@ -1336,21 +1390,28 @@ def build_media_samples() -> dict[str, Any]:
     gate_passed = {"statistic": "detector_local_background_removed", "variantThresholdSnr": 6, "confirmThresholdSnr": 4.75,
                    "tilePx": 256, "matchRadiusPx": 1.5, "framesChecked": 1, "variantPointCount": 37,
                    "unconfirmedPointCount": 0, "framesWithUnconfirmed": 0, "clippedPointsLeftOut": 2, "starsMeasured": 37,
-                   "starsOutsideFluxTolerance": 0, "fluxToleranceSigma": 3, "worstFluxChangeSigma": 1.8,
-                   "medianFluxRatio": 0.99, "passed": True}
+                   "starsNotMeasured": 0, "starsOutsideFluxTolerance": 0, "fluxToleranceSigma": 3,
+                   "framesFluxNotChecked": 0, "worstFluxChangeSigma": 1.8, "medianFluxRatio": 0.99, "passed": True}
     gate_unconfirmed = {**gate_passed, "variantPointCount": 38, "unconfirmedPointCount": 1, "framesWithUnconfirmed": 1,
                         "passed": False}
     gate_flux = {**gate_passed, "starsOutsideFluxTolerance": 2, "worstFluxChangeSigma": 5.1, "passed": False}
     gate_no_stars = {k: v for k, v in gate_passed.items() if k not in ("worstFluxChangeSigma", "medianFluxRatio")}
-    gate_no_stars.update(variantPointCount=0, starsMeasured=0, clippedPointsLeftOut=0)
+    gate_no_stars.update(variantPointCount=0, starsMeasured=0, clippedPointsLeftOut=0, framesFluxNotChecked=1)
+    # Of the clip's 1200 confirmed stars 300 could not be measured; each of its 360 frames measured at least one
     gate_clip = {**gate_passed, "statistic": "detector", "framesChecked": 360, "variantPointCount": 1200,
-                 "clippedPointsLeftOut": 31, "starsMeasured": 900, "worstFluxChangeSigma": 2.2, "medianFluxRatio": 1.01}
+                 "clippedPointsLeftOut": 31, "starsMeasured": 900, "starsNotMeasured": 300, "framesFluxNotChecked": 0,
+                 "worstFluxChangeSigma": 2.2, "medianFluxRatio": 1.01}
     # A JSON number written 1.0 is the integer 1 on both sides, and minus zero is zero
     gate_written_as_floats = {**gate_passed, "tilePx": 256.0, "framesChecked": 1.0, "variantPointCount": 37.0,
                               "clippedPointsLeftOut": -0.0, "worstFluxChangeSigma": 1.8, "variantThresholdSnr": 6.0}
-    gate_black = {**gate_no_stars, "statistic": "detector", "framesChecked": 180}
+    gate_black = {**gate_no_stars, "statistic": "detector", "framesChecked": 180, "framesFluxNotChecked": 180}
     # A star whose change reaches the tolerance is within it
     gate_at_tolerance = {**gate_passed, "worstFluxChangeSigma": 3}
+    # Gates recorded before the two counts (restore revisions up to 16): valid as written, one that measured 30 of its
+    # 37 confirmed stars and one that measured none (AUDIT-B's verdict gate-flux-floor-zero)
+    before_counts = ("starsNotMeasured", "framesFluxNotChecked")
+    gate_before = {**{k: v for k, v in gate_passed.items() if k not in before_counts}, "starsMeasured": 30}
+    gate_before_no_stars = {k: v for k, v in gate_no_stars.items() if k not in before_counts}
 
     measured_still = {"colour": colour_jpeg, "noise": noise_still, "fineNoiseLeft": 0.42, "stars": {"found": 40, "confirmed": 37},
                       "dissolvedPerPass": [3, 0], "lift": {"gainAtBlack": 4.2, "decidedBy": "noise_bound"},
@@ -1366,7 +1427,7 @@ def build_media_samples() -> dict[str, Any]:
                       "stars": {"found": 0, "confirmed": 0}, "lift": {"gainAtBlack": 1.6, "decidedBy": "quantisation_bound"},
                       "clip": {**clip_counts, "frameCount": 180, "framesWithNeighbours": 0, "exactRepeatShare": 0.96,
                                "pointsConfirmedOnFramesTogether": 0, "pointsFixedToSensor": 0},
-                      "notes": [NOTE_BLACK]}
+                      "notes": [NOTE_BLACK, NOTE_FLUX_NOT_CHECKED_CLIP]}
     # A clip whose darkest quarter is a flat band above black: no noise table, the lift held by the quantisation bound
     measured_flat = {**measured_black, "noiseNotMeasured": "dark_level_flat", "notes": [NOTES[0]]}
 
@@ -1402,6 +1463,17 @@ def build_media_samples() -> dict[str, Any]:
         # A gate that passed, then a failure while linking the variant into place
         attempt("link failed", graph_still, "failed", measured=measured_still, gate=gate_passed,
                 failureReason="The restoration stopped on an internal error."),
+        # A photo whose 37 confirmed stars all lie where the flux check cannot measure them: its flux was not checked,
+        # and its note says so
+        attempt("flux not checked", graph_still, "ready", variantId=_id("var", "flux not checked"),
+                measured={**measured_still, "notes": [NOTE_DISSOLVED, NOTE_FLUX_NOT_CHECKED_PHOTO]},
+                gate={**gate_no_stars, "starsNotMeasured": 37}),
+        # Restored before the two counts, under a pipeline version before theirs
+        attempt("before the counts", graph_before, "ready", variantId=_id("var", "before the counts"),
+                measured=measured_still, gate=gate_before),
+        attempt("before the counts, no star measured", graph_before, "ready",
+                variantId=_id("var", "before the counts, no star measured"), measured=measured_still,
+                gate=gate_before_no_stars),
     ]
 
     def variant(variant_id: str, kind: str, graph: dict, attempt_record: dict, **fields: Any) -> dict[str, Any]:
@@ -1438,11 +1510,26 @@ def build_media_samples() -> dict[str, Any]:
                 "sourceSha256": graph["sourceSha256"], "variant": variant_record, "graph": graph, "attempt": attempt_record,
                 **fields, "disclosure": variant_record["disclosure"]}
 
+    before = [a for a in attempts if a["graphId"] == graph_before["id"]]
+    variants += [variant(a["variantId"], "restoration", graph_before, a, byteSize=46137344, **still_file, width=4032,
+                         height=3024, colour=colour_png16) for a in before]
+    variants_before = variants[-2:]
+
     manifests = [
         manifest(variants[0], graph_still, attempts[0], observationSolutionId=f"sol_{still_sha[:16]}"),
         manifest(variants[1], graph_display, attempts[1]),
         manifest(variants[2], graph_clip, attempts[2], observationSolutionId=f"sol_{clip_sha[:16]}"),
         manifest(variants[3], graph_black, attempts[3]),
+        # Restorations made before the two counts export as they were written; one whose version reads lower as
+        # text than as numbers; one made at the counts' own version with both
+        manifest(variants_before[0], graph_before, before[0]),
+        manifest(variants_before[1], graph_before, before[1]),
+        manifest(variants_before[0], {**graph_before, "pipelineVersion": "1.9.0"}, before[0]),
+        manifest(variants[0], {**graph_still, "pipelineVersion": GATE_COUNTS_SINCE}, attempts[0],
+                 observationSolutionId=f"sol_{still_sha[:16]}"),
+        # and one made at the revision just before the counts' version, without them
+        manifest(variants_before[0], {**graph_before, "pipelineVersion": ".".join(
+            str(part) for part in (_version(GATE_COUNTS_SINCE)[0], _version(GATE_COUNTS_SINCE)[1] - 1, 0))}, before[0]),
     ]
     exports = [
         # A leap day, the last of its month; and one in a year divisible by 400
@@ -1457,11 +1544,12 @@ def build_media_samples() -> dict[str, Any]:
         "GraphParameter": parameters,
         "GraphStep": [decode_heic, encode_png8, find_stars, lift_clip, copy_audio, encode_h264, chroma_step, spatial_grain,
                       spatial_plain, spatial_capped],
-        "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black, graph_converted, graph_still_chroma],
+        "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black, graph_converted, graph_still_chroma,
+                            graph_before],
         "ColourDescription": [colour_heic, colour_png8, colour_jpeg, colour_png16, colour_clip],
         "NoiseTable": [noise_still, noise_clip],
         "IntegrityGateResult": [gate_passed, gate_unconfirmed, gate_flux, gate_no_stars, gate_clip, gate_written_as_floats,
-                                gate_black, gate_at_tolerance],
+                                gate_black, gate_at_tolerance, gate_before, gate_before_no_stars],
         "RestorationMeasurements": [measured_still, measured_display, measured_clip, measured_black,
                                     {**measured_still, "chroma": {"heldSamples": 15199, "clampedSamples": 345}},
                                     measured_flat],
@@ -1698,6 +1786,24 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
         "more frames than unconfirmed points", M_GATE_FRAME_POINTS)
     bad("IntegrityGateResult", {**gate, "starsMeasured": 1, "starsOutsideFluxTolerance": 2, "worstFluxChangeSigma": 5.1, "passed": False},
         "more stars outside the tolerance than stars measured", M_GATE_STARS)
+    bad("IntegrityGateResult", {**valid["IntegrityGateResult"][3], "framesFluxNotChecked": 2},
+        "more frames whose flux was not checked than frames checked", M_GATE_FLUX_FRAMES)
+    bad("IntegrityGateResult", edit(gate, ["framesFluxNotChecked"], 1), "stars measured on a frame whose flux was not checked",
+        M_GATE_FLUX_NOT_CHECKED)
+    bad("IntegrityGateResult", edit(valid["IntegrityGateResult"][3], ["framesFluxNotChecked"], 0),
+        "no star measured and a frame whose flux was checked", M_GATE_FLUX_NOT_CHECKED)
+    bad("IntegrityGateResult", edit(valid["IntegrityGateResult"][4], ["framesFluxNotChecked"], 360),
+        "a clip with stars measured and every frame's flux not checked", M_GATE_FLUX_NOT_CHECKED)
+    bad("IntegrityGateResult", edit(gate, ["starsNotMeasured"], -1), "a negative count of stars not measured")
+    bad("IntegrityGateResult", edit(gate, ["framesFluxNotChecked"], _DROP), "stars not measured counted, frames not checked not",
+        M_GATE_COUNTS_TOGETHER)
+    bad("IntegrityGateResult", edit(gate, ["starsNotMeasured"], _DROP), "frames not checked counted, stars not measured not",
+        M_GATE_COUNTS_TOGETHER)
+    gate_before, gate_before_no_stars = valid["IntegrityGateResult"][-2:]
+    bad("IntegrityGateResult", {**gate_before, "framesFluxNotChecked": 0}, "a gate before the counts with one of them",
+        M_GATE_COUNTS_TOGETHER)
+    bad("IntegrityGateResult", {**gate_before_no_stars, "starsNotMeasured": 37}, "a gate before the counts with the other",
+        M_GATE_COUNTS_TOGETHER)
     bad("IntegrityGateResult", edit(gate, ["worstFluxChangeSigma"], _DROP), "stars measured with no worst change", M_GATE_FLUX_GIVEN)
     bad("IntegrityGateResult", edit(gate, ["medianFluxRatio"], _DROP), "stars measured with no median ratio", M_GATE_FLUX_GIVEN)
     bad("IntegrityGateResult", {**valid["IntegrityGateResult"][3], "worstFluxChangeSigma": 0.5}, "a worst change with no star measured",
@@ -1771,6 +1877,30 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
         M_NO_GATE_BEFORE)
     bad("ProcessingAttempt", edit(ready, ["measured", "stars", "found"], 36) | {"measured": {**measured, "stars": {"found": 36, "confirmed": 36}}},
         "a gate that measured more stars than were found", M_GATE_STARS_FOUND)
+    bad("ProcessingAttempt", edit(ready, ["gate", "starsNotMeasured"], 1),
+        "a gate that counts one more star than were confirmed", M_GATE_STARS_CONFIRMED)
+    bad("ProcessingAttempt", edit(ready, ["measured", "stars", "confirmed"], 36),
+        "a gate whose stars are one more than the confirmed stars", M_GATE_STARS_CONFIRMED)
+    bad("ProcessingAttempt", edit(ready, ["measured", "stars", "confirmed"], 38),
+        "a gate whose stars are one fewer than the confirmed stars", M_GATE_STARS_CONFIRMED)
+    unchecked = next(a for a in attempts if a["id"] == _id("att", "flux not checked"))
+    bad("ProcessingAttempt", edit(unchecked, ["measured", "notes"], [NOTE_DISSOLVED]),
+        "a photo whose flux was not checked with no note saying so", M_FLUX_NOTE)
+    bad("ProcessingAttempt", edit(unchecked, ["measured", "notes"], [NOTE_DISSOLVED, NOTE_FLUX_NOT_CHECKED_CLIP]),
+        "a photo whose flux was not checked with the clip's note", M_FLUX_NOTE)
+    bad("ProcessingAttempt", edit(ready, ["measured", "notes"], [NOTE_DISSOLVED, NOTE_FLUX_NOT_CHECKED_PHOTO]),
+        "a photo whose flux was checked with the note that it was not", M_FLUX_NOTE)
+    bad("ProcessingAttempt", edit(attempts[3], ["measured", "notes"], [NOTE_BLACK]),
+        "a clip with frames whose flux was not checked and no note saying so", M_FLUX_NOTE)
+    bad("ProcessingAttempt", edit(attempts[3], ["measured", "notes"], [NOTE_BLACK, NOTE_FLUX_NOT_CHECKED_PHOTO]),
+        "a clip with frames whose flux was not checked and the photo's note", M_FLUX_NOTE)
+    bad("ProcessingAttempt", edit(attempts[2], ["measured", "notes"], [NOTE_REGISTRATION, NOTE_DISSOLVED, NOTE_FLUX_NOT_CHECKED_CLIP]),
+        "a clip whose every frame's flux was checked with the note that some were not", M_FLUX_NOTE)
+    bad("ProcessingAttempt", edit(attempts[6], ["measured", "notes"], [NOTE_REGISTRATION, NOTE_DISSOLVED, NOTE_FLUX_NOT_CHECKED_CLIP]),
+        "a clip refused before its gate with the note that its gate did not check", M_FLUX_NOTE)
+    before = [a for a in attempts if a["id"] == _id("att", "before the counts, no star measured")][0]
+    bad("ProcessingAttempt", edit(before, ["measured", "notes"], [NOTE_DISSOLVED, NOTE_FLUX_NOT_CHECKED_PHOTO]),
+        "a photo restored before the counts with the note that its flux was not checked", M_FLUX_NOTE)
     bad("ProcessingAttempt", edit(ready, ["finishedAtUTC"], "2031-05-02T19:20:00Z"), "finished before it started", M_ATTEMPT_TIMES)
     bad("ProcessingAttempt", edit(ready, ["startedAtUTC"], "2031-02-30T19:20:01Z"), "a start on 30 February", M_CALENDAR)
     bad("ProcessingAttempt", edit(ready, ["startedAtUTC"], "2100-02-29T19:20:01Z"), "a leap day in a year divisible by 100 only",
@@ -1886,6 +2016,13 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
     bad("ExportManifest", edit(display_manifest, ["disclosure"], DISCLOSURES["restoration"]), "a manifest with another disclosure",
         M_MANIFEST_DISCLOSURE)
     bad("ExportManifest", edit(manifest, ["attempt", "gate"], _DROP), "a restoration exported with no gate result", M_MANIFEST_GATE)
+    manifest_before = valid["ExportManifest"][4]
+    major, minor, patch = _version(GATE_COUNTS_SINCE)
+    for version, why in ((GATE_COUNTS_SINCE, "made at the counts' version"), (f"{major}.{minor}.{patch + 1}", "made after it"),
+                         (f"{major}.{minor + 1}.0", "made at the next revision"), ("1.99.0", "made at the last minor version"),
+                         ("10.0.0", "made at a major version of two digits")):
+        bad("ExportManifest", edit(manifest_before, ["graph", "pipelineVersion"], version),
+            f"a restoration {why} whose gate has neither count", M_MANIFEST_GATE_COUNTS)
     bad("ExportManifest", edit(display_manifest, ["attempt", "gate"], valid["IntegrityGateResult"][0]), "a display copy with a gate result",
         M_MANIFEST_GATE)
     bad("ExportManifest", edit(manifest, ["attempt", "measured", "noise"], _DROP), "a restoration with no noise table and no reason",

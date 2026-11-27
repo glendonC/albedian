@@ -444,6 +444,17 @@ export const EXPOSURE_EV_MAX = 6;
  * [proposed: the public clip's copy at CRF 18 had its lowest frame at 49.3 dB, 24 Nov].
  */
 export const PLAYBACK_COPY_MIN_PSNR_DB = 45;
+// The pipeline version from which a restoration's gate counts the stars it could not measure and the frames whose
+// flux it did not check (restore revision 19, gate-flux-floor-zero). A record made before has neither count and stays
+// valid as it was written, so a restoration a person already has still exports [decided: AUDIT-B's verdict
+// gate-flux-floor-zero and the lead's answer at the 23:14 stamp of 2026-11-26]
+export const GATE_COUNTS_SINCE = '1.19.0';
+/** A major.minor.patch version as numbers, so 1.9.0 comes before 1.17.0 and 10.0.0 after. */
+function versionAtLeast(version: string, since: string): boolean {
+  const [a, b] = [version, since].map((text) => text.split('.').map(Number));
+  for (let i = 0; i < 3; i += 1) if (a![i] !== b![i]) return a![i]! > b![i]!;
+  return true;
+}
 
 export const MEDIA_ENUMS = {
   variantKinds: VARIANT_KINDS,
@@ -648,7 +659,13 @@ export const NOTES = [
   // A restored clip with no playback copy (playback-job-one version three, DECIDED-BY-LEAD 02:22 on 25 Nov): none passed
   // its gate in the stored file's own format, or the copy could not be made; the restoration stands with its restored file
   'No playback copy could be made within its gate, so this restoration has none.',
+  // A gate that measured no star's light on a photo, and on some or all of a clip's frames (UIUX's words, read by the
+  // lead at the 02:51 stamp of 2026-11-25, gate-flux-floor-one): a gate never passes a check it did not run
+  'No star could be measured, so the gate did not check how bright the stars stayed.',
+  'On frames where no star could be measured, the gate did not check how bright the stars stayed.',
 ] as const;
+export const NOTE_FLUX_NOT_CHECKED_PHOTO = NOTES[9];
+export const NOTE_FLUX_NOT_CHECKED_CLIP = NOTES[10];
 /** Why a colour field was assumed: one sentence per field and assumed value (design section 1). */
 export const ASSUMPTION_REASONS = [
   { field: 'range', assumed: 'limited', reason: "The file does not state its range, and Y'CbCr video is taken as limited range." },
@@ -779,6 +796,8 @@ const M = {
   gateStars: 'stars outside the tolerance are stars measured',
   gateFluxGiven: 'the flux change is given exactly when a star was measured',
   gateWorst: 'a star is outside the tolerance exactly when the worst change exceeds it',
+  gateFluxFrames: 'frames whose flux was not checked are frames checked',
+  gateFluxNotChecked: "every frame's flux is unchecked exactly when no star was measured",
   starsConfirmed: 'confirmed stars are stars found',
   noLift: 'no lift is a gain of one',
   clipNeighbours: 'frames with neighbours are frames of the clip',
@@ -793,6 +812,10 @@ const M = {
   rejectionNamed: 'the rejection names what the gate found',
   noGateBefore: 'a rejection made before or without the gate carries no gate result',
   gateStarsFound: 'a gate measures no more stars than were found',
+  gateStarsConfirmed: "a gate's stars, measured and not, are the confirmed stars",
+  fluxNote: "a frame whose flux was not checked is said by its kind's note, and only then",
+  gateCountsTogether: 'a gate counts the stars it could not measure exactly when it counts the frames it did not check',
+  manifestGateCounts: 'a restoration made since its gate counted what it could not check carries both counts',
   attemptTimes: 'an attempt finishes after it starts',
   disclosure: 'the disclosure is the fixed sentence of its kind',
   sourceAsset: "the asset id is the source's own",
@@ -1020,8 +1043,15 @@ export const IntegrityGateResultSchema = z
     framesWithUnconfirmed: count(),
     clippedPointsLeftOut: count(),
     starsMeasured: count(),
+    // The confirmed stars the flux check could not measure: an aperture or annulus at the border or on a clipped region,
+    // an empty-aperture noise that is not a positive number, or no light on the original [decided by the lead at the
+    // 22:24 and 01:34 stamps, gate-flux-floor-one: a gate never passes a check it did not run]. Absent, with the next,
+    // from a gate recorded before them (GATE_COUNTS_SINCE)
+    starsNotMeasured: count().optional(),
     starsOutsideFluxTolerance: count(),
     fluxToleranceSigma: wireNumber().positive(),
+    // The frames where no star's flux was measured: their flux was not checked [decided as above]
+    framesFluxNotChecked: count().optional(),
     // Absent when no star was measured
     worstFluxChangeSigma: wireNumber().nonnegative().optional(),
     // Any finite number: a star that lost all its light has a ratio of 0 or below, and the gate still counts it
@@ -1040,6 +1070,12 @@ export const IntegrityGateResultSchema = z
     if ((frames === 0) !== (unconfirmed === 0)) issue(['framesWithUnconfirmed'], M.gateAnyFrame);
     if (frames > unconfirmed) issue(['framesWithUnconfirmed'], M.gateFramePoints);
     if (outside > gate.starsMeasured) issue(['starsOutsideFluxTolerance'], M.gateStars);
+    const unchecked = gate.framesFluxNotChecked;
+    if ((gate.starsNotMeasured === undefined) !== (unchecked === undefined)) issue(['framesFluxNotChecked'], M.gateCountsTogether);
+    if (unchecked !== undefined && unchecked > gate.framesChecked) issue(['framesFluxNotChecked'], M.gateFluxFrames);
+    if (unchecked !== undefined && (gate.starsMeasured === 0) !== (unchecked === gate.framesChecked)) {
+      issue(['framesFluxNotChecked'], M.gateFluxNotChecked);
+    }
     const measured = gate.starsMeasured > 0;
     if ((gate.worstFluxChangeSigma !== undefined) !== measured || (gate.medianFluxRatio !== undefined) !== measured) {
       issue(['worstFluxChangeSigma'], M.gateFluxGiven);
@@ -1151,6 +1187,19 @@ export const ProcessingAttemptSchema = z
     }
     const stars = attempt.measured?.stars;
     if (gate !== undefined && stars !== undefined && gate.starsMeasured > stars.found) issue(['gate', 'starsMeasured'], M.gateStarsFound);
+    const notMeasured = gate?.starsNotMeasured;
+    if (notMeasured !== undefined && stars !== undefined && gate!.starsMeasured + notMeasured !== stars.confirmed) {
+      issue(['gate', 'starsNotMeasured'], M.gateStarsConfirmed);
+    }
+    if (attempt.measured !== undefined) {
+      // A gate recorded before the counts wrote neither note
+      const unchecked = gate !== undefined && (gate.framesFluxNotChecked ?? 0) > 0;
+      const clip = attempt.measured.clip !== undefined;
+      const notes: readonly string[] = attempt.measured.notes;
+      if (notes.includes(NOTE_FLUX_NOT_CHECKED_PHOTO) !== (unchecked && !clip) || notes.includes(NOTE_FLUX_NOT_CHECKED_CLIP) !== (unchecked && clip)) {
+        issue(['measured', 'notes'], M.fluxNote);
+      }
+    }
     if (Date.parse(attempt.finishedAtUTC) < Date.parse(attempt.startedAtUTC)) issue(['finishedAtUTC'], M.attemptTimes);
   });
 export type ProcessingAttempt = z.infer<typeof ProcessingAttemptSchema>;
@@ -1269,6 +1318,10 @@ export const ExportManifestSchema = z
       issue(['disclosure'], M.convertedDisclosure);
     }
     if ((attempt.gate !== undefined) !== (graph.kind === 'restoration')) issue(['attempt', 'gate'], M.manifestGate);
+    // A restoration made at the counts' version or later has them; one made before has neither and stays valid
+    if (attempt.gate !== undefined && attempt.gate.framesFluxNotChecked === undefined && versionAtLeast(graph.pipelineVersion, GATE_COUNTS_SINCE)) {
+      issue(['attempt', 'gate'], M.manifestGateCounts);
+    }
     const measured = attempt.measured;
     if (graph.kind === 'restoration' && measured !== undefined && (measured.noise === undefined) === (measured.noiseNotMeasured === undefined)) {
       issue(['attempt', 'measured'], M.manifestNoise);

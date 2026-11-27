@@ -27,6 +27,8 @@ from services.media import chroma, decode, encode, gate, noise, png16, spatial, 
 STEP_VERSION = "1.0.0"
 NOTE_DISSOLVED = "Points the original does not confirm were dissolved before the gate."
 NOTE_CLIPPED = "Clipped regions were left out of the gate."
+# The gate measured no star's light, so its flux check did not run (UIUX's words, gate-flux-floor-one)
+NOTE_FLUX_NOT_CHECKED = "No star could be measured, so the gate did not check how bright the stars stayed."
 DESIGN_7 = "Proposed in design section 7."
 # The share of the photo's own finest noise the sky keeps after the first-scale smoothing (`kept_grain`): with none a
 # restored sky posterises at 8 and 10 bits and each kept star wears a collar of the original's grain; less of the
@@ -410,6 +412,8 @@ def _restore_picture(still: decode.DecodedStill, exposure_ev: Optional[float], m
         notes.append(NOTE_DISSOLVED)
     if field.clipped.any():
         notes.append(NOTE_CLIPPED)
+    if verdict.gate["framesFluxNotChecked"]:
+        notes.append(NOTE_FLUX_NOT_CHECKED)
     measured["notes"] = notes
     ready = verdict.gate["passed"]
     rejection = None if ready else ("unconfirmed_points" if verdict.unconfirmed else "star_flux_changed")

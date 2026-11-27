@@ -1,0 +1,159 @@
+{
+  "id": "att_65528d6c13d005b0",
+  "sourceSha256": "36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2",
+  "graphId": "graph_c80651551b2602fa",
+  "jobId": "job_36c340638c0e397f86dacf252a2689fe",
+  "status": "ready",
+  "startedAtUTC": "2026-11-27T06:12:51.375Z",
+  "finishedAtUTC": "2026-11-27T06:13:06.257Z",
+  "elapsedMs": 14882,
+  "cpuMs": 322,
+  "variantId": "var_c80651551b2602fa",
+  "measured": {
+    "colour": {
+      "model": "ycbcr",
+      "bitDepth": 8,
+      "range": "limited",
+      "matrix": "bt601",
+      "transfer": "bt709",
+      "primaries": "unspecified",
+      "chromaSubsampling": "420",
+      "assumptions": [
+        {
+          "field": "transfer",
+          "assumed": "bt709",
+          "reason": "The clip does not state its transfer, so BT.709 is assumed."
+        },
+        {
+          "field": "primaries",
+          "assumed": "unspecified",
+          "reason": "The file does not state its primaries, so they stay unspecified and are never converted."
+        },
+        {
+          "field": "matrix",
+          "assumed": "bt601",
+          "reason": "The file does not state its matrix, and a frame under 720 lines or a JPEG or HEIC still is taken as BT.601."
+        },
+        {
+          "field": "range",
+          "assumed": "limited",
+          "reason": "The file does not state its range, and Y'CbCr video is taken as limited range."
+        }
+      ],
+      "chromaSiting": "left"
+    },
+    "notes": [
+      "Registration did not hold for every frame; those frames have no temporal step."
+    ],
+    "noise": {
+      "intensities": [
+        0.019766117351073614,
+        0.020515499465482232,
+        0.020885622120799585,
+        0.02117940214127561,
+        0.021440514467067635,
+        0.021699562022614333,
+        0.021912924776972296,
+        0.02214748674066929,
+        0.02245670384257621,
+        0.02279706061472359,
+        0.023236837930100594,
+        0.024271531734709764
+      ],
+      "sigma": {
+        "r": [
+          0.006458712103161612,
+          0.006458712103161612,
+          0.006458712103161612,
+          0.006458712103161612,
+          0.006458712103161612,
+          0.0066575951313670645,
+          0.0067385673297017225,
+          0.0067385673297017225,
+          0.0067385673297017225,
+          0.007031193909566794,
+          0.0070711220475358424,
+          0.0070711220475358424
+        ],
+        "g": [
+          0.005204345088903775,
+          0.005499444904713893,
+          0.005499444904713893,
+          0.005499444904713893,
+          0.0057546522424308634,
+          0.0057546522424308634,
+          0.0062689629728457956,
+          0.0062689629728457956,
+          0.0062689629728457956,
+          0.006467617166252447,
+          0.0065773466157590735,
+          0.007119238009070538
+        ],
+        "b": [
+          0.006801403244420549,
+          0.006801403244420549,
+          0.006801403244420549,
+          0.006801403244420549,
+          0.006970183611460689,
+          0.007113012520318561,
+          0.00721596813338781,
+          0.00721596813338781,
+          0.00721596813338781,
+          0.0074475458953340455,
+          0.008118788856574166,
+          0.008118788856574166
+        ]
+      },
+      "blockCounts": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ]
+    },
+    "fineNoiseLeft": 0.010999903312364898,
+    "stars": {
+      "found": 0,
+      "confirmed": 0
+    },
+    "dissolvedPerPass": [],
+    "lift": {
+      "gainAtBlack": 2.0367251325524367,
+      "decidedBy": "target"
+    },
+    "clip": {
+      "frameCount": 15,
+      "framesWithNeighbours": 0,
+      "exactRepeatShare": 6.975446428571428e-05,
+      "pointsConfirmedOnFramesTogether": 0,
+      "pointsFixedToSensor": 0,
+      "streamsNotCopied": 0,
+      "medianClosureErrorPx": 18.48012500574971
+    },
+    "peakMemoryBytes": 234323968
+  },
+  "gate": {
+    "statistic": "detector_local_background_removed",
+    "variantThresholdSnr": 5.0,
+    "confirmThresholdSnr": 4.75,
+    "tilePx": 256,
+    "matchRadiusPx": 2.5,
+    "framesChecked": 15,
+    "variantPointCount": 0,
+    "unconfirmedPointCount": 0,
+    "framesWithUnconfirmed": 0,
+    "clippedPointsLeftOut": 0,
+    "starsMeasured": 0,
+    "starsOutsideFluxTolerance": 0,
+    "fluxToleranceSigma": 3.0,
+    "passed": true
+  }
+}

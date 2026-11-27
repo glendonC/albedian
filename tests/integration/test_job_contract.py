@@ -707,10 +707,19 @@ def _parity_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool, Any]]:
     return [(where, sample, accepted, _todays_record_but_its_gap(sample)) for where, sample, accepted in out]
 
 
+def _kept_store_job_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool, Any]]:
+    """stored_before_gate_counts (gate-flux-floor-zero): a job record main's own code wrote at restore revision 16,
+    kept exactly as written, which today's job contract takes as it stands: a record stored before stays valid."""
+    return [("the job record as stored", data, True, data)]
+
+
+KEPT_STORE = "stored_before_gate_counts"
 JOB_FIXTURE_READERS: dict[str, Any] = {"job_contract.json": _job_verdicts, "ingest_contract.json": _ingest_verdicts,
                                        "observation_solution_contract.json": _solution_ingest_verdicts,
                                        "solve_upload_characterization.json": _characterization_verdicts,
-                                       "ingest_parity_contract.json": _parity_verdicts}
+                                       "ingest_parity_contract.json": _parity_verdicts,
+                                       **{str(p.relative_to(FIXTURES)): _kept_store_job_verdicts
+                                          for p in sorted((FIXTURES / KEPT_STORE).glob("*/*/jobs/*.json"))}}
 
 
 def _fixture_disagreements(folder: Path) -> tuple[list[str], list[str], int]:
@@ -748,6 +757,15 @@ def test_every_job_shaped_sample_in_every_fixture_is_judged_as_its_fixture_says(
     # solution contract's ingest section, 940 in the solve chain's characterization (the runner's, since platform-5c;
     # 1,061 until field-8 floored a clip's stack, whose fewer candidates leave its clip case 121 fewer transitions)
     assert judged >= 2779
+
+
+def test_the_kept_stores_two_job_records_each_have_their_reader() -> None:
+    # The still's and the clip's, each one job-shaped object, so the sweep's reader is no empty list
+    kept = sorted(rel for rel, reader in JOB_FIXTURE_READERS.items() if reader is _kept_store_job_verdicts)
+    assert len(kept) == 2 and all(rel.startswith(KEPT_STORE + "/") for rel in kept), kept
+    for rel in kept:
+        data = json.loads((FIXTURES / rel).read_text(encoding="utf-8"))
+        assert len(_job_shaped_in(data)) == 1 and verdict(data)[0], rel
 
 
 def test_the_fixture_check_finds_an_unread_job_and_a_wrong_verdict(tmp_path: Path) -> None:

@@ -1,0 +1,8 @@
+{
+  "uri": "/api/media/36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2/variants/var_c80651551b2602fa/playback",
+  "sha256": "e92544e98a90ee7f19869951f9424b34483fd8ee3df244e9d94188ac77c1d0cb",
+  "byteSize": 9181,
+  "mimeType": "video/mp4",
+  "codecs": "avc1.64000A",
+  "minPsnrDb": 53.21
+}

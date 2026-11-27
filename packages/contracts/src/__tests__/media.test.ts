@@ -23,6 +23,7 @@ import {
   FAILURE_CAPABILITIES,
   FAILURE_FORMATS,
   FAILURE_SENTENCES,
+  GATE_COUNTS_SINCE,
   GRAPH_STEP_KINDS,
   GraphParameterSchema,
   GraphStepSchema,
@@ -36,6 +37,7 @@ import {
   MEDIA_VOCABULARY,
   MediaVariantSchema,
   NOTES,
+  NOTE_FLUX_NOT_CHECKED_PHOTO,
   NoiseTableSchema,
   ProcessingAttemptSchema,
   ProcessingGraphSchema,
@@ -624,7 +626,8 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
         // a star that lost all its light has a ratio of 0 or below
         fc.constantFrom<number | null>(null, 0.99, 0, -0.3),
         fc.boolean(),
-        (variantPoints, unconfirmed, framesChecked, framesWith, stars, outside, worst, median, passed) => {
+        fc.integer({ min: 0, max: 4 }),
+        (variantPoints, unconfirmed, framesChecked, framesWith, stars, outside, worst, median, passed, notChecked) => {
           const gate: Rec = {
             ...base,
             variantPointCount: variantPoints,
@@ -634,6 +637,7 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
             starsMeasured: stars,
             starsOutsideFluxTolerance: outside,
             fluxToleranceSigma: tolerance,
+            framesFluxNotChecked: notChecked,
             passed,
           };
           if (worst !== null) gate.worstFluxChangeSigma = worst;
@@ -647,7 +651,9 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
             outside <= stars &&
             (worst !== null) === stars > 0 &&
             (median !== null) === stars > 0 &&
-            (worst === null || (outside > 0) === worst > tolerance);
+            (worst === null || (outside > 0) === worst > tolerance) &&
+            notChecked <= framesChecked &&
+            (stars === 0) === (notChecked === framesChecked);
           expect(accepts(IntegrityGateResultSchema, gate)).toBe(expected);
         }
       ),
@@ -655,10 +661,12 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
         seed: SEED,
         numRuns: 400,
         examples: [
-          [3, 0, 1, 0, 2, 0, 1.0, 0.99, true],
-          [3, 2, 2, 2, 2, 0, 1.0, 0.99, false],
-          [3, 0, 1, 0, 2, 1, 5.0, 0.99, false],
-          [0, 0, 1, 0, 0, 0, null, null, true],
+          [3, 0, 1, 0, 2, 0, 1.0, 0.99, true, 0],
+          [3, 2, 2, 2, 2, 0, 1.0, 0.99, false, 0],
+          [3, 0, 1, 0, 2, 1, 5.0, 0.99, false, 0],
+          [0, 0, 1, 0, 0, 0, null, null, true, 1],
+          [3, 0, 1, 0, 2, 0, 1.0, 0.99, true, 1],
+          [0, 0, 1, 0, 0, 0, null, null, true, 2],
         ],
       }
     );
@@ -971,6 +979,48 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
         expect(accepts(ExportManifestSchema, manifest)).toBe(effective.length === 0);
       }),
       { seed: SEED, numRuns: 300, examples: [[[]], [['rejected']], [['still_gate_frames']]] }
+    );
+  });
+
+  // gate-flux-floor-zero v2 (AUDIT-B's verdict): the two counts are required only of a restoration made at the pipeline
+  // version that writes them, or later; one made before has neither and exports as it was written
+  it("a restoration's manifest without its gate's counts is accepted exactly when made before them", () => {
+    const since = GATE_COUNTS_SINCE.split('.').map(Number);
+    const before = (v: number[]) => v[0]! !== since[0]! ? v[0]! < since[0]! : v[1]! !== since[1]! ? v[1]! < since[1]! : v[2]! < since[2]!;
+    fc.assert(
+      fc.property(
+        fc.tuple(fc.integer({ min: 0, max: 12 }), fc.integer({ min: 0, max: 99 }), fc.integer({ min: 0, max: 99 })),
+        fc.boolean(),
+        fc.boolean(),
+        (version, counted, noStar) => {
+          const manifest = clone(VALID.ExportManifest[noStar ? 5 : 4]!) as Rec & {
+            graph: Rec;
+            attempt: Rec & { measured: Rec & { stars: { confirmed: number }; notes: string[] }; gate: Rec & { starsMeasured: number; framesChecked: number } };
+          };
+          const gate = manifest.attempt.gate;
+          expect('starsNotMeasured' in gate || 'framesFluxNotChecked' in gate).toBe(false);
+          manifest.graph.pipelineVersion = version.join('.');
+          if (counted) {
+            const measured = gate.starsMeasured;
+            Object.assign(gate, {
+              starsNotMeasured: manifest.attempt.measured.stars.confirmed - measured,
+              framesFluxNotChecked: measured > 0 ? 0 : gate.framesChecked,
+            });
+            if (measured === 0) manifest.attempt.measured.notes = [...manifest.attempt.measured.notes, NOTE_FLUX_NOT_CHECKED_PHOTO];
+          }
+          expect(accepts(ExportManifestSchema, manifest)).toBe(counted || before(version));
+        }
+      ),
+      {
+        seed: SEED,
+        numRuns: 300,
+        examples: [
+          [[since[0]!, since[1]! - 1, 0], false, false],
+          [since, false, false],
+          [[1, 9, 0], false, true],
+          [[10, 0, 0], false, false],
+        ],
+      }
     );
   });
 

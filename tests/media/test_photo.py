@@ -56,6 +56,21 @@ def test_an_honest_restoration_ends_ready_with_the_file_the_gate_ran_on(honest: 
     assert honest.gate["statistic"] == gate.STATISTIC
 
 
+def test_a_still_whose_gate_measured_no_star_says_its_flux_was_not_checked(tmp_path, honest) -> None:
+    # A gate never passes a check it did not run (decided by the lead at the 22:24 and 01:34 stamps): a sky with no
+    # star, so the flux check measured none; its record and its note, UIUX's photo sentence, say the flux was not checked
+    scene = star_field(14, size=200, count=0, noise_sigma=0.0015)
+    result = photo.restore_still(still_of(scene.codes, tmp_path))
+    assert result.status == "ready", result.gate
+    assert (result.gate["starsMeasured"], result.gate["starsNotMeasured"], result.gate["framesFluxNotChecked"]) == (0, 0, 1)
+    assert photo.NOTE_FLUX_NOT_CHECKED in result.measured["notes"]
+    assert photo.NOTE_FLUX_NOT_CHECKED == contracts.NOTE_FLUX_NOT_CHECKED_PHOTO
+    contracts.RestorationMeasurements.model_validate(result.measured)
+    # The honest scene's stars were measured: its flux was checked and no note says otherwise
+    assert honest.gate["framesFluxNotChecked"] == 0 and photo.NOTE_FLUX_NOT_CHECKED not in honest.measured["notes"]
+    assert honest.gate["starsMeasured"] + honest.gate["starsNotMeasured"] == honest.measured["stars"]["confirmed"]
+
+
 def test_a_still_dissolves_tile_by_tile_into_the_same_file_and_gate_record(tmp_path, monkeypatch) -> None:
     # A still's transfer maps each sample on its own, so its passes encode only the tiles that hold their points
     scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))

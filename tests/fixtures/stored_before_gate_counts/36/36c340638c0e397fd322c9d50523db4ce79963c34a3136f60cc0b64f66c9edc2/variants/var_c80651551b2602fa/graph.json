@@ -1,0 +1,455 @@
+{
+  "id": "graph_c80651551b2602fa",
+  "sourceSha256": "36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2",
+  "kind": "restoration",
+  "pipelineVersion": "1.16.0",
+  "request": {
+    "kind": "restoration"
+  },
+  "steps": [
+    {
+      "kind": "decode",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "transfer",
+          "value": "bt709",
+          "origin": "default",
+          "basis": "Proposed in design section 1."
+        },
+        {
+          "name": "primaries",
+          "value": "unspecified",
+          "origin": "default",
+          "basis": "Proposed in design section 1."
+        },
+        {
+          "name": "matrix",
+          "value": "bt601",
+          "origin": "default",
+          "basis": "Proposed in design section 1."
+        },
+        {
+          "name": "range",
+          "value": "limited",
+          "origin": "default",
+          "basis": "Proposed in design section 1."
+        },
+        {
+          "name": "chromaSiting",
+          "value": "left",
+          "origin": "measured",
+          "basis": "Read from the file's own colour tags."
+        },
+        {
+          "name": "chromaSubsampling",
+          "value": "420",
+          "origin": "measured",
+          "basis": "Read from the stream's own pixel format."
+        },
+        {
+          "name": "pixelFormat",
+          "value": "yuv420p",
+          "origin": "measured",
+          "basis": "Read from the stream's own pixel format."
+        },
+        {
+          "name": "bitDepth",
+          "value": 8,
+          "origin": "measured",
+          "basis": "Read from the stream's own pixel format."
+        }
+      ]
+    },
+    {
+      "kind": "find_stars",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "tilePx",
+          "value": 256,
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "overlapPx",
+          "value": 32,
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "confirmThresholdSnr",
+          "value": 4.75,
+          "origin": "default",
+          "basis": "The detector's own floor."
+        },
+        {
+          "name": "matchRadiusPx",
+          "value": 2.5,
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "mergeRadiusPx",
+          "value": 1.5,
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "footprintMaxPx",
+          "value": 12,
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "clippedGrowPx",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "statistic",
+          "value": "detector",
+          "origin": "default",
+          "basis": "Proposed in design section 3."
+        },
+        {
+          "name": "starMinRadiusPx",
+          "value": 2,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "farRingGapPx",
+          "value": 4,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "farRingWidthPx",
+          "value": 8,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        }
+      ]
+    },
+    {
+      "kind": "measure_noise",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "bins",
+          "value": 12,
+          "origin": "default",
+          "basis": "Proposed in design section 4."
+        },
+        {
+          "name": "blockPx",
+          "value": 8,
+          "origin": "default",
+          "basis": "Proposed in design section 4."
+        }
+      ]
+    },
+    {
+      "kind": "register",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "windowFrames",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "blockPx",
+          "value": 128,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "closureMaxPx",
+          "value": 0.5,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "blockResidualMaxPx",
+          "value": 0.5,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "crossPowerExponent",
+          "value": 0.5,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        }
+      ]
+    },
+    {
+      "kind": "temporal_merge",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "windowFrames",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "windowPx",
+          "value": 5,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "toleranceFactor",
+          "value": 2.0,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "disagreementZ",
+          "value": 3.0,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "disagreementReachPx",
+          "value": 3.0,
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        }
+      ]
+    },
+    {
+      "kind": "spatial_denoise",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "levels",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 5."
+        },
+        {
+          "name": "sigmaScale",
+          "value": 2.0,
+          "origin": "default",
+          "basis": "Proposed in design section 5."
+        },
+        {
+          "name": "keptGrowPx",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "firstScaleLevels",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "brightSkyNoises",
+          "value": 50.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "brightHaloNoises",
+          "value": 20.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "brightLevels",
+          "value": 1,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "brightBackgroundPercentile",
+          "value": 20,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "brightBackgroundPx",
+          "value": 65,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        }
+      ]
+    },
+    {
+      "kind": "dissolve_unconfirmed",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "maxPasses",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "variantThresholdSnr",
+          "value": 4.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "statistic",
+          "value": "detector_local_background_removed",
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "sensitivityPeakCodes",
+          "value": 4.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "floorMargin",
+          "value": 2.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "gateThresholdSnr",
+          "value": 5.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "fillLevels",
+          "value": 2,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "discMinRadiusPx",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "discGrowPx",
+          "value": 2,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "discEdgePx",
+          "value": 4,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "nearCorePx",
+          "value": 3,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "unchangedRadiusPx",
+          "value": 1,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        },
+        {
+          "name": "unchangedToleranceCodes",
+          "value": 1.0,
+          "origin": "default",
+          "basis": "Proposed in design section 7."
+        }
+      ]
+    },
+    {
+      "kind": "lift",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "gainAtBlack",
+          "value": 2.0367251325524367,
+          "origin": "measured",
+          "basis": "Solved for this file from its median and its measured bounds."
+        },
+        {
+          "name": "targetMedianCode",
+          "value": 43,
+          "origin": "default",
+          "basis": "Proposed in design section 6."
+        },
+        {
+          "name": "quantisationBoundSteps",
+          "value": 4.0,
+          "origin": "default",
+          "basis": "Proposed in design section 6."
+        },
+        {
+          "name": "maximumGain",
+          "value": 64.0,
+          "origin": "default",
+          "basis": "Proposed in design section 6."
+        }
+      ]
+    },
+    {
+      "kind": "encode",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "container",
+          "value": "mov",
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "encoder",
+          "value": "libx264",
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "preset",
+          "value": "medium",
+          "origin": "default",
+          "basis": "Proposed in design section 10."
+        },
+        {
+          "name": "crf",
+          "value": 0,
+          "origin": "default",
+          "basis": "Decided by the lead in design section 10."
+        },
+        {
+          "name": "pixelFormat",
+          "value": "yuv420p",
+          "origin": "measured",
+          "basis": "Read from the stream's own pixel format."
+        },
+        {
+          "name": "bitDepth",
+          "value": 8,
+          "origin": "measured",
+          "basis": "Read from the stream's own pixel format."
+        }
+      ]
+    },
+    {
+      "kind": "copy_audio",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "name": "streams",
+          "value": 1,
+          "origin": "measured",
+          "basis": "Counted from the asset record's audio streams."
+        }
+      ]
+    }
+  ]
+}

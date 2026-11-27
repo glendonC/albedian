@@ -139,7 +139,8 @@ function buildSyntheticRestorations(sourceAsset: SourceAsset, startedAtSec: numb
     gate: {
       statistic: 'detector', variantThresholdSnr: 6, confirmThresholdSnr: 4.75, tilePx: 256, matchRadiusPx: 1.5, framesChecked: 360,
       variantPointCount: 20, unconfirmedPointCount: 0, framesWithUnconfirmed: 0, clippedPointsLeftOut: 0, starsMeasured: 20,
-      starsOutsideFluxTolerance: 0, fluxToleranceSigma: 3, worstFluxChangeSigma: 1.2, medianFluxRatio: 1, passed: true,
+      starsNotMeasured: 0, starsOutsideFluxTolerance: 0, fluxToleranceSigma: 3, framesFluxNotChecked: 0, worstFluxChangeSigma: 1.2,
+      medianFluxRatio: 1, passed: true,
     },
   }));
   const mediaVariants: MediaVariant[] = restorations.map((r, i) => ({

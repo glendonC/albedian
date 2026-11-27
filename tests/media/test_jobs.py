@@ -794,6 +794,11 @@ def test_a_clip_recorded_at_black_ends_with_its_plain_note_and_a_lift_held_by_th
     assert media_jobs.NOTE_BLACK in measured["notes"] and tone.NOTE_NOISE_NOT_MEASURED not in measured["notes"]
     assert measured["clip"]["framesWithNeighbours"] == 0 and measured["clip"]["pointsConfirmedOnFramesTogether"] == 0
     assert attempt["gate"]["passed"] and attempt["gate"]["framesChecked"] == 12
+    # A gate never passes a check it did not run (gate-flux-floor-one): a black clip has no star, so no frame's flux was
+    # checked, and its note, UIUX's clip sentence, says so
+    assert attempt["gate"]["starsMeasured"] == 0 and attempt["gate"]["framesFluxNotChecked"] == 12
+    assert media_jobs.NOTE_FLUX_NOT_CHECKED in measured["notes"]
+    assert media_jobs.NOTE_FLUX_NOT_CHECKED == contracts.NOTE_FLUX_NOT_CHECKED_CLIP
 
 
 def guarded_scene(path: Path) -> dict:

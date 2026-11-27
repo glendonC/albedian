@@ -683,7 +683,8 @@ def test_the_builder_writes_the_contract_fixtures_manifests_key_for_key() -> Non
     """The fixture's manifests are those the Vitest parity suite parses under ExportManifestSchema: the builder's
     output on their own parts is each of them, keys in the same order, so it parses in both languages."""
     manifests = fixture_manifests()
-    assert len(manifests) == 4
+    # Four of today's kinds, and five made before the gate's two counts or at their version (gate-flux-floor-zero v2)
+    assert len(manifests) == 9
     for manifest in manifests:
         built = variants.export_manifest(manifest["variant"], manifest["graph"], manifest["attempt"],
                                          manifest.get("observationSolutionId"))
@@ -1373,3 +1374,57 @@ def test_an_hvcc_box_outside_its_sample_entry_names_no_codec_string(tmp_path) ->
     cut = tmp_path / "cut.mp4"
     cut.write_bytes(bytes(data))
     assert clip_io.hevc_codec_string(cut) is None
+
+
+# A store kept from main at restore revision 16 (927612bd3), the last before the gate's two counts: a small synthetic
+# still and a small synthetic clip, each restored ready through the API by `.lanetools/make_old_store.py` of the
+# RESTORE-CLIP lane, its records exactly as that revision wrote them (AUDIT-B's verdict gate-flux-floor-zero)
+KEPT_BEFORE_COUNTS = ROOT / "tests" / "fixtures" / "stored_before_gate_counts"
+GATE_COUNTS = ("starsNotMeasured", "framesFluxNotChecked")
+KEPT_PIPELINE_VERSION = "1.16.0"
+
+
+@pytest.fixture(scope="module")
+def kept_before_counts(tmp_path_factory):
+    """A copy of the kept store, served by this tree's routes: the client and the store's root."""
+    store_root = tmp_path_factory.mktemp("kept-before-counts") / "store"
+    shutil.copytree(KEPT_BEFORE_COUNTS, store_root)
+    uploads = IngestStore(store_root, max_bytes=200_000_000)
+    app = create_app()
+    app.dependency_overrides[ingest_router.get_ingest_store] = lambda: uploads
+    with TestClient(app) as client:
+        yield client, store_root
+
+
+def test_a_restoration_stored_before_the_gates_counts_still_exports_as_it_was_written(kept_before_counts) -> None:
+    # A restoration a person already has keeps exporting: its manifest is its three stored records as they were
+    # written, and its export holds its stored file byte for byte (gate-flux-floor-zero v2)
+    client, store_root = kept_before_counts
+    kinds = []
+    for folder in sorted(p for p in store_root.glob("*/*") if p.is_dir()):
+        sha = folder.name
+        (variant,) = (folder / "variants").iterdir()
+        record, graph, attempt = (json.loads((variant / name).read_bytes()) for name in ("variant.json", "graph.json", "attempt.json"))
+        # Made at revision 16, before the two counts, and holding neither
+        assert graph["pipelineVersion"] == KEPT_PIPELINE_VERSION, graph["pipelineVersion"]
+        assert not set(GATE_COUNTS) & set(attempt["gate"]), attempt["gate"]
+        manifest = client.get(f"/api/media/{sha}/variants/{variant.name}/manifest")
+        assert manifest.status_code == 200, manifest.text
+        body = manifest.json()
+        assert (body["variant"], body["graph"], body["attempt"]) == (record, graph, attempt)
+        contracts.ExportManifest.model_validate(body)
+        export = client.get(f"/api/media/{sha}/variants/{variant.name}/export")
+        assert export.status_code == 200, export.text
+        archive, entries = unzip(export.content)
+        assert archive.read(entries[0].filename) == (variant / variants.VARIANT_FILES[record["mimeType"]]).read_bytes()
+        assert archive.read(entries[1].filename) == manifest.content
+        kinds.append(record["mimeType"])
+    assert sorted(kinds) == ["image/png", "video/quicktime"]
+
+
+def test_this_pipeline_writes_the_gates_counts_so_its_restorations_must_carry_them() -> None:
+    # The manifest asks the two counts of every restoration made at GATE_COUNTS_SINCE or later: this pipeline is one
+    since = tuple(int(part) for part in contracts.GATE_COUNTS_SINCE.split("."))
+    assert tuple(int(part) for part in variants.PIPELINE_VERSION.split(".")) >= since
+    # and the kept store's was before it
+    assert tuple(int(part) for part in KEPT_PIPELINE_VERSION.split(".")) < since

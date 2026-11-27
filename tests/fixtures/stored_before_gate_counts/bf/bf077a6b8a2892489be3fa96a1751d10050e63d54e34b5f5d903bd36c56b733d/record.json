@@ -1,0 +1,19 @@
+{
+  "sourceAsset": {
+    "id": "src_bf077a6b8a289248",
+    "title": "Upload bf077a6b8a28",
+    "mediaKind": "image",
+    "sha256": "bf077a6b8a2892489be3fa96a1751d10050e63d54e34b5f5d903bd36c56b733d",
+    "uri": "/api/ingest/bf077a6b8a2892489be3fa96a1751d10050e63d54e34b5f5d903bd36c56b733d/original",
+    "byteSize": 136779,
+    "mimeType": "image/png",
+    "width": 160,
+    "height": 160,
+    "durationMs": 0,
+    "videoCodec": "png",
+    "audioStreams": [],
+    "privacyClass": "private",
+    "immutable": true
+  },
+  "hints": {}
+}

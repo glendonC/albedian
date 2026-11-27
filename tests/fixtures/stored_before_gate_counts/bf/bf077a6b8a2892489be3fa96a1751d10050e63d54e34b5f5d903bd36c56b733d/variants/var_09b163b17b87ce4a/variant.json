@@ -1,0 +1,40 @@
+{
+  "id": "var_09b163b17b87ce4a",
+  "kind": "restoration",
+  "sourceSha256": "bf077a6b8a2892489be3fa96a1751d10050e63d54e34b5f5d903bd36c56b733d",
+  "sourceAssetId": "src_bf077a6b8a289248",
+  "graphId": "graph_09b163b17b87ce4a",
+  "attemptId": "att_02de3129dcd01cf1",
+  "sha256": "25718f875bedec1b2f9dae8312f436bd433bf58127370509326977df3099201d",
+  "uri": "/api/media/bf077a6b8a2892489be3fa96a1751d10050e63d54e34b5f5d903bd36c56b733d/variants/var_09b163b17b87ce4a/file",
+  "byteSize": 115900,
+  "mimeType": "image/png",
+  "width": 160,
+  "height": 160,
+  "durationMs": 0,
+  "frameCount": 1,
+  "audioStreams": [],
+  "colour": {
+    "model": "rgb",
+    "bitDepth": 16,
+    "range": "full",
+    "matrix": "identity",
+    "transfer": "srgb",
+    "primaries": "unspecified",
+    "chromaSubsampling": "444",
+    "assumptions": [
+      {
+        "field": "transfer",
+        "assumed": "srgb",
+        "reason": "The file has no ICC profile and no EXIF ColorSpace, so sRGB is assumed."
+      },
+      {
+        "field": "primaries",
+        "assumed": "unspecified",
+        "reason": "The file does not state its primaries, so they stay unspecified and are never converted."
+      }
+    ]
+  },
+  "disclosure": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
+  "createdAtUTC": "2026-11-27T06:12:51.192Z"
+}

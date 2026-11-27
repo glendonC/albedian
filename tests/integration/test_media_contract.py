@@ -636,21 +636,25 @@ def test_pbt_rst_20_an_attempt_is_accepted_exactly_when_its_fields_fit_its_statu
     # a star that lost all its light has a ratio of 0 or below
     median=st.sampled_from([None, 0.99, 0.0, -0.3]),
     passed=st.booleans(),
+    not_checked=st.integers(0, 4),
 )
-@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=0, worst=1.0, median=0.99, passed=True)
-@example(variant_points=3, unconfirmed=2, frames_checked=2, frames_with=2, stars=2, outside=0, worst=1.0, median=0.99, passed=False)
-@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=1, worst=5.0, median=0.99, passed=False)
-@example(variant_points=0, unconfirmed=0, frames_checked=1, frames_with=0, stars=0, outside=0, worst=None, median=None, passed=True)
-@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=2, worst=40.0, median=-0.3, passed=False)
+@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=0, worst=1.0, median=0.99, passed=True, not_checked=0)
+@example(variant_points=3, unconfirmed=2, frames_checked=2, frames_with=2, stars=2, outside=0, worst=1.0, median=0.99, passed=False, not_checked=0)
+@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=1, worst=5.0, median=0.99, passed=False, not_checked=0)
+@example(variant_points=0, unconfirmed=0, frames_checked=1, frames_with=0, stars=0, outside=0, worst=None, median=None, passed=True, not_checked=1)
+@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=2, worst=40.0, median=-0.3, passed=False, not_checked=0)
+# Stars measured on a frame whose flux was not checked, and more unchecked frames than frames
+@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=0, worst=1.0, median=0.99, passed=True, not_checked=1)
+@example(variant_points=0, unconfirmed=0, frames_checked=1, frames_with=0, stars=0, outside=0, worst=None, median=None, passed=True, not_checked=2)
 def test_pbt_rst_20_a_gate_result_is_accepted_exactly_when_its_counts_add_up(
     variant_points: int, unconfirmed: int, frames_checked: int, frames_with: int, stars: int, outside: int,
-    worst: float | None, median: float | None, passed: bool,
+    worst: float | None, median: float | None, passed: bool, not_checked: int,
 ) -> None:
     gate = {k: v for k, v in VALID["IntegrityGateResult"][0].items() if k not in ("worstFluxChangeSigma", "medianFluxRatio")}
     tolerance = 3.0
     gate.update({"variantPointCount": variant_points, "unconfirmedPointCount": unconfirmed, "framesChecked": frames_checked,
                  "framesWithUnconfirmed": frames_with, "starsMeasured": stars, "starsOutsideFluxTolerance": outside,
-                 "fluxToleranceSigma": tolerance, "passed": passed})
+                 "fluxToleranceSigma": tolerance, "framesFluxNotChecked": not_checked, "passed": passed})
     if worst is not None:
         gate["worstFluxChangeSigma"] = worst
     if median is not None:
@@ -665,6 +669,8 @@ def test_pbt_rst_20_a_gate_result_is_accepted_exactly_when_its_counts_add_up(
         and (worst is not None) == (stars > 0)
         and (median is not None) == (stars > 0)
         and (worst is None or (outside > 0) == (worst > tolerance))
+        and not_checked <= frames_checked
+        and (stars == 0) == (not_checked == frames_checked)
     )
     assert accepts(media.IntegrityGateResult, gate) == expected
 
@@ -943,6 +949,35 @@ def test_pbt_rst_20_a_manifest_is_accepted_exactly_when_its_parts_agree(faults: 
     gate_left = "no_gate" not in faults
     effective = {f for f in faults if f != "still_gate_frames" or gate_left}
     assert accepts(media.ExportManifest, manifest) == (not effective)
+
+
+_SINCE = tuple(int(part) for part in media.GATE_COUNTS_SINCE.split("."))
+
+
+@settings(max_examples=300, deadline=None)
+@given(version=st.tuples(st.integers(0, 12), st.integers(0, 99), st.integers(0, 99)), counted=st.booleans(),
+       no_star=st.booleans())
+@example(version=(_SINCE[0], _SINCE[1] - 1, 0), counted=False, no_star=False)
+@example(version=_SINCE, counted=False, no_star=False)
+@example(version=(1, 9, 0), counted=False, no_star=True)
+@example(version=(10, 0, 0), counted=False, no_star=False)
+def test_a_restorations_manifest_without_its_gates_counts_is_accepted_exactly_when_made_before_them(
+    version: tuple[int, int, int], counted: bool, no_star: bool
+) -> None:
+    """gate-flux-floor-zero v2 (AUDIT-B's verdict): the two counts are required only of a restoration made at the
+    pipeline version that writes them, or later; one made before has neither and exports as it was written."""
+    manifest = copy.deepcopy(VALID["ExportManifest"][5 if no_star else 4])
+    assert "framesFluxNotChecked" not in manifest["attempt"]["gate"] and "starsNotMeasured" not in manifest["attempt"]["gate"]
+    manifest["graph"]["pipelineVersion"] = ".".join(map(str, version))
+    if counted:
+        gate = manifest["attempt"]["gate"]
+        measured = gate["starsMeasured"]
+        gate.update(starsNotMeasured=manifest["attempt"]["measured"]["stars"]["confirmed"] - measured,
+                    framesFluxNotChecked=0 if measured else gate["framesChecked"])
+        manifest["attempt"]["measured"]["notes"] = manifest["attempt"]["measured"]["notes"] + (
+            [] if measured else [media.NOTE_FLUX_NOT_CHECKED_PHOTO])
+    since = tuple(int(part) for part in media.GATE_COUNTS_SINCE.split("."))
+    assert accepts(media.ExportManifest, manifest) == (counted or version < since)
 
 
 @settings(max_examples=200, deadline=None)

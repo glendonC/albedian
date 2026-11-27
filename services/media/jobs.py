@@ -80,8 +80,11 @@ MEDIA_PRODUCER_FILES = (
 # behind its own PSNR gate in the stored file's own format (playback-job-one); 17, a 10-bit restored clip's playback copy
 # in its own bit depth, HEVC Main 10 (playback-tenbit-job; the number is the next free one in the order of passes); 18,
 # a 10-bit clip stored exactly, x265 with its lossless switch at crf 0, so its gate no longer reads the encoder's loss
-# as points of light (tenbit-exact-one); a ten-bit record stored before stays as it is, gated on the file it stores
-MEDIA_PRODUCER = Producer("albedian.restore", 18, MEDIA_PRODUCER_FILES)
+# as points of light (tenbit-exact-one); a ten-bit record stored before stays as it is, gated on the file it stores; 19,
+# the gate's record counts the stars it could not measure and the frames whose flux it did not check, and a
+# photo's or a clip's note says when a frame's flux was not checked (gate-flux-floor-zero); a record made before 19
+# has neither count, and stays valid and exports
+MEDIA_PRODUCER = Producer("albedian.restore", 19, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -319,6 +322,7 @@ NOTE_BLACK = NOTES[1]
 NOTE_REGISTRATION = NOTES[3]
 NOTE_STREAMS = NOTES[6]
 NOTE_NO_PLAYBACK = NOTES[8]
+NOTE_FLUX_NOT_CHECKED = NOTES[10]
 
 
 def frame_times_sha256(time_base: Fraction, frame_times: Sequence[int]) -> str:
@@ -455,6 +459,8 @@ def _clip_measured(clip: clip_frames.ClipColour, settings: clip_frames.ClipSetti
         notes.append(photo.NOTE_DISSOLVED)
     if any(r.clipped for r in frames):
         notes.append(photo.NOTE_CLIPPED)
+    if any(g.outcome.record["framesFluxNotChecked"] for g in gated):
+        notes.append(NOTE_FLUX_NOT_CHECKED)
     if probe.other_streams:
         notes.append(NOTE_STREAMS)
     measured["notes"] = notes

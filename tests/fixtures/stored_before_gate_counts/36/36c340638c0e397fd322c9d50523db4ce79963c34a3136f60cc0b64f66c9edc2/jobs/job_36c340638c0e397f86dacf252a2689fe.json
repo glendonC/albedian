@@ -1,0 +1,57 @@
+{
+  "id": "job_36c340638c0e397f86dacf252a2689fe",
+  "sourceAssetSha256": "36c340638c0e397fd322c9d50523db4ce79963c34a3136f60cc0b64f66c9edc2",
+  "kind": "restoration",
+  "state": "succeeded",
+  "createdAtUTC": "2026-11-27T06:12:51.371Z",
+  "startedAtUTC": "2026-11-27T06:12:51.372Z",
+  "finishedAtUTC": "2026-11-27T06:13:06.264Z",
+  "stages": [
+    {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 15,
+      "total": 15
+    },
+    {
+      "stage": "measure",
+      "unit": "frames",
+      "done": 8,
+      "total": 8
+    },
+    {
+      "stage": "restore",
+      "unit": "frames",
+      "done": 15,
+      "total": 15
+    },
+    {
+      "stage": "encode",
+      "unit": "frames",
+      "done": 15,
+      "total": 15
+    },
+    {
+      "stage": "write",
+      "unit": "bytes",
+      "done": 27002,
+      "total": null
+    },
+    {
+      "stage": "verify",
+      "unit": "frames",
+      "done": 15,
+      "total": 15
+    }
+  ],
+  "producer": {
+    "name": "albedian.restore",
+    "revision": 16
+  },
+  "request": {
+    "kind": "restoration"
+  },
+  "graphId": "graph_c80651551b2602fa",
+  "attemptId": "att_65528d6c13d005b0",
+  "variantId": "var_c80651551b2602fa"
+}
