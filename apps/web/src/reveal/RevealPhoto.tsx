@@ -36,7 +36,8 @@ import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { readoutDistance } from '../spatial/flight/nearStar.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
-import { phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
+import { phoneSlotIn, phoneSlotRect, SIDEWAYS_MAX_HEIGHT_PX } from './phoneSlot.js';
+import { cardMarkShift, coveredBySidewaysCard, sidewaysCardBox } from './cardMark.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
@@ -897,6 +898,48 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const phonePredictedRingsDrawn =
     (marksShown && !earthOnly && drawnMarks.some((mark) => mark.kind === 'predicted')) || keptRingsDrawn;
   const phoneCardOpen = phone && !answer && card.mounted && !card.leaving && cardStar !== null;
+  // phone-sideways-three (UIUX-phone-sideways-READY.md item 5's card-mark rule, RULED at the lead's line stamped 06:27;
+  // UIUX-card-mark-clear-READY.md): held on its side, the sheet stands centred on the foot, so the photo and its rings
+  // slide together on the card's entrance until the picked mark stands 16 px clear of it, by its top or its side,
+  // whichever move is shorter, and slide back on its exit (reveal.css moves the photo stage and the marks by
+  // --card-mark-x and --card-mark-y on the sheet's own curve). The sheet's height is its content's, read from its layout
+  const sideways = phone && viewH <= SIDEWAYS_MAX_HEIGHT_PX;
+  const [cardHeightPx, setCardHeightPx] = useState(0);
+  useLayoutEffect(() => {
+    const el = sideways && card.mounted ? revealRoot.current?.querySelector<HTMLElement>('[data-testid="star-card"]') : null;
+    if (!el) return setCardHeightPx(0);
+    const read = () => setCardHeightPx(el.offsetHeight);
+    read();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const watch = new ResizeObserver(read);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [sideways, card.mounted, cardStar?.id, viewW, viewH]);
+  const sidewaysCard = sideways && phoneCardOpen && cardHeightPx > 0 ? sidewaysCardBox(viewW, viewH, cardHeightPx) : null;
+  const pickedMark = sidewaysCard ? (drawnMarks.find((mark) => mark.picked) ?? null) : null;
+  const cardShift = sidewaysCard && pickedMark ? cardMarkShift(pickedMark, sidewaysCard) : { xPx: 0, yPx: 0 };
+  useLayoutEffect(() => {
+    if (!sideways) return undefined;
+    const doc = document.documentElement;
+    doc.dataset.cardMark = '';
+    return () => {
+      delete doc.dataset.cardMark;
+      doc.style.removeProperty('--card-mark-x');
+      doc.style.removeProperty('--card-mark-y');
+    };
+  }, [sideways]);
+  useLayoutEffect(() => {
+    if (!sideways) return;
+    const length = (value: number) => `${Math.round(value * 10) / 10 || 0}px`;
+    document.documentElement.style.setProperty('--card-mark-x', length(cardShift.xPx));
+    document.documentElement.style.setProperty('--card-mark-y', length(cardShift.yPx));
+  }, [sideways, cardShift.xPx, cardShift.yPx]);
+  /** Whether the open phone card covers a mark: held upright, below the sheet's top; on its side, inside the slid sheet. */
+  const coveredByPhoneCardAt = (xPx: number, yPx: number) =>
+    phoneCardOpen &&
+    (sideways
+      ? sidewaysCard !== null && coveredBySidewaysCard({ xPx: xPx + cardShift.xPx, yPx: yPx + cardShift.yPx }, sidewaysCard)
+      : yPx > phoneCardTopPx(viewH));
   const nonPredictedCardOpen =
     phone && !answer && card.mounted && cardStar !== null && cardStar.evidenceClass !== 'predicted';
   const cardAbovePredicted = nonPredictedCardOpen && phonePredictedRingsDrawn;
@@ -1383,7 +1426,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )
         )}
         {drawnMarks.map((mark) => {
-          const coveredByPhoneCard = phoneCardOpen && mark.yPx > phoneCardTopPx(viewH);
+          const coveredByPhoneCard = coveredByPhoneCardAt(mark.xPx, mark.yPx);
           return (
             <button
               key={mark.finding.id}

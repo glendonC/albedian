@@ -3128,3 +3128,30 @@
     background: #111112;
   }
 }
+
+/* phone-sideways-three (UIUX-phone-sideways-READY.md item 5's card-mark rule, RULED at the lead's line stamped 06:27;
+   UIUX-card-mark-clear-READY.md, sent at 02:32 on 25 Nov): held on its side, the photo and its rings slide together on
+   the card's own entrance, on the phone sheet's 500 ms curve, so the picked mark stands 16 px clear of the sheet by its
+   top or its side, whichever move is shorter, and slide back on its exit. RevealPhoto.tsx sets the two lengths on the
+   root and marks it while the reveal is held on its side; in the reveal the stage holds the photo alone (bare). Version
+   two (AUDIT-C's FAIL): whatever is drawn as the photo or on it slides as one: the phone's compare (its pictures and its
+   labels), the marks and the aligned rings (kept, early and locking-on), so no ring stands off its star. */
+@media (max-height: 500px) and (pointer: coarse) {
+  :root[data-card-mark] .alb-source-stage,
+  .reveal-photo.is-phone .reveal-marks,
+  .reveal-photo.is-phone .restore-compare.is-phone,
+  .reveal-photo.is-phone .align-layer {
+    transform: translate(var(--card-mark-x, 0px), var(--card-mark-y, 0px));
+    transition: transform var(--look-mo-dur-sheet) var(--look-mo-ease-sheet);
+  }
+}
+
+/* At once under Reduce Motion (MOTION-READY-web.md, hudtokens-1: the phone photo's settle is instant under reduced motion) */
+@media (max-height: 500px) and (pointer: coarse) and (prefers-reduced-motion: reduce) {
+  :root[data-card-mark] .alb-source-stage,
+  .reveal-photo.is-phone .reveal-marks,
+  .reveal-photo.is-phone .restore-compare.is-phone,
+  .reveal-photo.is-phone .align-layer {
+    transition: none;
+  }
+}
