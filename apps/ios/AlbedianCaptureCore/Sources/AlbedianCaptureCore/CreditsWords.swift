@@ -43,6 +43,16 @@ public enum CreditsWords {
     ]
 }
 
+/// home-credit-m (UIUX-homecredit-READY, DECIDED-BY-LEAD 27 Nov 00:21): ESO's credit carried on the home's Milky Way,
+/// as ESO's terms ask that a credit not be hidden or parted from the picture: the app's name for the picture, then
+/// ESO's credit unaltered (`apps/ios/notices/eso/PROVENANCE.json`), in Geist 12, its 16 pt box 16 pt under Start.
+public enum HomeCredit {
+    public static let line = "Milky Way: ESO/S. Brunier"
+    public static let size = 12.0
+    public static let gapUnderStart = 16.0
+    public static let boxHeight = 16.0
+}
+
 /// The home's Milky Way: the part of the ESO panorama the app ships (its record's recipe: the full height and 1386 of
 /// the 6000 columns about column 3005, each row in the sinusoidal projection) and the shade drawn over it, from the bottom up (arrive p-home's
 /// `linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)`).

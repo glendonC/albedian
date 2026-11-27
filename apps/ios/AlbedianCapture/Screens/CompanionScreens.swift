@@ -141,6 +141,15 @@ struct HomeScreen: View {
                 // The logo row's top at 574 on the 844 point screen
                 Logo(size: 52).atBottom(0).padding(.bottom, CGFloat(Arrive.referenceHeight - 574) - 62)
                 MainButton(title: "Start", icon: .arrow, action: model.startAiming).atBottom(Arrive.mainBottomGap)
+                // home-credit-m (UIUX-homecredit-READY): ESO's credit on the picture, plain text centred 16 pt under Start,
+                // clear of the home indicator; INTERIM at accessibility sizes, held at the first one as the top pills are
+                Text(HomeCredit.line)
+                    .font(AlbedianFont.regular(HomeCredit.size)).tracking(-0.005 * HomeCredit.size)
+                    .foregroundStyle(Color(ControlStyle.inkSecondary))
+                    .lineLimit(1)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    .frame(height: CGFloat(HomeCredit.boxHeight))
+                    .atBottom(Arrive.mainBottomGap - HomeCredit.gapUnderStart - HomeCredit.boxHeight)
             }
         }
         .ignoresSafeArea()
