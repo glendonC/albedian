@@ -698,8 +698,10 @@ export const SpatialObservatoryViewport: React.FC<
     const asset = session.sourceAsset;
     if (!(phoneReveal || phoneWorking) || !asset) return session;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
-    // nomatch-sideways-one (item 8a): held on its side the no-match photo stands whole at the leading margin, a column beside it
-    const leading = phoneNoMatch && asset.mediaKind === 'image' && isSideways(windowSize.widthPx, windowSize.heightPx) ? readLeadingMarginPx() : undefined;
+    // nomatch-sideways-one (item 8a): held on its side the no-match photo stands whole at the leading margin, a column beside it;
+    // never while the solve still runs, when the session reads as unmatched too and the waiting photo stands centred (item 2;
+    // nomatch-sideways-wait-one)
+    const leading = !phoneWorking && phoneNoMatch && asset.mediaKind === 'image' && isSideways(windowSize.widthPx, windowSize.heightPx) ? readLeadingMarginPx() : undefined;
     return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, asset.mediaKind, leading) } } as ObservationSession;
   })();
   const slotMask = (() => {
