@@ -119,5 +119,14 @@ final class FirstUseHomeResultTests: XCTestCase {
         XCTAssertTrue(marks.contains("Color.black.opacity(SkyOverlayStyle.haloOpacity)") && marks.contains("SkyOverlayStyle.haloWidthPt/2"), "the dark halo")
         XCTAssertTrue(marks.contains("context.draw(halo,at:CGPoint(x:at.x+dx*out,y:at.y+dy*out),anchor:anchor)}context.draw(name(colour),at:at,anchor:anchor)"), "drawn under the name")
         XCTAssertTrue(marks.contains("letcolour=Color(ControlStyle.Evidence.catalogMatched.colour)"))
+        // AUDIT-C's T21: only the marks on the card, only the names the rule gives, the solution's own words, on the
+        // side the rule chose and anchored away from the mark
+        XCTAssertTrue(marks.contains("letplaced=marks.filter{frame.isOnCard(xPx:$0.xPx,yPx:$0.yPx,width:width,height:height)}.map{markin"),
+                      "marks off the card are neither drawn nor named")
+        XCTAssertTrue(marks.contains("forpinplaced{guardletonLeft=named[p.mark.id]else{continue}"), "a name only where the rule gives one")
+        XCTAssertTrue(marks.contains("Text(p.mark.title)"), "the solution's own title, never its catalog number")
+        XCTAssertFalse(marks.contains("catalogSourceId"))
+        XCTAssertTrue(marks.contains("letat=CGPoint(x:onLeft?p.x-gap:p.x+gap,y:p.y)"), "10 pt right of the mark's centre, else left")
+        XCTAssertTrue(marks.contains("letanchor:UnitPoint=onLeft?.trailing:.leading"), "the name runs away from its mark")
     }
 }
