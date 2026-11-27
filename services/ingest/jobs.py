@@ -1760,8 +1760,11 @@ SOLVE_PRODUCER_FILES = (
 # the inlier gate under the reported WCS made again without that star (the training fit and the polish run on the
 # pairs without it), so no name rests on a fit bent to its own star or on a residual measured before the polish
 # moved it; such a detection stays observed, and the gate, its numbers and the status are unchanged
-# (matched-residual-one)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 35, SOLVE_PRODUCER_FILES)
+# (matched-residual-one); 36, where the blind search's start finds no pose or one the gate refuses, it is swept over
+# fields of view from 0.40 to 1.47 of its start, and the sweep's best pose, only where it scores at least 1.5 times
+# the best pose more than 5 deg away, is looked at as the start's was, the gate unchanged (blind-sweep-one), which
+# calibrates rp-b-03, rp-b-05, rp-b-15, rp-b-17 and rp-b-20
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 36, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

@@ -2164,6 +2164,291 @@ def _blind_search_catalog(tile_index: "_TileStarIndex", epoch_jyear: float) -> t
     return ra, dec
 
 
+# blind-sweep-one: the fields the blind search sweeps when the pose from its start does not pass the held-out gate or
+# it found none, as factors of the start's field: the 45 rungs 3 percent apart from 0.40 to 1.47 but the start's own
+# (0.40 x 1.03^31, 1.0 to four places), the nearest first.
+# A few percent of field outruns the search's 0.42 deg count (blind-search-zero: 0 of 24 for the right pose at a start
+# 6.6 percent wide, 22 at the right field) [tested, .lead/kiro/reports/SOLVER/blind-search-zero.md]
+BLIND_SWEEP_FACTORS = tuple(
+    sorted(
+        (factor for factor in (round(0.40 * 1.03**k, 4) for k in range(45)) if factor != 1.0),
+        key=lambda factor: (abs(math.log(factor)), factor),
+    )
+)
+# The sweep's best pose goes through the unchanged first look and gate only where its score is at least
+# BLIND_SWEEP_STANDS_OUT times the best score of any field whose pose's axis lies more than BLIND_SWEEP_APART_DEG
+# away: scoring 44 fields gives a wrong pose 44 chances, so the sweep keeps only a pose no other place on the sky
+# comes near. [tested, .lead/kiro/reports/SOLVER/blind-sweep-one.md: on the sixty public photos every sweep pose
+# that passed and is right or unchecked stood 1.67 to 3.50 times over the best elsewhere; the one judged wrong
+# (rp-a-12) tied at 1.00 with far fields; no random field's best stood over 1.17, no photo that stays unmatched over
+# 1.38; the same at 2, 10 and 20 deg]
+BLIND_SWEEP_STANDS_OUT = 1.5
+BLIND_SWEEP_APART_DEG = 5.0
+# The fewest detections within 0.42 deg a blind pose needs, and the count at which a search stops looking
+BLIND_MIN_SCORE = 7
+
+
+@dataclass(frozen=True)
+class _BlindTriangles:
+    """The blind search's catalog triangles: each star with its BLIND_NEIGHBOURS nearest stars inside a reach."""
+
+    u_all: np.ndarray
+    v0: np.ndarray
+    v1: np.ndarray
+    v2: np.ndarray
+    r1: np.ndarray
+    r2: np.ndarray
+    long: np.ndarray
+    f_cat: np.ndarray
+
+    def within(self, reach_deg: float) -> "_BlindTriangles":
+        """The triangles a search with this smaller reach builds: those whose longest side is within it (each
+        star's nearest within a reach are its nearest within a wider one, cut at the reach)."""
+        keep = self.long <= reach_deg
+        return _BlindTriangles(
+            self.u_all, self.v0[keep], self.v1[keep], self.v2[keep], self.r1[keep], self.r2[keep], self.long[keep],
+            self.f_cat[keep],
+        )
+
+
+def _blind_catalog_triangles(cat_ra: np.ndarray, cat_dec: np.ndarray, reach_deg: float) -> _BlindTriangles | None:
+    # Build catalog triangles from brightest stars in clustered sky patches
+    # Catalog triangles over the whole list (solve-search-1): each star with its BLIND_NEIGHBOURS nearest stars inside
+    # the frame's reach, so the count grows with the list's length, not its cube, and no part of the sky is left out
+    u_all = _radec_to_vec_batch(cat_ra, cat_dec)
+    u_cat = u_all
+    from scipy.spatial import cKDTree
+
+    chord = 2.0 * math.sin(math.radians(reach_deg) / 2.0)
+    neighbours_of = cKDTree(u_all).query(u_all, k=min(BLIND_NEIGHBOURS + 1, len(u_all)), distance_upper_bound=chord)[1]
+    triples: set[tuple[int, int, int]] = set()
+    for star, row in enumerate(neighbours_of):
+        near = [int(n) for n in row[1:] if n < len(u_all)]
+        for n1, n2 in itertools.combinations(near, 2):
+            triples.add(tuple(sorted((star, n1, n2))))
+
+    cat_tris: list[tuple[int, int, int, float, float, float]] = []
+    for i, j, k in sorted(triples):
+        a_ij = math.degrees(math.acos(max(-1.0, min(1.0, float(u_cat[i] @ u_cat[j])))))
+        a_jk = math.degrees(math.acos(max(-1.0, min(1.0, float(u_cat[j] @ u_cat[k])))))
+        a_ik = math.degrees(math.acos(max(-1.0, min(1.0, float(u_cat[i] @ u_cat[k])))))
+        sides = sorted([a_ij, a_jk, a_ik])
+        if sides[0] < 2.5 or sides[2] > reach_deg:
+            continue
+        pairs = [((i, j), a_ij), ((j, k), a_jk), ((i, k), a_ik)]
+        pairs.sort(key=lambda p: p[1], reverse=True)
+        lset, sset = set(pairs[0][0]), set(pairs[1][0])
+        v0 = (lset & sset).pop()
+        v1 = (lset - {v0}).pop()
+        v2 = ({i, j, k} - {v0, v1}).pop()
+        cat_tris.append((v0, v1, v2, pairs[1][1] / pairs[0][1], pairs[2][1] / pairs[0][1], pairs[0][1]))
+
+    if not cat_tris:
+        return None
+    cat_v0 = np.array([t[0] for t in cat_tris], dtype=np.int64)
+    cat_v1 = np.array([t[1] for t in cat_tris], dtype=np.int64)
+    cat_v2 = np.array([t[2] for t in cat_tris], dtype=np.int64)
+    cat_r1 = np.array([t[3] for t in cat_tris], dtype=np.float64)
+    cat_r2 = np.array([t[4] for t in cat_tris], dtype=np.float64)
+    cat_long = np.array([t[5] for t in cat_tris], dtype=np.float64)
+    F_cat = _triad_basis_batch(u_cat[cat_v0], u_cat[cat_v1])
+    return _BlindTriangles(u_all, cat_v0, cat_v1, cat_v2, cat_r1, cat_r2, cat_long, F_cat)
+
+
+def _blind_detection_rays(
+    det_sub: Sequence[SourceDetection], width: int, height: int, fov_deg: float, lens_model: str
+) -> np.ndarray:
+    """The detections' rays on a pinhole of this field, the camera's axis at the frame's centre."""
+    temp_wcs = PhoneCameraWCS.from_rotation_and_intrinsics(
+        rot_matrix=np.eye(3, dtype=np.float64),
+        fov_diagonal_deg=fov_deg,
+        width=width,
+        height=height,
+        lens_model=lens_model,
+        sky_frame=None,
+    )
+    dx = np.array([d.x_px for d in det_sub], dtype=np.float64)
+    dy = np.array([d.y_px for d in det_sub], dtype=np.float64)
+    xd = (dx - temp_wcs.crpix_x) / temp_wcs.focal_px
+    yd = (dy - temp_wcs.crpix_y) / temp_wcs.focal_px
+    return _normalize_vecs(np.stack([xd, yd, np.ones_like(xd)], axis=-1))
+
+
+def _blind_best_pose(
+    d_rays: np.ndarray,
+    tris: _BlindTriangles,
+    width: int,
+    height: int,
+    fov_deg: float,
+    lens_model: str,
+    on_candidate: Callable[[int, int], None] | None,
+) -> tuple[int, PhoneCameraWCS | None]:
+    """The best-scored pose of one field: the most detections within 0.42 deg of a catalog star, and its camera."""
+    u_all = u_cat = tris.u_all
+    cat_v2, cat_r1, cat_r2, cat_long, F_cat = tris.v2, tris.r1, tris.r2, tris.long, tris.f_cat
+    n_det = len(d_rays)
+    triplets = list(itertools.combinations(range(n_det), 3))
+    total = len(triplets)
+    if on_candidate is not None:
+        on_candidate(0, max(1, total))
+
+    best_score = 0
+    best_wcs: PhoneCameraWCS | None = None
+    cos_gate_tri = math.cos(math.radians(0.65))
+    cos_gate_inlier = math.cos(math.radians(0.42))
+
+    for evaluated, (a, b, c) in enumerate(triplets, start=1):
+        d_ab = math.degrees(math.acos(max(-1.0, min(1.0, float(d_rays[a] @ d_rays[b])))))
+        d_bc = math.degrees(math.acos(max(-1.0, min(1.0, float(d_rays[b] @ d_rays[c])))))
+        d_ac = math.degrees(math.acos(max(-1.0, min(1.0, float(d_rays[a] @ d_rays[c])))))
+        dpairs = [((a, b), d_ab), ((b, c), d_bc), ((a, c), d_ac)]
+        dpairs.sort(key=lambda p: p[1], reverse=True)
+        if dpairs[2][1] < 2.0:
+            if on_candidate is not None:
+                on_candidate(evaluated, total)
+            continue
+        lset, sset = set(dpairs[0][0]), set(dpairs[1][0])
+        u0 = (lset & sset).pop()
+        u1 = (lset - {u0}).pop()
+        u2 = ({a, b, c} - {u0, u1}).pop()
+        dr1 = dpairs[1][1] / dpairs[0][1]
+        dr2 = dpairs[2][1] / dpairs[0][1]
+        d_long = dpairs[0][1]
+
+        hits = np.flatnonzero(
+            (np.abs(cat_r1 - dr1) <= 0.03)
+            & (np.abs(cat_r2 - dr2) <= 0.03)
+            & (np.abs(cat_long - d_long) <= 4.5)
+        )
+        if hits.size > 0:
+            E = _triad_basis_batch(d_rays[[u0]], d_rays[[u1]])[0]
+            for h_idx in hits:
+                v2 = int(cat_v2[h_idx])
+                R = E @ F_cat[h_idx].T
+                if float(d_rays[u2] @ (R @ u_cat[v2])) < cos_gate_tri:
+                    continue
+                proj = u_all @ R.T
+                sim = d_rays @ proj.T
+                inliers = int(np.count_nonzero(np.max(sim, axis=1) >= cos_gate_inlier))
+                if inliers > best_score:
+                    best_score = inliers
+                    best_wcs = PhoneCameraWCS.from_rotation_and_intrinsics(
+                        rot_matrix=R,
+                        fov_diagonal_deg=fov_deg,
+                        width=width,
+                        height=height,
+                        lens_model=lens_model,
+                        sky_frame=None,
+                    )
+        if on_candidate is not None:
+            on_candidate(evaluated, total)
+        if best_score >= max(10, n_det - 3):
+            break
+
+    return best_score, best_wcs
+
+
+def _search_blind_icrs_triangles(
+    pool: Sequence[SourceDetection],
+    width: int,
+    height: int,
+    cat_ra: np.ndarray,
+    cat_dec: np.ndarray,
+    fov_models: Sequence[tuple[float, str]],
+    on_candidate: Callable[[int, int], None] | None,
+) -> PhoneCameraWCS | None:
+    """Scale-invariant 3D triangle matcher in ICRS when capture time or observer location is omitted."""
+    det_sub = list(pool[:BLIND_DETECTIONS])
+    if len(det_sub) < 6 or len(cat_ra) < 6:
+        return None
+
+    fov_deg, lens_model = fov_models[0]
+    d_rays = _blind_detection_rays(det_sub, width, height, fov_deg, lens_model)
+    tris = _blind_catalog_triangles(cat_ra, cat_dec, min(0.85 * fov_deg, 75.0))
+    if tris is None:
+        return None
+    best_score, best_wcs = _blind_best_pose(d_rays, tris, width, height, fov_deg, lens_model, on_candidate)
+    return best_wcs if best_score >= BLIND_MIN_SCORE else None
+
+
+def _blind_sweep_poses(
+    pool: Sequence[SourceDetection],
+    width: int,
+    height: int,
+    cat_ra: np.ndarray,
+    cat_dec: np.ndarray,
+    start: tuple[float, str],
+    on_candidate: Callable[[int, int], None] | None,
+    counted: int,
+) -> list[PhoneCameraWCS]:
+    """blind-sweep-one: the blind search at each field of `BLIND_SWEEP_FACTORS` times the start's, nearest first,
+    and the best-scored pose across the fields (the nearer field on a tie), as a list of one, where it scores at
+    least `BLIND_MIN_SCORE` and `BLIND_SWEEP_STANDS_OUT` times the best score of any field whose pose's axis lies more
+    than `BLIND_SWEEP_APART_DEG` from its own (a neighbouring field's pose of the same place does not count); else
+    none. A field whose best reaches the search's own stopping count ends the sweep there, against the fields scored
+    so far. The catalog triangles are built once at the widest field's reach and cut at each field's
+    (`_BlindTriangles.within`). The count goes on from `counted`, so the job's count never falls: the sweep's total
+    at its start, then the count each field reached at its end (one report a field, not one a candidate, so a job
+    reports about as many transitions as it did)."""
+    det_sub = list(pool[:BLIND_DETECTIONS])
+    if len(det_sub) < 6 or len(cat_ra) < 6:
+        return []
+    start_fov, lens_model = start
+    fields = [start_fov * factor for factor in BLIND_SWEEP_FACTORS if start_fov * factor <= SEED_FOV_MAX_DEG]
+    widest = _blind_catalog_triangles(cat_ra, cat_dec, min(0.85 * max(fields), 75.0))
+    if widest is None:
+        return []
+    per_field = max(1, len(det_sub) * (len(det_sub) - 1) * (len(det_sub) - 2) // 6)
+    total = counted + per_field * len(fields)
+    stop_at = max(10, len(det_sub) - 3)
+    if on_candidate is not None:
+        on_candidate(counted, total)
+    scored: list[tuple[int, int, PhoneCameraWCS, np.ndarray]] = []
+    for order, fov_deg in enumerate(fields):
+        reached = [0]
+
+        def field_counts(done: int, _total: int, reached: list[int] = reached) -> None:
+            reached[0] = done
+
+        tris = widest.within(min(0.85 * fov_deg, 75.0))
+        if tris.long.size == 0:
+            continue
+        d_rays = _blind_detection_rays(det_sub, width, height, fov_deg, lens_model)
+        score, wcs = _blind_best_pose(d_rays, tris, width, height, fov_deg, lens_model, field_counts)
+        if on_candidate is not None:
+            on_candidate(counted + order * per_field + reached[0], total)
+        if wcs is not None:
+            ra, dec = wcs.pixel_to_world(wcs.crpix_x, wcs.crpix_y)
+            scored.append((score, order, wcs, _radec_to_vec_batch(np.array([ra]), np.array([dec]))[0]))
+        if score >= stop_at:
+            break
+    if not scored:
+        return []
+    best_score, _, best_wcs, best_axis = min(scored, key=lambda entry: (-entry[0], entry[1]))
+    apart = math.cos(math.radians(BLIND_SWEEP_APART_DEG))
+    elsewhere = max((entry[0] for entry in scored if float(entry[3] @ best_axis) < apart), default=0)
+    if best_score < BLIND_MIN_SCORE or best_score < BLIND_SWEEP_STANDS_OUT * elsewhere:
+        return []
+    return [best_wcs]
+
+
+# [proposed] The blind search's catalog: the brightest BLIND_CATALOG_STARS tile stars to V BLIND_CATALOG_V of the whole
+# sky (no region chosen, so a frame anywhere, the southern sky included, holds its share: 7 to 63 of them in the
+# benchmark's solved real frames); each star makes catalog triangles with its BLIND_NEIGHBOURS nearest stars within the
+# frame's reach (solve-search-1)
+BLIND_CATALOG_V = 5.5
+BLIND_CATALOG_STARS = 400
+BLIND_NEIGHBOURS = 8
+# [proposed] How many of the ranked pool's detections the blind search makes triangles from (16 before solve-search-1)
+BLIND_DETECTIONS = 24
+
+
+def _blind_search_catalog(tile_index: "_TileStarIndex", epoch_jyear: float) -> tuple[np.ndarray, np.ndarray]:
+    """The blind search's stars: the whole sky's brightest, at the photo's epoch, in no region's favour."""
+    _, ra, dec, _ = tile_index.query_bright(v_limit=BLIND_CATALOG_V, max_stars=BLIND_CATALOG_STARS, epoch_jyear=epoch_jyear)
+    return ra, dec
+
+
 def _search_blind_icrs_triangles(
     pool: Sequence[SourceDetection],
     width: int,
@@ -2655,6 +2940,92 @@ def refine_binned_phone_solution(
     return refitted
 
 
+@dataclass(frozen=True)
+class _PoseLook:
+    """What the pass reads after its first look at a pose: the look (None with too few pairs) and the verification
+    stars it was made against."""
+
+    look: "_HeldOutLook | None"
+    v_ra: np.ndarray
+    v_dec: np.ndarray
+    v_row_indices: np.ndarray | None
+    verify_stars: list[CatalogStar]
+
+
+def _look_at_pose(
+    initial_wcs: PhoneCameraWCS,
+    *,
+    catalog_stars: Sequence[CatalogStar] | None,
+    tile_index: "_TileStarIndex",
+    epoch_jyear: float,
+    sky_frame: "_ApparentSkyFrame | None",
+    whole_sky: bool,
+    width: int,
+    height: int,
+    eval_pool: list[SourceDetection],
+    sky_fraction: float,
+    _preset_initial_radius_px: float | None,
+    _preset_initial_wcs: PhoneCameraWCS | None,
+) -> _PoseLook:
+    """The pass's first look at a pose (moved here unchanged by blind-sweep-one, so a pose of the sweep is looked at
+    as the search's own is): the verification stars in its frame, the first association, the look, and the grown
+    association's look where the first does not pass."""
+    # Query verification catalog stars that project inside the initial frame
+    if catalog_stars is not None:
+        verify_stars = list(catalog_stars)
+        v_ra = np.array([s.ra_deg for s in verify_stars], dtype=np.float64)
+        v_dec = np.array([s.dec_deg for s in verify_stars], dtype=np.float64)
+        v_row_indices = None
+    else:
+        is_ultrawide = initial_wcs.fov_diagonal_deg >= 105.0
+        v_lim = 6.35 if is_ultrawide else 6.65
+        max_in_frame = 80 if is_ultrawide else 90
+        all_idx, all_ra, all_dec, _ = tile_index.query_bright(v_limit=v_lim, max_stars=8000, epoch_jyear=epoch_jyear)
+        px0, py0 = initial_wcs.world_to_pixel_batch(all_ra, all_dec)
+        in_box = np.isfinite(px0) & (px0 >= -8.0) & (px0 <= width + 8.0) & (py0 >= -8.0) & (py0 <= height + 8.0)
+        # The whole-sky search keeps the stars below the horizon of the photo's moment, as the search with no moment
+        # does: a wrong clock or place must not take its stars away
+        if sky_frame is not None and not whole_sky:
+            enu_all = sky_frame.icrs_to_sky_vec(all_ra, all_dec)
+            in_box &= enu_all[:, 2] > math.sin(math.radians(0.2))
+        box_sub = np.flatnonzero(in_box)[:max_in_frame]
+        v_row_indices = all_idx[box_sub]
+        v_ra = all_ra[box_sub]
+        v_dec = all_dec[box_sub]
+        verify_stars = []
+
+    # Initial association on ranked pool using 1.15-degree angular radius around initial triad attitude, or the tight
+    # stored-pixel handover radius when starting from a calibrated binned PhoneCameraWCS
+    deg_in_px = 1.0 / max(initial_wcs.scale_deg_per_px, 1e-4)
+    if _preset_initial_radius_px is not None:
+        first_radius_px = float(_preset_initial_radius_px)
+        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
+    else:
+        first_radius_px = max(4.8, min(28.0, 1.15 * deg_in_px))
+        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
+        if len(init_pairs) < 6:
+            first_radius_px *= 1.4
+            init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
+
+    look = (
+        _held_out_look(initial_wcs, init_pairs, eval_pool, v_ra, v_dec, width, height, deg_in_px, sky_fraction)
+        if len(init_pairs) >= 6
+        else None
+    )
+    # A first look that did not pass, or too few pairs to look at, gets one more look on the first association grown
+    # (association-grow-one), taken only when it passes. Only the app's own searches: the stored-pixel handover and
+    # the astrometry.net stage's candidate keep their one look
+    if (look is None or not look.passed_gate) and _preset_initial_wcs is None:
+        grown_pairs = _grow_first_association(initial_wcs, eval_pool, v_ra, v_dec, init_pairs, first_radius_px)
+        if len(grown_pairs) > len(init_pairs) and len(grown_pairs) >= 6:
+            second = _held_out_look(
+                initial_wcs, grown_pairs, eval_pool, v_ra, v_dec, width, height, deg_in_px, sky_fraction
+            )
+            if second.passed_gate or look is None:
+                look = second
+    return _PoseLook(look, v_ra, v_dec, v_row_indices, verify_stars)
+
+
 def _frame_luma_and_background(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """The luma a pass reads (over 255 for 8-bit codes or codes above 1.5) and its background, as every pass made them."""
     raw_luma = _to_luma_2d(image)
@@ -2941,6 +3312,15 @@ def _solve_phone_photo_with(
     else:
         epoch_limitations = ()
     initial_wcs: PhoneCameraWCS | None = _preset_initial_wcs
+    # The blind search's stars when it ran on the whole sky's tile stars (blind-sweep-one), and the candidates the
+    # pass has counted, so a sweep counts on from them
+    swept_blind: tuple[np.ndarray, np.ndarray] | None = None
+    counted = [0]
+
+    def counting(done: int, total: int) -> None:
+        counted[0] = total
+        if on_candidate is not None:
+            on_candidate(done, total)
 
     if initial_wcs is None and seed_axes_icrs is not None:
         # The pose as the search's answer (align-2w): the camera in this sky frame from its three directions, at the
@@ -2988,10 +3368,33 @@ def _solve_phone_photo_with(
             # The whole sky's brightest stars, in no region's favour (solve-search-1)
             c_ra, c_dec = _blind_search_catalog(tile_index, epoch_jyear)
         initial_wcs = _search_blind_icrs_triangles(
-            pool, width, height, c_ra, c_dec, fov_models, on_candidate if sky_frame is None or whole_sky else None
+            pool, width, height, c_ra, c_dec, fov_models, counting if sky_frame is None or whole_sky else None
         )
+        if catalog_stars is None and _preset_initial_wcs is None:
+            swept_blind = (c_ra, c_dec)
 
-    if initial_wcs is None:
+    eval_pool = ranked_candidates
+    looked = _look_at_pose(
+        initial_wcs, catalog_stars=catalog_stars, tile_index=tile_index, epoch_jyear=epoch_jyear, sky_frame=sky_frame,
+        whole_sky=whole_sky, width=width, height=height, eval_pool=eval_pool, sky_fraction=sky_fraction,
+        _preset_initial_radius_px=_preset_initial_radius_px, _preset_initial_wcs=_preset_initial_wcs,
+    ) if initial_wcs is not None else None
+    # blind-sweep-one: only when the app's own blind search, on the whole sky's tile stars, found no pose or one the
+    # gate refused, its fields are swept and the sweep's pose, where one stands out, looked at as the start's was,
+    # kept only when it passes; else the solve is the start's, as it was. Nothing of the gate or its numbers moves
+    if swept_blind is not None and (looked is None or looked.look is None or not looked.look.passed_gate):
+        for pose in _blind_sweep_poses(
+            pool, width, height, swept_blind[0], swept_blind[1], fov_models[0], on_candidate, counted[0]
+        ):
+            other = _look_at_pose(
+                pose, catalog_stars=catalog_stars, tile_index=tile_index, epoch_jyear=epoch_jyear, sky_frame=sky_frame,
+                whole_sky=whole_sky, width=width, height=height, eval_pool=eval_pool, sky_fraction=sky_fraction,
+                _preset_initial_radius_px=_preset_initial_radius_px, _preset_initial_wcs=_preset_initial_wcs,
+            )
+            if other.look is not None and other.look.passed_gate:
+                looked = other
+                break
+    if looked is None:
         return _build_unresolved(
             detections,
             solution_id,
@@ -3005,62 +3408,8 @@ def _solve_phone_photo_with(
             "Pixel position only: no catalog pattern matched, so no WCS places it on the sky.",
             noise_warnings,
         )
-
-    # Query verification catalog stars that project inside the initial frame
-    if catalog_stars is not None:
-        verify_stars = list(catalog_stars)
-        v_ra = np.array([s.ra_deg for s in verify_stars], dtype=np.float64)
-        v_dec = np.array([s.dec_deg for s in verify_stars], dtype=np.float64)
-        v_row_indices = None
-    else:
-        is_ultrawide = initial_wcs.fov_diagonal_deg >= 105.0
-        v_lim = 6.35 if is_ultrawide else 6.65
-        max_in_frame = 80 if is_ultrawide else 90
-        all_idx, all_ra, all_dec, _ = tile_index.query_bright(v_limit=v_lim, max_stars=8000, epoch_jyear=epoch_jyear)
-        px0, py0 = initial_wcs.world_to_pixel_batch(all_ra, all_dec)
-        in_box = np.isfinite(px0) & (px0 >= -8.0) & (px0 <= width + 8.0) & (py0 >= -8.0) & (py0 <= height + 8.0)
-        # The whole-sky search keeps the stars below the horizon of the photo's moment, as the search with no moment
-        # does: a wrong clock or place must not take its stars away
-        if sky_frame is not None and not whole_sky:
-            enu_all = sky_frame.icrs_to_sky_vec(all_ra, all_dec)
-            in_box &= enu_all[:, 2] > math.sin(math.radians(0.2))
-        box_sub = np.flatnonzero(in_box)[:max_in_frame]
-        v_row_indices = all_idx[box_sub]
-        v_ra = all_ra[box_sub]
-        v_dec = all_dec[box_sub]
-        verify_stars = []
-
-    eval_pool = ranked_candidates
-
-    # Initial association on ranked pool using 1.15-degree angular radius around initial triad attitude, or the tight
-    # stored-pixel handover radius when starting from a calibrated binned PhoneCameraWCS
-    deg_in_px = 1.0 / max(initial_wcs.scale_deg_per_px, 1e-4)
-    if _preset_initial_radius_px is not None:
-        first_radius_px = float(_preset_initial_radius_px)
-        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
-    else:
-        first_radius_px = max(4.8, min(28.0, 1.15 * deg_in_px))
-        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
-        if len(init_pairs) < 6:
-            first_radius_px *= 1.4
-            init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
-
-    look = (
-        _held_out_look(initial_wcs, init_pairs, eval_pool, v_ra, v_dec, width, height, deg_in_px, sky_fraction)
-        if len(init_pairs) >= 6
-        else None
-    )
-    # A first look that did not pass, or too few pairs to look at, gets one more look on the first association grown
-    # (association-grow-one), taken only when it passes. Only the app's own searches: the stored-pixel handover and
-    # the astrometry.net stage's candidate keep their one look
-    if (look is None or not look.passed_gate) and _preset_initial_wcs is None:
-        grown_pairs = _grow_first_association(initial_wcs, eval_pool, v_ra, v_dec, init_pairs, first_radius_px)
-        if len(grown_pairs) > len(init_pairs) and len(grown_pairs) >= 6:
-            second = _held_out_look(
-                initial_wcs, grown_pairs, eval_pool, v_ra, v_dec, width, height, deg_in_px, sky_fraction
-            )
-            if second.passed_gate or look is None:
-                look = second
+    look, v_ra, v_dec = looked.look, looked.v_ra, looked.v_dec
+    v_row_indices, verify_stars = looked.v_row_indices, looked.verify_stars
     if look is None:
         return _build_unresolved(
             detections,
