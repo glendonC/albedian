@@ -10,7 +10,8 @@ import type { CelestialFinding, ObservationSession, ObservationSolution } from '
 import { pixelToWorldWCS } from '@albedian/camera-rig';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { DEEP_SKY_CATALOG_URL, forgetDeepSkyTable } from '../deepSky.js';
-import { HINT_GAP_PX, MARK_TARGET_PX, hintSide, isPredictedMark, markAtPress, type HintBox } from '../markPress.js';
+import { HINT_GAP_PX, MARK_TARGET_PX, hintBoxAt, hintPlace, isPredictedMark, markAtPress, overlapArea, type Box } from '../markPress.js';
+import { phoneSlotIn } from '../phoneSlot.js';
 import { REVEAL_ARRIVAL_MS, RevealPhoto } from '../RevealPhoto.js';
 
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
@@ -111,63 +112,133 @@ describe('mark-press-nearest-one: a press opens the nearest mark whose target ho
   });
 });
 
-describe("mark-press-nearest-one: the hint stands clear of every other mark's ring, by the side its record allows", () => {
-  const ringsOf = (marks: readonly FixtureMark[], except: string) =>
-    marks.filter((m) => m.name !== except).map((m) => ({ xPx: m.xPx, yPx: m.yPx, rPx: m.deepSky ? 6 : m.predicted ? 7 : 9 }));
-  const boxAt = (anchor: { xPx: number; yPx: number }, side: 'right' | 'left', w: number, h: number): HintBox =>
-    side === 'right'
-      ? { x0: anchor.xPx + HINT_GAP_PX, y0: anchor.yPx + HINT_GAP_PX, x1: anchor.xPx + HINT_GAP_PX + w, y1: anchor.yPx + HINT_GAP_PX + h }
-      : { x0: anchor.xPx - HINT_GAP_PX - w, y0: anchor.yPx + HINT_GAP_PX, x1: anchor.xPx - HINT_GAP_PX, y1: anchor.yPx + HINT_GAP_PX + h };
-  const clears = (box: HintBox, rings: ReturnType<typeof ringsOf>) =>
-    rings.every((r) => {
-      const dx = Math.max(box.x0 - r.xPx, 0, r.xPx - box.x1);
-      const dy = Math.max(box.y0 - r.yPx, 0, r.yPx - box.y1);
-      return dx * dx + dy * dy > r.rPx * r.rPx;
-    });
+// hint-place-one (UIUX-first-use-wow-READY.md, its addition on WEB-UX's QUESTION, DECIDED-BY-LEAD 00:44 on 27 Nov; Floating
+// UI's flip with its best fit): the hint tries its name's side, the other side, centred under the ring, centred over it;
+// the first whose box meets no other mark (its glyph and its name) inside the photo wins; else the least covering place,
+// the earlier on a tie, never over the hinted star's own ring or name
+interface NamedMark extends FixtureMark {
+  label: [number, number, number, number] | null;
+}
+const NAMES = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/rpb01LabPhoneMarkNames.json'), 'utf8')) as {
+  sizes: { window: [number, number]; hint: [number, number]; marks: Omit<NamedMark, 'kind'>[] }[];
+};
+const glyphBox = (m: { xPx: number; yPx: number; predicted: boolean; deepSky: boolean }): Box => {
+  const r = m.deepSky ? 6 : m.predicted ? 7 : 9;
+  return { x0: m.xPx - r, y0: m.yPx - r, x1: m.xPx + r, y1: m.yPx + r };
+};
+const labelBox = (m: { label: [number, number, number, number] | null }): Box[] => (m.label ? [{ x0: m.label[0], y0: m.label[1], x1: m.label[2], y1: m.label[3] }] : []);
 
-  it('keeps the 14 px gap the hint is drawn at', () => {
+describe('hint-place-one: the first hint stands at the first clear place of its record, else where it covers least', () => {
+  it('keeps the 14 px reach, and centres the hint under and over its ring', () => {
     expect(HINT_GAP_PX).toBe(14);
+    const size = { widthPx: 140, heightPx: 17 };
+    expect(hintBoxAt({ xPx: 200, yPx: 300 }, 'right', size)).toEqual({ x0: 214, y0: 314, x1: 354, y1: 331 });
+    expect(hintBoxAt({ xPx: 200, yPx: 300 }, 'left', size)).toEqual({ x0: 46, y0: 314, x1: 186, y1: 331 });
+    expect(hintBoxAt({ xPx: 200, yPx: 300 }, 'under', size)).toEqual({ x0: 130, y0: 314, x1: 270, y1: 331 });
+    expect(hintBoxAt({ xPx: 200, yPx: 300 }, 'over', size)).toEqual({ x0: 130, y0: 269, x1: 270, y1: 286 });
   });
 
-  it("moves to Hadar's other side where its own side lies over a matched ring and the other is clear: 402 by 714 and 390 by 844", () => {
-    for (const size of FIXTURE.sizes) {
-      const hadar = size.marks.find((m) => m.name === 'Hadar')!;
-      const [, , w, h] = size.hint;
-      const rings = ringsOf(size.marks, 'Hadar');
+  it('counts boxes that only touch as clear, and the shared area otherwise', () => {
+    expect(overlapArea({ x0: 0, y0: 0, x1: 10, y1: 10 }, { x0: 10, y0: 0, x1: 20, y1: 10 })).toBe(0);
+    expect(overlapArea({ x0: 0, y0: 0, x1: 10, y1: 10 }, { x0: 5, y0: 6, x1: 20, y1: 20 })).toBe(20);
+  });
+
+  it('tries the name side, the other side, under, then over: the first clear place inside the photo wins', () => {
+    const size = { widthPx: 140, heightPx: 17 };
+    const at = { xPx: 200, yPx: 300 };
+    const photo = { x0: 0, y0: 0, x1: 400, y1: 600 };
+    const box = (place: 'right' | 'left' | 'under' | 'over') => hintBoxAt(at, place, size);
+    expect(hintPlace(at, false, size, [], [], photo)).toBe('right');
+    expect(hintPlace(at, true, size, [], [], photo)).toBe('left');
+    expect(hintPlace(at, false, size, [box('right')], [], photo)).toBe('left');
+    expect(hintPlace(at, true, size, [box('left')], [], photo)).toBe('right');
+    // Under overlaps both sides' boxes, so a mark there blocks them all three
+    const middleLow = { x0: 180, y0: 318, x1: 220, y1: 328 };
+    expect(hintPlace(at, false, size, [box('right'), box('left'), middleLow], [], photo)).toBe('over');
+    expect(hintPlace(at, false, size, [{ x0: 300, y0: 320, x1: 310, y1: 325 }, { x0: 60, y0: 320, x1: 70, y1: 325 }], [], photo)).toBe('under');
+    // A place that leaves the photo is not clear, whatever it meets
+    expect(hintPlace(at, false, size, [], [], { x0: 0, y0: 0, x1: 350, y1: 600 })).toBe('left');
+    expect(hintPlace(at, false, size, [], [], { x0: 100, y0: 0, x1: 350, y1: 600 })).toBe('under');
+    expect(hintPlace(at, false, size, [], [], { x0: 100, y0: 0, x1: 350, y1: 320 })).toBe('over');
+    // Over leaves the photo's top and both sides leave its sides: with under blocked, the best fit among the places inside
+    // the photo is under itself (version two: never a place past the photo)
+    expect(hintPlace(at, false, size, [{ x0: 200, y0: 320, x1: 210, y1: 325 }], [], { x0: 100, y0: 280, x1: 350, y1: 600 })).toBe('under');
+  });
+
+  it('takes the least covering place where none is clear, the earlier on a tie, never over the hinted star itself', () => {
+    const size = { widthPx: 140, heightPx: 17 };
+    const at = { xPx: 200, yPx: 300 };
+    const photo = { x0: 0, y0: 0, x1: 400, y1: 600 };
+    // Right covers 100, left 20, under 120 (both), over 50
+    const marks = [{ x0: 260, y0: 316, x1: 270, y1: 326 }, { x0: 100, y0: 316, x1: 102, y1: 326 }, { x0: 190, y0: 275, x1: 200, y1: 280 }];
+    expect(hintPlace(at, false, size, marks, [], photo)).toBe('left');
+    // Left over the hinted star's own name: the next least, over
+    expect(hintPlace(at, false, size, marks, [{ x0: 90, y0: 310, x1: 110, y1: 320 }], photo)).toBe('over');
+    // A tie between right and left (100 each): the earlier, its name's side
+    const even = [{ x0: 260, y0: 316, x1: 270, y1: 326 }, { x0: 100, y0: 316, x1: 110, y1: 326 }, { x0: 190, y0: 270, x1: 220, y1: 285 }, { x0: 195, y0: 320, x1: 205, y1: 330 }];
+    expect(hintPlace(at, false, size, even, [], photo)).toBe('right');
+    expect(hintPlace(at, true, size, even, [], photo)).toBe('left');
+    // Every place over the hinted star: its name's side
+    expect(hintPlace(at, true, size, marks, [{ x0: 0, y0: 260, x1: 400, y1: 340 }], photo)).toBe('left');
+  });
+
+  it('picks its best fit only among places inside the photo as shown in the window (version two, AUDIT-C D5)', () => {
+    const size = { widthPx: 140, heightPx: 17 };
+    const at = { xPx: 60, yPx: 300 };
+    // Every place meets a mark; the left covers least but leaves the window (its box from -94): the next least inside wins
+    const marks = [{ x0: 75, y0: 316, x1: 200, y1: 330 }, { x0: -50, y0: 318, x1: -40, y1: 320 }, { x0: 0, y0: 270, x1: 120, y1: 285 }];
+    expect(hintPlace(at, false, size, marks, [], { x0: 0, y0: 0, x1: 400, y1: 600 })).toBe('right');
+    // With no place inside at all, its name's side
+    expect(hintPlace(at, false, size, marks, [], { x0: 0, y0: 0, x1: 100, y1: 600 })).toBe('right');
+    expect(hintPlace(at, true, size, marks, [], { x0: 0, y0: 0, x1: 100, y1: 600 })).toBe('left');
+  });
+
+  it("keeps the hint whole inside the window on rp-b-12 at the two narrowest phone sizes (AUDIT-C's case)", () => {
+    const TWELVE = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/rpb12PhoneMarkNames.json'), 'utf8')) as typeof NAMES;
+    for (const size of TWELVE.sizes) {
       const where = size.window.join('x');
-      expect(clears(boxAt(hadar, 'right', w, h), rings), where).toBe(false);
-      const side = hintSide(hadar, false, { widthPx: w, heightPx: h }, rings, size.window[0]);
-      if (where === '375x667') {
-        // No free side: Zeta Centauri's tick (its ring 4.5, its ticks to 9) reaches under a pixel into the left box's
-        // corner, so the hint keeps its name's side (WEB-UX-mark-press-nearest-one-QUESTION.md asks UIUX)
-        expect(clears(boxAt(hadar, 'left', w, h), rings), where).toBe(false);
-        expect(side, where).toBe('right');
-      } else {
-        expect(side, where).toBe('left');
-        expect(clears(boxAt(hadar, 'left', w, h), rings), where).toBe(true);
-      }
+      const named = size.marks.filter((m) => m.label && !m.predicted && !m.deepSky);
+      expect(named.length, where).toBe(1);
+      const star = named[0]!;
+      const others = size.marks.filter((m) => m !== star).flatMap((m) => [glyphBox(m), ...labelBox(m)]);
+      const own = [glyphBox(star), ...labelBox(star)];
+      const slot = phoneSlotIn(size.window[1], size.window[0]);
+      const photo = { x0: 0, y0: slot.topPx, x1: size.window[0], y1: slot.topPx + slot.heightPx };
+      const hint = { widthPx: size.hint[0], heightPx: size.hint[1] };
+      const place = hintPlace(star, false, hint, others, own, photo);
+      const box = hintBoxAt(star, place, hint);
+      expect(box.x0, `${where} ${place}`).toBeGreaterThanOrEqual(0);
+      expect(box.x1, `${where} ${place}`).toBeLessThanOrEqual(size.window[0]);
+      // Version one's best fit, held to no bound, stood past the window's left edge here
+      const cover = (p: 'right' | 'left' | 'under' | 'over') => others.reduce((sum, o) => sum + overlapArea(hintBoxAt(star, p, hint), o), 0);
+      const unbounded = (['right', 'left', 'under', 'over'] as const).reduce((best, p) => (cover(p) < cover(best) ? p : best));
+      expect(hintBoxAt(star, unbounded, hint).x0, where).toBeLessThan(0);
     }
   });
 
-  it("keeps its name's side when that side is clear, and keeps it when neither side is (then it is UIUX's to rule)", () => {
-    const anchor = { xPx: 200, yPx: 200 };
-    const size = { widthPx: 140, heightPx: 17 };
-    expect(hintSide(anchor, false, size, [], 400)).toBe('right');
-    expect(hintSide(anchor, true, size, [], 400)).toBe('left');
-    const onRight = { xPx: 260, yPx: 222, rPx: 9 };
-    const onLeft = { xPx: 140, yPx: 222, rPx: 9 };
-    expect(hintSide(anchor, true, size, [onLeft], 400)).toBe('right');
-    expect(hintSide(anchor, false, size, [onRight, onLeft], 400)).toBe('right');
-    expect(hintSide(anchor, true, size, [onRight, onLeft], 400)).toBe('left');
-  });
-
-  it('never takes a side that leaves the window, and reads a ring that only touches the box as clear', () => {
-    const size = { widthPx: 140, heightPx: 17 };
-    expect(hintSide({ xPx: 100, yPx: 200 }, false, size, [{ xPx: 160, yPx: 222, rPx: 9 }], 400)).toBe('right');
-    expect(hintSide({ xPx: 300, yPx: 200 }, true, size, [{ xPx: 240, yPx: 222, rPx: 9 }], 400)).toBe('left');
-    // The box's top at 214; a ring of 9 centred 9 above it only touches
-    expect(hintSide({ xPx: 200, yPx: 200 }, false, size, [{ xPx: 260, yPx: 205, rPx: 9 }], 400)).toBe('right');
-    expect(hintSide({ xPx: 200, yPx: 200 }, false, size, [{ xPx: 260, yPx: 205.5, rPx: 9 }], 400)).toBe('left');
+  it('stands beside Hadar on its other side at the three phone sizes of the Southern Cross photo, by the record', () => {
+    const expected: Record<string, 'left'> = { '402x714': 'left', '375x667': 'left', '390x844': 'left' };
+    for (const size of NAMES.sizes) {
+      const where = size.window.join('x');
+      const hadar = size.marks.find((m) => m.name === 'Hadar')!;
+      const others = size.marks.filter((m) => m !== hadar).flatMap((m) => [glyphBox(m), ...labelBox(m)]);
+      const own = [glyphBox(hadar), ...labelBox(hadar)];
+      const slot = phoneSlotIn(size.window[1], size.window[0]);
+      const photo = { x0: 0, y0: slot.topPx, x1: size.window[0], y1: slot.topPx + slot.heightPx };
+      const hint = { widthPx: size.hint[0], heightPx: size.hint[1] };
+      expect(hadar.label, where).not.toBeNull();
+      expect(hintPlace(hadar, false, hint, others, own, photo), where).toBe(expected[where]);
+      const cover = (place: 'right' | 'left' | 'under' | 'over') => others.reduce((sum, o) => sum + overlapArea(hintBoxAt(hadar, place, hint), o), 0);
+      // Its name's side covers a ring at every size
+      expect(cover('right'), where).toBeGreaterThan(0);
+      if (where === '375x667') {
+        // No place is clear there (Zeta Centauri's tick reaches the left box's corner): the left covers least
+        for (const place of ['left', 'under', 'over'] as const) expect(cover(place), `${where} ${place}`).toBeGreaterThan(0);
+        expect(cover('left'), where).toBeLessThan(Math.min(cover('right'), cover('under'), cover('over')));
+      } else {
+        expect(cover('left'), where).toBe(0);
+      }
+    }
   });
 });
 
@@ -183,7 +254,7 @@ const FILE = {
   columns: ['name', 'type', 'raDeg', 'decDeg', 'constellation', 'bMag', 'vMag', 'commonNames'],
   rows: [['NGC5460', 'OCl', 211.9, -48.3, 'Cen', 5.6, null, []]],
 };
-function sessionWithStarAndCluster(neighbour = false, withCluster = true): ObservationSession {
+function sessionWithStarAndCluster(neighbour = false, withCluster = true, bothSides = false, farNamed = false): ObservationSession {
   const sky = pixelToWorldWCS(310, 190, base.wcs!);
   const star = {
     ...template,
@@ -221,7 +292,15 @@ function sessionWithStarAndCluster(neighbour = false, withCluster = true): Obser
     sourceDetection: { ...template.sourceDetection!, xPx: 346, yPx: 215 },
     catalogRef: { ...template.catalogRef!, commonName: 'Epsilon Centauri', catalogSourceId: 'HIP 66657', apparentMagnitude: 2.3 },
   } as CelestialFinding;
-  const findings = [star, ...(withCluster ? [cluster] : []), ...(neighbour ? [near] : [])];
+  // Two fainter stars, one in each side's box and clear of the box under Hadar (hint-place-one)
+  const flank = (id: string, title: string, u: number) =>
+    ({ ...template, id, title, sourceDetection: { ...template.sourceDetection!, xPx: u, yPx: 215 }, catalogRef: { ...template.catalogRef!, commonName: title, catalogSourceId: `HIP ${u}`, apparentMagnitude: 3.5 } }) as CelestialFinding;
+  const flanks = bothSides ? [flank('finding-flank-right', 'Flank right', 373), flank('finding-flank-left', 'Flank left', 219)] : [];
+  // A bright named star far from Hadar, whose name a test lays over Hadar's name side
+  const far = farNamed
+    ? [{ ...template, id: 'finding-far', title: 'Far star', sourceDetection: { ...template.sourceDetection!, xPx: 80, yPx: 450 }, catalogRef: { ...template.catalogRef!, commonName: 'Far star', catalogSourceId: 'HIP 1', apparentMagnitude: 1.0 } } as CelestialFinding]
+    : [];
+  const findings = [star, ...(withCluster ? [cluster] : []), ...(neighbour ? [near] : []), ...flanks, ...far];
   return { ...session, observationSolution: { ...session.observationSolution!, findings } as ObservationSolution, selectedFindingId: null };
 }
 
@@ -330,9 +409,9 @@ describe('mark-press-nearest-one: the hint in the reveal', () => {
     vi.unstubAllGlobals();
     for (const [prop, d] of Object.entries(sizes)) if (d) Object.defineProperty(HTMLElement.prototype, prop, d);
   });
-  async function arrive(neighbour: boolean) {
+  async function arrive(neighbour: boolean, bothSides = false, farNamed = false) {
     await act(async () => {
-      root.render(createElement(RevealPhoto, { session: sessionWithStarAndCluster(neighbour, false), onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h }));
+      root.render(createElement(RevealPhoto, { session: sessionWithStarAndCluster(neighbour, false, bothSides, farNamed), onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h }));
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, REVEAL_ARRIVAL_MS + 50));
@@ -350,6 +429,41 @@ describe('mark-press-nearest-one: the hint in the reveal', () => {
     const hadar = container.querySelector('[data-testid="reveal-mark-finding-hadar"]') as HTMLElement;
     expect([(hint as HTMLElement).style.left, (hint as HTMLElement).style.top]).toEqual([hadar.style.left, hadar.style.top]);
     expect(hint.className).toBe('reveal-hint is-left');
+  });
+
+  it('stands under Hadar, centred, when each side holds a ring and the place under it is clear (hint-place-one)', async () => {
+    await arrive(false, true);
+    expect(container.querySelector('[data-testid="reveal-hint"]')?.className).toBe('reveal-hint is-under');
+  });
+
+  it("counts another mark's name as the mark: a name laid over Hadar's name side moves the hint across (hint-place-one)", async () => {
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    // The far star's name, as if laid out across the box on Hadar's name side (right of and under its ring)
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      return this.classList.contains('reveal-mark__name') && this.closest('[data-testid="reveal-mark-finding-far"]')
+        ? ({ left: 480, top: 362, right: 560, bottom: 375, width: 80, height: 13, x: 480, y: 362, toJSON() {} } as DOMRect)
+        : rect.call(this);
+    };
+    try {
+      await arrive(false, false, true);
+      expect(container.querySelector('[data-testid="reveal-mark-finding-far"] .reveal-mark__name')).not.toBeNull();
+      expect(container.querySelector('[data-testid="reveal-hint"]')?.className).toBe('reveal-hint is-left');
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+
+  it('draws the hint centred under or over its ring at the same 14 px reach (hint-place-one)', () => {
+    const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(css).walkRules((rule) => {
+      if (rule.parent?.type !== 'root' || !['.reveal-hint.is-under', '.reveal-hint.is-over'].includes(rule.selector)) return;
+      rule.walkDecls((d) => void ((rules[rule.selector] ??= {})[d.prop] = d.value));
+    });
+    expect(rules).toEqual({
+      '.reveal-hint.is-under': { translate: '-50% 14px', 'text-align': 'center' },
+      '.reveal-hint.is-over': { translate: '-50% calc(-100% - 14px)', 'text-align': 'center' },
+    });
   });
 });
 

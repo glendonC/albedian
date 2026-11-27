@@ -36,8 +36,8 @@ export function isPredictedMark(mark: { kind: string }): boolean {
   return mark.kind === 'predicted';
 }
 
-/** The hint's box: its leading, top, trailing and foot edges in CSS px. */
-export interface HintBox {
+/** A box on the screen: its leading, top, trailing and foot edges in CSS px. */
+export interface Box {
   x0: number;
   y0: number;
   x1: number;
@@ -51,33 +51,45 @@ export interface DrawnRing {
   rPx: number;
 }
 
+/** Where the first-use hint stands about its ring: on either side, under it or over it. */
+export type HintPlace = 'right' | 'left' | 'under' | 'over';
+
+/** The hint's box in a place, at its reach (14 px across and down; centred under or over the ring). */
+export function hintBoxAt(anchor: { xPx: number; yPx: number }, place: HintPlace, size: { widthPx: number; heightPx: number }): Box {
+  const { widthPx: w, heightPx: h } = size;
+  const x0 = place === 'right' ? anchor.xPx + HINT_GAP_PX : place === 'left' ? anchor.xPx - HINT_GAP_PX - w : anchor.xPx - w / 2;
+  const y0 = place === 'over' ? anchor.yPx - HINT_GAP_PX - h : anchor.yPx + HINT_GAP_PX;
+  return { x0, y0, x1: x0 + w, y1: y0 + h };
+}
+
+/** How much of two boxes overlaps, in square CSS px; boxes that only touch overlap none. */
+export function overlapArea(a: Box, b: Box): number {
+  return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+}
+
 /**
- * Which side of its ring the first-use hint stands (UIUX-first-use-wow-READY.md item two: "beside the brightest named
- * matched star's ring"; built under its name, on its name's side): its name's side when its box there clears every other
- * ring and stays inside the window; else the other side when that one does; else its name's side still (no free side:
- * a question for UIUX). A ring that only touches the box is clear.
+ * hint-place-one (UIUX-first-use-wow-READY.md, its addition on WEB-UX's QUESTION, DECIDED-BY-LEAD 00:44 on 27 Nov, after
+ * Floating UI's flip with its best fit): the hint tries, in order, its name's side, the other side, centred under the
+ * ring, centred over it; the first whose box meets no other mark (its glyph's box and its name's box) and stays inside
+ * the photo as shown (clipped to the window by the caller) wins. When none is clear, among the places inside it, the one
+ * whose box covers the least of other marks, the earlier on a tie, never over the hinted star's own ring or name; its
+ * name's side when no place qualifies (version two, AUDIT-C's D5: a best fit past the window's edge cut the hint's words).
  */
-export function hintSide(
+export function hintPlace(
   anchor: { xPx: number; yPx: number },
   nameOnLeft: boolean,
   size: { widthPx: number; heightPx: number },
-  rings: readonly DrawnRing[],
-  viewportWidthPx: number
-): 'right' | 'left' {
-  const boxOn = (side: 'right' | 'left'): HintBox => {
-    const y0 = anchor.yPx + HINT_GAP_PX;
-    const x0 = side === 'right' ? anchor.xPx + HINT_GAP_PX : anchor.xPx - HINT_GAP_PX - size.widthPx;
-    return { x0, y0, x1: x0 + size.widthPx, y1: y0 + size.heightPx };
-  };
-  const free = (box: HintBox) =>
-    box.x0 >= 0 &&
-    box.x1 <= viewportWidthPx &&
-    rings.every((ring) => {
-      const dx = Math.max(box.x0 - ring.xPx, 0, ring.xPx - box.x1);
-      const dy = Math.max(box.y0 - ring.yPx, 0, ring.yPx - box.y1);
-      return dx * dx + dy * dy >= ring.rPx * ring.rPx;
-    });
-  const own = nameOnLeft ? 'left' : 'right';
-  const other = nameOnLeft ? 'right' : 'left';
-  return free(boxOn(own)) || !free(boxOn(other)) ? own : other;
+  others: readonly Box[],
+  own: readonly Box[],
+  photo: Box
+): HintPlace {
+  const order: HintPlace[] = nameOnLeft ? ['left', 'right', 'under', 'over'] : ['right', 'left', 'under', 'over'];
+  const boxes = order.map((place) => ({ place, box: hintBoxAt(anchor, place, size) }));
+  const inside = (b: Box) => b.x0 >= photo.x0 && b.y0 >= photo.y0 && b.x1 <= photo.x1 && b.y1 <= photo.y1;
+  const covers = (b: Box) => others.reduce((sum, o) => sum + overlapArea(b, o), 0);
+  const clearPlace = boxes.find(({ box }) => inside(box) && covers(box) === 0);
+  if (clearPlace) return clearPlace.place;
+  const allowed = boxes.filter(({ box }) => inside(box) && own.every((o) => overlapArea(box, o) === 0));
+  if (allowed.length === 0) return order[0]!;
+  return allowed.reduce((best, next) => (covers(next.box) < covers(best.box) ? next : best)).place;
 }

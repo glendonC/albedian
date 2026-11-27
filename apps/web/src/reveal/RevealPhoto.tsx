@@ -38,7 +38,7 @@ import { readoutDistance } from '../spatial/flight/nearStar.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { isSideways, phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
 import { cardMarkShift, coveredBySidewaysCard, sidewaysCardBox } from './cardMark.js';
-import { hintSide, markAtPress, type DrawnRing } from './markPress.js';
+import { hintPlace, markAtPress, type Box, type DrawnRing, type HintPlace } from './markPress.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
@@ -58,6 +58,14 @@ export function pressHintMarkOf(marks: readonly RevealMark[]): RevealMark | null
       .sort((a, b) => (a.finding.catalogRef?.apparentMagnitude ?? 99) - (b.finding.catalogRef?.apparentMagnitude ?? 99))[0] ?? null
   );
 }
+
+/** The first-use hint's class in each of its places (reveal.css; hint-place-one). */
+const HINT_CLASS: Readonly<Record<HintPlace, string>> = {
+  right: 'reveal-hint',
+  left: 'reveal-hint is-left',
+  under: 'reveal-hint is-under',
+  over: 'reveal-hint is-over',
+};
 
 /**
  * How far a mark's drawing reaches from its centre (MarkGlyph): a star's ring with its ticks, 9 px at phone width and 12 on
@@ -683,24 +691,35 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     pressHintUsed || arriving || there || skyShown || bareFrame || answer || picked !== null
       ? null
       : pressHintMarkOf(drawnMarks);
-  // mark-press-nearest-one (DECIDED-BY-LEAD 23:54 on 26 Nov): the hint stands clear of every other mark's ring, on its
-  // name's side, else the other (markPress.ts hintSide); its size is read from its own layout
+  // hint-place-one (UIUX-first-use-wow-READY.md, DECIDED-BY-LEAD 00:44 on 27 Nov): the hint stands at the first place,
+  // in its record's order, clear of every other mark's glyph and name and inside the photo, else where it covers least
+  // (markPress.ts hintPlace); its size and the names' boxes are read from their own layouts
   const pressHintRef = useRef<HTMLParagraphElement>(null);
-  const [pressHintSize, setPressHintSize] = useState({ widthPx: 0, heightPx: 0 });
+  const [pressHintPlace, setPressHintPlace] = useState<HintPlace>('right');
   useLayoutEffect(() => {
+    if (!pressHintMark) return;
     const el = pressHintRef.current;
-    const next = el ? { widthPx: el.offsetWidth, heightPx: el.offsetHeight } : { widthPx: 0, heightPx: 0 };
-    if (next.widthPx !== pressHintSize.widthPx || next.heightPx !== pressHintSize.heightPx) setPressHintSize(next);
-  });
-  const pressHintLeft =
-    pressHintMark !== null &&
-    hintSide(
+    const size = el ? { widthPx: el.offsetWidth, heightPx: el.offsetHeight } : { widthPx: 0, heightPx: 0 };
+    const layer = revealRoot.current?.querySelector('.reveal-marks')?.getBoundingClientRect();
+    const nameOf = (mark: RevealMark): Box[] => {
+      const n = revealRoot.current?.querySelector(`[data-testid="reveal-mark-${mark.finding.id}"] .reveal-mark__name`)?.getBoundingClientRect();
+      return n && layer && n.width > 0 && n.height > 0 ? [{ x0: n.left - layer.left, y0: n.top - layer.top, x1: n.right - layer.left, y1: n.bottom - layer.top }] : [];
+    };
+    const glyphOf = (mark: RevealMark): Box => {
+      const { rPx } = drawnRingOf(mark, phone);
+      return { x0: mark.xPx - rPx, y0: mark.yPx - rPx, x1: mark.xPx + rPx, y1: mark.yPx + rPx };
+    };
+    const shown = frame ? (phone ? phoneSlotRect(frame, viewW, viewH) : clippedToView(frame, viewW, viewH)) : { leftPx: 0, topPx: 0, widthPx: viewW, heightPx: viewH };
+    const place = hintPlace(
       pressHintMark,
       pressHintMark.nameOnLeft,
-      pressHintSize,
-      drawnMarks.filter((mark) => mark !== pressHintMark).map((mark) => drawnRingOf(mark, phone)),
-      viewW
-    ) === 'left';
+      size,
+      drawnMarks.filter((mark) => mark !== pressHintMark).flatMap((mark) => [glyphOf(mark), ...nameOf(mark)]),
+      [glyphOf(pressHintMark), ...nameOf(pressHintMark)],
+      { x0: shown.leftPx, y0: shown.topPx, x1: shown.leftPx + shown.widthPx, y1: shown.topPx + shown.heightPx }
+    );
+    if (place !== pressHintPlace) setPressHintPlace(place);
+  });
   // Line it up yourself (D24), on the laptop's no-match reveal and at phone width alike, over the photo or clip itself
   const alignStart = useMemo(() => startPose(session), [session]);
   const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
@@ -1561,7 +1580,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {pressHintMark && (
         <p
           ref={pressHintRef}
-          className={pressHintLeft ? 'reveal-hint is-left' : 'reveal-hint'}
+          className={HINT_CLASS[pressHintPlace]}
           data-testid="reveal-hint"
           style={{ left: `${pressHintMark.xPx}px`, top: `${pressHintMark.yPx}px` }}
         >

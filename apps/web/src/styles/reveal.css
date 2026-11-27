@@ -3066,6 +3066,18 @@
   translate: calc(-100% - 14px) 14px;
 }
 
+/* hint-place-one (UIUX-first-use-wow-READY.md, DECIDED-BY-LEAD 00:44 on 27 Nov): where neither side is clear, centred under
+   the ring at the same 14 px reach, else centred over it (RevealPhoto.tsx chooses the place by the record's order) */
+.reveal-hint.is-under {
+  translate: -50% 14px;
+  text-align: center;
+}
+
+.reveal-hint.is-over {
+  translate: -50% calc(-100% - 14px);
+  text-align: center;
+}
+
 /* first-use-hints-one, item four (UIUX-first-use-wow-READY.md, RULED at the lead's line stamped 03:22): "Drag to look
    around." at the foot of the readout when the flight's camera rests, in the readout's own words' type; it words in
    with the readout's words */

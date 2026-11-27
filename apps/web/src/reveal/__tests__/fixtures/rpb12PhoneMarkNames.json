@@ -1,0 +1,519 @@
+{
+ "about": "The marks the reveal drew on the public photo rp-b-12 at the phone's two narrowest sizes, read live by WEB-UX for hint-place-one version two on lane/web-ux-hint-place (main 96566d28f), headless Chrome with touch: each mark's centre and its name's box (left, top, right, bottom) in the marks layer's CSS px, null where no name is drawn; and the hint's width and height.",
+ "sizes": [
+  {
+   "window": [
+    402,
+    714
+   ],
+   "hint": [
+    141.3,
+    16.8
+   ],
+   "marks": [
+    {
+     "name": "Tabit",
+     "xPx": 329,
+     "yPx": 126,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Pi5 Orionis",
+     "xPx": 366,
+     "yPx": 153,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Pi4 Orionis",
+     "xPx": 340,
+     "yPx": 134,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Bellatrix",
+     "xPx": 297,
+     "yPx": 210,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alhena",
+     "xPx": 142,
+     "yPx": 320,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      158,
+      314.5,
+      192,
+      325.5
+     ]
+    },
+    {
+     "name": "Hatysa",
+     "xPx": 396,
+     "yPx": 281,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mintaka",
+     "xPx": 349,
+     "yPx": 251,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alnilam",
+     "xPx": 352,
+     "yPx": 264,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3231949906557374592",
+     "xPx": 368,
+     "yPx": 166,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alnitak",
+     "xPx": 354,
+     "yPx": 276,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alzirr",
+     "xPx": 163,
+     "yPx": 350,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tianguan",
+     "xPx": 158,
+     "yPx": 180,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mebsuta",
+     "xPx": 62,
+     "yPx": 294,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Betelgeuse",
+     "xPx": 258,
+     "yPx": 270,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Pi2 Orionis",
+     "xPx": 310,
+     "yPx": 120,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tejat",
+     "xPx": 105,
+     "yPx": 266,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3235349837027282560",
+     "xPx": 341,
+     "yPx": 197,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Lambda Geminorum",
+     "xPx": 97,
+     "yPx": 400,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mekbuda",
+     "xPx": 79,
+     "yPx": 354,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Propus",
+     "xPx": 113,
+     "yPx": 250,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Phi2 Orionis",
+     "xPx": 260,
+     "yPx": 225,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Delta Monocerotis",
+     "xPx": 246,
+     "yPx": 465,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Psi2 Orionis",
+     "xPx": 324,
+     "yPx": 226,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Monocerotis",
+     "xPx": 356,
+     "yPx": 368,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3352697277091090688",
+     "xPx": 162,
+     "yPx": 346,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "119 Tauri",
+     "xPx": 185,
+     "yPx": 179,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3372552842178783616",
+     "xPx": 119,
+     "yPx": 287,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3337904172766584064",
+     "xPx": 261,
+     "yPx": 219,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi Orionis",
+     "xPx": 186,
+     "yPx": 278,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Nu Orionis",
+     "xPx": 185,
+     "yPx": 267,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    }
+   ]
+  },
+  {
+   "window": [
+    375,
+    667
+   ],
+   "hint": [
+    141.3,
+    16.8
+   ],
+   "marks": [
+    {
+     "name": "Tabit",
+     "xPx": 300,
+     "yPx": 125,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Pi5 Orionis",
+     "xPx": 333,
+     "yPx": 149,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Pi4 Orionis",
+     "xPx": 310,
+     "yPx": 132,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Bellatrix",
+     "xPx": 272,
+     "yPx": 199,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alhena",
+     "xPx": 136,
+     "yPx": 296,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      152,
+      290.5,
+      186,
+      301.5
+     ]
+    },
+    {
+     "name": "Hatysa",
+     "xPx": 359,
+     "yPx": 261,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mintaka",
+     "xPx": 317,
+     "yPx": 235,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alnilam",
+     "xPx": 320,
+     "yPx": 246,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3231949906557374592",
+     "xPx": 334,
+     "yPx": 161,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alnitak",
+     "xPx": 322,
+     "yPx": 257,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alzirr",
+     "xPx": 154,
+     "yPx": 322,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tianguan",
+     "xPx": 150,
+     "yPx": 173,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mebsuta",
+     "xPx": 65,
+     "yPx": 273,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Betelgeuse",
+     "xPx": 238,
+     "yPx": 252,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Pi2 Orionis",
+     "xPx": 283,
+     "yPx": 120,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tejat",
+     "xPx": 103,
+     "yPx": 248,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3235349837027282560",
+     "xPx": 310,
+     "yPx": 187,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Lambda Geminorum",
+     "xPx": 96,
+     "yPx": 366,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mekbuda",
+     "xPx": 80,
+     "yPx": 325,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Propus",
+     "xPx": 110,
+     "yPx": 234,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Phi2 Orionis",
+     "xPx": 240,
+     "yPx": 212,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Delta Monocerotis",
+     "xPx": 227,
+     "yPx": 423,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Psi2 Orionis",
+     "xPx": 296,
+     "yPx": 213,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Monocerotis",
+     "xPx": 324,
+     "yPx": 338,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3352697277091090688",
+     "xPx": 153,
+     "yPx": 318,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "119 Tauri",
+     "xPx": 173,
+     "yPx": 172,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3372552842178783616",
+     "xPx": 116,
+     "yPx": 267,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 3337904172766584064",
+     "xPx": 240,
+     "yPx": 207,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi Orionis",
+     "xPx": 174,
+     "yPx": 259,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Nu Orionis",
+     "xPx": 174,
+     "yPx": 249,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    }
+   ]
+  }
+ ]
+}
