@@ -182,8 +182,8 @@ final class ApprovedAssetsTests: XCTestCase {
         // Canvas star labels match SkyOverlayNames's fixed 11.0 pt collision boxes under Larger Text
         XCTAssertFalse(compactOverlay.contains("AlbedianFont.regular("),
                        "PlacedSkyOverlay Canvas must not use Dynamic-Type-scaled AlbedianFont.regular")
-        XCTAssertTrue(compactOverlay.contains("Text(mark.name).font(Font.custom(,fixedSize:size))"),
-                      "PlacedSkyOverlay.draw must resolve star names with Font.custom(_, fixedSize: size)")
+        XCTAssertTrue(compactOverlay.contains("Text(text).font(Font.custom(,fixedSize:size))"),
+                      "PlacedSkyOverlay.drawName (D20 names, the lock-on names) must resolve star names with Font.custom(_, fixedSize: size)")
         let overlayCodeLines = overlaySplit.code.components(separatedBy: "\n")
         let overlayLitLines = overlaySplit.literals.components(separatedBy: "\n")
         let customIdx = try XCTUnwrap(overlayCodeLines.firstIndex { $0.filter { !$0.isWhitespace }.contains("Font.custom(,fixedSize:size)") })

@@ -56,17 +56,23 @@ struct PlacedSkyOverlay: View {
         let r = named ? SkyOverlayStyle.ringRadiusPt : SkyOverlayStyle.unnamedRingRadiusPt
         context.stroke(Path(ellipseIn: CGRect(x: at.x - r, y: at.y - r, width: 2 * r, height: 2 * r)), with: .color(amber), style: ring)
         guard let onLeft else { return }
+        drawName(mark.name, at: at, onLeft: onLeft, colour: amber, in: context)
+    }
+
+    /// A mark's name as D20 draws it beside the mark centred at `at`, on the side given, in `colour` (the amber; the
+    /// lock-on's names take the matched colour at rest), with the record's dark edge.
+    static func drawName(_ text: String, at: CGPoint, onLeft: Bool, colour: Color, in context: GraphicsContext) {
         let size = SkyOverlayStyle.nameSizePt
         func name(_ colour: Color) -> GraphicsContext.ResolvedText {
-            context.resolve(Text(mark.name).font(Font.custom("Geist-Regular", fixedSize: size)).tracking(CGFloat(SkyOverlayStyle.nameTracking * size))
+            context.resolve(Text(text).font(Font.custom("Geist-Regular", fixedSize: size)).tracking(CGFloat(SkyOverlayStyle.nameTracking * size))
                 .foregroundStyle(colour))
         }
-        let fill = name(amber)
+        let fill = name(colour)
         let gap = SkyOverlayStyle.nameGapPt
         let anchorAt = CGPoint(x: onLeft ? at.x - gap : at.x + gap, y: at.y)
         let anchor: UnitPoint = onLeft ? .trailing : .leading
         // The record's dark edge (a 3 px stroke under the fill): the name in black at 75 percent, drawn a half
-        // stroke out on eight sides, then the amber name on top
+        // stroke out on eight sides, then the name on top
         let halo = name(Color.black.opacity(SkyOverlayStyle.haloOpacity))
         let out = SkyOverlayStyle.haloWidthPt / 2
         for (dx, dy) in [(-1.0, 0.0), (1, 0), (0, -1), (0, 1), (-0.7, -0.7), (0.7, -0.7), (-0.7, 0.7), (0.7, 0.7)] {

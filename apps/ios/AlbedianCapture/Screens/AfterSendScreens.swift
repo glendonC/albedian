@@ -118,7 +118,11 @@ struct WaitingScreen: View {
 /// D31 item 3 with MOTION-READY-iphone section 5: each early ring the solve matched travels to its detection, all
 /// together in 0.4 s on (0.16, 1, 0.3, 1), no spring; every other ring leaves on frame out (0.3 s); at rest
 /// each ring becomes the result's catalog matched mark in 0.2 s on the standard curve. Under Reduce Motion nothing
-/// travels: the early rings go and the matched marks come, together, in a 0.27 s dissolve.
+/// travels: the early rings go and the matched marks come, together, in a 0.27 s dissolve. lockon-names-m
+/// (UIUX-iphone-firstuse-READY item 3): the pass starts from the early marks as the wait drew them (D20's names over the
+/// same set, each ring at its own radius); the amber names ride their rings, leave with a ring the solve does not
+/// place, and take the matched colour in the class change at rest; under Reduce Motion the amber name goes where it
+/// stood and the name in the matched colour comes with its matched mark, in the dissolve.
 private struct LockOnLayer: View {
     let placed: [(SkyMark, CGPoint)]
     let targets: [String: (x: Double, y: Double)]
@@ -129,25 +133,40 @@ private struct LockOnLayer: View {
     @State private var moved = false
 
     var body: some View {
+        let names = SkyOverlayNames.names(placed.map { SkyOverlayNames.Placed(mark: $0.0, x: $0.1.x, y: $0.1.y) }, widthPt: width, heightPt: height)
         ZStack(alignment: .topLeading) {
             ForEach(placed, id: \.0.id) { mark, start in
                 let end = targets[mark.id].map { CGPoint(x: $0.x, y: $0.y) }
                 let at = reduceMotion ? start : (moved ? (end ?? start) : start)
+                let named = names[mark.id] != nil
+                let radius = named ? SkyOverlayStyle.ringRadiusPt : SkyOverlayStyle.unnamedRingRadiusPt
                 // The early ring: amber and dashed, gone at rest (or at once under Reduce Motion), or leaving if unmatched
                 Circle()
                     .stroke(Color(ControlStyle.Evidence.predicted.colour),
                             style: StrokeStyle(lineWidth: CGFloat(SkyOverlayStyle.ringLineWidthPt),
                                                dash: SkyOverlayStyle.ringDash.map { CGFloat($0) }))
-                    .frame(width: CGFloat(2 * SkyOverlayStyle.ringRadiusPt), height: CGFloat(2 * SkyOverlayStyle.ringRadiusPt))
-                    .opacity(moved && (end == nil || reduceMotion || settled) ? 0 : 1)
+                    .frame(width: CGFloat(2 * radius), height: CGFloat(2 * radius))
+                    .opacity(LockOnFade.ring(matched: end != nil, moved: moved, settled: settled, reduceMotion: reduceMotion))
                     // A ring the solve does not place leaves on frame out (0.3 s on .4, 0, 1, 1), as the web's
                     // .lockon-mark.is-leaving does (MOTION's check, item 3)
                     .animation(end == nil && !reduceMotion ? .motion(MotionStyle.frameOut, reduceMotion: false) : nil, value: moved)
                     .position(at)
                 if let end {
                     MatchedMark()
-                        .opacity(reduceMotion ? (moved ? 1 : 0) : (settled ? 1 : 0))
+                        .opacity(LockOnFade.matchedMark(moved: moved, settled: settled, reduceMotion: reduceMotion))
                         .position(reduceMotion ? end : at)
+                }
+                if let onLeft = names[mark.id] {
+                    LockOnName(name: mark.name, onLeft: onLeft, previewWidthPt: width,
+                               share: LockOnFade.nameShare(matched: end != nil, settled: settled, reduceMotion: reduceMotion))
+                        .opacity(LockOnFade.name(matched: end != nil, moved: moved, reduceMotion: reduceMotion))
+                        .animation(end == nil && !reduceMotion ? .motion(MotionStyle.frameOut, reduceMotion: false) : nil, value: moved)
+                        .position(at)
+                    if reduceMotion, let end {
+                        LockOnName(name: mark.name, onLeft: onLeft, previewWidthPt: width, share: 1)
+                            .opacity(LockOnFade.matchedMark(moved: moved, settled: settled, reduceMotion: true))
+                            .position(end)
+                    }
                 }
             }
         }
@@ -176,6 +195,30 @@ private struct MatchedMark: View {
             context.stroke(ticks, with: .color(colour), lineWidth: 1)
         }
         .frame(width: 16, height: 16)
+    }
+}
+
+/// An early ring's name in the lock-on, drawn as D20 draws it and centred on the early mark's own frame so it sits
+/// where it sat; `share` is how far it has taken the matched colour from the amber, changed frame by frame in MOTION's
+/// class change (0.2 s on the standard curve) with its dark edge held.
+private struct LockOnName: View, Animatable {
+    let name: String
+    let onLeft: Bool
+    let previewWidthPt: Double
+    var share: Double
+
+    nonisolated var animatableData: Double {
+        get { share }
+        set { share = newValue }
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            PlacedSkyOverlay.drawName(name, at: CGPoint(x: size.width / 2, y: size.height / 2), onLeft: onLeft,
+                                      colour: Color(LockOnFade.nameColour(share)), in: context)
+        }
+        .frame(width: CGFloat(SkyOverlayNames.markFrameWidthPt(name: name, named: true, previewWidthPt: previewWidthPt)),
+               height: CGFloat(SkyOverlayNames.markFrameHeightPt))
     }
 }
 
