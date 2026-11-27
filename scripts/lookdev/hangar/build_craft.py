@@ -99,32 +99,38 @@ CHANGES = {
         " the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a model of foil, panel and solar cell textures (recipe "changes": "atlas")
-    "lod0_atlas": (
-        "Rebuilt from NASA's model, not copied: a second copy of the dish's top surface removed, the parts joined into "
-        "one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; "
-        "NASA's foil and panel textures kept as the base colour, with metalness, roughness and surface relief added "
-        "from each texture's own colours and shading, the solar cells' textures kept with one roughness and no "
-        "metalness, a perforated panel given the mean of NASA's map with NASA's alpha kept as its mask, faces NASA's "
-        "file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond "
-        "it, and the textures re-encoded as WebP."
+    "lod0_atlas_ao": (
+        "Rebuilt from NASA's model, not copied: a second copy of the dish's top surface removed, the parts joined "
+        "into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA "
+        "states; NASA's foil and panel textures kept as the base colour, with metalness, roughness and surface relief"
+        " added from each texture's own colours and shading, the solar cells' textures kept with one roughness and no"
+        " metalness, a perforated panel given the mean of NASA's map with NASA's alpha kept as its mask, faces NASA's"
+        " file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond "
+        "it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as "
+        "the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to "
+        "apply to the light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a model whose blankets NASA's model names, with a gold foil and one photo texture (recipe "changes": "dawn")
-    "lod0_dawn": (
-        "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the "
-        "craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model "
+    "lod0_dawn_ao": (
+        "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the"
+        " craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model "
         "names as black blanket or silver foil given physically based materials of that kind, the gold foil and the "
-        "photo texture given metalness, roughness and surface relief from their own colours, a small printed label "
-        "in the photo painted over in the colour around it, NASA's flat colours kept for the rest, faces NASA's file "
+        "photo texture given metalness, roughness and surface relief from their own colours, a small printed label in"
+        " the photo painted over in the colour around it, NASA's flat colours kept for the rest, faces NASA's file "
         "keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, "
-        "and the textures re-encoded as WebP."
+        "and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the "
+        "attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to"
+        " the light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a model of flat colours whose materials NASA names as metals, foils, a mirror and cells ("metals")
-    "lod0_metals": (
+    "lod0_metals_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
-        "with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as "
-        "gold, brass, copper, silver foil, chrome, brushed metal, the mirror or solar cells given physically based "
+        "with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as"
+        " gold, brass, copper, silver foil, chrome, brushed metal, the mirror or solar cells given physically based "
         "materials of that kind, the others keeping NASA's own colour, and the normals made again, smooth within an "
-        "angle and sharp beyond it."
+        "angle and sharp beyond it. The sky's fill shadowing the model itself added at each vertex as the attribute "
+        "_AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light"
+        " from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a model of flat colours whose materials NASA names as foils, silver and cells (recipe "changes": "foils")
     "lod0_foils": (
@@ -135,12 +141,15 @@ CHANGES = {
         "the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
     ),
     # lod0 for a model whose parts all sample one texture of foil, dish and cells (recipe "changes": "mro")
-    "lod0_mro": (
+    "lod0_mro_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
         "with +Y up and scaled to metres from a dimension NASA states; NASA's one texture of foil, dish and panels "
         "kept as the base colour, with metalness, roughness and surface relief added from its own colours and "
         "shading, the solar cells keeping it with one roughness and no metalness, the normals made again, smooth "
-        "within an angle and sharp beyond it, fewer triangles kept at every level, and the texture re-encoded as WebP."
+        "within an angle and sharp beyond it, fewer triangles kept at every level, and the texture re-encoded as "
+        "WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast "
+        "over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone;"
+        " no vertex moved and no colour changed."
     ),
     # lod0 for a model of photo textures and gold foil with solar wings (recipe "changes": "photo_foil")
     "lod0_photo_foil_ao": (
@@ -197,12 +206,15 @@ CHANGES = {
         "light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for flat colours named bronze, silver and cells, split triangles welded (recipe "changes": "named_welded")
-    "lod0_named_welded": (
+    "lod0_named_welded_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
-        "with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as "
-        "bronze, silver or solar cells given physically based materials of that kind, the bronze in NASA's own "
+        "with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as"
+        " bronze, silver or solar cells given physically based materials of that kind, the bronze in NASA's own "
         "colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, the "
-        "normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
+        "normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level. The"
+        " sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no "
+        "vertex moved and no colour changed."
     ),
     # lod0 for photo textures, named metals and blankets, a white dish and baked parts (recipe "changes": "epoxi")
     "lod0_epoxi_ao": (
@@ -218,11 +230,13 @@ CHANGES = {
         " the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a lander of flat colours scaled from its footpads' spacing (recipe "changes": "pads")
-    "lod0_pads": (
+    "lod0_pads_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
         "with +Y up and scaled to metres from a dimension NASA states, the spacing of its three footpads measured "
         "between their centres seen from above; NASA's own flat colours kept, the normals made again, smooth within "
-        "an angle and sharp beyond it, and fewer triangles kept at every level."
+        "an angle and sharp beyond it, and fewer triangles kept at every level. The sky's fill shadowing the model "
+        "itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex "
+        "within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a model of flat colours with drawn flag, panel and solar cell textures (recipe "changes": "flags")
     "lod0_flags": (
@@ -334,26 +348,31 @@ CHANGES = {
         "within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for photo texture, silver foil ramp, black blanket, solar wings and baked dishes ("changes": "tdrs")
-    "lod0_tdrs": (
+    "lod0_tdrs_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
         "with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and silver foil kept as "
         "the base colour, with metalness, roughness and surface relief added from their own colours and shading, the "
-        "black blanket made black, the solar wings keeping their texture with one roughness and no metalness, the two "
-        "steerable dishes painted white with NASA's baked shading moved to the occlusion slot, faces NASA's file keeps "
-        "apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the "
-        "textures re-encoded as WebP."
+        "black blanket made black, the solar wings keeping their texture with one roughness and no metalness, the two"
+        " steerable dishes painted white with NASA's baked shading moved to the occlusion slot, faces NASA's file "
+        "keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, "
+        "and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the "
+        "attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to"
+        " the light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for photo textures, gold and silver foils, solar cells and baked parts, emblem and labels painted out ("odyssey")
-    "lod0_odyssey": (
+    "lod0_odyssey_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
         "with +Y up and scaled to metres from a dimension NASA states; NASA's photo textures and its gold and silver "
-        "foils kept as the base colour, with metalness, roughness and surface relief added from their own colours and "
-        "shading, the Russian space agency and IKI HEND mission emblem and three small printed labels on the solar "
+        "foils kept as the base colour, with metalness, roughness and surface relief added from their own colours and"
+        " shading, the Russian space agency and IKI HEND mission emblem and three small printed labels on the solar "
         "panels painted over in the colour around them, as are the NASA logotype and three small printed labels in "
-        "unused texture space, the solar array's cells keeping their texture with one roughness and no metalness, the "
-        "gamma sensor shield and the dish and hinge brackets painted white or grey with NASA's baked shading moved to "
-        "the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth "
-        "within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "unused texture space, the solar array's cells keeping their texture with one roughness and no metalness, the"
+        " gamma sensor shield and the dish and hinge brackets painted white or grey with NASA's baked shading moved "
+        "to the occlusion slot, faces NASA's file keeps apart at shared corners welded, the normals made again, "
+        "smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing "
+        "the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each "
+        "vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour "
+        "changed."
     ),
     # lod0 for a Mars lander whose calibration target agency logos and skirt label are painted out ("insight")
     "lod0_insight": (

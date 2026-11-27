@@ -221,6 +221,8 @@ CRAFTS: dict[str, dict] = {
         # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
         "texture_edge": {"lod2": 384},
         "body_radius_m": 1.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.2, "skip_m": 0.003},
         "changes": "photo",
     },
     "emu": {
@@ -1017,6 +1019,8 @@ CRAFTS: dict[str, dict] = {
         # Its foil and panel maps each get their own metal, roughness and relief maps: smaller far levels keep the budget.
         "texture_edge": {"lod1": 512, "lod2": 256},
         "body_radius_m": 2.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 2.9, "skip_m": 0.003},
         "changes": "atlas",
     },
     "dawn": {
@@ -1066,6 +1070,8 @@ CRAFTS: dict[str, dict] = {
         "weld_m": 0.0001,
         "smooth_deg": 35.0,
         "body_radius_m": 1.5,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 3.0, "skip_m": 0.003},
         "changes": "dawn",
     },
     "messenger": {
@@ -1119,6 +1125,8 @@ CRAFTS: dict[str, dict] = {
         # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
         "texture_edge": {"lod2": 384},
         "body_radius_m": 1.5,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.99, "skip_m": 0.003},
         "changes": "photo",
     },
     "spitzer": {
@@ -1164,6 +1172,8 @@ CRAFTS: dict[str, dict] = {
         ],
         "smooth_deg": 35.0,
         "body_radius_m": 2.2,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.65, "skip_m": 0.003},
         "changes": "metals",
     },
     "osirisrex": {
@@ -1256,6 +1266,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         "lod_ratio": {"lod0": 0.5, "lod1": 0.15, "lod2": 0.05},
         "body_radius_m": 2.5,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.7, "skip_m": 0.003},
         "changes": "mro",
     },
     "stardust": {
@@ -1649,6 +1661,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         "lod_ratio": {"lod0": 0.5, "lod1": 0.15, "lod2": 0.05},
         "body_radius_m": 2.5,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 6.4, "skip_m": 0.003},
         "changes": "named_welded",
     },
     "deepimpact": {
@@ -1738,6 +1752,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         "lod_ratio": {"lod0": 0.5, "lod1": 0.15, "lod2": 0.05},
         "body_radius_m": 1.6,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.51, "skip_m": 0.003},
         "changes": "pads",
     },
     "apollosoyuz": {
@@ -2142,6 +2158,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         # Frames the bus and both 5 m steerable dishes (12.86 m outer rim to outer rim) inside the 21.5 m wing span.
         "body_radius_m": 6.5,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 3.1, "skip_m": 0.003},
         "changes": "tdrs",
     },
     "odyssey": {
@@ -2249,6 +2267,8 @@ CRAFTS: dict[str, dict] = {
         "texture_edge": {"lod1": 768, "lod2": 288},  # the phone level decodes under 8 MB (tex-budget-one)
         # Frames the bus, propulsion module, high-gain dish and three-panel solar array inside the 8.2 m boom length.
         "body_radius_m": 2.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.2, "skip_m": 0.003},
         "changes": "odyssey",
     },
     "insight": {
