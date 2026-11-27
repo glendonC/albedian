@@ -418,6 +418,13 @@ REFUSAL_KINDS: dict[str, dict[str, Any]] = {
     # not_in_this_sky and the app parser's as that kind is; the backend's answer says the same sentence
     # (services/voice/answers.py UNPREDICTED_BODIES)
     "not_predicted": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False},
+    # The Sun, the Moon or a planet the predicted sky places, asked of a recording whose solve says the file gives no
+    # place, no capture time or neither to predict from, said in place of not_in_this_sky (C38 and C38n,
+    # NO_PREDICTION_WARNINGS); the backend's answer says the same sentence (services/voice/answers.py)
+    "no_place_to_predict": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False},
+    "no_time_to_predict": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False},
+    "no_time_or_place_to_predict": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False,
+                                    "backend": False},
     # A deep-sky object a catalogue holds, which voice cannot reach yet
     "deep_sky_out_of_reach": {"reasons": ["no_grounded_answer"], "said": True, "name": True, "catalogRow": True, "backend": True},
     # A sky name no catalogue of the app holds by name
@@ -440,6 +447,17 @@ REFUSAL_KINDS: dict[str, dict[str, Any]] = {
     "not_a_request": {"reasons": ["not_one_request"], "said": True, "name": False, "catalogRow": False, "backend": True},
     # A sentence that holds two requests that change the scene: neither is done
     "two_requests": {"reasons": ["not_one_request"], "said": False, "name": False, "catalogRow": False, "backend": True},
+}
+# The predicted sky's own reasons for predicting nothing for a recording (NO_PLACE, NO_TIME and NO_TIME_OR_PLACE in
+# services/science/predicted_sky.py), which its solve carries among its warnings, each with the refusal said for a body
+# that sky would place (C38, UIUX-voiceyet2-READY.md, DECIDED-BY-LEAD 27 Nov 12:29). The no place and no time
+# refusals' reason clause is the solve's own, word for word; neither is said in C38n's shorter words (13:31), so the
+# sentence fits an answer's. The mirror of NO_PREDICTION_WARNINGS in packages/contracts/src/voice-command.ts.
+NO_PREDICTION_WARNINGS: dict[str, str] = {
+    "The file has no recorded place, so no sky can be predicted for it.": "no_place_to_predict",
+    "The file has no recorded capture time, so no sky can be predicted for it.": "no_time_to_predict",
+    "The file has no recorded capture time and no recorded place, so no sky can be predicted for it.":
+        "no_time_or_place_to_predict",
 }
 # [proposed] What a refusal quotes back: at most six words and 80 characters with " ..." (services/voice/names.py
 # MAX_QUOTED_*), so 80 astral characters and the cut mark fit. Counted in UTF-16 code units.
@@ -545,6 +563,14 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
     if kind == "not_predicted":
         # UIUX-unpredicted-body-READY.md, DECIDED-BY-LEAD 24 Nov 20:16: only what the app knows, not the real sky
         return f"The app does not predict where {_capitalized(name)} is, so it cannot be found in this {word}'s sky."
+    if kind == "no_place_to_predict":
+        # C38, DECIDED-BY-LEAD 27 Nov 12:29: the solve's own reason, then only what the app cannot do
+        return f"This {word} has no recorded place, so the app cannot predict where {name} is."
+    if kind == "no_time_to_predict":
+        return f"This {word} has no recorded capture time, so the app cannot predict where {name} is."
+    if kind == "no_time_or_place_to_predict":
+        # C38n, DECIDED-BY-LEAD 27 Nov 13:31: neither, in words short enough for an answer's sentence
+        return f"This {word} has no recorded time or place, so the app cannot predict where {name} is."
     if kind == "deep_sky_out_of_reach":
         return (
             f"{_capitalized(name)} is in the app's deep-sky catalog (OpenNGC {row}), but voice does not reach "
@@ -1212,6 +1238,9 @@ def build_voice_samples() -> dict[str, Any]:
         {"kind": "not_in_this_sky", "said": "alpha centauri", "name": "Rigil Kentaurus"},
         {"kind": "not_predicted", "said": "mercury", "name": "Mercury"},
         {"kind": "not_predicted", "said": "neptune", "name": "Neptune"},
+        {"kind": "no_place_to_predict", "said": "moon", "name": "the Moon"},
+        {"kind": "no_time_to_predict", "said": "mars", "name": "Mars"},
+        {"kind": "no_time_or_place_to_predict", "said": "the sun", "name": "the Sun"},
         {"kind": "deep_sky_out_of_reach", "said": "lmc", "name": "the Large Magellanic Cloud", "catalogRow": "ESO056-115"},
         {"kind": "deep_sky_out_of_reach", "said": "omega cen", "name": "Omega Centauri", "catalogRow": "NGC5139"},
         {"kind": "deep_sky_out_of_reach", "said": "coal sack", "name": "the Coalsack", "catalogRow": "C099"},
@@ -1439,7 +1468,8 @@ def build_voice_samples() -> dict[str, Any]:
     bad(reply, _with(out_of_reach, ["refusal", "name"], _DROP), "an object out of reach names what it is")
     bad(reply, _with(out_of_reach, ["refusal", "name"], "Somewhere Else"), "the sentence shows the name")
     bad(reply, _with(understood, ["refusal", "name"], "Zorblax"), "a word not understood stands for no name")
-    for kind in ("not_in_this_sky", "not_predicted", "southern_cross_not_in_this_sky", "sky_not_worked_out",
+    for kind in ("not_in_this_sky", "not_predicted", "no_place_to_predict", "no_time_to_predict",
+                 "no_time_or_place_to_predict", "southern_cross_not_in_this_sky", "sky_not_worked_out",
                  "nothing_in_view_sky_not_worked_out"):
         app_refusal = next(r for r in refusals if r["kind"] == kind)
         bad(reply, {**understood, "reason": REFUSAL_KINDS[kind]["reasons"][0], "explanation": refusal_sentence(app_refusal),
@@ -1540,6 +1570,7 @@ def build_voice_samples() -> dict[str, Any]:
             "media": list(REFUSAL_MEDIA),
         },
         "refusalSentences": sentences,
+        "noPredictionWarnings": NO_PREDICTION_WARNINGS,
         "valid": {"AlbedianAction": actions, "VoiceCommandRequest": requests, "VoiceCommandResponse": replies,
                   "VoiceRefusal": refusals + refusal_edge_valid},
         "invalid": invalid,

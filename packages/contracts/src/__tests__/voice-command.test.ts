@@ -7,6 +7,7 @@ import {
   CATALOG_ROW_MAX_UTF16,
   CATALOG_ROW_PATTERN,
   FINDING_ACTION_TYPES,
+  NO_PREDICTION_WARNINGS,
   REFUSAL_KINDS,
   REFUSAL_NAME_MAX_UTF16,
   REFUSAL_SAID_MAX_UTF16,
@@ -45,6 +46,7 @@ interface VoiceFixture {
   refusalKinds: Record<string, unknown>;
   refusalLimits: { saidMaxUtf16: number; catalogRowMaxUtf16: number; nameMaxUtf16: number; catalogRowPattern: string; southernCrossStars: string[]; media: string[] };
   refusalSentences: { refusal: VoiceRefusal; media: RefusalMedia; sentence: string }[];
+  noPredictionWarnings: Record<string, string>;
   valid: Record<SchemaName, unknown[]>;
   invalid: { schema: SchemaName; sample: unknown; reason: string }[];
   stripped: { schema: SchemaName; sample: unknown; parsed: unknown }[];
@@ -269,6 +271,36 @@ describe('@albedian/contracts: typed refusals', () => {
     for (const { refusal, media, sentence } of fixture.refusalSentences) {
       expect(VoiceRefusalSchema.safeParse(refusal).success, JSON.stringify(refusal)).toBe(true);
       expect(refusalSentence(refusal, media)).toBe(sentence);
+    }
+  });
+
+  it("says a body the predicted sky places has no place to predict from in the solve's own words (C38)", () => {
+    // The solve's three reasons for predicting nothing, each with the refusal said for a body it would place
+    expect(fixture.noPredictionWarnings).toEqual(NO_PREDICTION_WARNINGS);
+    expect(Object.values(NO_PREDICTION_WARNINGS).sort()).toEqual(['no_place_to_predict', 'no_time_or_place_to_predict', 'no_time_to_predict']);
+    for (const kind of Object.values(NO_PREDICTION_WARNINGS)) {
+      expect(REFUSAL_KINDS[kind]).toEqual({ reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false });
+    }
+    const moon = { said: 'moon', name: 'the Moon' };
+    expect(refusalSentence({ kind: 'no_place_to_predict', ...moon }, 'photo')).toBe('This photo has no recorded place, so the app cannot predict where the Moon is.');
+    expect(refusalSentence({ kind: 'no_place_to_predict', ...moon }, 'video')).toBe('This clip has no recorded place, so the app cannot predict where the Moon is.');
+    expect(refusalSentence({ kind: 'no_time_to_predict', said: 'mars', name: 'Mars' }, 'photo')).toBe('This photo has no recorded capture time, so the app cannot predict where Mars is.');
+    expect(refusalSentence({ kind: 'no_time_to_predict', said: 'the sun', name: 'the Sun' }, 'video')).toBe(
+      'This clip has no recorded capture time, so the app cannot predict where the Sun is.'
+    );
+    // C38n (DECIDED-BY-LEAD 27 Nov 13:31): neither, in the shorter words an answer's sentence has room for
+    expect(refusalSentence({ kind: 'no_time_or_place_to_predict', said: 'jupiter', name: 'Jupiter' }, 'photo')).toBe(
+      'This photo has no recorded time or place, so the app cannot predict where Jupiter is.'
+    );
+    expect(refusalSentence({ kind: 'no_time_or_place_to_predict', said: 'moon', name: 'the Moon' }, 'video')).toBe(
+      'This clip has no recorded time or place, so the app cannot predict where the Moon is.'
+    );
+    // The no place and no time clauses follow the solve's own reason word for word
+    for (const [warning, kind] of Object.entries(NO_PREDICTION_WARNINGS)) {
+      if (kind === 'no_time_or_place_to_predict') continue;
+      const clause = /^The file (.+), so no sky can be predicted for it\.$/.exec(warning)?.[1];
+      expect(clause, warning).toBeDefined();
+      expect(refusalSentence({ kind, said: 'saturn', name: 'Saturn' }, 'photo')).toBe(`This photo ${clause}, so the app cannot predict where Saturn is.`);
     }
   });
 

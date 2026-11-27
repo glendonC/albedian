@@ -82,6 +82,33 @@
       "catalogRow": false,
       "backend": false
     },
+    "no_place_to_predict": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": false,
+      "backend": false
+    },
+    "no_time_to_predict": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": false,
+      "backend": false
+    },
+    "no_time_or_place_to_predict": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": false,
+      "backend": false
+    },
     "deep_sky_out_of_reach": {
       "reasons": [
         "no_grounded_answer"
@@ -352,6 +379,60 @@
       },
       "media": "video",
       "sentence": "The app does not predict where Neptune is, so it cannot be found in this clip's sky."
+    },
+    {
+      "refusal": {
+        "kind": "no_place_to_predict",
+        "said": "moon",
+        "name": "the Moon"
+      },
+      "media": "photo",
+      "sentence": "This photo has no recorded place, so the app cannot predict where the Moon is."
+    },
+    {
+      "refusal": {
+        "kind": "no_place_to_predict",
+        "said": "moon",
+        "name": "the Moon"
+      },
+      "media": "video",
+      "sentence": "This clip has no recorded place, so the app cannot predict where the Moon is."
+    },
+    {
+      "refusal": {
+        "kind": "no_time_to_predict",
+        "said": "mars",
+        "name": "Mars"
+      },
+      "media": "photo",
+      "sentence": "This photo has no recorded capture time, so the app cannot predict where Mars is."
+    },
+    {
+      "refusal": {
+        "kind": "no_time_to_predict",
+        "said": "mars",
+        "name": "Mars"
+      },
+      "media": "video",
+      "sentence": "This clip has no recorded capture time, so the app cannot predict where Mars is."
+    },
+    {
+      "refusal": {
+        "kind": "no_time_or_place_to_predict",
+        "said": "the sun",
+        "name": "the Sun"
+      },
+      "media": "photo",
+      "sentence": "This photo has no recorded time or place, so the app cannot predict where the Sun is."
+    },
+    {
+      "refusal": {
+        "kind": "no_time_or_place_to_predict",
+        "said": "the sun",
+        "name": "the Sun"
+      },
+      "media": "video",
+      "sentence": "This clip has no recorded time or place, so the app cannot predict where the Sun is."
     },
     {
       "refusal": {
@@ -736,6 +817,11 @@
       "sentence": "I did not understand \"say \"x\"\": no list of the app holds that word."
     }
   ],
+  "noPredictionWarnings": {
+    "The file has no recorded place, so no sky can be predicted for it.": "no_place_to_predict",
+    "The file has no recorded capture time, so no sky can be predicted for it.": "no_time_to_predict",
+    "The file has no recorded capture time and no recorded place, so no sky can be predicted for it.": "no_time_or_place_to_predict"
+  },
   "valid": {
     "AlbedianAction": [
       {
@@ -1566,6 +1652,21 @@
         "kind": "not_predicted",
         "said": "neptune",
         "name": "Neptune"
+      },
+      {
+        "kind": "no_place_to_predict",
+        "said": "moon",
+        "name": "the Moon"
+      },
+      {
+        "kind": "no_time_to_predict",
+        "said": "mars",
+        "name": "Mars"
+      },
+      {
+        "kind": "no_time_or_place_to_predict",
+        "said": "the sun",
+        "name": "the Sun"
       },
       {
         "kind": "deep_sky_out_of_reach",
@@ -3615,6 +3716,69 @@
         }
       },
       "reason": "the backend holds no photo, so it never says not_predicted"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "This photo has no recorded place, so the app cannot predict where the Moon is.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_place_to_predict",
+          "said": "moon",
+          "name": "the Moon"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says no_place_to_predict"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "This photo has no recorded capture time, so the app cannot predict where Mars is.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_time_to_predict",
+          "said": "mars",
+          "name": "Mars"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says no_time_to_predict"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "This photo has no recorded time or place, so the app cannot predict where the Sun is.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_time_or_place_to_predict",
+          "said": "the sun",
+          "name": "the Sun"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says no_time_or_place_to_predict"
     },
     {
       "schema": "VoiceCommandResponse",

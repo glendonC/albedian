@@ -447,7 +447,52 @@ def test_the_refusal_kinds_hold_the_leads_list() -> None:
     # not_in_this_sky for a planet the predicted sky never places (its answer says that sentence itself)
     assert {k for k, spec in kinds.items() if not spec["backend"]} == {
         "not_in_this_sky", "not_predicted", "southern_cross_not_in_this_sky", "sky_not_worked_out",
-        "nothing_in_view_sky_not_worked_out"}
+        "nothing_in_view_sky_not_worked_out", *NO_PREDICTION_KINDS}
+
+
+NO_PREDICTION_KINDS = {"no_place_to_predict", "no_time_to_predict", "no_time_or_place_to_predict"}
+
+
+def test_a_body_with_no_place_to_predict_from_is_refused_in_the_solves_own_words() -> None:
+    """C38 (UIUX-voiceyet2-READY.md, DECIDED-BY-LEAD 27 Nov 12:29) and C38n (13:31): the solve's three reasons for
+    predicting nothing are the predicted sky's own sentences, each with the refusal said for a body it would place; the
+    no place and no time clauses follow the solve's word for word, and neither takes C38n's shorter words, which an
+    answer's spoken sentence has room for."""
+    from services.science.predicted_sky import NO_PLACE, NO_TIME, NO_TIME_OR_PLACE
+
+    assert voice.NO_PREDICTION_WARNINGS == {
+        NO_PLACE: "no_place_to_predict", NO_TIME: "no_time_to_predict", NO_TIME_OR_PLACE: "no_time_or_place_to_predict"}
+    assert voice.build_voice_samples()["noPredictionWarnings"] == voice.NO_PREDICTION_WARNINGS
+    for kind in NO_PREDICTION_KINDS:
+        assert voice.REFUSAL_KINDS[kind] == {
+            "reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False}
+    moon = {"said": "moon", "name": "the Moon"}
+    assert voice.refusal_sentence({"kind": "no_place_to_predict", **moon}, "photo") == (
+        "This photo has no recorded place, so the app cannot predict where the Moon is.")
+    assert voice.refusal_sentence({"kind": "no_place_to_predict", **moon}, "video") == (
+        "This clip has no recorded place, so the app cannot predict where the Moon is.")
+    assert voice.refusal_sentence({"kind": "no_time_to_predict", "said": "mars", "name": "Mars"}) == (
+        "This photo has no recorded capture time, so the app cannot predict where Mars is.")
+    assert voice.refusal_sentence({"kind": "no_time_to_predict", "said": "the sun", "name": "the Sun"}, "video") == (
+        "This clip has no recorded capture time, so the app cannot predict where the Sun is.")
+    assert voice.refusal_sentence({"kind": "no_time_or_place_to_predict", "said": "jupiter", "name": "Jupiter"}) == (
+        "This photo has no recorded time or place, so the app cannot predict where Jupiter is.")
+    assert voice.refusal_sentence({"kind": "no_time_or_place_to_predict", "said": "moon", "name": "the Moon"},
+                                  "video") == (
+        "This clip has no recorded time or place, so the app cannot predict where the Moon is.")
+    # Every form fits an answer's spoken sentence, for every body the predicted sky places and both nouns
+    for kind in NO_PREDICTION_KINDS:
+        for media in voice.REFUSAL_MEDIA:
+            for name in ("the Sun", "the Moon", "Venus", "Mars", "Jupiter", "Saturn", "Uranus"):
+                sentence = voice.refusal_sentence({"kind": kind, "said": "x", "name": name}, media)
+                assert voice.utf16_length(sentence) <= voice.ANSWER_SENTENCE_MAX_UTF16, sentence
+    for warning, kind in voice.NO_PREDICTION_WARNINGS.items():
+        if kind == "no_time_or_place_to_predict":
+            continue
+        assert warning.startswith("The file ") and warning.endswith(", so no sky can be predicted for it."), warning
+        clause = warning.removeprefix("The file ").removesuffix(", so no sky can be predicted for it.")
+        assert voice.refusal_sentence({"kind": kind, "said": "saturn", "name": "Saturn"}) == (
+            f"This photo {clause}, so the app cannot predict where Saturn is.")
 
 
 _REFUSAL_REPLY = {"status": "rejected", "actionId": "req-1", "reason": "ambiguous_target", "nextActions": [],

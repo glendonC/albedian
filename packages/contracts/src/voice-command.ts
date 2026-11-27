@@ -82,6 +82,12 @@ export const REFUSAL_KINDS = {
   // not_in_this_sky and the app parser's as that kind is; the backend's answer says the same sentence
   // (services/voice/answers.py UNPREDICTED_BODIES)
   not_predicted: { reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false },
+  // The Sun, the Moon or a planet the predicted sky places, asked of a recording whose solve says the file gives no
+  // place, no capture time or neither to predict from, said in place of not_in_this_sky (C38 and C38n,
+  // NO_PREDICTION_WARNINGS); the backend's answer says the same sentence (services/voice/answers.py)
+  no_place_to_predict: { reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false },
+  no_time_to_predict: { reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false },
+  no_time_or_place_to_predict: { reasons: ['ambiguous_target'], said: true, name: true, catalogRow: false, backend: false },
   // A deep-sky object a catalogue holds, which voice cannot reach yet
   deep_sky_out_of_reach: { reasons: ['no_grounded_answer'], said: true, name: true, catalogRow: true, backend: true },
   // A sky name no catalogue of the app holds by name
@@ -111,6 +117,18 @@ export const REFUSAL_KINDS = {
 type RejectionReason = z.infer<typeof RejectedOutcomeSchema>['reason'];
 export type RefusalKind = keyof typeof REFUSAL_KINDS;
 export const RefusalKindSchema = z.enum(Object.keys(REFUSAL_KINDS) as [RefusalKind, ...RefusalKind[]]);
+/**
+ * The predicted sky's own reasons for predicting nothing for a recording (NO_PLACE, NO_TIME and NO_TIME_OR_PLACE in
+ * services/science/predicted_sky.py), which its solve carries among its warnings, each with the refusal said for a
+ * body that sky would place (C38, UIUX-voiceyet2-READY.md, DECIDED-BY-LEAD 27 Nov 12:29). The no place and no time
+ * refusals' reason clause is the solve's own, word for word; neither is said in C38n's shorter words (13:31), so the
+ * sentence fits an answer's.
+ */
+export const NO_PREDICTION_WARNINGS = {
+  'The file has no recorded place, so no sky can be predicted for it.': 'no_place_to_predict',
+  'The file has no recorded capture time, so no sky can be predicted for it.': 'no_time_to_predict',
+  'The file has no recorded capture time and no recorded place, so no sky can be predicted for it.': 'no_time_or_place_to_predict',
+} as const satisfies Record<string, RefusalKind>;
 /** [proposed] What a refusal quotes back: at most six words and 80 characters with " ..." (services/voice/names.py
  * MAX_QUOTED_*), so 80 astral characters and the cut mark fit. Counted in UTF-16 code units. */
 export const REFUSAL_SAID_MAX_UTF16 = 200;
@@ -204,6 +222,14 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
     case 'not_predicted':
       // UIUX-unpredicted-body-READY.md, DECIDED-BY-LEAD 24 Nov 20:16: only what the app knows, not the real sky
       return `The app does not predict where ${capitalized(name)} is, so it cannot be found in this ${word}'s sky.`;
+    case 'no_place_to_predict':
+      // C38, DECIDED-BY-LEAD 27 Nov 12:29: the solve's own reason, then only what the app cannot do
+      return `This ${word} has no recorded place, so the app cannot predict where ${name} is.`;
+    case 'no_time_to_predict':
+      return `This ${word} has no recorded capture time, so the app cannot predict where ${name} is.`;
+    case 'no_time_or_place_to_predict':
+      // C38n, DECIDED-BY-LEAD 27 Nov 13:31: neither, in words short enough for an answer's sentence
+      return `This ${word} has no recorded time or place, so the app cannot predict where ${name} is.`;
     case 'deep_sky_out_of_reach':
       return `${capitalized(name)} is in the app's deep-sky catalog (OpenNGC ${refusal.catalogRow ?? ''}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
     case 'no_named_row':
