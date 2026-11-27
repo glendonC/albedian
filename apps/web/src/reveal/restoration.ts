@@ -210,8 +210,13 @@ const full = (entry: Entry) => entry.total !== null && entry.done >= entry.total
  * takes its tick only on its own full count, or once the job has finished; a step partly counted is being worked, its
  * count and bar as before, so several may be worked at once, and on a stopped job it is where the job stopped; a step
  * with no count yet reads next. A stopped job that left no step partway stopped at the first step it had not finished.
+ * Saving has no total once the playback copy is made inside it (services/media/jobs.py), so it takes its tick once a
+ * later step has reported (clip-checking-row-one, DECIDED-BY-LEAD 12:06 on 27 Nov): the server lists Checking only
+ * after the stored file is written.
  */
 function countedRows(entries: ReadonlyMap<string, Entry>, succeeded: boolean, stopped: boolean, working: boolean): RestoreRow[] {
+  const laterReported = (index: number) => RESTORE_STEPS.slice(index + 1).some((name) => entries.has(name));
+  const finished = (entry: Entry, index: number) => full(entry) || (entry.unit === 'bytes' && entry.total === null && laterReported(index));
   const counting = (name: (typeof RESTORE_STEPS)[number], state: RestoreRow['state'], entry: Entry | null): RestoreRow => {
     const word = RESTORE_STEP_WORDS[name];
     if (entry === null) return { stage: name, word, state, value: null, fraction: null };
@@ -219,9 +224,9 @@ function countedRows(entries: ReadonlyMap<string, Entry>, succeeded: boolean, st
     if (entry.total === null || entry.total <= 1) return { stage: name, word, state, value: null, fraction: null };
     return { stage: name, word, state, value: `${grouped(entry.done)} of ${grouped(entry.total)}`, fraction: entry.done / entry.total };
   };
-  const rows = RESTORE_STEPS.map((name): RestoreRow => {
+  const rows = RESTORE_STEPS.map((name, index): RestoreRow => {
     const entry = entries.get(name) ?? null;
-    if (succeeded || (entry !== null && full(entry))) {
+    if (succeeded || (entry !== null && finished(entry, index))) {
       const value = entry === null ? null : entry.unit === 'bytes' ? megabytes(entry.done) : entry.total !== null && entry.total > 1 ? grouped(entry.total) : null;
       return { stage: name, word: RESTORE_STEP_WORDS[name], state: 'done', value, fraction: null };
     }
