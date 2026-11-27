@@ -424,6 +424,21 @@ class _RatioIndex:
         return hits[~outside]
 
 
+class _PairingDetections(tuple):
+    """The detections a plate search pairs against every candidate WCS, with their x and y arrays and the values
+    `_coordinates` refuses made once (pair-coords-once-1): main made them again for each candidate, which was most of
+    a long predicted-only wait's plate search. A tuple, so neither the detections nor their order change after the
+    arrays are made (a detection is frozen); the arrays are read-only."""
+
+    def __new__(cls, detections: Sequence[SourceDetection]) -> "_PairingDetections":
+        self = super().__new__(cls, detections)
+        self.x, self.x_refused = _coordinates([d.x_px for d in self])
+        self.y, self.y_refused = _coordinates([d.y_px for d in self])
+        for array in (self.x, self.x_refused, self.y, self.y_refused):
+            array.setflags(write=False)
+        return self
+
+
 def _greedy_pairs(
     wcs: WCSModel,
     detections: Sequence[SourceDetection],
@@ -436,12 +451,16 @@ def _greedy_pairs(
     order on a tie) when it lies closer than `radius_px` under `wcs.world_to_pixel`. `ra_deg` and `dec_deg` are the
     stars' positions: all stars are projected once per candidate (`_project`), and only those it puts within
     `radius_px` plus `_PREFILTER_MARGIN_PX` of a detection are measured with `wcs.world_to_pixel`, as `verify_held_out`
-    measures them. The pairs and distances are the ones measuring every star with `wcs.world_to_pixel` gives."""
+    measures them. The pairs and distances are the ones measuring every star with `wcs.world_to_pixel` gives.
+    Detections given as `_PairingDetections` carry their arrays, made once for every candidate of a search."""
     if not detections or len(stars) == 0:
         return []
     px, py = _project(wcs, ra_deg, dec_deg)
-    dx, x_refused = _coordinates([d.x_px for d in detections])
-    dy, y_refused = _coordinates([d.y_px for d in detections])
+    if isinstance(detections, _PairingDetections):
+        dx, x_refused, dy, y_refused = detections.x, detections.x_refused, detections.y, detections.y_refused
+    else:
+        dx, x_refused = _coordinates([d.x_px for d in detections])
+        dy, y_refused = _coordinates([d.y_px for d in detections])
     # A NaN or infinite detection or projection gives a NaN or infinite distance, never closer than the radius
     with np.errstate(invalid="ignore", over="ignore"):
         dist = np.hypot(px[None, :] - dx[:, None], py[None, :] - dy[:, None])
@@ -778,6 +797,8 @@ def solve_and_verify_field(
     ratio_index = _RatioIndex([(cr1, cr2) for _, _, _, cr1, cr2, _ in cat_triangles])
     cat_ra = np.array([s.ra_deg for s in catalog], dtype=np.float64)
     cat_dec = np.array([s.dec_deg for s in catalog], dtype=np.float64)
+    # The detections every candidate is paired against, their arrays made once for the whole search
+    pairing = _PairingDetections(psf_detections)
 
     det_pool = sorted(psf_detections, key=lambda d: d.snr, reverse=True)[:14]
     best_consensus_pairs: list[tuple[SourceDetection, CatalogStar]] = []
@@ -816,7 +837,7 @@ def solve_and_verify_field(
             if cand_wcs is None:
                 continue
 
-            matched_pairs = _greedy_pairs(cand_wcs, psf_detections, catalog, cat_ra, cat_dec, 18.0)
+            matched_pairs = _greedy_pairs(cand_wcs, pairing, catalog, cat_ra, cat_dec, 18.0)
             if len(matched_pairs) > len(best_consensus_pairs):
                 best_consensus_pairs = [(d, s) for d, s, _ in matched_pairs]
                 best_initial_wcs = cand_wcs

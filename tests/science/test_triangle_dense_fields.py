@@ -742,6 +742,69 @@ def test_pbt_the_consensus_pairs_are_the_one_by_one_rule_s(offsets, extra, seed,
     assert [(id(d), s.id, dist) for d, s, dist in got] == [(id(d), s.id, dist) for d, s, dist in want]
 
 
+@settings(max_examples=40, deadline=None)
+@given(
+    offsets=st.lists(st.tuples(st.floats(-25.0, 25.0), st.floats(-25.0, 25.0), st.booleans()), min_size=0, max_size=40),
+    extra=st.lists(st.tuples(st.floats(0.0, 959.0), st.floats(0.0, 539.0)), max_size=20),
+    seed=st.integers(0, 2**16),
+    radius=st.sampled_from([18.0, 8.0, 3.0]),
+    shifts=st.lists(st.tuples(st.floats(-30.0, 30.0), st.floats(-30.0, 30.0)), min_size=1, max_size=4),
+)
+@example(offsets=[(0.0, 0.0, False), (0.0, 0.0, False), (17.9995, 0.0, False), (0.0, -18.0005, False)], extra=[], seed=0,
+         radius=18.0, shifts=[(0.0, 0.0), (5.0, -3.0)])
+def test_pbt_the_consensus_pairs_with_the_detections_arrays_made_once_are_main_s(offsets, extra, seed, radius, shifts) -> None:
+    # pair-coords-once-1: a plate search pairs the same detections against every candidate WCS; their x and y arrays
+    # and refused flags are made once, and every candidate's pairs are the ones main's per-candidate arrays give,
+    # detections the record refuses (below 0) included
+    wcs, stars = _orion_wcs_and_stars()
+    detections = _detections_near_stars(wcs, stars, offsets, extra, seed)
+    ra = np.array([s.ra_deg for s in stars])
+    dec = np.array([s.dec_deg for s in stars])
+    once = sv._PairingDetections(detections)
+    assert list(once) == detections
+    for dx, dy in shifts:
+        candidate = replace(wcs, crpix_x=wcs.crpix_x + dx, crpix_y=wcs.crpix_y + dy)
+        got = sv._greedy_pairs(candidate, once, stars, ra, dec, radius)
+        want = sv._greedy_pairs(candidate, list(detections), stars, ra, dec, radius)
+        assert [(id(d), s.id, dist) for d, s, dist in got] == [(id(d), s.id, dist) for d, s, dist in want]
+
+
+def test_the_search_makes_the_detections_arrays_once_and_keeps_main_s_solution(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Main made the pairing's arrays again for every candidate (two `_coordinates` calls each); the search now makes
+    # them once, and its solution is main's to the byte
+    detections, width, height, moment = _pinned_field()
+    psf = [d for d in detections if not d.is_hot_pixel_impulse]
+    want_x, want_y = [d.x_px for d in psf], [d.y_px for d in psf]
+    before = _outcome(lambda: solve_and_verify_field(list(detections), width, height, **moment, **_sources("pairs-once")))
+    made, paired, checking = [], [], []
+    real_coordinates, real_pairs, real_verify = sv._coordinates, sv._greedy_pairs, sv.verify_held_out
+
+    def spy_coordinates(values):
+        if not checking and list(values) in (want_x, want_y):
+            made.append(len(values))
+        return real_coordinates(values)
+
+    def spy_verify(*args, **kwargs):
+        # The held-out check makes its own arrays once, after the search: not the pairing's
+        checking.append(1)
+        try:
+            return real_verify(*args, **kwargs)
+        finally:
+            checking.pop()
+
+    def spy_pairs(*args):
+        paired.append(1)
+        return real_pairs(*args)
+
+    monkeypatch.setattr(sv, "_coordinates", spy_coordinates)
+    monkeypatch.setattr(sv, "_greedy_pairs", spy_pairs)
+    monkeypatch.setattr(sv, "verify_held_out", spy_verify)
+    after = _outcome(lambda: solve_and_verify_field(list(detections), width, height, **moment, **_sources("pairs-once")))
+    assert len(paired) >= 3
+    assert len(made) == 2
+    assert after == before
+
+
 @settings(max_examples=30, deadline=None)
 @given(
     offsets=st.lists(
