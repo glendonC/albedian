@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Vec3 } from './craftLight.js';
+import { fillOcclusionShader } from './craftFillOcclusion.js';
 
 /**
  * chase-light-one (lead's answer on craft-alive-one: from behind the craft shows its form, a rim from the star ahead):
@@ -43,6 +44,8 @@ export function addEdgeLight(model: THREE.Object3D, uniforms: EdgeLightUniforms)
         shader.fragmentShader = shader.fragmentShader
           .replace('#include <common>', '#include <common>\nuniform vec3 uEdgeColor;\nuniform float uEdgePower;')
           .replace('#include <opaque_fragment>', `${EDGE_FRAGMENT}\n#include <opaque_fragment>`);
+        // craft-ao-fill-one: the sky fill's occlusion, in the programs of the materials markFillOcclusion marked
+        fillOcclusionShader(shader);
       };
       material.customProgramCacheKey = () => 'craft-edge-light';
       material.needsUpdate = true;

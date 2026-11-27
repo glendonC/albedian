@@ -9,6 +9,7 @@ import type { FlightCamera } from './flightFrame.js';
 import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUniforms } from './craftEdgeLight.js';
+import { markFillOcclusion } from './craftFillOcclusion.js';
 import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, keyToFillOf, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
@@ -141,6 +142,8 @@ interface CachedModel {
   readonly centre: [number, number, number];
   readonly radius: number;
   readonly size: Vec3;
+  /** craft-ao-fill-one: how many of the model's meshes are drawn with the sky fill's occlusion, of how many, as "n/m". */
+  readonly fillAo: string;
 }
 
 interface CraftGpu {
@@ -394,6 +397,7 @@ export const FlightCraftLayer: React.FC<{
     const b = g.lastBox;
     if (b) root.current?.setAttribute('data-box', [b.x0, b.y0, b.x1, b.y1].map((v) => v.toFixed(1)).join(','));
     root.current?.setAttribute('data-pose', s?.alive && s.craftRows ? 'chase' : 'rest');
+    if (g.shown) root.current?.setAttribute('data-fill-ao', g.shown.cached.fillAo);
   };
   const draw = (g: CraftGpu): boolean => {
     const s = steerRef.current ?? undefined;
@@ -488,12 +492,14 @@ export const FlightCraftLayer: React.FC<{
         model.traverse((o) => {
           o.frustumCulled = false;
         });
-        // chase-light-one: the edge light in each standard material, before the model's programs are made
+        // craft-ao-fill-one: the sky fill's occlusion where the model carries it, and chase-light-one: the edge light in
+        // each standard material, both before the model's programs are made
+        const occlusion = markFillOcclusion(model);
         addEdgeLight(model, g.edge);
         const box = new THREE.Box3().setFromObject(model);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         const size = box.getSize(new THREE.Vector3());
-        return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3 };
+        return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3, fillAo: `${occlusion.occluded}/${occlusion.meshes}` };
       });
     }
     cache.set(url, pending);
