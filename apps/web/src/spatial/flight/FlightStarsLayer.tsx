@@ -20,7 +20,7 @@ import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
 import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
 import { STEER_START_SPEED_PC_S, SteerHands, steeringSpeedLine } from './steering.js';
-import { ALIVE_AT_REST, aliveAsk, aliveFrame, capLead, maxLeadRad, stepAlive, type AliveSignals } from './craftAlive.js';
+import { ALIVE_AT_REST, aliveAsk, aliveFrame, capLead, maxLeadRad, paceAsk, stepAlive, type AliveSignals } from './craftAlive.js';
 import { READOUT_EVERY_MS, nearStarOf, nearStarStep, readoutDistance, startHandover, stepHandover, type NearStar } from './nearStar.js';
 import { frameShiftAt, handoverShiftError, restPointPx, screenThrough } from './heldStar.js';
 import { orbitAngles, orbitStep, orbitUpNext } from './orbit.js';
@@ -522,7 +522,9 @@ export const FlightStarsLayer: React.FC<{
         const pxPerRad = cam ? Math.hypot(cam.storedToScreen[0], cam.storedToScreen[3]) / ((cam.wcs.scaleDegPerPx * Math.PI) / 180) : Infinity;
         const chase = capLead(followRows(chaseFrom, next.rows, dt, { reduced: reducedRef.current }), next.rows, maxLeadRad(viewportWidthPx, pxPerRad));
         const moved: SteerNow = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase };
-        alive.current = stepAlive(alive.current, aliveAsk(hand, moved.speedPcPerS, reducedRef.current), dt);
+        // craft-alive-three version two: on the paced approach to a star the poses go by time to the hover (paceAsk); free flight as before
+        const pace = star ? paceAsk({ setPcPerS: setSpeed.current, floorPc: next.floorPc, distancePc: next.distancePc, speedDirection }) : undefined;
+        alive.current = stepAlive(alive.current, aliveAsk(hand, moved.speedPcPerS, reducedRef.current, pace), dt);
         // phone-star-open-one: through the hand-over and after it, while the drawn camera catches up with the heading,
         // the frame moves so the star holds its resting place in the drawn view; at the person's first turn once the
         // hand-over is made the frame stays where it stands, so the turn moves the star

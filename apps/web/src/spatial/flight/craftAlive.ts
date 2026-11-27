@@ -1,6 +1,7 @@
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { CraftFraming } from './craftScene.js';
 import { STEER_START_SPEED_PC_S, type SteerFrame } from './steering.js';
+import { timeToHoverS } from './nearStar.js';
 
 /**
  * craft-alive-one (DECIDED-BY-LEAD 25 Nov 03:22, on MOTION's craft-alive-proposal): while the person steers, the craft
@@ -64,13 +65,15 @@ export function speedShare(speedPcPerS: number, startPcPerS: number): number {
  */
 export function stepAlive(
   prev: AliveSignals,
-  ask: { turnShare: number; speedPcPerS: number; startPcPerS: number; braking: boolean; reduced: boolean; dragHeld?: boolean },
+  ask: { turnShare: number; speedPcPerS: number; startPcPerS: number; braking: boolean; reduced: boolean; dragHeld?: boolean; pace?: PaceAsk },
   dt: number
 ): AliveSignals {
   const k = (tau: number) => (dt > 0 ? 1 - Math.exp(-dt / tau) : 0);
   const bankTo = ask.reduced ? 0 : Math.max(-1, Math.min(1, ask.turnShare));
-  const brakeTo = ask.braking && !ask.reduced ? 1 : 0;
-  const speedTo = ask.reduced ? 0 : speedShare(ask.speedPcPerS, ask.startPcPerS);
+  // craft-alive-three: on a paced approach to a star the speed and the brake follow the pace (paceAsk), not the speed
+  // against the start speed, which a paced approach never reaches
+  const brakeTo = ask.reduced ? 0 : ask.pace ? ask.pace.brake : ask.braking ? 1 : 0;
+  const speedTo = ask.reduced ? 0 : ask.pace ? ask.pace.cruise : speedShare(ask.speedPcPerS, ask.startPcPerS);
   const bank = ask.dragHeld && dt > 0 ? bankTo : prev.bank + (bankTo - prev.bank) * k(ALIVE_TAU.bank);
   return {
     bank,
@@ -85,8 +88,33 @@ export function stepAlive(
  * rate, a drag's share of its full-bank speed: `SteerHands.frame`), whether a finger is down, the speed against the
  * start speed, and the brake while S slows the craft.
  */
-export function aliveAsk(hands: Pick<SteerFrame, 'turnShare' | 'dragHeld' | 'speedDirection'>, speedPcPerS: number, reduced: boolean) {
-  return { turnShare: hands.turnShare, dragHeld: hands.dragHeld, speedPcPerS, startPcPerS: STEER_START_SPEED_PC_S, braking: hands.speedDirection < 0, reduced };
+export function aliveAsk(hands: Pick<SteerFrame, 'turnShare' | 'dragHeld' | 'speedDirection'>, speedPcPerS: number, reduced: boolean, pace?: PaceAsk) {
+  return { turnShare: hands.turnShare, dragHeld: hands.dragHeld, speedPcPerS, startPcPerS: STEER_START_SPEED_PC_S, braking: hands.speedDirection < 0, reduced, ...(pace ? { pace } : {}) };
+}
+
+/** craft-alive-three: what a paced approach asks of the speed signal (cruise) and the brake, each 0 to 1. */
+export interface PaceAsk {
+  readonly cruise: number;
+  readonly brake: number;
+}
+
+/** The brake comes this long before the hover (MOTION's approach-curve-numbers.md item 2, the reference's 0.7 to 0.8 s). */
+export const BRAKE_BEFORE_HOVER_S = 0.75;
+
+/**
+ * craft-alive-three version two (DECIDED-BY-LEAD 27 Nov 11:59, MOTION's approach-curve-numbers.md item 2): on the paced
+ * approach to a star the poses go by time to the hover, as the owner's reference leaves cruise (a body swings in 0.75 s
+ * whatever the trip's length): the whole cruise from the hand-over until BRAKE_BEFORE_HOVER_S before the hover
+ * (timeToHoverS: the set speed, the pace and the arrival's ease, known in advance), the whole brake from there, which
+ * stepAlive follows on the brake's own 0.2 s smoothing, and neither once within HOVER_WITHIN_FLOORS: hover, the brake let
+ * go on that smoothing as when S is let go. W held asks the whole cruise and S held the whole brake, as the keys did.
+ */
+export function paceAsk(p: { setPcPerS: number; floorPc: number; distancePc: number; speedDirection: number }): PaceAsk {
+  if (p.speedDirection > 0) return { cruise: 1, brake: 0 };
+  if (p.speedDirection < 0) return { cruise: 0, brake: 1 };
+  const seconds = timeToHoverS(p.distancePc, p.setPcPerS, p.floorPc);
+  if (!(seconds > 0)) return { cruise: 0, brake: 0 };
+  return seconds > BRAKE_BEFORE_HOVER_S ? { cruise: 1, brake: 0 } : { cruise: 0, brake: 1 };
 }
 
 /**

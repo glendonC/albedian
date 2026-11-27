@@ -174,6 +174,37 @@ const HEAD_ON_COS = Math.cos(HEAD_ON_RAD);
  */
 export const ARRIVAL_EASE_S = 0.07;
 
+/** The arrival has come to rest within this many floors (MOTION's approach-curve-numbers.md item 2: hover there). */
+export const HOVER_WITHIN_FLOORS = 1.001;
+
+/**
+ * How long a flight straight at the star takes from `distancePc` to within HOVER_WITHIN_FLOORS of its floor, seconds:
+ * at each distance the slowest of the set speed, the 2.5 s pace and the arrival's ease, as nearStarStep flies the line
+ * to the star, so it is known in advance (each closes at its own constant rate). Between the distances where two of
+ * the three meet, one is the slowest throughout, and its time is exact there: the set speed's straight run, 2.5 s times
+ * the log of the distances' ratio, or 0.07 s times the log of the ratio of the ways left to the floor. 0 within the
+ * hover's reach.
+ */
+export function timeToHoverS(distancePc: number, setPcPerS: number, floorPc: number): number {
+  const hover = floorPc * HOVER_WITHIN_FLOORS;
+  if (!(distancePc > hover)) return 0;
+  if (!(setPcPerS > 0) || !(floorPc > 0)) return Number.POSITIVE_INFINITY;
+  const meets = [floorPc / (1 - ARRIVAL_EASE_S / NEAR_STAR_TAU_S), floorPc + setPcPerS * ARRIVAL_EASE_S, setPcPerS * NEAR_STAR_TAU_S];
+  const cuts = [hover, ...meets.filter((m) => m > hover && m < distancePc).sort((a, b) => a - b), distancePc];
+  let seconds = 0;
+  for (let i = 1; i < cuts.length; i++) {
+    const near = cuts[i - 1]!;
+    const far = cuts[i]!;
+    const mid = (near + far) / 2;
+    const ease = (mid - floorPc) / ARRIVAL_EASE_S;
+    const pace = mid / NEAR_STAR_TAU_S;
+    if (ease <= pace && ease <= setPcPerS) seconds += ARRIVAL_EASE_S * Math.log((far - floorPc) / (near - floorPc));
+    else if (pace <= setPcPerS) seconds += NEAR_STAR_TAU_S * Math.log(far / near);
+    else seconds += (far - near) / setPcPerS;
+  }
+  return seconds;
+}
+
 /**
  * A steering frame at the set speed, paced by the star: no faster than its distance over 2.5 s, and in toward the star
  * no further than the way left to the floor allows on ARRIVAL_EASE_S (the frame's own share of an e-fold every 0.07 s,

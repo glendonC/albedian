@@ -9,7 +9,7 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
 import { flightCameraOf } from '../flightFrame.js';
-import { ALIVE_AT_REST, aliveAsk, rolledRows, stepAlive } from '../craftAlive.js';
+import { ALIVE_AT_REST, aliveAsk, paceAsk, rolledRows, stepAlive } from '../craftAlive.js';
 import { starViewOfSteer, steerStartOf } from '../starView.js';
 import { arrivalShiftOf, arrivedFlightCamera } from '../arrival.js';
 import { nearStarOf, nearStarStep, startHandover, stepHandover } from '../nearStar.js';
@@ -146,7 +146,9 @@ describe('steering drawn by one frame loop (steer-frame-one)', () => {
       if (handover && paceStar) ({ rows, handover } = stepHandover(handover, { positionPc: want.positionPc, rows }, paceStar, dt, false));
       const next = nearStarStep({ positionPc: want.positionPc, rows }, setPc, input, dt, paceStar);
       want = { positionPc: next.positionPc, rows: next.rows, speedPcPerS: next.speedPcPerS, chase: followRows(want.chase, next.rows, dt, { reduced: false }) };
-      alive = stepAlive(alive, aliveAsk(hand, want.speedPcPerS, false), dt);
+      // craft-alive-three: in a flight to a star the signals follow the pace
+      const pace = paceStar ? paceAsk({ setPcPerS: setPc, floorPc: next.floorPc, distancePc: next.distancePc, speedDirection }) : undefined;
+      alive = stepAlive(alive, aliveAsk(hand, want.speedPcPerS, false, pace), dt);
       if (holding && paceStar) {
         shiftPx = frameShiftAt({ restPx, starPx: screenThrough(camera, want.positionPc, rolledRows(want.chase, alive), paceStar.positionPc), errorPx, share: handover ? handover.made : 1, fallbackPx: shiftPx });
         if (!handover && (input.yawRadPerS !== 0 || input.pitchRadPerS !== 0)) holding = false;
