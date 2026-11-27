@@ -1308,6 +1308,51 @@
           }
         }
       },
+      "/api/samples/{sample_id}/asset": {
+        "get": {
+          "summary": "Get Sample Asset",
+          "description": "The sample's photo as the app reads it (sample-asset-one): what `POST /api/ingest` would read of those bytes,\nbut a public sample, shown from the sample's own route and titled as its record titles it; the web builds the\nsample's reveal from it and the kept solve, as it builds an upload's from its receipt.",
+          "operationId": "get_sample_asset_api_samples__sample_id__asset_get",
+          "parameters": [
+            {
+              "name": "sample_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^night-[a-z0-9-]{1,40}$",
+                "description": "A sample night's id, night-<name>",
+                "title": "Sample Id"
+              },
+              "description": "A sample night's id, night-<name>"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Sample Asset Api Samples  Sample Id  Asset Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/samples/{sample_id}/solution": {
         "get": {
           "summary": "Get Sample Solution",
@@ -2023,6 +2068,15 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/samples/{sample_id}/asset",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_sample_asset",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
       "path": "/api/samples/{sample_id}/solution",
       "methods": [
         "GET"
@@ -2109,6 +2163,7 @@
           "/api/ingest/{sha256}/pointing": 65536,
           "/api/samples": 0,
           "/api/samples/{sample_id}/original": 0,
+          "/api/samples/{sample_id}/asset": 0,
           "/api/samples/{sample_id}/solution": 0
         }
       }

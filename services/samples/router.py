@@ -2,7 +2,9 @@
 
 `GET /api/samples` gives the tracked record (data/samples.json, its contract services/contracts/samples.py).
 `GET /api/samples/{sample_id}/original` gives the public photo from the shared cache, only when its bytes are the
-ones the record names (size and SHA-256), and `GET /api/samples/{sample_id}/solution` gives the app's own solve of
+ones the record names (size and SHA-256); `GET /api/samples/{sample_id}/asset` gives that photo as the app reads it
+(sample-asset-one: the SourceAsset the ingest's own reader makes of it, a public sample shown from its own route, its
+contract SampleAsset), and `GET /api/samples/{sample_id}/solution` gives the app's own solve of
 it from the cache, only when its SHA-256 matches the one kept beside it. What is not on this machine yet is 404; what
 fails its hash is 409 and is never served. A read never fetches and never solves: the setup step
 (scripts/make_samples.py) does both, as the record says.
@@ -19,7 +21,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.params import Path as PathParam
 from fastapi.responses import FileResponse
 
-from services.contracts.samples import SAMPLE_ID_PATTERN, SampleNight, load_samples
+from services.contracts.samples import SAMPLE_ID_PATTERN, SampleAsset, SampleNight, load_samples, sample_asset_matches
+from services.ingest.router import read_stored_asset
+from services.ingest.store import SNIFF_BYTES, Received, sniff
 
 router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -59,16 +63,40 @@ def get_samples(root: Path = Depends(get_samples_root)) -> dict[str, Any]:
     return json.loads((root / "data" / "samples.json").read_text(encoding="utf-8"))
 
 
-@router.get("/api/samples/{sample_id}/original", response_class=FileResponse)
-def get_sample_original(sample_id: str = _sample_id(), root: Path = Depends(get_samples_root)) -> FileResponse:
-    """The sample's public photo, exactly as its recorded source served it."""
-    night = _night(root, sample_id)
+def _recorded_photo(root: Path, night: SampleNight) -> Path:
+    """The sample's photo on this machine when its bytes are the ones the record names: 404 when it is not here (or
+    is a link to elsewhere), 409 when it fails its size or hash."""
     path = root / night.photo.download_path
     if not path.is_file() or path.is_symlink():
         raise HTTPException(status_code=404, detail=NO_SAMPLE_PHOTO)
     if path.stat().st_size != night.photo.bytes or _sha256(path) != night.photo.sha256:
         raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
+    return path
+
+
+@router.get("/api/samples/{sample_id}/original", response_class=FileResponse)
+def get_sample_original(sample_id: str = _sample_id(), root: Path = Depends(get_samples_root)) -> FileResponse:
+    """The sample's public photo, exactly as its recorded source served it."""
+    night = _night(root, sample_id)
+    path = _recorded_photo(root, night)
     return FileResponse(path, media_type=night.photo.mime_type, headers={"X-Content-Type-Options": "nosniff", "Content-Disposition": "inline"})
+
+
+@router.get("/api/samples/{sample_id}/asset")
+def get_sample_asset(sample_id: str = _sample_id(), root: Path = Depends(get_samples_root)) -> dict[str, Any]:
+    """The sample's photo as the app reads it (sample-asset-one): what `POST /api/ingest` would read of those bytes,
+    but a public sample, shown from the sample's own route and titled as its record titles it; the web builds the
+    sample's reveal from it and the kept solve, as it builds an upload's from its receipt."""
+    night = _night(root, sample_id)
+    path = _recorded_photo(root, night)
+    with path.open("rb") as handle:
+        head = handle.read(SNIFF_BYTES)
+    received = Received(partial=path, sha256=night.photo.sha256, byte_size=night.photo.bytes, file_type=sniff(head))
+    asset = {**read_stored_asset(received, night.title), "privacyClass": "public_sample", "uri": f"/api/samples/{night.id}/original"}
+    # A record that names the right bytes under another type is not the photo it names
+    if not sample_asset_matches(night, SampleAsset.model_validate(asset)):
+        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
+    return asset
 
 
 @router.get("/api/samples/{sample_id}/solution")

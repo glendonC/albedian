@@ -237,6 +237,7 @@ BODY_LIMITS: dict[str, int | None] = {
     # The sample night, read-only (first-use-sample-one)
     "/api/samples": 0,
     "/api/samples/{sample_id}/original": 0,
+    "/api/samples/{sample_id}/asset": 0,
     "/api/samples/{sample_id}/solution": 0,
 }
 # Nothing reads the body of a request no route serves (it is answered 404, 405 or a redirect)

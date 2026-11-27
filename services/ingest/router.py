@@ -216,6 +216,13 @@ def _asset(received: Received, title: str, facts: MediaFacts, hints: dict[str, A
     return asset
 
 
+def read_stored_asset(received: Received, title: str) -> dict[str, Any]:
+    """The SourceAsset `POST /api/ingest` makes of a file, read as it reads one: the probe's facts and the file's own
+    hints, for a file already whole on this machine (sample-asset-one reads a sample night's photo by it)."""
+    facts = probe_media(received.partial, received.file_type)
+    return _asset(received, title, facts, _hints(received, facts))
+
+
 def _receipt(record: dict[str, Any], already_stored: bool) -> dict[str, Any]:
     receipt = {**record, "alreadyStored": already_stored}
     IngestReceipt.model_validate(receipt)
