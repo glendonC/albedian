@@ -135,7 +135,7 @@ final class ApprovedAssetsTests: XCTestCase {
         let compactAfterSend = afterSendSplit.code.filter { !$0.isWhitespace }
 
         // Home backdrop image and all five paired-with-text status/coach icons are hidden from VoiceOver
-        XCTAssertTrue(compactCompanion.contains("Image().resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped().accessibilityHidden(true)"),
+        XCTAssertTrue(compactCompanion.contains("height:geometry.size.height+CGFloat(2*HomeTilt.maxPt))}.clipped().accessibilityHidden(true)"),
                       "HomeScreen milky-way-home decorative image must be accessibilityHidden")
         XCTAssertTrue(companionSplit.literals.contains("milky-way-home"))
         XCTAssertTrue(compactCompanion.contains("AlbedianIcon.cameraSlash.image(18).accessibilityHidden(true)"),

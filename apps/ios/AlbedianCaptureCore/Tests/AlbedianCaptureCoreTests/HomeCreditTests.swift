@@ -42,7 +42,7 @@ final class HomeCreditTests: XCTestCase {
         // Plain text: no button or link on the phone, and drawn after the picture and its shade, so it stays put
         let credit = try XCTUnwrap(home.range(of: "Text(HomeCredit.line)"))
         let start = try XCTUnwrap(home.range(of: "MainButton(title:,icon:.arrow,action:model.startAiming)"))
-        let picture = try XCTUnwrap(home.range(of: "Image(").map(\.lowerBound))
+        let picture = try XCTUnwrap(home.range(of: "TiltingBackdrop(").map(\.lowerBound))
         XCTAssertLessThan(picture, credit.lowerBound)
         XCTAssertLessThan(start.lowerBound, credit.lowerBound)
         XCTAssertFalse(home[credit.lowerBound...].prefix(400).contains("Button"))

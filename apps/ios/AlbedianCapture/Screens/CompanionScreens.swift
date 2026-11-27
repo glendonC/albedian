@@ -110,15 +110,25 @@ struct CompanionRoot: View {
 }
 
 /// Home (arrive iPhone 1 with UIUX-credit): the Milky Way, darkened toward the bottom, the logo at 52 pt, "Start", and
-/// the "Credits" pill top right.
+/// the "Credits" pill top right. The picture answers the phone's tilt (UIUX-iphone-firstuse-READY item 3); the shade,
+/// the pills, the logo, Start and the credit line stay put.
 struct HomeScreen: View {
     let model: CompanionModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Image("milky-way-home").resizable().scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                // firstuse-home-result-one: the picture framed 12 pt past every edge, which its tilt reveals, laid over a
+                // screen-sized frame so nothing else moves with it; still under Reduce Motion
+                Color.clear
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .overlay {
+                        TiltingBackdrop(image: "milky-way-home", overscanPt: HomeTilt.maxPt, tilts: !reduceMotion)
+                            .frame(width: geometry.size.width + CGFloat(2 * HomeTilt.maxPt),
+                                   height: geometry.size.height + CGFloat(2 * HomeTilt.maxPt))
+                    }
+                    .clipped()
                     .accessibilityHidden(true)
                 // linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.35) 34%, rgba(0,0,0,0) 55%)
                 LinearGradient(stops: HomeBackdrop.shade.map { .init(color: .black.opacity($0.opacity), location: CGFloat($0.location)) },
@@ -830,7 +840,8 @@ struct ResultScreen: View {
 
 /// The catalog matched marks on the card (the result's mockup): a 3.6 pt ring with four ticks from 5 to 7.5 pt out, 1 pt
 /// of the class's colour, at each matched detection where the covering photo shows it; none for a detection the card
-/// cuts off.
+/// cuts off. firstuse-home-result-one (UIUX-iphone-firstuse-READY item 3): the matched stars brighter than magnitude 3
+/// keep their names by D20's rule (`ResultNames`), Geist 11 in the class's colour with the overlay's dark halo.
 struct CatalogMarks: View {
     let marks: [SolutionReadout.Mark]
     let frame: StoredFrame
@@ -840,8 +851,11 @@ struct CatalogMarks: View {
     var body: some View {
         Canvas { context, _ in
             let colour = Color(ControlStyle.Evidence.catalogMatched.colour)
-            for mark in marks where frame.isOnCard(xPx: mark.xPx, yPx: mark.yPx, width: width, height: height) {
+            let placed = marks.filter { frame.isOnCard(xPx: $0.xPx, yPx: $0.yPx, width: width, height: height) }.map { mark in
                 let p = frame.placeCovering(xPx: mark.xPx, yPx: mark.yPx, onWidth: width, height: height)
+                return ResultNames.Placed(mark: mark, x: p.x, y: p.y)
+            }
+            for p in placed {
                 let c = CGPoint(x: p.x, y: p.y)
                 context.stroke(Path(ellipseIn: CGRect(x: c.x - 3.6, y: c.y - 3.6, width: 7.2, height: 7.2)), with: .color(colour), lineWidth: 1)
                 var ticks = Path()
@@ -850,6 +864,24 @@ struct CatalogMarks: View {
                     ticks.addLine(to: CGPoint(x: c.x + dx * 7.5, y: c.y + dy * 7.5))
                 }
                 context.stroke(ticks, with: .color(colour), lineWidth: 1)
+            }
+            let named = ResultNames.names(placed, widthPt: width, heightPt: height)
+            for p in placed {
+                guard let onLeft = named[p.mark.id] else { continue }
+                func name(_ fill: Color) -> GraphicsContext.ResolvedText {
+                    context.resolve(Text(p.mark.title).font(Font.custom("Geist-Regular", fixedSize: ResultNames.sizePt))
+                        .tracking(CGFloat(SkyOverlayStyle.nameTracking * ResultNames.sizePt)).foregroundStyle(fill))
+                }
+                let gap = ResultNames.gapPt
+                let at = CGPoint(x: onLeft ? p.x - gap : p.x + gap, y: p.y)
+                let anchor: UnitPoint = onLeft ? .trailing : .leading
+                // The overlay's dark edge: the name in black at 75 percent a half stroke out on eight sides, then the name
+                let halo = name(Color.black.opacity(SkyOverlayStyle.haloOpacity))
+                let out = SkyOverlayStyle.haloWidthPt / 2
+                for (dx, dy) in [(-1.0, 0.0), (1, 0), (0, -1), (0, 1), (-0.7, -0.7), (0.7, -0.7), (-0.7, 0.7), (0.7, 0.7)] {
+                    context.draw(halo, at: CGPoint(x: at.x + dx * out, y: at.y + dy * out), anchor: anchor)
+                }
+                context.draw(name(colour), at: at, anchor: anchor)
             }
         }
         .frame(width: CGFloat(width), height: CGFloat(height))
