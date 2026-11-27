@@ -488,7 +488,9 @@ export const RestorePhoneFoot: React.FC<{
    * UIUX-versionwait-READY.md, its addition of 03:48): it stands in the sentence's place above the player.
    */
   slotRow?: React.ReactNode;
-}> = ({ onDownload, clip = false, restoredDrawn, slotRow = null }) => (
+  /** download-check-one: Download was pressed for the version shown, so its circle holds a check in the arrow's place. */
+  saved?: boolean;
+}> = ({ onDownload, clip = false, restoredDrawn, slotRow = null, saved = false }) => (
   <>
     {!restoredDrawn && clip && slotRow !== null && <div className="restore-phone-slot">{slotRow}</div>}
     {restoredDrawn && (
@@ -498,7 +500,7 @@ export const RestorePhoneFoot: React.FC<{
       </p>
     )}
     <div className="restore-phone-go">
-      <MainAction label="Download" icon="download-simple" size="phone" onClick={onDownload} />
+      <MainAction label="Download" icon={saved ? 'check' : 'download-simple'} size="phone" onClick={onDownload} />
     </div>
   </>
 );

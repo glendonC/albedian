@@ -581,6 +581,7 @@ describe("the restoration's rules are the approved page's", () => {
 describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/export)', () => {
   const DOWNLOAD_PATH =
     'M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z';
+  const CHECK_PATH = 'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z';
   const done: Restoration = { phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } };
   const download = () => [...container.querySelectorAll('.reveal-status button')].find((b) => b.textContent === 'Download') as HTMLButtonElement | undefined;
 
@@ -594,7 +595,9 @@ describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/e
     expect(button.querySelector('.look-main__circle path')!.getAttribute('d')).toBe(DOWNLOAD_PATH);
   });
 
-  it("saves the export route's zip through the browser's own download, and changes nothing on screen", () => {
+  // download-check-one (UIUX-export-READY.md, "After Download is pressed"): the one change on screen is the circle's
+  // arrow turned to a check (downloadCheck.test.tsx)
+  it("saves the export route's zip through the browser's own download, and changes nothing on screen but its circle's icon", () => {
     const sha = calibrated().sourceAsset!.sha256;
     const saved: Array<{ href: string; download: string; inPage: boolean }> = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
@@ -605,7 +608,7 @@ describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/e
     act(() => download()!.click());
     expect(saved).toEqual([{ href: `/api/media/${sha}/variants/${succeeded.variantId}/export`, download: '', inPage: true }]);
     expect(document.querySelectorAll('a[download]')).toHaveLength(0);
-    expect(container.innerHTML).toBe(before);
+    expect(container.innerHTML).toBe(before.replace(DOWNLOAD_PATH, CHECK_PATH));
     vi.restoreAllMocks();
   });
 

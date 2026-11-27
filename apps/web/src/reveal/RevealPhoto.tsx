@@ -937,10 +937,24 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     ready !== undefined ? (
       <RestoreVersions versions={versions} shownId={ready} pressedId={pressedVersionId} onShow={setPickedVersion} onRetry={retryCopy} />
     ) : null;
+  // download-check-one (UIUX-export-READY.md, "After Download is pressed"): from the press the arrow in Download's circle
+  // becomes a check, the press taken and the file handed to the browser, nothing more; it stays while that restored
+  // version stands, and another version shown (or Download gone with the compare) gives the arrow back
+  const downloadTarget = !asset ? undefined : phone ? (phoneCompare ? shownVersionId : undefined) : ready;
+  const downloadKey = asset && downloadTarget !== undefined ? `${asset.sha256}:${downloadTarget}` : null;
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  // Given back in the render that shows the other version, so no frame ever holds a check for it
+  if (savedKey !== null && savedKey !== downloadKey) setSavedKey(null);
+  const downloadSaved = savedKey !== null && savedKey === downloadKey;
+  const saveShown = (id: string) => {
+    if (!asset) return;
+    setSavedKey(`${asset.sha256}:${id}`);
+    saveFromServer(variantExportUrl(asset.sha256, id));
+  };
   const downloadAction =
     ready !== undefined && asset ? (
       <>
-        <MainAction label="Download" icon="download-simple" onClick={() => saveFromServer(variantExportUrl(asset.sha256, ready))} />
+        <MainAction label="Download" icon={downloadSaved ? 'check' : 'download-simple'} onClick={() => saveShown(ready)} />
         {versionsList}
       </>
     ) : null;
@@ -1861,7 +1875,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               />
             ) : null
           }
-          onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersionId))}
+          saved={downloadSaved}
+          onDownload={() => saveShown(shownVersionId)}
         />
       )}
       {/* D36 item 5: the list under Download, reached by scrolling, its rows 44 px */}
