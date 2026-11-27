@@ -10,6 +10,11 @@ import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/home.css';
 
+/** ESO's credit for the home's panorama, unaltered ("Credit: ESO/S. Brunier"), after the app's name for the picture. */
+export const HOME_CREDIT = 'Milky Way: ESO/S. Brunier';
+/** ESO's own page for the image (eso0932a), where its credit links when online, as ESO asks. */
+export const ESO_IMAGE_PAGE = 'https://www.eso.org/public/images/eso0932a/';
+
 export interface HomeScreenProps {
   soundOn: boolean;
   onToggleSound: () => void;
@@ -163,6 +168,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       </div>
+      {/* ESO's credit carried with the Milky Way it draws (home-credit-one, UIUX-homecredit-READY.md): ESO's words
+          unaltered after the picture's name, one link to ESO's page for the image, in the corner each width leaves free */}
+      <a className="home-credit" href={ESO_IMAGE_PAGE} target="_blank" rel="noopener noreferrer">
+        {HOME_CREDIT}
+      </a>
       <input
         ref={fileInput}
         className="home-file-input"

@@ -321,6 +321,32 @@
   color: var(--look-ink-2);
 }
 
+/* ESO's credit for the Milky Way (home-credit-one, UIUX-homecredit-READY.md, ruled 00:44 on 27 Nov; Chrome's New Tab
+   Page credit read from Chromium's source): one line in Geist 12 at ink 66 percent, no body, no icon, at the trailing
+   foot, its middle on Upload's row (56 + 24 px from the bottom) and its right edge at 32 px, as the top controls. A link
+   styled as the Credits page's: full ink on hover, the focus outline. It does not move */
+.home-credit {
+  position: absolute;
+  right: 32px;
+  bottom: 72px;
+  z-index: 2;
+  font-family: var(--look-font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--look-ink-2);
+  text-decoration: none;
+}
+
+.home-credit:hover {
+  color: var(--look-ink);
+}
+
+.home-credit:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
 @media (max-width: 900px) {
   .home-hero .look-logo {
     --look-logo-fs: clamp(56px, 14.6vw, 132px) !important;
@@ -334,6 +360,15 @@
   .home-top {
     right: 16px;
     top: 16px;
+  }
+
+  /* At phone width Upload's row holds Upload and, to come, Try a sample night side by side, so the credit takes the
+     leading top, its middle on the Credits pill's row (34 px), 16 px in, opposite Credits */
+  .home-credit {
+    left: 16px;
+    right: auto;
+    top: 26px;
+    bottom: auto;
   }
 
   .home-hero {

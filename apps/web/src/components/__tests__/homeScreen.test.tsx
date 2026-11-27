@@ -92,8 +92,8 @@ describe('HomeScreen: the approved home, word for word', () => {
     expect(upload.querySelector('svg.look-i')!.classList.contains('look-turn')).toBe(false);
     expect(home.querySelector('button.look-second')!.textContent).toBe('Credits');
     expect(buttonNamed('Sound')!.classList.contains('look-icon')).toBe(true);
-    // Credits, the logo's word and Upload, in the page's order: nothing else is written on the home
-    expect(home.textContent).toBe('CreditsalbedianUpload');
+    // Credits, the logo's word, Upload and ESO's credit for the Milky Way, in the page's order: nothing else is written
+    expect(home.textContent).toBe('CreditsalbedianUploadMilky Way: ESO/S. Brunier');
     expect(home.querySelectorAll('button.look-main')).toHaveLength(1);
   });
 
@@ -271,6 +271,54 @@ describe('the home backdrop: the panorama the app ships, framed as the mockup fr
     const names = [...css.matchAll(/\banimation:\s*([\w-]+)/g)].map((m) => m[1]);
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) expect(name).toMatch(/^look-mo-(?:frame|words)-(?:in|out)$/);
+  });
+
+  // home-credit-one (UIUX-homecredit-READY.md, ruled by the lead 00:44 on 27 Nov): ESO asks that the image credit be
+  // shown clearly to all users, unaltered, never hidden or parted from the image, and active online
+  it("carries ESO's credit on its Milky Way: one line, ESO's words unaltered, a link to ESO's page for the image in a new tab", () => {
+    renderHome();
+    const home = q(HOME_SCREEN)!;
+    const credits = [...home.querySelectorAll('a')];
+    expect(credits).toHaveLength(1);
+    const credit = credits[0]!;
+    expect(credit.className).toBe('home-credit');
+    expect(credit.textContent).toBe('Milky Way: ESO/S. Brunier');
+    expect(credit.getAttribute('href')).toBe('https://www.eso.org/public/images/eso0932a/');
+    expect(credit.getAttribute('target')).toBe('_blank');
+    expect(credit.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(credit.closest('[aria-hidden="true"]')).toBeNull();
+    expect(credit.querySelector('svg')).toBeNull();
+  });
+
+  it('sets the credit in Geist 12 at ink 66 percent on one line, in the corner each width leaves free', async () => {
+    const postcss = (await import('postcss')).default;
+    const decls = (selector: string, media?: string) => {
+      const found: Record<string, string> = {};
+      postcss.parse(homeCss).walkRules((rule) => {
+        const parent = rule.parent as { type?: string; name?: string; params?: string };
+        const inMedia = parent?.type === 'atrule' ? `@${parent.name} ${parent.params}` : undefined;
+        if (inMedia !== media || !rule.selectors.includes(selector)) return;
+        rule.walkDecls((d) => void (found[d.prop] = d.value));
+      });
+      return found;
+    };
+    // The laptop: the trailing foot, its middle on Upload's row (56 + 24 from the bottom), its right edge at 32
+    expect(decls('.home-credit')).toEqual({
+      position: 'absolute',
+      right: '32px',
+      bottom: '72px',
+      'z-index': '2',
+      'font-family': 'var(--look-font-sans)',
+      'font-size': '12px',
+      'line-height': '16px',
+      'white-space': 'nowrap',
+      color: 'var(--look-ink-2)',
+      'text-decoration': 'none',
+    });
+    expect(decls('.home-credit:hover')).toEqual({ color: 'var(--look-ink)' });
+    expect(decls('.home-credit:focus-visible')).toEqual({ outline: 'var(--look-focus-width) solid var(--look-ink)', 'outline-offset': 'var(--look-focus-offset)' });
+    // The phone: the leading top, its middle on the Credits pill's row (34), left 16, opposite Credits
+    expect(decls('.home-credit', '@media (max-width: 720px)')).toEqual({ left: '16px', right: 'auto', top: '26px', bottom: 'auto' });
   });
 
   it("keeps the browser's own file field out of sight: Upload is the only way to it", () => {

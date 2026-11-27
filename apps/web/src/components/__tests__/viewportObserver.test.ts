@@ -217,8 +217,9 @@ describe('the landing promises only what the app does', () => {
   it('does not promise a flight through the 3D universe before the stars move with the camera', () => {
     renderViewport({ observerLocation: null });
     expect(container.textContent).not.toMatch(/fly through the 3D universe/i);
-    // The home makes no promise at all: its only words are its controls' (the landing paragraph was a tagline)
-    expect(container.querySelector(HOME_SCREEN)!.textContent).toBe('CreditsalbedianUpload');
+    // The home makes no promise at all: its only words are its controls' and ESO's credit for its picture (the landing
+    // paragraph was a tagline)
+    expect(container.querySelector(HOME_SCREEN)!.textContent).toBe('CreditsalbedianUploadMilky Way: ESO/S. Brunier');
   });
 });
 

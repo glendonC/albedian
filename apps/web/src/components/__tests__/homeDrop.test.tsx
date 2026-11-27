@@ -109,7 +109,7 @@ describe('a photo dragged onto the home', () => {
   it('shows nothing until a file is over the window', () => {
     renderHome();
     expect(q(DROP)).toBeNull();
-    expect(q(HOME_SCREEN)!.textContent).toBe('CreditsalbedianUpload');
+    expect(q(HOME_SCREEN)!.textContent).toBe('CreditsalbedianUploadMilky Way: ESO/S. Brunier');
   });
 
   it('shows the approved overlay, word for word, over the home it leaves in place', () => {
@@ -126,7 +126,7 @@ describe('a photo dragged onto the home', () => {
     const home = q(HOME_SCREEN)!;
     expect(home.lastElementChild).toBe(drop);
     expect(home.querySelector('button.look-main')!.textContent).toBe('Upload');
-    expect(home.textContent).toBe('CreditsalbedianUploadDrop to upload');
+    expect(home.textContent).toBe('CreditsalbedianUploadMilky Way: ESO/S. BrunierDrop to upload');
   });
 
   it('takes a drag anywhere on the window, not only over the home element', () => {
