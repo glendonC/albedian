@@ -73,6 +73,84 @@ export function phoneCraftFraming(viewportWidthPx: number, readoutTopPx: number)
 }
 
 /**
+ * craft-phone-frame-one (DECIDED-BY-LEAD 27 Nov 17:48): on the phone the craft's own box on screen keeps this much clear
+ * of the top bar's foot and of the readout's top, the clearance the arrival's rule keeps from the readout and the mark
+ * (UIUX-arrivalstar 16:32, ARRIVAL_CLEAR_PX).
+ */
+export const PHONE_BAND_CLEAR_PX = 8;
+
+/** The band a phone's craft stands whole in: from the top bar's foot to the readout's top, each PHONE_BAND_CLEAR_PX clear. */
+export function phoneBandOf(framing: CraftFraming): { topPx: number; bottomPx: number } | null {
+  if (!(framing.frameHeightPx !== undefined && framing.frameHeightPx > 0)) return null;
+  return { topPx: PHONE_SKY_TOP_PX + PHONE_BAND_CLEAR_PX, bottomPx: PHONE_SKY_TOP_PX + framing.frameHeightPx - PHONE_BAND_CLEAR_PX };
+}
+
+/**
+ * craft-phone-frame-one: the framing that brings a craft whose box on screen spans `box` (CSS px, as drawn at
+ * `framing`) whole into `band`: moved down or up only as far as it must, its size kept; where the box is taller than the
+ * band, drawn smaller by the band over its height (its box scaling about the framing point with the framed size) and
+ * its top at the band's top. Unchanged where the box already stands inside the band. Across, it keeps its place.
+ */
+export function phoneBandFit(framing: CraftFraming, box: { y0: number; y1: number }, band: { topPx: number; bottomPx: number }): CraftFraming {
+  const tall = box.y1 - box.y0;
+  const room = band.bottomPx - band.topPx;
+  if (!(tall > 0) || !(room > 0)) return framing;
+  if (tall > room) {
+    const k = room / tall;
+    const top = framing.yPx + (box.y0 - framing.yPx) * k;
+    return { ...framing, yPx: framing.yPx + (band.topPx - top), diameterPx: framing.diameterPx * k };
+  }
+  if (box.y0 < band.topPx) return { ...framing, yPx: framing.yPx + (band.topPx - box.y0) };
+  if (box.y1 > band.bottomPx) return { ...framing, yPx: framing.yPx - (box.y1 - band.bottomPx) };
+  return framing;
+}
+
+type ScreenBox = { x0: number; y0: number; x1: number; y1: number };
+
+/** How far past the band a fitted box may stand, CSS px (a quarter pixel: what the drawn box's rounding allows). */
+export const PHONE_FIT_TOLERANCE_PX = 0.25;
+
+/**
+ * craft-phone-frame-one: the framing whose drawn box (`boxAt`: the craft placed at a framing and measured from its own
+ * parts, as drawn) stands whole in `band`. A box that fits the band's height is moved only (phoneBandFit, again on the
+ * box as drawn there, since a framing point moved is another ray). A box taller than the band is drawn at the largest
+ * size whose box fits, found by halving (a part near the camera makes the box grow faster than the size, so one scale
+ * by the band over the height would draw it smaller than it must), then moved. None when the craft cannot be placed.
+ */
+export function fitFramingToBand(framing: CraftFraming, band: { topPx: number; bottomPx: number }, boxAt: (f: CraftFraming) => ScreenBox | null): { framing: CraftFraming; box: ScreenBox } | null {
+  const tol = PHONE_FIT_TOLERANCE_PX;
+  const room = band.bottomPx - band.topPx;
+  const inside = (b: ScreenBox) => b.y0 >= band.topPx - tol && b.y1 <= band.bottomPx + tol;
+  const moved = (f: CraftFraming, b: ScreenBox) => {
+    let at = { framing: f, box: b };
+    for (let pass = 0; pass < 4 && !inside(at.box); pass++) {
+      const next = phoneBandFit(at.framing, at.box, band);
+      const box = boxAt(next);
+      if (!box) break;
+      at = { framing: next, box };
+    }
+    return at;
+  };
+  const first = boxAt(framing);
+  if (!first) return null;
+  if (inside(first)) return { framing, box: first };
+  if (first.y1 - first.y0 <= room) return moved(framing, first);
+  let lo = 0;
+  let hi = 1;
+  let best: { framing: CraftFraming; box: ScreenBox } | null = null;
+  for (let step = 0; step < 12; step++) {
+    const k = (lo + hi) / 2;
+    const f = { ...framing, diameterPx: framing.diameterPx * k };
+    const b = boxAt(f);
+    if (b && b.y1 - b.y0 <= room) {
+      lo = k;
+      best = { framing: f, box: b };
+    } else hi = k;
+  }
+  return best ? moved(best.framing, best.box) : { framing, box: first };
+}
+
+/**
  * How wide a craft looks from behind at rest, in its model's units: the larger of its bounding box's extents along the
  * model's own up and right (forward x up), the box's size along each model axis given. A long part (Voyager's boom)
  * makes the bounding sphere far wider than the craft looks, so the framing's "across" (D26 item 2, D30 item 1) is this.

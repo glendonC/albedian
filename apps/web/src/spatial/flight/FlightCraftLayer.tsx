@@ -7,11 +7,11 @@ import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { craftModelUrl, type Craft } from './crafts.js';
-import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
+import { craftFrameRadiusM, craftSceneOf, fitFramingToBand, laptopCraftFraming, phoneBandOf, type CraftFraming } from './craftScene.js';
 import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUniforms } from './craftEdgeLight.js';
 import { markFillOcclusion } from './craftFillOcclusion.js';
 import { poseWeights, posesOf, posesReport, sceneWithClips, setPoses, type CraftPoses } from './craftPoses.js';
-import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
+import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOfParts, type AliveSignals, type CraftPart } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, keyToFillOf, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 import { arrivedFlightCamera } from './arrival.js';
@@ -148,6 +148,8 @@ interface CachedModel {
   readonly fillAo: string;
   /** craft-alive-two: the suit's three poses when its file carries them (craftPoses.ts), else none. */
   readonly poses: CraftPoses | null;
+  /** craft-phone-frame-one: each of its meshes' own box in the model's units, as loaded. */
+  readonly parts: readonly CraftPart[];
 }
 
 interface CraftGpu {
@@ -279,9 +281,9 @@ async function loadCraftSky(renderer: THREE.WebGLRenderer, scene: THREE.Scene, a
  * One frame: the outgoing craft, if any, rendered and copied into its own canvas; then the craft shown (or a clear canvas
  * while it loads). True when the craft shown was drawn.
  */
-function drawFrame(gpu: CraftGpu, camera: FlightCamera, candidates: readonly LightCandidate[], steer: Steer | undefined, framing: CraftFraming | undefined, glCanvas: HTMLCanvasElement | null, outCanvas: HTMLCanvasElement | null): boolean {
+function drawFrame(gpu: CraftGpu, camera: FlightCamera, candidates: readonly LightCandidate[], steer: Steer | undefined, framing: CraftFraming | undefined, glCanvas: HTMLCanvasElement | null, outCanvas: HTMLCanvasElement | null, phone = false): boolean {
   if (gpu.leaving && outCanvas && glCanvas) {
-    if (drawCraft(gpu, gpu.leaving, camera, candidates, steer, framing)) {
+    if (drawCraft(gpu, gpu.leaving, camera, candidates, steer, framing, phone)) {
       if (outCanvas.width !== glCanvas.width) outCanvas.width = glCanvas.width;
       if (outCanvas.height !== glCanvas.height) outCanvas.height = glCanvas.height;
       const ctx = outCanvas.getContext('2d');
@@ -294,10 +296,22 @@ function drawFrame(gpu: CraftGpu, camera: FlightCamera, candidates: readonly Lig
     gpu.renderer.clear();
     return false;
   }
-  return drawCraft(gpu, gpu.shown, camera, candidates, steer, framing);
+  return drawCraft(gpu, gpu.shown, camera, candidates, steer, framing, phone);
 }
 
-function drawCraft(gpu: CraftGpu, shown: Shown, flightCamera: FlightCamera, candidates: readonly LightCandidate[], steer?: Steer, framing?: CraftFraming): boolean {
+/**
+ * The parts a craft stands whole by: its meshes' own boxes, or its body's box for a craft framed by its body (the Van
+ * Allen Probes, whose wire antennas run far off any screen by design), or its whole box where it has no mesh.
+ */
+function fitPartsOf(shown: Shown): readonly CraftPart[] {
+  const c = shown.cached.centre;
+  const r = shown.craft.frameByBodyRadiusM;
+  const half: Vec3 = r ? [r, r, r] : [shown.cached.size[0] / 2, shown.cached.size[1] / 2, shown.cached.size[2] / 2];
+  if (!r && shown.cached.parts.length > 0) return shown.cached.parts;
+  return [{ min: [c[0] - half[0], c[1] - half[1], c[2] - half[2]], max: [c[0] + half[0], c[1] + half[1], c[2] + half[2]] }];
+}
+
+function drawCraft(gpu: CraftGpu, shown: Shown, flightCamera: FlightCamera, candidates: readonly LightCandidate[], steer?: Steer, framing?: CraftFraming, phone = false): boolean {
   // phone-star-open-one: drawn through the steering frame's shift, as the stars are
   const camera = steer?.shiftPx ? arrivedFlightCamera(flightCamera, steer.shiftPx) : flightCamera;
   // craft-alive-one: while steered, the craft seen from behind along its line of flight, framed to a third of the
@@ -308,15 +322,36 @@ function drawCraft(gpu: CraftGpu, shown: Shown, flightCamera: FlightCamera, cand
   const axes = alive ? chaseAxes(shown.craft.flightForward, shown.craft.flightUp) : null;
   const seen = axes ? { ...shown.craft, modelForward: axes.forward, modelUp: axes.up } : shown.craft;
   const frameNow = alive && axes ? aliveFraming(framing ?? laptopCraftFraming(camera), alive, { viewportWidthPx: camera.viewportWidthPx, diameterPerHeight: diameterPerHeight(shown.frameRadius, shown.cached.size, axes.up) }) : framing;
-  const scene = craftSceneOf(camera, seen, shown.cached.centre, shown.cached.radius, steer, frameNow, shown.frameRadius);
-  if (!scene) return false;
+  const rotation = alive && steer?.craftRows ? aliveRotation(shown.craft.kind, steer.craftRows, alive) : null;
+  const fitParts = fitPartsOf(shown);
+  const place = (f: CraftFraming | undefined) => {
+    const s = craftSceneOf(camera, seen, shown.cached.centre, shown.cached.radius, steer, f, shown.frameRadius);
+    if (!s) return null;
+    const m = rotation ? rotatedAboutCentre(s.modelMatrix, shown.cached.centre, rotation) : s.modelMatrix;
+    return { scene: s, modelMatrix: m, box: screenBoxOfParts(m, s.clipMatrix, fitParts, camera.viewportWidthPx, camera.viewportHeightPx) };
+  };
+  let placed = place(frameNow);
+  if (!placed) return false;
+  // craft-phone-frame-one (DECIDED-BY-LEAD 27 Nov 17:48): on the phone the craft stands whole between the top bar and
+  // the readout, at rest, at the arrival and while steered, measured from its parts' boxes as drawn (its pose included)
+  const band = phone && frameNow ? phoneBandOf(frameNow) : null;
+  if (band && frameNow && placed.box) {
+    const tried = new Map<CraftFraming, NonNullable<ReturnType<typeof place>>>();
+    const fit = fitFramingToBand(frameNow, band, (f) => {
+      const at = place(f);
+      if (at) tried.set(f, at);
+      return at?.box ?? null;
+    });
+    const at = fit ? tried.get(fit.framing) : undefined;
+    if (at) placed = at;
+  }
+  const { scene, modelMatrix } = placed;
   if (gpu.holder.children.length !== 1 || gpu.holder.children[0] !== shown.cached.model) {
     gpu.holder.clear();
     gpu.holder.add(shown.cached.model);
   }
-  const modelMatrix = alive && steer?.craftRows ? rotatedAboutCentre(scene.modelMatrix, shown.cached.centre, aliveRotation(shown.craft.kind, steer.craftRows, alive)) : scene.modelMatrix;
   gpu.holder.matrix.fromArray(modelMatrix);
-  gpu.lastBox = screenBoxOf(modelMatrix, scene.clipMatrix, shown.cached.centre, shown.cached.size, camera.viewportWidthPx, camera.viewportHeightPx);
+  gpu.lastBox = placed.box;
   gpu.holder.matrixWorldNeedsUpdate = true;
   gpu.camera.projectionMatrix.fromArray(scene.clipMatrix);
   gpu.camera.projectionMatrixInverse.copy(gpu.camera.projectionMatrix).invert();
@@ -384,6 +419,8 @@ export const FlightCraftLayer: React.FC<{
   steerRef.current = steer;
   const framingRef = useRef(framing);
   framingRef.current = framing;
+  const phoneRef = useRef(phone);
+  phoneRef.current = phone;
   const candidatesRef = useRef(keyCandidates);
   candidatesRef.current = keyCandidates;
   const [state, setState] = useState<CraftState>('loading');
@@ -414,7 +451,7 @@ export const FlightCraftLayer: React.FC<{
   };
   const draw = (g: CraftGpu): boolean => {
     const s = steerRef.current ?? undefined;
-    const drawn = drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current);
+    const drawn = drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current, phoneRef.current);
     if (drawn) tellDrawn(g, s);
     return drawn;
   };
@@ -512,7 +549,14 @@ export const FlightCraftLayer: React.FC<{
         const box = new THREE.Box3().setFromObject(model);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         const size = box.getSize(new THREE.Vector3());
-        return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3, fillAo: `${occlusion.occluded}/${occlusion.meshes}`, poses: posesOf(model) };
+        // craft-phone-frame-one: each mesh's own box, in the same frame as the model's box
+        const parts: CraftPart[] = [];
+        model.traverse((o) => {
+          if (!(o as THREE.Mesh).isMesh) return;
+          const b = new THREE.Box3().setFromObject(o);
+          if (!b.isEmpty()) parts.push({ min: [b.min.x, b.min.y, b.min.z], max: [b.max.x, b.max.y, b.max.z] });
+        });
+        return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3, fillAo: `${occlusion.occluded}/${occlusion.meshes}`, poses: posesOf(model), parts };
       });
     }
     cache.set(url, pending);
@@ -554,7 +598,7 @@ export const FlightCraftLayer: React.FC<{
     if (!drawRef) return undefined;
     drawRef.current = (s) => {
       const g = gpu.current;
-      if (g && (g.shown || g.leaving) && drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current)) tellDrawn(g, s);
+      if (g && (g.shown || g.leaving) && drawFrame(g, cameraRef.current, candidatesRef.current, s, framingRef.current, canvas.current, outCanvas.current, phoneRef.current)) tellDrawn(g, s);
     };
     return () => {
       drawRef.current = null;

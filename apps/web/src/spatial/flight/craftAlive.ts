@@ -212,12 +212,30 @@ export function diameterPerHeight(frameRadius: number, size: Vec3, up: Vec3): nu
  * matrix and the camera's clip matrix (both column-major), so a test or a measure reads where the craft stands.
  */
 export function screenBoxOf(model: readonly number[], clip: readonly number[], centre: Vec3, size: Vec3, widthPx: number, heightPx: number): { x0: number; y0: number; x1: number; y1: number } | null {
+  const half: Vec3 = [size[0] / 2, size[1] / 2, size[2] / 2];
+  return screenBoxOfParts(model, clip, [{ min: [centre[0] - half[0], centre[1] - half[1], centre[2] - half[2]], max: [centre[0] + half[0], centre[1] + half[1], centre[2] + half[2]] }], widthPx, heightPx);
+}
+
+/** One part of a craft's model: its own box in the model's units (a mesh's bounds). */
+export interface CraftPart {
+  readonly min: Vec3;
+  readonly max: Vec3;
+}
+
+/**
+ * craft-phone-frame-one: the craft's box on screen as the union of its parts' boxes (each mesh's own bounds), CSS
+ * pixels: every vertex lies in its part's box, so the craft stands inside it, and a long thin part (Dawn's arrays) seen
+ * at a slant stays as thin as it is rather than taking the whole model box's height near the camera. None when a corner
+ * stands behind the camera.
+ */
+export function screenBoxOfParts(model: readonly number[], clip: readonly number[], parts: readonly CraftPart[], widthPx: number, heightPx: number): { x0: number; y0: number; x1: number; y1: number } | null {
+  if (parts.length === 0) return null;
   let x0 = Infinity;
   let y0 = Infinity;
   let x1 = -Infinity;
   let y1 = -Infinity;
-  for (const sx of [-0.5, 0.5]) for (const sy of [-0.5, 0.5]) for (const sz of [-0.5, 0.5]) {
-    const p = [centre[0] + sx * size[0], centre[1] + sy * size[1], centre[2] + sz * size[2], 1];
+  for (const part of parts) for (const sx of [0, 1]) for (const sy of [0, 1]) for (const sz of [0, 1]) {
+    const p = [sx ? part.max[0] : part.min[0], sy ? part.max[1] : part.min[1], sz ? part.max[2] : part.min[2], 1];
     const w = [0, 1, 2, 3].map((i) => model[i]! * p[0]! + model[4 + i]! * p[1]! + model[8 + i]! * p[2]! + model[12 + i]! * p[3]!);
     const c = [0, 1, 2, 3].map((i) => clip[i]! * w[0]! + clip[4 + i]! * w[1]! + clip[8 + i]! * w[2]! + clip[12 + i]! * w[3]!);
     if (!(c[3]! > 0)) return null;
