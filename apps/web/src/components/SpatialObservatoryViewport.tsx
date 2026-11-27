@@ -695,7 +695,7 @@ export const SpatialObservatoryViewport: React.FC<
     const asset = session.sourceAsset;
     if (!(phoneReveal || phoneWorking) || !asset || asset.mediaKind === 'video') return undefined;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
-    return phoneEndsMask(sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, slotted.cropTransform), windowSize.heightPx);
+    return phoneEndsMask(sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, slotted.cropTransform), windowSize.heightPx, windowSize.widthPx);
   })();
 
   // Back to Moment (fly, approved 2026-11-12): the saved CameraCheckpoint, restored exactly by the reducer; from there,

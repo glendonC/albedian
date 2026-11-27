@@ -12,10 +12,16 @@ const SEED = process.env.ALBEDIAN_FC_SEED ? { seed: Number(process.env.ALBEDIAN_
 
 describe('the photo on a phone held on its side', () => {
   it('takes the whole window as its slot under 500 px tall, and keeps the upright slot above', () => {
-    for (const h of [292, 320, 370, 402, 500]) expect(phoneSlotIn(h), String(h)).toEqual({ topPx: 0, heightPx: h });
-    expect(phoneSlotIn(844)).toEqual(PHONE_SLOT);
-    expect(phoneSlotIn(650)).toEqual({ topPx: 118, heightPx: 326 });
-    expect(phoneSlotIn(501)).toEqual({ topPx: 118, heightPx: 177 });
+    for (const h of [292, 320, 370, 402, 500]) expect(phoneSlotIn(h, 874), String(h)).toEqual({ topPx: 0, heightPx: h });
+    expect(phoneSlotIn(844, 390)).toEqual(PHONE_SLOT);
+    expect(phoneSlotIn(650, 402)).toEqual({ topPx: 118, heightPx: 326 });
+    expect(phoneSlotIn(501, 874)).toEqual({ topPx: 118, heightPx: 177 });
+    // sideways-landscape-guard-one (AUDIT-C's upright short windows, DECIDED-BY-LEAD 03:19 on 27 Nov): a window 500 tall
+    // or less that is not wider than tall is a phone held upright, its slot the upright one
+    expect(phoneSlotIn(480, 390)).toEqual({ topPx: 118, heightPx: 156 });
+    expect(phoneSlotIn(400, 360)).toEqual({ topPx: 118, heightPx: 76 });
+    expect(phoneSlotIn(400, 400)).toEqual({ topPx: 118, heightPx: 76 });
+    expect(phoneSlotIn(400, 401)).toEqual({ topPx: 0, heightPx: 400 });
   });
 
   it('shows a 3:2 photo whole at Safari\'s 874 by 292, fit to the height and centred', () => {

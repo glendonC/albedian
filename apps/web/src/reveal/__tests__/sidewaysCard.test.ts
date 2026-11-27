@@ -8,7 +8,7 @@ import postcss from 'postcss';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { describe, expect, it } from 'vitest';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
-import { LANDSCAPE_PHONE_QUERY } from '../../components/phoneSheet.js';
+import { SIDEWAYS_QUERY } from '../../components/phoneSheet.js';
 import { PredictedSkyScreen } from '../PredictedSkyScreen.js';
 
 // phone-sideways-two (UIUX-phone-sideways-READY.md item 5, RULED at the lead's line stamped 06:27; Apple's sheet
@@ -22,7 +22,7 @@ const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8
 const inSideways = (selector: string) => {
   const found: Record<string, string> = {};
   postcss.parse(css).walkAtRules('media', (at) => {
-    if (at.params !== LANDSCAPE_PHONE_QUERY) return;
+    if (at.params !== SIDEWAYS_QUERY) return;
     at.walkRules((rule) => {
       if (!rule.selectors.map((s) => s.replace(/\s+/g, ' ')).includes(selector)) return;
       rule.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));

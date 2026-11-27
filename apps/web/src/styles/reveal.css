@@ -3025,7 +3025,7 @@
    as its content up to the window less the top bar's foot (12 + 44) and 8 px; its body scrolls inside under its tag row
    and Close; Go there and Original pixels stay pinned at its foot on the sheet's colour, always inside; the foot's safe
    area is kept. After every other phone card rule, so it wins in a short touch window and nowhere else. */
-@media (max-height: 500px) and (pointer: coarse) {
+@media (max-height: 500px) and (pointer: coarse) and (orientation: landscape) {
   .reveal-card.is-phone {
     left: calc(50% - 195px);
     right: auto;
@@ -3136,7 +3136,7 @@
    root and marks it while the reveal is held on its side; in the reveal the stage holds the photo alone (bare). Version
    two (AUDIT-C's FAIL): whatever is drawn as the photo or on it slides as one: the phone's compare (its pictures and its
    labels), the marks and the aligned rings (kept, early and locking-on), so no ring stands off its star. */
-@media (max-height: 500px) and (pointer: coarse) {
+@media (max-height: 500px) and (pointer: coarse) and (orientation: landscape) {
   :root[data-card-mark] .alb-source-stage,
   .reveal-photo.is-phone .reveal-marks,
   .reveal-photo.is-phone .restore-compare.is-phone,
@@ -3147,7 +3147,7 @@
 }
 
 /* At once under Reduce Motion (MOTION-READY-web.md, hudtokens-1: the phone photo's settle is instant under reduced motion) */
-@media (max-height: 500px) and (pointer: coarse) and (prefers-reduced-motion: reduce) {
+@media (max-height: 500px) and (pointer: coarse) and (orientation: landscape) and (prefers-reduced-motion: reduce) {
   :root[data-card-mark] .alb-source-stage,
   .reveal-photo.is-phone .reveal-marks,
   .reveal-photo.is-phone .restore-compare.is-phone,

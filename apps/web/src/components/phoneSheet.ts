@@ -11,6 +11,12 @@
 export const PHONE_QUERY = '(max-width: 720px) and (min-height: 501px)';
 /** A phone held sideways: short and touch-driven, so a short desktop window keeps its desktop layout. */
 export const LANDSCAPE_PHONE_QUERY = '(max-height: 500px) and (pointer: coarse)';
+/**
+ * sideways-landscape-guard-one (DECIDED-BY-LEAD 03:19 on 27 Nov, on AUDIT-C's upright short window): the phone's sideways
+ * layout (reveal.css) stands only where the short touch window is also wider than it is tall; an upright window of any
+ * height, a small phone upright or one with its keyboard open, keeps the upright phone's layout.
+ */
+export const SIDEWAYS_QUERY = '(max-height: 500px) and (pointer: coarse) and (orientation: landscape)';
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 /** Upright: the sheet's top edge as a fraction of the screen height (the sheet is 48vh tall). */

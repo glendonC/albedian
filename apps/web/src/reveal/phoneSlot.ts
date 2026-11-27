@@ -10,6 +10,8 @@ export const PHONE_SLOT = { topPx: 118, heightPx: 520 };
 
 /** The window height the phone's reveal was drawn at (iPhone 1: 390 by 844). */
 export const PHONE_DESIGN_HEIGHT_PX = 844;
+/** The window width the phone's reveal was drawn at (iPhone 1: 390 by 844). */
+export const PHONE_DESIGN_WIDTH_PX = 390;
 
 /**
  * The slot in a window this tall (phone-foot-one; UIUX-phone-textsize-READY.md item 2; DECIDED-BY-LEAD at the line
@@ -23,10 +25,18 @@ export const PHONE_DESIGN_HEIGHT_PX = 844;
  */
 export const SIDEWAYS_MAX_HEIGHT_PX = 500;
 
-export function phoneSlotIn(viewportHeightPx: number): { topPx: number; heightPx: number } {
+/**
+ * Whether a phone's window is a phone held on its side: 500 tall or less and wider than it is tall (SIDEWAYS_QUERY;
+ * sideways-landscape-guard-one, DECIDED-BY-LEAD 03:19 on 27 Nov). An upright window of any height is upright.
+ */
+export function isSideways(viewportWidthPx: number, viewportHeightPx: number): boolean {
+  return viewportHeightPx <= SIDEWAYS_MAX_HEIGHT_PX && viewportWidthPx > viewportHeightPx;
+}
+
+export function phoneSlotIn(viewportHeightPx: number, viewportWidthPx: number): { topPx: number; heightPx: number } {
   // phone-sideways-two (UIUX-phone-sideways-READY.md item 2, RULED 06:27): on its side the photo is whole, fit to the
   // window's height, so its slot is the whole window
-  if (viewportHeightPx <= SIDEWAYS_MAX_HEIGHT_PX) return { topPx: 0, heightPx: Math.max(0, viewportHeightPx) };
+  if (isSideways(viewportWidthPx, viewportHeightPx)) return { topPx: 0, heightPx: Math.max(0, viewportHeightPx) };
   const shorter = Math.min(0, viewportHeightPx - PHONE_DESIGN_HEIGHT_PX);
   return { topPx: PHONE_SLOT.topPx, heightPx: Math.max(0, PHONE_SLOT.heightPx + shorter) };
 }
@@ -62,11 +72,11 @@ export function phoneSlotCrop(
   mediaKind?: 'image' | 'video'
 ): PhotoCrop {
   const fitted = fitSourceToViewport(shownWidthPx, shownHeightPx, viewportWidthPx, viewportHeightPx);
-  const slot = phoneSlotIn(viewportHeightPx);
+  const slot = phoneSlotIn(viewportHeightPx, viewportWidthPx);
   const w = Math.max(1, shownWidthPx);
   const h = Math.max(1, shownHeightPx);
   // A clip fits the slot (D16); so does a photo on a phone held on its side, shown whole (phone-sideways-two)
-  const whole = mediaKind === 'video' || viewportHeightPx <= SIDEWAYS_MAX_HEIGHT_PX;
+  const whole = mediaKind === 'video' || isSideways(viewportWidthPx, viewportHeightPx);
   const scale = whole ? Math.min(viewportWidthPx / w, slot.heightPx / h) : Math.max(viewportWidthPx / w, slot.heightPx / h);
   const width = w * scale;
   const centreX = viewportWidthPx / 2;
@@ -79,9 +89,9 @@ export function phoneSlotCrop(
 }
 
 /** The mask that fades the slot's top and bottom and hides the photo beyond it, in the photo's own box. */
-export function phoneEndsMask(rect: PhotoRect, viewportHeightPx: number = PHONE_DESIGN_HEIGHT_PX): string {
+export function phoneEndsMask(rect: PhotoRect, viewportHeightPx: number = PHONE_DESIGN_HEIGHT_PX, viewportWidthPx: number = PHONE_DESIGN_WIDTH_PX): string {
   const r = (n: number) => Math.round(n * 10) / 10;
-  const slot = phoneSlotIn(viewportHeightPx);
+  const slot = phoneSlotIn(viewportHeightPx, viewportWidthPx);
   const top = slot.topPx - rect.topPx;
   const bottom = top + slot.heightPx;
   return `linear-gradient(to bottom, transparent ${r(top)}px, #000 ${r(top + ENDS_FADE_PX)}px, #000 ${r(bottom - ENDS_FADE_PX)}px, transparent ${r(bottom)}px)`;
@@ -89,7 +99,7 @@ export function phoneEndsMask(rect: PhotoRect, viewportHeightPx: number = PHONE_
 
 /** The part of the photo the slot shows: where the phone's corners go over Real sky (#p-real: 18 px inside the slot). */
 export function phoneSlotRect(photo: PhotoRect, viewportWidthPx: number, viewportHeightPx: number = PHONE_DESIGN_HEIGHT_PX): PhotoRect {
-  const slot = phoneSlotIn(viewportHeightPx);
+  const slot = phoneSlotIn(viewportHeightPx, viewportWidthPx);
   const left = Math.max(photo.leftPx, 0);
   const top = Math.max(photo.topPx, slot.topPx);
   const right = Math.min(photo.leftPx + photo.widthPx, viewportWidthPx);

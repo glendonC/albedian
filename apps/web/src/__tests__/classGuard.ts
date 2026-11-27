@@ -56,6 +56,8 @@ const MEDIA_FEATURES = [
   /^\(\s*hover\s*:\s*(?:none|hover)\s*\)$/i,
   /^\(\s*pointer\s*:\s*(?:none|coarse|fine)\s*\)$/i,
   /^\(\s*prefers-reduced-motion\s*:\s*(?:reduce|no-preference)\s*\)$/i,
+  // sideways-landscape-guard-one (DECIDED-BY-LEAD 03:19 on 27 Nov): the phone held on its side is also wider than tall
+  /^\(\s*orientation\s*:\s*(?:portrait|landscape)\s*\)$/i,
 ];
 
 /**
@@ -76,7 +78,7 @@ export const AT_RULES_READ: ReadonlyMap<string, { holds: string; reads: (prelude
   [
     'media',
     {
-      holds: 'media features joined by "and": a width or height in px, hover, pointer or prefers-reduced-motion',
+      holds: 'media features joined by "and": a width or height in px, hover, pointer, prefers-reduced-motion or orientation',
       reads: (prelude: string) => prelude.split(/\s+and\s+/i).every((feature) => MEDIA_FEATURES.some((form) => form.test(feature))),
     },
   ],

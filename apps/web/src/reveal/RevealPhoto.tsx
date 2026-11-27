@@ -36,7 +36,7 @@ import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { readoutDistance } from '../spatial/flight/nearStar.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
-import { phoneSlotIn, phoneSlotRect, SIDEWAYS_MAX_HEIGHT_PX } from './phoneSlot.js';
+import { isSideways, phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
 import { cardMarkShift, coveredBySidewaysCard, sidewaysCardBox } from './cardMark.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
@@ -606,7 +606,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       estBox && estBox.height > 0
         ? viewH - estBox.top + 16
         : phoneClip
-          ? viewH - (phoneSlotIn(viewH).topPx + phoneSlotIn(viewH).heightPx)
+          ? viewH - (phoneSlotIn(viewH, viewW).topPx + phoneSlotIn(viewH, viewW).heightPx)
           : null;
     if (nextFoot !== clipAnswerFootPx) setClipAnswerFootPx(nextFoot);
   });
@@ -906,7 +906,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // slide together on the card's entrance until the picked mark stands 16 px clear of it, by its top or its side,
   // whichever move is shorter, and slide back on its exit (reveal.css moves the photo stage and the marks by
   // --card-mark-x and --card-mark-y on the sheet's own curve). The sheet's height is its content's, read from its layout
-  const sideways = phone && viewH <= SIDEWAYS_MAX_HEIGHT_PX;
+  const sideways = phone && isSideways(viewW, viewH);
   const [cardHeightPx, setCardHeightPx] = useState(0);
   useLayoutEffect(() => {
     const el = sideways && card.mounted ? revealRoot.current?.querySelector<HTMLElement>('[data-testid="star-card"]') : null;

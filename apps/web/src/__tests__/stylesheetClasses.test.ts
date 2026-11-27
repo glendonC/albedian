@@ -249,7 +249,7 @@ describe('a form the guard does not read is refused by one sentence, never passe
     'font-face': 'nothing (its rule has no prelude)',
     import: "one quoted path to a stylesheet beside it ('./name.css') and nothing after it",
     keyframes: 'one name',
-    media: 'media features joined by "and": a width or height in px, hover, pointer or prefers-reduced-motion',
+    media: 'media features joined by "and": a width or height in px, hover, pointer, prefers-reduced-motion or orientation',
   };
   const PRELUDE = (rule: string, name: string) =>
     `styles/x.css: "${rule}" has a prelude the guard does not read: @${name} may hold ${HOLDS[name]}; teach classGuard.ts to read it, or write it as the stylesheets do.`;
@@ -292,7 +292,7 @@ describe('a form the guard does not read is refused by one sentence, never passe
     ['@media with a media type', '@media screen and (max-width: 720px) { .a { } }', PRELUDE('@media screen and (max-width: 720px)', 'media')],
     ['@media with a list', '@media (max-width: 720px), (hover: none) { .a { } }', PRELUDE('@media (max-width: 720px), (hover: none)', 'media')],
     ['@media with not', '@media not (hover: none) { .a { } }', PRELUDE('@media not (hover: none)', 'media')],
-    ['@media with a feature nobody listed', '@media (orientation: portrait) { .a { } }', PRELUDE('@media (orientation: portrait)', 'media')],
+    ['@media with a feature nobody listed', '@media (aspect-ratio: 1/1) { .a { } }', PRELUDE('@media (aspect-ratio: 1/1)', 'media')],
     ['@media with a width in em', '@media (max-width: 40em) { .a { } }', PRELUDE('@media (max-width: 40em)', 'media')],
     ['@media with a made-up feature', '@media (x) { .a { } }', PRELUDE('@media (x)', 'media')],
     ['@import by url()', '@import url("./a.css");', PRELUDE('@import url("./a.css")', 'import')],
@@ -377,6 +377,8 @@ describe('a form the guard does not read is refused by one sentence, never passe
       '@media (hover: none) and (pointer: coarse) { .a { } }',
       '@media (max-height: 480px) { .a { } }',
       '@media (max-height: 500px) and (pointer: coarse) { .a { } }',
+      '@media (max-height: 500px) and (pointer: coarse) and (orientation: landscape) { .a { } }',
+      '@media (max-height: 500px) and (pointer: coarse) and (orientation: landscape) and (prefers-reduced-motion: reduce) { .a { } }',
       '@media (max-width: 640px) { .a { } }',
       '@media (max-width: 720px) and (min-height: 501px) { .a { } }',
       '@media (max-width: 900px) { .a { } }',

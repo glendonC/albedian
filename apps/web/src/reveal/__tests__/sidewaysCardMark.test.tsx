@@ -8,7 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CelestialFinding, ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
-import { LANDSCAPE_PHONE_QUERY } from '../../components/phoneSheet.js';
+import { SIDEWAYS_QUERY } from '../../components/phoneSheet.js';
 import { phoneSlotCrop } from '../phoneSlot.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
@@ -181,7 +181,7 @@ describe('phone-sideways-three: the card-mark rule on the reveal held on its sid
     // The selectors reveal.css itself slides by the two lengths, held on its side
     const slid: string[] = [];
     postcss.parse(css).walkAtRules('media', (at) => {
-      if (at.params !== LANDSCAPE_PHONE_QUERY) return;
+      if (at.params !== SIDEWAYS_QUERY) return;
       at.walkRules((rule) => {
         if (rule.some((d) => d.type === 'decl' && d.prop === 'transform' && d.value.includes('--card-mark-x'))) slid.push(...rule.selectors);
       });
@@ -235,7 +235,7 @@ const SLIDING = [
 describe('phone-sideways-three: the photo and its rings slide together on the sheet\'s own curve', () => {
   it('moves the photo stage and the marks by the same two lengths, on the sheet\'s 500 ms curve', () => {
     for (const selector of SLIDING) {
-      expect(declsIn(LANDSCAPE_PHONE_QUERY, selector), selector).toEqual({
+      expect(declsIn(SIDEWAYS_QUERY, selector), selector).toEqual({
         transform: 'translate(var(--card-mark-x, 0px), var(--card-mark-y, 0px))',
         transition: 'transform var(--look-mo-dur-sheet) var(--look-mo-ease-sheet)',
       });
@@ -244,7 +244,7 @@ describe('phone-sideways-three: the photo and its rings slide together on the sh
 
   it('moves them at once under Reduce Motion', () => {
     for (const selector of SLIDING) {
-      expect(declsIn(`${LANDSCAPE_PHONE_QUERY} and (prefers-reduced-motion: reduce)`, selector), selector).toEqual({ transition: 'none' });
+      expect(declsIn(`${SIDEWAYS_QUERY} and (prefers-reduced-motion: reduce)`, selector), selector).toEqual({ transition: 'none' });
     }
   });
 });

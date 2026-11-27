@@ -24,7 +24,7 @@ describe('phoneSlotCrop: the photo covering the slot', () => {
       fc.property(fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 320, max: 480 }), fc.integer({ min: 640, max: 960 }), (w, h, viewW, viewH) => {
         const rect = sourcePhotoDisplayRect(w, h, viewW, viewH, phoneSlotCrop(w, h, viewW, viewH));
         // The slot in this window (phone-foot-one): its foot rises with a window shorter than 844
-        const slot = phoneSlotIn(viewH);
+        const slot = phoneSlotIn(viewH, viewW);
         const tol = 1e-6;
         expect(rect.leftPx).toBeLessThanOrEqual(tol);
         expect(rect.leftPx + rect.widthPx).toBeGreaterThanOrEqual(viewW - tol);
@@ -58,7 +58,7 @@ describe('phoneSlotCrop: the photo covering the slot', () => {
       fc.property(fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 100, max: 8000 }), fc.integer({ min: 320, max: 480 }), fc.integer({ min: 640, max: 960 }), (w, h, viewW, viewH) => {
         const rect = sourcePhotoDisplayRect(w, h, viewW, viewH, phoneSlotCrop(w, h, viewW, viewH, 'video'));
         // The slot in this window (phone-foot-one): its foot rises with a window shorter than 844
-        const slot = phoneSlotIn(viewH);
+        const slot = phoneSlotIn(viewH, viewW);
         const tol = 1e-6;
         expect(rect.leftPx).toBeGreaterThanOrEqual(-tol);
         expect(rect.leftPx + rect.widthPx).toBeLessThanOrEqual(viewW + tol);

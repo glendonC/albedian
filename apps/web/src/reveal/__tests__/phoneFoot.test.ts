@@ -38,10 +38,10 @@ const HEIGHTS = [550, 600, 640, 667, 700, 740, 780, 800, 820, 844, 870, 900];
 
 describe("the photo's slot gives the room in a shorter window", () => {
   it('is 390 by 520 from y 118 at 844 and in a taller window, its foot rising with the window in a shorter one', () => {
-    expect(phoneSlotIn(PHONE_DESIGN_HEIGHT_PX)).toEqual(PHONE_SLOT);
-    expect(phoneSlotIn(900)).toEqual(PHONE_SLOT);
-    expect(phoneSlotIn(700)).toEqual({ topPx: 118, heightPx: 376 });
-    expect(phoneSlotIn(550)).toEqual({ topPx: 118, heightPx: 226 });
+    expect(phoneSlotIn(PHONE_DESIGN_HEIGHT_PX, 390)).toEqual(PHONE_SLOT);
+    expect(phoneSlotIn(900, 390)).toEqual(PHONE_SLOT);
+    expect(phoneSlotIn(700, 390)).toEqual({ topPx: 118, heightPx: 376 });
+    expect(phoneSlotIn(550, 390)).toEqual({ topPx: 118, heightPx: 226 });
   });
 
   it('covers the shorter slot with the photo, centred on it, and fades and bounds it there', () => {
@@ -84,7 +84,7 @@ describe("the foot block stands by its foot from the window's foot", () => {
 
   it('keeps the counts under the photo and over Ask out loud, the estimate and the answer 16 px above it, at every height', () => {
     for (const h of HEIGHTS) {
-      const slot = phoneSlotIn(h);
+      const slot = phoneSlotIn(h, 390);
       const slotFoot = slot.topPx + slot.heightPx;
       const askTop = at(decls('.ask-bar.is-phone').top!, h);
       const big = at(decls('.reveal-phone-counts__big').top!, h);
