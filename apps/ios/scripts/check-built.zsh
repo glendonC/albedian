@@ -93,8 +93,8 @@ allowed_plist=(
 )
 allowed_ats='{"NSAllowsLocalNetworking":true}'
 # The fonts the app registers: the two approved static Geist files and the web's own Geist variable font (its light
-# weight, mobile-6), and nothing else
-allowed_fonts='["Geist-Regular.ttf","Geist-SemiBold.ttf","Geist-wght.woff2"]'
+# weight, mobile-6) and Geist Mono variable font (the command on Connect, firstuse-connect-one), and nothing else
+allowed_fonts='["Geist-Regular.ttf","Geist-SemiBold.ttf","Geist-wght.woff2","GeistMono-wght.woff2"]'
 
 (( $# > 0 )) || { print -u2 "check-built: give it the built .app, object files or folders"; exit 2 }
 files=()
@@ -241,7 +241,7 @@ for given in "$@"; do
   [[ -z $ats || $ats == "$allowed_ats" ]] || findings+=("${given:t}: Info.plist's transport security is $ats, not local networking alone")
   if plutil -extract UIAppFonts xml1 -o /dev/null "$given/Info.plist" 2>/dev/null; then
     fonts=$(plutil -extract UIAppFonts json -o - "$given/Info.plist" 2>/dev/null)
-    [[ $fonts == "$allowed_fonts" ]] || findings+=("${given:t}: Info.plist's fonts are ${fonts:-not a list}, not the three approved files")
+    [[ $fonts == "$allowed_fonts" ]] || findings+=("${given:t}: Info.plist's fonts are ${fonts:-not a list}, not the four approved files")
   fi
 done
 

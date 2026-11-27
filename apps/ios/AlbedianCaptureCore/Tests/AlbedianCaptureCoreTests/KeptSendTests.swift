@@ -185,7 +185,7 @@ final class KeptSendTests: XCTestCase {
         let model = raw.filter { !$0.isWhitespace }
         XCTAssertTrue(model.contains("letend=awaitKeptSend.run(queue,held:{self.ledger.state(of:$0)==.stored},send:{shain"), "the counted send is KeptSend.run")
         XCTAssertTrue(model.contains("self.ledger.record(last,for:sha)"))
-        XCTAssertTrue(model.contains("ifcase.solve?=SendEnd.after(last){self.pairing.keep(address)}"), "T5: the pairing kept after a send that went")
+        XCTAssertTrue(model.contains("ifcase.solve?=SendEnd.after(last){self.keepLaptop(address)}"), "T5: the pairing kept after a send that went (through keepLaptop, firstuse-connect-one)")
         XCTAssertTrue(model.contains("startSolve:{shainguardcase.success=awaitsolver.start(sha256:sha)else{returnfalse}self.ledger.recordSolveTaken(sha)returntrue}"),
                       "each ask by the start alone, the photo done only when the laptop took it")
         XCTAssertTrue(model.contains("case.stopped(letsha256,letlast):self.shot=lastTried"), "T6: the screen on the photo that did not go")

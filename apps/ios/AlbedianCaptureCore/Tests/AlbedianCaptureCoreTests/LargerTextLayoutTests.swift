@@ -411,8 +411,8 @@ final class LargerTextLayoutTests: XCTestCase {
         let connect = compact(try body(of: "struct ConnectScreen: View", in: try code("Screens/CompanionScreens.swift").code))
         XCTAssertTrue(connect.contains("@Environment(\\.dynamicTypeSize)privatevardynamicTypeSize"))
         XCTAssertTrue(connect.contains("ifdynamicTypeSize.isAccessibilitySize{ScrollView{VStack(alignment:.leading,spacing:0){Text("), "one column that scrolls")
-        XCTAssertTrue(connect.contains(".title().fixedSize(horizontal:false,vertical:true)addressLabel.padding(.top,14)field(wraps:true).padding(.top,6)message.padding(.top,12)MainButton("),
-                      "the title wrapping, then the label, the field, the line and Connect in the flow")
+        XCTAssertTrue(connect.contains(".title().fixedSize(horizontal:false,vertical:true)startLine.padding(.top,14)commandBox.padding(.top,12)addressLabel.padding(.top,16)field(wraps:true).padding(.top,6)message.padding(.top,12)MainButton("),
+                      "the title wrapping, then the command's line and box (firstuse-connect-one), the label, the field, the line and Connect in the flow")
         XCTAssertTrue(connect.contains("action:model.useTypedAddress).frame(maxWidth:.infinity).padding(.top,16)}.padding(.horizontal,CGFloat(Arrive.side)).padding(.top,CGFloat(UnreachableFrame.top-Arrive.topBarFoot)).padding(.bottom,34)}.scrollBounceBehavior(.basedOnSize)"))
         XCTAssertTrue(connect.contains("text:$model.typedAddress,axis:.vertical)"), "the address wraps whole in the field")
         XCTAssertTrue(connect.contains("ifwraps{VStack(alignment:.leading,spacing:0){if!PairingKeeper.typedHasScheme(model.typedAddress){Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet)).fixedSize()}addressText(wraps:true)}"),
@@ -420,7 +420,7 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(connect.contains(".padding(.horizontal,18).padding(.vertical,10).frame(minHeight:60)"), "the field grows with its lines")
         XCTAssertTrue(connect.contains("}else{HStack(spacing:0){if!PairingKeeper.typedHasScheme(model.typedAddress){Text(PairingKeeper.fixedScheme).foregroundStyle(Color(ControlStyle.inkQuiet))}addressText(wraps:false)}"),
                       "at default sizes the scheme and the address on one line, as before")
-        XCTAssertTrue(connect.contains("field(wraps:false).padding(.horizontal,CGFloat(Arrive.side)).atTop(262)") && connect.contains(".atTop(404)")
+        XCTAssertTrue(connect.contains("field(wraps:false).padding(.horizontal,CGFloat(Arrive.side)).atTop(ConnectLayout.fieldTop)") && connect.contains(".atTop(ConnectLayout.connectTop)")
                       && connect.contains(".padding(.horizontal,18).frame(height:60)"), "at default sizes as recorded")
     }
 

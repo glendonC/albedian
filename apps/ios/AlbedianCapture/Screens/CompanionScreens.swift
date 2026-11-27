@@ -364,6 +364,16 @@ struct AimScreen: View {
                 IconButton(icon: .close, label: "Close", action: model.showHome)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                     .opacity(AimExit.opacity(.rest, hidden: hidden))
+                // firstuse-connect-one (UIUX-iphone-firstuse-READY item 1): while no laptop is kept, "Connect laptop" in the
+                // Credits pill's own form opposite Close, held at the first accessibility size as the home's top pills
+                if !model.hasKeptLaptop {
+                    OutlinePill(title: ConnectWords.pill, height: 36, fontSize: 15, action: model.connectFromAim)
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                        .accessibilityShowsLargeContentViewer()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, CGFloat(Arrive.topControls)).padding(.trailing, CGFloat(Arrive.edge))
+                        .opacity(AimExit.opacity(.rest, hidden: hidden))
+                }
             }
         }
         .ignoresSafeArea()
@@ -548,8 +558,9 @@ struct AfterShotScreen: View {
     }
 }
 
-/// Connect to your laptop (UIUX-connect-APPROVED): back, the title, "Address", one field with "http://" fixed in
-/// front, the line under it, and "Connect". No example address is shown.
+/// Connect to your laptop (UIUX-connect-APPROVED, with UIUX-iphone-firstuse-READY item 1): back, the title, the command
+/// that starts the laptop in its box, "Address", one field with "http://" fixed in front, the refused line's room under
+/// it, and "Connect". No example address is shown.
 struct ConnectScreen: View {
     @Bindable var model: CompanionModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -567,7 +578,9 @@ struct ConnectScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Connect to your laptop").title()
                             .fixedSize(horizontal: false, vertical: true)
-                        addressLabel.padding(.top, 14)
+                        startLine.padding(.top, 14)
+                        commandBox.padding(.top, 12)
+                        addressLabel.padding(.top, 16)
                         field(wraps: true).padding(.top, 6)
                         message.padding(.top, 12)
                         MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress)
@@ -585,15 +598,22 @@ struct ConnectScreen: View {
                 .safeAreaBar(edge: .top) { TopBar { IconButton(icon: .back, label: "Back", action: model.back) } }
             } else {
                 Lines(lines: ["Connect to your", "laptop"], font: AlbedianFont.light(Arrive.titleSize), size: Arrive.titleSize, lineHeight: 1.05, tracking: Arrive.titleTracking).title().atTop(Arrive.titleTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                // firstuse-connect-one (UIUX-iphone-firstuse-READY item 1): Expo Go's empty state in the app's type and
+                // colours, the command first, then where the address goes, at the record's numbers (`ConnectLayout`)
+                startLine
+                    .atTop(ConnectLayout.startTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                commandBox
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .atTop(ConnectLayout.boxTop)
                 addressLabel
-                    .atTop(238, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                    .atTop(ConnectLayout.addressTop, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
                 field(wraps: false)
                     .padding(.horizontal, CGFloat(Arrive.side))
-                    .atTop(262)
+                    .atTop(ConnectLayout.fieldTop)
                 message
                     .padding(.horizontal, CGFloat(Arrive.side))
-                    .atTop(336)
-                MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress).atTop(404)
+                    .atTop(ConnectLayout.messageTop)
+                MainButton(title: "Connect", icon: .arrow, action: model.useTypedAddress).atTop(ConnectLayout.connectTop)
             }
             if !dynamicTypeSize.isAccessibilitySize {
                 IconButton(icon: .back, label: "Back", action: model.back)
@@ -606,6 +626,25 @@ struct ConnectScreen: View {
 
     private var addressLabel: some View {
         Text("Address").font(AlbedianFont.regular(13)).foregroundStyle(Color(ControlStyle.inkQuiet))
+    }
+
+    /// The line over the command, in the style of the line it replaces.
+    private var startLine: some View {
+        Text(ConnectWords.start).font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
+            .foregroundStyle(Color(ControlStyle.inkSecondary))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The command in Geist Mono 16 on the ink wash, selectable so the system's Copy takes it (with Universal Clipboard,
+    /// to the Mac); INTERIM at accessibility sizes, held at the first one so the command stays on one line.
+    private var commandBox: some View {
+        Text(ConnectWords.command).font(AlbedianFont.mono(16)).tracking(CGFloat(ConnectLayout.commandTracking))
+            .foregroundStyle(Color(ControlStyle.ink))
+            .textSelection(.enabled)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .padding(.horizontal, CGFloat(ConnectLayout.boxInset))
+            .frame(maxWidth: .infinity, minHeight: CGFloat(ConnectLayout.boxHeight), alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: CGFloat(ConnectLayout.boxRadius)).fill(Color(ControlStyle.wash)))
     }
 
     /// The address field: at default sizes one line 60 pt high, the scheme in grey before the address, as before; at
@@ -674,12 +713,8 @@ struct ConnectScreen: View {
                 .foregroundStyle(Color(ControlStyle.ink))
                 // MOTION-READY-iphone: the message words in under the field
                 .transition(.words(reduceMotion: reduceMotion))
-            } else {
-                Text("Albedian shows this address on the laptop when it starts.")
-                    .font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
-                    .foregroundStyle(Color(ControlStyle.inkSecondary))
-                    .transition(.words(reduceMotion: reduceMotion))
             }
+            // firstuse-connect-one: no line while nothing is refused; the command over the field says where the address is
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

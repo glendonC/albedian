@@ -84,7 +84,7 @@ final class ApprovedAssetsTests: XCTestCase {
         }
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(
             from: try Data(contentsOf: repositoryRoot.appendingPathComponent("apps/ios/AlbedianCapture-Info.plist")), format: nil) as? [String: Any])
-        XCTAssertEqual(plist["UIAppFonts"] as? [String], expected.keys.sorted() + ["Geist-wght.woff2"])
+        XCTAssertEqual(plist["UIAppFonts"] as? [String], expected.keys.sorted() + ["Geist-wght.woff2", "GeistMono-wght.woff2"])
         let style = try String(contentsOf: app.appendingPathComponent("UI/Style.swift"), encoding: .utf8)
         for postScript in expected.values { XCTAssertTrue(style.contains("\"\(postScript)\""), postScript) }
         // The light weight is the web's own variable font, byte for byte, and the app asks for its Geist-Light instance

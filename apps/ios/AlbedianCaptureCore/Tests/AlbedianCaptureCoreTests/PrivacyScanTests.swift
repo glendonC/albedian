@@ -176,6 +176,8 @@ final class PrivacyScanTests: XCTestCase {
          reason: "the asset catalog's own description of its images, written for this app"),
         (path: "Fonts/Geist-wght.woff2", sha256: "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
          reason: "Geist v1.9.2's variable font, the web's own copy byte for byte, for the approved light weight (SIL OFL 1.1, apps/ios/notices/geist)"),
+        (path: "Fonts/GeistMono-wght.woff2", sha256: "afaacc4c5fbba89d2ebf7a02dc4070208540874592a5504d57175782fe893101",
+         reason: "Geist Mono v1.9.2's variable font, the web's own copy byte for byte, for the command on Connect (SIL OFL 1.1, apps/ios/notices/geist)"),
     ]
 
     static func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }

@@ -40,6 +40,17 @@
         "method": "copied-from-repository"
       },
       "note": "The web app's own apps/web/public/fonts/geist/Geist-wght.woff2 (its record: apps/web/public/fonts/geist/PROVENANCE.json; the tag's fonts/Geist/webfonts/Geist[wght].woff2), byte for byte; the app uses its Geist-Light instance (weight 300) for the approved 40 pt titles and the result's count. Nothing was downloaded for it."
+    },
+    {
+      "path": "../../AlbedianCapture/Fonts/GeistMono-wght.woff2",
+      "sha256": "afaacc4c5fbba89d2ebf7a02dc4070208540874592a5504d57175782fe893101",
+      "sources": [
+        "geist-font-v1.9.2"
+      ],
+      "producedBy": {
+        "method": "copied-from-repository"
+      },
+      "note": "The web app's own apps/web/public/fonts/geist/GeistMono-wght.woff2 (its record: apps/web/public/fonts/geist/PROVENANCE.json), byte for byte; the app uses its GeistMono-Regular instance (weight 400) for the command on Connect (firstuse-connect-one). Nothing was downloaded for it."
     }
   ],
   "fileSets": []

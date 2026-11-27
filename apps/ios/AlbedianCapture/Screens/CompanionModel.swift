@@ -40,6 +40,8 @@ final class CompanionModel {
             path = CompanionPlace.path(path, to: screen.place)
             if screen.place == .capture { captureScreen = screen }
             if screen.place == .result { resultScreen = screen }
+            // firstuse-connect-one: leaving Connect by any way ends Connect from Aim
+            if screen != .pairing { connectingFromAim = false }
         }
     }
     /// The navigation stack's path: forward screens pushed, going back popped, by the system (MOTION-READY-iphone).
@@ -102,10 +104,24 @@ final class CompanionModel {
         ledger = SendLedger(folder: support.appendingPathComponent("Sends"))
         self.pairing = pairing
         typedAddress = pairing.kept.map { String($0.description.dropFirst(PairingKeeper.fixedScheme.count)) } ?? ""
+        hasKeptLaptop = pairing.kept != nil
     }
 
     /// A send or its solve is under way: Send and Try again take no second press.
     var isBusy: Bool { uploads.isSending || solver.isSolving }
+
+    /// firstuse-connect-one: Aim shows "Connect laptop" only while no laptop is kept. Observed (the keeper's store is
+    /// not), so Aim draws the pill away the moment an address is kept.
+    private(set) var hasKeptLaptop = false
+
+    /// Every address the app keeps goes through here.
+    private func keepLaptop(_ address: LaptopAddress) {
+        pairing.keep(address)
+        hasKeptLaptop = true
+    }
+    /// Connect was opened from Aim: its button asks the typed address's health route, and Back returns to Aim.
+    private(set) var connectingFromAim = false
+    private var checkingAddress = false
 
     /// The wait's row: the step the job is on, once a job has been read (UIUX-iphone-solve-READY, 1).
     var waitRow: WaitRow? {
@@ -408,12 +424,44 @@ final class CompanionModel {
             addressRefused = true
             return
         }
+        if connectingFromAim { return checkFromAim(address) }
         if connectsForKept { return sendKept(to: address) }
         screen = .afterShot
         send(to: address)
     }
 
     func changeAddress() { screen = .pairing }
+
+    /// firstuse-connect-one: "Connect laptop" on Aim opens Connect.
+    func connectFromAim() {
+        connectingFromAim = true
+        addressRefused = false
+        screen = .pairing
+    }
+
+    /// From Aim, the typed address is asked once whether it is Albedian (`LaptopHealthClient`, a request that carries
+    /// nothing personal); only on that answer is it kept, the sky asked of it and Aim shown again. Otherwise Connect stays
+    /// with the refused line (the lead's ruling of 27 Nov 04:17).
+    private func checkFromAim(_ address: LaptopAddress) {
+        guard !checkingAddress else { return }
+        checkingAddress = true
+        addressRefused = false
+        Task { @MainActor [weak self] in
+            let isAlbedian = await LaptopHealthClient(address: address).isAlbedian()
+            guard let self else { return }
+            self.checkingAddress = false
+            // Left Connect while it asked: nothing is kept
+            guard self.connectingFromAim else { return }
+            guard isAlbedian else {
+                self.addressRefused = true
+                return
+            }
+            self.keepLaptop(address)
+            self.connectingFromAim = false
+            self.screen = .aim
+            self.startSky()
+        }
+    }
 
     /// "Open" on the result: the photo's reveal on the paired laptop's web app (mobile-4b).
     func openReveal() {
@@ -429,7 +477,14 @@ final class CompanionModel {
         openPage = OutsidePageItem(url: url)
     }
 
-    func back() { screen = shot == nil ? .home : .afterShot }
+    func back() {
+        if connectingFromAim {
+            connectingFromAim = false
+            screen = .aim
+            return
+        }
+        screen = shot == nil ? .home : .afterShot
+    }
 
     private func send(to address: LaptopAddress) {
         guard let shot, !isBusy else { return }
@@ -441,7 +496,7 @@ final class CompanionModel {
             self.ledger.record(last, for: shot.sha256)
             switch SendEnd.after(last) {
             case .solve(let sha256)?:
-                self.pairing.keep(address)
+                self.keepLaptop(address)
                 self.startSolve(sha256: sha256, address: address)
             case .unreachable?:
                 self.unreachable = true
@@ -790,7 +845,7 @@ extension CompanionModel {
                 lastTried = kept
                 let last = await uploader.send(photo: kept.photo, contentType: kept.contentType, recordWire: kept.recordWire) { _ in }
                 self.ledger.record(last, for: sha)
-                if case .solve? = SendEnd.after(last) { self.pairing.keep(address) }
+                if case .solve? = SendEnd.after(last) { self.keepLaptop(address) }
                 return last
             }, startSolve: { sha in
                 guard case .success = await solver.start(sha256: sha) else { return false }

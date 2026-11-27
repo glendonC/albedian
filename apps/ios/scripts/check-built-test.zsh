@@ -161,10 +161,12 @@ make_app FontStringApp "$plain_main" "" "<key>UIAppFonts</key><string>Other.ttf<
   && expect refused "a font entry that is not an array" "fonts are" "$scratch/FontStringApp.app"
 make_app FontEmptyApp "$plain_main" "" "<key>UIAppFonts</key><array/>" \
   && expect refused "an empty font list" "fonts are" "$scratch/FontEmptyApp.app"
-make_app GeistApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string><string>Geist-wght.woff2</string></array>" \
-  && expect passes "the three approved font files" - "$scratch/GeistApp.app"
+make_app GeistApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string><string>Geist-wght.woff2</string><string>GeistMono-wght.woff2</string></array>" \
+  && expect passes "the four approved font files" - "$scratch/GeistApp.app"
 make_app GeistTwoApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string></array>" \
   && expect refused "the static weights without the variable font" "fonts are" "$scratch/GeistTwoApp.app"
+make_app GeistNoMonoApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string><string>Geist-wght.woff2</string></array>" \
+  && expect refused "the Geist fonts without Geist Mono (firstuse-connect-one)" "fonts are" "$scratch/GeistNoMonoApp.app"
 make_app IconApp "$plain_main" "" "<key>CFBundleIcons</key><dict><key>CFBundlePrimaryIcon</key><dict><key>CFBundleIconFiles</key><array><string>AppIcon60x60</string></array><key>CFBundleIconName</key><string>AppIcon</string></dict></dict><key>CFBundleIcons~ipad</key><dict><key>CFBundlePrimaryIcon</key><dict><key>CFBundleIconFiles</key><array><string>AppIcon60x60</string><string>AppIcon76x76</string></array><key>CFBundleIconName</key><string>AppIcon</string></dict></dict>" \
   && expect passes "the app's icon as Xcode writes it (app-icon-one)" - "$scratch/IconApp.app"
 make_app ArbitraryApp "$plain_main" "" "<key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/></dict>" \

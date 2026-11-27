@@ -36,7 +36,7 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
     `tests/fixtures/ingest_contract.json`; `SolutionReader` reads only the status, the findings counted by evidence
     class and the catalog matched marks (drawn only on a calibrated solution whose WCS passed held-out verification),
     on `tests/fixtures/observation_solution_contract.json`; `StoredFrame` places a detection on the photo as the web
-    app does. The gate (`CaptureUploader.permits`) lets through the solve's four requests and no other.
+    app does. The gate (`CaptureUploader.permits`) lets through nine requests and no other: the upload's two, the solve's four, the lock-on's predicted sky, the aim overlay's sky and Connect's health check from Aim (`LaptopHealth`, `GET /api/health`, which carries nothing personal).
     Receipts and jobs are read within 64 kB (`HTTPReplyLimits`); the solution alone within 64 MiB
     (`SolveClient.solutionMaxBytes`), since a photo with a time and place solves to about 1.3 MB and a 12 MP night photo
     to 35 MB; the connection reads a reply's bytes once, when its stated length has arrived (`HTTPMessage.wholeLength`).
@@ -89,7 +89,7 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
   argument opens one of three plain screens in the system's default style instead: `-AlbedianOpenPipeline` (the
   pipeline run by hand with sample values, cancelling any in-flight upload when rebuilt), `-AlbedianOpenCheck`
   (`CaptureCheckScreen`) or `-AlbedianOpenControls` (`ControlsGallery`, the approved controls together). `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,
-  `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds `Geist-Regular.ttf` and `Geist-SemiBold.ttf` (with `OFL.txt`),
+  `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds `Geist-Regular.ttf`, `Geist-SemiBold.ttf` and the web's own `Geist-wght.woff2` and `GeistMono-wght.woff2` (with `OFL.txt`),
   `Assets.xcassets/` holds the four Phosphor 2.1.1 regular icons (`arrow-right`, `x`, `paper-plane-tilt`,
   `arrow-counter-clockwise`) and the app's icon (`AppIcon.appiconset`: the logo's mark in white on black, one 1024 pixel
   square made by `scripts/app-icon.swift`, from which Xcode makes every size), and `Notices/` bundles `Phosphor-LICENSE.txt`. `Sensors/`: `@MainActor` `CoreMotionSource`

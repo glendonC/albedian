@@ -274,12 +274,13 @@ public final class CaptureUploader: Sendable {
         return state
     }
 
-    /// The one decision on whether and where a request may go: only the app's seven requests, each for a contract
+    /// The one decision on whether and where a request may go: only the app's nine requests, each for a contract
     /// SHA-256 or job id where it names one, and only to the endpoint the paired address holds, the same value. The
     /// connection is opened to the endpoint it returns. The uploader's two: `POST /api/ingest` and
     /// `PUT /api/ingest/{sha256}/pointing`. The solve's four (`SolveClient`): `POST /api/ingest/{sha256}/solve?wait=false` (the start, answered at once),
     /// `GET /api/ingest/{sha256}` (the receipt), `GET /api/ingest/{sha256}/solution` and `GET /api/ingest/jobs/{id}`
-    /// (`JOB_ID_PATTERN`). The aim overlay's one: `POST /api/science/sky-context` (`SkyContextRequest`).
+    /// (`JOB_ID_PATTERN`). The aim overlay's one: `POST /api/science/sky-context` (`SkyContextRequest`). Connect's one,
+    /// from Aim: `GET /api/health` (`LaptopHealth`), which carries nothing personal.
     static func permits(method: String, path: String, to address: LaptopAddress) -> ApprovedRequest? {
         let parts = path.split(separator: "/", omittingEmptySubsequences: false)
         let underIngest = parts.count >= 3 && parts[0] == "" && parts[1] == "api" && parts[2] == "ingest"
@@ -296,6 +297,8 @@ public final class CaptureUploader: Sendable {
                 || (underIngest && parts.count == 5 && parts[3] == "jobs" && Wire.isJobId(String(parts[4])))
                 // The sky a running solve predicted from an early pose (platform-10b), for the lock-on (lockon-m5)
                 || (underIngest && parts.count == 6 && parts[3] == "jobs" && Wire.isJobId(String(parts[4])) && parts[5] == "predicted-sky")
+                // Connect from Aim asks whether the typed address is Albedian before keeping it (firstuse-connect-one)
+                || path == LaptopHealth.path
         default:
             allowed = false
         }
