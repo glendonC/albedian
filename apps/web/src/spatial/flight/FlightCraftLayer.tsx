@@ -10,6 +10,7 @@ import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUniforms } from './craftEdgeLight.js';
 import { markFillOcclusion } from './craftFillOcclusion.js';
+import { poseWeights, posesOf, posesReport, sceneWithClips, setPoses, type CraftPoses } from './craftPoses.js';
 import { aliveFraming, aliveRotation, chaseAxes, diameterPerHeight, rotatedAboutCentre, screenBoxOf, type AliveSignals } from './craftAlive.js';
 import { brightestSkyDirection, CRAFT_SKY_SIZE, CRAFT_SKY_URL, craftLighting, environmentRotationRows, keyLight, keyToFillOf, skyIntegralOfPixels, type CraftSkyLight, type LightCandidate, type SkyRim } from './craftLight.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
@@ -59,7 +60,8 @@ export function createModelLoader(): ModelLoader {
   draco.setDecoderPath('/draco/');
   const loader = new GLTFLoader(manager);
   loader.setDRACOLoader(draco);
-  return { load: (url) => loader.loadAsync(url).then((gltf) => gltf.scene), dispose: () => draco.dispose() };
+  // craft-alive-two: the scene with its file's animations kept on it, where the suit's three poses are
+  return { load: (url) => loader.loadAsync(url).then(sceneWithClips), dispose: () => draco.dispose() };
 }
 
 /** The renderer's part the layer uses: three's WebGLRenderer, or a test's stand-in. */
@@ -144,11 +146,15 @@ interface CachedModel {
   readonly size: Vec3;
   /** craft-ao-fill-one: how many of the model's meshes are drawn with the sky fill's occlusion, of how many, as "n/m". */
   readonly fillAo: string;
+  /** craft-alive-two: the suit's three poses when its file carries them (craftPoses.ts), else none. */
+  readonly poses: CraftPoses | null;
 }
 
 interface CraftGpu {
   /** craft-alive-shoulder-one: where the craft drawn last stands on screen, CSS pixels. */
   lastBox?: { x0: number; y0: number; x1: number; y1: number } | null;
+  /** craft-alive-two: the poses the craft drawn last was drawn in (posesReport). */
+  lastPoses?: string;
   renderer: CraftRenderer;
   scene: THREE.Scene;
   camera: THREE.Camera;
@@ -339,6 +345,11 @@ function drawCraft(gpu: CraftGpu, shown: Shown, flightCamera: FlightCamera, cand
     gpu.galaxy.target.position.copy(c);
     gpu.galaxy.target.updateMatrixWorld();
   }
+  // craft-alive-two: the suit's poses blended by the same signals, on its bones before this render; while not steered
+  // the stance its file was modelled in
+  const weights = alive ? poseWeights(alive) : null;
+  if (shown.cached.poses) setPoses(shown.cached.poses, weights);
+  gpu.lastPoses = posesReport(shown.cached.poses, weights);
   gpu.renderer.render(gpu.scene, gpu.camera);
   return true;
 }
@@ -398,6 +409,7 @@ export const FlightCraftLayer: React.FC<{
     if (b) root.current?.setAttribute('data-box', [b.x0, b.y0, b.x1, b.y1].map((v) => v.toFixed(1)).join(','));
     root.current?.setAttribute('data-pose', s?.alive && s.craftRows ? 'chase' : 'rest');
     if (g.shown) root.current?.setAttribute('data-fill-ao', g.shown.cached.fillAo);
+    if (g.lastPoses) root.current?.setAttribute('data-poses', g.lastPoses);
   };
   const draw = (g: CraftGpu): boolean => {
     const s = steerRef.current ?? undefined;
@@ -499,7 +511,7 @@ export const FlightCraftLayer: React.FC<{
         const box = new THREE.Box3().setFromObject(model);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         const size = box.getSize(new THREE.Vector3());
-        return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3, fillAo: `${occlusion.occluded}/${occlusion.meshes}` };
+        return { model, centre: [sphere.center.x, sphere.center.y, sphere.center.z] as [number, number, number], radius: sphere.radius, size: [size.x, size.y, size.z] as Vec3, fillAo: `${occlusion.occluded}/${occlusion.meshes}`, poses: posesOf(model) };
       });
     }
     cache.set(url, pending);
