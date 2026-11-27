@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 
 from scripts.lookdev.hangar import write_hangar
-from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CACHE, CRAFTS, HANGAR
+from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CACHE, CRAFTS, HANGAR, LOD_RATIO
 from scripts.lookdev.hangar.geometry import by_part_at
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -70,8 +70,8 @@ def test_every_built_file_is_within_its_budget() -> None:
             assert base <= (2 if level == "lod0" else 3) * BUDGET_BYTES[level], (name, level)
             if reason:
                 assert reason in record[f"hangar/{f['path']}"]["note"], (name, level)
-    assert {n for n in CRAFTS if CRAFTS[n].get("budget_reason")} == {"iss"}
-    assert set(CRAFTS["iss"]["budget_reason"]) == {"lod1", "lod2"}
+    assert {n for n in CRAFTS if CRAFTS[n].get("budget_reason")} == {"iss", "shuttle"}
+    assert set(CRAFTS["iss"]["budget_reason"]) == {"lod1", "lod2"} and set(CRAFTS["shuttle"]["budget_reason"]) == {"lod2"}
 
 
 def test_over_budget_is_refused() -> None:
@@ -258,6 +258,11 @@ def _glb_parts(path: Path) -> tuple[list[tuple[np.ndarray, np.ndarray]], np.ndar
     return boxes, place[used]
 
 
+# For a craft decimated part by part at its far levels whose lod0 is a share of its whole mesh: the size and width from
+# which a lod0 sheet or body must keep a corner at every level, and how many such parts lod0 has at least.
+BIG_PARTS = {"iss": (10.0, 0.5, 90)}
+
+
 def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> None:
     # One collapse ratio over InSight's ~1,900 loose parts shredded its deck and left two legs without struts or
     # footpads in lod1 and lod2 (53 lod0 parts of 3 cm and over gone from lod1, 79 of 6.5 cm and over from lod2, the
@@ -267,7 +272,7 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
     # loose parts (14,878 lod0 parts of 3 cm and over gone from lod1, 17,525 of 6.5 cm and over from lod2): it is
     # decimated part by part at lod1 and lod2, its lod0 under one ratio still.
     by_part = [name for name in FACTS["models"] if CRAFTS[name].get("decimate_by_part")]
-    assert {"insight", "voyager", "iss"} <= set(by_part)
+    assert {"insight", "voyager", "iss", "shuttle", "cassini"} <= set(by_part)
     assert CRAFTS["iss"]["decimate_by_part"] == ["lod1", "lod2"]
     for name in by_part:
         # the provenance sentence of a by-part level says hidden inner faces of bulky parts are left out
@@ -280,14 +285,19 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
             # (the station's 17.8 m rods 5 mm thick keep corners 2.6 to 3.9 cm from their ends at a 2.5 m cut)
             grow = max(0.01, under / 50)
             _, points = _glb_parts(HANGAR_DIR / FACTS["models"][name]["files"][level]["path"])
-            if by_part_at(CRAFTS[name], "lod0"):
+            recipe = CRAFTS[name]
+            if by_part_at(recipe, "lod0") or {**LOD_RATIO, **recipe.get("lod_ratio", {})}["lod0"] == 1.0:
+                # lod0 shares the far levels' parts: decimated by part itself, or NASA's whole mesh (the reader welds
+                # corners at 0.1 mm, as the far levels are welded)
                 checked = [(lo, hi) for lo, hi in boxes0 if np.linalg.norm(hi - lo) >= under]
             else:
-                # the station's lod0 is one share over its unwelded mesh, so its parts are not the far levels' parts (a
-                # panel inside a module is a part there, inner faces at the far levels): each of its sheets and bodies of
-                # 10 m and over, 0.5 m wide or more, keeps a corner in place (96: main's files lost 21 at lod1, 76 at lod2)
-                checked = [(lo, hi) for lo, hi in boxes0 if np.linalg.norm(hi - lo) >= 10.0 and np.sort(hi - lo)[1] >= 0.5]
-                assert len(checked) >= 90, (name, len(checked))
+                # lod0 is one share over the whole mesh, so its parts are not the far levels' parts (a panel inside a
+                # module is a part there, inner faces at the far levels): each of its sheets and bodies at least the
+                # craft's size, wide enough, keeps a corner in place (the station: 96, of which main's files lost 21 at
+                # lod1 and 76 at lod2)
+                big, wide, least = BIG_PARTS[name]
+                checked = [(lo, hi) for lo, hi in boxes0 if np.linalg.norm(hi - lo) >= big and np.sort(hi - lo)[1] >= wide]
+                assert len(checked) >= least, (name, len(checked))
             gone = [
                 (round(float(np.linalg.norm(hi - lo)), 3), [round(float(x), 2) for x in (lo + hi) / 2])
                 for lo, hi in checked

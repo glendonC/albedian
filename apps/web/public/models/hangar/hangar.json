@@ -777,17 +777,17 @@
         },
         "lod1": {
           "path": "shuttle/shuttle_lod1.glb",
-          "bytes": 1202452,
-          "triangles": 9619,
+          "bytes": 1383564,
+          "triangles": 12484,
           "textureEdgeMax": 512,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "shuttle/shuttle_lod2.glb",
-          "bytes": 583384,
-          "triangles": 6704,
+          "bytes": 802764,
+          "triangles": 8139,
           "textureEdgeMax": 256,
-          "budgetBytes": 600000
+          "budgetBytes": 850000
         },
         "picker": {
           "path": "shuttle/shuttle_picker.webp",
@@ -812,7 +812,7 @@
       "lodTriangleShare": {
         "lod0": 1.0,
         "lod1": 0.5,
-        "lod2": 0.18
+        "lod2": 0.08
       },
       "scaleFrom": {
         "part": null,
@@ -1594,15 +1594,15 @@
         },
         "lod1": {
           "path": "cassini/cassini_lod1.glb",
-          "bytes": 1349656,
-          "triangles": 12862,
+          "bytes": 1304916,
+          "triangles": 11350,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "cassini/cassini_lod2.glb",
-          "bytes": 462576,
-          "triangles": 4624,
+          "bytes": 586344,
+          "triangles": 5503,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
         },

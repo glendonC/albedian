@@ -65,6 +65,11 @@ BLADE_PLATES = [
     {"box": (887, 398, 1020, 508), "fill_from": (925, 393, 980, 399), "what": "the NASA insignia on a front body plate"},
 ]
 
+# Why the Shuttle's phone level is over the hangar's budget (the lead's ruling of 2026-11-27, phone-levels-two).
+SHUTTLE_BUDGET_REASON = (
+    "each of its 245 parts keeps its size at its phone level, the OMS pods, the nose tip, the windows and the payload "
+    "bay doors' edges among them, which one share over the whole mesh left out (the lead's ruling of 2026-11-27)"
+)
 # Why the station's far levels are over the hangar's budget (the lead's ruling of 2026-11-27, lod-iss-1).
 ISS_BUDGET_REASON = (
     "its lattice parts, the six 35.9 m truss masts among them, are chains of separate strut triangles under an alpha "
@@ -838,7 +843,16 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "weld_m": 0.0001,
         "smooth_deg": 30.0,
-        "lod_ratio": {"lod0": 1.0, "lod1": 0.5, "lod2": 0.18},
+        # One share over the whole mesh left 15 of its 42 materials out of lod2 (the OMS pods, the nose tip, the windows,
+        # a bay door's edge, a wing flap): its far levels go part by part, lod0 being NASA's whole mesh.
+        "decimate_by_part": ["lod1", "lod2"],
+        "drop_hidden_faces": ["lod1", "lod2"],
+        # each of its 245 parts keeps its size, so the share hardly moves its phone level (0.18 to 0.06: 856 to 801 KB)
+        "lod_ratio": {"lod0": 1.0, "lod1": 0.5, "lod2": 0.08},
+        "part_floor_tris": {"lod0": 24, "lod1": 12, "lod2": 4},
+        "level_smooth_deg": {"lod2": 60.0},
+        "budget_bytes": {"lod2": 850_000},
+        "budget_reason": {"lod2": SHUTTLE_BUDGET_REASON},
         # Eleven 640 px photo textures: at 512 and 256 px the chase and far levels stay within their budgets.
         "texture_edge": {"lod1": 512, "lod2": 256},
         "body_radius_m": 14.0,
@@ -1515,6 +1529,12 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "smooth_deg": 35.0,
         "body_radius_m": 3.0,
+        # One share over the whole mesh left the 11 m magnetometer boom and the antennas out of lod2 (its box 0.22 of
+        # lod0 across): part by part at the far levels, welded there alone so its parts are whole.
+        "weld_m": 0.0001,
+        "weld_levels": ["lod1", "lod2"],
+        "decimate_by_part": ["lod1", "lod2"],
+        "drop_hidden_faces": ["lod1", "lod2"],
         "changes": "cassini",
     },
     "ibex": {

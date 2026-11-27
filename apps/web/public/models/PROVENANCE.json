@@ -454,7 +454,7 @@
     },
     {
       "path": "hangar/cassini/cassini_lod1.glb",
-      "sha256": "56714ffcfebda7ff4b655b6ddd0cf7ff7921d7276e420adb6573bf16682b05e9",
+      "sha256": "bfb13c78baa9a0323a72e91cf4ae4a317ff1cc94fd6e2b12b339adfdbba627a9",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -463,13 +463,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/cassini-huygens-a/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/cassini/cassini_lod2.glb",
-      "sha256": "1fd263becb83c4706adf7508b8674c54847d183a805a3401cee237493e72c175",
+      "sha256": "42624ca8cb562e83bc8f722b97748460506e085bcdabdee39c6c1c5459b73a78",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -478,7 +478,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/cassini-huygens-a/ credits NASA/Brian E. Kumanchik."
     },
@@ -911,7 +911,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "295fd2f14fc3ab0065e60eedd7541ffaef233dcb3f3138be6c0403b5f6942395",
+      "sha256": "cbe55bd4217c5e31a7671a7eea431d8deac708b624ba71cb0b3a850d62587022",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-3d-models-nasa-brian-e-kumanchik",
@@ -2193,7 +2193,7 @@
     },
     {
       "path": "hangar/shuttle/shuttle_lod1.glb",
-      "sha256": "346bd2d3bc1d36063f63313f5a710fa60d7487d9251098816aebb6fcff7a94c2",
+      "sha256": "a28027799a7752730476286170f8912261870999407451258ac342bd438ef33a",
       "sources": [
         "nasa-3d-models-nasa-johnson-space-center",
         "nasa-science-mission-pages"
@@ -2202,13 +2202,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/space-shuttle-d/ credits NASA/Johnson Space Center."
     },
     {
       "path": "hangar/shuttle/shuttle_lod2.glb",
-      "sha256": "2fae5e3e26df6b95dccae9cbce85efad489b48e907282044e2b539a29b5561ab",
+      "sha256": "9f1dbcf58bab0d6738fc4ce7f81abb300792206e5f0c8c504af9e42713046231",
       "sources": [
         "nasa-3d-models-nasa-johnson-space-center",
         "nasa-science-mission-pages"
@@ -2217,9 +2217,9 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
       },
-      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/space-shuttle-d/ credits NASA/Johnson Space Center."
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/space-shuttle-d/ credits NASA/Johnson Space Center. Its budget is 850000 bytes, over the hangar's 600000: each of its 245 parts keeps its size at its phone level, the OMS pods, the nose tip, the windows and the payload bay doors' edges among them, which one share over the whole mesh left out (the lead's ruling of 2026-11-27)."
     },
     {
       "path": "hangar/shuttle/shuttle_picker.webp",
