@@ -665,7 +665,6 @@
   isolation: isolate;
 }
 
-.reveal-status[data-moment='there']::before,
 .reveal-status[data-moment='real-sky']:not(.is-phone)::before,
 .predsky:not(.is-phone) .predsky-status::before {
   content: '';
@@ -683,20 +682,46 @@
   mask-composite: intersect;
 }
 
+/* glare-fade-one (UIUX-flight-READY.md G1 to G4, DECIDED-BY-LEAD 12:25 on 27 Nov, from Apple TV's web hero read live):
+   over the flight's full-window sky the disclosure column's and the readout's fades are no longer boxes: each is a
+   gradient anchored at the window corner its column stands in (the column 36 px from the left and 70 px from the top,
+   the readout 32 px from the right and 118 px from the top), 82 percent black at that corner, eased by Apple TV's stops
+   mirrored to nothing at twice the reach of the column's box from that corner, measured along the line to the box's far
+   corner: the ellipse's radii are 2.828 (twice the square root of two) times the box's reach on each axis, so that far
+   corner sits half way, under about a quarter's darkening (G2). The gradient box's far edges lie on the ellipse's end,
+   so no edge or corner of it is in the window; it follows the column's box as it grows; no motion of its own. Real
+   sky's and the predicted sky's columns, the phone and the other fades are unchanged (G3) */
+.reveal-status[data-moment='there']::before {
+  content: '';
+  position: absolute;
+  left: -36px;
+  top: -70px;
+  width: calc(2.828 * (100% + 36px));
+  height: calc(2.828 * (100% + 70px));
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 100% 100% at 0 0, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.7) 11%, rgba(0, 0, 0, 0.55) 23%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.27) 47%, rgba(0, 0, 0, 0.25) 49%, rgba(0, 0, 0, 0.12) 64%, rgba(0, 0, 0, 0.03) 81%, rgba(0, 0, 0, 0) 100%);
+}
+
+/* glare-fade-two (UIUX-flight-READY.md G3a, ruled 16:53 on 27 Nov, on AUDIT-D's verdict of 16:24): the top bar's brand
+   and its home press stand above the flight column's fade, as the views row stands above the readout's, so the fade
+   never darkens them: the reveal's own home press (.reveal-word, the logo at 36, 30) comes before the column in the
+   reveal and was painted under the column's stacking; while the flight's column is drawn it takes a stacking of its
+   own above it */
+:root:has(.reveal-status[data-moment='there']) .reveal-word {
+  z-index: 1;
+}
+
 .flight-readout:not(.is-phone)::before {
   content: '';
   position: absolute;
-  left: -44px;
-  top: -44px;
-  bottom: -44px;
   right: -32px;
+  top: -118px;
+  width: calc(2.828 * (100% + 32px));
+  height: calc(2.828 * (100% + 118px));
   z-index: -1;
   pointer-events: none;
-  background: rgba(0, 0, 0, 0.82);
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
-  mask-composite: intersect;
+  background: radial-gradient(ellipse 100% 100% at 100% 0, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.7) 11%, rgba(0, 0, 0, 0.55) 23%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.27) 47%, rgba(0, 0, 0, 0.25) 49%, rgba(0, 0, 0, 0.12) 64%, rgba(0, 0, 0, 0.03) 81%, rgba(0, 0, 0, 0) 100%);
 }
 
 /* views-row fade (UIUX's addition of 19:46 at the foot of UIUX-reveal-READY.md, DECIDED-BY-LEAD 19:48): the same fade

@@ -79,10 +79,11 @@ const masked = (horizontal: string, vertical: string) => ({
 });
 
 describe("D19's fade behind Real sky's column, the legend, the ask bar and the flight's pill row (laptop)", () => {
-  it("stands behind Real sky's status column with the flight's and the predicted sky's columns' own reach", () => {
+  it("stands behind Real sky's status column with the predicted sky's column's own reach", () => {
     const real = ruleWith(".reveal-status[data-moment='real-sky']:not(.is-phone)::before");
     expect(real).toBeDefined();
-    expect(real).toEqual(ruleWith(".reveal-status[data-moment='there']::before"));
+    // glare-fade-one: the flight's column now has its own gradient from the window's corner (columnFade.test.tsx)
+    expect(real).toEqual(ruleWith('.predsky:not(.is-phone) .predsky-status::before'));
     expect(ruleWith(".reveal-status[data-moment='real-sky']:not(.is-phone)")).toEqual({ isolation: 'isolate' });
   });
 

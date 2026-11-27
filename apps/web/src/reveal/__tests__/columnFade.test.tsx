@@ -68,8 +68,15 @@ const masked = (horizontal: string, vertical: string) => ({
 });
 const base = { content: "''", position: 'absolute', 'z-index': '-1', 'pointer-events': 'none' };
 
-const COLUMNS = ".reveal-status[data-moment='there']::before, .reveal-status[data-moment='real-sky']:not(.is-phone)::before, .predsky:not(.is-phone) .predsky-status::before";
+const COLUMNS = ".reveal-status[data-moment='real-sky']:not(.is-phone)::before, .predsky:not(.is-phone) .predsky-status::before";
+const FLIGHT_COLUMN = ".reveal-status[data-moment='there']::before";
 const READOUT = '.flight-readout:not(.is-phone)::before';
+// glare-fade-one (UIUX-flight-READY.md G1 to G4, DECIDED-BY-LEAD 12:25 on 27 Nov, from Apple TV's web hero read live):
+// over the flight's full-window sky the column's and the readout's fades are gradients anchored at their window corners,
+// 82 percent black there, eased by Apple TV's stops mirrored to nothing at twice the reach of the column's box from that
+// corner, so no edge or corner of either lies in the window
+const GLARE_STOPS = 'rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.7) 11%, rgba(0, 0, 0, 0.55) 23%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.27) 47%, rgba(0, 0, 0, 0.25) 49%, rgba(0, 0, 0, 0.12) 64%, rgba(0, 0, 0, 0.03) 81%, rgba(0, 0, 0, 0) 100%';
+const cornerFade = (corner: '0 0' | '100% 0') => `radial-gradient(ellipse 100% 100% at ${corner}, ${GLARE_STOPS})`;
 // fade-off-photo-one: the views row's fade stands over a drawn view or where no photo is (the modeled scene), never over
 // the photo at rest
 const VIEWS = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-moment='there']), .predsky:not(.is-phone)) .reveal-nav::before, :root:not(:has(.reveal-photo)) .reveal-nav::before";
@@ -77,7 +84,7 @@ const VIEWS = ":root:has(.reveal-status:is([data-moment='real-sky'], [data-momen
 const PHONE_TOP = ":root:has(.reveal-status[data-moment='real-sky'], .flight-readout) .reveal-phone-top::before";
 
 describe("D19's fade behind the laptop's columns, the flight's readout and the views row", () => {
-  it("stands behind the flight's disclosure column and the predicted sky's status column, reaching the window's left edge", () => {
+  it("stands behind Real sky's and the predicted sky's status columns as before, reaching the window's left edge (G3)", () => {
     expect(rules()[COLUMNS]).toEqual({
       ...base,
       left: '-36px',
@@ -91,17 +98,56 @@ describe("D19's fade behind the laptop's columns, the flight's readout and the v
     expect(rules()['.reveal-status']!.left).toBe('36px');
   });
 
-  it("stands behind the flight's readout as behind the open card, closed at the window's right edge", () => {
+  it("darkens the flight's column from the window's top left corner to nothing at twice the column's reach, with no edge (G1)", () => {
+    expect(rules()[FLIGHT_COLUMN]).toEqual({
+      ...base,
+      left: '-36px',
+      top: '-70px',
+      width: 'calc(2.828 * (100% + 36px))',
+      height: 'calc(2.828 * (100% + 70px))',
+      background: cornerFade('0 0'),
+    });
+    // The column stands 36 px from the window's left edge and 70 px from its top, so the fade starts at that corner
+    expect(rules()['.reveal-status']!).toMatchObject({ left: '36px', top: '70px', position: 'absolute' });
+  });
+
+  it("darkens the flight's readout from the window's top right corner to nothing at twice its reach, with no edge (G1)", () => {
     expect(rules()[READOUT]).toEqual({
       ...base,
-      left: '-44px',
-      top: '-44px',
-      bottom: '-44px',
       right: '-32px',
-      background: D19,
-      ...masked('linear-gradient(to right, transparent 0, #000 44px)', VERTICAL),
+      top: '-118px',
+      width: 'calc(2.828 * (100% + 32px))',
+      height: 'calc(2.828 * (100% + 118px))',
+      background: cornerFade('100% 0'),
     });
-    expect(rules()['.flight-readout']!.right).toBe('32px');
+    expect(rules()['.flight-readout']!).toMatchObject({ right: '32px', top: '118px', position: 'absolute' });
+  });
+
+  it("eases by Apple TV's stops mirrored, from the ruled 82 percent at the corner to nothing at the gradient's end (G1)", () => {
+    const stops = [...GLARE_STOPS.matchAll(/rgba\(0, 0, 0, ([\d.]+)\) (\d+)%/g)].map((m) => [Number(m[1]), Number(m[2])] as const);
+    expect(stops).toEqual([[0.82, 0], [0.7, 11], [0.55, 23], [0.4, 35], [0.27, 47], [0.25, 49], [0.12, 64], [0.03, 81], [0, 100]]);
+    // Twice the reach, measured from the corner along the line to the column box's far corner: with the ellipse's radii
+    // F times the box's reach on each axis, that far corner sits at the square root of two over F of the way, and the
+    // gradient ends at F over the square root of two times its distance; so F is twice the square root of two, the far
+    // corner half way, and the least darkening under the words about a quarter (G2: about 0.25 at their far corner)
+    const F = Number(/^calc\(([\d.]+) \*/.exec(rules()[FLIGHT_COLUMN]!.width!)?.[1]);
+    expect(F / Math.SQRT2).toBeCloseTo(2, 3);
+    const r = Math.SQRT2 / F;
+    const i = stops.findIndex(([, at]) => at / 100 >= r);
+    const [a0, p0] = stops[i - 1]!;
+    const [a1, p1] = stops[i]!;
+    const alpha = a0 + ((a1 - a0) * (r * 100 - p0)) / (p1 - p0);
+    expect(alpha).toBeGreaterThan(0.24);
+    expect(alpha).toBeLessThan(0.27);
+    expect(rules()[READOUT]!.width).toBe(`calc(${F} * (100% + 32px))`);
+    // The gradient box's far edges are the ellipse's own radii, where it is already nothing: no edge in the window
+    for (const selector of [FLIGHT_COLUMN, READOUT]) {
+      // A browser drops a calc whose plus has no space on each side, and the gradient box with it
+      for (const size of [rules()[selector]!.width, rules()[selector]!.height]) expect(size, selector).toMatch(/^calc\(\d+(\.\d+)? \* \(100% \+ \d+px\)\)$/);
+      expect(rules()[selector]!.background).toMatch(/^radial-gradient\(ellipse 100% 100% at /);
+      expect(rules()[selector]!['mask-image'], selector).toBeUndefined();
+      expect(rules()[selector]!.bottom, selector).toBeUndefined();
+    }
   });
 
   it('stands behind the views row and the Sound circle over the drawn views, closed by the window above and to the right', () => {
@@ -154,6 +200,23 @@ describe("D19's fade behind the laptop's columns, the flight's readout and the v
   });
 });
 
+// glare-fade-two (UIUX-flight-READY.md G3a, ruled 16:53 on 27 Nov, on AUDIT-D's verdict of 16:24): the top bar's brand
+// and its home press stand above the flight column's fade, as the views row stands above the readout's; the fade never
+// darkens them (version one's gradient lay over the brand: its contrast fell from about fourteen to about three)
+describe("the brand and its home press above the flight column's fade (G3a)", () => {
+  const LIFTED = ":root:has(.reveal-status[data-moment='there']) .reveal-word";
+
+  it('gives the reveal\'s home press a stacking above the column while the flight\'s column is drawn, and only that', () => {
+    expect(rules()[LIFTED]).toEqual({ 'z-index': '1' });
+    // The home press is placed but has no stacking of its own; the column makes one (isolation) at no z-index, so any
+    // z-index above nothing puts the press, and the logo in it, over the column's fade
+    expect(rules()['.reveal-word']).toMatchObject({ position: 'absolute', left: '36px', top: '30px' });
+    expect(rules()['.reveal-word']!['z-index']).toBeUndefined();
+    expect(rules()[FLIGHT_COLUMN.replace('::before', '')] ?? { isolation: 'isolate' }).not.toHaveProperty('z-index');
+    expect(Object.keys(rules()).filter((k) => k.includes('.reveal-word') && !k.includes(':focus'))).toEqual(['.reveal-word', LIFTED]);
+  });
+});
+
 describe("the fade's selectors are the elements the screens draw", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -184,24 +247,29 @@ describe("the fade's selectors are the elements the screens draw", () => {
 
   it("on the laptop's flight: the disclosure column and the readout are the ones faded", () => {
     show(poseSession(sample('plate_calibrated')), false);
-    expect(target(COLUMNS.split(', ')[0]!)).not.toBeNull();
+    expect(target(FLIGHT_COLUMN)).not.toBeNull();
     expect(target(READOUT)).not.toBeNull();
+    // G3a: the brand drawn there is the reveal's home press, before the column in the reveal (so painted under the
+    // column's stacking unless it has its own)
+    const home = container.querySelector('[data-testid="reveal-home"]');
+    expect(home?.classList.contains('reveal-word')).toBe(true);
+    expect(home!.compareDocumentPosition(target(FLIGHT_COLUMN)!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("on the phone's flight: the readout is the phone's own and takes no laptop fade", () => {
     show(poseSession(sample('plate_calibrated')), true);
     expect(container.querySelector('.flight-readout.is-phone')).not.toBeNull();
     expect(target(READOUT)).toBeNull();
-    expect(target(COLUMNS.split(', ')[0]!)).toBeNull();
+    expect(target(FLIGHT_COLUMN)).toBeNull();
   });
 
   it("on the laptop's predicted sky: its status column is the one faded; on the phone it keeps its own fade", () => {
     const start = poseSession(sample('horizon_predicted_only'));
     const sky = dispatchAlbedianAction(start, { type: 'sky.show', requestId: 'req_sky', expectedViewRevision: start.viewRevision, mode: 'predicted', observationSolutionId: start.observationSolution!.id }).session;
     act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, skyPose: () => null })));
-    expect(target(COLUMNS.split(', ')[2]!)).not.toBeNull();
+    expect(target(COLUMNS.split(', ')[1]!)).not.toBeNull();
     act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, skyPose: () => null, phone: true })));
-    expect(target(COLUMNS.split(', ')[2]!)).toBeNull();
+    expect(target(COLUMNS.split(', ')[1]!)).toBeNull();
     expect(container.querySelector('.predsky.is-phone .predsky-status')).not.toBeNull();
   });
 });
@@ -218,6 +286,19 @@ describe("names clear the fade's reach; rings keep the place's own box", () => {
       const key = Object.keys(all).find((k) => k.split(', ').includes(`${faded}::before`) || k.endsWith(` ${faded}::before`));
       expect(key, faded).toBeDefined();
       const d = all[key!]!;
+      if (`${faded}::before` === FLIGHT_COLUMN) {
+        // glare-fade-one: the flight's column fade is a gradient from the window's corner with no edge, so the names keep
+        // the column's own reach, which lies inside the gradient (it starts at the window's left edge, above the reach's
+        // top, and runs past the column's box by more than the reach's right and foot for any column 8 px or larger)
+        const px = (v: string | undefined) => -Number.parseFloat(v ?? 'NaN');
+        expect(px(d.left), faded).toBeGreaterThanOrEqual(reach.left);
+        expect(px(d.top), faded).toBeGreaterThanOrEqual(reach.top);
+        expect(d.width, faded).toBe(`calc(2.828 * (100% + ${px(d.left)}px))`);
+        expect(d.height, faded).toBe(`calc(2.828 * (100% + ${px(d.top)}px))`);
+        expect(8 + px(d.left), faded).toBeGreaterThanOrEqual(reach.right);
+        expect(8 + px(d.top), faded).toBeGreaterThanOrEqual(reach.bottom);
+        continue;
+      }
       expect([d.left, d.top, d.right, d.bottom], faded).toEqual([`-${reach.left}px`, `-${reach.top}px`, `-${reach.right}px`, `-${reach.bottom}px`]);
     }
     // Every place with a fade is one the marks keep clear of, on the reveal or on the predicted sky
