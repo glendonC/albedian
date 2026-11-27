@@ -165,6 +165,8 @@ make_app GeistApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Re
   && expect passes "the three approved font files" - "$scratch/GeistApp.app"
 make_app GeistTwoApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string></array>" \
   && expect refused "the static weights without the variable font" "fonts are" "$scratch/GeistTwoApp.app"
+make_app IconApp "$plain_main" "" "<key>CFBundleIcons</key><dict><key>CFBundlePrimaryIcon</key><dict><key>CFBundleIconFiles</key><array><string>AppIcon60x60</string></array><key>CFBundleIconName</key><string>AppIcon</string></dict></dict><key>CFBundleIcons~ipad</key><dict><key>CFBundlePrimaryIcon</key><dict><key>CFBundleIconFiles</key><array><string>AppIcon60x60</string><string>AppIcon76x76</string></array><key>CFBundleIconName</key><string>AppIcon</string></dict></dict>" \
+  && expect passes "the app's icon as Xcode writes it (app-icon-one)" - "$scratch/IconApp.app"
 make_app ArbitraryApp "$plain_main" "" "<key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/></dict>" \
   && expect refused "a transport exception" "transport security" "$scratch/ArbitraryApp.app"
 print -r -- '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>application-identifier</key><string>X.example</string><key>com.apple.developer.icloud-container-identifiers</key><array/></dict></plist>' > "$scratch/cloud.xcent"

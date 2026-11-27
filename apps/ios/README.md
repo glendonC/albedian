@@ -91,7 +91,8 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
   (`CaptureCheckScreen`) or `-AlbedianOpenControls` (`ControlsGallery`, the approved controls together). `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,
   `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds `Geist-Regular.ttf` and `Geist-SemiBold.ttf` (with `OFL.txt`),
   `Assets.xcassets/` holds the four Phosphor 2.1.1 regular icons (`arrow-right`, `x`, `paper-plane-tilt`,
-  `arrow-counter-clockwise`), and `Notices/` bundles `Phosphor-LICENSE.txt`. `Sensors/`: `@MainActor` `CoreMotionSource`
+  `arrow-counter-clockwise`) and the app's icon (`AppIcon.appiconset`: the logo's mark in white on black, one 1024 pixel
+  square made by `scripts/app-icon.swift`, from which Xcode makes every size), and `Notices/` bundles `Phosphor-LICENSE.txt`. `Sensors/`: `@MainActor` `CoreMotionSource`
   (`CMMotionManager`, 100 Hz, true north when available and falling back to `.xArbitraryZVertical` on
   `CMErrorTrueNorthNotAvailable` when Location Services are off or denied), `@MainActor` `CoreLocationSource`
   (`CLLocationManager`, when in use only, best accuracy) and `CameraSession` (the back wide-angle camera, HEIC else JPEG,

@@ -170,6 +170,10 @@ final class PrivacyScanTests: XCTestCase {
          reason: "the approved iPhone home's Milky Way: the web's own eso0932a panorama (ESO/S. Brunier, CC BY 4.0, apps/ios/notices/eso) over the same region, each row in the sinusoidal projection so its stars are points at every height"),
         (path: "Assets.xcassets/milky-way-home.imageset/Contents.json", sha256: "2769ecab90823d7c763d7a7f67c47d761dd014cb037aa156e5fdbf0add0630f4",
          reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/AppIcon.appiconset/app-icon.png", sha256: "c07cf353a7264b86862c9762605be396315873e133b8ebee86921fb70a62aa02",
+         reason: "the app's icon: the logo's own mark in white on black, drawn by apps/ios/scripts/app-icon.swift (app-icon-one)"),
+        (path: "Assets.xcassets/AppIcon.appiconset/Contents.json", sha256: "895c44875e8781583d9e9373525415fb21ebd883526845e6e6c4562c7eefaa1c",
+         reason: "the asset catalog's own description of its images, written for this app"),
         (path: "Fonts/Geist-wght.woff2", sha256: "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
          reason: "Geist v1.9.2's variable font, the web's own copy byte for byte, for the approved light weight (SIL OFL 1.1, apps/ios/notices/geist)"),
     ]

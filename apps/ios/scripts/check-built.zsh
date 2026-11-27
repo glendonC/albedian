@@ -88,6 +88,7 @@ allowed_plist=(
   LSRequiresIPhoneOS MinimumOSVersion NSAppTransportSecurity UIApplicationSceneManifest UIApplicationSupportsIndirectInputEvents
   UIDeviceFamily UILaunchScreen UISupportedInterfaceOrientations UIRequiredDeviceCapabilities
   NSLocalNetworkUsageDescription NSCameraUsageDescription NSMotionUsageDescription NSLocationWhenInUseUsageDescription
+  CFBundleIcons CFBundleIcons~ipad
   UIAppFonts
 )
 allowed_ats='{"NSAllowsLocalNetworking":true}'
