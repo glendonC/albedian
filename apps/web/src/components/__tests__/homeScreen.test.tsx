@@ -321,6 +321,17 @@ describe('the home backdrop: the panorama the app ships, framed as the mockup fr
     expect(decls('.home-credit', '@media (max-width: 720px)')).toEqual({ left: '16px', right: 'auto', top: '26px', bottom: 'auto' });
   });
 
+  it("measures the credit's width onto the home, so a refused upload's message ends 22 px before it", () => {
+    // refusal-credit-gap-one (UIUX-homecredit-READY.md, its last addition): the credit stays whole where it is and the
+    // refusal's widest edge stands 22 px before it, the credit's width read from the credit itself
+    const real = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('home-credit') ? ({ width: 143.6, height: 16 } as DOMRect) : real.call(this);
+    });
+    renderHome();
+    expect((q(HOME_SCREEN) as HTMLElement).style.getPropertyValue('--home-credit-w')).toBe('144px');
+  });
+
   it("keeps the browser's own file field out of sight: Upload is the only way to it", () => {
     expect((/\.home-file-input\s*\{([^}]*)\}/.exec(homeCss)?.[1] ?? '').replace(/\s+/g, ' ').trim()).toBe('display: none;');
   });

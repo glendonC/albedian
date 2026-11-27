@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { resolveMotionTokens } from '@albedian/design-system';
 import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
@@ -48,6 +48,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const name = nameParts(shortFileName(shownRefusal?.fileName ?? ''));
   const fileInput = useRef<HTMLInputElement>(null);
   const home = useRef<HTMLDivElement>(null);
+  const credit = useRef<HTMLAnchorElement>(null);
   const returnFocus = useRef(false);
   // A file held over the window: how many parts of the window it has entered and not yet left (a browser sends a
   // child's enter before its parent's leave), so the overlay stays while the file crosses the window
@@ -106,6 +107,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       window.removeEventListener('drop', onDrop);
       close();
     };
+  }, [creditsOpen]);
+
+  // refusal-credit-gap-one (UIUX-homecredit-READY.md, its last addition): the credit stays whole where it is and a
+  // refused upload's message ends 22 px before it, so the credit's drawn width goes onto the home for the message's
+  // max-width; read again when its size changes (the web font arriving after the first frame)
+  useLayoutEffect(() => {
+    const line = credit.current;
+    const screen = home.current;
+    if (creditsOpen || !line || !screen) return undefined;
+    const measure = () => {
+      const width = line.getBoundingClientRect().width;
+      if (width > 0) screen.style.setProperty('--home-credit-w', `${Math.ceil(width)}px`);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const watch = new ResizeObserver(measure);
+    watch.observe(line);
+    return () => watch.disconnect();
   }, [creditsOpen]);
 
   // Back from Credits puts the keyboard where it was, on Credits
@@ -170,7 +189,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
       {/* ESO's credit carried with the Milky Way it draws (home-credit-one, UIUX-homecredit-READY.md): ESO's words
           unaltered after the picture's name, one link to ESO's page for the image, in the corner each width leaves free */}
-      <a className="home-credit" href={ESO_IMAGE_PAGE} target="_blank" rel="noopener noreferrer">
+      <a ref={credit} className="home-credit" href={ESO_IMAGE_PAGE} target="_blank" rel="noopener noreferrer">
         {HOME_CREDIT}
       </a>
       <input

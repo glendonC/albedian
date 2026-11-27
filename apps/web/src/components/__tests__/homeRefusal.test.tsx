@@ -331,7 +331,8 @@ describe('the home shows a refused upload beside Upload', () => {
       top: '50%',
       transform: 'translateY(-50%)',
       width: 'max-content',
-      'max-width': 'min(420px, calc(100vw - 100% - 22px - 48px - 32px))',
+      // refusal-credit-gap-one: its widest edge 22 px before the credit's left edge, the credit's own width measured
+      'max-width': 'min(420px, calc(100vw - 100% - 22px - 48px - 22px - var(--home-credit-w, 0px) - 32px))',
       'overflow-x': 'clip',
       // its words arrive as every line does (the motion record); it has no frame of its own, so no delay
       animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both',
@@ -354,7 +355,7 @@ describe('the home shows a refused upload beside Upload', () => {
     });
   });
 
-  it('bounds the message both ways: two lines for the file, two for the reason, nothing drawn past its box', () => {
+  it('bounds the message: two lines for the file, the reason wrapping and never cut, nothing drawn past its box', () => {
     // Every rule inside the message, whole: a declaration added or dropped fails here. The box (above) is one column
     // that may shrink below the name's width and clips what would cross its side ('overflow-x: clip'), so nothing it
     // holds is drawn past it, whatever the characters' widths; every part below gives way before that clip is reached.
@@ -378,7 +379,8 @@ describe('the home shows a refused upload beside Upload', () => {
       overflow: 'hidden',
       'text-overflow': 'ellipsis',
     });
-    // The reason: two lines, broken anywhere, clipped at its own box
+    // The reason: broken anywhere, as many lines as it needs, never cut (refusal-credit-gap-one, UIUX-homecredit-READY.md
+    // item 2: the message gives way before the credit and its reason wraps)
     expect(declarationsFor(homeCss, '.home-refusal__reason {')).toEqual({
       margin: '0',
       'padding-left': '26px',
@@ -386,10 +388,7 @@ describe('the home shows a refused upload beside Upload', () => {
       'line-height': '1.4',
       'letter-spacing': '-0.005em',
       color: 'var(--look-ink-2)',
-      display: '-webkit-box',
-      '-webkit-box-orient': 'vertical',
-      '-webkit-line-clamp': '2',
-      overflow: 'hidden',
+      display: 'block',
       'overflow-wrap': 'anywhere',
     });
   });

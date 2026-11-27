@@ -83,7 +83,9 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   width: max-content;
-  max-width: min(420px, calc(100vw - 100% - 22px - 48px - 32px));
+  /* refusal-credit-gap-one (UIUX-homecredit-READY.md, its last addition): its widest edge 22 px before the credit's
+     left edge, the credit (right 32 px, its drawn width measured onto the home) staying whole where it is */
+  max-width: min(420px, calc(100vw - 100% - 22px - 48px - 22px - var(--home-credit-w, 0px) - 32px));
   overflow-x: clip;
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
@@ -144,10 +146,8 @@
   line-height: 1.4;
   letter-spacing: -0.005em;
   color: var(--look-ink-2);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  /* The reason wraps onto as many lines as it needs and is never cut (refusal-credit-gap-one, the record's item 2) */
+  display: block;
   overflow-wrap: anywhere;
 }
 
