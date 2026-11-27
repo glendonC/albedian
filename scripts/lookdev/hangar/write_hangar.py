@@ -33,6 +33,7 @@ from scripts.lookdev.hangar.crafts import (  # noqa: E402
     CRAFTS,
     HANGAR,
     LOD_RATIO,
+    MODEL_CREDITS,
     NASA3D_RAW,
     NASA3D_REPO,
     NASA_GUIDELINES_URL,
@@ -50,6 +51,10 @@ MOON_SOURCE_ID = "nasa-svs-4720-ldem-16"
 BUBBLE_SOURCE_ID = "oneill-2024-local-bubble"
 MODELS_SOURCE = "nasa-3d-resources"
 PAGES_SOURCE = "nasa-science-mission-pages"
+# One source for each other credit line the models' own pages give (crafts.MODEL_CREDITS); MODELS_SOURCE credits the
+# models whose pages name no source. "nasa-3d-resources-" was the retired placeholders' prefix, so these use another.
+CREDIT_SOURCE_PREFIX = "nasa-3d-models-"
+CREDITS_READ = "2026-11-26"
 BUILD_SCRIPT = "scripts/lookdev/hangar/build_craft.py"
 THIS_SCRIPT = "scripts/lookdev/hangar/write_hangar.py"
 RETRIEVED = "2026-11-19"
@@ -201,6 +206,14 @@ def _level_changes(model: str, level: str) -> str:
     return f"{key}_ao" if CRAFTS[model].get("vertex_ao") else key
 
 
+def credit_source(model: str) -> str:
+    """The record source a model's files are credited through: its page's credit line's own source."""
+    credit = MODEL_CREDITS[model]["credit"]
+    if credit == "NASA":
+        return MODELS_SOURCE
+    return CREDIT_SOURCE_PREFIX + "-".join("".join(c if c.isalnum() else " " for c in credit.lower()).split())
+
+
 def _quoted(name: str) -> str:
     return name.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
 
@@ -216,7 +229,7 @@ def build_record(models: list[str]) -> dict:
             "retrieved": RETRIEVED,
             "license": NASA_LICENSE,
             "credit": "NASA",
-            "note": "NASA's own models and its renders of them; the repository's README says the assets are free and without copyright. Each file built from it names its input's address, size and SHA-256 in its note.",
+            "note": "NASA's own models and its renders of them; the repository's README says the assets are free and without copyright. Each file built from it names its input's address, size and SHA-256 in its note, and its model's own page, which names no source.",
         },
         PAGES_SOURCE: {
             "id": PAGES_SOURCE,
@@ -228,9 +241,26 @@ def build_record(models: list[str]) -> dict:
             "note": "Each speed, size and date in hangar/hangar.json names the NASA page it was read on, with a short quote from that page.",
         },
     }
+    for m in models:
+        sid = credit_source(m)
+        if sid != MODELS_SOURCE and sid not in sources:
+            sources[sid] = {
+                **sources[MODELS_SOURCE],
+                "id": sid,
+                "retrieved": CREDITS_READ,
+                "credit": MODEL_CREDITS[m]["credit"],
+                "note": (
+                    "Models among NASA's 3D Resources whose own pages on science.nasa.gov name this source, read "
+                    f"{CREDITS_READ}; the repository's README says the assets are free and without copyright. Each file "
+                    "built from one names its input's address, size and SHA-256 and its model's page in its note."
+                ),
+            }
     files = []
     for m in models:
         src = CRAFTS[m]["source"]
+        sid = credit_source(m)
+        page = MODEL_CREDITS[m]["page"]
+        credited = "names no source, so NASA is credited" if sid == MODELS_SOURCE else f"credits {MODEL_CREDITS[m]['credit']}"
         base = f"{NASA3D_RAW}/{_quoted(src['folder'])}/"
         model_url = src.get("url") or f"{base}{_quoted(src['file'])}"
         command = f"blender -b --factory-startup -P {BUILD_SCRIPT} -- --craft {m} --out apps/web/public/models/hangar/{m}"
@@ -239,13 +269,13 @@ def build_record(models: list[str]) -> dict:
             if CRAFTS[m]["scale_from"].get("native")
             else "scaled from the dimension hangar/hangar.json names with its NASA page"
         )
-        model_note = f"Built from {model_url} ({src['bytes']} bytes, SHA-256 {src['sha256']}); {scaled}."
+        model_note = f"Built from {model_url} ({src['bytes']} bytes, SHA-256 {src['sha256']}); {scaled}. Its model's page {page} {credited}."
         for level in LEVELS:
             files.append(
                 {
                     "path": f"hangar/{m}/{m}_{level}.glb",
                     "sha256": sha256_file(HANGAR_DIR / m / f"{m}_{level}.glb"),
-                    "sources": [MODELS_SOURCE, PAGES_SOURCE],
+                    "sources": [sid, PAGES_SOURCE],
                     "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[_level_changes(m, level)]},
                     "note": model_note,
                 }
@@ -253,15 +283,15 @@ def build_record(models: list[str]) -> dict:
         if src.get("picture") and not src.get("picker_render_reason"):
             picker_sentence = BUILD_SENTENCES["picker"]
             picture_url = src.get("picture_url") or f"{base}{_quoted(src['picture'])}"
-            picker_note = f"From NASA's render {picture_url} ({src['picture_bytes']} bytes, SHA-256 {src['picture_sha256']})."
+            picker_note = f"From NASA's render {picture_url} ({src['picture_bytes']} bytes, SHA-256 {src['picture_sha256']}). Its model's page {page} {credited}."
         else:
             picker_sentence = BUILD_SENTENCES[{"screenshot": "picker_render", "insignia": "picker_render_insignia", "white": "picker_render_white"}[src["picker_render_reason"]]]
-            picker_note = f"Rendered from this folder's lod0 build of {model_url}."
+            picker_note = f"Rendered from this folder's lod0 build of {model_url}. Its model's page {page} {credited}."
         files.append(
             {
                 "path": f"hangar/{m}/{m}_picker.webp",
                 "sha256": sha256_file(HANGAR_DIR / m / f"{m}_picker.webp"),
-                "sources": [MODELS_SOURCE],
+                "sources": [sid],
                 "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": picker_sentence},
                 "note": picker_note,
             }
@@ -270,13 +300,14 @@ def build_record(models: list[str]) -> dict:
         {
             "path": "hangar/hangar.json",
             "sha256": sha256_file(HANGAR_DIR / "hangar.json"),
-            "sources": [MODELS_SOURCE, PAGES_SOURCE],
+            "sources": sorted(sources),
             "producedBy": {"method": "script", "script": THIS_SCRIPT, "command": f"uv run python {THIS_SCRIPT}", "changes": FACTS_CHANGES},
         }
     )
     # The models folder's record is shared with the Local Bubble and Moon bakes: keep their entries as they are.
     existing = json.loads(RECORD_PATH.read_text(encoding="utf-8"))
-    others_sources = [s for s in existing["sources"] if s["id"] not in sources]
+    # a credit source no model names any more is the hangar's own, so it goes with the rest
+    others_sources = [s for s in existing["sources"] if s["id"] not in sources and not s["id"].startswith(CREDIT_SOURCE_PREFIX)]
     others_files = [f for f in existing["files"] if not f["path"].startswith("hangar/")]
     first = [s for s in others_sources if s["id"] == MOON_SOURCE_ID]
     last = [s for s in others_sources if s["id"] == BUBBLE_SOURCE_ID]

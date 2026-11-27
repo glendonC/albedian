@@ -2290,6 +2290,53 @@ CRAFTS: dict[str, dict] = {
 # twins may share one). travel is the sourced speed for the true-travel-time readout, or None with the reason the
 # design record words (D26 item 5) for a craft that never travels between stars. Every fact carries the page it was
 # read on and a short quote; the words a person reads on the card are the design lane's, not these keys.
+# Each model credited as its own page among NASA's 3D Resources credits it: the line under Source on its
+# science.nasa.gov page, read 2026-11-26 (most often the model's maker; New Horizons' resource page says Credit). A
+# page that names no source (Gemini, Juno, MESSENGER, MRO, NEAR Shoemaker) leaves the model credited to NASA.
+MODEL_CREDITS: dict[str, dict[str, str]] = {
+    "voyager": {"page": "https://science.nasa.gov/3d-resources/voyager-probe-b/", "credit": "NASA/Michael D. Carbajal"},
+    "jwst": {"page": "https://science.nasa.gov/3d-resources/james-webb-space-telescope-a/", "credit": "NASA/Goddard Space Flight Center"},
+    "pioneer10": {"page": "https://science.nasa.gov/3d-resources/pioneer/", "credit": "NASA/JPL/Eyes on the Solar System"},
+    "emu": {"page": "https://science.nasa.gov/3d-resources/extravehicular-mobility-unit/", "credit": "NASA/Michael D. Carbajal"},
+    "newhorizons": {"page": "https://science.nasa.gov/resource/new-horizons-3d-model/", "credit": "NASA Visualization Technology Applications and Development (VTAD)"},
+    "z2": {"page": "https://science.nasa.gov/3d-resources/z2-spacesuit/", "credit": "NASA/LaRC/Advanced Concepts Lab"},
+    "hubble": {"page": "https://science.nasa.gov/3d-resources/hubble-space-telescope-a/", "credit": "DigitalSpace Corporation"},
+    "apollo_lm": {"page": "https://science.nasa.gov/3d-resources/apollo-lunar-module/", "credit": "NASA/Michael D. Carbajal"},
+    "gemini": {"page": "https://science.nasa.gov/3d-resources/gemini/", "credit": "NASA"},
+    "mercury_suit": {"page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/", "credit": "NASA/Michael D. Carbajal"},
+    "mark3": {"page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/", "credit": "NASA/Michael D. Carbajal"},
+    "aces": {"page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/", "credit": "NASA/Michael D. Carbajal"},
+    "gemini_suit": {"page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/", "credit": "NASA/Michael D. Carbajal"},
+    "shuttle": {"page": "https://science.nasa.gov/3d-resources/space-shuttle-d/", "credit": "NASA/Johnson Space Center"},
+    "iss": {"page": "https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/", "credit": "NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory"},
+    "parker": {"page": "https://science.nasa.gov/3d-resources/parker-solar-probe/", "credit": "NASA/Matthew J. Garcia"},
+    "juno": {"page": "https://science.nasa.gov/3d-resources/juno-a/", "credit": "NASA"},
+    "dawn": {"page": "https://science.nasa.gov/3d-resources/dawn/", "credit": "NASA/Brian E. Kumanchik"},
+    "messenger": {"page": "https://science.nasa.gov/3d-resources/mercury-surface-space-environment-geochemistry-and-ranging-messenger/", "credit": "NASA"},
+    "spitzer": {"page": "https://science.nasa.gov/3d-resources/spitzer-space-telescope/", "credit": "NASA/Janice C. Lee; NASA/Robert L. Hurt"},
+    "osirisrex": {"page": "https://science.nasa.gov/3d-resources/origins-spectral-interpretation-resource-identification-and-security-regolith-explorer-osiris-rex/", "credit": "NASA/Christopher R. Meaney"},
+    "mro": {"page": "https://science.nasa.gov/3d-resources/mars-reconnaissance-orbiter-mro-a/", "credit": "NASA"},
+    "stardust": {"page": "https://science.nasa.gov/3d-resources/stardust/", "credit": "NASA/Brian E. Kumanchik; NASA/Christian A. Lopez"},
+    "ds1": {"page": "https://science.nasa.gov/3d-resources/deep-space-1/", "credit": "NASA/Brian E. Kumanchik; NASA/Christian A. Lopez"},
+    "mgs": {"page": "https://science.nasa.gov/3d-resources/mars-global-surveyor/", "credit": "NASA/JPL/Eyes on the Solar System"},
+    "near": {"page": "https://science.nasa.gov/3d-resources/near-shoemaker/", "credit": "NASA"},
+    "maven": {"page": "https://science.nasa.gov/3d-resources/mars-atmosphere-and-volatile-evolution-maven-b/", "credit": "NASA/Brian E. Kumanchik"},
+    "cassini": {"page": "https://science.nasa.gov/3d-resources/cassini-huygens-a/", "credit": "NASA/Brian E. Kumanchik"},
+    "ibex": {"page": "https://science.nasa.gov/3d-resources/interstellar-boundary-explorer-ibex/", "credit": "NASA/JPL/Eyes on the Solar System"},
+    "vanallen": {"page": "https://science.nasa.gov/3d-resources/van-allen-probes/", "credit": "NASA/Christopher R. Meaney"},
+    "deepimpact": {"page": "https://science.nasa.gov/3d-resources/deep-impact/", "credit": "NASA/Brian E. Kumanchik; NASA/Christian A. Lopez"},
+    "viking": {"page": "https://science.nasa.gov/3d-resources/viking-lander/", "credit": "NASA/Michael D. Carbajal"},
+    "apollosoyuz": {"page": "https://science.nasa.gov/3d-resources/apollo-soyuz/", "credit": "NASA/Michael D. Carbajal"},
+    "kepler": {"page": "https://science.nasa.gov/3d-resources/kepler-a/", "credit": "NASA/Brian E. Kumanchik; NASA/Christian A. Lopez"},
+    "ingenuity": {"page": "https://science.nasa.gov/3d-resources/ingenuity-mars-helicopter/", "credit": "NASA/Brian E. Kumanchik"},
+    "perseverance": {"page": "https://science.nasa.gov/3d-resources/mars-2020-perseverance-rover/", "credit": "NASA/Jet Propulsion Laboratory"},
+    "clementine": {"page": "https://science.nasa.gov/3d-resources/clementine/", "credit": "NASA/Brian E. Kumanchik"},
+    "tdrs": {"page": "https://science.nasa.gov/3d-resources/tracking-and-data-relay-satellites-tdrs-b/", "credit": "NASA/JPL/Eyes on the Solar System"},
+    "odyssey": {"page": "https://science.nasa.gov/3d-resources/mars-odyssey/", "credit": "NASA/JPL/Eyes on the Solar System"},
+    "insight": {"page": "https://science.nasa.gov/3d-resources/insight-cruise-lander/", "credit": "NASA/Brian E. Kumanchik"},
+}
+
+
 HANGAR: list[dict] = [
     {
         "id": "voyager-1",

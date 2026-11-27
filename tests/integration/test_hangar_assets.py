@@ -271,6 +271,48 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
             assert not gone, (name, level, len(gone), sorted(gone, reverse=True)[:5])
 
 
+def test_each_craft_is_credited_as_its_own_nasa_model_page_credits_it() -> None:
+    # AUDIT-B's read of main 927612bd3 (R2): the craft built at JPL were credited "NASA" alone. Each model's own page
+    # among NASA's 3D Resources, read 2026-11-26, names a Source (most often the model's maker; only Perseverance's
+    # says NASA/Jet Propulsion Laboratory), and five name none, which stay "NASA". Every file built from a model is
+    # credited by its page's line and names that page; one record source per credit line.
+    from scripts.lookdev.hangar.crafts import MODEL_CREDITS
+
+    raw = json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))
+    record = {f["path"]: f for f in raw["files"]}
+    sources = {s["id"]: s for s in raw["sources"]}
+    assert set(MODEL_CREDITS) == set(FACTS["models"]) == set(CRAFTS)
+    for name, given in MODEL_CREDITS.items():
+        assert given["page"].startswith("https://science.nasa.gov/"), name
+        for level in ("lod0", "lod1", "lod2", "picker"):
+            path = f"hangar/{name}/{name}_{level}.{'webp' if level == 'picker' else 'glb'}"
+            credited = [sources[s]["credit"] for s in record[path]["sources"] if s != write_hangar.PAGES_SOURCE]
+            assert credited == [given["credit"]], (path, credited)
+            assert given["page"] in record[path]["note"], path
+    assert MODEL_CREDITS["perseverance"]["credit"] == "NASA/Jet Propulsion Laboratory"
+    assert MODEL_CREDITS["iss"]["credit"] == "NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory"
+    assert MODEL_CREDITS["hubble"]["credit"] == "DigitalSpace Corporation"
+    assert MODEL_CREDITS["cassini"]["credit"] == "NASA/Brian E. Kumanchik"
+    assert {n for n, g in MODEL_CREDITS.items() if g["credit"] == "NASA"} == {"gemini", "juno", "messenger", "mro", "near"}
+    hangar = [s for s in sources.values() if s["id"] == write_hangar.MODELS_SOURCE or s["id"].startswith(write_hangar.CREDIT_SOURCE_PREFIX)]
+    assert len({s["credit"] for s in hangar}) == len(hangar) == len({g["credit"] for g in MODEL_CREDITS.values()}) == 15
+    assert all(s["title"] == "NASA 3D Resources" and s["license"] == sources[write_hangar.MODELS_SOURCE]["license"] for s in hangar)
+    # the facts file is built from every model, so it names every hangar source
+    assert set(record["hangar/hangar.json"]["sources"]) == {s["id"] for s in hangar} | {write_hangar.PAGES_SOURCE}
+
+
+def test_a_credit_source_no_model_names_leaves_the_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))
+    stale = {**raw["sources"][0], "id": write_hangar.CREDIT_SOURCE_PREFIX + "a-maker-no-page-names", "credit": "Nobody"}
+    raw["sources"].insert(1, stale)
+    copy = tmp_path / "PROVENANCE.json"
+    copy.write_text(json.dumps(raw), encoding="utf-8")
+    monkeypatch.setattr(write_hangar, "RECORD_PATH", copy)
+    written = write_hangar.build_record(list(FACTS["models"]))
+    assert stale["id"] not in {s["id"] for s in written["sources"]}
+    assert [s["id"] for s in written["sources"]] == [s["id"] for s in raw["sources"] if s is not stale]
+
+
 def test_the_true_size_is_metres_of_a_real_craft() -> None:
     for name, model in FACTS["models"].items():
         lo, hi = model["boundsM"]["min"], model["boundsM"]["max"]
