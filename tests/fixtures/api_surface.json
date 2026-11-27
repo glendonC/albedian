@@ -673,7 +673,7 @@
       "/api/voice/answer/{sha256}": {
         "post": {
           "summary": "Post Voice Answer",
-          "description": "Answer a question about a stored upload from its stored solution: the words as heard and one VoiceAnswer.\nNothing here logs the words, and no model reads them.",
+          "description": "Answer a question about a stored upload from its stored solution, or about the sample night from its kept solve\n(sample-voice-one): the words as heard and one VoiceAnswer. An upload of the sample's bytes answers from its own.\nNothing here logs the words, and no model reads them.",
           "operationId": "post_voice_answer_api_voice_answer__sha256__post",
           "parameters": [
             {

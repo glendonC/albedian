@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.params import Path as PathParam
@@ -55,6 +55,23 @@ def _sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1 << 20), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def sample_of_photo(root: Path, sha256: str) -> Optional[SampleNight]:
+    """The sample night whose photo has these bytes, or None (sample-voice-one: the voice answer route asks it)."""
+    return next((s for s in load_samples(root / "data" / "samples.json") if s.photo.sha256 == sha256), None)
+
+
+def kept_solution(root: Path, night: SampleNight) -> Optional[dict[str, Any]]:
+    """The app's own solve of the sample kept on this machine, whole: None when it is not made here (or is a link to
+    elsewhere), 409 when it fails the SHA-256 kept beside it."""
+    path = root / night.solution.path
+    kept = root / night.solution.sha256_path
+    if not path.is_file() or path.is_symlink() or not kept.is_file():
+        return None
+    if _sha256(path) != kept.read_text(encoding="utf-8").strip():
+        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @router.get("/api/samples")
@@ -102,11 +119,7 @@ def get_sample_asset(sample_id: str = _sample_id(), root: Path = Depends(get_sam
 @router.get("/api/samples/{sample_id}/solution")
 def get_sample_solution(sample_id: str = _sample_id(), root: Path = Depends(get_samples_root)) -> Any:
     """The app's own solve of the sample, made on this machine, whole."""
-    night = _night(root, sample_id)
-    path = root / night.solution.path
-    kept = root / night.solution.sha256_path
-    if not path.is_file() or path.is_symlink() or not kept.is_file():
+    solution = kept_solution(root, _night(root, sample_id))
+    if solution is None:
         raise HTTPException(status_code=404, detail=NO_SAMPLE_SOLUTION)
-    if _sha256(path) != kept.read_text(encoding="utf-8").strip():
-        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
-    return json.loads(path.read_text(encoding="utf-8"))
+    return solution

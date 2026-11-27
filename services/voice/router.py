@@ -4,6 +4,7 @@ about a stored photo answered from its stored solution."""
 from __future__ import annotations
 
 from collections.abc import Callable, Coroutine
+from pathlib import Path as FilePath
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
@@ -12,6 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
+from services.contracts.astronomy import parse_observation_solution
 from services.contracts.voice import (
     VOICE_QUESTION_REPLY,
     FindingId,
@@ -22,6 +24,7 @@ from services.contracts.voice import (
 from services.ingest.job_store import JobStore, Unreadable
 from services.ingest.router import UNREADABLE_SOLUTION, get_ingest_store
 from services.ingest.store import IngestStore
+from services.samples.router import UNEXPECTED_SAMPLE_FILE, get_samples_root, kept_solution, sample_of_photo
 from services.voice.answers import answer_question, noun_of
 from services.voice.intent import ActionContext, check_voice_command
 
@@ -87,6 +90,28 @@ def _read_checked_solution(store: IngestStore, sha256: str) -> dict[str, Any] | 
         raise HTTPException(status_code=409, detail=UNREADABLE_SOLUTION) from exc
 
 
+def _checked_sample_solution(root: FilePath, sha256: str) -> tuple[bool, dict[str, Any] | None]:
+    """For a sample night's photo (sample-voice-one): (True, its kept solve, checked as an upload's is and naming this
+    photo), or (True, None) when the solve is not made here; (False, None) when no sample has these bytes. 409 when
+    the kept solve fails its hash, the contract or the answer contract's ids, or names another photo."""
+    night = sample_of_photo(root, sha256)
+    if night is None:
+        return False, None
+    solution = kept_solution(root, night)
+    if solution is None:
+        return True, None
+    try:
+        parsed = parse_observation_solution(solution)
+        _SOLUTION_ID.validate_python(solution["id"])
+        for finding in solution["findings"]:
+            _FINDING_ID.validate_python(finding["id"])
+    except (ValidationError, TypeError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE) from exc
+    if parsed.source_sha256 != sha256 or parsed.source_asset_id != f"src_{sha256[:16]}":
+        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
+    return True, solution
+
+
 @router.post("/api/voice/command")
 def post_voice_command(req: VoiceCommandRequest) -> dict[str, Any]:
     """Parse natural-language voice intent and validate against session revision & epistemic gates."""
@@ -98,16 +123,23 @@ def post_voice_answer(
     req: VoiceQuestionRequest,
     sha256: str = Path(pattern=r"^[0-9a-f]{64}$"),
     store: IngestStore = Depends(get_ingest_store),
+    samples_root: FilePath = Depends(get_samples_root),
 ) -> dict[str, Any]:
-    """Answer a question about a stored upload from its stored solution: the words as heard and one VoiceAnswer.
+    """Answer a question about a stored upload from its stored solution, or about the sample night from its kept solve
+    (sample-voice-one): the words as heard and one VoiceAnswer. An upload of the sample's bytes answers from its own.
     Nothing here logs the words, and no model reads them."""
     record = store.read_record(sha256)
     if record is None or store.original(sha256) is None:
-        raise HTTPException(status_code=404, detail="no file with that hash is stored")
-    solution = _read_checked_solution(store, sha256)
-    # The recording named by its own noun, from the stored upload's media kind (C34)
-    asset = record.get("sourceAsset")
-    noun = noun_of(asset.get("mediaKind") if isinstance(asset, dict) else None)
+        is_sample, solution = _checked_sample_solution(samples_root, sha256)
+        if not is_sample:
+            raise HTTPException(status_code=404, detail="no file with that hash is stored")
+        # A sample night is a photo
+        noun = noun_of("image")
+    else:
+        solution = _read_checked_solution(store, sha256)
+        # The recording named by its own noun, from the stored upload's media kind (C34)
+        asset = record.get("sourceAsset")
+        noun = noun_of(asset.get("mediaKind") if isinstance(asset, dict) else None)
     reply = {"heard": req.question,
              "answer": answer_question(req.question, solution, req.selected_finding_id, noun=noun)}
     VOICE_QUESTION_REPLY.validate_python(reply)
