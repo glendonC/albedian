@@ -857,6 +857,7 @@ def test_no_two_touching_parts_of_a_rigged_suit_come_apart_in_any_pose(name: str
 
 
 SHADED = sorted(name for name, recipe in CRAFTS.items() if recipe.get("vertex_ao"))
+AO_GROUP_ONE = {"clementine", "deepimpact", "ds1", "ibex", "kepler", "maven", "mgs", "near", "parker", "stardust"}
 
 
 @pytest.mark.parametrize("name", SHADED)
@@ -866,11 +867,12 @@ def test_a_craft_given_fill_occlusion_carries_it_at_every_vertex_of_every_level(
     # between 0 and 1, varying over the model as real shadowing does (lit at the outside, shut in the creases), never a
     # colour (three would darken the key with a COLOR_0), and the record's sentence says so. Measured means: EMU 0.42
     # to 0.45, New Horizons 0.64 to 0.68.
-    assert SHADED == ["emu", "newhorizons", "z2"]
+    # craft-ao-two adds the other models in groups, each its reach 15 percent of its longest side
+    assert set(SHADED) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE
     record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
     for level in ("lod0", "lod1", "lod2"):
         path = HANGAR_DIR / FACTS["models"][name]["files"][level]["path"]
-        assert "_AO" in record[f"hangar/{name}/{path.name}"]["producedBy"]["changes"], (name, level)
+        assert record[f"hangar/{name}/{path.name}"]["producedBy"]["changes"].count("_AO") == 1, (name, level)
         gltf, blob = _glb(path)
         shade = []
         for mesh in gltf["meshes"]:

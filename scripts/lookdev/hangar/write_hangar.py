@@ -199,12 +199,19 @@ def build_facts(models: list[str]) -> dict:
 
 
 def _level_changes(model: str, level: str) -> str:
-    """The key of build_craft.py's CHANGES sentence for one level of one model."""
+    """The key of build_craft.py's CHANGES sentence for one level of one model ("_ao" ended where it carries the sky
+    fill's occlusion and its own sentence does not say so)."""
     if level == "lod0":
-        return f"lod0_{CRAFTS[model]['changes']}"
+        key = f"lod0_{CRAFTS[model]['changes']}"
+        return f"{key}_ao" if CRAFTS[model].get("vertex_ao") and f"{key}_ao" in BUILD_SENTENCES else key
     key = f"{level}_by_part" if by_part_at(CRAFTS[model], level) else level
     # a craft given the sky fill's occlusion per vertex says so at every level (craft-ao-one)
     return f"{key}_ao" if CRAFTS[model].get("vertex_ao") else key
+
+
+def _level_sentence(model: str, level: str) -> str:
+    """The sentence for one level, word for word build_craft.py's (each "_ao" sentence is written out there in full)."""
+    return BUILD_SENTENCES[_level_changes(model, level)]
 
 
 def credit_source(model: str) -> str:
@@ -280,7 +287,7 @@ def build_record(models: list[str]) -> dict:
                     "path": f"hangar/{m}/{m}_{level}.glb",
                     "sha256": sha256_file(HANGAR_DIR / m / f"{m}_{level}.glb"),
                     "sources": [sid, PAGES_SOURCE],
-                    "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[_level_changes(m, level)]},
+                    "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": _level_sentence(m, level)},
                     "note": model_note + over,
                 }
             )

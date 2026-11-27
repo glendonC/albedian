@@ -962,6 +962,8 @@ CRAFTS: dict[str, dict] = {
         "weld_m": 0.0001,
         "smooth_deg": 35.0,
         "body_radius_m": 1.6,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.98, "skip_m": 0.003},
         "changes": "foil",
     },
     "juno": {
@@ -1300,6 +1302,8 @@ CRAFTS: dict[str, dict] = {
         # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
         "texture_edge": {"lod2": 384},
         "body_radius_m": 1.4,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.76, "skip_m": 0.003},
         "changes": "photo_foil",
     },
     "ds1": {
@@ -1346,6 +1350,8 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "smooth_deg": 35.0,
         "body_radius_m": 1.4,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.8, "skip_m": 0.003},
         "changes": "photo_foil_label",
     },
     "mgs": {
@@ -1396,6 +1402,8 @@ CRAFTS: dict[str, dict] = {
         },
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "body_radius_m": 1.5,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.8, "skip_m": 0.003},
         "changes": "photo",
     },
     "near": {
@@ -1442,6 +1450,8 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "smooth_deg": 35.0,
         "body_radius_m": 1.4,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.79, "skip_m": 0.003},
         "changes": "photo_label",
     },
     "maven": {
@@ -1495,6 +1505,8 @@ CRAFTS: dict[str, dict] = {
         "lod_ratio": {"lod0": 0.8, "lod1": 0.3, "lod2": 0.1},
         "texture_edge": {"lod1": 512, "lod2": 256},
         "body_radius_m": 2.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 2.0, "skip_m": 0.003},
         "changes": "photo",
     },
     "cassini": {
@@ -1588,6 +1600,8 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "smooth_deg": 35.0,
         "body_radius_m": 0.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         "changes": "photo_deck",
     },
     "vanallen": {
@@ -1686,6 +1700,8 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.6,
         # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
         "texture_edge": {"lod2": 384},
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.59, "skip_m": 0.003},
         "changes": "epoxi",
     },
     "viking": {
@@ -1826,6 +1842,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         # About half the height (5.1 m with the brackets at this scale).
         "body_radius_m": 2.6,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.76, "skip_m": 0.003},
         "changes": "kepler",
     },
     "ingenuity": {
@@ -2069,6 +2087,8 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.1,
         # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
         "texture_edge": {"lod2": 384},
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.57, "skip_m": 0.003},
         "changes": "clementine",
     },
     "tdrs": {
