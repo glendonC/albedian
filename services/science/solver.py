@@ -154,6 +154,18 @@ TRIANGLE_RATIO_TOLERANCE = 0.045
 # tests/science/test_triangle_dense_fields.py: a point at the origin and a query at (v, v) raise from the float
 # after v = sqrt(max / 2) on]
 _INDEX_LIMIT = math.sqrt(sys.float_info.max) / 4.0
+# The consensus pairing's KD-tree of the detections (`_pairing_reach`) is asked this far past the reach, then every
+# pair it finds is kept or dropped by main's own expression and test, so the tree only has to find a superset of
+# main's reach. Its squared sums are rounded relative to the distance itself (the differences are main's, rounded once
+# each, and every rounding after them is monotonic), by at most a few units in the last place of the squared reach,
+# under 5e-4 px squared at `_PAIR_TREE_REACH_LIMIT_PX`; the slack widens the squared reach by twice the reach times
+# 1e-6 px, at least 4,000 times that rounding at every reach up to the limit [inference]. Asked at exactly the reach,
+# the tree on this machine kept each of 500,000 points at the last float inside it, at reaches of 3.001 to 1e12 px
+# [tested, scipy 1.18.1, macOS arm64, `.lanetools/reachtree/find_edge3.py` in the lane's folder, not in the
+# repository], so the slack is a margin no measured case needed. Past the limit, and at a reach that is 0, below it
+# or not a number, the pairing is main's dense matrix as it was.
+_PAIR_TREE_SLACK_PX = 1e-6
+_PAIR_TREE_REACH_LIMIT_PX = 1e6
 
 
 @dataclass(frozen=True)
@@ -428,15 +440,83 @@ class _PairingDetections(tuple):
     """The detections a plate search pairs against every candidate WCS, with their x and y arrays and the values
     `_coordinates` refuses made once (pair-coords-once-1): main made them again for each candidate, which was most of
     a long predicted-only wait's plate search. A tuple, so neither the detections nor their order change after the
-    arrays are made (a detection is frozen); the arrays are read-only."""
+    arrays are made (a detection is frozen); the arrays are read-only.
+
+    With them, once (pair-reach-tree-1): a KD-tree of the detections `_indexable` lets in (`tree_rows`), the finite
+    ones it keeps out (`far_rows`, compared with every star as main compared them) and the refused ones
+    (`refused_rows`, which reach every star as in main). A detection at a NaN or infinite position is in none of them:
+    its distance in main's matrix is NaN or infinite, never in reach."""
 
     def __new__(cls, detections: Sequence[SourceDetection]) -> "_PairingDetections":
         self = super().__new__(cls, detections)
         self.x, self.x_refused = _coordinates([d.x_px for d in self])
         self.y, self.y_refused = _coordinates([d.y_px for d in self])
-        for array in (self.x, self.x_refused, self.y, self.y_refused):
+        points = np.column_stack([self.x, self.y])
+        inside = _indexable(points)
+        self.tree_rows = np.flatnonzero(inside)
+        self.far_rows = np.flatnonzero(np.isfinite(points).all(axis=1) & ~inside)
+        self.refused_rows = np.flatnonzero(self.x_refused | self.y_refused)
+        self.tree = cKDTree(points[self.tree_rows]) if self.tree_rows.size else None
+        for array in (self.x, self.x_refused, self.y, self.y_refused, self.tree_rows, self.far_rows, self.refused_rows):
             array.setflags(write=False)
         return self
+
+
+def _pairing_reach(
+    detections: _PairingDetections, px: np.ndarray, py: np.ndarray, reach_px: float
+) -> list[tuple[int, np.ndarray]]:
+    """Main's reach for the consensus pairing, without its dense matrix: per detection with any star in reach, in
+    order, the indices of those stars in order. In main a pair is in reach when `np.hypot` of the star's projection
+    (`px`, `py`) less the detection's position is finite and below `reach_px`, and a detection the record refuses
+    reaches every star.
+
+    Here the tree of the detections is asked for each star `_indexable` lets in, `_PAIR_TREE_SLACK_PX` past the
+    reach; a detection that is finite but past the index limit is compared with every finite star. Each pair so found
+    is measured with main's expression, element for element, and kept by main's test, so the reach is main's to the
+    pair. A star at a NaN or infinite projection has a
+    NaN or infinite distance in main and is asked about nothing. At a reach the tree is not asked with (0 or below,
+    past `_PAIR_TREE_REACH_LIMIT_PX`, not a number), main's dense matrix gives the reach."""
+    if not 0.0 < reach_px <= _PAIR_TREE_REACH_LIMIT_PX:
+        with np.errstate(invalid="ignore", over="ignore"):
+            dist = np.hypot(px[None, :] - detections.x[:, None], py[None, :] - detections.y[:, None])
+        close = np.isfinite(dist) & (dist < reach_px)
+        close[detections.refused_rows, :] = True
+        return [(int(i), np.flatnonzero(close[i])) for i in np.flatnonzero(close.any(axis=1))]
+    stars = np.flatnonzero(np.isfinite(px) & np.isfinite(py))
+    asked = _indexable(np.column_stack([px[stars], py[stars]]))
+    rows: list[np.ndarray] = []
+    cols: list[np.ndarray] = []
+    if detections.tree is not None and asked.any():
+        queried = stars[asked]
+        found = detections.tree.query_ball_point(
+            np.column_stack([px[queried], py[queried]]), float(reach_px) + _PAIR_TREE_SLACK_PX
+        )
+        counts = np.fromiter(map(len, found), dtype=np.intp, count=len(found))
+        hits = np.fromiter(itertools.chain.from_iterable(found), dtype=np.intp, count=int(counts.sum()))
+        rows.append(detections.tree_rows[hits])
+        cols.append(np.repeat(queried, counts))
+    # A star past the index limit is never in reach of a detection within it: their difference on that axis is at
+    # least the gap between the limit and the next float (3.7e137 px), past any reach the tree is asked with.
+    # It can be in reach only of a detection past the limit, and each of those is compared with every finite star
+    if detections.far_rows.size and stars.size:
+        rows.append(np.repeat(detections.far_rows, stars.size))
+        cols.append(np.tile(stars, detections.far_rows.size))
+    groups: dict[int, np.ndarray] = {}
+    if rows:
+        row, col = np.concatenate(rows), np.concatenate(cols)
+        with np.errstate(invalid="ignore", over="ignore"):
+            dist = np.hypot(px[col] - detections.x[row], py[col] - detections.y[row])
+        keep = np.isfinite(dist) & (dist < reach_px)
+        row, col = row[keep], col[keep]
+        order = np.lexsort((col, row))
+        row, col = row[order], col[order]
+        starts = np.flatnonzero(np.r_[True, row[1:] != row[:-1]]) if row.size else np.empty(0, dtype=np.intp)
+        groups = dict(zip(row[starts].tolist(), np.split(col, starts[1:])))
+    if px.shape[0]:
+        every_star = np.arange(px.shape[0])
+        for i in detections.refused_rows.tolist():
+            groups[i] = every_star
+    return [(i, groups[i]) for i in sorted(groups)]
 
 
 def _greedy_pairs(
@@ -452,28 +532,21 @@ def _greedy_pairs(
     stars' positions: all stars are projected once per candidate (`_project`), and only those it puts within
     `radius_px` plus `_PREFILTER_MARGIN_PX` of a detection are measured with `wcs.world_to_pixel`, as `verify_held_out`
     measures them. The pairs and distances are the ones measuring every star with `wcs.world_to_pixel` gives.
-    Detections given as `_PairingDetections` carry their arrays, made once for every candidate of a search."""
+    Detections given as `_PairingDetections` carry their arrays and their KD-tree, made once for every candidate of a
+    search; which stars each detection measures is main's dense reach, read from that tree (`_pairing_reach`)."""
     if not detections or len(stars) == 0:
         return []
     px, py = _project(wcs, ra_deg, dec_deg)
-    if isinstance(detections, _PairingDetections):
-        dx, x_refused, dy, y_refused = detections.x, detections.x_refused, detections.y, detections.y_refused
-    else:
-        dx, x_refused = _coordinates([d.x_px for d in detections])
-        dy, y_refused = _coordinates([d.y_px for d in detections])
-    # A NaN or infinite detection or projection gives a NaN or infinite distance, never closer than the radius
-    with np.errstate(invalid="ignore", over="ignore"):
-        dist = np.hypot(px[None, :] - dx[:, None], py[None, :] - dy[:, None])
-    close = np.isfinite(dist) & (dist < radius_px + _PREFILTER_MARGIN_PX)
-    close[x_refused | y_refused, :] = True
+    if not isinstance(detections, _PairingDetections):
+        detections = _PairingDetections(detections)
     ids = [s.id for s in stars]
     used: set[str] = set()
     exact: dict[int, tuple[float, float]] = {}
     pairs: list[tuple[SourceDetection, CatalogStar, float]] = []
-    for i in np.flatnonzero(close.any(axis=1)):
+    for i, reached in _pairing_reach(detections, px, py, radius_px + _PREFILTER_MARGIN_PX):
         det = detections[i]
         best_j, best_d = -1, radius_px
-        for j in np.flatnonzero(close[i]):
+        for j in reached:
             if ids[j] in used:
                 continue
             if j not in exact:
