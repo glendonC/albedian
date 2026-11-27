@@ -51,6 +51,16 @@ export interface SafeAreaInsets {
 }
 export const NO_SAFE_AREA: SafeAreaInsets = { right: 0, bottom: 0 };
 
+/** The root's copy of env(safe-area-inset-left), resolved by albedian.css (nomatch-sideways-one's leading margin). */
+export const SAFE_AREA_LEFT_VAR = '--alb-safe-area-left';
+
+/** The leading margin held on its side: 24 px, or the leading safe-area inset where it is wider (62 on a 17 Pro). */
+export function readLeadingMarginPx(): number {
+  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') return 24;
+  const value = parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue(SAFE_AREA_LEFT_VAR));
+  return Math.max(24, Number.isFinite(value) ? value : 0);
+}
+
 /** Fired by the voice element when its captions appear, change size or go; their height is --alb-captions-h. */
 export const CAPTIONS_CHANGE_EVENT = 'alb-captions-change';
 /** How far above the captions the selected star stays: as from the sheet, so its ring clears them too. */

@@ -1130,6 +1130,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onShowPredictedSky={() => onShowPredictedSky?.()}
           onAlign={alignOffered ? () => setAligning(alignStart) : undefined}
           onRestore={phoneNoMatchRestore ? () => onRestore?.() : undefined}
+          columnLeftPx={sideways && !phoneClip && frame ? frame.leftPx + frame.widthPx + 24 : undefined}
         />
       ) : phone && (!skyLineShown || there) ? null : there ? (
         // The flight's column from the flight's first frame (3D stars, rings and any craft draw before the panorama

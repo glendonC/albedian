@@ -1884,6 +1884,46 @@
 .reveal-status.is-phone .reveal-status__warns {
   margin: 24px 0 0;
 }
+
+/* nomatch-sideways-one (UIUX-phone-sideways-READY.md item 8, DECIDED-BY-LEAD 03:48 on 27 Nov): held on its side the photo
+   stands whole at the leading margin and the screen is one column beside it, from the photo's trailing edge plus 24 px
+   (PhoneNoMatch's left, set from the photo) to the trailing margin, its top at 64 under the top bar: the outcome
+   sentence, 16 px under it the actions flowing in rows across the column (10 px apart in a row, 8 between rows, Show
+   predicted sky first and filled), 16 px under them the hairline and the warnings; the column scrolls inside itself with
+   a 44 px fade at its foot over the black beside the photo, which says there is more; the photo stays put. The class
+   stands only on a phone held on its side (RevealPhoto.tsx) */
+.reveal-phone-scroll.is-column {
+  top: 64px;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent);
+}
+
+.reveal-phone-scroll.is-column .reveal-status.is-unmatched.is-phone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: 10px;
+  row-gap: 8px;
+  padding: 0 0 44px;
+}
+
+.reveal-phone-scroll.is-column .reveal-phone-lead {
+  flex-basis: 100%;
+  min-height: 0;
+  margin-bottom: 8px;
+}
+
+.reveal-phone-scroll.is-column .reveal-phone-go {
+  display: block;
+  margin: 0;
+}
+
+.reveal-phone-scroll.is-column .reveal-status__warns {
+  flex-basis: 100%;
+  margin: 8px 0 0;
+}
 :root[data-phone-scroll] .alb-source-stage > img,
 :root[data-phone-scroll] .alb-source-stage > video {
   translate: 0 calc(-1 * var(--phone-scroll, 0px));

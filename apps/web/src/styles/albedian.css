@@ -1412,6 +1412,7 @@
 :root {
   --alb-safe-area-right: env(safe-area-inset-right, 0px);
   --alb-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --alb-safe-area-left: env(safe-area-inset-left, 0px);
 }
 
 /* Upright only: a sideways phone (an iPhone SE is 667 by 375) takes the landscape block below instead, so exactly one

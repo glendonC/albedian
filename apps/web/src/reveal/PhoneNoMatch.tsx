@@ -15,6 +15,12 @@ export const PhoneNoMatch: React.FC<{
   clip?: boolean;
   inert?: boolean;
   assetKey?: string;
+  /**
+   * Held on its side (nomatch-sideways-one; UIUX-phone-sideways-READY.md item 8): the photo stands whole at the leading
+   * margin and this screen is one column beside it, from the photo's trailing edge plus 24 px (this left edge), scrolling
+   * inside itself; the photo stays put.
+   */
+  columnLeftPx?: number;
 }> = ({
   status,
   onShowPredictedSky,
@@ -23,10 +29,19 @@ export const PhoneNoMatch: React.FC<{
   clip = false,
   inert = false,
   assetKey,
+  columnLeftPx,
 }) => {
-  const { screen, onScroll } = usePhoneScroll(assetKey);
+  const column = columnLeftPx !== undefined;
+  const { screen, onScroll } = usePhoneScroll(assetKey, column);
   return (
-    <div ref={screen} className="reveal-phone-scroll" data-testid="reveal-phone-scroll" onScroll={onScroll} inert={inert}>
+    <div
+      ref={screen}
+      className={column ? 'reveal-phone-scroll is-column' : 'reveal-phone-scroll'}
+      data-testid="reveal-phone-scroll"
+      onScroll={onScroll}
+      inert={inert}
+      style={column ? { left: `${columnLeftPx}px` } : undefined}
+    >
       <div
         className={clip ? 'reveal-status is-unmatched is-phone is-clip' : 'reveal-status is-unmatched is-phone'}
         data-testid="reveal-status"
@@ -71,11 +86,12 @@ export const PhoneNoMatch: React.FC<{
   );
 };
 
-/** The whole screen scrolls, and the photo (and the rings drawn on it) move up with it. */
-function usePhoneScroll(assetKey?: string) {
+/** The whole screen scrolls, and the photo (and the rings drawn on it) move up with it; a column beside the photo scrolls alone. */
+function usePhoneScroll(assetKey?: string, column = false) {
   const screen = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (screen.current) screen.current.scrollTop = 0;
+    if (column) return undefined;
     const root = document.documentElement;
     root.dataset.phoneScroll = '';
     root.style.removeProperty('--phone-scroll');
@@ -83,8 +99,9 @@ function usePhoneScroll(assetKey?: string) {
       delete root.dataset.phoneScroll;
       root.style.removeProperty('--phone-scroll');
     };
-  }, [assetKey]);
+  }, [assetKey, column]);
   const onScroll = () => {
+    if (column) return;
     document.documentElement.style.setProperty('--phone-scroll', `${screen.current?.scrollTop ?? 0}px`);
   };
   return { screen, onScroll };

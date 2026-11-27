@@ -63,7 +63,8 @@ import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import { ClipPlayer } from '../reveal/ClipPlayer.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
-import { isPhoneNoMatchShown, isPhoneRevealShown, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
+import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
+import { readLeadingMarginPx } from './phoneSheet.js';
 import { useRestoration } from '../reveal/restoration.js';
 import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
@@ -689,7 +690,9 @@ export const SpatialObservatoryViewport: React.FC<
     const asset = session.sourceAsset;
     if (!(phoneReveal || phoneWorking) || !asset) return session;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
-    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, asset.mediaKind) } } as ObservationSession;
+    // nomatch-sideways-one (item 8a): held on its side the no-match photo stands whole at the leading margin, a column beside it
+    const leading = phoneNoMatch && asset.mediaKind === 'image' && isSideways(windowSize.widthPx, windowSize.heightPx) ? readLeadingMarginPx() : undefined;
+    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, asset.mediaKind, leading) } } as ObservationSession;
   })();
   const slotMask = (() => {
     const asset = session.sourceAsset;
