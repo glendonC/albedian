@@ -4,6 +4,7 @@ import { realSkyChanges } from '../reveal/RealSkyLayer.js';
 import { milkyWayInFlightChanges } from '../spatial/sky/flightMilkyWay.js';
 import { milkyWayInPredictedSkyChanges } from '../spatial/sky/predictedSkyPicture.js';
 import { milkyWay3dChanges, milkyWayCopyDrawn } from '../spatial/sky/panoramaGrade.js';
+import landingMoment from '../spatial/webgpu/cislunar/landingMoment.json';
 import { homeBackdropChanges } from './homeBackdrop.js';
 
 /**
@@ -47,6 +48,7 @@ export const CREDIT_ROWS = [
   { name: 'Eclipses', approved: false },
   { name: 'The Moon', approved: false },
   { name: 'The Earth', approved: false },
+  { name: 'Positions of the Sun, Earth and Moon', approved: false },
   { name: 'The Local Bubble', approved: false },
   { name: 'Spacecraft and spacesuit', approved: false },
   { name: 'Unicode character data', approved: false },
@@ -225,6 +227,43 @@ function soundBlock(audio: readonly AudioCredit[], heard: readonly string[]): Cr
 }
 
 /**
+ * The reference the Horizons manual suggests (version 4.98e of 25 Aug 2026, "References for the Horizons system", read
+ * on its page on 26 Nov 2026), word for word up to the day the data were retrieved, which follows it. Horizons states no
+ * licence (credits-change-lines-one; AUDIT-B's licence read, G1).
+ */
+export const HORIZONS_REFERENCE =
+  'Giorgini, JD and JPL Solar System Dynamics Group, NASA/JPL Horizons On-Line Ephemeris System, < https://ssd.jpl.nasa.gov/horizons/ >, data retrieved';
+const HORIZONS_PAGE = 'https://ssd.jpl.nasa.gov/horizons/';
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
+/** The latest of these retrieval times as the reference's YYYY-Mon-DD (UTC), or null when none reads as a time. */
+export function horizonsRetrievedDay(retrievedUtc: readonly string[]): string | null {
+  const times = retrievedUtc.map((t) => Date.parse(t)).filter((t) => Number.isFinite(t));
+  if (times.length === 0) return null;
+  const day = new Date(Math.max(...times));
+  return `${day.getUTCFullYear()}-${MONTHS[day.getUTCMonth()]}-${String(day.getUTCDate()).padStart(2, '0')}`;
+}
+
+/**
+ * The landing scene's Sun, Earth and Moon, from NASA/JPL Horizons (spatial/webgpu/cislunar/landingMoment.json): the
+ * service as the file names it, no licence, the manual's reference with the day the file records, and Horizons' page.
+ */
+function horizonsBlock(): CreditBlock | null {
+  const day = horizonsRetrievedDay(landingMoment.horizons.queries.map((query) => query.retrievedUtc));
+  if (day === null) return null;
+  return {
+    key: 'horizons',
+    credits: [landingMoment.horizons.service],
+    licences: [],
+    notices: [],
+    acknowledgements: [],
+    citations: [`${HORIZONS_REFERENCE} ${day}.`],
+    changes: [],
+    href: HORIZONS_PAGE,
+  };
+}
+
+/**
  * The Credits page's rows, read from the records: on each row, one block per credit, with the licence of each of its
  * sources linked, each notice the app serves beside its files, each acknowledgement word for word, each citation its
  * terms ask for, each owed change, and the source's own page. A source named by several records is credited once.
@@ -279,6 +318,8 @@ export function creditRows(
       }));
     }
   }
+  const horizons = horizonsBlock();
+  if (horizons) blocksByRow.set('Positions of the Sun, Earth and Moon', [horizons]);
   if (audio.length + heard.length > 0) blocksByRow.set('Sound', [soundBlock(audio, heard)]);
   return CREDIT_ROWS.flatMap(({ name, approved }) => {
     const blocks = blocksByRow.get(name);

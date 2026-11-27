@@ -147,8 +147,9 @@ describe('creditRows: rows by what a person sees, every source credited from the
       expect(source.citation, source.id).toBeTruthy();
       expect(row?.blocks.some((b) => b.citations.includes(source.citation!)), source.id).toBe(true);
     }
-    // A citation the terms do not ask for is not shown
-    expect(rows.flatMap((r) => r.blocks.flatMap((b) => b.citations))).toHaveLength(2);
+    // A citation the terms do not ask for is not shown; the one other is the reference Horizons suggests (its own row)
+    expect(rows.filter((r) => r.name !== 'Positions of the Sun, Earth and Moon').flatMap((r) => r.blocks.flatMap((b) => b.citations))).toHaveLength(2);
+    expect(rowNamed('Positions of the Sun, Earth and Moon')?.blocks.flatMap((b) => b.citations)).toHaveLength(1);
   });
 
   it("states a change wherever a record's licence asks for one, worded from what the app does and from the records", () => {
@@ -587,7 +588,7 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
       { ...unicodeRec.record.files[0]!, path: 'NOTICE', sources: ['unicode-ucd-15.0.0'] },
     ];
     const built = creditRows([{ url: '/notices/unicode/PROVENANCE.json', record: recordSameRow }], []);
-    const block = built[0]!.blocks[0]!;
+    const block = built.find((r) => r.name === 'Unicode character data')!.blocks[0]!;
     expect(block.licences).toEqual([
       { name: 'Terms A', href: sharedUrl },
       { name: 'Terms B', href: sharedUrl },
@@ -623,7 +624,7 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
       ],
       [],
     );
-    expect(sameBasename[0]!.blocks[0]!.notices).toEqual([
+    expect(sameBasename.find((r) => r.name === 'Unicode character data')!.blocks[0]!.notices).toEqual([
       { name: 'Notice (/notices/unicode/LICENSE)', href: '/notices/unicode/LICENSE' },
       { name: 'Notice (/notices/unicode-b/LICENSE)', href: '/notices/unicode-b/LICENSE' },
     ]);
