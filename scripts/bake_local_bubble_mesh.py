@@ -3,7 +3,7 @@
 
 Reads the Harvard Dataverse FITS binary table
 `ONeill2024_LocalBubble_ShellProperties_A0.5.fits` (`doi:10.7910/DVN/INB1RB`,
-companion data to O'Neill et al. 2024, ApJ 973, 136, `doi:10.3847/1538-4357/ad47b5`),
+companion data to O'Neill et al. 2024, ApJ 973, 136, `doi:10.3847/1538-4357/ad61de`),
 which tabulates the Local Bubble shell distance `d` (in parsecs) and heliocentric
 Galactic Cartesian coordinates `(x, y, z)` across all 786,432 directions of an
 `nside = 256` HEALPix sky grid derived from the Edenhofer et al. (2024) 3D dust map
@@ -584,9 +584,9 @@ def build_provenance_record(
     """Build or update `apps/web/public/models/PROVENANCE.json` for `local_bubble_oneill2024.glb`."""
     oneill_source = ProvenanceSource(
         id=SOURCE_ID,
-        title="The Local Bubble Is a Magnetized, Multi-temperature Superbubble: 3D Dust Shell Model (A_G = 0.5 mag/kpc threshold)",
+        title='Data for "The Local Bubble is a Local Chimney: A New Model from 3D Dust Mapping"',
         url="https://doi.org/10.7910/DVN/INB1RB",
-        version="V1 (2024-05-06)",
+        version="V2.1 (2024-10-21)",
         retrieved="2026-11-04",
         license=ProvenanceLicense(
             spdx="CC0-1.0",
@@ -594,12 +594,16 @@ def build_provenance_record(
             url="https://creativecommons.org/publicdomain/zero/1.0/",
         ),
         credit="O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. (2024, ApJ 973, 136); Harvard Dataverse doi:10.7910/DVN/INB1RB",
-        citation="O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. 2024, ApJ, 973, 136 (doi:10.3847/1538-4357/ad47b5)",
+        citation=(
+            "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. 2024, The Local Bubble Is a Local Chimney: "
+            "A New Model from 3D Dust Mapping, ApJ, 973, 136 (doi:10.3847/1538-4357/ad61de)"
+        ),
         doi="10.7910/DVN/INB1RB",
         sha256=INPUT.sha256,
         note=(
             "Derived from ONeill2024_LocalBubble_ShellProperties_A0.5.fits (786,432 HEALPix nside=256 "
-            "directions derived from the Edenhofer et al. 2024 3D dust map). Aggregated onto a closed "
+            "directions derived from the Edenhofer et al. 2024 3D dust map; Dataverse file 8943783, MD5 "
+            "713c24265b5dc0f679b81399501e7ce4, the same in versions V1, V2 and V2.1). Aggregated onto a closed "
             "nside=48 HEALPix 2-manifold (27,648 vertices, 55,292 outward triangles) in heliocentric "
             "Galactic Cartesian coordinates scaled to 1 unit = 100 pc."
         ),

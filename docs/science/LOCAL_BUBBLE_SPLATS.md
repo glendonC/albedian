@@ -8,7 +8,7 @@ footprints from tuned constants and one warm colour; that file was a provenance 
 ## Source and licence
 
 - O'Neill, T. J., Zucker, C., Goodman, A. A., and Edenhofer, G. 2024, ApJ, 973, 136
-  (doi:10.3847/1538-4357/ad47b5; arXiv:2403.04961): the Local Bubble's shell found as the first extinction peak along
+  (doi:10.3847/1538-4357/ad61de; arXiv:2403.04961): the Local Bubble's shell found as the first extinction peak along
   each line of sight in the Edenhofer et al. (2024) 3D dust map.
 - Table: `ONeill2024_LocalBubble_ShellProperties_A0.5.fits`, Harvard Dataverse doi:10.7910/DVN/INB1RB, CC0, 786,432
   HEALPix nside 256 directions (40 left blank by the authors), registered in `data/downloads.json` and recorded in

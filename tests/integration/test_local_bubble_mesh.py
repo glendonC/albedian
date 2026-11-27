@@ -346,7 +346,21 @@ def test_committed_local_bubble_glb_and_provenance_are_valid():
     src = oneill[0]
     assert src.license.spdx == "CC0-1.0"
     assert src.doi == "10.7910/DVN/INB1RB"
-    assert "10.3847/1538-4357/ad47b5" in (src.citation or "")
+    # As the journal (Crossref) and the data's own record (Harvard Dataverse) give them, read 2026-11-26: the paper is
+    # ApJ 973, 136, doi 10.3847/1538-4357/ad61de (10.3847/1538-4357/ad47b5 answers 404 at Crossref); the dataset's
+    # title is the paper's with "Data for", its version V2.1 of 2024-10-21, the table the same file (Dataverse file
+    # 8943783, MD5 713c24265b5dc0f679b81399501e7ce4) in V1, V2 and V2.1.
+    assert src.title == 'Data for "The Local Bubble is a Local Chimney: A New Model from 3D Dust Mapping"'
+    assert src.version == "V2.1 (2024-10-21)"
+    assert src.citation == (
+        "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. 2024, The Local Bubble Is a Local Chimney: "
+        "A New Model from 3D Dust Mapping, ApJ, 973, 136 (doi:10.3847/1538-4357/ad61de)"
+    )
+    assert "713c24265b5dc0f679b81399501e7ce4" in (src.note or "")
+    downloads = json.loads((ROOT / "data" / "downloads.json").read_text("utf-8"))
+    entry = next(e for e in downloads["downloads"] if e["path"].endswith("ONeill2024_LocalBubble_ShellProperties_A0.5.fits"))
+    assert "doi:10.3847/1538-4357/ad61de" in entry["source"] and "V2.1 (2024-10-21)" in entry["source"]
+    assert "ad47b5" not in json.dumps(downloads) + PROV_PATH.read_text("utf-8")
     assert src.sha256 == bake.INPUT.sha256
 
     files_by_path = {f.path: f for f in record.files}

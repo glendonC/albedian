@@ -19,7 +19,7 @@
       "sha256": "3d8f214426f0c4b4f6eeb69030610f66c0166b87fbb3764bdab1b3f9751ca9ff",
       "licence": "CC0-1.0",
       "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "source": "O'Neill, T. J., Zucker, C., Goodman, A. A., and Edenhofer, G. 2024, The Local Bubble Is a Magnetized, Multi-temperature Superbubble, ApJ, 973, 136, doi:10.3847/1538-4357/ad47b5; dataset V1 (2024-05-06), Harvard Dataverse, doi:10.7910/DVN/INB1RB"
+      "source": "O'Neill, T. J., Zucker, C., Goodman, A. A., and Edenhofer, G. 2024, The Local Bubble Is a Local Chimney: A New Model from 3D Dust Mapping, ApJ, 973, 136, doi:10.3847/1538-4357/ad61de; dataset V2.1 (2024-10-21), Harvard Dataverse, doi:10.7910/DVN/INB1RB"
     },
     {
       "path": ".cache/earth-maps/ne_10m_ocean.zip",
