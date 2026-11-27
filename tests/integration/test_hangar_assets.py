@@ -857,11 +857,6 @@ def test_no_two_touching_parts_of_a_rigged_suit_come_apart_in_any_pose(name: str
 
 
 SHADED = sorted(name for name, recipe in CRAFTS.items() if recipe.get("vertex_ao"))
-AO_GROUP_ONE = {"clementine", "deepimpact", "ds1", "ibex", "kepler", "maven", "mgs", "near", "parker", "stardust"}
-AO_GROUP_TWO = {"dawn", "juno", "messenger", "mro", "odyssey", "pioneer10", "spitzer", "tdrs", "vanallen", "viking"}
-AO_GROUP_THREE = {
-    "aces", "apollo_lm", "apollosoyuz", "gemini", "gemini_suit", "ingenuity", "insight", "mark3", "mercury_suit", "perseverance"
-}
 
 
 @pytest.mark.parametrize("name", SHADED)
@@ -871,8 +866,8 @@ def test_a_craft_given_fill_occlusion_carries_it_at_every_vertex_of_every_level(
     # between 0 and 1, varying over the model as real shadowing does (lit at the outside, shut in the creases), never a
     # colour (three would darken the key with a COLOR_0), and the record's sentence says so. Measured means: EMU 0.42
     # to 0.45, New Horizons 0.64 to 0.68.
-    # craft-ao-two adds the other models in groups, each its reach 15 percent of its longest side
-    assert set(SHADED) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | AO_GROUP_TWO | AO_GROUP_THREE
+    # craft-ao-two gave every other model its own, in four groups, each its reach 15 percent of its longest side
+    assert SHADED == sorted(CRAFTS)
     record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
     for level in ("lod0", "lod1", "lod2"):
         path = HANGAR_DIR / FACTS["models"][name]["files"][level]["path"]
@@ -888,7 +883,8 @@ def test_a_craft_given_fill_occlusion_carries_it_at_every_vertex_of_every_level(
                 shade.append(_accessor(gltf, blob, prim["attributes"]["_AO"]).ravel())
         shade = np.concatenate(shade)
         assert shade.min() >= 0.0 and shade.max() <= 1.0, (name, level)
-        assert 0.3 < shade.mean() < 0.9 and shade.std() > 0.1, (name, level, round(shade.mean(), 3), round(shade.std(), 3))
+        # the least open JWST's lod0, 0.266: its sunshield's five stacked layers shut each other from the sky
+        assert 0.25 < shade.mean() < 0.9 and shade.std() > 0.1, (name, level, round(shade.mean(), 3), round(shade.std(), 3))
         # the right way round: the outermost vertices (the convex hull's) see more sky than the innermost tenth (nearest
         # the bounds' centre). Measured over the 33 shaded models' 99 levels: the hull 0.876 to 1.000 (the lowest
         # Spitzer's phone level, its decimated panel rims), 0.205 to 0.801 above the innermost tenth (the least Gemini's
@@ -974,18 +970,17 @@ def _rebuild_inputs(craft: str) -> list[str]:
     return [f"{CACHE}/{src['local']}/{src[key]}" for key in ("file", "picture") if src.get(key) is not None]
 
 
-# Every craft built again since the hangar moved to Blender 5.2.3: each that carries the sky fill's occlusion, the
-# station, the Shuttle, Cassini and OSIRIS-REx (their phone and chase levels decimated part by part) and Hubble (its
-# phone textures capped). A recipe change to any of them that the committed models do not follow fails here.
-LEVELS_REBUILT = {"cassini", "hubble", "iss", "osirisrex", "shuttle"}
-REBUILT = sorted(set(SHADED) | LEVELS_REBUILT)
+# Every craft built again in Blender 5.2.3: each that carries the sky fill's occlusion, which since craft-ao-two's
+# fourth group is every model. A recipe change to any of them that the committed models do not follow fails here.
+REBUILT = SHADED
 
 
 def test_the_rebuild_covers_every_craft_rebuilt_in_blender_5_2_3() -> None:
-    assert set(REBUILT) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | AO_GROUP_TWO | AO_GROUP_THREE | LEVELS_REBUILT
-    assert set(REBUILT) <= set(CRAFTS)
+    assert REBUILT == sorted(CRAFTS)
 
 
+# the suite's 300 s bound would stop the station's rebuild (446 s at a load of 6) before the build's own 1200 s bound below
+@pytest.mark.timeout(1260)
 @pytest.mark.parametrize("craft", [pytest.param(c, marks=pytest.mark.local_dataset(*_rebuild_inputs(c))) for c in REBUILT])
 def test_an_unchanged_craft_rebuilds_byte_for_byte(craft: str, tmp_path: Path) -> None:
     # Hubble's one mesh sits under a transformed parent in NASA's file: a build that drops that transform when it
@@ -999,7 +994,8 @@ def test_an_unchanged_craft_rebuilds_byte_for_byte(craft: str, tmp_path: Path) -
         pytest.skip(f"needs {BUILT_WITH} (found {version})")
     script = ROOT / "scripts" / "lookdev" / "hangar" / "build_craft.py"
     cmd = [shutil.which("blender"), "-b", "--factory-startup", "-P", str(script), "--", "--craft", craft, "--out", str(tmp_path)]
-    done = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd=ROOT)
+    # the station's build, its occlusion cast from the 3,108,229 vertices of its lod0, took 446 s at a load of 6
+    done = subprocess.run(cmd, capture_output=True, text=True, timeout=1200, cwd=ROOT)
     assert done.returncode == 0, done.stderr[-2000:]
     for level in ("lod0", "lod1", "lod2", "picker"):
         name = f"{craft}_{level}.webp" if level == "picker" else f"{craft}_{level}.glb"

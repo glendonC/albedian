@@ -124,6 +124,8 @@ CRAFTS: dict[str, dict] = {
         "part_tris_per_m": {"lod1": 300, "lod2": 150},
         "drop_hidden_faces": ["lod1", "lod2"],
         "body_radius_m": 2.2,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 2.5, "skip_m": 0.003},
         "changes": "photo",
     },
     "jwst": {
@@ -176,6 +178,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 30.0,
         "lod_ratio": {"lod0": 0.17, "lod1": 0.06, "lod2": 0.022},
         "body_radius_m": 7.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 3.6, "skip_m": 0.003},
         "changes": "named",
     },
     "pioneer10": {
@@ -503,6 +507,8 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 7.0,
         # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
         "texture_edge": {"lod2": 384},
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 2.0, "skip_m": 0.003},
         "changes": "photo",
     },
     "apollo_lm": {
@@ -874,6 +880,8 @@ CRAFTS: dict[str, dict] = {
         # Eleven 640 px photo textures: at 512 and 256 px the chase and far levels stay within their budgets.
         "texture_edge": {"lod1": 512, "lod2": 256},
         "body_radius_m": 14.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 5.6, "skip_m": 0.003},
         "changes": "flat",
     },
     "iss": {
@@ -932,6 +940,8 @@ CRAFTS: dict[str, dict] = {
         "budget_reason": {"lod1": ISS_BUDGET_REASON, "lod2": ISS_BUDGET_REASON},
         "texture_edge": {"lod1": 256, "lod2": 128},
         "body_radius_m": 30.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 16.0, "skip_m": 0.003},
         "changes": "mean",
     },
     "parker": {
@@ -1237,6 +1247,8 @@ CRAFTS: dict[str, dict] = {
         "drop_parts_under_m": {"lod1": 0.05, "lod2": 0.1},
         "part_floor_tris": {"lod0": 24, "lod1": 6, "lod2": 4},
         "body_radius_m": 1.6,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.2, "skip_m": 0.003},
         "changes": "foils",
     },
     "mro": {
@@ -1581,6 +1593,8 @@ CRAFTS: dict[str, dict] = {
         "weld_levels": ["lod1", "lod2"],
         "decimate_by_part": ["lod1", "lod2"],
         "drop_hidden_faces": ["lod1", "lod2"],
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 2.7, "skip_m": 0.003},
         "changes": "cassini",
     },
     "ibex": {

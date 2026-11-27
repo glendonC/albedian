@@ -439,7 +439,7 @@
     },
     {
       "path": "hangar/cassini/cassini_lod0.glb",
-      "sha256": "33cafd6c0bca4407ea8c37fd1565bdac0f0933ffe0ba5b948161c04ca82115f1",
+      "sha256": "3fa1ebc41388c1d67d3858f32b6a6eee5bf18ae3d1a4ff0249c9effed2c23a4e",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -448,13 +448,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
-        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model names as aluminium and black blanket given physically based materials of that kind, the gold foil and the photo texture given metalness, roughness and surface relief from their own colours, the dish painted white with NASA's baked shading moved to the occlusion slot, NASA's flat colours kept for the rest, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model names as aluminium and black blanket given physically based materials of that kind, the gold foil and the photo texture given metalness, roughness and surface relief from their own colours, the dish painted white with NASA's baked shading moved to the occlusion slot, NASA's flat colours kept for the rest, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/cassini-huygens-a/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/cassini/cassini_lod1.glb",
-      "sha256": "bfb13c78baa9a0323a72e91cf4ae4a317ff1cc94fd6e2b12b339adfdbba627a9",
+      "sha256": "4f208b5c7eebfc3a138b38f2a106fff27e720aa4d60a144a8096ee33816f8dc6",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -463,13 +463,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
-        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/cassini-huygens-a/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/cassini/cassini_lod2.glb",
-      "sha256": "42624ca8cb562e83bc8f722b97748460506e085bcdabdee39c6c1c5459b73a78",
+      "sha256": "932d01c6b388b09e3e33c1415a0720371f5fdfde82619391506459a9cbf9f176",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -478,7 +478,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
-        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/cassini-huygens-a/ credits NASA/Brian E. Kumanchik."
     },
@@ -911,7 +911,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "ac93f1f1c6cc8bd34c982887b039fa3fad95ab280d3004160cd948ef534a642c",
+      "sha256": "c3c247c1204048b4e1d9c0f8b04bd8010e7b2838b89462b4614021e578086444",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-3d-models-nasa-brian-e-kumanchik",
@@ -939,7 +939,7 @@
     },
     {
       "path": "hangar/hubble/hubble_lod0.glb",
-      "sha256": "c5cb2131d6a00c16d48700a43c790e3db0cc333d9972f083837021b14f798547",
+      "sha256": "7c25eca7e11a1ef43b22feeaf7fc21cbf8ca26302dadaef91774eb268a3a68b7",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-science-mission-pages"
@@ -948,13 +948,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
-        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb (1694988 bytes, SHA-256 e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/hubble-space-telescope-a/ credits DigitalSpace Corporation."
     },
     {
       "path": "hangar/hubble/hubble_lod1.glb",
-      "sha256": "d0108ecdd4c7521563e85a107bdfcbb134b0cd58f028b050403980a9d3ef60d8",
+      "sha256": "91571aa54fb644976c02062c5e60865a003bbb5c00e96d5d779e0b4cfe3baf46",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-science-mission-pages"
@@ -963,13 +963,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb (1694988 bytes, SHA-256 e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/hubble-space-telescope-a/ credits DigitalSpace Corporation."
     },
     {
       "path": "hangar/hubble/hubble_lod2.glb",
-      "sha256": "0f22e8c58717dfd65dd5c8cc91237488106a94ce13afcefcc1af4039a5ec65ab",
+      "sha256": "d1ec3e97a745f921bf410c66c60439164f6d46549cf7de23b7792c3849a19af9",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-science-mission-pages"
@@ -978,7 +978,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft hubble --out apps/web/public/models/hangar/hubble",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb (1694988 bytes, SHA-256 e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/hubble-space-telescope-a/ credits DigitalSpace Corporation."
     },
@@ -1175,7 +1175,7 @@
     },
     {
       "path": "hangar/iss/iss_lod0.glb",
-      "sha256": "55fe30a1794b766391117263d72f7a4f9b17e3797fae27fc97edd8d30c3350df",
+      "sha256": "1428234709e7c4dbae2d293e103596df6d96746fa1a152ca30e951bbd26f6453",
       "sources": [
         "nasa-3d-models-nasa-jsc-integrated-graphics-operations-and-analysis-laboratory",
         "nasa-science-mission-pages"
@@ -1184,13 +1184,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; each part given one colour, metalness and roughness, the mean of NASA's own maps over its opaque pixels, so no mark printed in a map survives, with NASA's alpha kept as a mask where it cuts a lattice, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the masks encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; each part given one colour, metalness and roughness, the mean of NASA's own maps over its opaque pixels, so no mark printed in a map survives, with NASA's alpha kept as a mask where it cuts a lattice, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the masks encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory."
     },
     {
       "path": "hangar/iss/iss_lod1.glb",
-      "sha256": "877550f62c45503cfc60b9b39679e8a9b084c1b2aa27dac2c2be340eefd6faa6",
+      "sha256": "42c5ae0139d5999909a7981383c5a97b308d6555556f76d85f0ca232168c0b5d",
       "sources": [
         "nasa-3d-models-nasa-jsc-integrated-graphics-operations-and-analysis-laboratory",
         "nasa-science-mission-pages"
@@ -1199,13 +1199,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
-        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory. Its budget is 2300000 bytes, over the hangar's 1500000: its lattice parts, the six 35.9 m truss masts among them, are chains of separate strut triangles under an alpha lattice that no decimation reduces, and the station is drawn whole with its solar arrays (the lead's ruling of 2026-11-27)."
     },
     {
       "path": "hangar/iss/iss_lod2.glb",
-      "sha256": "675d2a8d3ab6ba46a9cf365577b5314d6bec129a8d205fe9c273ed1115d38527",
+      "sha256": "304cd7ceea6c65722888de166e0ca0b1c18489bdcb97da6d6da461618bc1290a",
       "sources": [
         "nasa-3d-models-nasa-jsc-integrated-graphics-operations-and-analysis-laboratory",
         "nasa-science-mission-pages"
@@ -1214,7 +1214,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft iss --out apps/web/public/models/hangar/iss",
-        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29.glb (95875648 bytes, SHA-256 57cecfaf332efb2127d07796c4b65ca570d95a11516c8e046feb5a12efee491d); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/international-space-station-iss-d-igoal/ credits NASA/JSC/Integrated Graphics, Operations, and Analysis Laboratory. Its budget is 1600000 bytes, over the hangar's 600000: its lattice parts, the six 35.9 m truss masts among them, are chains of separate strut triangles under an alpha lattice that no decimation reduces, and the station is drawn whole with its solar arrays (the lead's ruling of 2026-11-27)."
     },
@@ -1293,7 +1293,7 @@
     },
     {
       "path": "hangar/jwst/jwst_lod0.glb",
-      "sha256": "29eefd43ffbd27656faab244c8d47037079914beb12f9ea1096540da606c8fc1",
+      "sha256": "deb1fcff82a261003a77f2401cf496a283d93ea5dc345b48a9dac83a8c1fe3ed",
       "sources": [
         "nasa-3d-models-nasa-goddard-space-flight-center",
         "nasa-science-mission-pages"
@@ -1302,13 +1302,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names (gold mirror, silver and pink blankets, black paint, aluminium, solar cells) given physically based materials of that kind, the others keeping NASA's own colour, faces that lie flat within a small angle merged, and the normals made again, smooth within an angle and sharp beyond it."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names (gold mirror, silver and pink blankets, black paint, aluminium, solar cells) given physically based materials of that kind, the others keeping NASA's own colour, faces that lie flat within a small angle merged, and the normals made again, smooth within an angle and sharp beyond it. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb (4710016 bytes, SHA-256 ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/james-webb-space-telescope-a/ credits NASA/Goddard Space Flight Center."
     },
     {
       "path": "hangar/jwst/jwst_lod1.glb",
-      "sha256": "3969897d03f6f7d185b52dc7e5c2f050a70091c81eb9dad525829eed516b5ae8",
+      "sha256": "2ba83465c4b17137c46a891e1b8e114396d1f22da05407ad23902aeae0d8a136",
       "sources": [
         "nasa-3d-models-nasa-goddard-space-flight-center",
         "nasa-science-mission-pages"
@@ -1317,13 +1317,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb (4710016 bytes, SHA-256 ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/james-webb-space-telescope-a/ credits NASA/Goddard Space Flight Center."
     },
     {
       "path": "hangar/jwst/jwst_lod2.glb",
-      "sha256": "78ffcfe998b1c55831cef7b50aed57ad962710acd6e5bd093ee446f27261525e",
+      "sha256": "436555e3148941141e25c076d0f42ee561628919a0f2e4496e7d02710a135117",
       "sources": [
         "nasa-3d-models-nasa-goddard-space-flight-center",
         "nasa-science-mission-pages"
@@ -1332,7 +1332,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb (4710016 bytes, SHA-256 ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/james-webb-space-telescope-a/ credits NASA/Goddard Space Flight Center."
     },
@@ -1942,7 +1942,7 @@
     },
     {
       "path": "hangar/osirisrex/osirisrex_lod0.glb",
-      "sha256": "76e487d76f6435e2f5a5c60685485cd9e729cfdb444db9b74a476e224eeca8a6",
+      "sha256": "3f5777ef1c269e652430661217d95ae02820b6d16605e2fe197f716b04a0ee72",
       "sources": [
         "nasa-3d-models-nasa-christopher-r-meaney",
         "nasa-science-mission-pages"
@@ -1951,13 +1951,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as gold foil, bronze, silver or solar cells given physically based materials of that kind, the bronze in NASA's own colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as gold foil, bronze, silver or solar cells given physically based materials of that kind, the bronze in NASA's own colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/origins-spectral-interpretation-resource-identification-and-security-regolith-explorer-osiris-rex/ credits NASA/Christopher R. Meaney."
     },
     {
       "path": "hangar/osirisrex/osirisrex_lod1.glb",
-      "sha256": "8c67e827b64b9042c9ae7bb40a3f7d8cf2c3d232889b69de7af7d216ea4cfa6c",
+      "sha256": "1952d49e19bffc689b9e0722f8e51852422d6510c3c0cf89ae28c088412822a9",
       "sources": [
         "nasa-3d-models-nasa-christopher-r-meaney",
         "nasa-science-mission-pages"
@@ -1966,13 +1966,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
-        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/origins-spectral-interpretation-resource-identification-and-security-regolith-explorer-osiris-rex/ credits NASA/Christopher R. Meaney."
     },
     {
       "path": "hangar/osirisrex/osirisrex_lod2.glb",
-      "sha256": "fbd514eb701b849282ce4f1b987d55d4b3eff0ff787bcdaf30f22c96ef1d2444",
+      "sha256": "55033e74ece8632d98129631722363671529aae307ee88129ba3f8df63c9fce2",
       "sources": [
         "nasa-3d-models-nasa-christopher-r-meaney",
         "nasa-science-mission-pages"
@@ -1981,7 +1981,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
-        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/origins-spectral-interpretation-resource-identification-and-security-regolith-explorer-osiris-rex/ credits NASA/Christopher R. Meaney."
     },
@@ -2178,7 +2178,7 @@
     },
     {
       "path": "hangar/shuttle/shuttle_lod0.glb",
-      "sha256": "3342fc333df5de1d263e7c05fbb6a32517fb85867a536765f2b2e04cfe7345a1",
+      "sha256": "770e013f6064c8aeb5de58f75580f2a5059e9d2ce4a615944986689cd1394a20",
       "sources": [
         "nasa-3d-models-nasa-johnson-space-center",
         "nasa-science-mission-pages"
@@ -2187,13 +2187,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/space-shuttle-d/ credits NASA/Johnson Space Center."
     },
     {
       "path": "hangar/shuttle/shuttle_lod1.glb",
-      "sha256": "a28027799a7752730476286170f8912261870999407451258ac342bd438ef33a",
+      "sha256": "72008e6f364829c985cba1f1e2a539d2b0cecf10ffb96b049a7055c37de60ac5",
       "sources": [
         "nasa-3d-models-nasa-johnson-space-center",
         "nasa-science-mission-pages"
@@ -2202,13 +2202,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
-        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/space-shuttle-d/ credits NASA/Johnson Space Center."
     },
     {
       "path": "hangar/shuttle/shuttle_lod2.glb",
-      "sha256": "9f1dbcf58bab0d6738fc4ce7f81abb300792206e5f0c8c504af9e42713046231",
+      "sha256": "801c0991e0edaf7c1f5aa43f3d744ab84389991dc4b7dfeb5e0f843c8d5fbdbe",
       "sources": [
         "nasa-3d-models-nasa-johnson-space-center",
         "nasa-science-mission-pages"
@@ -2217,7 +2217,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft shuttle --out apps/web/public/models/hangar/shuttle",
-        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Space%20Shuttle%20%28D%29/Space%20Shuttle%20%28D%29.glb (2471932 bytes, SHA-256 d0015681ff092d36062fdfed78e2bd1ca0f86e90862840d25bae11c686ce3549); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/space-shuttle-d/ credits NASA/Johnson Space Center. Its budget is 850000 bytes, over the hangar's 600000: each of its 245 parts keeps its size at its phone level, the OMS pods, the nose tip, the windows and the payload bay doors' edges among them, which one share over the whole mesh left out (the lead's ruling of 2026-11-27)."
     },
@@ -2532,7 +2532,7 @@
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",
-      "sha256": "834d497409d126cdcfd0d8eb2e1aabc891afe7845696d9a9e366087e95383b8e",
+      "sha256": "735c59df16e080e173f644f18e8256e2125e18039e1ff11fe0eb9d91d28e2486",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -2541,13 +2541,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/voyager-probe-b/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/voyager/voyager_lod1.glb",
-      "sha256": "bc9950249f5a4c632522c982300e8575cc13d6c6efa474f5f60bc394f1587a87",
+      "sha256": "6596bd9ef92c352c2fe34d34c2f582f7f371034448f23a624d2f478985b43457",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -2556,13 +2556,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/voyager-probe-b/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/voyager/voyager_lod2.glb",
-      "sha256": "960b69df1313df41eed7e01962a7794b445d057ef96b838a1acdb777de0a0c4a",
+      "sha256": "746d0520b6df0f352dba25790aba6164368d9700929ba42594609f53ae175983",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -2571,7 +2571,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/voyager-probe-b/ credits NASA/Michael D. Carbajal."
     },
