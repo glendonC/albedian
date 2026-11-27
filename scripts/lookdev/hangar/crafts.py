@@ -379,6 +379,8 @@ CRAFTS: dict[str, dict] = {
         # covered map under two or more triangles, .lanetools/uv_unwrap.py), so no image can be baked into it
         "vertex_ao": {"rays": 32, "distance_m": 0.5, "skip_m": 0.003},
         "body_radius_m": 1.6,
+        # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
+        "texture_edge": {"lod2": 384},
         "changes": "photo_ao",
     },
     "z2": {
@@ -497,6 +499,8 @@ CRAFTS: dict[str, dict] = {
             "hbltel_wfc_1": {"role": "photo_atlas"},
         },
         "body_radius_m": 7.0,
+        # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
+        "texture_edge": {"lod2": 384},
         "changes": "photo",
     },
     "apollo_lm": {
@@ -1680,6 +1684,8 @@ CRAFTS: dict[str, dict] = {
         "material_rules": [{"match": [""], "role": "nasa_flat"}],
         "smooth_deg": 35.0,
         "body_radius_m": 1.6,
+        # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
+        "texture_edge": {"lod2": 384},
         "changes": "epoxi",
     },
     "viking": {
@@ -2061,6 +2067,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         # Half the 2 m height, framing the octagonal body, cameras, dish, thruster and inner wing hinges.
         "body_radius_m": 1.1,
+        # its phone level decoded 8.1 to 9.4 MB of textures at 512 px; at 384 px under 8 MB (tex-budget-two)
+        "texture_edge": {"lod2": 384},
         "changes": "clementine",
     },
     "tdrs": {

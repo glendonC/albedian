@@ -266,9 +266,9 @@
         },
         "lod2": {
           "path": "newhorizons/newhorizons_lod2.glb",
-          "bytes": 231276,
+          "bytes": 173868,
           "triangles": 1488,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 608156,
           "occlusionBytes": 8156
         },
@@ -384,9 +384,9 @@
         },
         "lod2": {
           "path": "hubble/hubble_lod2.glb",
-          "bytes": 299272,
+          "bytes": 230636,
           "triangles": 1380,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {
@@ -1774,9 +1774,9 @@
         },
         "lod2": {
           "path": "deepimpact/deepimpact_lod2.glb",
-          "bytes": 483136,
+          "bytes": 384220,
           "triangles": 4973,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {
@@ -2127,9 +2127,9 @@
         },
         "lod2": {
           "path": "clementine/clementine_lod2.glb",
-          "bytes": 283224,
+          "bytes": 226776,
           "triangles": 1656,
-          "textureEdgeMax": 512,
+          "textureEdgeMax": 384,
           "budgetBytes": 600000
         },
         "picker": {

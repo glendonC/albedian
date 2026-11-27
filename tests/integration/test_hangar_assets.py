@@ -458,11 +458,14 @@ def _glb_images(path: Path) -> dict[str, "np.ndarray"]:
     return out
 
 
-@pytest.mark.parametrize("name", ["gemini", "odyssey", "pioneer10", "messenger", "stardust"])
+@pytest.mark.parametrize(
+    "name", ["gemini", "odyssey", "pioneer10", "messenger", "stardust", "clementine", "deepimpact", "hubble", "newhorizons"]
+)
 def test_the_phone_level_textures_decode_under_eight_megabytes(name: str) -> None:
     # tex-budget-one (the lead, 15:59 on 24 Nov, from SPATIAL's flight-perf-audit): these five crafts' phone levels
     # decoded 10.7 to 13.9 MB of textures (width x height x 4 bytes each); their recipes now cap the phone level's
-    # texture edge, by resizing only, so each decodes under 8 MB. The recipe names its cap.
+    # texture edge, by resizing only, so each decodes under 8 MB. The recipe names its cap. tex-budget-two (27 Nov): the
+    # four still over 8 MB at a 512 px edge (Clementine 8.1, Deep Impact 9.2, Hubble 9.4, New Horizons 9.4 MB).
     edge = CRAFTS[name].get("texture_edge", {}).get("lod2")
     assert edge is not None and edge <= 384, (name, edge)
     images = _glb_images(HANGAR_DIR / FACTS["models"][name]["files"]["lod2"]["path"])

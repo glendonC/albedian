@@ -528,7 +528,7 @@
     },
     {
       "path": "hangar/clementine/clementine_lod2.glb",
-      "sha256": "3e9c39aed2767c196181e4323dbdbbd3832a91728e106b7b19d356276dc0ddc1",
+      "sha256": "4dfd341303351b7d22593ec474f43ade6e7d2381c9f6cab868273bc15190aa11",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -646,7 +646,7 @@
     },
     {
       "path": "hangar/deepimpact/deepimpact_lod2.glb",
-      "sha256": "d5a7e992c8216a9541572b8d6fe7d39ecfb5e72bc3104e1a51e1f0363199f916",
+      "sha256": "70a7ea846bf2e1786a006beb2bae9b6a5755ae1453362c34a02bfcae68139fba",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik-nasa-christian-a-lopez",
         "nasa-science-mission-pages"
@@ -911,7 +911,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "99a462adb548686dddaa282ea6995330b6147d8df355b90cc0ed04c44eb69dda",
+      "sha256": "172d5bb8562c8e6b6a21860fe09736e15cc3cfadf10fe32e9dd75ac01e6b3b6b",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-3d-models-nasa-brian-e-kumanchik",
@@ -969,7 +969,7 @@
     },
     {
       "path": "hangar/hubble/hubble_lod2.glb",
-      "sha256": "9dae83cd5d445bcc5d83ef39b862fd221808c600cdd2a95170d0bbace9104680",
+      "sha256": "0f22e8c58717dfd65dd5c8cc91237488106a94ce13afcefcc1af4039a5ec65ab",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-science-mission-pages"
@@ -1854,7 +1854,7 @@
     },
     {
       "path": "hangar/newhorizons/newhorizons_lod2.glb",
-      "sha256": "51066a13023af76e0d910437e127d876f0e37f9e47299c4eb4cc1ff97b920301",
+      "sha256": "614a65740feedbd86bea5aab121c5aed5162fe1c350414424b62beaae221b86f",
       "sources": [
         "nasa-3d-models-nasa-visualization-technology-applications-and-development-vtad",
         "nasa-science-mission-pages"
