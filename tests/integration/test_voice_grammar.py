@@ -447,6 +447,12 @@ FORMED = [
     ("seek to 7.5 seconds", "media.seek", {"sourceTimeSec": 7.5, "preserveAudioSync": True}),
     ("jump 3 s", "media.seek", {"sourceTimeSec": 3.0}),
     ("show the sky", "sky.show", {"mode": "measured"}),
+    # voice-realsky-say-one: Real sky's own words
+    ("show me the real sky", "sky.show", {"mode": "measured"}),
+    ("show the real sky", "sky.show", {"mode": "measured"}),
+    ("real sky", "sky.show", {"mode": "measured"}),
+    ("the real sky", "sky.show", {"mode": "measured"}),
+    ("is that the real sky", "question.ask", {}),
     ("orbit it", "space.viewpoint", {"targetFindingId": "finding-star-rigel", "trajectory": "orbit"}),
     ("shift viewpoint around it", "space.viewpoint", {"trajectory": "translate"}),
     ("how far is it", "finding.describe", {"findingId": "finding-star-rigel", "fields": ["distance", "evidence"]}),

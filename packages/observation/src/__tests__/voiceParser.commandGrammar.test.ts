@@ -4,8 +4,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { ObservationSolutionSchema, VOICE_COMMAND_GRAMMAR_TABLE } from '@albedian/contracts';
 import type { ObservationSession } from '@albedian/contracts';
-import { buildActionContext, HANDLED_RULES, parseUtteranceToAction } from '../voiceParser.js';
-import { createSyntheticCalibratedSession } from '../testing/syntheticSessions.js';
+import { buildActionContext, executeVoiceOrTextCommand, HANDLED_RULES, parseUtteranceToAction } from '../voiceParser.js';
+import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions.js';
 import { contractActionTypes, fieldsFor, loadVoiceGrammar, ruleSays, VOICE_GRAMMAR, VoiceGrammarError } from '../voiceGrammar.js';
 
 /**
@@ -129,6 +129,12 @@ describe('@albedian/observation voice grammar: the table both parsers read', () 
     ['seek to 7.5 seconds', 'media.seek', { sourceTimeSec: 7.5, preserveAudioSync: true }],
     ['jump 3 s', 'media.seek', { sourceTimeSec: 3 }],
     ['show the sky', 'sky.show', { mode: 'measured' }],
+    // voice-realsky-say-one: Real sky's own words
+    ['show me the real sky', 'sky.show', { mode: 'measured' }],
+    ['show the real sky', 'sky.show', { mode: 'measured' }],
+    ['real sky', 'sky.show', { mode: 'measured' }],
+    ['the real sky', 'sky.show', { mode: 'measured' }],
+    ['is that the real sky', 'question.ask', {}],
     ['orbit it', 'space.viewpoint', { targetFindingId: selected, trajectory: 'orbit' }],
     ['shift viewpoint around it', 'space.viewpoint', { trajectory: 'translate' }],
     ['how far is it', 'finding.describe', { findingId: selected, fields: ['distance', 'evidence'] }],
@@ -423,4 +429,19 @@ describe('@albedian/observation voice grammar: the table both parsers read', () 
       { seed, numRuns: 300 }
     );
   });
+});
+
+describe('@albedian/observation voice grammar: Real sky asked for by its own words (voice-realsky-say-one)', () => {
+  it.each(['show me the real sky', 'show the real sky', 'real sky'])(
+    '"%s" on a photo whose stars were not matched asks for the measured sky, which the reducer refuses, never a predicted one',
+    (utterance) => {
+      const session = createSyntheticUnresolvedSession();
+      const parsed = parseUtteranceToAction(utterance, buildActionContext(session), session);
+      expect(parsed.action?.type).toBe('sky.show');
+      expect(parsed.action && 'mode' in parsed.action ? parsed.action.mode : undefined).toBe('measured');
+      const ran = executeVoiceOrTextCommand(session, utterance, 'voice');
+      expect(ran.outcome.status).toBe('rejected');
+      expect(ran.session.spatialView.mode).toBe(session.spatialView.mode);
+    }
+  );
 });

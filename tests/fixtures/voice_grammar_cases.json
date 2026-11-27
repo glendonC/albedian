@@ -568,6 +568,31 @@
          ]
         },
         {
+         "id": "real_sky",
+         "action": "sky.show",
+         "match": "words",
+         "phrases": [
+          "show me the real sky",
+          "show the real sky",
+          "show real sky"
+         ],
+         "with": {
+          "mode": "measured"
+         }
+        },
+        {
+         "id": "real_sky_alone",
+         "action": "sky.show",
+         "match": "whole",
+         "phrases": [
+          "the real sky",
+          "real sky"
+         ],
+         "with": {
+          "mode": "measured"
+         }
+        },
+        {
          "id": "viewpoint",
          "action": "space.viewpoint",
          "match": "words",
@@ -1531,6 +1556,31 @@
        ]
       },
       {
+       "id": "real_sky",
+       "action": "sky.show",
+       "match": "words",
+       "phrases": [
+        "show me the real sky",
+        "show the real sky",
+        "show real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
+       "id": "real_sky_alone",
+       "action": "sky.show",
+       "match": "whole",
+       "phrases": [
+        "the real sky",
+        "real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
        "id": "viewpoint",
        "action": "space.viewpoint",
        "match": "words",
@@ -1769,22 +1819,6 @@
        "with": {
         "mode": "measured"
        }
-      },
-      {
-       "id": "made_up_30",
-       "action": "sky.show",
-       "match": "words",
-       "phrases": [
-        "zq30"
-       ]
-      },
-      {
-       "id": "made_up_31",
-       "action": "sky.show",
-       "match": "words",
-       "phrases": [
-        "zq31"
-       ]
       },
       {
        "id": "made_up_32",
@@ -2480,6 +2514,31 @@
        ]
       },
       {
+       "id": "real_sky",
+       "action": "sky.show",
+       "match": "words",
+       "phrases": [
+        "show me the real sky",
+        "show the real sky",
+        "show real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
+       "id": "real_sky_alone",
+       "action": "sky.show",
+       "match": "whole",
+       "phrases": [
+        "the real sky",
+        "real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
        "id": "viewpoint",
        "action": "space.viewpoint",
        "match": "words",
@@ -2718,22 +2777,6 @@
        "with": {
         "mode": "measured"
        }
-      },
-      {
-       "id": "made_up_30",
-       "action": "sky.show",
-       "match": "words",
-       "phrases": [
-        "zq30"
-       ]
-      },
-      {
-       "id": "made_up_31",
-       "action": "sky.show",
-       "match": "words",
-       "phrases": [
-        "zq31"
-       ]
       },
       {
        "id": "made_up_32",
@@ -3438,6 +3481,31 @@
        ]
       },
       {
+       "id": "real_sky",
+       "action": "sky.show",
+       "match": "words",
+       "phrases": [
+        "show me the real sky",
+        "show the real sky",
+        "show real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
+       "id": "real_sky_alone",
+       "action": "sky.show",
+       "match": "whole",
+       "phrases": [
+        "the real sky",
+        "real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
        "id": "viewpoint",
        "action": "space.viewpoint",
        "match": "words",
@@ -3723,7 +3791,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -3735,7 +3803,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "fixed"
@@ -5389,6 +5457,31 @@
        ]
       },
       {
+       "id": "real_sky",
+       "action": "sky.show",
+       "match": "words",
+       "phrases": [
+        "show me the real sky",
+        "show the real sky",
+        "show real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
+       "id": "real_sky_alone",
+       "action": "sky.show",
+       "match": "whole",
+       "phrases": [
+        "the real sky",
+        "real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
        "id": "viewpoint",
        "action": "space.viewpoint",
        "match": "words",
@@ -5644,7 +5737,7 @@
     {
      "at": [
       "rules",
-      23,
+      25,
       "target"
      ],
      "drop": true
@@ -5658,7 +5751,7 @@
     {
      "at": [
       "rules",
-      23,
+      25,
       "target"
      ],
      "set": "here"
@@ -5686,7 +5779,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "target"
      ],
      "set": "which"
@@ -5700,7 +5793,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "target"
      ],
      "set": "named"
@@ -5730,7 +5823,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "with",
       "mode"
      ],
@@ -5745,7 +5838,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "with",
       "trajectory"
      ],
@@ -5754,7 +5847,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "with",
       "units"
      ],
@@ -5859,7 +5952,7 @@
     {
      "at": [
       "rules",
-      19,
+      21,
       "with",
       "fields"
      ],
@@ -5874,7 +5967,7 @@
     {
      "at": [
       "rules",
-      19,
+      21,
       "with",
       "fields"
      ],
@@ -5891,7 +5984,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "with"
      ],
      "set": [
@@ -5907,7 +6000,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers"
      ],
      "set": []
@@ -5921,7 +6014,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers"
      ],
      "set": [
@@ -6000,7 +6093,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers"
      ],
      "set": [
@@ -6087,7 +6180,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6099,7 +6192,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "x"
@@ -6115,7 +6208,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6131,7 +6224,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6149,7 +6242,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6167,7 +6260,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6200,7 +6293,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6234,7 +6327,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "words"
@@ -6246,7 +6339,7 @@
     {
      "at": [
       "rules",
-      18,
+      20,
       "modifiers",
       0,
       "with",
@@ -7122,23 +7215,7 @@
      "at": [
       "rules",
       18,
-      "target"
-     ],
-     "drop": true
-    },
-    {
-     "at": [
-      "rules",
-      18,
       "with"
-     ],
-     "drop": true
-    },
-    {
-     "at": [
-      "rules",
-      18,
-      "modifiers"
      ],
      "drop": true
     },
@@ -7149,14 +7226,6 @@
       "id"
      ],
      "set": "sky"
-    },
-    {
-     "at": [
-      "rules",
-      18,
-      "action"
-     ],
-     "set": "sky.show"
     },
     {
      "at": [
@@ -7184,12 +7253,109 @@
       19,
       "id"
      ],
-     "set": "viewpoint"
+     "set": "real_sky"
     },
     {
      "at": [
       "rules",
       19,
+      "match"
+     ],
+     "set": "words"
+    },
+    {
+     "at": [
+      "rules",
+      19,
+      "phrases"
+     ],
+     "set": [
+      "show me the real sky",
+      "show the real sky",
+      "show real sky"
+     ]
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "target"
+     ],
+     "drop": true
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "modifiers"
+     ],
+     "drop": true
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "id"
+     ],
+     "set": "real_sky_alone"
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "action"
+     ],
+     "set": "sky.show"
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "match"
+     ],
+     "set": "whole"
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "phrases"
+     ],
+     "set": [
+      "the real sky",
+      "real sky"
+     ]
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "with",
+      "trajectory"
+     ],
+     "drop": true
+    },
+    {
+     "at": [
+      "rules",
+      20,
+      "with",
+      "mode"
+     ],
+     "set": "measured"
+    },
+    {
+     "at": [
+      "rules",
+      21,
+      "id"
+     ],
+     "set": "viewpoint"
+    },
+    {
+     "at": [
+      "rules",
+      21,
       "action"
      ],
      "set": "space.viewpoint"
@@ -7197,7 +7363,7 @@
     {
      "at": [
       "rules",
-      19,
+      21,
       "phrases"
      ],
      "set": [
@@ -7222,7 +7388,7 @@
     {
      "at": [
       "rules",
-      19,
+      21,
       "with",
       "fields"
      ],
@@ -7231,7 +7397,7 @@
     {
      "at": [
       "rules",
-      19,
+      21,
       "with",
       "trajectory"
      ],
@@ -7240,7 +7406,7 @@
     {
      "at": [
       "rules",
-      19,
+      21,
       "modifiers"
      ],
      "set": [
@@ -7258,7 +7424,7 @@
     {
      "at": [
       "rules",
-      20,
+      22,
       "id"
      ],
      "set": "distance"
@@ -7266,7 +7432,7 @@
     {
      "at": [
       "rules",
-      20,
+      22,
       "phrases"
      ],
      "set": [
@@ -7280,7 +7446,7 @@
     {
      "at": [
       "rules",
-      20,
+      22,
       "with",
       "fields"
      ],
@@ -7292,7 +7458,7 @@
     {
      "at": [
       "rules",
-      21,
+      23,
       "id"
      ],
      "set": "sightline"
@@ -7300,7 +7466,7 @@
     {
      "at": [
       "rules",
-      21,
+      23,
       "action"
      ],
      "set": "finding.describe"
@@ -7308,7 +7474,7 @@
     {
      "at": [
       "rules",
-      21,
+      23,
       "phrases"
      ],
      "set": [
@@ -7326,7 +7492,7 @@
     {
      "at": [
       "rules",
-      21,
+      23,
       "with"
      ],
      "set": {
@@ -7338,7 +7504,7 @@
     {
      "at": [
       "rules",
-      22,
+      24,
       "with"
      ],
      "drop": true
@@ -7346,7 +7512,7 @@
     {
      "at": [
       "rules",
-      22,
+      24,
       "id"
      ],
      "set": "flight"
@@ -7354,7 +7520,7 @@
     {
      "at": [
       "rules",
-      22,
+      24,
       "action"
      ],
      "set": "space.enter"
@@ -7362,7 +7528,7 @@
     {
      "at": [
       "rules",
-      22,
+      24,
       "phrases"
      ],
      "set": [
@@ -7397,7 +7563,7 @@
     {
      "at": [
       "rules",
-      22,
+      24,
       "target"
      ],
      "set": "view"
@@ -7405,7 +7571,7 @@
     {
      "at": [
       "rules",
-      23,
+      25,
       "id"
      ],
      "set": "describe_kind"
@@ -7413,7 +7579,7 @@
     {
      "at": [
       "rules",
-      23,
+      25,
       "action"
      ],
      "set": "finding.describe"
@@ -7421,7 +7587,7 @@
     {
      "at": [
       "rules",
-      23,
+      25,
       "phrases"
      ],
      "set": [
@@ -7435,7 +7601,7 @@
     {
      "at": [
       "rules",
-      23,
+      25,
       "with"
      ],
      "set": {
@@ -7448,7 +7614,7 @@
     {
      "at": [
       "rules",
-      24,
+      26,
       "with"
      ],
      "drop": true
@@ -7456,7 +7622,7 @@
     {
      "at": [
       "rules",
-      24,
+      26,
       "id"
      ],
      "set": "select"
@@ -7464,7 +7630,7 @@
     {
      "at": [
       "rules",
-      24,
+      26,
       "action"
      ],
      "set": "finding.select"
@@ -7472,7 +7638,7 @@
     {
      "at": [
       "rules",
-      24,
+      26,
       "phrases"
      ],
      "set": [
@@ -7495,7 +7661,7 @@
     {
      "at": [
       "rules",
-      24,
+      26,
       "target"
      ],
      "set": "which"
@@ -7503,7 +7669,7 @@
     {
      "at": [
       "rules",
-      25,
+      27,
       "id"
      ],
      "set": "describe"
@@ -7511,7 +7677,7 @@
     {
      "at": [
       "rules",
-      25,
+      27,
       "phrases",
       0
      ],
@@ -7520,7 +7686,7 @@
     {
      "at": [
       "rules",
-      25,
+      27,
       "phrases",
       1
      ],
@@ -7529,7 +7695,7 @@
     {
      "at": [
       "rules",
-      25,
+      27,
       "target"
      ],
      "set": "view"
@@ -7537,7 +7703,7 @@
     {
      "at": [
       "rules",
-      26,
+      28,
       "id"
      ],
      "set": "describe_about"
@@ -7545,7 +7711,7 @@
     {
      "at": [
       "rules",
-      26,
+      28,
       "action"
      ],
      "set": "finding.describe"
@@ -7553,7 +7719,7 @@
     {
      "at": [
       "rules",
-      26,
+      28,
       "phrases"
      ],
      "set": [
@@ -7564,7 +7730,7 @@
     {
      "at": [
       "rules",
-      26,
+      28,
       "target"
      ],
      "set": "about"
@@ -7572,7 +7738,7 @@
     {
      "at": [
       "rules",
-      26,
+      28,
       "with"
      ],
      "set": {
@@ -7587,7 +7753,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "id"
      ],
      "set": "select_named"
@@ -7595,7 +7761,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "match"
      ],
      "set": "words"
@@ -7603,7 +7769,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "phrases"
      ],
      "set": [
@@ -7616,7 +7782,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "target"
      ],
      "set": "named"
@@ -7624,7 +7790,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "phrases"
      ],
      "drop": true
@@ -7632,7 +7798,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "with"
      ],
      "drop": true
@@ -7640,7 +7806,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "id"
      ],
      "set": "named"
@@ -7648,7 +7814,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "action"
      ],
      "set": "finding.select"
@@ -7656,7 +7822,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "match"
      ],
      "set": "name"
@@ -7664,7 +7830,7 @@
     {
      "at": [
       "rules",
-      28,
+      30,
       "target"
      ],
      "set": "about"
@@ -7672,7 +7838,7 @@
     {
      "at": [
       "rules",
-      29,
+      31,
       "id"
      ],
      "set": "sky_predicted"
@@ -7680,7 +7846,7 @@
     {
      "at": [
       "rules",
-      29,
+      31,
       "phrases"
      ],
      "set": [
@@ -7698,7 +7864,7 @@
     {
      "at": [
       "rules",
-      29,
+      31,
       "with",
       "mode"
      ],
@@ -7707,7 +7873,7 @@
     {
      "at": [
       "rules",
-      30,
+      32,
       "id"
      ],
      "set": "sky_measured"
@@ -7715,7 +7881,7 @@
     {
      "at": [
       "rules",
-      30,
+      32,
       "action"
      ],
      "set": "sky.show"
@@ -7723,7 +7889,7 @@
     {
      "at": [
       "rules",
-      30,
+      32,
       "match"
      ],
      "set": "words"
@@ -7731,7 +7897,7 @@
     {
      "at": [
       "rules",
-      30,
+      32,
       "phrases"
      ],
      "set": [
@@ -7743,7 +7909,7 @@
     {
      "at": [
       "rules",
-      30,
+      32,
       "with"
      ],
      "set": {
@@ -8187,6 +8353,31 @@
         "what is in the sky",
         "match the sky"
        ]
+      },
+      {
+       "id": "real_sky",
+       "action": "sky.show",
+       "match": "words",
+       "phrases": [
+        "show me the real sky",
+        "show the real sky",
+        "show real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
+      },
+      {
+       "id": "real_sky_alone",
+       "action": "sky.show",
+       "match": "whole",
+       "phrases": [
+        "the real sky",
+        "real sky"
+       ],
+       "with": {
+        "mode": "measured"
+       }
       },
       {
        "id": "viewpoint",
@@ -10098,7 +10289,7 @@
     {
      "at": [
       "rules",
-      27,
+      29,
       "phrases"
      ],
      "set": [
@@ -15904,6 +16095,158 @@
    "says": [
     "sky"
    ],
+   "fields": {}
+  },
+  {
+   "request": "show me the real sky",
+   "says": [
+    "real_sky",
+    "select_named"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "please show me the real sky now",
+   "says": [
+    "real_sky",
+    "select_named"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "show me the real skys",
+   "says": [
+    "select_named"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "unshow me the real sky",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "show me the real sky, then stop.",
+   "says": [
+    "real_sky",
+    "select_named"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "show the real sky",
+   "says": [
+    "real_sky"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "please show the real sky now",
+   "says": [
+    "real_sky"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "show the real skys",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "unshow the real sky",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "show the real sky, then stop.",
+   "says": [
+    "real_sky"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "show real sky",
+   "says": [
+    "real_sky"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "please show real sky now",
+   "says": [
+    "real_sky"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "show real skys",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "unshow real sky",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "show real sky, then stop.",
+   "says": [
+    "real_sky"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "the real sky",
+   "says": [
+    "real_sky_alone"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "please the real sky now",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "the real skys",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "unthe real sky",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "the real sky, then stop.",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "real sky",
+   "says": [
+    "real_sky_alone"
+   ],
+   "fields": {}
+  },
+  {
+   "request": "please real sky now",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "real skys",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "unreal sky",
+   "says": [],
+   "fields": {}
+  },
+  {
+   "request": "real sky, then stop.",
+   "says": [],
    "fields": {}
   },
   {
