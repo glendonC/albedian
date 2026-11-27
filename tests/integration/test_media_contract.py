@@ -163,6 +163,12 @@ GATE_ROWS = {
     "brightLevels": ("spatial_denoise", 1),
     "brightBackgroundPercentile": ("spatial_denoise", 20),
     "brightBackgroundPx": ("spatial_denoise", 65),
+    # keep-dark-contract-one [decided 2026-11-27 12:25 by the lead]: a still's dark structure kept as recorded
+    "darkSkyNoises": ("spatial_denoise", 10.0),
+    "darkHaloNoises": ("spatial_denoise", 4.0),
+    "darkOpenPx": ("spatial_denoise", 7),
+    "darkSkyPx": ("spatial_denoise", 31),
+    "darkEdgeNoises": ("spatial_denoise", 4.0),
     "sensitivityPeakCodes": ("dissolve_unconfirmed", 4.0),
     "floorMargin": ("dissolve_unconfirmed", 2.0),
     "gateThresholdSnr": ("dissolve_unconfirmed", 5.0),
@@ -192,6 +198,24 @@ def test_restore_4s_settings_are_recorded_by_their_own_steps() -> None:
     # The sensitivity is a peak in codes of 255, never past the scale
     peak = next(r for r in media.STEP_PARAMETERS if r["name"] == "sensitivityPeakCodes")
     assert (peak["type"], peak["min"], peak["max"]) == ("number", 0, 255)
+
+
+def test_the_dark_regions_sides_are_whole_pixels_and_their_noises_never_negative() -> None:
+    # keep-dark-contract-one: the opening's and the sky's sides are pixel counts; the three depths are noises from 0
+    def step(name: str, value: float) -> dict:
+        return {"kind": "spatial_denoise", "version": "1.0.0", "parameters": [
+            {"name": name, "value": value, "origin": "default", "basis": "Proposed in design section 7."}]}
+
+    for name in ("darkOpenPx", "darkSkyPx"):
+        row = next(r for r in media.STEP_PARAMETERS if r["name"] == name)
+        assert (row["type"], row["min"], row["unit"]) == ("integer", 1, "px")
+        with pytest.raises(ValidationError):
+            media.GraphStep.model_validate(step(name, 7.5))
+    for name in ("darkSkyNoises", "darkHaloNoises", "darkEdgeNoises"):
+        row = next(r for r in media.STEP_PARAMETERS if r["name"] == name)
+        assert (row["type"], row["min"], row["max"], row["unit"]) == ("number", 0, 1000, "sky noises")
+        with pytest.raises(ValidationError):
+            media.GraphStep.model_validate(step(name, -1.0))
 
 
 def test_the_removed_shapes_are_gone() -> None:

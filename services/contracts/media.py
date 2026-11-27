@@ -231,6 +231,13 @@ STEP_PARAMETERS = (
     _integer("brightLevels", ("spatial_denoise",), 0, 8, "B3 levels"),
     _integer("brightBackgroundPercentile", ("spatial_denoise",), 0, 100, "percentile"),
     _integer("brightBackgroundPx", ("spatial_denoise",), 1, 4096, "px"),
+    # A still's dark structure kept as recorded (keep-dark-contract-one): the seed's and the connected dark's depths
+    # under the sky, the opening's and the sky's sides, and the depth at which a sample is the original exactly
+    _number("darkSkyNoises", ("spatial_denoise",), 0, 1000, "sky noises"),
+    _number("darkHaloNoises", ("spatial_denoise",), 0, 1000, "sky noises"),
+    _integer("darkOpenPx", ("spatial_denoise",), 1, 4096, "px"),
+    _integer("darkSkyPx", ("spatial_denoise",), 1, 4096, "px"),
+    _number("darkEdgeNoises", ("spatial_denoise",), 0, 1000, "sky noises"),
     _number("keptFineNoiseShare", ("spatial_denoise",), 0, 1, "share of the photo's own finest noise"),
     _integer("maxPasses", ("dissolve_unconfirmed",), 0, 3, "passes"),
     _number("variantThresholdSnr", ("dissolve_unconfirmed",), 0, 100, "signal to noise"),

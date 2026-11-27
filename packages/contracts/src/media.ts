@@ -548,6 +548,13 @@ export const STEP_PARAMETERS: readonly StepParameter[] = [
   integer('brightLevels', ['spatial_denoise'], 0, 8, 'B3 levels'),
   integer('brightBackgroundPercentile', ['spatial_denoise'], 0, 100, 'percentile'),
   integer('brightBackgroundPx', ['spatial_denoise'], 1, 4096, 'px'),
+  // A still's dark structure kept as recorded (keep-dark-contract-one): the seed's and the connected dark's depths
+  // under the sky, the opening's and the sky's sides, and the depth at which a sample is the original exactly
+  number('darkSkyNoises', ['spatial_denoise'], 0, 1000, 'sky noises'),
+  number('darkHaloNoises', ['spatial_denoise'], 0, 1000, 'sky noises'),
+  integer('darkOpenPx', ['spatial_denoise'], 1, 4096, 'px'),
+  integer('darkSkyPx', ['spatial_denoise'], 1, 4096, 'px'),
+  number('darkEdgeNoises', ['spatial_denoise'], 0, 1000, 'sky noises'),
   number('keptFineNoiseShare', ['spatial_denoise'], 0, 1, "share of the photo's own finest noise"),
   integer('maxPasses', ['dissolve_unconfirmed'], 0, 3, 'passes'),
   number('variantThresholdSnr', ['dissolve_unconfirmed'], 0, 100, 'signal to noise'),

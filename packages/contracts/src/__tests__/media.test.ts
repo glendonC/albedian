@@ -227,6 +227,11 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
       ['brightLevels', 'spatial_denoise', 1],
       ['brightBackgroundPercentile', 'spatial_denoise', 20],
       ['brightBackgroundPx', 'spatial_denoise', 65],
+      ['darkSkyNoises', 'spatial_denoise', 10.0],
+      ['darkHaloNoises', 'spatial_denoise', 4.0],
+      ['darkOpenPx', 'spatial_denoise', 7],
+      ['darkSkyPx', 'spatial_denoise', 31],
+      ['darkEdgeNoises', 'spatial_denoise', 4.0],
       ['sensitivityPeakCodes', 'dissolve_unconfirmed', 4.0],
       ['floorMargin', 'dissolve_unconfirmed', 2.0],
       ['gateThresholdSnr', 'dissolve_unconfirmed', 5.0],
@@ -247,6 +252,24 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     expect(accepts(GraphStepSchema, { kind: 'spatial_denoise', version: '1.0.0', parameters: [fraction] })).toBe(false);
     const peak = STEP_PARAMETERS.find((row) => row.name === 'sensitivityPeakCodes')!;
     expect([peak.type, 'min' in peak ? peak.min : null, 'max' in peak ? peak.max : null]).toEqual(['number', 0, 255]);
+  });
+
+  it("keeps the dark regions' sides whole pixels and their noises never negative (keep-dark-contract-one)", () => {
+    const step = (name: string, value: number) => ({
+      kind: 'spatial_denoise', version: '1.0.0',
+      parameters: [{ name, value, origin: 'default', basis: 'Proposed in design section 7.' }],
+    });
+    for (const name of ['darkOpenPx', 'darkSkyPx']) {
+      const row = STEP_PARAMETERS.find((r) => r.name === name)!;
+      expect([row.type, 'min' in row ? row.min : null, 'unit' in row ? row.unit : null], name).toEqual(['integer', 1, 'px']);
+      expect(accepts(GraphStepSchema, step(name, 7.5)), name).toBe(false);
+    }
+    for (const name of ['darkSkyNoises', 'darkHaloNoises', 'darkEdgeNoises']) {
+      const row = STEP_PARAMETERS.find((r) => r.name === name)!;
+      expect([row.type, 'min' in row ? row.min : null, 'max' in row ? row.max : null, 'unit' in row ? row.unit : null], name)
+        .toEqual(['number', 0, 1000, 'sky noises']);
+      expect(accepts(GraphStepSchema, step(name, -1)), name).toBe(false);
+    }
   });
 
   it('parses every record the Python side wrote, unchanged but for minus zero, which is zero', () => {

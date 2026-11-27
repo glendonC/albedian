@@ -977,6 +977,56 @@
         "unit": "px"
       },
       {
+        "name": "darkSkyNoises",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "unit": "sky noises"
+      },
+      {
+        "name": "darkHaloNoises",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "unit": "sky noises"
+      },
+      {
+        "name": "darkOpenPx",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 4096,
+        "unit": "px"
+      },
+      {
+        "name": "darkSkyPx",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 4096,
+        "unit": "px"
+      },
+      {
+        "name": "darkEdgeNoises",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "unit": "sky noises"
+      },
+      {
         "name": "keptFineNoiseShare",
         "steps": [
           "spatial_denoise"
