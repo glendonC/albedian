@@ -678,11 +678,58 @@ def _clipped_flats(luma: np.ndarray) -> np.ndarray:
     foreground or a saturated core, where the data holds no noise to measure. Their response's deviation is 0, so a
     tile made of them would read as noise-free and anything bright in it (a lamp on clipped ground) would score tens of
     times its noise elsewhere. Relative to the frame's own range, so scaling the frame or adding to it changes nothing;
-    on a frame with one value everywhere every pixel is one."""
+    on a frame with one value everywhere every pixel is one.
+
+    A window's maximum is at or under the lowest value exactly when each of its pixels is, so the 3x3 max filter of the
+    frame compared with it is the 3x3 min filter of that comparison's mask, and likewise at the top: the same booleans
+    from filters on bytes (detect-exact-peaks-1). A frame holding a NaN has a NaN lowest and highest value, and every
+    comparison with them is False either way."""
     low, high = float(np.min(luma)), float(np.max(luma))
-    at_low = ndimage.maximum_filter(luma, size=3, mode="nearest") <= low
-    at_high = ndimage.minimum_filter(luma, size=3, mode="nearest") >= high
-    return at_low | at_high
+    at_low = ndimage.minimum_filter(np.asarray(luma <= low, dtype=np.uint8), size=3, mode="nearest")
+    at_high = ndimage.minimum_filter(np.asarray(luma >= high, dtype=np.uint8), size=3, mode="nearest")
+    return (at_low | at_high).astype(bool)
+
+
+def _window_max_at(values: np.ndarray, ys: np.ndarray, xs: np.ndarray, side: int) -> np.ndarray:
+    """The maximum of `values` over the odd `side` x `side` window centred on each (ys, xs), the window's rows and
+    columns clamped to the frame: scipy's maximum_filter with mode "nearest" (whose border repeats the edge pixel,
+    already in the clamped window) read at those pixels alone."""
+    h, w = values.shape
+    r = side // 2
+    cols = [np.clip(xs + dx, 0, w - 1) for dx in range(-r, r + 1)]
+    best: np.ndarray | None = None
+    for dy in range(-r, r + 1):
+        rows = np.clip(ys + dy, 0, h - 1)
+        for col in cols:
+            here = values[rows, col]
+            best = here if best is None else np.maximum(best, here, out=best)
+    assert best is not None
+    return best
+
+
+def _local_maxima(values: np.ndarray, candidate: np.ndarray, side: int) -> np.ndarray:
+    """`candidate & (values == maximum_filter(values, size=side, mode="nearest"))`, the window's maximum read only at
+    the candidates (`_window_max_at`): max is exact, so these are the same booleans wherever `values` holds no NaN.
+    An array holding a NaN takes that whole-frame expression itself, whose handling of NaN the reads would not
+    repeat (detect-exact-peaks-1)."""
+    if np.isnan(values).any():
+        return (values == ndimage.maximum_filter(values, size=side, mode="nearest")) & candidate
+    ys, xs = np.nonzero(candidate)
+    peaks = np.zeros(values.shape, dtype=bool)
+    if ys.size:
+        keep = values[ys, xs] == _window_max_at(values, ys, xs, side)
+        peaks[ys[keep], xs[keep]] = True
+    return peaks
+
+
+def _reaches(values: np.ndarray, threshold: float, side: int) -> np.ndarray:
+    """`maximum_filter(values, size=side, mode="nearest") >= threshold`: a window's maximum is at or over the threshold
+    exactly when one of its pixels is, so it is the same filter on the bytes of `values >= threshold` wherever `values`
+    holds no NaN; an array holding a NaN takes the whole-frame expression itself (detect-exact-peaks-1)."""
+    if np.isnan(values).any():
+        return ndimage.maximum_filter(values, size=side, mode="nearest") >= float(threshold)
+    mask = np.asarray(values >= float(threshold), dtype=np.uint8)
+    return ndimage.maximum_filter(mask, size=side, mode="nearest").astype(bool)
 
 
 # The kind of frame on which the stated target (FALSE_TARGET_PER_MP) does not hold, told from the frame's own pixels,
@@ -894,9 +941,7 @@ def _profile_stars(residual: np.ndarray, sigma_eff: float, clipped: np.ndarray) 
     """The stars the profile is built from, by the fixed rule above: (peak, y, x), brightest first."""
     h, w = residual.shape
     half = PROFILE_HALF_PX
-    peaks = (residual == ndimage.maximum_filter(residual, size=PROFILE_PEAK_BOX_PX, mode="nearest")) & (
-        residual >= PROFILE_NOISES * float(sigma_eff)
-    )
+    peaks = _local_maxima(residual, residual >= PROFILE_NOISES * float(sigma_eff), PROFILE_PEAK_BOX_PX)
     ys, xs = np.nonzero(peaks)
     inside = (ys >= half) & (ys < h - half) & (xs >= half) & (xs < w - half)
     ys, xs = ys[inside], xs[inside]
@@ -1026,16 +1071,16 @@ def _negative_count(
     pixel is at a full-scale top, so no clipped core is found there."""
     negated_residual = -residual
     negated = -snr_map
-    local_max = ndimage.maximum_filter(negated, size=7, mode="nearest")
-    near_source = ndimage.maximum_filter(snr_map, size=7, mode="nearest") >= float(threshold)
-    is_peak = (negated == local_max) & (negated >= float(threshold)) & (negated_residual > 0.0) & ~near_source
+    near_source = _reaches(snr_map, threshold, 7)
+    candidate = (negated >= float(threshold)) & (negated_residual > 0.0) & ~near_source
     margin = EDGE_MARGIN_PX
-    is_peak[:margin, :] = False
-    is_peak[-margin:, :] = False
-    is_peak[:, :margin] = False
-    is_peak[:, -margin:] = False
+    candidate[:margin, :] = False
+    candidate[-margin:, :] = False
+    candidate[:, :margin] = False
+    candidate[:, -margin:] = False
     if sky_mask is not None:
-        is_peak &= np.asarray(sky_mask, dtype=bool)
+        candidate &= np.asarray(sky_mask, dtype=bool)
+    is_peak = _local_maxima(negated, candidate, 7)
     left = 1.0 - float(np.mean(near_source))
     if not left > 0.0:
         return NegativeImage(0, 0.0)
