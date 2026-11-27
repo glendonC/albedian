@@ -5,8 +5,9 @@
 ones the record names (size and SHA-256); `GET /api/samples/{sample_id}/asset` gives that photo as the app reads it
 (sample-asset-one: the SourceAsset the ingest's own reader makes of it, a public sample shown from its own route, its
 contract SampleAsset), and `GET /api/samples/{sample_id}/solution` gives the app's own solve of
-it from the cache, only when its SHA-256 matches the one kept beside it. What is not on this machine yet is 404; what
-fails its hash is 409 and is never served. A read never fetches and never solves: the setup step
+it from the cache, only when its SHA-256 matches the one kept beside it and the setup's own rule holds it kept
+(sample-solution-producer-one: made by this revision of the solve chain, taken by the contract, named for this photo).
+What is not on this machine yet, or not kept by that rule, is 404; what fails its hash is 409 and is never served. A read never fetches and never solves: the setup step
 (scripts/make_samples.py) does both, as the record says.
 """
 
@@ -24,6 +25,7 @@ from fastapi.responses import FileResponse
 from services.contracts.samples import SAMPLE_ID_PATTERN, SampleAsset, SampleNight, load_samples, sample_asset_matches
 from services.ingest.router import read_stored_asset
 from services.ingest.store import SNIFF_BYTES, Received, sniff
+from services.samples.make import SampleAltered, kept_solve
 
 router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -63,15 +65,13 @@ def sample_of_photo(root: Path, sha256: str) -> Optional[SampleNight]:
 
 
 def kept_solution(root: Path, night: SampleNight) -> Optional[dict[str, Any]]:
-    """The app's own solve of the sample kept on this machine, whole: None when it is not made here (or is a link to
-    elsewhere), 409 when it fails the SHA-256 kept beside it."""
-    path = root / night.solution.path
-    kept = root / night.solution.sha256_path
-    if not path.is_file() or path.is_symlink() or not kept.is_file():
-        return None
-    if _sha256(path) != kept.read_text(encoding="utf-8").strip():
-        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
-    return json.loads(path.read_text(encoding="utf-8"))
+    """The app's own solve of the sample kept on this machine, by the setup's own rule (`kept_solve`: whole by its
+    hash, made by this revision of the solve chain, taken by the contract, named for this photo): None when it is not
+    so, 409 when its bytes are not the ones its hash names."""
+    try:
+        return kept_solve(night, root)
+    except SampleAltered:
+        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE) from None
 
 
 @router.get("/api/samples")

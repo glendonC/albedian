@@ -13,7 +13,6 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
-from services.contracts.astronomy import parse_observation_solution
 from services.contracts.voice import (
     VOICE_QUESTION_REPLY,
     FindingId,
@@ -91,9 +90,10 @@ def _read_checked_solution(store: IngestStore, sha256: str) -> dict[str, Any] | 
 
 
 def _checked_sample_solution(root: FilePath, sha256: str) -> tuple[bool, dict[str, Any] | None]:
-    """For a sample night's photo (sample-voice-one): (True, its kept solve, checked as an upload's is and naming this
-    photo), or (True, None) when the solve is not made here; (False, None) when no sample has these bytes. 409 when
-    the kept solve fails its hash, the contract or the answer contract's ids, or names another photo."""
+    """For a sample night's photo (sample-voice-one): (True, its kept solve, by the setup's own rule and with the ids
+    the answer contract takes), or (True, None) when no solve is kept here by that rule (not made, made by another
+    revision, refused by the contract or named for another photo: sample-solution-producer-one); (False, None) when no
+    sample has these bytes. 409 when the kept solve fails its hash or holds an id the answer contract refuses."""
     night = sample_of_photo(root, sha256)
     if night is None:
         return False, None
@@ -101,14 +101,11 @@ def _checked_sample_solution(root: FilePath, sha256: str) -> tuple[bool, dict[st
     if solution is None:
         return True, None
     try:
-        parsed = parse_observation_solution(solution)
         _SOLUTION_ID.validate_python(solution["id"])
         for finding in solution["findings"]:
             _FINDING_ID.validate_python(finding["id"])
     except (ValidationError, TypeError, ValueError, KeyError) as exc:
         raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE) from exc
-    if parsed.source_sha256 != sha256 or parsed.source_asset_id != f"src_{sha256[:16]}":
-        raise HTTPException(status_code=409, detail=UNEXPECTED_SAMPLE_FILE)
     return True, solution
 
 

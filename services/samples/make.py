@@ -22,8 +22,11 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
+from pydantic import ValidationError
+
+from services.contracts.astronomy import parse_observation_solution
 from services.contracts.samples import SampleNight, load_samples
 # The solve chain's producer, read at load (its import sets the warnings its child processes inherit)
 from services.ingest.jobs import SOLVE_PRODUCER
@@ -34,6 +37,10 @@ AT_START_ENV = "ALBEDIAN_SAMPLES_AT_START"
 
 class SampleNotReady(Exception):
     """A sample whose photo is not the recorded one, or whose solve could not be made."""
+
+
+class SampleAltered(Exception):
+    """A kept solve whose bytes are not the ones the SHA-256 kept beside it names."""
 
 
 def _sha256(path: Path) -> str:
@@ -90,15 +97,35 @@ def solve_photo(photo: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             job_runner.runner_for(store).shutdown()
 
 
-def _kept(night: SampleNight, root: Path) -> bool:
+def kept_solve(night: SampleNight, root: Path = ROOT) -> Optional[dict[str, Any]]:
+    """The app's own solve of the sample kept on this machine, the one rule the solution route, the voice answers and
+    this setup all hold (sample-solution-producer-one, from AUDIT's audit of main 927612bd3): the solution, its SHA-256
+    and its producer beside it, none a link to elsewhere; whole by that hash; made by this revision of the solve chain;
+    taken by the solution contract; named for this night's photo. None when any of that is not so (not made here yet,
+    made by another revision, being made again, or refused); SampleAltered when its bytes are not the ones its hash
+    names."""
     path, kept, made_by = root / night.solution.path, root / night.solution.sha256_path, root / producer_path(night)
-    if not (path.is_file() and kept.is_file() and made_by.is_file()) or _sha256(path) != kept.read_text(encoding="utf-8").strip():
-        return False
+    if not all(p.is_file() and not p.is_symlink() for p in (path, kept, made_by)):
+        return None
+    if _sha256(path) != kept.read_text(encoding="utf-8").strip():
+        raise SampleAltered("the kept solve is not the one its hash names")
     try:
-        producer = json.loads(made_by.read_text(encoding="utf-8"))
-    except ValueError:
+        if json.loads(made_by.read_text(encoding="utf-8")) != current_producer():
+            return None
+        solution = json.loads(path.read_text(encoding="utf-8"))
+        parsed = parse_observation_solution(solution)
+    except (ValidationError, ValueError, TypeError, RecursionError):
+        return None
+    if parsed.source_sha256 != night.photo.sha256 or parsed.source_asset_id != f"src_{night.photo.sha256[:16]}":
+        return None
+    return solution
+
+
+def _kept(night: SampleNight, root: Path) -> bool:
+    try:
+        return kept_solve(night, root) is not None
+    except SampleAltered:
         return False
-    return producer == current_producer()
 
 
 def make_ready(
@@ -116,6 +143,9 @@ def make_ready(
         fetch(night, root)
     if not photo.is_file() or photo.stat().st_size != night.photo.bytes or _sha256(photo) != night.photo.sha256:
         raise SampleNotReady("the sample photo on this machine is not the one its record names")
+    # The old producer goes before the solve and the new one after everything else, so while the solve is made again
+    # nothing serves the old one or a half-recorded new one: the route says it is not on this machine yet
+    (root / producer_path(night)).unlink(missing_ok=True)
     solution, producer = solve(photo)
     text = (json.dumps(solution) + "\n").encode("utf-8")
     path = root / night.solution.path

@@ -23,7 +23,10 @@ make_samples = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(make_samples)
 
 PHOTO = b"\xff\xd8 a stand-in photo \xff\xd9"
-SOLUTION = {"id": "sol_stand_in", "status": "calibrated", "findings": []}
+_SHA = hashlib.sha256(PHOTO).hexdigest()
+# A stand-in solve the contract takes, named for the stand-in photo: a kept solve is one the route would serve
+SOLUTION = {**json.loads((ROOT / "tests" / "fixtures" / "python_contract_solutions.json").read_text(encoding="utf-8"))["plate_calibrated"],
+            "sourceSha256": _SHA, "sourceAssetId": f"src_{_SHA[:16]}"}
 
 
 @pytest.fixture
@@ -109,3 +112,67 @@ def test_a_kept_solve_with_no_producer_beside_it_is_made_again(root: Path) -> No
     make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, make_samples.current_producer()))
     (root / make_samples.producer_path(night)).unlink()
     assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, make_samples.current_producer())) == "made"
+
+
+
+@pytest.mark.parametrize("before", ["made_by_another_revision", "altered_under_this_revision"])
+def test_while_a_stale_solve_is_made_again_it_is_never_served(root: Path, monkeypatch: pytest.MonkeyPatch, before: str) -> None:
+    """AUDIT's proposal: the maker removes the old producer before it solves and writes the new one last, so during a
+    remake the route answers not on this machine yet, never the stale solve, never a 409 for an altered one and never
+    a half-recorded new one (asked again the moment the new solution is put in place, before its hash is written)."""
+    from fastapi.testclient import TestClient
+
+    from services.api import create_app
+    from services.samples import make as maker_module
+    from services.samples import router as samples_router
+
+    night = _night(root)
+    current = make_samples.current_producer()
+    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, current))
+    if before == "made_by_another_revision":
+        (root / make_samples.producer_path(night)).write_text(json.dumps({**current, "revision": current["revision"] - 1}), encoding="utf-8")
+    else:
+        (root / night.solution.path).write_text("{}", encoding="utf-8")
+    app = create_app()
+    app.dependency_overrides[samples_router.get_samples_root] = lambda: root
+    client = TestClient(app, base_url="http://127.0.0.1:8000")
+    route = f"/api/samples/{night.id}/solution"
+    assert client.get(route).status_code == (404 if before == "made_by_another_revision" else 409)
+    during: list[int] = []
+    real_replace = maker_module.os.replace
+
+    def replace(source: Any, target: Any) -> None:
+        real_replace(source, target)
+        during.append(client.get(route).status_code)
+
+    def solve(photo: Path) -> Any:
+        during.append(client.get(route).status_code)
+        return SOLUTION, current
+
+    monkeypatch.setattr(maker_module.os, "replace", replace)
+    assert make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=solve) == "made"
+    assert during == [404, 404]
+    assert client.get(route).status_code == 200
+
+
+def test_the_producer_is_written_last(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    night = _night(root)
+    current = make_samples.current_producer()
+    seen: list[str] = []
+    from services.samples import make as maker_module
+
+    real_replace, real_write = maker_module.os.replace, Path.write_text
+
+    def replace(source: Any, target: Any) -> None:
+        seen.append(Path(target).name)
+        real_replace(source, target)
+
+    def write_text(self: Path, *args: Any, **kwargs: Any) -> int:
+        seen.append(self.name)
+        return real_write(self, *args, **kwargs)
+
+    monkeypatch.setattr(maker_module.os, "replace", replace)
+    monkeypatch.setattr(Path, "write_text", write_text)
+    make_samples.make_ready(night, root, fetch=_fetcher(PHOTO, []), solve=lambda photo: (SOLUTION, current))
+    assert seen[-1] == Path(make_samples.producer_path(night)).name, seen
+    assert seen.index(Path(night.solution.path).name) < seen.index(Path(night.solution.sha256_path).name) < len(seen) - 1, seen

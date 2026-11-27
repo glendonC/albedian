@@ -22,6 +22,7 @@ from services.api import create_app
 from services.contracts import voice as contract
 from services.ingest import router as ingest_router
 from services.ingest.store import IngestStore
+from services.samples import make as samples_make
 from services.samples import router as samples_router
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +70,9 @@ def _keep(root: Path, solution: dict[str, Any], digest: str | None = None) -> No
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(text)
     (root / NIGHT["solution"]["sha256Path"]).write_text((digest or hashlib.sha256(text).hexdigest()) + "\n", encoding="utf-8")
+    # Made by this revision of the solve chain, as the setup writes it beside the solve
+    night = samples_make.load_samples(root / "data" / "samples.json")[0]
+    (root / samples_make.producer_path(night)).write_text(json.dumps(samples_make.current_producer()) + "\n", encoding="utf-8")
 
 
 def _upload(store: IngestStore, solution: dict[str, Any]) -> None:
@@ -128,21 +132,30 @@ def test_a_kept_solve_with_an_id_the_answer_contract_refuses_is_not_answered_fro
     assert _ask(client, "how far is Rigel?", status=409) == {"detail": samples_router.UNEXPECTED_SAMPLE_FILE}
 
 
-def test_a_kept_solve_that_fails_its_hash_or_names_another_photo_is_not_answered_from(client: TestClient, root: Path) -> None:
+def test_a_kept_solve_that_fails_its_hash_is_not_answered_from(client: TestClient, root: Path) -> None:
     _keep(root, _solution("plate_calibrated"), digest="0" * 64)
     assert _ask(client, "how far is Rigel?", status=409) == {"detail": samples_router.UNEXPECTED_SAMPLE_FILE}
-    _keep(root, _solution("plate_calibrated", sha=OTHER))
-    assert _ask(client, "how far is Rigel?", status=409) == {"detail": samples_router.UNEXPECTED_SAMPLE_FILE}
-    # Each of the two names alone: another photo's hash under this one's asset id, and this hash under another id
-    _keep(root, {**_solution("plate_calibrated"), "sourceSha256": OTHER})
-    assert _ask(client, "how far is Rigel?", status=409) == {"detail": samples_router.UNEXPECTED_SAMPLE_FILE}
-    _keep(root, {**_solution("plate_calibrated"), "sourceAssetId": f"src_{OTHER[:16]}"})
-    assert _ask(client, "how far is Rigel?", status=409) == {"detail": samples_router.UNEXPECTED_SAMPLE_FILE}
 
 
-def test_a_kept_solve_the_contract_refuses_is_not_answered_from(client: TestClient, root: Path) -> None:
-    _keep(root, {**_solution("plate_calibrated"), "status": "made up"})
-    assert _ask(client, "how far is Rigel?", status=409) == {"detail": samples_router.UNEXPECTED_SAMPLE_FILE}
+@pytest.mark.parametrize("case", ["named_for_another_photo", "another_photos_hash", "another_asset_id",
+                                  "refused_by_the_contract", "made_by_another_revision"])
+def test_a_solve_the_setup_would_not_keep_is_answered_as_an_unsolved_photo(client: TestClient, root: Path, case: str) -> None:
+    """sample-solution-producer-one: the setup's own rule decides what is kept, so the answers never come from a solve
+    the solution route would not serve."""
+    solution = {
+        "named_for_another_photo": _solution("plate_calibrated", sha=OTHER),
+        "another_photos_hash": {**_solution("plate_calibrated"), "sourceSha256": OTHER},
+        "another_asset_id": {**_solution("plate_calibrated"), "sourceAssetId": f"src_{OTHER[:16]}"},
+        "refused_by_the_contract": {**_solution("plate_calibrated"), "status": "made up"},
+        "made_by_another_revision": _solution("plate_calibrated"),
+    }[case]
+    _keep(root, solution)
+    if case == "made_by_another_revision":
+        current = samples_make.current_producer()
+        night = samples_make.load_samples(root / "data" / "samples.json")[0]
+        (root / samples_make.producer_path(night)).write_text(json.dumps({**current, "revision": current["revision"] - 1}), encoding="utf-8")
+    answer = _ask(client, "how far is Rigel?")
+    assert (answer["status"], answer["reason"]) == ("unanswerable", "photo_not_solved")
 
 
 def test_a_hash_that_is_neither_an_upload_nor_a_sample_is_still_not_found(client: TestClient, root: Path) -> None:

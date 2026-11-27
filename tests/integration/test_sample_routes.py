@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from services.api import create_app
+from services.samples import make as samples_make
 from services.samples import router as samples_router
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,17 +47,29 @@ def _put_photo(root: Path, body: bytes = PHOTO) -> None:
     path.write_bytes(body)
 
 
-def _put_solution(root: Path, solution: dict[str, Any], digest: str | None = None) -> bytes:
+def _put_solution(root: Path, solution: dict[str, Any], digest: str | None = None,
+                  producer: dict[str, Any] | None | str = "current") -> bytes:
+    """The kept solve, its hash and, unless told otherwise, the producer of this revision of the solve chain."""
     text = (json.dumps(solution) + "\n").encode("utf-8")
     path = root / NIGHT["solution"]["path"]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(text)
     (root / NIGHT["solution"]["sha256Path"]).write_text((digest or hashlib.sha256(text).hexdigest()) + "\n", encoding="utf-8")
+    made_by = root / samples_make.producer_path(samples_make.load_samples(root / "data" / "samples.json")[0])
+    if producer == "current":
+        made_by.write_text(json.dumps(samples_make.current_producer()) + "\n", encoding="utf-8")
+    elif producer is None:
+        made_by.unlink(missing_ok=True)
+    else:
+        made_by.write_text(json.dumps(producer) + "\n", encoding="utf-8")
     return text
 
 
 def _solution() -> dict[str, Any]:
-    return json.loads((ROOT / "tests" / "fixtures" / "python_contract_solutions.json").read_text(encoding="utf-8"))["plate_calibrated"]
+    """A solve the contract takes, named for the record's photo (the stand-in's bytes)."""
+    solution = json.loads((ROOT / "tests" / "fixtures" / "python_contract_solutions.json").read_text(encoding="utf-8"))["plate_calibrated"]
+    sha = hashlib.sha256(PHOTO).hexdigest()
+    return {**solution, "sourceSha256": sha, "sourceAssetId": f"src_{sha[:16]}"}
 
 
 def test_the_record_is_served_as_tracked(client: TestClient, root: Path) -> None:
@@ -88,6 +101,32 @@ def test_the_solution_is_served_only_when_made_and_its_hash_holds(client: TestCl
     assert client.get(f"/api/samples/{sample}/solution").status_code == 409
 
 
+@pytest.mark.parametrize("case", ["another_revision", "no_producer", "a_producer_that_is_not_json", "refused_by_the_contract",
+                                  "named_for_another_photo"])
+def test_a_kept_solve_this_revision_did_not_make_or_the_contract_refuses_is_not_on_this_machine_yet(
+        client: TestClient, root: Path, case: str) -> None:
+    """AUDIT's three cases on main 927612bd3 (.lead/kiro/verdicts/main-sample-solution-producer.md), each 404 as a solve
+    not made here yet: one made by another revision of the solve chain, one with no producer beside it, and JSON the
+    contract refuses; and a producer file that is not JSON, and a solve named for another photo."""
+    current = samples_make.current_producer()
+    solution = _solution()
+    producer: Any = "current"
+    if case == "another_revision":
+        producer = {**current, "revision": current["revision"] - 1}
+    elif case == "no_producer":
+        producer = None
+    elif case == "refused_by_the_contract":
+        solution = {**solution, "status": "made up"}
+    elif case == "named_for_another_photo":
+        other = hashlib.sha256(b"another photo").hexdigest()
+        solution = {**solution, "sourceSha256": other, "sourceAssetId": f"src_{other[:16]}"}
+    _put_solution(root, solution, producer=producer)
+    if case == "a_producer_that_is_not_json":
+        (root / samples_make.producer_path(samples_make.load_samples(root / "data" / "samples.json")[0])).write_text("{", encoding="utf-8")
+    answer = client.get(f"/api/samples/{NIGHT['id']}/solution")
+    assert (answer.status_code, answer.json()) == (404, {"detail": samples_router.NO_SAMPLE_SOLUTION})
+
+
 def test_an_unknown_sample_and_a_malformed_id_are_refused(client: TestClient) -> None:
     for path in ("/api/samples/night-unknown/original", "/api/samples/night-unknown/solution"):
         assert client.get(path).status_code == 404
@@ -105,3 +144,17 @@ def test_the_routes_read_only() -> None:
     for path in ("/api/samples", "/api/samples/{sample_id}/original", "/api/samples/{sample_id}/solution"):
         assert set(operations[path]) == {"get"}, path
         assert "requestBody" not in operations[path]["get"]
+
+
+@pytest.mark.parametrize("which", ["path", "sha256Path", "producer"])
+def test_a_kept_solve_any_of_whose_files_is_linked_from_elsewhere_is_not_served(
+        client: TestClient, root: Path, tmp_path: Path, which: str) -> None:
+    _put_solution(root, _solution())
+    night = samples_make.load_samples(root / "data" / "samples.json")[0]
+    path = root / (samples_make.producer_path(night) if which == "producer" else NIGHT["solution"][which])
+    elsewhere = tmp_path / f"elsewhere-{which}"
+    elsewhere.write_bytes(path.read_bytes())
+    path.unlink()
+    path.symlink_to(elsewhere)
+    answer = client.get(f"/api/samples/{NIGHT['id']}/solution")
+    assert (answer.status_code, answer.json()) == (404, {"detail": samples_router.NO_SAMPLE_SOLUTION})
