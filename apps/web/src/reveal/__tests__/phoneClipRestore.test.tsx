@@ -326,7 +326,10 @@ describe('D34 and D38 phone clip restoration wait, compare, and stopped states',
     act(() => button('Restored')!.click());
     expect(compare.style.getPropertyValue('--split')).toBe('0%');
 
-    // Disclosure note at 604, D16 player at 676, Download at 772 (AskBar hidden), RestoreVersions at 828
+    // Disclosure note at 604, D16 player at 676, Download at 772 (AskBar hidden), RestoreVersions at 828; the note
+    // stands from the restored clip's first frame (restored-disclosure-one)
+    expect(q('.restore-phone-note')).toBeNull();
+    act(() => void q('.restore-compare__pic video')!.dispatchEvent(new Event('loadeddata')));
     expect(q('.restore-phone-note')!.className).toBe('restore-phone-note is-clip');
     expect(q('.restore-phone-note span')!.textContent).toBe(DISCLOSURES.restoration);
     expect(q('[data-testid="clip-player"]')!.className).toBe('clip-player is-phone');

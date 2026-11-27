@@ -123,6 +123,10 @@ describe('a ready restoration at phone width (D10 item 5)', () => {
   it('says the fixed sentence under it and puts Download where Ask out loud sits, saving the one shown', async () => {
     answer([OLDER, NEWER]);
     await showPhone();
+    // restored-disclosure-one: the sentence stands from the restored picture's first drawn frame, not before
+    expect(q('.restore-phone-note')).toBeNull();
+    expect(download()).not.toBeUndefined();
+    act(() => void q('.restore-compare__pic img')!.dispatchEvent(new Event('load')));
     const note = q('.restore-phone-note')!;
     expect(note.textContent).toBe(DISCLOSURES.restoration);
     expect(note.querySelector('svg.look-i path')!.getAttribute('d')).toBe(LOOK_ICON_PATHS.info);

@@ -46,6 +46,8 @@ afterEach(() => {
 });
 const q = (selector: string) => container.querySelector(selector);
 const all = (selector: string) => [...container.querySelectorAll(selector)];
+/** The restored picture's first frame drawn: its image loaded (jsdom loads none by itself). */
+const drawRestored = () => act(() => void q('.restore-compare__pic img')!.dispatchEvent(new Event('load')));
 function show(restoration: Restoration, extra: Record<string, unknown> = {}) {
   act(() => {
     root.render(
@@ -267,6 +269,9 @@ describe('the restoration on the reveal (laptop)', () => {
     expect(compare.style.left).toBe(q('svg.photo-corners') ? compare.style.left : compare.style.left);
     expect((compare.querySelector('.restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe('/api/media/x/variants/var_7e6f5a4b3c2d1e0f/file');
     expect(compare.querySelector('.restore-compare__line')).not.toBeNull();
+    // restored-disclosure-one: the sentence stands from the restored picture's first drawn frame, not before
+    expect(q('.reveal-status__note')).toBeNull();
+    drawRestored();
     expect(q('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
     // D15: the matched stars' marks stay over the compare, where they are on "Your photo"
     expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
@@ -316,6 +321,8 @@ describe('Restore on the no-match reveal (the lead, 06:39: every upload can be r
 
   it('once restored there, the fixed sentence leads the status and the warnings stay under it', () => {
     show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } }, { session: unmatched() });
+    expect(q('.reveal-status.is-unmatched .reveal-status__note')).toBeNull();
+    drawRestored();
     const status = q('.reveal-status.is-unmatched')!;
     expect(status.querySelector('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
     expect(status.querySelector('.reveal-status__lead')).toBeNull();
@@ -579,6 +586,7 @@ describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/e
 
   it("sits under the fixed sentence as the screen's main button, the download icon in its circle", () => {
     show(done);
+    drawRestored();
     const note = q('.reveal-status__note')!;
     const button = download()!;
     expect(note.nextElementSibling).toBe(button);
@@ -614,6 +622,7 @@ describe('Download (D10 and D22; the lead, 07:25: GET .../variants/{variantId}/e
 
   it('is offered on the no-match reveal too, under its sentence', () => {
     show(done, { session: poseSession({ ...sample('horizon_predicted_only') } as ObservationSolution) });
+    drawRestored();
     expect(q('.reveal-status.is-unmatched .reveal-status__note')!.nextElementSibling).toBe(download()!);
   });
 });

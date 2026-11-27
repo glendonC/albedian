@@ -404,6 +404,14 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
 }
 
+/* The Restored sentence (restored-disclosure-one, ruled 00:44 on 27 Nov) comes with the restored picture's first drawn
+   frame, after its status block or foot is already standing: it words in on its own as it mounts, with the words'
+   timing and no motion of its own; it goes with the picture, at once */
+.reveal-status__note,
+.restore-phone-note {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
 /* Fly on your own is offered only once the flight has arrived, so it words in as it mounts, with Back to Moment */
 .ask-bar__fly {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;

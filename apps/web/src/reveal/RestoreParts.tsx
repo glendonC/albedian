@@ -133,10 +133,22 @@ const RestoredClip: React.FC<{
   style: React.CSSProperties;
   incoming?: boolean;
   onFrame?: () => void;
-}> = ({ parent, src, style, incoming = false, onFrame }) => {
+  /** Told once the clip has its first frame to draw (restored-disclosure-one). */
+  onFirstFrame?: () => void;
+}> = ({ parent, src, style, incoming = false, onFrame, onFirstFrame }) => {
   const own = useRef<HTMLVideoElement>(null);
   const frame = useRef(onFrame);
   frame.current = onFrame;
+  const first = useRef(onFirstFrame);
+  first.current = onFirstFrame;
+  useEffect(() => {
+    const child = own.current;
+    if (!child) return undefined;
+    const told = () => first.current?.();
+    if (child.readyState >= 2) told();
+    child.addEventListener('loadeddata', told);
+    return () => child.removeEventListener('loadeddata', told);
+  }, []);
   useEffect(() => {
     const child = own.current;
     if (!parent || !child) return undefined;
@@ -229,12 +241,37 @@ export const RestoreCompare: React.FC<{
    * 22 Nov). They keep the compare's box, classes, label top and fade, so they sit and look as they did.
    */
   labelHost?: HTMLElement | null;
-}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot, labelHost = null }) => {
+  /**
+   * Told true from the restored picture's first drawn frame (a still's image loaded, a clip's first frame), and false
+   * when the compare goes (restored-disclosure-one): the Restored sentence stands only while a restored version is
+   * drawn. A version switch keeps a restored picture drawn throughout (clipswap-1), so it stays true.
+   */
+  onRestoredDrawn?: (drawn: boolean) => void;
+}> = ({ rect, src, originalSrc, fade, orientation = { quarterTurnsClockwise: 0, mirrored: false }, maxZoom = 1, onZoomed, clipParent, slot, labelHost = null, onRestoredDrawn }) => {
   const clip = clipParent !== undefined;
   const boxRect = slot ?? rect;
   // compare-music-1 (DECIDED-BY-LEAD 12:41 on 24 Nov): the compare's arrival counts as a reveal for the music; it is
   // keyed by its upload, so a version switch is no arrival
   useCompareArrival();
+  const [restoredDrawn, setRestoredDrawn] = useState(false);
+  const tellDrawn = useRef(onRestoredDrawn);
+  tellDrawn.current = onRestoredDrawn;
+  useEffect(() => {
+    tellDrawn.current?.(restoredDrawn);
+  }, [restoredDrawn]);
+  useEffect(
+    () => () => {
+      tellDrawn.current?.(false);
+    },
+    []
+  );
+  const firstDrawn = () => setRestoredDrawn(true);
+  const stillRef = useRef<HTMLImageElement>(null);
+  // A still already decoded before its load listener was attached (a cached image) is drawn at once
+  useEffect(() => {
+    const img = stillRef.current;
+    if (img && img.complete && img.naturalWidth > 0) setRestoredDrawn(true);
+  }, []);
   // clipswap-1: on a playing or paused clip's version switch the restored clip drawn stays drawn until the one switched
   // to has a frame at the player's time, then they swap in one frame, so "Restored" never stands over the unrestored
   // original; a press back to the drawn version drops the incoming copy, a press to a third replaces it
@@ -415,10 +452,11 @@ export const RestoreCompare: React.FC<{
                 style={turnedPicture(rect, orientation)}
                 incoming={holding !== null}
                 onFrame={() => setHeld(null)}
+                onFirstFrame={firstDrawn}
               />
             </>
           ) : (
-            <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
+            <img ref={stillRef} src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} onLoad={firstDrawn} />
           )}
         </div>
       </div>
@@ -440,12 +478,19 @@ export const RestoreCompare: React.FC<{
  * above D16's player on a clip) the fixed sentence of REQ-RST-9.3, verbatim, with the info icon, and Download compact
  * where Ask out loud sits, saving the restoration shown.
  */
-export const RestorePhoneFoot: React.FC<{ onDownload: () => void; clip?: boolean }> = ({ onDownload, clip = false }) => (
+export const RestorePhoneFoot: React.FC<{
+  onDownload: () => void;
+  clip?: boolean;
+  /** Whether a restored version is drawn: the sentence stands only then (restored-disclosure-one); Download stays. */
+  restoredDrawn: boolean;
+}> = ({ onDownload, clip = false, restoredDrawn }) => (
   <>
-    <p className={clip ? 'restore-phone-note is-clip' : 'restore-phone-note'}>
-      <LookIcon name="info" />
-      <span>{DISCLOSURES.restoration}</span>
-    </p>
+    {restoredDrawn && (
+      <p className={clip ? 'restore-phone-note is-clip' : 'restore-phone-note'}>
+        <LookIcon name="info" />
+        <span>{DISCLOSURES.restoration}</span>
+      </p>
+    )}
     <div className="restore-phone-go">
       <MainAction label="Download" icon="download-simple" size="phone" onClick={onDownload} />
     </div>

@@ -828,6 +828,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     : !(restoration?.phase === 'done' && (restoration.noCopy === true || restoration.firstNeed === true));
   // aria-pressed follows the press, and the drawn row when none was (item 6)
   const pressedVersionId = pickedVersion ?? shownVersionId ?? null;
+  // restored-disclosure-one (UIUX-cliprestore-READY.md, ruled 00:44 on 27 Nov): the Restored sentence stands from the
+  // restored picture's first drawn frame while the compare draws it, never while the original is drawn alone
+  const [restoredDrawn, setRestoredDrawn] = useState(false);
   // voice-restore-one: the restored version on screen, for the session, so "make the sky clearer" finds what is shown.
   // voice-compare-one version two (AUDIT-C's FAIL): away from the recording (the flight, Real sky, the sky leaving) the
   // version last shown stays the session's, so voice there answers what the session holds; on the recording, only the
@@ -1107,10 +1110,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           {compareShown ? (
             // Restored here too: the fixed sentence leads; the warnings stay under it
             <>
-              <p className="reveal-status__note">
-                <LookIcon name="info" />
-                <span>{DISCLOSURES.restoration}</span>
-              </p>
+              {restoredDrawn && (
+                <p className="reveal-status__note">
+                  <LookIcon name="info" />
+                  <span>{DISCLOSURES.restoration}</span>
+                </p>
+              )}
               {downloadAction}
             </>
           ) : aligning ? (
@@ -1190,10 +1195,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         {compareShown ? (
           // Once restored, the status place holds the fixed sentence (REQ-RST-9.3), verbatim
           <>
-            <p className="reveal-status__note">
-              <LookIcon name="info" />
-              <span>{DISCLOSURES.restoration}</span>
-            </p>
+            {restoredDrawn && (
+              <p className="reveal-status__note">
+                <LookIcon name="info" />
+                <span>{DISCLOSURES.restoration}</span>
+              </p>
+            )}
             {downloadAction}
           </>
         ) : (
@@ -1277,6 +1284,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
       {compareShown && drawable && frame && restoration?.phase === 'done' && asset && (
         <RestoreCompare
+          onRestoredDrawn={setRestoredDrawn}
           key={asset.sha256}
           rect={frame}
           src={shownVersion ? restoredSource(asset.sha256, shownVersion) : restoration.variantUrl}
@@ -1294,6 +1302,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           is drawn for the phone, and only matched marks stay over it (D15) */}
       {phoneCompare && frame && asset && phoneCompareSrc !== null && (
         <RestoreCompare
+          onRestoredDrawn={setRestoredDrawn}
           key={asset.sha256}
           rect={frame}
           slot={phoneSlotRect(frame, viewW, viewH)}
@@ -1670,7 +1679,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* The phone's compare: the fixed sentence in the counts' place and Download in Ask out loud's (D10 item 5, D34); a
           picked star's card covers the foot, as it covers Ask out loud */}
       {phoneCompare && !answer && !picked && asset && shownVersionId !== undefined && (
-        <RestorePhoneFoot clip={phoneClip} onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersionId))} />
+        <RestorePhoneFoot clip={phoneClip} restoredDrawn={restoredDrawn} onDownload={() => saveFromServer(variantExportUrl(asset.sha256, shownVersionId))} />
       )}
       {/* D36 item 5: the list under Download, reached by scrolling, its rows 44 px */}
       {phoneVersionsShown && shownVersion && (

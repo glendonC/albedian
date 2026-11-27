@@ -258,6 +258,30 @@ describe('the list under Download (D36)', () => {
     expect(rows().map((r) => r.querySelector('.restore-versions__mark svg') !== null)).toEqual([true, false]);
   });
 
+  it('stands the Restored sentence only while a restored version is drawn, never over a lone version waiting for its copy (restored-disclosure-one)', async () => {
+    const bareClip = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.mimeType === 'video/mp4' && v.playbackCopy === undefined)!;
+    const lone = { ...bareClip, id: NEWER.id, createdAtUTC: NEWER.createdAtUTC, byteSize: NEWER.byteSize, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: NEWER.uri };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+      init?.method === 'POST' ? new Promise<Response>(() => {}) : new Response(JSON.stringify({ variants: [lone], attempts: [] }), { status: 200 })
+    );
+    await showDone();
+    expect(q('[data-testid="restore-compare"]')).toBeNull();
+    expect(q('.reveal-status__note')).toBeNull();
+    expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Download')).toBe(true);
+    expect(container.querySelector('.restore-versions__row')!.getAttribute('aria-busy')).toBe('true');
+    // Two versions, the older drawn: the sentence stands once its picture has its first frame
+    act(() => root.unmount());
+    vi.restoreAllMocks();
+    root = createRoot(container);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+      init?.method === 'POST' ? new Promise<Response>(() => {}) : new Response(JSON.stringify({ variants: [lone, OLDER], attempts: [] }), { status: 200 })
+    );
+    await showDone();
+    expect(q('.reveal-status__note')).toBeNull();
+    act(() => void q('[data-testid="restore-compare"] .restore-compare__pic img')!.dispatchEvent(new Event('load')));
+    expect(q('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
+  });
+
   it('keeps the version drawn while a pressed row waits for its copy, not the newest that can be drawn (versionwait 22:20 item 2)', async () => {
     const bareClip = media.valid.MediaVariant.find((v) => v.kind === 'restoration' && v.mimeType === 'video/mp4' && v.playbackCopy === undefined)!;
     const newest = { ...bareClip, id: NEWER.id, createdAtUTC: '2026-11-20T18:20:00Z', byteSize: NEWER.byteSize, sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: NEWER.uri };
