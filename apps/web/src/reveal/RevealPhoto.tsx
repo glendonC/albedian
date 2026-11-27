@@ -4,6 +4,7 @@ import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
 import { PhoneAligningBlock } from './PhoneAligning.js';
 import { EARLY_SOURCE_WORDS, earlyPoseOf, type EarlyPose, type PlacedTarget } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
+import { MeasuredHandOver, sameDetection, type MeasuredMark } from './MeasuredMarks.js';
 import type { MediaVariant, ObservationSolution, PersonAlignment } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
@@ -262,6 +263,8 @@ export interface RevealPhotoProps {
    * at the early pose when it was refused.
    */
   lockOnSky?: ObservationSolution | null;
+  /** The wait's measured marks as they stood when the solve ended (wait-measured-one, M4 and M5): handed over in place. */
+  measuredHandOver?: readonly MeasuredMark[] | null;
   /**
    * The rings a Solve from here was sent from, for that upload: its job's early marks (UIUX-lockon-READY.md item 1,
    * "Placed from your alignment"), which lock on in place of any earlier served sky when that solve matches (item 2).
@@ -416,6 +419,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   viewportHeightPx,
   restoration,
   lockOnSky = null,
+  measuredHandOver = null,
   lockOnAligned = null,
   clipVideo = null,
   onRestore,
@@ -594,6 +598,21 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     return () => clearTimeout(timer);
   }, []);
   const lockOn = lockingAtStart && arriving && lockOnEarly && frame && !bareFrame && !earthOnly ? lockOnPlan(lockOnEarly, frame, arrivingMarks, phone ? 11 : 13) : null;
+  // wait-measured-one's hand-over (UIUX-first-use-wow-READY.md M4 and M5, RULED 12:08 on 27 Nov), by the lock-on's rows with
+  // nothing travelling: during the reveal's first arrival the wait's marks stand where they stood; the mark of each matched
+  // star the reveal draws changes to its matched drawing in place (its reveal mark coming in on the colour time over it);
+  // every other one leaves on frame out, all of them when nothing matched (the reveal draws matched rings only on a solve
+  // that passed its check); taken at the reveal's mount, so a later reveal of the photo never replays it
+  const [handedAtStart] = useState(() => (measuredHandOver !== null && measuredHandOver.length > 0 ? measuredHandOver : null));
+  const handing = arriving && handedAtStart !== null && !bareFrame && !earthOnly ? handedAtStart : null;
+  const fromMeasured = new Map<string, number>();
+  for (const mark of handing ? arrivingMarks : []) {
+    // A matched star's own detection (a predicted object carries none: it was not measured)
+    const at = mark.finding.sourceDetection;
+    const handed = at ? handing!.find((h) => sameDetection(h.detection, at)) : undefined;
+    if (handed) fromMeasured.set(mark.finding.id, handed.rank);
+  }
+  const matchedRanks = new Set(fromMeasured.values());
   // The lock-on's early marks keep their source line at full in the status column, with no entrance, from the reveal's
   // first frame until the last of them has gone (UIUX-lockon-READY.md item 1, "no early marks are ever drawn without a
   // source line"; the 17:38 tag rule; AUDIT-C's tag sweep, break 1): the travelling ones in the frame-in and colour
@@ -1523,6 +1542,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
+      {handing && <MeasuredHandOver marks={handing} matched={matchedRanks} phone={phone} />}
+
       {marksShown && !earthOnly && !(compareShown && compareZoomed) && (
       <div className={marksClass} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
         {drawnMarks.map((mark) =>
@@ -1548,7 +1569,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             <button
               key={mark.finding.id}
               type="button"
-              className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
+              className={`${MARK_CLASS[mark.kind]}${lockOn?.lockedIds.has(mark.finding.id) ? ' is-locked-on' : ''}${fromMeasured.has(mark.finding.id) ? ' is-from-measured' : ''}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
               data-testid={`reveal-mark-${mark.finding.id}`}
               data-evidence-class={mark.finding.evidenceClass}
               inert={coveredByPhoneCard}

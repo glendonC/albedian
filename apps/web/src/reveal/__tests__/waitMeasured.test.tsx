@@ -11,7 +11,8 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import { choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 import { sourcePixelToViewport } from '../../components/sourcePhotoRect.js';
 import type { Arrival } from '../arrival.js';
-import { MeasuredMarks, measuredMarksOf } from '../MeasuredMarks.js';
+import { MEASURED_MARKS_MAX, MeasuredMarks, measuredMarksOf, type MeasuredMark } from '../MeasuredMarks.js';
+import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { phoneSlotCrop } from '../phoneSlot.js';
 
 vi.mock('../RealSkyLayer.js', async (importOriginal) => {
@@ -45,6 +46,7 @@ vi.mock('../../audio/ObservatoryAudioEngine.js', () => ({
 vi.mock('../../audio/SkyAudioFeed.js', () => ({ skyAudio: { follow: vi.fn(), setEvidenceClass: vi.fn() } }));
 vi.mock('../../components/CoalescingBar.js', () => ({ CoalescingBar: () => null }));
 const { SpatialObservatoryViewport } = await import('../../components/SpatialObservatoryViewport.js');
+const { RevealPhoto } = await import('../RevealPhoto.js');
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -280,6 +282,118 @@ describe('wait-measured-one: on the working screen', () => {
     expect(q('[data-testid="measured-marks"]')).toBeNull();
     render({ arrival: arrival({ failure: { sentence: 'The solve stopped on an internal error.', canTryAgain: true } }) });
     await settle();
-    expect(q('[data-testid="measured-marks"]')).toBeNull();
+    // M5: on a failure or Cancel every mark leaves where it stands on frame out, with the wait's words
+    expect(q('[data-testid="measured-marks"]')!.getAttribute('class')).toBe('measured-marks is-leaving');
+  });
+
+  it('hands the wait\'s marks to the reveal when the solve ends, for its first arrival only', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      past({ arrival: arrival() });
+      await settle();
+      expect(q('[data-testid="measured-marks"]')).not.toBeNull();
+      render({ arrival: null });
+      expect(q('[data-testid="measured-marks"]')).toBeNull();
+      const handed = q('[data-testid="measured-handover"]')!;
+      expect(handed.querySelectorAll('.measured-mark')).toHaveLength(3);
+      // Gone when the reveal's first arrival has ended
+      act(() => void vi.advanceTimersByTime(2000));
+      expect(q('[data-testid="measured-handover"]')).toBeNull();
+      // A later reveal of the same photo (the home and back) never replays it
+      act(() => (q('[data-testid="reveal-home"]') as HTMLButtonElement).click());
+      choosePhotoOnHome(container);
+      render({ arrival: null });
+      expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+      expect(q('[data-testid="measured-handover"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('wait-measured-one, M1: the brightest hundred, none under a kept place', () => {
+  const many = Array.from({ length: 150 }, (_, i) => detection(200 + (i % 15) * 170, 300 + Math.floor(i / 15) * 350, 1000 - i));
+
+  it('draws the brightest hundred inside the photo', () => {
+    const marks = measuredMarksOf(storedPhoto(), many, 1440, 900);
+    expect(MEASURED_MARKS_MAX).toBe(100);
+    expect(marks).toHaveLength(100);
+    expect(marks.map((m) => m.detection.flux)).toEqual(many.slice(0, 100).map((d) => d.flux));
+  });
+
+  it('leaves out a mark touching a kept place, and no other takes its turn', () => {
+    const session = storedPhoto();
+    const all = measuredMarksOf(session, many, 1440, 900);
+    const brightest = all[0]!;
+    const clear = [{ x0: brightest.xPx - 1, x1: brightest.xPx + 1, y0: brightest.yPx - 1, y1: brightest.yPx + 1 }];
+    const kept = measuredMarksOf(session, many, 1440, 900, false, clear);
+    expect(kept).toHaveLength(99);
+    expect(kept.some((m) => m.detection === brightest.detection)).toBe(false);
+    expect(kept.some((m) => m.detection === many[100])).toBe(false);
+    expect(kept.map((m) => m.rank)).toEqual(Array.from({ length: 99 }, (_, i) => i));
+    // A ring touching the place's edge counts (its reach, ring 5.5 and half its stroke)
+    const touching = [{ x0: brightest.xPx + 6.15, x1: brightest.xPx + 20, y0: brightest.yPx, y1: brightest.yPx + 1 }];
+    expect(measuredMarksOf(session, many, 1440, 900, false, touching)).toHaveLength(99);
+    const apart = [{ x0: brightest.xPx + 6.2, x1: brightest.xPx + 20, y0: brightest.yPx, y1: brightest.yPx + 1 }];
+    expect(measuredMarksOf(session, many, 1440, 900, false, apart)).toHaveLength(100);
+  });
+});
+
+describe('wait-measured-one, M4 and M5: the hand-over at the reveal\'s first frame', () => {
+  /** The calibrated sample, its first matched star's detection among the handed marks, with one detection no star took. */
+  function handOverOf(session: ObservationSession) {
+    const matched = session.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched' && f.sourceDetection)!;
+    // The route writes the matched star's centre to float noise from the solution's (9e-13 px measured on rp-b-01)
+    const noisy = { ...matched.sourceDetection!, xPx: matched.sourceDetection!.xPx + 9e-13, yPx: matched.sourceDetection!.yPx - 9e-13 };
+    const at = matched.sourceDetection!;
+    const marks: MeasuredMark[] = [
+      // Detections a pixel from the matched star's, across and down, are other points of light
+      { xPx: 340, yPx: 280, rank: 0, detection: { ...at, xPx: at.xPx + 1 } },
+      { xPx: 360, yPx: 300, rank: 1, detection: { ...at, yPx: at.yPx + 1 } },
+      { xPx: 300, yPx: 200, rank: 2, detection: noisy },
+      { xPx: 320, yPx: 260, rank: 3, detection: detection(77.25, 88.5, 5) },
+    ];
+    return { matched, marks };
+  }
+  const show = (session: ObservationSession, marks: MeasuredMark[]) =>
+    act(() =>
+      root.render(
+        createElement(RevealPhoto, { session, onSelectFinding: () => {}, onHome: () => {}, viewportWidthPx: 1440, viewportHeightPx: 900, restoration: { phase: 'idle' }, measuredHandOver: marks } as unknown as Parameters<typeof RevealPhoto>[0])
+      )
+    );
+
+  it('changes a matched star\'s mark to its matched drawing in place, and the others leave on frame out', () => {
+    const session = poseSession(sample('plate_calibrated'));
+    const { matched, marks } = handOverOf(session);
+    show(session, marks);
+    const handed = [...q('[data-testid="measured-handover"]')!.querySelectorAll('.measured-mark')].map((g) => g.getAttribute('class'));
+    expect(handed).toEqual(['measured-mark is-leaving', 'measured-mark is-leaving', 'measured-mark is-changing', 'measured-mark is-leaving']);
+    expect(q(`[data-testid="reveal-mark-${matched.id}"]`)!.className).toContain('is-from-measured');
+    // Only a star drawn from a handed mark comes in on the colour time; the rest arrive as the reveal's marks do
+    expect(container.querySelectorAll('.reveal-mark.is-from-measured')).toHaveLength(1);
+    expect(container.querySelectorAll('.reveal-mark').length).toBeGreaterThan(1);
+  });
+
+  it('lets every mark leave when nothing matched (M5)', () => {
+    const session = poseSession(sample('horizon_predicted_only'));
+    const { marks } = handOverOf(poseSession(sample('plate_calibrated')));
+    show(session, marks);
+    const handed = [...q('[data-testid="measured-handover"]')!.querySelectorAll('.measured-mark')].map((g) => g.getAttribute('class'));
+    expect(handed).toEqual(['measured-mark is-leaving', 'measured-mark is-leaving', 'measured-mark is-leaving', 'measured-mark is-leaving']);
+    expect(container.querySelectorAll('.reveal-mark.is-from-measured')).toHaveLength(0);
+  });
+
+  it('holds the hand-over\'s rules: frame out, the colour time, and the matched mark over it', () => {
+    const rule = (selector: string) => {
+      const found: Record<string, string> = {};
+      postcss.parse(css).walkRules((r) => {
+        if (r.selector === selector && r.parent?.type === 'root') r.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
+      });
+      return found;
+    };
+    expect(rule('.measured-marks.is-leaving')).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both' });
+    expect(rule('.measured-mark.is-leaving')).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both' });
+    expect(rule('.measured-mark.is-changing')).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-colour) var(--look-mo-ease-std) both' });
+    expect(rule('.reveal-marks .reveal-mark.is-from-measured')).toEqual({ animation: 'look-mo-frame-in var(--look-mo-dur-colour) var(--look-mo-ease-std) both' });
   });
 });

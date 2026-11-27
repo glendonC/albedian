@@ -49,6 +49,28 @@
   animation: look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both;
 }
 
+/* M5: a failure or Cancel: every mark leaves where it stands on frame out (300 ms; the 270 ms dissolve under Reduced
+   motion), with the wait's words */
+.measured-marks.is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
+}
+
+/* M4 at the reveal's first frame (MeasuredHandOver, RevealPhoto.tsx), by the lock-on's rows with nothing travelling: a
+   mark whose star was not matched (every one, when nothing matched) leaves where it stands on frame out; a matched star's
+   mark changes to its matched drawing in place on the colour time (200 ms), this drawing going as the reveal's mark comes
+   in over it, its name with it as the reveal's names come */
+.measured-mark.is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
+}
+
+.measured-mark.is-changing {
+  animation: look-mo-frame-out var(--look-mo-dur-colour) var(--look-mo-ease-std) both;
+}
+
+.reveal-marks .reveal-mark.is-from-measured {
+  animation: look-mo-frame-in var(--look-mo-dur-colour) var(--look-mo-ease-std) both;
+}
+
 /* Until the receipt there is no photo on screen: black covers the modeled scene, as the photo will */
 .work-backdrop {
   position: fixed;

@@ -62,7 +62,7 @@ import { prepareFlight } from '../spatial/flight/prepareFlight.js';
 import { flightReadout, isFlightShown } from '../reveal/flightView.js';
 import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import { ClipPlayer } from '../reveal/ClipPlayer.js';
-import { MeasuredMarks } from '../reveal/MeasuredMarks.js';
+import { MeasuredMarks, type MeasuredMark } from '../reveal/MeasuredMarks.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
 import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
@@ -218,6 +218,9 @@ export const SpatialObservatoryViewport: React.FC<
   const skyOver = realSkyShown || flightShown;
   // D33: the sky Show predicted sky opens, in place of the old panel (UIUX-predsky-READY.md), at phone width too
   const predictedSkyShown = !flightShown && isPredictedSkyShown(session);
+  // wait-measured-one (M4): the wait's marks as they stood, handed to the reveal in the render the wait ends (the reveal
+  // takes them at its mount) and forgotten after it, so no later reveal of this photo replays them
+  const waitMarks = useRef<{ sha256: string; marks: readonly MeasuredMark[] } | null>(null);
   const [entryStageActive, setEntryStageActive] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return new URLSearchParams(window.location.search).get('view') !== 'observatory';
@@ -695,6 +698,10 @@ export const SpatialObservatoryViewport: React.FC<
   // At phone width a photo covers its slot with its ends faded, while a clip fits inside it crisp with no endsMask (D16) [verified]
   // The working screen at phone width keeps the upload in the reveal's slot (D2, jp-run)
   const phoneWorking = phone && !entryStageActive && arrival !== null;
+  const measuredHandOver = arrival === null && waitMarks.current !== null && waitMarks.current.sha256 === session.sourceAsset?.sha256 ? waitMarks.current.marks : null;
+  useEffect(() => {
+    if (arrival === null) waitMarks.current = null;
+  }, [arrival]);
   const slotted: ObservationSession = (() => {
     const asset = session.sourceAsset;
     if (!(phoneReveal || phoneWorking) || !asset) return session;
@@ -812,18 +819,21 @@ export const SpatialObservatoryViewport: React.FC<
             entering={photoEntering}
             endsMask={phoneWorking ? slotMask : undefined}
           />
-          {/* wait-measured-one (UIUX-first-use-wow-READY.md item 3): once Measured ends, the points of light it measured on
-              the photo as Observed marks, from the job's own route; a stopped job's dimmed photo carries none */}
-          {arrival.failure === null && (
-            <MeasuredMarks
-              session={phoneWorking ? slotted : session}
-              jobId={arrival.job?.id}
-              measuredAtUTC={arrival.job?.measuredAtUTC}
-              viewportWidthPx={windowSize.widthPx}
-              viewportHeightPx={windowSize.heightPx}
-              phone={phone}
-            />
-          )}
+          {/* wait-measured-one (UIUX-first-use-wow-READY.md item 3 and M1 to M5): once Measured ends, the brightest hundred
+              points of light it measured on the photo as Observed marks, from the job's own route; a failure or Cancel
+              (the stopped screen) takes every one away on frame out with the wait's words */}
+          <MeasuredMarks
+            session={phoneWorking ? slotted : session}
+            jobId={arrival.job?.id}
+            measuredAtUTC={arrival.job?.measuredAtUTC}
+            viewportWidthPx={windowSize.widthPx}
+            viewportHeightPx={windowSize.heightPx}
+            phone={phone}
+            leaving={arrival.failure !== null}
+            onDrawn={(marks) => {
+              waitMarks.current = { sha256: session.sourceAsset?.sha256 ?? '', marks };
+            }}
+          />
           <WorkingScreen
             phone={phone}
             arrival={arrival}
@@ -857,6 +867,7 @@ export const SpatialObservatoryViewport: React.FC<
           {revealShown && (
             <RevealPhoto
               lockOnSky={lockOnSky}
+              measuredHandOver={measuredHandOver}
               lockOnAligned={lockOnAligned}
               clipVideo={clipVideo}
               onSolveFromHere={onSolveFromHere}
