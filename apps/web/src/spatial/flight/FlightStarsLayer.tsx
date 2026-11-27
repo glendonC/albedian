@@ -11,7 +11,7 @@ import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLI
 import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, discTintOf, phoneWordsTopPx, type ArrivalBloom, type ArrivalStar } from './arrival.js';
 import type * as THREE from 'three';
 import { FlightCraftLayer, prepareCraftSky, type CraftRenderer } from './FlightCraftLayer.js';
-import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
+import { lightCandidateOfFinding, withDrawnStarColour, type LightCandidate } from './craftLight.js';
 import { FlightDomeLayer, prepareFlightDome, type DomeView } from '../sky/FlightDomeLayer.js';
 import { createFlightFinish, pickedRowOf, type FlightFinish } from './flightFinish.js';
 import { laptopCraftFraming, type CraftFraming } from './craftScene.js';
@@ -886,7 +886,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={keyCandidates} framing={craftPlace} phone={phone} steer={steer ? { ...aliveFrame(steerNow.current ?? steer, alive.current).craft, shiftPx: steerShift() } : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={withDrawnStarColour(keyCandidates, arrival)} framing={craftPlace} phone={phone} steer={steer ? { ...aliveFrame(steerNow.current ?? steer, alive.current).craft, shiftPx: steerShift() } : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
     </>
   );
 };

@@ -115,6 +115,41 @@ export function lightCandidateOfFinding(finding: CelestialFinding): LightCandida
   return { positionPc: placed.positionPc, earthMag: ref.apparentMagnitude, earthDistancePc: placed.distancePc, colorIndex: ref.colorIndexBpRp ?? Number.NaN, isBMinusV: false };
 }
 
+/** craft-star-light-one: the row the flight draws the star flown to from (arrival.ts's ArrivalStar): its place and B-V. */
+export interface DrawnStarRow {
+  readonly positionPc: Vec3;
+  /** The row's B-V: Hipparcos as it is, a Gaia row's BP-RP over the tint's slope (arrival.ts); none without a colour. */
+  readonly bMinusV?: number;
+}
+
+/** How near the drawn row must sit to a candidate to be the same star: arrival.ts's rule, about a minute of arc and 3 percent. */
+const SAME_STAR_RAD = 3e-4;
+const SAME_STAR_DISTANCE_SHARE = 0.03;
+
+/**
+ * craft-star-light-one (DECIDED-BY-LEAD 27 Nov 12:39, the owner's first item): a key candidate with no colour of its own
+ * (a Hipparcos 2007 finding carries no Gaia BP-RP, services/science/catalog_model.py) takes the colour of the catalog
+ * row the flight draws the same star from, so the craft is lit in the colour the star is drawn in: orange beside
+ * Betelgeuse, blue-white beside Rigel, where both fell to the neutral tint before. The row's own B-V, never a chosen
+ * colour. A candidate with its own colour, a row with none, or a row at another place leaves the list as it is.
+ */
+export function withDrawnStarColour(candidates: readonly LightCandidate[], row: DrawnStarRow | null): readonly LightCandidate[] {
+  const bMinusV = row?.bMinusV;
+  if (!row || bMinusV === undefined || !Number.isFinite(bMinusV)) return candidates;
+  const rowPc = Math.hypot(row.positionPc[0], row.positionPc[1], row.positionPc[2]);
+  let changed = false;
+  const out = candidates.map((c) => {
+    if (Number.isFinite(c.colorIndex)) return c;
+    const pc = Math.hypot(c.positionPc[0], c.positionPc[1], c.positionPc[2]);
+    if (!(pc > 0) || !(rowPc > 0) || Math.abs(rowPc - pc) > SAME_STAR_DISTANCE_SHARE * pc) return c;
+    const cos = (c.positionPc[0] * row.positionPc[0] + c.positionPc[1] * row.positionPc[1] + c.positionPc[2] * row.positionPc[2]) / (pc * rowPc);
+    if (Math.acos(Math.min(1, Math.max(-1, cos))) > SAME_STAR_RAD) return c;
+    changed = true;
+    return { ...c, colorIndex: bMinusV, isBMinusV: true };
+  });
+  return changed ? out : candidates;
+}
+
 /** The panorama's plate carree (longitude increasing to the left, north at z) to three's equirect axes (y up). */
 const PLATE_TO_THREE_EQUIRECT: Mat3Rows = [1, 0, 0, 0, 0, 1, 0, -1, 0];
 
