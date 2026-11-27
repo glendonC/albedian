@@ -1,4 +1,4 @@
-import type { AssetProvenanceRecord } from '@albedian/contracts';
+import { licenseAsksChangesIndicated, type AssetProvenanceRecord } from '@albedian/contracts';
 import { AUDIO_CREDITS, AUDIO_NOTICES_URL, type AudioCredit } from '../audio/audioCredits.js';
 import { realSkyChanges } from '../reveal/RealSkyLayer.js';
 import { milkyWayInFlightChanges } from '../spatial/sky/flightMilkyWay.js';
@@ -96,30 +96,31 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
 };
 
 /**
- * What the app changed, line by line, for each source whose record's terms ask that changes be indicated; the lines
- * are [proposed]. The panorama: on the home, worded from the numbers that frame and shade it; in the 3D view, every
- * step of the one grade list both renderers read (sky/panoramaGrade.ts), with the placement and the whole frame's
- * finishing from its lists (spatial/frameFinishing.ts); the copy the WebGPU renderer draws, by the app's own steps,
- * how it differs being its record's (recordChangeLines). OpenNGC's terms ask to say that the data were changed:
- * openngc.json's record states how (recordChangeLines), so its own list here is empty.
+ * What the app itself changes as it draws a source, line by line, in its own words, where no record can say it; the
+ * lines are [proposed]. The panorama: on the home, worded from the numbers that frame and shade it; in the 3D view,
+ * every step of the one grade list both renderers read (sky/panoramaGrade.ts), with the placement and the whole frame's
+ * finishing from its lists (spatial/frameFinishing.ts); the copy the WebGPU renderer draws, by the app's own steps, how
+ * it differs being its record's (recordChangeLines). Which sources owe change lines is the contract's rule, not this
+ * table (recordChangeLines).
  */
 export const CHANGES: Readonly<Record<string, () => readonly string[]>> = {
   eso0932a: () => [homeBackdropChanges(), milkyWay3dChanges(), milkyWayCopyDrawn(), realSkyChanges(), milkyWayInFlightChanges(), milkyWayInPredictedSkyChanges()],
-  'openngc-v20260501-ngc': () => [],
-  'openngc-v20260501-addendum': () => [],
 };
 
 /**
- * For a source whose terms ask that changes be indicated (a key of CHANGES), each file a script made from it: the
- * record's own sentence on how the file differs from its sources, character for character, from the script
- * producer's `changes` field, and no words of the app's own. A record without the field gives no line.
+ * credits-change-lines-one (AUDIT-B's licence read, B1; DECIDED-BY-LEAD 23:37 on 26 Nov): for a source whose licence
+ * asks that changes be indicated, by the contract's own rule (licenseAsksChangesIndicated, data/license-change-terms.json;
+ * a licence the table does not know is read as asking), each file and each file set a script made from it: the record's
+ * own sentence on how it differs from its sources, character for character, from the script producer's `changes`
+ * field, and no words of the app's own. A record without the field gives no line; a source no record names gives none.
  */
 export function recordChangeLines(loaded: readonly LoadedRecord[], sourceId: string): string[] {
-  if (!(sourceId in CHANGES)) return [];
+  const source = loaded.flatMap(({ record }) => record.sources).find((s) => s.id === sourceId);
+  if (!source || !licenseAsksChangesIndicated(source.license.spdx)) return [];
   return loaded.flatMap(({ record }) =>
-    record.files.flatMap((file) => {
-      if (!file.sources.includes(sourceId) || file.producedBy.method !== 'script') return [];
-      const changes = (file.producedBy as { changes?: unknown }).changes;
+    [...record.files, ...record.fileSets].flatMap((entry) => {
+      if (!entry.sources.includes(sourceId) || entry.producedBy.method !== 'script') return [];
+      const changes = (entry.producedBy as { changes?: unknown }).changes;
       return typeof changes === 'string' && changes.length > 0 ? [changes] : [];
     })
   );

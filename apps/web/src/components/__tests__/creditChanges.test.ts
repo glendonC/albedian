@@ -5,8 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { AssetProvenanceRecordSchema } from '@albedian/contracts';
-import { CHANGES, creditRows, recordChangeLines, type LoadedRecord } from '../creditRows.js';
+import { AssetProvenanceRecordSchema, licenseAsksChangesIndicated, type AssetProvenanceRecord } from '@albedian/contracts';
+import { CHANGES, creditRows, PROVENANCE_RECORD_URLS, recordChangeLines, type LoadedRecord } from '../creditRows.js';
 import { homeBackdropChanges } from '../homeBackdrop.js';
 import { glslFloat } from '../../spatial/webgl/glslFloat.js';
 import { createGlobalPhotorealisticSkyDomeMesh, createSkyDomeUniforms } from '../../spatial/webgl/skyDomeAndCinemaShader.js';
@@ -412,8 +412,8 @@ describe("a file a script made shows its record's own sentence on how it differs
     expect(milkyWay(loaded).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, REAL_SKY, FLIGHT, PREDSKY, sentence]]);
     // Only a file a script made: a downloaded file's entry gives none, whatever it holds
     expect(recordChangeLines(withField('eso_milkyway_panorama.jpg', sentence), 'eso0932a')).toEqual([]);
-    // Only for a source whose terms ask that changes be indicated: the copy's other sources give none
-    expect(recordChangeLines(loaded, 'gaia-dr3')).toEqual([]);
+    // Only for a source whose licence asks that changes be indicated: NASA's media guidelines do not, so its sentence is not shown
+    expect(recordChangeLines(withField('earth_night_blackmarble_2016_8k.jpg', 'Lights kept.'), 'nasa-black-marble-2016')).toEqual([]);
   });
 
   it('shows a text of one character or more, and only from a file a script made from that very source', () => {
@@ -424,6 +424,107 @@ describe("a file a script made shows its record's own sentence on how it differs
     // A file a script made from another source: its sentence is not this source's
     expect(fileOf('earth_night_blackmarble_2016_8k.jpg')?.producedBy.method).toBe('script');
     expect(recordChangeLines(withField('earth_night_blackmarble_2016_8k.jpg', 'Lights kept.'), 'eso0932a')).toEqual([]);
+  });
+});
+
+// credits-change-lines-one (AUDIT-B's licence read of main 927612bd3, B1; DECIDED-BY-LEAD 23:37 on 26 Nov): wherever a
+// source's licence asks that changes be indicated, by the contract's own rule (licenseAsksChangesIndicated over
+// data/license-change-terms.json, a licence the table does not know read as asking), its block shows each sentence its
+// records state on how a script-made file or file set differs from it, whole; never by a list of source names
+describe('credits-change-lines-one: a source whose licence asks shows every change its records state', () => {
+  const served = (): LoadedRecord[] =>
+    PROVENANCE_RECORD_URLS.map((url) => ({ url, record: AssetProvenanceRecordSchema.parse(JSON.parse(read(`public${url}`))) }));
+  /** The sentences the records state for a source: each script-made file or file set naming it, once each, in order. */
+  const stated = (loaded: readonly LoadedRecord[], id: string): string[] => [
+    ...new Set(
+      loaded.flatMap(({ record }) =>
+        [...record.files, ...record.fileSets].flatMap((entry) =>
+          entry.sources.includes(id) && entry.producedBy.method === 'script' ? [entry.producedBy.changes] : []
+        )
+      )
+    ),
+  ];
+  const blockOf = (loaded: readonly LoadedRecord[], credit: string) =>
+    creditRows(loaded, []).flatMap((row) => row.blocks).find((b) => b.credits[0] === credit)!;
+  const sourcesOf = (loaded: readonly LoadedRecord[], credit: string) => [
+    ...new Set(loaded.flatMap(({ record }) => record.sources.filter((s) => s.credit === credit).map((s) => s.id))),
+  ];
+  const expectShowsAll = (loaded: readonly LoadedRecord[], credit: string) => {
+    const changes = blockOf(loaded, credit).changes;
+    const ids = sourcesOf(loaded, credit);
+    expect(ids.length, credit).toBeGreaterThan(0);
+    for (const id of ids) {
+      const lines = stated(loaded, id);
+      expect(lines.length, `${credit}: ${id}`).toBeGreaterThan(0);
+      for (const line of lines) expect(changes, `${credit}: ${id}`).toContain(line);
+    }
+  };
+
+  it('CC BY-SA 4.0: the HYG block shows the sentence its designations record states', () => {
+    const loaded = served();
+    expect(licenseAsksChangesIndicated('CC-BY-SA-4.0')).toBe(true);
+    expect(blockOf(loaded, 'HYG Database, astronexus').changes).toEqual(stated(loaded, 'hyg-v41'));
+    expect(stated(loaded, 'hyg-v41')).toHaveLength(1);
+  });
+
+  it('CC BY-NC 3.0 IGO: the Gaia, Hipparcos and Bailer-Jones blocks show every sentence of every record, the Gaia tiles\' file set included', () => {
+    const loaded = served();
+    expect(licenseAsksChangesIndicated('CC-BY-NC-3.0-IGO')).toBe(true);
+    for (const credit of ['ESA/Gaia/DPAC', 'ESA Hipparcos', 'ESA', 'Bailer-Jones et al. 2021']) expectShowsAll(loaded, credit);
+    const tiles = loaded.find((r) => r.url === '/catalog/stars/gaia-dr3/PROVENANCE.json')!.record.fileSets[0]!;
+    expect(tiles.producedBy.method).toBe('script');
+    expect(blockOf(loaded, 'ESA/Gaia/DPAC').changes).toContain(tiles.producedBy.method === 'script' ? tiles.producedBy.changes : '');
+  });
+
+  it("the IAU names' licence, read as asking: the WGSN block shows its records' sentences", () => {
+    const loaded = served();
+    expect(licenseAsksChangesIndicated('LicenseRef-IAU-Creative-Commons-Attribution')).toBe(true);
+    expectShowsAll(loaded, 'IAU Working Group on Star Names (WGSN)');
+  });
+
+  it('licences that do not ask show no change line, though their records state one', () => {
+    const loaded = served();
+    const quiet = loaded.flatMap(({ record }) => record.sources).filter((s) => !licenseAsksChangesIndicated(s.license.spdx));
+    expect(new Set(quiet.map((s) => s.license.spdx))).toEqual(
+      new Set(['LicenseRef-NASA-Media-Guidelines', 'LicenseRef-Natural-Earth-Public-Domain', 'CC0-1.0', 'BSD-3-Clause', 'LicenseRef-NASA-Eclipse-Permission', 'LicenseRef-NASA-Exoplanet-Archive-Acknowledgement', 'OFL-1.1', 'MIT', 'LicenseRef-Unicode-3.0'])
+    );
+    for (const source of quiet) expect(recordChangeLines(loaded, source.id), source.id).toEqual([]);
+    // Each of these states sentences the page does not owe
+    for (const id of ['d3-celestial-constellation-lines', 'nasa-3d-resources', 'oneill-2024-local-bubble', 'unicode-ucd-15.1.0', 'noaa-etopo-2022-60s']) {
+      expect(stated(loaded, id).length, id).toBeGreaterThan(0);
+    }
+    for (const credit of ['NASA 3D Resources', "NASA's Scientific Visualization Studio", 'Made with Natural Earth']) {
+      const block = creditRows(loaded, []).flatMap((row) => row.blocks).find((b) => b.credits[0] === credit);
+      if (block) expect(block.changes, credit).toEqual([]);
+    }
+  });
+
+  it('reads a licence the table does not know as asking, and one it lists as not asking as quiet, by the rule alone', () => {
+    const designations = served().find((r) => r.url === '/catalog/stars/designations/PROVENANCE.json')!;
+    const under = (spdx: string): LoadedRecord[] => [
+      { url: designations.url, record: { ...designations.record, sources: designations.record.sources.map((s) => ({ ...s, license: { ...s.license, spdx } })) } as AssetProvenanceRecord },
+    ];
+    const sentence = stated([designations], 'hyg-v41');
+    expect(recordChangeLines(under('LicenseRef-Albedian-Unread-Terms'), 'hyg-v41')).toEqual(sentence);
+    expect(recordChangeLines(under('MIT'), 'hyg-v41')).toEqual([]);
+    expect(recordChangeLines(under('CC-BY-4.0'), 'hyg-v41')).toEqual(sentence);
+  });
+
+  it('shows a file set only when a script made it, and a source no record names gives nothing', () => {
+    const gaia = served().find((r) => r.url === '/catalog/stars/gaia-dr3/PROVENANCE.json')!;
+    const tiles = gaia.record.fileSets[0]!;
+    const sentence = tiles.producedBy.method === 'script' ? tiles.producedBy.changes : '';
+    expect(recordChangeLines([gaia], 'gaia-dr3')).toContain(sentence);
+    const downloaded: LoadedRecord = {
+      url: gaia.url,
+      record: { ...gaia.record, fileSets: gaia.record.fileSets.map((set) => ({ ...set, producedBy: { method: 'download', url: 'https://example.org/tiles' } })) } as unknown as AssetProvenanceRecord,
+    };
+    expect(recordChangeLines([downloaded], 'gaia-dr3')).not.toContain(sentence);
+    expect(recordChangeLines([gaia], 'no-such-source')).toEqual([]);
+  });
+
+  it("keeps CHANGES for the app's own words alone: the panorama, and no source listed only to switch its lines on", () => {
+    expect(Object.keys(CHANGES)).toEqual(['eso0932a']);
   });
 });
 

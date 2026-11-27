@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AssetProvenanceRecordSchema } from '@albedian/contracts';
+import { AssetProvenanceRecordSchema, licenseAsksChangesIndicated } from '@albedian/contracts';
 import { AUDIO_CREDITS, AUDIO_NOTICES_URL, appHeardMusic, audioCreditLines } from '../../audio/audioCredits.js';
 import { RECORDING } from '../../audio/music/directions.js';
 import {
@@ -152,28 +152,27 @@ describe('creditRows: rows by what a person sees, every source credited from the
   });
 
   it("states a change wherever a record's licence asks for one, worded from what the app does and from the records", () => {
-    expect(Object.keys(CHANGES).sort()).toEqual(['eso0932a', 'openngc-v20260501-addendum', 'openngc-v20260501-ngc']);
-    for (const id of Object.keys(CHANGES)) {
-      const source = sources.find((s) => s.id === id)!;
-      expect(source.license.conditions ?? '', id).toMatch(ASKS_FOR_CHANGES);
-      const row = rowNamed(SOURCE_ROW[id]!);
+    // credits-change-lines-one: which sources owe lines is the contract's licence rule; CHANGES holds the app's own words
+    expect(Object.keys(CHANGES)).toEqual(['eso0932a']);
+    const asking = sources.filter((s) => licenseAsksChangesIndicated(s.license.spdx));
+    expect(new Set(asking.map((s) => s.license.spdx))).toEqual(new Set(['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-3.0-IGO', 'LicenseRef-IAU-Creative-Commons-Attribution']));
+    for (const source of asking) {
+      const row = rowNamed(SOURCE_ROW[source.id]!);
       const block = row?.blocks.find((b) => b.credits[0] === source.credit);
-      const blockSources = sources.filter((s) => SOURCE_ROW[s.id] === SOURCE_ROW[id] && s.credit === source.credit);
+      const blockSources = sources.filter((s) => SOURCE_ROW[s.id] === SOURCE_ROW[source.id] && s.credit === source.credit);
       const combined = [...new Set(blockSources.flatMap((s) => [...(CHANGES[s.id]?.() ?? []), ...recordChangeLines(loaded, s.id)]))];
-      // Every line of the block's shader/backdrop and record changes, in order, once
-      expect(block?.changes, id).toEqual(combined);
+      // Every line of the block's shader/backdrop and record changes, in order, once, and at least one for each source
+      expect(block?.changes, source.id).toEqual(combined);
+      expect((CHANGES[source.id]?.() ?? []).length + recordChangeLines(loaded, source.id).length, source.id).toBeGreaterThan(0);
     }
     // The panorama's are held to the code by creditChanges.test.ts; OpenNGC comes from its record
     expect(CHANGES.eso0932a!()).toHaveLength(6);
     expect(recordChangeLines(loaded, 'eso0932a')).toHaveLength(4);
-    expect(CHANGES['openngc-v20260501-ngc']!()).toEqual([]);
-    expect(CHANGES['openngc-v20260501-addendum']!()).toEqual([]);
     const deepskyChanges = recordChangeLines(loaded, 'openngc-v20260501-ngc');
     expect(deepskyChanges).toHaveLength(1);
     expect(deepskyChanges[0]).toContain("Both of the catalogue's tables kept row for row");
-    // Every source whose terms ask for it has its changes stated
-    const asked = new Set(sources.filter((s) => ASKS_FOR_CHANGES.test(s.license.conditions ?? '')).map((s) => s.id));
-    expect([...asked].filter((id) => !(id in CHANGES))).toEqual([]);
+    // Every source whose conditions say changes must be indicated is one the rule reads as asking
+    for (const s of sources.filter((x) => ASKS_FOR_CHANGES.test(x.license.conditions ?? ''))) expect(licenseAsksChangesIndicated(s.license.spdx), s.id).toBe(true);
     // Two OpenNGC sources on one credit say openngc.json's sentence once
     expect(rowNamed('Deep-sky objects')?.blocks.flatMap((b) => b.changes)).toEqual(deepskyChanges);
   });
