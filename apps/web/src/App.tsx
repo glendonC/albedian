@@ -9,6 +9,7 @@ import {
   PersonAlignment,
   SkyView,
   orientedSize,
+  type SampleNight,
 } from '@albedian/contracts';
 import { alignTargets, placedAtPose, type AlignedFrom, type AlignPose, type AlignStart } from './reveal/alignPose.js';
 import type { PlacedTarget } from './reveal/earlyPose.js';
@@ -36,6 +37,12 @@ import {
   type UploadEvent,
 } from './services/apiClient.js';
 import { openAddressedUpload, readStoredReceipt, storedPhotoDecoded, uploadAddressed } from './services/openUpload.js';
+import { isSampleShown, openSample, sampleAddressed } from './services/openSample.js';
+
+/** The sample night the page's address names, when it names no upload: a sample never takes ?upload= (item 4). */
+function addressedSample(): string | null {
+  return uploadAddressed(window.location.search) === null ? sampleAddressed(window.location.search) : null;
+}
 import { withStoredRestorations } from './reveal/shownRestoration.js';
 import { solveStoppedSentence } from './services/skyLayerWords.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
@@ -223,7 +230,32 @@ export const App: React.FC = () => {
   // with the logo, never the home (open-direct-one, UIUX-opendirect-READY.md). A value that is no sha256 asks the server
   // nothing and shows the home at once; an upload that cannot be opened lands on the home after the black. A photo
   // chosen meanwhile wins: the stored one arriving later changes nothing
-  const [opening, setOpening] = useState(() => uploadAddressed(window.location.search) !== null);
+  const [opening, setOpening] = useState(() => uploadAddressed(window.location.search) !== null || addressedSample() !== null);
+  // sample-reveal-one (UIUX-sample-reveal-READY.md item 4, RULED 03:48 on 27 Nov): ?sample=<id> reopens a sample night's
+  // reveal as ?upload= reopens an upload's, behind the same black; if its asset or solution does not answer, the home.
+  // The night's record stays with the session for the reveal's words and its photo's credit
+  const [sampleNight, setSampleNight] = useState<SampleNight | null>(null);
+  useEffect(() => {
+    const id = addressedSample();
+    if (id === null) return undefined;
+    let left = false;
+    void openSample(id)
+      .then(async (opened) => {
+        if (opened?.session.sourceAsset) await storedPhotoDecoded(opened.session.sourceAsset.uri, opened.session.sourceAsset.mediaKind);
+        return opened;
+      })
+      .then((opened) => {
+        if (left) return;
+        setOpening(false);
+        if (opened === null || latestChoiceRef.current !== null) return;
+        setSampleNight(opened.night);
+        setSession(opened.session);
+        setUploadedMediaUrl(opened.session.sourceAsset?.uri ?? null);
+      });
+    return () => {
+      left = true;
+    };
+  }, []);
   useEffect(() => {
     const sha256 = uploadAddressed(window.location.search);
     if (sha256 === null) return undefined;
@@ -668,6 +700,7 @@ export const App: React.FC = () => {
         onFileChosen={handleFileChosen}
         uploadRefusal={uploadRefusal}
         opening={opening}
+        sample={isSampleShown(session, sampleNight) ? sampleNight : null}
         arrival={arrival}
         lockOnSky={lockOnSky}
         lockOnAligned={lockOnAligned}

@@ -23,6 +23,8 @@ const ROWS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Close', ['Esc']],
   ['Your photo, Real sky, 3D', ['←', '→']],
 ];
+/** The views row, named by the photo view's pill (sample-reveal-one). */
+const VIEWS_ROW = 'Your photo, Real sky, 3D';
 const ROWS_3D: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Look around in 3D', ['←', '↑', '↓', '→']],
   ['Move in 3D', ['W', 'A', 'S', 'D']],
@@ -38,7 +40,11 @@ const TABBABLE =
  * it. It hears Esc before anything else, so closing it leaves the screen beneath as it was. It arrives and leaves as
  * the motion record says (motion.css); while it leaves it is inert and no longer a dialog.
  */
-export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
+export const KeyboardHelp: React.FC<{
+  threeD: boolean;
+  /** The photo view's name as its pill gives it (UIUX-sample-reveal-READY.md item 1: "Sample photo" on a sample night). */
+  photoView?: string;
+}> = ({ threeD, photoView = 'Your photo' }) => {
   const [open, setOpen] = useState(false);
   const card = useRef<HTMLElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -112,7 +118,7 @@ export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
     }
   }, [open]);
 
-  const rows = [...ROWS, ...(threeD ? ROWS_3D : []), LAST];
+  const rows = [...ROWS.map(([name, keys]) => [name === VIEWS_ROW ? `${photoView}, Real sky, 3D` : name, keys] as const), ...(threeD ? ROWS_3D : []), LAST];
   // the title and each row are its lines
   const { mounted, leaving } = useLeaving(open, blockLeaveMs(rows.length + 1, resolveMotionTokens(reducedMotion())));
   if (!mounted) return null;

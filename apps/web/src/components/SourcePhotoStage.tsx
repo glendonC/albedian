@@ -3,6 +3,7 @@ import type { ObservationSession, SourceAsset } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
 import { goToMomentSentence, poseBasisSentence, poseUncertaintySentence } from '../services/skyLayerWords.js';
 import { linedUpSky } from './poseProjection.js';
+import { OWN_PHOTO, type PhotoNames } from '../reveal/sampleWords.js';
 import {
   decodedFrameMatches,
   isSourcePhotoShown,
@@ -41,6 +42,8 @@ export interface SourcePhotoStageProps {
   endsMask?: string;
   /** The photo framing in where the reveal places it, on a page opened at an upload's address (UIUX-opendirect-READY.md). */
   entering?: boolean;
+  /** The photo's names (sample-reveal-one: "the sample photo" on a sample night, UIUX-sample-reveal-READY.md item 2). */
+  photoNames?: PhotoNames;
 }
 
 /**
@@ -87,6 +90,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   onVideo,
   endsMask,
   entering = false,
+  photoNames = OWN_PHOTO,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -242,7 +246,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
       ) : (
         <img
           src={asset.uri}
-          alt="Your photo as uploaded"
+          alt={photoNames.alt}
           draggable={false}
           style={mediaStyle}
           onError={() => setFailedUri(asset.uri)}
@@ -266,7 +270,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          This browser turned your {kind} differently from how it was taken, so its marks are hidden rather than drawn
+          This browser turned {asset.mediaKind === 'video' ? `your ${kind}` : photoNames.the} differently from how it was taken, so its marks are hidden rather than drawn
           in the wrong places.
         </p>
       )}
@@ -286,7 +290,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          <span title={badge.label}>{badge.shortCode}</span> · Your {kind} ·{' '}
+          <span title={badge.label}>{badge.shortCode}</span> · {asset.mediaKind === 'video' ? `Your ${kind}` : photoNames.The} ·{' '}
           {failed ? 'not shown by this browser' : mismatched ? 'as this browser turned it' : 'original pixels'}
         </span>
         <p className="alb-layer-credits">

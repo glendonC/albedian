@@ -2236,6 +2236,24 @@ describe('the second hint: drag to look around', () => {
     }
   });
 
+  // sample-reveal-one (item 2) over S7: on a sample night the readout is the Sample photo's view, its hint kept
+  for (const phone of [false, true])
+  it(`names the Sample photo's view on a sample night with Drag to orbit Earth. at its foot${phone ? ', at phone width' : ''}`, () => {
+    const resting = atRest();
+    const flying = { ...resting, spatialView: { ...resting.spatialView, mode: 'catalog_3d' }, machines: { ...resting.machines, navigation: 'space' } } as ObservationSession;
+    (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    try {
+      show(flying, { flight, phone, sample: { id: 'night-rp-b-16', kind: 'sample', title: 'Starry sky 2' } as never });
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
+      const cone = q('[data-testid="cone-readout"]')!;
+      expect(cone.getAttribute('aria-label')).toBe("Sample photo's view");
+      expect(cone.textContent).not.toContain("Your photo's view");
+      expect(cone.querySelector(HINT)!.textContent).toBe('Drag to orbit Earth.');
+    } finally {
+      delete (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
+  });
+
   it('leaves at the first drag and does not come back', () => {
     show(atRest(), { flight });
     act(() => void window.dispatchEvent(new MouseEvent('pointermove', { buttons: 0 })));

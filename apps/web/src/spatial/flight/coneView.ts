@@ -244,10 +244,17 @@ export function coneReadout(geometry: ConeGeometry): { inside: string; farthestL
   };
 }
 
-/** D28 item 7: the disclosure's lines in the cone view, in order (the no-distance sentence is added when any). */
-export const CONE_LINES = {
-  spec: 'Drawn or computed by the app; not measured in the source recording.',
-  view: "Your photo's view: the part of the sky your photo holds, from its solve, out to its farthest matched star with a measured distance.",
-  stars: 'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances.',
-  rings: 'Rings: the stars your photo matched.',
-} as const;
+/**
+ * D28 item 7: the disclosure's lines in the cone view, in order (the no-distance sentence is added when any). The photo
+ * is named as a person reads it: on a sample night "Sample photo" and "the sample photo" (sample-reveal-one,
+ * UIUX-sample-reveal-READY.md item 2), else the person's own.
+ */
+export function coneLines(photo: { view: string; the: string } = { view: 'Your photo', the: 'your photo' }) {
+  return {
+    spec: 'Drawn or computed by the app; not measured in the source recording.',
+    view: `${photo.view}'s view: the part of the sky ${photo.the} holds, from its solve, out to its farthest matched star with a measured distance.`,
+    stars: 'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances.',
+    rings: `Rings: the stars ${photo.the} matched.`,
+  } as const;
+}
+export const CONE_LINES = coneLines();

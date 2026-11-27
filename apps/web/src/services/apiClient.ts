@@ -7,6 +7,8 @@ import {
   ObservationSessionSchema,
   ObservationSolution,
   ObservationSolutionSchema,
+  SampleAssetSchema,
+  type SampleAsset,
   SolutionStatus,
   SolveJob,
   SolveJobSchema,
@@ -406,12 +408,33 @@ export function buildSessionFromIngestReceipt(
     });
   }
 
-  const parsedSolution = ObservationSolutionSchema.parse(options.solution);
+  return solvedSession(asset, baseSession, options.solution, parsedJob);
+}
+
+/**
+ * Build a contract-validated `ObservationSession` for a sample night (sample-asset-zero; PLATFORM's routes note): its
+ * photo as the app reads it (`GET /api/samples/{id}/asset`, a public sample shown from its own route) and the app's own
+ * kept solve of it (`GET /api/samples/{id}/solution`), as an upload's is built from its receipt and its solution.
+ */
+export function buildSessionFromSampleAsset(sampleAsset: SampleAsset, solution: ObservationSolution): ObservationSession {
+  const asset = SampleAssetSchema.parse(sampleAsset);
+  return solvedSession(asset, createSessionForSourceAsset(asset, 'ready'), solution, undefined);
+}
+
+/** A session opened at its solved frame from its asset's base session and its solution. */
+function solvedSession(
+  asset: ObservationSession['sourceAsset'] & object,
+  baseSession: ObservationSession,
+  solution: ObservationSolution,
+  parsedJob: FollowedJob | undefined
+): ObservationSession {
+  const parsedSolution = ObservationSolutionSchema.parse(solution);
   const findings = withDerivedCartesianCoords(parsedSolution.findings);
   const shaLabel = `SHA-256 ${asset.sha256.slice(0, 12)}…`;
   // A star search ran for an upload's solution: its solve job runs the detector over the frame and the plate solver
   // over the points of light it finds before it writes any solution [verified: services/ingest/jobs.py
-  // run_solve_job, detect_point_sources then the solve chain]
+  // run_solve_job, detect_point_sources then the solve chain]; a sample's kept solve is the same chain's, made at setup
+  // (services/samples, PLATFORM's first-use-sample-one)
   const solved: SolvedSky = { solution: parsedSolution, starSearchRan: true };
 
   return ObservationSessionSchema.parse(

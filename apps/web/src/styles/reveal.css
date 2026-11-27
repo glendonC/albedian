@@ -1082,6 +1082,41 @@
   pointer-events: auto;
 }
 
+/* sample-reveal-one (UIUX-sample-reveal-READY.md item 3, RULED at the lead's line stamped 03:48 on 27 Nov): the sample
+   photo's courtesy credit, Geist 12 at ink 66 percent on one line with no body, a link styled as the Credits page's links
+   (full ink on hover, the focus outline). Laptop: on the Credits link's line, its right edge 24 px left of the link
+   (SpatialObservatoryViewport.tsx sets the right from the link's width). Phone: right-aligned 24 px from the edge, its
+   line at the photo's foot (the viewport sets the top) */
+.reveal-sample-credit {
+  position: fixed;
+  bottom: 32px;
+  height: var(--look-h-home);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  font: 400 12px / 1.3 var(--look-font-sans);
+  white-space: nowrap;
+  color: var(--look-ink-2);
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.reveal-sample-credit:hover {
+  color: var(--look-ink);
+}
+
+.reveal-sample-credit:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+.reveal-sample-credit.is-phone {
+  right: 24px;
+  bottom: auto;
+  height: auto;
+  line-height: 16px;
+}
+
 .reveal-credits:hover,
 .reveal-credits:focus-visible {
   text-decoration: underline;

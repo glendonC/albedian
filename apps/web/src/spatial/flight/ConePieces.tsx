@@ -29,7 +29,15 @@ export function laptopFlightPillsBottomPx(
 }
 
 /** The bottom left row: the craft pill (none in the cone view) and the pill into your photo's view. */
-export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; onCone: () => void; phone?: boolean; showCone?: boolean }> = ({ craftPill, cone, onCone, phone = false, showCone = true }) => {
+export const FlightPills: React.FC<{
+  craftPill: React.ReactNode;
+  cone: boolean;
+  onCone: () => void;
+  phone?: boolean;
+  showCone?: boolean;
+  /** The photo view's name (sample-reveal-one: "Sample photo" on a sample night, UIUX-sample-reveal-READY.md item 2). */
+  photoView?: string;
+}> = ({ craftPill, cone, onCone, phone = false, showCone = true, photoView = 'Your photo' }) => {
   const pillsRef = useRef<HTMLDivElement>(null);
   const [bottomPx, setBottomPx] = useState(LAPTOP_PILLS_BOTTOM_PX);
   useLayoutEffect(() => {
@@ -82,7 +90,7 @@ export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; 
           onClick={onCone}
           style={cone ? { background: INK, color: '#000', borderColor: INK } : undefined}
         >
-          Your photo&apos;s view
+          {photoView}&apos;s view
         </button>}
       </div>
     </FlightPillsBottomContext.Provider>
@@ -100,10 +108,12 @@ export interface ConeReadoutProps {
    * readout's foot, as the flight readout's own (S1's rule), "Drag to orbit Earth." since a drag there goes round Earth
    */
   restHint?: string;
+  /** The photo view's name (sample-reveal-one: "Sample photo" on a sample night). */
+  photoView?: string;
 }
 
 export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(function ConeReadout(
-  { geometry, phone = false, answerOpen = false, hidden = false, onDetails, restHint },
+  { geometry, phone = false, answerOpen = false, hidden = false, onDetails, restHint, photoView = 'Your photo' },
   ref,
 ) {
   const r = coneReadout(geometry);
@@ -111,13 +121,13 @@ export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(funct
     // D30 item 7, with UIUX-tagphone-READY.md item B when an answer is open: in the flight readout's place, the tag and
     // the circle, then the first sentence; the view's name, two numbers and nearest line hide while an answer is open
     return (
-      <section ref={ref} className="flight-readout is-phone" data-testid="cone-readout" aria-label="Your photo's view" style={hidden ? { visibility: 'hidden' } : undefined}>
+      <section ref={ref} className="flight-readout is-phone" data-testid="cone-readout" aria-label={`${photoView}'s view`} style={hidden ? { visibility: 'hidden' } : undefined}>
         <PhoneTagRow open={false} onToggle={() => onDetails?.()} />
         <p className="flight-readout__note">{CONE_LINES.spec}</p>
         {!answerOpen && (
           <>
             <p data-testid="cone-title" style={{ margin: '0 0 10px', fontSize: 15, color: INK }}>
-              Your photo&apos;s view
+              {photoView}&apos;s view
             </p>
             <div className="flight-readout__stats">
               <div className="flight-readout__stat">
@@ -142,9 +152,9 @@ export const ConeReadout = React.forwardRef<HTMLElement, ConeReadoutProps>(funct
     );
   }
   return (
-    <section ref={ref} className="flight-readout" data-testid="cone-readout" aria-label="Your photo's view">
+    <section ref={ref} className="flight-readout" data-testid="cone-readout" aria-label={`${photoView}'s view`}>
       <EvidenceTag evidenceClass="simulated" />
-      <h1 style={{ fontSize: 52 }}>Your photo&apos;s view</h1>
+      <h1 style={{ fontSize: 52 }}>{photoView}&apos;s view</h1>
       <div className="flight-readout__stats">
         <div className="flight-readout__stat">
           <b>{r.inside}</b>

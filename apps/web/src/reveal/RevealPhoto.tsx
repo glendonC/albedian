@@ -6,7 +6,7 @@ import { EARLY_SOURCE_WORDS, earlyPoseOf, type EarlyPose, type PlacedTarget } fr
 import { lockOnPlan } from './lockOn.js';
 import { MeasuredHandOver, sameDetection, type MeasuredMark } from './MeasuredMarks.js';
 import type { MediaVariant, ObservationSolution, PersonAlignment } from '@albedian/contracts';
-import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
+import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession, type SampleNight } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { readRestorations, restoredSource, saveFromServer, variantExportUrl, type StoredRestoration } from '../services/apiClient.js';
 import { drawableVersion, standsAlone, useFirstNeedCopies } from './firstNeedCopies.js';
@@ -32,7 +32,7 @@ import { CRAFT_PICKER_FOOT, craftSpeedSource } from '../spatial/flight/pilotRead
 import { FlightClock } from '../spatial/flight/pilotReadout.js';
 import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
 import { noDistanceSentence } from '../spatial/flight/flightRings.js';
-import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
+import { coneGeometryOf, coneLines } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { phoneSteerLine, restHintLine, steerLines, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { readoutDistance } from '../spatial/flight/nearStar.js';
@@ -186,7 +186,6 @@ const PHONE_READOUT_FOOT_PX = 148;
 const FLIGHT_LINES = {
   spec: 'Drawn or computed by the app; not measured in the source recording.',
   stars: 'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
-  rings: 'Rings: the stars your photo matched.',
   milkyWay: FLIGHT_MILKY_WAY_LINE,
 } as const;
 /** The caret's path, as the phone readout's caret circle draws it (Phosphor's caret-up, as PilotPieces.tsx's CARET_UP). */
@@ -213,11 +212,14 @@ const ColumnCaret: React.FC<{ open: boolean; onToggle: () => void }> = ({ open, 
   </button>
 );
 
+/** The flight's rings line, naming the photo as a person reads it (sample-reveal-one: "the sample photo" on a sample). */
+const ringsLine = (photo: PhotoNames) => `Rings: the stars ${photo.the} matched.`;
 /** Real sky's sentence (reveal, approved): ESO's photograph placed through the solve, with the solve's residual. */
-const realSkySentence = (residualArcmin: number) => `ESO's photograph of this part of the sky, placed by your photo's solve to within ${residualArcmin}′. Not light your camera recorded.`;
+const realSkySentence = (residualArcmin: number, photo: PhotoNames = OWN_PHOTO) =>
+  `ESO's photograph of this part of the sky, placed by ${photo.the}'s solve to within ${residualArcmin}′. Not light your camera recorded.`;
 /** realsky-points-one (DECIDED-BY-LEAD 20:37): Real sky's sentence while it draws the glow with the catalog's stars. */
-const realSkyPointsSentence = (residualArcmin: number) =>
-  `ESO/S. Brunier's photograph with its own stars removed, and the Gaia and Hipparcos stars at their catalog places, placed by your photo's solve to within ${residualArcmin}′. Not light your camera recorded.`;
+const realSkyPointsSentence = (residualArcmin: number, photo: PhotoNames = OWN_PHOTO) =>
+  `ESO/S. Brunier's photograph with its own stars removed, and the Gaia and Hipparcos stars at their catalog places, placed by ${photo.the}'s solve to within ${residualArcmin}′. Not light your camera recorded.`;
 
 /** The card's caution for a target whose catalog row gives no distance (13:03), in the readout's numbers' place (20:05). */
 const NO_DISTANCE_LINE = 'Its catalog row gives no distance, so none is shown.';
@@ -225,6 +227,7 @@ import { realSkyResidualArcmin } from './realSkyGrid.js';
 import { threeFigures, type FlightReadout } from './flightView.js';
 import { evidenceCounts, firstSentenceOf, revealStatus } from './revealStatus.js';
 import { blockBoxOf, useKeepClear } from './keepClear.js';
+import { OWN_PHOTO, photoNames, type PhotoNames } from './sampleWords.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -297,6 +300,8 @@ export interface RevealPhotoProps {
   returning?: boolean;
   /** Whether the frame's corners are drawn: a clip filling the width has none (INTERIM: UIUX-clip-QUESTION.md). */
   corners?: boolean;
+  /** The sample night shown (sample-reveal-one, UIUX-sample-reveal-READY.md item 2): its photo named "the sample photo". */
+  sample?: SampleNight | null;
   /** pilot-1f (D26 item 6): flying on one's own after "Fly on your own", with no star ahead. */
   freeFlight?: boolean;
   /** D30 item 6: on the phone the person steers (a drag on the sky took the camera; Autopilot in the ask bar gives it back). */
@@ -409,6 +414,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   flight = null,
   returning = false,
   corners = true,
+  sample = null,
   freeFlight = false,
   onEndFreeFlight,
   phoneSteering = false,
@@ -440,6 +446,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // Real sky, and there after Go there, keep the photo's frame: marks stand where they stand on the photo
   const there = flight !== null;
   const skyShown = realSky || there;
+  const photo = photoNames(sample !== null);
+  const CONE_LINES = coneLines(photo);
   const framed: ObservationSession = skyShown ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
   const frame = sessionPhotoRect(framed, viewW, viewH);
   // There, the frame's corners leave with the photo (fly, approved)
@@ -528,7 +536,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // flight-sky-line-state-one (DECIDED-BY-LEAD 21:56): in flight, the line of whichever sky is drawn
   const flightSkyKind = flightSkyLineOf({ steering, glowDrawn, domeDrawn, photographDrawn: skyDrawn, glowFailed });
   const flightResidual = flightSkyKind === 'photograph' && session.observationSolution ? realSkyResidualArcmin(session.observationSolution) : null;
-  const flightSkyLine = flightSkyKind === 'glow' ? FLIGHT_LINES.milkyWay : flightResidual !== null ? realSkySentence(flightResidual) : null;
+  const flightSkyLine = flightSkyKind === 'glow' ? FLIGHT_LINES.milkyWay : flightResidual !== null ? realSkySentence(flightResidual, photo) : null;
   // Free flight has no star ahead, so the readout keeps "from Earth" only (D26 item 6)
   const shownFlight =
     flight && steering && steered
@@ -1203,7 +1211,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               {columnOpen && (
                 <>
                   <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
-                  {ringsMatched && <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>}
+                  {ringsMatched && <p className="reveal-status__line">{ringsLine(photo)}</p>}
                   {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
                   {/* The sky's line names what is drawn: the glow (the dome while steering), or the photograph until the glow comes */}
                   {flightSkyLine && <p className="reveal-status__line">{flightSkyLine}</p>}
@@ -1229,7 +1237,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
           {residual !== null && (
-            <p className="reveal-status__line">{pointsShown ? realSkyPointsSentence(residual) : realSkySentence(residual)}</p>
+            <p className="reveal-status__line">{pointsShown ? realSkyPointsSentence(residual, photo) : realSkySentence(residual, photo)}</p>
           )}
         </div>
       ) : status.kind === 'unmatched' ? (
@@ -1390,7 +1398,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const flightDetailLines = [
     FLIGHT_LINES.spec,
     FLIGHT_LINES.stars,
-    ...(ringsMatched ? [FLIGHT_LINES.rings] : []),
+    ...(ringsMatched ? [ringsLine(photo)] : []),
     ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
     ...(flightSkyLine ? [flightSkyLine] : []),
     ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
@@ -1761,7 +1769,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           host with no box of its own, so the row stands where it stood) */}
       {there && (
         <div className={returning ? 'flight-pills-host is-leaving' : 'flight-pills-host'} inert={returning} style={{ display: 'contents' }} data-stacked={flightLine && !cone && !sidewaysFit.pills ? '' : undefined}>
-          <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} />
+          <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} photoView={photo.view} />
         </div>
       )}
       {phone && there && details && (cone || !flightLine) && (
@@ -1770,7 +1778,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onClose={() => setDetails(false)}
         />
       )}
-      {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} restHint={dragHintShown ? restHintLine({ cone: true, starName: null }) : undefined} />}
+      {(!answer || phone) && cone && coneGeometry && <ConeReadout ref={readoutRef} geometry={coneGeometry} phone={phone} answerOpen={Boolean(answer)} hidden={phone && details} onDetails={() => setDetails(true)} photoView={photo.view} restHint={dragHintShown ? restHintLine({ cone: true, starName: null }) : undefined} />}
 
       {phone && !nonPredictedCardOpen && !phoneCompare && !phoneRestoring && !phoneStopped && !skyShown && status.kind === 'estimate' && (
         // The estimate at phone width (UIUX-tagphone-READY.md items A and B; UIUX-clipphone-READY.md section 3): one

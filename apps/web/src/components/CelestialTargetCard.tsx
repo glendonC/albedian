@@ -1,4 +1,5 @@
 import { undrawableNotice } from './SourcePhotoStage.js';
+import { OWN_PHOTO, type PhotoNames } from '../reveal/sampleWords.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { hasVerifiedWcs, type CelestialFinding, type EvidenceClass, type ObservationSession } from '@albedian/contracts';
 import {
@@ -54,6 +55,8 @@ export interface CelestialTargetCardProps {
   sourceImageUrl?: string | null;
   /** Closes the sheet by clearing the selection: its Close button, Esc in the photo view, or a tap on empty sky. */
   onClose?: () => void;
+  /** The photo's names (sample-reveal-one: "the sample photo" on a sample night, UIUX-sample-reveal-READY.md item 2). */
+  photoNames?: PhotoNames;
 }
 
 const CROP_BOX_PX = 72;
@@ -224,6 +227,7 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
   onPushToTalk,
   sourceImageUrl,
   onClose,
+  photoNames = OWN_PHOTO,
 }) => {
   const distInfo = formatDistanceWithUncertainty(selectedFinding?.inferredDistancePc);
   const canEnterSpace = findingCanEnterSpace(selectedFinding, session.observationSolution);
@@ -442,14 +446,14 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
 
       {det && (
         <section className="alb-scan-sec" data-testid="target-card-pixel-row">
-          <SectionHead evidenceClass="observed" label="In your photo" glyphTestId="target-card-pixel-row-glyph" />
+          <SectionHead evidenceClass="observed" label={`In ${photoNames.the}`} glyphTestId="target-card-pixel-row-glyph" />
           <div className="alb-scan-photo">
             {crop && sourceImageUrl && !cropFailed && !cropMismatch && (
               <div
                 className="alb-scan-crop"
                 data-testid="target-card-pixel-crop"
                 role="img"
-                aria-label={`The star in your photo, ${CROP_SOURCE_PX} by ${CROP_SOURCE_PX} pixels around its measured centre`}
+                aria-label={`The star in ${photoNames.the}, ${CROP_SOURCE_PX} by ${CROP_SOURCE_PX} pixels around its measured centre`}
               >
                 <img
                   src={sourceImageUrl}
@@ -486,7 +490,7 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
               <dt>
                 ({det.xPx.toFixed(1)}, {det.yPx.toFixed(1)})
               </dt>
-              <dd>centre in your photo, px</dd>
+              <dd>centre in {photoNames.the}, px</dd>
             </dl>
           </div>
         </section>

@@ -8,7 +8,7 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import { hasVerifiedWcs, type ObservationSolution, type PersonAlignment, type RenderLayerSet, type SkyView } from '@albedian/contracts';
+import { hasVerifiedWcs, type ObservationSolution, type PersonAlignment, type RenderLayerSet, type SampleNight, type SkyView } from '@albedian/contracts';
 import { skyViewOfPose } from '../spatial/flight/skyViewWcs.js';
 import type { AlignedFrom, AlignPose, AlignStart } from '../reveal/alignPose.js';
 import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
@@ -65,9 +65,11 @@ import { ClipPlayer } from '../reveal/ClipPlayer.js';
 import { MeasuredMarks, type MeasuredMark } from '../reveal/MeasuredMarks.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
-import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
+import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, phoneEndsMask, phoneSlotCrop, phoneSlotIn } from '../reveal/phoneSlot.js';
 import { readLeadingMarginPx } from './phoneSheet.js';
+import { SAMPLE_CREDIT_GAP_PX, SampleCredit } from '../reveal/SampleCredit.js';
 import { useRestoration } from '../reveal/restoration.js';
+import { photoNames } from '../reveal/sampleWords.js';
 import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
@@ -111,6 +113,8 @@ export interface SpatialObservatoryViewportProps {
   uploadRefusal?: HomeRefusal | null;
   /** The page was opened at an upload's address and its records are still being read: the app's black, never the home. */
   opening?: boolean;
+  /** The sample night shown (sample-reveal-one, UIUX-sample-reveal-READY.md): its photo is named "the sample photo", it carries its credit, and Restore is not offered; null for anyone's own photo. */
+  sample?: SampleNight | null;
   /** The upload on its way to a solved sky: while there is one, the working screen shows in place of what follows the solve. */
   arrival?: Arrival | null;
   /** The sky the last solve predicted from an early pose, kept after its job ended, for the reveal's lock-on (D25). */
@@ -136,6 +140,8 @@ export interface SpatialObservatoryViewportProps {
 
 /** The reveal's photo column at 1440 by 900 (675 wide), the frame a wide clip's player and shade follow. */
 const CLIP_COLUMN_PX = 675;
+/** The laptop Credits link's right edge from the window's (reveal.css .reveal-credits). */
+const REVEAL_CREDITS_RIGHT_PX = 32;
 
 interface RendererChoice {
   kind: CosmosRendererKind;
@@ -183,6 +189,7 @@ export const SpatialObservatoryViewport: React.FC<
   onTriggerUpload,
   uploadRefusal = null,
   opening = false,
+  sample = null,
   arrival = null,
   lockOnSky = null,
   lockOnAligned = null,
@@ -274,6 +281,13 @@ export const SpatialObservatoryViewport: React.FC<
   const creditsShown = useLeaving(creditsOpen, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
   const creditsAtSound = useRef(false);
   const creditsLink = useRef<HTMLButtonElement>(null);
+  // sample-reveal-one (UIUX-sample-reveal-READY.md item 3): the sample's credit stands 24 px left of the Credits link,
+  // whose width is read from its layout
+  const [creditsWidthPx, setCreditsWidthPx] = useState(0);
+  useLayoutEffect(() => {
+    const w = creditsLink.current?.offsetWidth ?? 0;
+    setCreditsWidthPx((prev) => (prev === w ? prev : w));
+  });
   // Back from Credits puts the keyboard where it was, on the link, once the moment takes input again
   const creditsWasOpen = useRef(false);
   useEffect(() => {
@@ -485,7 +499,7 @@ export const SpatialObservatoryViewport: React.FC<
   // stop it can try again: start asks, joins the one running, or returns the stored one) and says whether it did
   const restoreNow = useRef<() => boolean>(() => false);
   restoreNow.current = () => {
-    if (!session.sourceAsset || !isSourcePhotoShown(session)) return false;
+    if (!session.sourceAsset || !isSourcePhotoShown(session) || sample) return false;
     // voice-restore-known-one (DECIDED-BY-LEAD 25 Nov 02:37): Original pixels shows the photo whole, the compare hidden;
     // asking for the restored version turns them off, as pressing Original pixels again does
     const pixelsOff = originalPixels;
@@ -683,7 +697,9 @@ export const SpatialObservatoryViewport: React.FC<
   const clipOnReveal = !entryStageActive && !arrival && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
   const clipShown = clipOnReveal && !photoEntering && (!phone || (!phoneAligning && pickedFinding === null));
   // The first view pill names the recording's kind, as every result sentence does (C16)
-  const firstViewLabel = session.sourceAsset?.mediaKind === 'video' ? 'Your clip' : 'Your photo';
+  // sample-reveal-one (UIUX-sample-reveal-READY.md item 1): on a sample night the photo view's pill reads Sample photo
+  const photo = photoNames(sample !== null);
+  const firstViewLabel = session.sourceAsset?.mediaKind === 'video' ? 'Your clip' : photo.view;
   const seekClip = (sec: number) =>
     setSession((cur) =>
       dispatchAlbedianAction(cur, { type: 'media.seek', requestId: `ui-clip-seek-${cur.viewRevision}`, expectedViewRevision: cur.viewRevision, sourceTimeSec: sec, preserveAudioSync: true })
@@ -863,6 +879,7 @@ export const SpatialObservatoryViewport: React.FC<
             underSky={skyOver}
             onVideo={setClipVideo}
             entering={photoEntering}
+            photoNames={photo}
           />
           {/* Everything over the photo follows once it has framed in after the wait */}
           {!photoEntering && (
@@ -906,8 +923,10 @@ export const SpatialObservatoryViewport: React.FC<
               answer={answer}
               onCloseAnswer={onCloseAnswer}
               restoration={restoration}
-              onRestore={startRestore}
+              // UIUX-sample-reveal-READY.md item 5 (ruled 23:54 on 26 Nov): Restore is not offered on a sample
+              onRestore={sample ? undefined : startRestore}
               onCancelRestore={cancelRestore}
+              sample={sample}
               realSky={realSkyShown}
               flight={flightShown ? flightReadout(session) : null}
               returning={returning}
@@ -950,6 +969,7 @@ export const SpatialObservatoryViewport: React.FC<
             onPushToTalk={onPushToTalk}
             sourceImageUrl={uploadedMediaUrl}
             onClose={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
+            photoNames={photo}
           />
           )}
           {!skyOver && !predictedSkyShown && (
@@ -1140,7 +1160,7 @@ export const SpatialObservatoryViewport: React.FC<
 
       {/* Keyboard help on "?" (INTERIM: UIUX-keys-QUESTION.md), on the laptop after the home; the 3D view's keys are
           listed only where that view is on screen */}
-      {!phone && pastPhoto && <KeyboardHelp threeD={!revealShown} />}
+      {!phone && pastPhoto && <KeyboardHelp threeD={!revealShown} photoView={photo.view} />}
 
       {!phone && pastPhoto && (
         <div className="reveal-nav" data-hud-interactive="true">
@@ -1177,6 +1197,14 @@ export const SpatialObservatoryViewport: React.FC<
         >
           Credits
         </button>
+      )}
+      {/* sample-reveal-one (item 3): the sample photo's credit with the photo view only; on the phone held upright under
+          the photo's foot (held sideways no place is recorded) */}
+      {sample && revealShown && !realSkyShown && !flightShown && !phone && pastPhoto && (
+        <SampleCredit night={sample} rightPx={REVEAL_CREDITS_RIGHT_PX + creditsWidthPx + SAMPLE_CREDIT_GAP_PX} />
+      )}
+      {sample && phoneReveal && pastPhoto && !realSkyShown && !flightShown && !isSideways(windowSize.widthPx, windowSize.heightPx) && (
+        <SampleCredit night={sample} topPx={phoneSlotIn(windowSize.heightPx, windowSize.widthPx).topPx + phoneSlotIn(windowSize.heightPx, windowSize.widthPx).heightPx} />
       )}
       {creditsShown.mounted &&
         createPortal(
