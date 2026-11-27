@@ -262,7 +262,7 @@
   "files": [
     {
       "path": "hangar/aces/aces_lod0.glb",
-      "sha256": "bbe444df46cea94ce7748cb4d6add008fee9f6e504d4581d84fa76cb60e95806",
+      "sha256": "08d97d094b4be3bac57399def2e327214ddf58d6ee62ea93d97a56a011c966e2",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -271,13 +271,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft aces --out apps/web/public/models/hangar/aces",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Advanced%20Crew%20Escape%20Suit/Advanced%20Crew%20Escape%20Suit.glb (858408 bytes, SHA-256 6017772d557c30ea86e2e3a7651ad2089499f3d0c577b983467650616bfaebeb); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/aces/aces_lod1.glb",
-      "sha256": "1cbb4da407bdfd163b79324d2485cd001191b6e7605b466348b71e35a0a11d01",
+      "sha256": "f1a6730adc22ed628e82f05a8930ac5f704c9c48108ae655281d545f92ea6e1f",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -286,13 +286,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft aces --out apps/web/public/models/hangar/aces",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Advanced%20Crew%20Escape%20Suit/Advanced%20Crew%20Escape%20Suit.glb (858408 bytes, SHA-256 6017772d557c30ea86e2e3a7651ad2089499f3d0c577b983467650616bfaebeb); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/aces/aces_lod2.glb",
-      "sha256": "418d14da9c53ffc452576d3b3f118b55815df8ad1109cd26aa211f3cda6d4d7b",
+      "sha256": "6c9fcbe5f64ad2840b8de9096c246e09ea9fa3bec0433257ae5bb72219a22f4a",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -301,7 +301,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft aces --out apps/web/public/models/hangar/aces",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Advanced%20Crew%20Escape%20Suit/Advanced%20Crew%20Escape%20Suit.glb (858408 bytes, SHA-256 6017772d557c30ea86e2e3a7651ad2089499f3d0c577b983467650616bfaebeb); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/ credits NASA/Michael D. Carbajal."
     },
@@ -321,7 +321,7 @@
     },
     {
       "path": "hangar/apollo_lm/apollo_lm_lod0.glb",
-      "sha256": "e8d4612ca120dc1d50a36c145844440de9d4fdf6e752cb599fa7a2f577dd2eca",
+      "sha256": "119cd3efc617b6a2583eb425be19cb21a93760ae6126a3e07354ceb380f1d7bb",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -330,13 +330,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollo_lm --out apps/web/public/models/hangar/apollo_lm",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.glb (716840 bytes, SHA-256 379101dfcee399267addf771709107c35e826b0b9e5233272f123e4c8a585c4e); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/apollo-lunar-module/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/apollo_lm/apollo_lm_lod1.glb",
-      "sha256": "3cd1c857824506c2175064e00cf1cce28f504010d4b2c5742b9e2aab319eef69",
+      "sha256": "7006d367cce1329031adb103f1a62722e4c3d7b891a695dd54bc4e0c6229ddbd",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -345,13 +345,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollo_lm --out apps/web/public/models/hangar/apollo_lm",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.glb (716840 bytes, SHA-256 379101dfcee399267addf771709107c35e826b0b9e5233272f123e4c8a585c4e); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/apollo-lunar-module/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/apollo_lm/apollo_lm_lod2.glb",
-      "sha256": "8ba5a2ca69a1a33440739dad2dfa932060f97dd77f1e774c00073b418b7cd155",
+      "sha256": "538e93577f8574c0193e98f9c47f42f7505a83509ced7a7b9020af7d95230a5e",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -360,7 +360,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollo_lm --out apps/web/public/models/hangar/apollo_lm",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.glb (716840 bytes, SHA-256 379101dfcee399267addf771709107c35e826b0b9e5233272f123e4c8a585c4e); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/apollo-lunar-module/ credits NASA/Michael D. Carbajal."
     },
@@ -380,7 +380,7 @@
     },
     {
       "path": "hangar/apollosoyuz/apollosoyuz_lod0.glb",
-      "sha256": "e8efaaaadb0fe5900132427385aa72c863721a620b356fe87cd5b35c2a830ed1",
+      "sha256": "c6555b9941293782d6475200762a4543424add90b5e1d7e76036002ae569f5f3",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -389,13 +389,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, NASA's drawn textures (the national flags with their lettering, the window and stripe panels, the solar cells) kept as the base colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, NASA's drawn textures (the national flags with their lettering, the window and stripe panels, the solar cells) kept as the base colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.glb (952608 bytes, SHA-256 4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/apollo-soyuz/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/apollosoyuz/apollosoyuz_lod1.glb",
-      "sha256": "883c0782e9bd43718ee07123856302f4fa88b5709b50afc2191ca467e96a3cd8",
+      "sha256": "c1c3c1d20770dbe060f86136fbacd966b17c4879e32f3c17fe317bf76a2ddd20",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -404,13 +404,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.glb (952608 bytes, SHA-256 4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/apollo-soyuz/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/apollosoyuz/apollosoyuz_lod2.glb",
-      "sha256": "8a05c3aecc7ec25b98ffaef4bc5eaa0123d9cd48b24ed6e0e3d3c17077da2887",
+      "sha256": "76c2af84dc7282a3f2cae904161f841f8bf0305f2ec3530d5ead610521fb976e",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -419,7 +419,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft apollosoyuz --out apps/web/public/models/hangar/apollosoyuz",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Soyuz/Apollo%20Soyuz.glb (952608 bytes, SHA-256 4d7d37c8ee02c6649b578900fa3533d92b89e125380a2efaa75f5a66e81d43db); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/apollo-soyuz/ credits NASA/Michael D. Carbajal."
     },
@@ -793,7 +793,7 @@
     },
     {
       "path": "hangar/gemini/gemini_lod0.glb",
-      "sha256": "7447e558c127d0b2e1e186ef3af2cf5c3faeeba9470c2b68184cb34f8f845bc2",
+      "sha256": "a38a6be9ccafd028f4409d99d7e368076b835ace219fb1aafdae8768eea2b1cb",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -802,13 +802,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb (1387812 bytes, SHA-256 e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/gemini/ names no source, so NASA is credited."
     },
     {
       "path": "hangar/gemini/gemini_lod1.glb",
-      "sha256": "2e2b278deb2b2c32978bfd3dfed26093c386d5acba7fa4196f017669ce860396",
+      "sha256": "2de1b94de81eb85cc1464bcadfa4f266b6a9888f0384ca42aceba7568ade8b46",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -817,13 +817,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb (1387812 bytes, SHA-256 e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/gemini/ names no source, so NASA is credited."
     },
     {
       "path": "hangar/gemini/gemini_lod2.glb",
-      "sha256": "0d36c52fd39f259059d34d9c06c356778dba6e11502cb68a4d039c11c1683692",
+      "sha256": "27f2ee031cd532e72b096f4d9697640e5b59fb879d99fdf227319f96b09fdd2b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -832,7 +832,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb (1387812 bytes, SHA-256 e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/gemini/ names no source, so NASA is credited."
     },
@@ -852,7 +852,7 @@
     },
     {
       "path": "hangar/gemini_suit/gemini_suit_lod0.glb",
-      "sha256": "733d8fab12f87f6830bc6aebc152c916f12496b121a4a34320e9ba0a9c4124de",
+      "sha256": "2e2ea69feef28e9c2fd2d78da2935d08171d77da2aa99ffed4468e1ccf210e33",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -861,13 +861,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini_suit --out apps/web/public/models/hangar/gemini_suit",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini%20Spacesuit/Gemini%20Spacesuit.glb (2876516 bytes, SHA-256 972096ada3f5f4bfb54cd636e103f096f4ecf8d5bbc7dae40778c0185fa82266); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/gemini-spacesuit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/gemini_suit/gemini_suit_lod1.glb",
-      "sha256": "059f99f8edfa987883dbd8d0a23aedba0d9654fc09445367a86eed1c66b4b977",
+      "sha256": "5487e2e506b9a1c605bacebe1a365997210149e7b1fcbdfe169679e176451554",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -876,13 +876,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini_suit --out apps/web/public/models/hangar/gemini_suit",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini%20Spacesuit/Gemini%20Spacesuit.glb (2876516 bytes, SHA-256 972096ada3f5f4bfb54cd636e103f096f4ecf8d5bbc7dae40778c0185fa82266); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/gemini-spacesuit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/gemini_suit/gemini_suit_lod2.glb",
-      "sha256": "7986ada01f0cdcaa8c57fd37befc58a7eb8762ea8543d58066b3657bbb0c59f8",
+      "sha256": "ecb6b326d2e7bbe052d025ea0acd509278d5b2aaffbeb190893303be02e306af",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -891,7 +891,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini_suit --out apps/web/public/models/hangar/gemini_suit",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini%20Spacesuit/Gemini%20Spacesuit.glb (2876516 bytes, SHA-256 972096ada3f5f4bfb54cd636e103f096f4ecf8d5bbc7dae40778c0185fa82266); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/gemini-spacesuit/ credits NASA/Michael D. Carbajal."
     },
@@ -911,7 +911,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "47d1209a8f7826485aacdc42fcad41aa97af0ae5d514c61c430350a51704745a",
+      "sha256": "ac93f1f1c6cc8bd34c982887b039fa3fad95ab280d3004160cd948ef534a642c",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-3d-models-nasa-brian-e-kumanchik",
@@ -1057,7 +1057,7 @@
     },
     {
       "path": "hangar/ingenuity/ingenuity_lod0.glb",
-      "sha256": "9687c3585733a85d619725e21961674994a88f761f648b92b80fcda291b08f80",
+      "sha256": "8e2d6cf726d385fa2a3938431243974522095eb51d1133048c3a673ae9ff2e49",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -1066,13 +1066,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no metalness, the JPL logo and the NASA insignia on two plates in the blade texture painted over in the colour of the surface around them, the cameras' photo texture given metalness, roughness and surface relief from its own colours with two small printed labels painted over in the colour around them, NASA's own colour, metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no metalness, the JPL logo and the NASA insignia on two plates in the blade texture painted over in the colour of the surface around them, the cameras' photo texture given metalness, roughness and surface relief from its own colours with two small printed labels painted over in the colour around them, NASA's own colour, metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/ingenuity-mars-helicopter/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/ingenuity/ingenuity_lod1.glb",
-      "sha256": "98f8cfa2a45370169fc6a1c9e21cc0cbca360050b9bad40a5b84cc3d4a2b69fb",
+      "sha256": "fda2193aee4747e83917850b5f20b67131f9f3bda7e497c545f94416246374b0",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -1081,13 +1081,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/ingenuity-mars-helicopter/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/ingenuity/ingenuity_lod2.glb",
-      "sha256": "00279f7cb8c70fe09c0666057efef1e8df9588c38c3318ce178913aef9d70715",
+      "sha256": "f2a1cb5e1caac498e57acfd0c0916cf6d3d6542dce57fb9eddc736a639255525",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -1096,7 +1096,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ingenuity --out apps/web/public/models/hangar/ingenuity",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Ingenuity%20Mars%20Helicopter/Ingenuity%20Mars%20Helicopter.glb (2019408 bytes, SHA-256 9e5a5398ab335eae7d46335085301ce46fb7de052300b645debe8bac6d39f2b5); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/ingenuity-mars-helicopter/ credits NASA/Brian E. Kumanchik."
     },
@@ -1116,7 +1116,7 @@
     },
     {
       "path": "hangar/insight/insight_lod0.glb",
-      "sha256": "2b346fd337683a103a327af9b0e241f62a07e7344e5fcb1433cd1a3709418ae3",
+      "sha256": "4eefd6b95718b82f5d4075482d6e30883f747496ecf93cb59b8195e480eecd58",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -1125,13 +1125,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
-        "changes": "Rebuilt from NASA's model, not copied: a helper empty removed, the parts joined into one mesh, vertex colour layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's deck, solar panel, thermal cover, cable and camera calibration target photo textures kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA insignia, DLR logo and CNES logo on the calibration target and a small printed label on a solar panel skirt painted over in the colour around them while the eleven national flags stay; the silver foil made metal foil, NASA's shaded maps for the deck brackets, under-deck enclosure, landing legs, robotic arm, seismometer shield and heat probe kept as the base colour with one roughness and no metalness, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: a helper empty removed, the parts joined into one mesh, vertex colour layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's deck, solar panel, thermal cover, cable and camera calibration target photo textures kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA insignia, DLR logo and CNES logo on the calibration target and a small printed label on a solar panel skirt painted over in the colour around them while the eleven national flags stay; the silver foil made metal foil, NASA's shaded maps for the deck brackets, under-deck enclosure, landing legs, robotic arm, seismometer shield and heat probe kept as the base colour with one roughness and no metalness, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb (3948936 bytes, SHA-256 4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/insight-cruise-lander/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/insight/insight_lod1.glb",
-      "sha256": "2f4f316ae5130566f8d84581427dc1246b5a562607e8c4d48169b3ed49006967",
+      "sha256": "746f7c1250f28851e1b559d387eb1aae85038a913ee6527411cf26093c2dc853",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -1140,13 +1140,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
-        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb (3948936 bytes, SHA-256 4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/insight-cruise-lander/ credits NASA/Brian E. Kumanchik."
     },
     {
       "path": "hangar/insight/insight_lod2.glb",
-      "sha256": "8f6e4a1c47977eb1daa35c6c65a1020616a9f2ece0d5a8a8ca5bb7d42024c4b1",
+      "sha256": "04a660816bbcc2c39a3e82e907344955c1f6e34998c1262ff404ef597ef9eae3",
       "sources": [
         "nasa-3d-models-nasa-brian-e-kumanchik",
         "nasa-science-mission-pages"
@@ -1155,7 +1155,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft insight --out apps/web/public/models/hangar/insight",
-        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/InSight%20Cruise%20Lander%20%28panels%20deployed%29/InSight%20Cruise%20Lander%20%28panels%20deployed%29.glb (3948936 bytes, SHA-256 4e4c0c8b034de9f265d2e0b52bd7547254b5547eb09edc97e694b3d990849fb8); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/insight-cruise-lander/ credits NASA/Brian E. Kumanchik."
     },
@@ -1411,7 +1411,7 @@
     },
     {
       "path": "hangar/mark3/mark3_lod0.glb",
-      "sha256": "24f83ffa45b706dd15bec196b2f6f9e82c26aff132b1db3af7d5218246b5bc30",
+      "sha256": "27faf81dff2c59de285d20be69fbe571220c9e06a12287084a61b361e30e0f16",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -1420,13 +1420,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mark3 --out apps/web/public/models/hangar/mark3",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mark%20III%20Spacesuit/Mark%20III%20Spacesuit.glb (894092 bytes, SHA-256 885a4a83bd9d18f3886c8201845e384c0a9acb0cb487fb2897846d9f0438ab51); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/mark-iii-spacesuit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/mark3/mark3_lod1.glb",
-      "sha256": "11f573e0391aac4fb40bd7e54e02f428c1ab2d18f0dfbb7714840d104f09e2f3",
+      "sha256": "d7e11f1572cdd8e822a7ff41659947986730d5d2063b749bf2f5059da9c1f3df",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -1435,13 +1435,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mark3 --out apps/web/public/models/hangar/mark3",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mark%20III%20Spacesuit/Mark%20III%20Spacesuit.glb (894092 bytes, SHA-256 885a4a83bd9d18f3886c8201845e384c0a9acb0cb487fb2897846d9f0438ab51); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/mark-iii-spacesuit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/mark3/mark3_lod2.glb",
-      "sha256": "838321411e5981eec9f77a13117c288cfb7701835ca9e2f37b6e1aa252821682",
+      "sha256": "aba75f1f1523b5a0ce75ddc997721861dc86cbd9973e53a5b2926a1be2909d39",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -1450,7 +1450,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mark3 --out apps/web/public/models/hangar/mark3",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mark%20III%20Spacesuit/Mark%20III%20Spacesuit.glb (894092 bytes, SHA-256 885a4a83bd9d18f3886c8201845e384c0a9acb0cb487fb2897846d9f0438ab51); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/mark-iii-spacesuit/ credits NASA/Michael D. Carbajal."
     },
@@ -1529,7 +1529,7 @@
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod0.glb",
-      "sha256": "bc8e5e4198c5bec4e6a91d5e891dfeeb47fa346dce736575ab3df434664bbe19",
+      "sha256": "be7c23689041ada773dc18bb2c8baeefef202e7da06ca174f0cbee3a8e73f5d9",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -1538,13 +1538,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mercury_suit --out apps/web/public/models/hangar/mercury_suit",
-        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.glb (513884 bytes, SHA-256 406c835b4c91bb3f26e52ce5b79a7a1348cb2a22042744325e4be7826ecd7985); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/mercury-spacesuit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod1.glb",
-      "sha256": "aa9c30d81bd9885d57b62cb3ad42c6bd386f406a38b309b1bbb84ccc69aa99e1",
+      "sha256": "8a4d73c833987bcb3c218bf79fd058ccb41678c4b561ef98fd8530b0ea162efb",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -1553,13 +1553,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mercury_suit --out apps/web/public/models/hangar/mercury_suit",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.glb (513884 bytes, SHA-256 406c835b4c91bb3f26e52ce5b79a7a1348cb2a22042744325e4be7826ecd7985); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/mercury-spacesuit/ credits NASA/Michael D. Carbajal."
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod2.glb",
-      "sha256": "2daa4b30c05b1a4c676d385ac917dc1410c4c5228fb57b738a7f5511b4c8cee6",
+      "sha256": "84e17cd312dc24e45fc62aaa20cd45d1e7484dd4d86d0d5aa018fba14b86f0f9",
       "sources": [
         "nasa-3d-models-nasa-michael-d-carbajal",
         "nasa-science-mission-pages"
@@ -1568,7 +1568,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mercury_suit --out apps/web/public/models/hangar/mercury_suit",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.glb (513884 bytes, SHA-256 406c835b4c91bb3f26e52ce5b79a7a1348cb2a22042744325e4be7826ecd7985); kept at the metre scale NASA's model is built in. Its model's page https://science.nasa.gov/3d-resources/mercury-spacesuit/ credits NASA/Michael D. Carbajal."
     },
@@ -2060,7 +2060,7 @@
     },
     {
       "path": "hangar/perseverance/perseverance_lod0.glb",
-      "sha256": "bc511eda50e81c32114272011e9b1e42a9440cab5f68ec1df4bb7e8e4da701ea",
+      "sha256": "5ee1a69033c006ef5a601935477c0bc8f5bbabeb602418d06c016365244f502c",
       "sources": [
         "nasa-3d-models-nasa-jet-propulsion-laboratory",
         "nasa-science-mission-pages"
@@ -2069,13 +2069,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
-        "changes": "Rebuilt from NASA's model, not copied: helper objects and an animation action removed, the parts joined into one mesh, extra UV layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's rover, turret, wheel hub and calibration target photo textures kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA logotype, JPL logo, placard markings and a small camera mark painted over in the colour around them; the arm's label texture and the body plates' flag texture kept as the base colour with one roughness and no metalness, with the NASA insignia, JPL logo, Mars 2020 emblem and a printed part number painted over in the colour around them while the US flag and the rover's plain lettering stay; NASA's own colour, metalness and roughness kept for the metal parts, the lens covers given dark glass, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+        "changes": "Rebuilt from NASA's model, not copied: helper objects and an animation action removed, the parts joined into one mesh, extra UV layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's rover, turret, wheel hub and calibration target photo textures kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA logotype, JPL logo, placard markings and a small camera mark painted over in the colour around them; the arm's label texture and the body plates' flag texture kept as the base colour with one roughness and no metalness, with the NASA insignia, JPL logo, Mars 2020 emblem and a printed part number painted over in the colour around them while the US flag and the rover's plain lettering stay; NASA's own colour, metalness and roughness kept for the metal parts, the lens covers given dark glass, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb (4987176 bytes, SHA-256 10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/mars-2020-perseverance-rover/ credits NASA/Jet Propulsion Laboratory."
     },
     {
       "path": "hangar/perseverance/perseverance_lod1.glb",
-      "sha256": "763279f6f4553f0b7400115542e7d15ee31b176dae579b6f7e45918282be4397",
+      "sha256": "fde728e0412e40d12033a42a4e9a42000b8d66a54c3feb56c362cedd52d51546",
       "sources": [
         "nasa-3d-models-nasa-jet-propulsion-laboratory",
         "nasa-science-mission-pages"
@@ -2084,13 +2084,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb (4987176 bytes, SHA-256 10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/mars-2020-perseverance-rover/ credits NASA/Jet Propulsion Laboratory."
     },
     {
       "path": "hangar/perseverance/perseverance_lod2.glb",
-      "sha256": "9e1f3cbe0512528bdfd9022f61ea111ac6484aac0956f38482d25a0442d53b03",
+      "sha256": "7346ee2fb44d20cf8b35823b5bdcd4bf5d4a7bf803666871c86100772cd908d0",
       "sources": [
         "nasa-3d-models-nasa-jet-propulsion-laboratory",
         "nasa-science-mission-pages"
@@ -2099,7 +2099,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft perseverance --out apps/web/public/models/hangar/perseverance",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%202020%20Perseverance%20Rover/Mars%202020%20Perseverance%20Rover.glb (4987176 bytes, SHA-256 10db7c03a5e63a5a3b3e7baa6243aa4918ba045fa8ff0a731d0217491adc727f); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/mars-2020-perseverance-rover/ credits NASA/Jet Propulsion Laboratory."
     },

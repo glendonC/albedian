@@ -859,6 +859,9 @@ def test_no_two_touching_parts_of_a_rigged_suit_come_apart_in_any_pose(name: str
 SHADED = sorted(name for name, recipe in CRAFTS.items() if recipe.get("vertex_ao"))
 AO_GROUP_ONE = {"clementine", "deepimpact", "ds1", "ibex", "kepler", "maven", "mgs", "near", "parker", "stardust"}
 AO_GROUP_TWO = {"dawn", "juno", "messenger", "mro", "odyssey", "pioneer10", "spitzer", "tdrs", "vanallen", "viking"}
+AO_GROUP_THREE = {
+    "aces", "apollo_lm", "apollosoyuz", "gemini", "gemini_suit", "ingenuity", "insight", "mark3", "mercury_suit", "perseverance"
+}
 
 
 @pytest.mark.parametrize("name", SHADED)
@@ -869,7 +872,7 @@ def test_a_craft_given_fill_occlusion_carries_it_at_every_vertex_of_every_level(
     # colour (three would darken the key with a COLOR_0), and the record's sentence says so. Measured means: EMU 0.42
     # to 0.45, New Horizons 0.64 to 0.68.
     # craft-ao-two adds the other models in groups, each its reach 15 percent of its longest side
-    assert set(SHADED) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | AO_GROUP_TWO
+    assert set(SHADED) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | AO_GROUP_TWO | AO_GROUP_THREE
     record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
     for level in ("lod0", "lod1", "lod2"):
         path = HANGAR_DIR / FACTS["models"][name]["files"][level]["path"]
@@ -883,21 +886,23 @@ def test_a_craft_given_fill_occlusion_carries_it_at_every_vertex_of_every_level(
                 assert (acc["type"], acc["componentType"]) == ("SCALAR", 5126), (name, level)
                 assert acc["count"] == gltf["accessors"][prim["attributes"]["POSITION"]]["count"], (name, level)
                 shade.append(_accessor(gltf, blob, prim["attributes"]["_AO"]).ravel())
-        parts = float(np.mean([s.mean() for s in shade]))
         shade = np.concatenate(shade)
         assert shade.min() >= 0.0 and shade.max() <= 1.0, (name, level)
         assert 0.3 < shade.mean() < 0.9 and shade.std() > 0.1, (name, level, round(shade.mean(), 3), round(shade.std(), 3))
-        # the right way round: the outermost vertices (the convex hull's) see the most sky, measured 0.876 to 1.000 over
-        # the 23 shaded models' 69 levels (the lowest Spitzer's phone level, its decimated panel rims), against each part's
-        # mean taken alike, 0.222 to 0.618 below them; parts alike, as one part may hold most of a level's vertices (the
-        # Van Allen Probes' solar faces, 21,027 of their chase level's 28,383 at 0.99, left its mean 0.115 below its hull)
+        # the right way round: the outermost vertices (the convex hull's) see more sky than the innermost tenth (nearest
+        # the bounds' centre). Measured over the 33 shaded models' 99 levels: the hull 0.876 to 1.000 (the lowest
+        # Spitzer's phone level, its decimated panel rims), 0.205 to 0.801 above the innermost tenth (the least Gemini's
+        # chase level). A mean over all vertices or over parts alike fails some shapes: the Van Allen Probes' solar faces
+        # hold 21,027 of their chase level's 28,383 vertices at 0.99; Gemini's many small outer parts lift its parts' mean.
         from scipy.spatial import ConvexHull
 
         points = np.concatenate(
             [_accessor(gltf, blob, p["attributes"]["POSITION"]) for m in gltf["meshes"] for p in m["primitives"]]
         )
         outer = shade[np.unique(ConvexHull(points).vertices)].mean()
-        assert outer > 0.85 and outer > parts + 0.15, (name, level, round(outer, 3), round(parts, 3))
+        dist = np.linalg.norm(points - (points.max(0) + points.min(0)) / 2, axis=1)
+        inner = shade[dist <= np.quantile(dist, 0.1)].mean()
+        assert outer > 0.85 and outer > inner + 0.15, (name, level, round(outer, 3), round(inner, 3))
 
 
 @pytest.mark.parametrize("name", sorted(CRAFTS))
@@ -977,7 +982,7 @@ REBUILT = sorted(set(SHADED) | LEVELS_REBUILT)
 
 
 def test_the_rebuild_covers_every_craft_rebuilt_in_blender_5_2_3() -> None:
-    assert set(REBUILT) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | AO_GROUP_TWO | LEVELS_REBUILT
+    assert set(REBUILT) >= {"emu", "newhorizons", "z2"} | AO_GROUP_ONE | AO_GROUP_TWO | AO_GROUP_THREE | LEVELS_REBUILT
     assert set(REBUILT) <= set(CRAFTS)
 
 

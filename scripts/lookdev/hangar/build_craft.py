@@ -87,6 +87,15 @@ CHANGES = {
         "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
         "sharp beyond it, and the textures re-encoded as WebP."
     ),
+    "lod0_flat_ao": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA "
+        "colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own "
+        "colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an "
+        "angle and sharp beyond it, and the textures re-encoded as WebP. The sky's fill shadowing the model itself "
+        "added at each vertex as the attribute _AO, from rays cast over the half sphere about each vertex within a "
+        "reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
+    ),
     # lod0 for a model of flat colours whose blankets NASA's model names as silver foil (recipe "changes": "foil")
     "lod0_foil_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
@@ -239,12 +248,15 @@ CHANGES = {
         "within a reach, for the app to apply to the light from the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a model of flat colours with drawn flag, panel and solar cell textures (recipe "changes": "flags")
-    "lod0_flags": (
+    "lod0_flags_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
-        "with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, NASA's drawn textures "
-        "(the national flags with their lettering, the window and stripe panels, the solar cells) kept as the base "
-        "colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the "
-        "normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, NASA's drawn "
+        "textures (the national flags with their lettering, the window and stripe panels, the solar cells) kept as "
+        "the base colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded,"
+        " the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. "
+        "The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the"
+        " half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no "
+        "vertex moved and no colour changed."
     ),
     # lod0 for a photo texture, gold and grey foil ramps, solar cells and two baked parts (recipe "changes": "kepler")
     "lod0_kepler_ao": (
@@ -259,29 +271,35 @@ CHANGES = {
         " the sky alone; no vertex moved and no colour changed."
     ),
     # lod0 for a helicopter scaled from its rotors tip to tip, two printed labels painted out ("changes": "ingenuity")
-    "lod0_ingenuity": (
+    "lod0_ingenuity_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
-        "with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the mast; "
-        "NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no "
+        "with +Y up and scaled to metres from a dimension NASA states, its rotors measured tip to tip across the "
+        "mast; NASA's blade, solar panel and carbon fibre textures kept as the base colour with one roughness and no "
         "metalness, the JPL logo and the NASA insignia on two plates in the blade texture painted over in the colour "
-        "of the surface around them, the cameras' photo texture given metalness, roughness and surface relief from its "
-        "own colours with two small printed labels painted over in the colour around them, NASA's own colour, "
-        "metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, the "
-        "normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+        "of the surface around them, the cameras' photo texture given metalness, roughness and surface relief from "
+        "its own colours with two small printed labels painted over in the colour around them, NASA's own colour, "
+        "metalness and roughness kept for the metal parts, faces NASA's file keeps apart at shared corners welded, "
+        "the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP. The"
+        " sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the "
+        "half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no "
+        "vertex moved and no colour changed."
     ),
     # lod0 for a rover scaled from its wheels, agency marks and placard painted out ("changes": "perseverance")
-    "lod0_perseverance": (
-        "Rebuilt from NASA's model, not copied: helper objects and an animation action removed, the parts joined into "
-        "one mesh, extra UV layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a "
-        "dimension NASA states; NASA's rover, turret, wheel hub and calibration target photo textures kept as the base "
-        "colour, with metalness, roughness and surface relief added from their own colours and shading, and the NASA "
-        "logotype, JPL logo, placard markings and a small camera mark painted over in the colour around them; the "
-        "arm's label texture and the body plates' flag texture kept as the base colour with one roughness and no "
+    "lod0_perseverance_ao": (
+        "Rebuilt from NASA's model, not copied: helper objects and an animation action removed, the parts joined into"
+        " one mesh, extra UV layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from"
+        " a dimension NASA states; NASA's rover, turret, wheel hub and calibration target photo textures kept as the "
+        "base colour, with metalness, roughness and surface relief added from their own colours and shading, and the "
+        "NASA logotype, JPL logo, placard markings and a small camera mark painted over in the colour around them; "
+        "the arm's label texture and the body plates' flag texture kept as the base colour with one roughness and no "
         "metalness, with the NASA insignia, JPL logo, Mars 2020 emblem and a printed part number painted over in the "
         "colour around them while the US flag and the rover's plain lettering stay; NASA's own colour, metalness and "
-        "roughness kept for the metal parts, the lens covers given dark glass, NASA's flat colours kept for the rest, "
-        "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
-        "sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+        "roughness kept for the metal parts, the lens covers given dark glass, NASA's flat colours kept for the rest,"
+        " faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
+        "sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP. The sky's fill "
+        "shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half sphere "
+        "about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex moved and "
+        "no colour changed."
     ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
@@ -292,13 +310,16 @@ CHANGES = {
         "the normals made again, smooth within an angle and sharp beyond it, and the masks encoded as WebP."
     ),
     # lod0 for a suit of NASA's flat colours (recipe "changes": "suit_flat")
-    "lod0_suit_flat": (
+    "lod0_suit_flat_ao": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z "
-        "with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's "
-        "file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, "
-        "faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle "
-        "and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a wider "
-        "angle and each corner's normal weighted by the area of the faces around it, no vertex or texture moved."
+        "with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours "
+        "(NASA's file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its"
+        " faces, faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an"
+        " angle and sharp beyond it, then made again at each level once its triangles are reduced, smooth within a "
+        "wider angle and each corner's normal weighted by the area of the faces around it, no vertex or texture "
+        "moved. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast "
+        "over the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone;"
+        " no vertex moved and no colour changed."
     ),
     # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked": the Z-2)
     "lod0_baked": (
@@ -375,17 +396,20 @@ CHANGES = {
         "changed."
     ),
     # lod0 for a Mars lander whose calibration target agency logos and skirt label are painted out ("insight")
-    "lod0_insight": (
-        "Rebuilt from NASA's model, not copied: a helper empty removed, the parts joined into one mesh, vertex colour "
-        "layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA "
+    "lod0_insight_ao": (
+        "Rebuilt from NASA's model, not copied: a helper empty removed, the parts joined into one mesh, vertex colour"
+        " layers stripped, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA "
         "states; NASA's deck, solar panel, thermal cover, cable and camera calibration target photo textures kept as "
         "the base colour, with metalness, roughness and surface relief added from their own colours and shading, and "
-        "the NASA insignia, DLR logo and CNES logo on the calibration target and a small printed label on a solar panel "
-        "skirt painted over in the colour around them while the eleven national flags stay; the silver foil made metal "
-        "foil, NASA's shaded maps for the deck brackets, under-deck enclosure, landing legs, robotic arm, seismometer "
-        "shield and heat probe kept as the base colour with one roughness and no metalness, NASA's flat colours kept "
-        "for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an "
-        "angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded as WebP."
+        "the NASA insignia, DLR logo and CNES logo on the calibration target and a small printed label on a solar "
+        "panel skirt painted over in the colour around them while the eleven national flags stay; the silver foil "
+        "made metal foil, NASA's shaded maps for the deck brackets, under-deck enclosure, landing legs, robotic arm, "
+        "seismometer shield and heat probe kept as the base colour with one roughness and no metalness, NASA's flat "
+        "colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, "
+        "smooth within an angle and sharp beyond it, fewer triangles kept at every level, and the textures re-encoded"
+        " as WebP. The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays "
+        "cast over the half sphere about each vertex within a reach, for the app to apply to the light from the sky "
+        "alone; no vertex moved and no colour changed."
     ),
     "lod1": (
         "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
@@ -417,11 +441,29 @@ CHANGES = {
         "each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that "
         "almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
     ),
+    "lod1_by_part_ao": (
+        "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse "
+        "decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more "
+        "of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that "
+        "almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side. The sky's"
+        " fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over the half "
+        "sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no vertex "
+        "moved and no colour changed."
+    ),
     "lod2_by_part": (
         "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse "
         "decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of "
         "each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that "
         "almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+    ),
+    "lod2_by_part_ao": (
+        "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's "
+        "collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles "
+        "and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky "
+        "parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
+        " The sky's fill shadowing the model itself added at each vertex as the attribute _AO, from rays cast over "
+        "the half sphere about each vertex within a reach, for the app to apply to the light from the sky alone; no "
+        "vertex moved and no colour changed."
     ),
     "picker": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP.",
     "picker_render": (

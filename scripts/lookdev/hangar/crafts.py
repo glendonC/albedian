@@ -546,6 +546,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         "lod_ratio": {"lod0": 0.6, "lod1": 0.2, "lod2": 0.07},
         "body_radius_m": 4.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 1.4, "skip_m": 0.003},
         "changes": "flat",
     },
     "gemini": {
@@ -590,6 +592,8 @@ CRAFTS: dict[str, dict] = {
         # The phone level's textures at most 384 pixels on a side, so they decode under 8 MB (tex-budget-one).
         "texture_edge": {"lod2": 384},
         "body_radius_m": 3.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.87, "skip_m": 0.003},
         "changes": "flat",
     },
     # The four suits NASA publishes in metres; each faces +Y in the import frame (visor and chest fittings
@@ -644,6 +648,8 @@ CRAFTS: dict[str, dict] = {
             "lod2": 0.05
         },
         "body_radius_m": 0.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         "changes": "suit_flat"
     },
     "mark3": {
@@ -695,6 +701,8 @@ CRAFTS: dict[str, dict] = {
             "lod2": 0.05
         },
         "body_radius_m": 0.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         "changes": "suit_flat",
         "drop_materials": [
             "MKIII:MarkIII_8sizedwithoutskeleton_lambert5SG"
@@ -750,6 +758,8 @@ CRAFTS: dict[str, dict] = {
             "lod2": 0.05
         },
         "body_radius_m": 0.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         "changes": "suit_flat"
     },
     "gemini_suit": {
@@ -802,6 +812,8 @@ CRAFTS: dict[str, dict] = {
             "lod2": 0.05
         },
         "body_radius_m": 0.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         "changes": "suit_flat"
     },
     "shuttle": {
@@ -1806,6 +1818,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         # Half the docked pair's length (about 16.5 m at this scale), as the picker frames a craft by its body radius.
         "body_radius_m": 8.0,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 2.5, "skip_m": 0.003},
         "changes": "flags",
     },
     "kepler": {
@@ -1922,6 +1936,8 @@ CRAFTS: dict[str, dict] = {
         "smooth_deg": 35.0,
         # Half the rotors' span.
         "body_radius_m": 0.6,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.3, "skip_m": 0.003},
         "changes": "ingenuity",
     },
     "perseverance": {
@@ -2039,6 +2055,8 @@ CRAFTS: dict[str, dict] = {
         "drop_parts_under_m": {"lod1": 0.02, "lod2": 0.04},
         "texture_edge": {"lod1": 512, "lod2": 256},
         "body_radius_m": 1.6,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.47, "skip_m": 0.003},
         "changes": "perseverance",
     },
     "clementine": {
@@ -2379,6 +2397,8 @@ CRAFTS: dict[str, dict] = {
         "texture_edge": {"lod0": 768, "lod1": 384, "lod2": 128},
         # Frames the 1.56 m platform deck, stowed instruments, legs and inner solar array hinges inside the 6 m width.
         "body_radius_m": 1.8,
+        # craft-ao-two: the sky fill's occlusion per vertex, its reach 15 percent of the model's longest side
+        "vertex_ao": {"rays": 32, "distance_m": 0.9, "skip_m": 0.003},
         "changes": "insight",
     },
 }

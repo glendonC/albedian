@@ -430,24 +430,27 @@
       "files": {
         "lod0": {
           "path": "apollo_lm/apollo_lm_lod0.glb",
-          "bytes": 1914264,
+          "bytes": 2104792,
           "triangles": 55283,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4188812,
+          "occlusionBytes": 188812
         },
         "lod1": {
           "path": "apollo_lm/apollo_lm_lod1.glb",
-          "bytes": 786328,
+          "bytes": 863500,
           "triangles": 18428,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1575472,
+          "occlusionBytes": 75472
         },
         "lod2": {
           "path": "apollo_lm/apollo_lm_lod2.glb",
-          "bytes": 315348,
+          "bytes": 346392,
           "triangles": 6420,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 629348,
+          "occlusionBytes": 29348
         },
         "picker": {
           "path": "apollo_lm/apollo_lm_picker.webp",
@@ -487,24 +490,27 @@
       "files": {
         "lod0": {
           "path": "gemini/gemini_lod0.glb",
-          "bytes": 914992,
+          "bytes": 983600,
           "triangles": 23260,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4067056,
+          "occlusionBytes": 67056
         },
         "lod1": {
           "path": "gemini/gemini_lod1.glb",
-          "bytes": 483360,
+          "bytes": 515792,
           "triangles": 7752,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1531024,
+          "occlusionBytes": 31024
         },
         "lod2": {
           "path": "gemini/gemini_lod2.glb",
-          "bytes": 201144,
+          "bytes": 217304,
           "triangles": 2713,
           "textureEdgeMax": 384,
-          "budgetBytes": 600000
+          "budgetBytes": 614760,
+          "occlusionBytes": 14760
         },
         "picker": {
           "path": "gemini/gemini_picker.webp",
@@ -545,24 +551,27 @@
       "files": {
         "lod0": {
           "path": "mercury_suit/mercury_suit_lod0.glb",
-          "bytes": 1277224,
+          "bytes": 1402484,
           "triangles": 46310,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4122856,
+          "occlusionBytes": 122856
         },
         "lod1": {
           "path": "mercury_suit/mercury_suit_lod1.glb",
-          "bytes": 477056,
+          "bytes": 525448,
           "triangles": 15436,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1546000,
+          "occlusionBytes": 46000
         },
         "lod2": {
           "path": "mercury_suit/mercury_suit_lod2.glb",
-          "bytes": 196780,
+          "bytes": 217796,
           "triangles": 5142,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 619044,
+          "occlusionBytes": 19044
         },
         "picker": {
           "path": "mercury_suit/mercury_suit_picker.webp",
@@ -602,24 +611,27 @@
       "files": {
         "lod0": {
           "path": "mark3/mark3_lod0.glb",
-          "bytes": 861520,
+          "bytes": 946544,
           "triangles": 30522,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4083180,
+          "occlusionBytes": 83180
         },
         "lod1": {
           "path": "mark3/mark3_lod1.glb",
-          "bytes": 321948,
+          "bytes": 354780,
           "triangles": 10173,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1531000,
+          "occlusionBytes": 31000
         },
         "lod2": {
           "path": "mark3/mark3_lod2.glb",
-          "bytes": 137820,
+          "bytes": 152720,
           "triangles": 3390,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 613080,
+          "occlusionBytes": 13080
         },
         "picker": {
           "path": "mark3/mark3_picker.webp",
@@ -659,24 +671,27 @@
       "files": {
         "lod0": {
           "path": "aces/aces_lod0.glb",
-          "bytes": 1003020,
+          "bytes": 1105684,
           "triangles": 30606,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4100660,
+          "occlusionBytes": 100660
         },
         "lod1": {
           "path": "aces/aces_lod1.glb",
-          "bytes": 372980,
+          "bytes": 412176,
           "triangles": 10202,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1537216,
+          "occlusionBytes": 37216
         },
         "lod2": {
           "path": "aces/aces_lod2.glb",
-          "bytes": 163512,
+          "bytes": 181608,
           "triangles": 3393,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 616268,
+          "occlusionBytes": 16268
         },
         "picker": {
           "path": "aces/aces_picker.webp",
@@ -716,24 +731,27 @@
       "files": {
         "lod0": {
           "path": "gemini_suit/gemini_suit_lod0.glb",
-          "bytes": 1061504,
+          "bytes": 1189628,
           "triangles": 48751,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4125552,
+          "occlusionBytes": 125552
         },
         "lod1": {
           "path": "gemini_suit/gemini_suit_lod1.glb",
-          "bytes": 386372,
+          "bytes": 434452,
           "triangles": 16249,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1545540,
+          "occlusionBytes": 45540
         },
         "lod2": {
           "path": "gemini_suit/gemini_suit_lod2.glb",
-          "bytes": 154164,
+          "bytes": 174372,
           "triangles": 5410,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 617824,
+          "occlusionBytes": 17824
         },
         "picker": {
           "path": "gemini_suit/gemini_suit_picker.webp",
@@ -1923,24 +1941,27 @@
       "files": {
         "lod0": {
           "path": "apollosoyuz/apollosoyuz_lod0.glb",
-          "bytes": 1028452,
+          "bytes": 1129096,
           "triangles": 32954,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4098088,
+          "occlusionBytes": 98088
         },
         "lod1": {
           "path": "apollosoyuz/apollosoyuz_lod1.glb",
-          "bytes": 540184,
+          "bytes": 592144,
           "triangles": 16477,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1549416,
+          "occlusionBytes": 49416
         },
         "lod2": {
           "path": "apollosoyuz/apollosoyuz_lod2.glb",
-          "bytes": 215556,
+          "bytes": 235732,
           "triangles": 5931,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 617636,
+          "occlusionBytes": 17636
         },
         "picker": {
           "path": "apollosoyuz/apollosoyuz_picker.webp",
@@ -2042,24 +2063,27 @@
       "files": {
         "lod0": {
           "path": "ingenuity/ingenuity_lod0.glb",
-          "bytes": 584184,
+          "bytes": 621788,
           "triangles": 9054,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4036192,
+          "occlusionBytes": 36192
         },
         "lod1": {
           "path": "ingenuity/ingenuity_lod1.glb",
-          "bytes": 409220,
+          "bytes": 428348,
           "triangles": 4527,
           "textureEdgeMax": 1024,
-          "budgetBytes": 1500000
+          "budgetBytes": 1517720,
+          "occlusionBytes": 17720
         },
         "lod2": {
           "path": "ingenuity/ingenuity_lod2.glb",
-          "bytes": 178188,
+          "bytes": 186412,
           "triangles": 1627,
           "textureEdgeMax": 512,
-          "budgetBytes": 600000
+          "budgetBytes": 606828,
+          "occlusionBytes": 6828
         },
         "picker": {
           "path": "ingenuity/ingenuity_picker.webp",
@@ -2100,24 +2124,27 @@
       "files": {
         "lod0": {
           "path": "perseverance/perseverance_lod0.glb",
-          "bytes": 3593224,
+          "bytes": 3777484,
           "triangles": 51770,
           "textureEdgeMax": 2048,
-          "budgetBytes": 4000000
+          "budgetBytes": 4179780,
+          "occlusionBytes": 179780
         },
         "lod1": {
           "path": "perseverance/perseverance_lod1.glb",
-          "bytes": 1370300,
+          "bytes": 1444812,
           "triangles": 18597,
           "textureEdgeMax": 512,
-          "budgetBytes": 1500000
+          "budgetBytes": 1570064,
+          "occlusionBytes": 70064
         },
         "lod2": {
           "path": "perseverance/perseverance_lod2.glb",
-          "bytes": 524864,
+          "bytes": 559748,
           "triangles": 6354,
           "textureEdgeMax": 256,
-          "budgetBytes": 600000
+          "budgetBytes": 631036,
+          "occlusionBytes": 31036
         },
         "picker": {
           "path": "perseverance/perseverance_picker.webp",
@@ -2352,24 +2379,27 @@
       "files": {
         "lod0": {
           "path": "insight/insight_lod0.glb",
-          "bytes": 3869168,
+          "bytes": 4186172,
           "triangles": 40110,
           "textureEdgeMax": 768,
-          "budgetBytes": 4000000
+          "budgetBytes": 4314992,
+          "occlusionBytes": 314992
         },
         "lod1": {
           "path": "insight/insight_lod1.glb",
-          "bytes": 1432912,
+          "bytes": 1546848,
           "triangles": 14798,
           "textureEdgeMax": 384,
-          "budgetBytes": 1500000
+          "budgetBytes": 1611936,
+          "occlusionBytes": 111936
         },
         "lod2": {
           "path": "insight/insight_lod2.glb",
-          "bytes": 543348,
+          "bytes": 596664,
           "triangles": 6767,
           "textureEdgeMax": 128,
-          "budgetBytes": 600000
+          "budgetBytes": 651344,
+          "occlusionBytes": 51344
         },
         "picker": {
           "path": "insight/insight_picker.webp",
