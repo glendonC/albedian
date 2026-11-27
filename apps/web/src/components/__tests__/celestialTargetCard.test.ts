@@ -891,7 +891,7 @@ describe('catalog parity with StarCard (celestialcard-parity-1)', () => {
         id: 'finding-openngc-NGC6611',
         observationSolutionId: session.observationSolution!.id,
         evidenceClass: 'predicted',
-        title: 'lam Cen Nebula',
+        title: 'Lambda Centauri Nebula',
         subtitle: 'Cl+N · Se2 · OpenNGC',
         skyPosition: { raDeg: 274.7, decDeg: -13.8, uncertaintyArcsec: 12 },
         catalogRef: {

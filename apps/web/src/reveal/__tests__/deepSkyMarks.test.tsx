@@ -252,10 +252,11 @@ describe('a deep-sky name: a common name only, 6 px beside its symbol, where it 
     expect([marks['Omega Centauri']!.name, marks['Omega Centauri']!.nameOnLeft]).toEqual(['Omega Centauri', false]);
   });
 
-  it('is not stopped by a star mark over its own centre, as the design page has it (lam Cen Nebula)', () => {
-    // A star 3 photo px from the symbol's centre: its room holds the centre, and the name runs on to the right
-    const marks = byTitle(sessionOf([deep('IC2944', 'lam Cen Nebula', 300, 200), matched('Held', 303, 202)]));
-    expect([marks['lam Cen Nebula']!.name, marks['lam Cen Nebula']!.nameOnLeft]).toEqual(['Lambda Centauri Nebula', false]);
+  it('is not stopped by a star mark over its own centre, as the design page has it (Lambda Centauri Nebula)', () => {
+    // A star 3 photo px from the symbol's centre: its room holds the centre, and the name runs on to the right; the
+    // name is the one the server serves for IC 2944 (deepsky-name-passthrough-one)
+    const marks = byTitle(sessionOf([deep('IC2944', 'Lambda Centauri Nebula', 300, 200), matched('Held', 303, 202)]));
+    expect([marks['Lambda Centauri Nebula']!.name, marks['Lambda Centauri Nebula']!.nameOnLeft]).toEqual(['Lambda Centauri Nebula', false]);
   });
 
   it("gives way to a star's name", () => {
@@ -350,7 +351,7 @@ describe('the marks on the photo and the card of a picked one', () => {
 
 describe("a picked deep-sky object's card facts", () => {
   it('gives the constellation alone with no row, and no number with no V', () => {
-    const lam = deep('IC2944', 'lam Cen Nebula', 300, 200);
+    const lam = deep('IC2944', 'Lambda Centauri Nebula', 300, 200);
     expect(starCardFacts(lam, null)).toMatchObject({ title: 'Lambda Centauri Nebula', subLine: 'Centaurus', numbers: [], sourceLine: 'OpenNGC v20260501 · IC2944', canGoThere: false });
     expect(starCardFacts(lam, TABLE.get('IC2944')!).subLine).toBe('Star cluster and nebula · Centaurus');
   });
