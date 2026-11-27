@@ -101,12 +101,12 @@ function rowAtThePlace(): { tile: CatalogStarCoreTile; positionPc: [number, numb
   return { tile: { ...tile, directions, distancePc, magnitude: new Float32Array([2]) }, positionPc };
 }
 
-async function steerFrom(reducedMotion: boolean, onSteer = vi.fn(), theTile: CatalogStarCoreTile = tile) {
+async function steerFrom(reducedMotion: boolean, onSteer = vi.fn(), theTile: CatalogStarCoreTile = tile, freeFlight = false) {
   const openTiles: OpenFlightTiles = async (onTile) => {
     onTile(theTile);
     return { setView: () => {}, dispose: () => {} };
   };
-  const tree = (steering: boolean) => createElement(FlightStarsLayer, { session: there(reducedMotion), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, steering, onSteer });
+  const tree = (steering: boolean) => createElement(FlightStarsLayer, { session: there(reducedMotion), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, steering, onSteer, freeFlight });
   await act(async () => root.render(tree(false)));
   await tick(4);
   await act(async () => root.render(tree(true)));
@@ -177,6 +177,28 @@ describe('the flight near the star (near-star-flight-one)', () => {
     expect(last.toStarPc / floor!).toBeCloseTo(1, 3);
   });
 
+  it('starts a new hand-over in the same flight at the start speed, not the speed W set before it', async () => {
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      onTile(tile);
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const tree = (steering: boolean) => createElement(FlightStarsLayer, { session: there(false), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, steering });
+    await act(async () => root.render(tree(false)));
+    await tick(4);
+    await act(async () => root.render(tree(true)));
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w' })));
+    await tick(120);
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', key: 'w' })));
+    expect(near()[3]!).toBeGreaterThan(STEER_START_SPEED_PC_S * 2);
+    // Back to the autopilot, then the steering taken again: a new hand-over
+    await act(async () => root.render(tree(false)));
+    await tick(2);
+    await act(async () => root.render(tree(true)));
+    await tick(1);
+    // (the layer writes nine figures)
+    expect(near()[3]! / STEER_START_SPEED_PC_S).toBeCloseTo(1, 8);
+  });
+
   it('flies the set speed when S brings it under the paced one', async () => {
     await steerFrom(false);
     await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' })));
@@ -185,5 +207,64 @@ describe('the flight near the star (near-star-flight-one)', () => {
     // Four seconds of S: a sixteenth of the start speed, under the distance over 2.5 s by then
     expect(set! / (STEER_START_SPEED_PC_S / 16)).toBeCloseTo(1, 6);
     expect(paced).toBe(set);
+  });
+});
+
+describe('free flight has no star (near-star-flight-one version two; UIUX-pilot-READY item 6, DECIDED-BY-LEAD 26 Nov 23:54)', () => {
+  /** Where the steered rings stand: each matched star's ring centre, by its finding. */
+  const rings = () =>
+    new Map([...container.querySelectorAll('svg circle[data-finding-id]')].map((c) => [c.getAttribute('data-finding-id')!, [Number(c.getAttribute('cx')), Number(c.getAttribute('cy'))]] as const));
+  const moved = (a: Map<string, readonly number[]>, b: Map<string, readonly number[]>) => Math.max(0, ...[...a].filter(([k]) => b.has(k)).map(([k, p]) => Math.hypot(p[0]! - b.get(k)![0]!, p[1]! - b.get(k)![1]!)));
+
+  it('turns nothing at the hand-over, though the star flown to was found, where the steered flight turns onto it', async () => {
+    const row = rowAtThePlace();
+    await steerFrom(false, vi.fn(), row.tile, false);
+    await tick(1);
+    const steeredStart = rings();
+    await tick(Math.round(HANDOVER_SECONDS * 60));
+    const steeredTurn = moved(steeredStart, rings());
+    act(() => root.unmount());
+    root = createRoot(container);
+    await steerFrom(false, vi.fn(), row.tile, true);
+    await tick(1);
+    const freeStart = rings();
+    expect(freeStart.size).toBeGreaterThan(0);
+    await tick(Math.round(HANDOVER_SECONDS * 60));
+    // The steered flight's turn moves the rings across the window; free flight's start speed moves them by a hair
+    expect(steeredTurn).toBeGreaterThan(20);
+    expect(moved(freeStart, rings())).toBeLessThan(0.5);
+  });
+
+  it('drops the star when the steering becomes free flight while it lasts', async () => {
+    const openTiles: OpenFlightTiles = async (onTile) => {
+      onTile(rowAtThePlace().tile);
+      return { setView: () => {}, dispose: () => {} };
+    };
+    const tree = (steering: boolean, freeFlight: boolean) => createElement(FlightStarsLayer, { session: there(false), viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, steering, freeFlight });
+    await act(async () => root.render(tree(false, false)));
+    await tick(4);
+    await act(async () => root.render(tree(true, false)));
+    await tick(2);
+    expect(Number.isNaN(near()[0]!)).toBe(false);
+    await act(async () => root.render(tree(true, true)));
+    await tick(2);
+    expect(Number.isNaN(near()[0]!)).toBe(true);
+    expect(near()[1]).toBe(0);
+  });
+
+  it('is never paced and has no floor: W held flies the set speed all the way, with no distance to a star', async () => {
+    const row = rowAtThePlace();
+    await steerFrom(false, vi.fn(), row.tile, true);
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w' })));
+    for (let i = 0; i < 60; i++) {
+      await tick(10, 100);
+      const [d, floor, paced, set] = near();
+      expect(Number.isNaN(d!)).toBe(true);
+      expect(floor).toBe(0);
+      expect(paced).toBe(set);
+    }
+    // Sixty seconds of W: far past where the star's floor would have stopped it, since nothing holds it
+    const fromEarth = Number(container.querySelector('[data-testid="flight-stars"]')!.getAttribute('data-from-earth-pc'));
+    expect(fromEarth).toBeGreaterThan(Math.hypot(...row.positionPc) + 10);
   });
 });

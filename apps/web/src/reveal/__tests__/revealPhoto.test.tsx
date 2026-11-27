@@ -642,6 +642,7 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="real-sky"]')).not.toBeNull();
     press();
     expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(q('[data-testid="flight-stars"]')!.getAttribute('data-steer')).toBe('star');
     expect(q('[data-testid="real-sky"]')).toBeNull();
     expect(q('[data-testid="reveal-marks"]')).toBeNull();
     expect(q(READOUT)).not.toBeNull();
@@ -661,6 +662,8 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q(READOUT)!.textContent).toContain('from Earth');
     expect(q(READOUT)!.textContent).not.toContain('to Rigel');
     expect(q('[data-testid="pilot-trip"]')).toBeNull();
+    // near-star-flight-one version two: the star layer is told the flight is free, so it flies with no star
+    expect(q('[data-testid="flight-stars"]')!.getAttribute('data-steer')).toBe('free');
     const sky = q('[data-testid="flight-sky"]')!;
     act(() => {
       sky.dispatchEvent(new MouseEvent('pointerdown', { clientX: 400, clientY: 300 }));

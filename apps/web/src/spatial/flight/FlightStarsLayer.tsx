@@ -315,6 +315,11 @@ export const FlightStarsLayer: React.FC<{
   craftFraming?: CraftFraming;
   /** pilot-1e: whether the person steers (a press on the sky hands over and takes back the steering). */
   steering?: boolean;
+  /**
+   * pilot-1f: the steering is free flight (Fly on your own), which has no star (UIUX-pilot-READY item 6; DECIDED-BY-LEAD
+   * 26 Nov 23:54): no hand-over turn, no pacing and no floor (near-star-flight-one version two).
+   */
+  freeFlight?: boolean;
   /** Told of a press on the sky (a click or tap that is not a drag), in the flight view. */
   onPressSky?: () => void;
   /** Told once when a drag on the sky starts (D30 item 6: on the phone a drag takes the steering; a tap never does). */
@@ -341,6 +346,7 @@ export const FlightStarsLayer: React.FC<{
   phone = false,
   craftFraming,
   steering = false,
+  freeFlight = false,
   onPressSky,
   onDragSky,
   onSteer,
@@ -422,6 +428,8 @@ export const FlightStarsLayer: React.FC<{
   // near-star-flight-one: the speed W and S set, which the star's distance paces
   const setSpeed = useRef(STEER_START_SPEED_PC_S);
   const pacedStar = useRef<NearStar | null>(null);
+  const freeRef = useRef(freeFlight);
+  freeRef.current = freeFlight;
   const flying = steering && !cone && camera !== null;
   useEffect(() => {
     if (!flying || !cameraRef.current) {
@@ -439,7 +447,8 @@ export const FlightStarsLayer: React.FC<{
     // near-star-flight-one (DECIDED-BY-LEAD 25 Nov 07:28): the hand-over heads at the star flown to (nearStar.ts)
     // The star is chosen once, at the hand-over: its own catalog row (found during the flight there), else the place
     // flown to; the aim, the pacing and the readout all go by it, so the flight never aims at one and is paced by another
-    pacedStar.current = nearStarOf(arrivalRef.current, cameraRef.current.referencePc);
+    // version two (DECIDED-BY-LEAD 26 Nov 23:54): free flight has no star, so no hand-over turn, no pacing and no floor
+    pacedStar.current = freeRef.current ? null : nearStarOf(arrivalRef.current, cameraRef.current.referencePc);
     let handover = startHandover(start, pacedStar.current);
     let raf = 0;
     let last = performance.now();
@@ -490,7 +499,7 @@ export const FlightStarsLayer: React.FC<{
       window.removeEventListener('keydown', down, true);
       window.removeEventListener('keyup', up, true);
     };
-  }, [flying]);
+  }, [flying, freeFlight]);
   const toldSteer = useRef(onSteer);
   toldSteer.current = onSteer;
   // The page hears of the camera only when a number the readout shows would change (its three figures, its speed line)
@@ -770,6 +779,7 @@ export const FlightStarsLayer: React.FC<{
       data-testid="flight-stars"
       data-state={state}
       data-view={cone ? 'cone' : 'flight'}
+      data-steer={flying ? (freeFlight ? 'free' : 'star') : undefined}
       data-stars={counts.stars}
       data-sky-sphere={counts.skySphere}
       data-no-distance-on-screen={counts.noDistanceOnScreen}
