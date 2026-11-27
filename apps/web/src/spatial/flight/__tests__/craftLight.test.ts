@@ -14,6 +14,7 @@ import {
   LIGHT_YEAR_PC,
   SUN_ON_EARTH_MAG,
   keyToFillOf,
+  nearStarShare,
   craftLighting,
   seenSideKeyShare,
   SUN_ABSOLUTE_V_MAG,
@@ -332,6 +333,19 @@ describe('the fill by the key\'s light', () => {
     expect(keyToFillOf(key(-20, 0))).toBe(8);
     expect(keyToFillOf(key(-20, Number.POSITIVE_INFINITY))).toBe(8);
     expect(keyToFillOf(key(-20, Number.NaN))).toBe(8);
+  });
+
+  it('goes by the one near-star share, 0 at a light year and beyond to 1 at the floor, that the star flown to grows by', () => {
+    for (const [m, d] of [[-12, LIGHT_YEAR_PC], [SUN_ON_EARTH_MAG + 5, LIGHT_YEAR_PC / 10], [-7 + 5 * Math.log10(0.01 * LIGHT_YEAR_PC / 10), 0.01 * LIGHT_YEAR_PC], [SUN_ON_EARTH_MAG, 0.001], [Number.NaN, 0.1]] as const) {
+      expect(keyToFillOf(key(m, d))).toBeCloseTo(8 * 2 ** nearStarShare(m, d), 12);
+    }
+    expect(nearStarShare(-12, LIGHT_YEAR_PC)).toBe(0);
+    expect(nearStarShare(-12, 2 * LIGHT_YEAR_PC)).toBe(0);
+    expect(nearStarShare(SUN_ON_EARTH_MAG + 5, LIGHT_YEAR_PC / 10)).toBeCloseTo(0.5, 12);
+    expect(nearStarShare(SUN_ON_EARTH_MAG, 0.001)).toBe(1);
+    expect(nearStarShare(SUN_ON_EARTH_MAG - 1, 0.001)).toBe(1);
+    expect(nearStarShare(Number.NaN, 0.1)).toBe(0);
+    expect(nearStarShare(-20, 0)).toBe(0);
   });
 
   it('takes the key\'s distance from where the camera is: the star\'s, or the Sun\'s', () => {

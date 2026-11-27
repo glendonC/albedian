@@ -6,7 +6,7 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { buildFlightTileArrays, flightCameraOf, screenOfPlacement, type FlightCamera } from '../flightFrame.js';
 import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from '../flightStarShader.js';
-import { arrivalGlow } from '../arrival.js';
+import { arrivalGlow, arrivalGlowYielded } from '../arrival.js';
 import { starViewOfFlight } from '../starView.js';
 import { runVertexMain, type GlslInputs } from './glslSubset.js';
 
@@ -167,9 +167,48 @@ describe('the arrival bloom\'s shaders, run from their own text (arrival-star-1)
     const body = ARRIVAL_BLOOM_FRAGMENT.replace('if (q >= 1.0) discard;', '');
     for (const [x, y] of [[0, 0], [0.2, 0.1], [0.5, -0.3], [-0.7, 0.6], [0.0, 0.99]] as const) {
       const q = Math.hypot(x, y);
-      const out = runVertexMain(body, { vCorner: [x, y], uTint: [1, 0.5, 0.25] });
+      const out = runVertexMain(body, { vCorner: [x, y], uTint: [1, 0.5, 0.25], uCore: 1, uDisc: 0, uRadius: 150, uDiscTint: [1, 1, 1], uGlare: 0, uCenter: [700, 400], uYieldY: -1 });
       expect(out.glow as number).toBeCloseTo(arrivalGlow(q), 9);
       expect((out.outColor as number[]).slice(0, 3)).toEqual([1, 0.5, 0.25].map((c) => expect.closeTo(c * arrivalGlow(q), 9)));
     }
+  });
+
+  it('holds its white-hot centre at the share it is given, as arrivalGlow does (near-star-light-one)', () => {
+    const body = ARRIVAL_BLOOM_FRAGMENT.replace('if (q >= 1.0) discard;', '');
+    for (const [x, y] of [[0, 0], [0.05, 0.02], [0.1, -0.1], [0.4, 0.3], [0.0, 0.99]] as const) {
+      const q = Math.hypot(x, y);
+      const out = runVertexMain(body, { vCorner: [x, y], uTint: [1, 0.5, 0.25], uCore: 1 / 3, uDisc: 0, uRadius: 720, uDiscTint: [1, 1, 1], uGlare: 0, uCenter: [700, 400], uYieldY: -1 });
+      expect(out.glow as number).toBeCloseTo(arrivalGlow(q, 1 / 3), 9);
+      const glared = runVertexMain(body, { vCorner: [x, y], uTint: [1, 0.5, 0.25], uCore: 1 / 3, uDisc: 0, uRadius: 720, uDiscTint: [1, 1, 1], uGlare: 0.35, uCenter: [700, 400], uYieldY: -1 });
+      expect(glared.glow as number).toBeCloseTo(arrivalGlow(q, 1 / 3, 0.35), 9);
+      expect(out.disc as number).toBe(0);
+    }
+  });
+
+  it('adds the disc in its white-hot tint inside its radius, with a one-pixel edge, and none when it has none', () => {
+    const body = ARRIVAL_BLOOM_FRAGMENT.replace('if (q >= 1.0) discard;', '');
+    const run = (q: number, uDisc: number) => runVertexMain(body, { vCorner: [q, 0], uTint: [0.5, 0.3, 0.2], uCore: 1 / 3, uDisc, uRadius: 400, uDiscTint: [1, 0.9, 0.8], uGlare: 0.2, uCenter: [700, 400], uYieldY: -1 });
+    // A disc of 40 px radius in a bloom of 400: whole inside 39.5 px, none past 40.5 px, half at 40
+    for (const [rPx, disc] of [[0, 1], [20, 1], [39.4, 1], [40, 0.5], [40.6, 0], [100, 0]] as const) {
+      const out = run(rPx / 400, 0.1);
+      expect(out.disc as number).toBeCloseTo(disc, 9);
+      const g = arrivalGlow(rPx / 400, 1 / 3, 0.2);
+      expect((out.outColor as number[]).slice(0, 3)).toEqual([0.5 * g + disc, 0.3 * g + 0.9 * disc, 0.2 * g + 0.8 * disc].map((c) => expect.closeTo(c, 9)));
+    }
+    for (const rPx of [0, 20, 40]) expect(run(rPx / 400, 0).disc as number).toBe(0);
+  });
+
+  it('yields under the phone\'s words: below uYieldY the bloom of arrival-star-1, over a 120 px fade above it', () => {
+    const body = ARRIVAL_BLOOM_FRAGMENT.replace('if (q >= 1.0) discard;', '');
+    // The star at y 450 with a bloom of 400 px radius; the words from y 500 down
+    const run = (x: number, y: number) => runVertexMain(body, { vCorner: [x, y], uTint: [1, 1, 1], uCore: 1 / 3, uDisc: 0, uRadius: 400, uDiscTint: [1, 1, 1], uGlare: 0.35, uCenter: [200, 450], uYieldY: 500 });
+    for (const [x, yPx, w] of [[0.1, 520, 1], [0.0, 500, 1], [0.05, 440, 0.5], [0.0, 470, 0.75], [0.2, 380, 0], [0.3, 300, 0]] as const) {
+      const y = (yPx - 450) / 400;
+      const q = Math.hypot(x, y);
+      expect(run(x, y).glow as number).toBeCloseTo(arrivalGlowYielded(q, 1 / 3, 0.35, w), 9);
+    }
+    // No words line: the grown bloom everywhere
+    const free = runVertexMain(body, { vCorner: [0, 0.2], uTint: [1, 1, 1], uCore: 1 / 3, uDisc: 0, uRadius: 400, uDiscTint: [1, 1, 1], uGlare: 0.35, uCenter: [200, 450], uYieldY: -1 });
+    expect(free.glow as number).toBeCloseTo(arrivalGlow(0.2, 1 / 3, 0.35), 9);
   });
 });

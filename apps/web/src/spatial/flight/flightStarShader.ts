@@ -1,4 +1,5 @@
 import type { StarView } from './starView.js';
+import { BLOOM_YIELD_RAMP_PX } from './arrival.js';
 
 /**
  * The flight layer's shaders (WebGL 2). The vertex shader is `projectPlacementThroughWcs` (packages/camera-rig
@@ -125,7 +126,10 @@ export function flightStarUniforms(view: StarView): FlightStarUniforms {
 /**
  * arrival-star-1: the bloom of the star flown to, one quad centred on the star (a point sprite cannot reach the cap's
  * 480 px on every GPU). Its glow is `arrivalGlow` (arrival.ts), in the star's catalog tint, added as light like the
- * stars; the star's own dot stays the star pass's.
+ * stars; the star's own dot stays the star pass's. near-star-light-one: its white-hot centre spans uCore of it over a
+ * wide glare of fill uGlare, and the modelled disc (uDisc of its radius, 0 for none) is added in uDiscTint with a
+ * pixel's soft edge. From BLOOM_YIELD_RAMP_PX above uYieldY (the phone's words; negative for none) down, the glow gives way to
+ * arrival-star-1's at its capped size (`arrivalGlowYielded`).
  */
 export const ARRIVAL_BLOOM_VERTEX = `#version 300 es
 precision highp float;
@@ -144,11 +148,29 @@ export const ARRIVAL_BLOOM_FRAGMENT = `#version 300 es
 precision highp float;
 in vec2 vCorner;
 uniform vec3 uTint;
+uniform float uCore;
+uniform float uDisc;
+uniform float uRadius;
+uniform vec3 uDiscTint;
+uniform float uGlare;
+uniform vec2 uCenter;
+uniform float uYieldY;
 out vec4 outColor;
 void main() {
   float q = length(vCorner);
   if (q >= 1.0) discard;
-  float g = q / 0.32;
-  float glow = 0.9 * exp(-g * g) + 0.25 * pow(1.0 - q, 3.0);
-  outColor = vec4(uTint * glow, 1.0);
+  float g = q / (0.32 * uCore);
+  // The wide glare falls to 1/e at half the radius and to nothing at the edge (exp(-4) = 0.0183156389)
+  float wide = (exp(-q * q * 4.0) - 0.0183156389) / (1.0 - 0.0183156389);
+  float grown = (0.9 - uGlare) * exp(-g * g) + uGlare * wide + 0.25 * pow(1.0 - q, 3.0);
+  // Under the phone's words: arrival-star-1's bloom at its capped size, the held centre's
+  float qc = q / uCore;
+  float gc = qc / 0.32;
+  float capped = qc < 1.0 ? 0.9 * exp(-gc * gc) + 0.25 * pow(max(1.0 - qc, 0.0), 3.0) : 0.0;
+  float yPx = uCenter.y + vCorner.y * uRadius;
+  float under = uYieldY >= 0.0 ? clamp((yPx - uYieldY) / ${BLOOM_YIELD_RAMP_PX.toFixed(1)} + 1.0, 0.0, 1.0) : 0.0;
+  float glow = mix(grown, capped, under);
+  // The disc's edge over one CSS pixel; none where it has no disc
+  float disc = uDisc > 0.0 ? clamp((uDisc - q) * uRadius + 0.5, 0.0, 1.0) : 0.0;
+  outColor = vec4(uTint * glow + uDiscTint * disc, 1.0);
 }`;

@@ -11,7 +11,7 @@ import { FlightStarsLayer, type OpenFlightTiles } from '../FlightStarsLayer.js';
 import { PHONE_CONE_CENTRE_Y_PX } from '../coneView.js';
 import { FLIGHT_LOAD_LIMIT_MAG, flightCameraOf, flightViewCone } from '../flightFrame.js';
 import { HANGAR_CRAFTS } from '../crafts.js';
-import { arrivalBloomOf, arrivalStarOfTile, arrivalViewCone, arrivalShiftOf } from '../arrival.js';
+import { arrivalBloomOf, arrivalStarOfTile, arrivalViewCone, arrivalShiftOf, discTintOf } from '../arrival.js';
 import { catalogStarTint } from '../../catalogStars/catalogStarTint.js';
 import { noDistanceStarsOnScreen } from '../flightRings.js';
 import { starViewOfFlight } from '../starView.js';
@@ -55,7 +55,7 @@ function recordingGl() {
     enableVertexAttribArray: () => {}, vertexAttribPointer: () => {},
     viewport: () => {}, clearColor: () => {}, clear: () => {}, useProgram: () => {}, enable: () => {}, blendFunc: () => {},
     uniform3fv: (loc: { name: string }, v: number[]) => calls.uniform3fv.set(loc.name, Array.from(v)),
-    uniform2fv: () => {}, uniform1f: () => {}, deleteProgram: () => {},
+    uniform2fv: () => {}, uniform1f: (loc: { name: string }, x: number) => calls.uniform3fv.set(loc.name, [x]), deleteProgram: () => {},
     // arrival-star-1's bloom quad
     TRIANGLE_STRIP: 12,
     uniform2f: (loc: { name: string }, x: number, y: number) => calls.uniform3fv.set(loc.name, [x, y]),
@@ -294,6 +294,14 @@ describe('FlightStarsLayer', () => {
     expect(y).toBeCloseTo(0.476 * 900, 0);
     expect(calls.uniform3fv.get('uCenter')).toEqual([expect.closeTo(bloom.xPx, 3), expect.closeTo(bloom.yPx, 3)]);
     expect(calls.uniform3fv.get('uTint')).toEqual(catalogStarTint(1.0, false).map((c) => expect.closeTo(c, 6)));
+    // near-star-light-one: the white-hot centre's share of the bloom, the disc's (none a light year out) and its tint
+    expect(calls.uniform3fv.get('uRadius')).toEqual([expect.closeTo(bloom.diameterPx / 2, 3)]);
+    expect(calls.uniform3fv.get('uCore')).toEqual([expect.closeTo(bloom.coreDiameterPx / bloom.diameterPx, 6)]);
+    expect(calls.uniform3fv.get('uDisc')).toEqual([0]);
+    expect(calls.uniform3fv.get('uGlare')).toEqual([expect.closeTo(bloom.glare, 6)]);
+    // The laptop's words stand in their own panes: no line to yield under
+    expect(calls.uniform3fv.get('uYieldY')).toEqual([-1]);
+    expect(calls.uniform3fv.get('uDiscTint')).toEqual(discTintOf(catalogStarTint(1.0, false)).map((c) => expect.closeTo(c, 6)));
     // A new window: the loader is asked again for the whole move's sky at that size
     await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1280, viewportHeightPx: 800, openTiles })));
     const smaller = flightCameraOf(session, 1280, 800)!;

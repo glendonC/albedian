@@ -233,14 +233,22 @@ export const CRAFT_KEY_TO_FILL_AT_FLOOR = 16;
  * the camera) to CRAFT_KEY_TO_FILL_AT_FLOOR where it shines as our Sun does on Earth, and held there nearer.
  */
 export function keyToFillOf(key: Pick<KeyLight, 'magnitude' | 'distancePc'>): number {
-  if (!Number.isFinite(key.magnitude) || !(key.distancePc > 0)) return CRAFT_KEY_TO_FILL;
-  // How many magnitudes brighter the key is here than a light year from it
-  const gained = 5 * Math.log10(LIGHT_YEAR_PC / key.distancePc);
-  if (!(gained > 0)) return CRAFT_KEY_TO_FILL;
+  return CRAFT_KEY_TO_FILL * (CRAFT_KEY_TO_FILL_AT_FLOOR / CRAFT_KEY_TO_FILL) ** nearStarShare(key.magnitude, key.distancePc);
+}
+
+/**
+ * The one near-star curve (craft-fill-eight-one's B and near-star-light-one's A both go by it): how far a light at the
+ * camera has come from a light year away to where it shines as our Sun does on Earth, on a log scale of its light
+ * (its magnitude at the camera): 0 a light year from it and beyond, 1 at that floor and held there nearer.
+ */
+export function nearStarShare(magnitudeAtCamera: number, distancePc: number): number {
+  if (!Number.isFinite(magnitudeAtCamera) || !(distancePc > 0)) return 0;
+  // How many magnitudes brighter the light is here than a light year from it
+  const gained = 5 * Math.log10(LIGHT_YEAR_PC / distancePc);
+  if (!(gained > 0)) return 0;
   // And from a light year to where it shines as our Sun does on Earth
-  const span = key.magnitude + gained - SUN_ON_EARTH_MAG;
-  const t = span > 0 ? Math.min(1, gained / span) : 1;
-  return CRAFT_KEY_TO_FILL * (CRAFT_KEY_TO_FILL_AT_FLOOR / CRAFT_KEY_TO_FILL) ** t;
+  const span = magnitudeAtCamera + gained - SUN_ON_EARTH_MAG;
+  return span > 0 ? Math.min(1, gained / span) : 1;
 }
 /** craft-light-two: the Milky Way's brightest sky as the craft's second light, at this share of the key. */
 export const CRAFT_GALAXY_TO_KEY = 0.5;

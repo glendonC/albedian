@@ -8,7 +8,7 @@ import { usesBMinusV, type CatalogStarCoreTile } from '../catalogStars/tileCodec
 import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
 import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf } from './flightFrame.js';
 import { ARRIVAL_BLOOM_FRAGMENT, ARRIVAL_BLOOM_VERTEX, FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
-import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, type ArrivalBloom, type ArrivalStar } from './arrival.js';
+import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, arrivalStarOfTile, arrivalViewCone, arrivedFlightCamera, discTintOf, phoneWordsTopPx, type ArrivalBloom, type ArrivalStar } from './arrival.js';
 import type * as THREE from 'three';
 import { FlightCraftLayer, prepareCraftSky, type CraftRenderer } from './FlightCraftLayer.js';
 import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
@@ -132,7 +132,7 @@ function createBloom(gl: WebGL2RenderingContext): NonNullable<Gpu['bloom']> | nu
   gl.vertexAttribPointer(at, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
   const uniforms: Record<string, WebGLUniformLocation | null> = {};
-  for (const name of ['uCenter', 'uRadius', 'uView', 'uTint']) uniforms[name] = gl.getUniformLocation(program, name);
+  for (const name of ['uCenter', 'uRadius', 'uView', 'uTint', 'uCore', 'uDisc', 'uDiscTint', 'uGlare', 'uYieldY']) uniforms[name] = gl.getUniformLocation(program, name);
   return { program, vao, uniforms };
 }
 
@@ -222,7 +222,7 @@ function uploadTile(gpu: Gpu, tile: CatalogStarCoreTile, reference: Vec3, existi
  * linear light into the finish's half-float buffer, bloomed and tone mapped onto the canvas by the predicted sky's
  * steps, and then the star flown to is drawn alone in display light, with arrival-star-1's bloom, as before.
  */
-function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number, gain = 1, bloom: ArrivalBloom | null = null, picked: ArrivalStar | null = null, finished = false): void {
+function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number, gain = 1, bloom: ArrivalBloom | null = null, picked: ArrivalStar | null = null, finished = false, wordsTopPx = -1): void {
   const { gl, program, uniforms } = gpu;
   gpu.draws += 1;
   // A new star flown to rebases every tile on its place (the floating origin)
@@ -292,6 +292,13 @@ function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelR
     gl.uniform1f(b.uniforms.uRadius!, bloom.diameterPx / 2);
     gl.uniform2f(b.uniforms.uView!, camera.viewportWidthPx, camera.viewportHeightPx);
     gl.uniform3f(b.uniforms.uTint!, bloom.tint[0] * gain, bloom.tint[1] * gain, bloom.tint[2] * gain);
+    // near-star-light-one: the white-hot centre held at arrival-star-1's size, and the modelled disc where it shows
+    gl.uniform1f(b.uniforms.uCore!, Math.min(1, bloom.coreDiameterPx / bloom.diameterPx));
+    gl.uniform1f(b.uniforms.uDisc!, bloom.discDiameterPx / bloom.diameterPx);
+    gl.uniform1f(b.uniforms.uGlare!, bloom.glare);
+    gl.uniform1f(b.uniforms.uYieldY!, wordsTopPx);
+    const disc = discTintOf(bloom.tint);
+    gl.uniform3f(b.uniforms.uDiscTint!, disc[0] * gain, disc[1] * gain, disc[2] * gain);
     gl.bindVertexArray(b.vao);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
@@ -359,6 +366,9 @@ export const FlightStarsLayer: React.FC<{
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
+  // near-star-light-one: where the phone's readout stands over the sky, the bloom yields under it
+  const wordsTop = useRef(-1);
+  wordsTop.current = phoneWordsTopPx(phone, craftFraming);
   const source = useRef<FlightTileSource | null>(null);
   const [state, setState] = useState<LayerState>('loading');
   const toldStars = useRef(onStarsDrawn);
@@ -652,7 +662,7 @@ export const FlightStarsLayer: React.FC<{
     let drawsAtSchedule = 0;
     let pendingFound: ArrivalStar | null = null;
     const drawTiles = (g: Gpu, v: StarView, found: ArrivalStar | null) =>
-      drawFrame(g, v, canvas.current!, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, found ?? arrivalRef.current, !coneRef.current);
+      drawFrame(g, v, canvas.current!, dpr, gainRef.current, found && !coneRef.current ? arrivalBloomOf(found, v) : bloomRef.current, found ?? arrivalRef.current, !coneRef.current, wordsTop.current);
     const onTile = (tile: CatalogStarCoreTile) => {
       const g = gpu.current;
       const v = viewRef.current;
@@ -744,7 +754,7 @@ export const FlightStarsLayer: React.FC<{
   // Every change of where the camera stands, or of the orbit, draws a frame
   useEffect(() => {
     const g = gpu.current;
-    if (g && view && canvas.current && g.tiles.size > 0) drawFrame(g, view, canvas.current, dpr, gain, bloom, arrival, !cone);
+    if (g && view && canvas.current && g.tiles.size > 0) drawFrame(g, view, canvas.current, dpr, gain, bloom, arrival, !cone, wordsTop.current);
   }, [view, dpr, gain, bloom, arrival, cone]);
 
   // flight-stars-finish-one: the finish's buffers follow the window
@@ -788,7 +798,7 @@ export const FlightStarsLayer: React.FC<{
       const g = gpu.current;
       const star = arrivalRef.current;
       domeDraw.current?.(v);
-      if (g && canvas.current && g.tiles.size > 0) drawFrame(g, v, canvas.current, dpr, gainRef.current, star ? arrivalBloomOf(star, v) : null, star, true);
+      if (g && canvas.current && g.tiles.size > 0) drawFrame(g, v, canvas.current, dpr, gainRef.current, star ? arrivalBloomOf(star, v) : null, star, true, wordsTop.current);
       const svg = steerRings.current;
       if (svg) svg.innerHTML = flightRings(session, v, keepOutBoxes(), ringRadius).map((r) => `<circle data-finding-id="${r.findingId}" cx="${r.xPx}" cy="${r.yPx}" r="${ringRadius}" fill="none" stroke="${RING_STROKE}" stroke-width="1"></circle>`).join('');
       craftDraw.current?.(craftNow);
