@@ -1719,8 +1719,13 @@ SOLVE_PRODUCER_FILES = (
 # (anet-stage-one, whose anet_stage.py joins the files): off, every record is the record main makes; on, a
 # calibration it makes names its candidateSource. A plain solve made with it on names it in candidateStages, and
 # with it on a stored plain solve that did not calibrate and does not name it is solved again on its next start
-# (anet-setting-record-one); off, records and the results check are main's
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 31, SOLVE_PRODUCER_FILES)
+# (anet-setting-record-one); off, records and the results check are main's; 32, a deep-sky common name's catalog
+# short form written in full where a named reference writes it for that object ("Lambda Centauri Nebula", "47
+# Tucanae", "Gemini A" and two more: `deep_sky_catalog.FULL_NAMES`), served as the title in a calibrated frame and in
+# every predicted sky, and a calibrated frame leaving OpenNGC's star-typed rows to the star catalog as the predicted
+# sky does ("gam Cyg" is Sadr itself), which renames five objects and drops three star rows from a frame's deep-sky
+# list (star-names-one)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 32, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

@@ -33,6 +33,21 @@ LIMITATIONS = (
 )
 _DESIGNATION = re.compile(r"^(NGC|IC)0*(\d.*)$")
 _CROSS_REFERENCE_COLUMNS = (("NGC", "ngc"), ("IC", "ic"))
+# A catalog short form in OpenNGC's common names is written in full only where a named reference read live writes
+# that full name for that object, in the form it writes (DECIDED-BY-LEAD 2026-11-26 23:39, 23:54 and 2026-11-27 00:11,
+# star-names-one): SIMBAD's identifiers (read from its Harvard mirror) write none of them in full, so each entry is
+# the object's own Wikipedia article (its title or first sentence) or Stellarium's deep-sky names file
+# (`nebulae/default/names.dat` at commit 21325c29), read on 26 Nov 2026. Row: (OpenNGC's first common name, the name
+# written, its reference). Every other common name is shown as OpenNGC gives it.
+FULL_NAMES: dict[str, tuple[str, str, str]] = {
+    "IC2944": ("lam Cen Nebula", "Lambda Centauri Nebula", "en.wikipedia.org/wiki/IC_2944, first sentence"),
+    "IC4715": (
+        "Small Sgr Star Cloud", "Small Sagittarius Star Cloud", "en.wikipedia.org/wiki/Small_Sagittarius_Star_Cloud, title"
+    ),
+    "NGC0104": ("47 Tuc Cluster", "47 Tucanae", "en.wikipedia.org/wiki/47_Tucanae, title"),
+    "NGC2070": ("30 Dor Cluster", "30 Doradus Cluster", "Stellarium nebulae/default/names.dat, NGC 2070"),
+    "IC0443": ("Gem A", "Gemini A", "Stellarium nebulae/default/names.dat, IC 443"),
+}
 
 
 @lru_cache(maxsize=1)
@@ -58,9 +73,11 @@ def finding_id(name: str) -> str:
 
 
 def display_name(name: str, common_names: list[str]) -> str:
-    """The first common name, else the NGC or IC designation written plainly ('NGC 1976'), else the row's name."""
+    """The first common name (written in full where `FULL_NAMES` holds that row with that name), else the NGC or IC
+    designation written plainly ('NGC 1976'), else the row's name."""
     if common_names:
-        return common_names[0]
+        entry = FULL_NAMES.get(name)
+        return entry[1] if entry is not None and entry[0] == common_names[0] else common_names[0]
     match = _DESIGNATION.fullmatch(name)
     return f"{match.group(1)} {match.group(2)}" if match else name
 
@@ -111,6 +128,7 @@ def catalog_reference(row: list[Any]) -> dict[str, Any]:
 
 __all__ = [
     "DUPLICATE_TYPE",
+    "FULL_NAMES",
     "LIMITATIONS",
     "NONEXISTENT_TYPE",
     "OPENNGC_CITATION",

@@ -33,6 +33,7 @@ from hypothesis import strategies as st
 
 from research.benchmarks.phone_photos import render, stars, suite
 from services.contracts.catalog_reference import CatalogReference
+from services.science import deep_sky_catalog
 from services.science import deep_sky_findings as dsf
 from services.science.phone_photo_solver import solve_phone_photo
 from services.science.wcs_models import ObservationSolution, SolutionQuality, SolverIdentity, WCSModel
@@ -90,6 +91,17 @@ def _inside(solution: ObservationSolution, width: int, height: int) -> list[tupl
     return found
 
 
+# The types OpenNGC gives a single star, a double star and a nova: the star catalog gives those, never the frame's
+# deep-sky list (star-names-one), as the predicted sky already has it
+STAR_TYPED = {"*", "**", "Nova"}
+
+
+def _deep(inside: list[tuple[list, float]]) -> list[tuple[list, float]]:
+    """The rows inside the frame that are deep-sky objects, not rows OpenNGC types as a star."""
+    at = _at()
+    return [(row, span) for row, span in inside if row[at["type"]] not in STAR_TYPED]
+
+
 def test_the_solved_orion_frame_places_m42_where_the_true_camera_puts_it(solved_ci00) -> None:
     solution, frame = solved_ci00
     assert solution.status == "calibrated" and solution.has_verified_wcs
@@ -123,7 +135,7 @@ def test_on_ci00_every_object_inside_the_frame_is_kept_exactly_when_a_rule_holds
     matched = [f.catalog_star.mag for f in solution.findings if f.evidence_class == "catalog_matched"]
     assert matched and faintest == max(matched)  # the faintest star the solution matched
     at = _at()
-    inside = _inside(solution, width, height)
+    inside = _deep(_inside(solution, width, height))
     expected = {dsf.finding_id(row[at["name"]]) for row, span in inside if dsf.keep_reason(row, faintest, span)}
     assert {f.id for f in prediction.findings} == expected
     assert prediction.not_included == len(inside) - len(expected) > 0
@@ -260,6 +272,72 @@ def test_titles_ids_and_magnitudes() -> None:
     CatalogReference.model_validate(dsf.catalog_reference(only_b))
 
 
+# The short forms no named reference writes in full for that object (SIMBAD's identifiers, read from its Harvard
+# mirror; the object's own Wikipedia article, its title and first sentence; Stellarium's nebulae/default/names.dat,
+# which writes these in its compact Greek letter form at most, read on 26 Nov 2026), so the catalog's own form stays
+# (DECIDED-BY-LEAD 23:39, 23:54 and 00:11): the reason for each is in .lead/kiro/reports/SCIENCE-INGEST/star-names-one.md
+KEPT_AS_THE_CATALOG_WRITES = {
+    "IC0348": "omi Per Cloud",  # the article names the star Omicron Persei, never an Omicron Persei Cloud
+    "IC1318": "gam Cyg",
+    "IC2391": "omi Vel Cluster",
+    "IC2602": "tet Car Cluster",
+    "IC4604": "rho Oph Nebula",  # no article of its own
+    "NGC6087": "S Nor Cluster",  # the article names the star S Normae, never an S Normae Cluster
+}
+
+
+def test_a_short_form_is_written_in_full_only_as_a_named_reference_writes_it_for_that_object() -> None:
+    assert dsf.display_name("IC2944", ["lam Cen Nebula"]) == "Lambda Centauri Nebula"  # IC 2944's first sentence
+    assert dsf.display_name("IC4715", ["Small Sgr Star Cloud"]) == "Small Sagittarius Star Cloud"  # its title
+    assert dsf.display_name("NGC0104", ["47 Tuc Cluster"]) == "47 Tucanae"  # its title, without a Cluster
+    assert dsf.display_name("NGC2070", ["30 Dor Cluster", "Tarantula Nebula"]) == "30 Doradus Cluster"  # Stellarium
+    assert dsf.display_name("IC0443", ["Gem A"]) == "Gemini A"  # Stellarium's names file
+    # Only for that row and that name: another row, or another first name of the row, is shown as OpenNGC gives it
+    assert dsf.display_name("SYN0001", ["lam Cen Nebula"]) == "lam Cen Nebula"
+    assert dsf.display_name("IC2944", ["Running Chicken Nebula", "lam Cen Nebula"]) == "Running Chicken Nebula"
+    for name, common in KEPT_AS_THE_CATALOG_WRITES.items():
+        assert dsf.display_name(name, [common]) == common, name
+
+
+def test_every_other_shown_deep_sky_name_is_the_catalogs_own_on_the_real_table() -> None:
+    at = _at()
+    rows = {row[at["name"]]: row for row in dsf._candidate_rows()}
+    shown = {name: dsf.catalog_reference(row)["commonName"] for name, row in rows.items() if row[at["commonNames"]]}
+    written = {name: title for name, title in shown.items() if title != rows[name][at["commonNames"]][0]}
+    assert written == {
+        "IC2944": "Lambda Centauri Nebula",
+        "IC4715": "Small Sagittarius Star Cloud",
+        "NGC0104": "47 Tucanae",
+        "NGC2070": "30 Doradus Cluster",
+        "IC0443": "Gemini A",
+    }
+    # Each table entry stands on the real row's first common name, so a new catalog release cannot rename by it
+    assert {name: rows[name][at["commonNames"]][0] for name in deep_sky_catalog.FULL_NAMES} == {
+        name: entry[0] for name, entry in deep_sky_catalog.FULL_NAMES.items()
+    }
+    assert {name: shown[name] for name in KEPT_AS_THE_CATALOG_WRITES} == KEPT_AS_THE_CATALOG_WRITES
+    assert shown["NGC3372"] == "Carina Nebula"  # its first name, as OpenNGC gives it
+
+
+@pytest.mark.parametrize("name", ["IC1318", "NGC1990", "NGC7114"])
+def test_a_calibrated_frame_leaves_a_row_openngc_types_as_a_star_to_the_star_catalog(name: str) -> None:
+    # gam Cyg (IC1318) is OpenNGC's row for Sadr itself, NGC1990 for Alnilam, NGC7114 for Schmidt's nova's star: named,
+    # so the name rule would keep each; the star catalog marks the star by its own name
+    at = _at()
+    row = _row(name)
+    assert row[at["type"]] in STAR_TYPED and row[at["commonNames"]]
+    solution = _verified(row[at["raDeg"]], row[at["decDeg"]], 0.0)
+    inside = _inside(solution, 640, 480)
+    assert name in {r[at["name"]] for r, _ in inside}
+    prediction = dsf.predict_deep_sky_findings(solution, 640, 480)
+    assert dsf.finding_id(name) not in {f.id for f in prediction.findings}
+    deep = _deep(inside)
+    kept = {dsf.finding_id(r[at["name"]]) for r, span in deep if dsf.keep_reason(r, None, span)}
+    assert {f.id for f in prediction.findings} == kept
+    # Not counted among the objects not included either: it is not a deep-sky object
+    assert prediction.not_included == len(deep) - len(kept)
+
+
 def _verified(ra0: float, dec0: float, rotation: float, width: int = 640, height: int = 480) -> ObservationSolution:
     wcs = WCSModel(
         crval_ra_deg=ra0, crval_dec_deg=dec0, crpix_x=width / 2.0, crpix_y=height / 2.0, scale_deg_per_px=0.05,
@@ -286,7 +364,7 @@ def test_pbt_the_kept_set_is_exactly_the_objects_inside_the_frame_a_rule_keeps(
     prediction = dsf.predict_deep_sky_findings(solution, 640, 480)
     at = _at()
     # A hand-built solution matched no star, so only the name, Messier and size rules can keep an object
-    inside = _inside(solution, 640, 480)
+    inside = _deep(_inside(solution, 640, 480))
     expected = {dsf.finding_id(row[at["name"]]) for row, span in inside if dsf.keep_reason(row, None, span)}
     assert {f.id for f in prediction.findings} == expected
     assert prediction.not_included == len(inside) - len(expected)

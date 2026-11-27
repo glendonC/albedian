@@ -47,7 +47,7 @@ def test_a_southern_predicted_sky_names_the_magellanic_clouds_and_the_brightest_
         ("ESO056-115", "Large Magellanic Cloud"),
         ("NGC0292", "Small Magellanic Cloud"),
         ("NGC5139", "Omega Centauri"),
-        ("NGC0104", "47 Tuc Cluster"),
+        ("NGC0104", "47 Tucanae"),
         ("NGC3372", "Carina Nebula"),
     ):
         finding = by_id[f"finding-openngc-{name}"]
@@ -60,6 +60,20 @@ def test_a_southern_predicted_sky_names_the_magellanic_clouds_and_the_brightest_
         payload = finding.to_contract_dict()
         assert payload["catalogRef"]["objectType"] == "deep_sky"
         assert "projected through the solved WCS" not in payload["evidence"]["verificationMethod"]
+
+
+def test_a_southern_predicted_sky_writes_a_short_form_in_full_only_where_a_reference_does() -> None:
+    # Caldwell objects OpenNGC names with a short form, all circumpolar from 45 south (star-names-one): IC 2944's own
+    # article writes the Lambda Centauri Nebula; neither reference writes IC 2602's or IC 2391's name in full
+    by_id = _south()
+    for name, title in (
+        ("IC2602", "tet Car Cluster"),
+        ("IC2391", "omi Vel Cluster"),
+        ("IC2944", "Lambda Centauri Nebula"),
+    ):
+        finding = by_id[f"finding-openngc-{name}"]
+        assert finding.title == title and finding.deep_sky_reference["commonName"] == title
+        assert finding.to_contract_dict()["title"] == title
 
 
 def test_only_objects_above_the_horizon_are_listed() -> None:

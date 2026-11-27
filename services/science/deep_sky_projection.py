@@ -18,6 +18,7 @@ from services.science.deep_sky_catalog import (
     table_and_columns,
 )
 from services.science.deep_sky_selection import (
+    STAR_TYPES,
     faintest_matched_magnitude,
     keep_reason,
     row_sort_key,
@@ -58,12 +59,14 @@ class DeepSkyPrediction:
 def predict_deep_sky_findings(solution: ObservationSolution, width: int, height: int) -> DeepSkyPrediction:
     """The OpenNGC objects whose catalog centre the solution's verified WCS puts inside the `width` x `height`
     frame and that a keep rule holds for, as predicted findings, brightest first. Nothing when the solution is not
-    calibrated or its WCS did not pass held-out verification.
+    calibrated or its WCS did not pass held-out verification. A row OpenNGC types as a single star, a double star or
+    a nova is left to the star catalog, as the predicted sky leaves it, and not counted as an object not included:
+    OpenNGC's "gam Cyg" is Sadr itself (star-names-one).
     """
     if solution.status != "calibrated" or not solution.has_verified_wcs:
         return DeepSkyPrediction(findings=(), not_included=0)
     table, at = table_and_columns()
-    rows = _candidate_rows()
+    rows = [row for row in _candidate_rows() if row[at["type"]] not in STAR_TYPES]
     ra = np.array([row[at["raDeg"]] for row in rows], dtype=np.float64)
     dec = np.array([row[at["decDeg"]] for row in rows], dtype=np.float64)
     x, y = _project(solution, ra, dec)
