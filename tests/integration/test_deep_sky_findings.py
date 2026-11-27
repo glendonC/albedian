@@ -279,10 +279,8 @@ def test_titles_ids_and_magnitudes() -> None:
 KEPT_AS_THE_CATALOG_WRITES = {
     "IC0348": "omi Per Cloud",  # the article names the star Omicron Persei, never an Omicron Persei Cloud
     "IC1318": "gam Cyg",
-    "IC2391": "omi Vel Cluster",
     "IC2602": "tet Car Cluster",
     "IC4604": "rho Oph Nebula",  # no article of its own
-    "NGC6087": "S Nor Cluster",  # the article names the star S Normae, never an S Normae Cluster
 }
 
 
@@ -292,6 +290,8 @@ def test_a_short_form_is_written_in_full_only_as_a_named_reference_writes_it_for
     assert dsf.display_name("NGC0104", ["47 Tuc Cluster"]) == "47 Tucanae"  # its title, without a Cluster
     assert dsf.display_name("NGC2070", ["30 Dor Cluster", "Tarantula Nebula"]) == "30 Doradus Cluster"  # Stellarium
     assert dsf.display_name("IC0443", ["Gem A"]) == "Gemini A"  # Stellarium's names file
+    assert dsf.display_name("IC2391", ["omi Vel Cluster"]) == "Omicron Velorum Cluster"  # the Caldwell list, C85
+    assert dsf.display_name("NGC6087", ["S Nor Cluster"]) == "S Normae Cluster"  # the Caldwell list, C89
     # Only for that row and that name: another row, or another first name of the row, is shown as OpenNGC gives it
     assert dsf.display_name("SYN0001", ["lam Cen Nebula"]) == "lam Cen Nebula"
     assert dsf.display_name("IC2944", ["Running Chicken Nebula", "lam Cen Nebula"]) == "Running Chicken Nebula"
@@ -310,6 +310,8 @@ def test_every_other_shown_deep_sky_name_is_the_catalogs_own_on_the_real_table()
         "NGC0104": "47 Tucanae",
         "NGC2070": "30 Doradus Cluster",
         "IC0443": "Gemini A",
+        "IC2391": "Omicron Velorum Cluster",
+        "NGC6087": "S Normae Cluster",
     }
     # Each table entry stands on the real row's first common name, so a new catalog release cannot rename by it
     assert {name: rows[name][at["commonNames"]][0] for name in deep_sky_catalog.FULL_NAMES} == {

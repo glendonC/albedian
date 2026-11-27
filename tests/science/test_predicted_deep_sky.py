@@ -64,11 +64,12 @@ def test_a_southern_predicted_sky_names_the_magellanic_clouds_and_the_brightest_
 
 def test_a_southern_predicted_sky_writes_a_short_form_in_full_only_where_a_reference_does() -> None:
     # Caldwell objects OpenNGC names with a short form, all circumpolar from 45 south (star-names-one): IC 2944's own
-    # article writes the Lambda Centauri Nebula; neither reference writes IC 2602's or IC 2391's name in full
+    # article writes the Lambda Centauri Nebula and the Caldwell list the Omicron Velorum Cluster; no reference
+    # writes IC 2602's name in full
     by_id = _south()
     for name, title in (
         ("IC2602", "tet Car Cluster"),
-        ("IC2391", "omi Vel Cluster"),
+        ("IC2391", "Omicron Velorum Cluster"),
         ("IC2944", "Lambda Centauri Nebula"),
     ):
         finding = by_id[f"finding-openngc-{name}"]

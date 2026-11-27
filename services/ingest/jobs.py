@@ -1743,8 +1743,9 @@ SOLVE_PRODUCER_FILES = (
 # Tucanae", "Gemini A" and two more: `deep_sky_catalog.FULL_NAMES`), served as the title in a calibrated frame and in
 # every predicted sky, and a calibrated frame leaving OpenNGC's star-typed rows to the star catalog as the predicted
 # sky does ("gam Cyg" is Sadr itself), which renames five objects and drops three star rows from a frame's deep-sky
-# list (star-names-one)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 32, SOLVE_PRODUCER_FILES)
+# list (star-names-one); 33, two more written in full as the Caldwell catalogue's list writes them, "Omicron Velorum
+# Cluster" and "S Normae Cluster" (star-names-two)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 33, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

@@ -36,9 +36,10 @@ _CROSS_REFERENCE_COLUMNS = (("NGC", "ngc"), ("IC", "ic"))
 # A catalog short form in OpenNGC's common names is written in full only where a named reference read live writes
 # that full name for that object, in the form it writes (DECIDED-BY-LEAD 2026-11-26 23:39, 23:54 and 2026-11-27 00:11,
 # star-names-one): SIMBAD's identifiers (read from its Harvard mirror) write none of them in full, so each entry is
-# the object's own Wikipedia article (its title or first sentence) or Stellarium's deep-sky names file
-# (`nebulae/default/names.dat` at commit 21325c29), read on 26 Nov 2026. Row: (OpenNGC's first common name, the name
-# written, its reference). Every other common name is shown as OpenNGC gives it.
+# the object's own Wikipedia article (its title or first sentence), Stellarium's deep-sky names file
+# (`nebulae/default/names.dat` at commit 21325c29), read on 26 Nov 2026, or the Caldwell catalogue's list of names
+# (Wikipedia's "Caldwell catalogue" list and SEDS's copy of Moore's list), read on 27 Nov 2026 (star-names-two). Row:
+# (OpenNGC's first common name, the name written, its reference). Every other common name is shown as OpenNGC gives it.
 FULL_NAMES: dict[str, tuple[str, str, str]] = {
     "IC2944": ("lam Cen Nebula", "Lambda Centauri Nebula", "en.wikipedia.org/wiki/IC_2944, first sentence"),
     "IC4715": (
@@ -47,6 +48,8 @@ FULL_NAMES: dict[str, tuple[str, str, str]] = {
     "NGC0104": ("47 Tuc Cluster", "47 Tucanae", "en.wikipedia.org/wiki/47_Tucanae, title"),
     "NGC2070": ("30 Dor Cluster", "30 Doradus Cluster", "Stellarium nebulae/default/names.dat, NGC 2070"),
     "IC0443": ("Gem A", "Gemini A", "Stellarium nebulae/default/names.dat, IC 443"),
+    "IC2391": ("omi Vel Cluster", "Omicron Velorum Cluster", "en.wikipedia.org/wiki/Caldwell_catalogue, C85"),
+    "NGC6087": ("S Nor Cluster", "S Normae Cluster", "Caldwell catalogue C89, Wikipedia's list and SEDS's"),
 }
 
 
