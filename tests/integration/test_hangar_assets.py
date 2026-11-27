@@ -272,7 +272,7 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
     # loose parts (14,878 lod0 parts of 3 cm and over gone from lod1, 17,525 of 6.5 cm and over from lod2): it is
     # decimated part by part at lod1 and lod2, its lod0 under one ratio still.
     by_part = [name for name in FACTS["models"] if CRAFTS[name].get("decimate_by_part")]
-    assert {"insight", "voyager", "iss", "shuttle", "cassini"} <= set(by_part)
+    assert {"insight", "voyager", "iss", "shuttle", "cassini", "osirisrex"} <= set(by_part)
     assert CRAFTS["iss"]["decimate_by_part"] == ["lod1", "lod2"]
     for name in by_part:
         # the provenance sentence of a by-part level says hidden inner faces of bulky parts are left out
@@ -286,9 +286,9 @@ def test_a_craft_decimated_part_by_part_keeps_every_part_its_level_draws() -> No
             grow = max(0.01, under / 50)
             _, points = _glb_parts(HANGAR_DIR / FACTS["models"][name]["files"][level]["path"])
             recipe = CRAFTS[name]
-            if by_part_at(recipe, "lod0") or {**LOD_RATIO, **recipe.get("lod_ratio", {})}["lod0"] == 1.0:
-                # lod0 shares the far levels' parts: decimated by part itself, or NASA's whole mesh (the reader welds
-                # corners at 0.1 mm, as the far levels are welded)
+            if by_part_at(recipe, "lod0") or {**LOD_RATIO, **recipe.get("lod_ratio", {})}["lod0"] == 1.0 or not recipe.get("weld_levels"):
+                # lod0 shares the far levels' parts: decimated by part itself, NASA's whole mesh (the reader welds corners
+                # at 0.1 mm, as the far levels are welded), or one share over the same welded mesh (a share keeps parts)
                 checked = [(lo, hi) for lo, hi in boxes0 if np.linalg.norm(hi - lo) >= under]
             else:
                 # lod0 is one share over the whole mesh, so its parts are not the far levels' parts (a panel inside a

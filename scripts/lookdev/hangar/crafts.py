@@ -1202,6 +1202,12 @@ CRAFTS: dict[str, dict] = {
         "weld_m": 0.0001,
         "smooth_deg": 35.0,
         "lod_ratio": {"lod0": 0.7, "lod1": 0.2, "lod2": 0.06},
+        # One share over the whole mesh shredded its phone level (the bus in shards, the panels' faces gone): its far
+        # levels go part by part, leaving out its ~10,500 parts of 3 to 6.5 cm (fasteners and blanket tufts) by size.
+        "decimate_by_part": ["lod1", "lod2"],
+        "drop_hidden_faces": ["lod1", "lod2"],
+        "drop_parts_under_m": {"lod1": 0.05, "lod2": 0.1},
+        "part_floor_tris": {"lod0": 24, "lod1": 6, "lod2": 4},
         "body_radius_m": 1.6,
         "changes": "foils",
     },

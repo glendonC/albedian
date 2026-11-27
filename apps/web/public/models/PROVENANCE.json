@@ -911,7 +911,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "cbe55bd4217c5e31a7671a7eea431d8deac708b624ba71cb0b3a850d62587022",
+      "sha256": "99a462adb548686dddaa282ea6995330b6147d8df355b90cc0ed04c44eb69dda",
       "sources": [
         "nasa-3d-models-digitalspace-corporation",
         "nasa-3d-models-nasa-brian-e-kumanchik",
@@ -1957,7 +1957,7 @@
     },
     {
       "path": "hangar/osirisrex/osirisrex_lod1.glb",
-      "sha256": "2fe732ee677f9f97448ef25c7b8a9d65bb93ebf84457909f7075cdd07eeb395b",
+      "sha256": "8c67e827b64b9042c9ae7bb40a3f7d8cf2c3d232889b69de7af7d216ea4cfa6c",
       "sources": [
         "nasa-3d-models-nasa-christopher-r-meaney",
         "nasa-science-mission-pages"
@@ -1966,13 +1966,13 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
-        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 1024 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/origins-spectral-interpretation-resource-identification-and-security-regolith-explorer-osiris-rex/ credits NASA/Christopher R. Meaney."
     },
     {
       "path": "hangar/osirisrex/osirisrex_lod2.glb",
-      "sha256": "2d497b46ce0235683ff480cba5a4b29add41f1df7b1a07a13ce012c25d8d094f",
+      "sha256": "fbd514eb701b849282ce4f1b987d55d4b3eff0ff787bcdaf30f22c96ef1d2444",
       "sources": [
         "nasa-3d-models-nasa-christopher-r-meaney",
         "nasa-science-mission-pages"
@@ -1981,7 +1981,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
-        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, each loose part reduced on its own by Blender's collapse decimation to the share listed with the craft's facts while keeping its size, a floor of triangles and more of each bulky part, the parts under the size its recipe names left out, the inner faces of bulky parts that almost no line of sight from outside reaches left out, and textures at most 512 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page. Its model's page https://science.nasa.gov/3d-resources/origins-spectral-interpretation-resource-identification-and-security-regolith-explorer-osiris-rex/ credits NASA/Christopher R. Meaney."
     },

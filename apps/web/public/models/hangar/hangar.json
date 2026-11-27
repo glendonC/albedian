@@ -1191,15 +1191,15 @@
         },
         "lod1": {
           "path": "osirisrex/osirisrex_lod1.glb",
-          "bytes": 1082456,
-          "triangles": 22936,
+          "bytes": 671008,
+          "triangles": 15063,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "osirisrex/osirisrex_lod2.glb",
-          "bytes": 252408,
-          "triangles": 6757,
+          "bytes": 328336,
+          "triangles": 6251,
           "textureEdgeMax": 512,
           "budgetBytes": 600000
         },
