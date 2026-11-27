@@ -75,6 +75,46 @@ final class FirstUseConnectScreenTests: XCTestCase {
         XCTAssertTrue(model.contains("guardisAlbedianelse{self.addressRefused=truereturn}self.keepLaptop(address)self.connectingFromAim=falseself.screen=.aimself.startSky()"))
     }
 
+    /// The sky ask carries the place and the time, so the aim overlay asks it only of a kept address (one that answered
+    /// as Albedian, or took a send whose receipt named the photo), never of an address only typed on Connect; the app
+    /// makes the sky's client in two places only, and the wait's early sky asks the address the solve goes to (AUDIT-C's
+    /// T20, 27 Nov).
+    func testTheSkyIsAskedOnlyOfAKeptAddressOrOfTheOneThatTookTheSend() throws {
+        let aimSky = try body("Screens/CompanionModel.swift", from: "private func startSky()", to: "private func stopAiming()")
+        XCTAssertTrue(aimSky.contains("guardletaddress=pairing.keptelse{return}letclient=SkyContextClient(address:address)"),
+                      "the aim overlay asks only the kept laptop")
+        for other in ["typedAddress", "PairingKeeper", "LaptopAddress"] {
+            XCTAssertFalse(aimSky.contains(other), "\(other) in the aim overlay's ask")
+        }
+        XCTAssertEqual(aimSky.components(separatedBy: "address=").count - 1, 1, "the address is bound once, to the kept one")
+        XCTAssertEqual(aimSky.components(separatedBy: "pairing.").count - 1, 1, "the keeper read once, for its kept address")
+        let earlySky = try body("Screens/CompanionModel.swift", from: "private func startEarlySky(", to: "private func startSolve(")
+        XCTAssertTrue(earlySky.hasPrefix("privatefuncstartEarlySky(address:LaptopAddress){"))
+        XCTAssertTrue(earlySky.contains("guardletpose=earlyPoseelse{return}letclient=SkyContextClient(address:address)"))
+        XCTAssertFalse(earlySky.contains("address="), "the early sky's address is the one it is given")
+        let solve = try body("Screens/CompanionModel.swift", from: "private func startSolve(", to: "then:")
+        XCTAssertEqual(solve, "privatefuncstartSolve(sha256:String,address:LaptopAddress){stoppedSentence=nilscreen=.waiting"
+            + "startEarlySky(address:address)solver.start(sha256:sha256,client:SolveClient(address:address),",
+                       "the early sky goes where the solve goes")
+        var clients: [String] = []
+        var earlyCalls = 0
+        let walk = FileManager.default.enumerator(at: app, includingPropertiesForKeys: nil)
+        for case let url as URL in walk! where url.pathExtension == "swift" {
+            let code = try SourceReader.code(String(contentsOf: url, encoding: .utf8), .swift)
+            let tokens = SourceReader.tokens(code)
+            for token in tokens where token.text == "SkyContextClient" { clients.append("\(url.lastPathComponent):\(token.line)") }
+            earlyCalls += tokens.indices.dropLast().filter { tokens[$0].text == "startEarlySky" && tokens[$0 + 1].text == "(" }.count
+        }
+        let model = try String(contentsOf: app.appendingPathComponent("Screens/CompanionModel.swift"), encoding: .utf8)
+            .components(separatedBy: "\n")
+        let lines = clients.compactMap { $0.split(separator: ":").last.flatMap { Int($0) } }
+        XCTAssertEqual(clients.count, 2, "the app makes the sky's client only in the aim overlay and the early sky: \(clients)")
+        XCTAssertTrue(clients.allSatisfy { $0.hasPrefix("CompanionModel.swift:") }, "\(clients)")
+        XCTAssertEqual(lines.map { model[$0 - 1].filter { !$0.isWhitespace } },
+                       ["letclient=SkyContextClient(address:address)", "letclient=SkyContextClient(address:address)"])
+        XCTAssertEqual(earlyCalls, 2, "startEarlySky declared once and called only from startSolve")
+    }
+
     /// Geist Mono's contextual alternates join the space before "--" when the command is set as is (15 glyphs for its 16
     /// characters, "field--lan" on the screen); the command's hundredth of a point of tracking turns them off, so every
     /// character is a glyph of its own and the command reads as it is typed.
