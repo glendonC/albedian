@@ -216,6 +216,9 @@ MIN_HELD_OUT_INLIERS = 6
 MAX_HELD_OUT_MEDIAN_PX = 3.0
 MAX_HELD_OUT_P95_PX = 5.5
 MAX_DUAL_PATH_DISAGREEMENT_PX = 2.5
+# How many times a first association that did not pass is refit and associated again before its second look
+# (association-grow-one): on the sixty public photos no growth took more than four
+FIRST_ASSOCIATION_GROW_ROUNDS = 4
 
 PHONE_SOLVER_IDENTITY = SolverIdentity(
     name="albedian.phone_photo_tile_solver",
@@ -1714,6 +1717,144 @@ def _refine_phone_camera_wcs(
     )
 
 
+def _grow_first_association(
+    wcs: PhoneCameraWCS,
+    pool: Sequence[SourceDetection],
+    cat_ra: np.ndarray,
+    cat_dec: np.ndarray,
+    pairs: list[tuple[int, int, float]],
+    radius_px: float,
+) -> list[tuple[int, int, float]]:
+    """The first association grown for a second look (association-grow-one): refit rigidly (attitude and field, no
+    distortion) on the pairs found, associate again within the same radius, and repeat while the pair count grows,
+    at most `FIRST_ASSOCIATION_GROW_ROUNDS` times. Only the pairs are returned: the look on them trains from the
+    search's own pose on its training pairs alone, so no pose the growth fitted is the start of the pose that the
+    held-out stars are measured from. The growth's refits do choose which pairs exist, from stars of which some are
+    held out later, as the search's own pose chooses the first pairs. A search's candidate whose sky is right but
+    whose pose is a little off holds only the stars near the centre at the first radius; grown, rp-b-16 went from 8
+    pairs to 54 [tested, association-grow-zero]."""
+    best = pairs
+    best_wcs = wcs
+    for _ in range(FIRST_ASSOCIATION_GROW_ROUNDS):
+        if len(best) < 3:
+            break
+        tuples = [(pool[d_i], float(cat_ra[c_i]), float(cat_dec[c_i])) for d_i, c_i, _ in best]
+        refit = _refine_phone_camera_wcs(best_wcs, tuples, fit_distortion=False)
+        grown, _ = _associate_detections(refit, pool, cat_ra, cat_dec, radius_px=radius_px)
+        if len(grown) <= len(best):
+            break
+        best, best_wcs = grown, refit
+    return best
+
+
+@dataclass(frozen=True)
+class _HeldOutLook:
+    """One look at a candidate: its training split, refinement and held-out gate, on one list of first pairs."""
+
+    passed_gate: bool
+    log_odds: float
+    all_pairs: list[tuple[int, int, float]]
+    gate_px: float
+    refined_wcs: PhoneCameraWCS
+    held_out_tuples: list[tuple[SourceDetection, float, float]]
+    held_out_residuals_all: list[float]
+    refined_on_ids: set[int]
+    train_det_ids: set[int]
+    train_tuples: list[tuple[SourceDetection, float, float]]
+
+
+def _held_out_look(
+    initial_wcs: PhoneCameraWCS,
+    init_pairs: list[tuple[int, int, float]],
+    eval_pool: Sequence[SourceDetection],
+    v_ra: np.ndarray,
+    v_dec: np.ndarray,
+    width: int,
+    height: int,
+    deg_in_px: float,
+    sky_fraction: float,
+) -> _HeldOutLook:
+    """The training split, the refinement from `initial_wcs` on the training pairs alone, the association again over
+    the whole pool and the held-out gate, as one look on `init_pairs`."""
+    # Select radially interleaved training pairs so both train and held-out span center to edge
+    cx0, cy0 = width / 2.0, height / 2.0
+    tight_init = sorted(init_pairs, key=lambda item: item[2])[: max(6, int(0.85 * len(init_pairs)))]
+    sorted_for_train = sorted(
+        tight_init,
+        key=lambda item: math.hypot(eval_pool[item[0]].x_px - cx0, eval_pool[item[0]].y_px - cy0),
+        reverse=True,
+    )
+    train_count = _training_count(len(sorted_for_train))
+    interleaved = [*sorted_for_train[::2], *sorted_for_train[1::2]]
+    train_items = interleaved[:train_count]
+    train_det_ids = {id(eval_pool[d_i]) for d_i, _, _ in train_items}
+    train_tuples = [(eval_pool[d_i], float(v_ra[c_i]), float(v_dec[c_i])) for d_i, c_i, _ in train_items]
+
+    refined_wcs = _refine_phone_camera_wcs(initial_wcs, train_tuples, fit_distortion=False)
+    if len(train_tuples) >= 3:
+        # When 3 or 4 pairs train the fit (`< FEW_PAIR_DISTORTION_MIN_PAIRS`), `_refine_phone_camera_wcs` shrinks
+        # `(k1, k2)` with `(50.0, 120.0)` instead of `(25.0, 60.0)` (refine-2)
+        refined_wcs = _refine_phone_camera_wcs(refined_wcs, train_tuples, fit_distortion=True)
+
+    # Re-associate on refined WCS and run a second pass separating held-out inliers
+    assoc_rad_px = max(4.5, min(6.0, 0.35 * deg_in_px))
+    all_pairs, projected_cat_count = _associate_detections(refined_wcs, eval_pool, v_ra, v_dec, radius_px=assoc_rad_px)
+    raw_res = np.array([res_px for _, _, res_px in all_pairs], dtype=np.float64)
+    if raw_res.size > 0:
+        med_r = float(np.median(raw_res))
+        mad_r = float(np.median(np.abs(raw_res - med_r)))
+        gate_px = min(4.0, max(1.8, med_r + 3.0 * max(0.25, 1.4826 * mad_r)))
+    else:
+        gate_px = 3.5
+
+    held_out_tuples: list[tuple[SourceDetection, float, float]] = []
+    held_out_residuals_all: list[float] = []
+    for d_i, c_i, res_px in all_pairs:
+        det = eval_pool[d_i]
+        if id(det) not in train_det_ids:
+            held_out_residuals_all.append(res_px)
+            if res_px <= gate_px:
+                held_out_tuples.append((det, float(v_ra[c_i]), float(v_dec[c_i])))
+
+    # Dual-path consistency check: refit attitude+scale on held-out inliers alone and compare grid projection
+    dual_disagreement_px = 0.0
+    # The held-out inliers the reported solution is refined on after the check, when it is
+    refined_on_ids: set[int] = set()
+    if len(held_out_tuples) >= 6:
+        held_wcs = _refine_phone_camera_wcs(refined_wcs, held_out_tuples[:12], fit_distortion=len(held_out_tuples) >= 8)
+        gx, gy = np.meshgrid(
+            np.linspace(0.15 * width, 0.85 * width, 5),
+            np.linspace(0.15 * height, 0.75 * height, 5),
+        )
+        ra_g, dec_g = refined_wcs.pixel_to_world_batch(gx.ravel(), gy.ravel())
+        hx, hy = held_wcs.world_to_pixel_batch(ra_g, dec_g)
+        diffs = np.hypot(hx - gx.ravel(), hy - gy.ravel())
+        finite_diffs = diffs[np.isfinite(diffs)]
+        dual_disagreement_px = float(np.median(finite_diffs)) if finite_diffs.size else 99.0
+        # Final joint polish on all inliers (train + held-out) fitting lens distortion while keeping held-out metrics strictly from pre-polish split
+        if dual_disagreement_px <= MAX_DUAL_PATH_DISAGREEMENT_PX:
+            combined_inliers = [*train_tuples, *held_out_tuples[:18]]
+            refined_on_ids = {id(det) for det, _, _ in held_out_tuples[:18]}
+            refined_wcs = _refine_phone_camera_wcs(
+                refined_wcs, combined_inliers, fit_distortion=len(combined_inliers) >= 9
+            )
+
+    active_area_px2 = float(width * height) * sky_fraction
+    passed_gate, log_odds = evaluate_coincidence_gate(
+        held_out_residuals_px=held_out_residuals_all,
+        active_detection_count=len(eval_pool),
+        active_sky_area_px2=active_area_px2,
+        projected_catalog_count=projected_cat_count,
+        inlier_gate_px=gate_px,
+        dual_path_disagreement_px=dual_disagreement_px,
+    )
+    return _HeldOutLook(
+        passed_gate=passed_gate, log_odds=log_odds, all_pairs=all_pairs, gate_px=gate_px, refined_wcs=refined_wcs,
+        held_out_tuples=held_out_tuples, held_out_residuals_all=held_out_residuals_all, refined_on_ids=refined_on_ids,
+        train_det_ids=train_det_ids, train_tuples=train_tuples,
+    )
+
+
 def _training_count(pairs: int) -> int:
     """How many of a candidate's tight pairs train the refinement: half of them, never fewer than 3, and never so
     many that fewer than 6 are left for the held-out check (FIELD refine-1). A cap of 8 left the six numbers the
@@ -2761,15 +2902,32 @@ def _solve_phone_photo_with(
     # stored-pixel handover radius when starting from a calibrated binned PhoneCameraWCS
     deg_in_px = 1.0 / max(initial_wcs.scale_deg_per_px, 1e-4)
     if _preset_initial_radius_px is not None:
-        init_pairs, _ = _associate_detections(
-            initial_wcs, eval_pool, v_ra, v_dec, radius_px=float(_preset_initial_radius_px)
-        )
+        first_radius_px = float(_preset_initial_radius_px)
+        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
     else:
-        init_rad_px = max(4.8, min(28.0, 1.15 * deg_in_px))
-        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=init_rad_px)
+        first_radius_px = max(4.8, min(28.0, 1.15 * deg_in_px))
+        init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
         if len(init_pairs) < 6:
-            init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=init_rad_px * 1.4)
-    if len(init_pairs) < 6:
+            first_radius_px *= 1.4
+            init_pairs, _ = _associate_detections(initial_wcs, eval_pool, v_ra, v_dec, radius_px=first_radius_px)
+
+    look = (
+        _held_out_look(initial_wcs, init_pairs, eval_pool, v_ra, v_dec, width, height, deg_in_px, sky_fraction)
+        if len(init_pairs) >= 6
+        else None
+    )
+    # A first look that did not pass, or too few pairs to look at, gets one more look on the first association grown
+    # (association-grow-one), taken only when it passes. Only the app's own searches: the stored-pixel handover and
+    # the astrometry.net stage's candidate keep their one look
+    if (look is None or not look.passed_gate) and _preset_initial_wcs is None:
+        grown_pairs = _grow_first_association(initial_wcs, eval_pool, v_ra, v_dec, init_pairs, first_radius_px)
+        if len(grown_pairs) > len(init_pairs) and len(grown_pairs) >= 6:
+            second = _held_out_look(
+                initial_wcs, grown_pairs, eval_pool, v_ra, v_dec, width, height, deg_in_px, sky_fraction
+            )
+            if second.passed_gate or look is None:
+                look = second
+    if look is None:
         return _build_unresolved(
             detections,
             solution_id,
@@ -2783,79 +2941,9 @@ def _solve_phone_photo_with(
             "Pixel position only: too few catalog matches to refine a verified WCS.",
             noise_warnings,
         )
-
-    # Select radially interleaved training pairs so both train and held-out span center to edge
-    cx0, cy0 = width / 2.0, height / 2.0
-    tight_init = sorted(init_pairs, key=lambda item: item[2])[: max(6, int(0.85 * len(init_pairs)))]
-    sorted_for_train = sorted(
-        tight_init,
-        key=lambda item: math.hypot(eval_pool[item[0]].x_px - cx0, eval_pool[item[0]].y_px - cy0),
-        reverse=True,
-    )
-    train_count = _training_count(len(sorted_for_train))
-    interleaved = [*sorted_for_train[::2], *sorted_for_train[1::2]]
-    train_items = interleaved[:train_count]
-    train_det_ids = {id(eval_pool[d_i]) for d_i, _, _ in train_items}
-    train_tuples = [(eval_pool[d_i], float(v_ra[c_i]), float(v_dec[c_i])) for d_i, c_i, _ in train_items]
-
-    refined_wcs = _refine_phone_camera_wcs(initial_wcs, train_tuples, fit_distortion=False)
-    if len(train_tuples) >= 3:
-        # When 3 or 4 pairs train the fit (`< FEW_PAIR_DISTORTION_MIN_PAIRS`), `_refine_phone_camera_wcs` shrinks
-        # `(k1, k2)` with `(50.0, 120.0)` instead of `(25.0, 60.0)` (refine-2)
-        refined_wcs = _refine_phone_camera_wcs(refined_wcs, train_tuples, fit_distortion=True)
-
-    # Re-associate on refined WCS and run a second pass separating held-out inliers
-    assoc_rad_px = max(4.5, min(6.0, 0.35 * deg_in_px))
-    all_pairs, projected_cat_count = _associate_detections(refined_wcs, eval_pool, v_ra, v_dec, radius_px=assoc_rad_px)
-    raw_res = np.array([res_px for _, _, res_px in all_pairs], dtype=np.float64)
-    if raw_res.size > 0:
-        med_r = float(np.median(raw_res))
-        mad_r = float(np.median(np.abs(raw_res - med_r)))
-        gate_px = min(4.0, max(1.8, med_r + 3.0 * max(0.25, 1.4826 * mad_r)))
-    else:
-        gate_px = 3.5
-
-    held_out_tuples: list[tuple[SourceDetection, float, float]] = []
-    held_out_residuals_all: list[float] = []
-    for d_i, c_i, res_px in all_pairs:
-        det = eval_pool[d_i]
-        if id(det) not in train_det_ids:
-            held_out_residuals_all.append(res_px)
-            if res_px <= gate_px:
-                held_out_tuples.append((det, float(v_ra[c_i]), float(v_dec[c_i])))
-
-    # Dual-path consistency check: refit attitude+scale on held-out inliers alone and compare grid projection
-    dual_disagreement_px = 0.0
-    # The held-out inliers the reported solution is refined on after the check, when it is
-    refined_on_ids: set[int] = set()
-    if len(held_out_tuples) >= 6:
-        held_wcs = _refine_phone_camera_wcs(refined_wcs, held_out_tuples[:12], fit_distortion=len(held_out_tuples) >= 8)
-        gx, gy = np.meshgrid(
-            np.linspace(0.15 * width, 0.85 * width, 5),
-            np.linspace(0.15 * height, 0.75 * height, 5),
-        )
-        ra_g, dec_g = refined_wcs.pixel_to_world_batch(gx.ravel(), gy.ravel())
-        hx, hy = held_wcs.world_to_pixel_batch(ra_g, dec_g)
-        diffs = np.hypot(hx - gx.ravel(), hy - gy.ravel())
-        finite_diffs = diffs[np.isfinite(diffs)]
-        dual_disagreement_px = float(np.median(finite_diffs)) if finite_diffs.size else 99.0
-        # Final joint polish on all inliers (train + held-out) fitting lens distortion while keeping held-out metrics strictly from pre-polish split
-        if dual_disagreement_px <= MAX_DUAL_PATH_DISAGREEMENT_PX:
-            combined_inliers = [*train_tuples, *held_out_tuples[:18]]
-            refined_on_ids = {id(det) for det, _, _ in held_out_tuples[:18]}
-            refined_wcs = _refine_phone_camera_wcs(
-                refined_wcs, combined_inliers, fit_distortion=len(combined_inliers) >= 9
-            )
-
-    active_area_px2 = float(width * height) * sky_fraction
-    passed_gate, log_odds = evaluate_coincidence_gate(
-        held_out_residuals_px=held_out_residuals_all,
-        active_detection_count=len(eval_pool),
-        active_sky_area_px2=active_area_px2,
-        projected_catalog_count=projected_cat_count,
-        inlier_gate_px=gate_px,
-        dual_path_disagreement_px=dual_disagreement_px,
-    )
+    passed_gate, log_odds, all_pairs, gate_px = look.passed_gate, look.log_odds, look.all_pairs, look.gate_px
+    refined_wcs, held_out_tuples, held_out_residuals_all = look.refined_wcs, look.held_out_tuples, look.held_out_residuals_all
+    refined_on_ids, train_det_ids, train_tuples = look.refined_on_ids, look.train_det_ids, look.train_tuples
 
     # Map verified inlier detections by identity
     verified_by_det_id: dict[int, tuple[CatalogStar, float, bool]] = {}
