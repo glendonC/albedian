@@ -30,9 +30,30 @@ export interface CraftFraming {
   readonly frameHeightPx?: number;
 }
 
-/** D26 item 2 on the laptop: centred across, its middle at 62 percent of the window's height, 320 px across. */
+/** The laptop window D26's frame was approved at, CSS px. */
+export const LAPTOP_FRAME_PX = { width: 1440, height: 900 } as const;
+
+/**
+ * craft-frame-share-one (DECIDED-BY-LEAD 27 Nov 12:04): how much larger than D26's 320 px the craft is framed on a
+ * larger window: the smaller of the width's and the height's ratio to 1440 by 900, never below 1, so the craft keeps
+ * the laptop's approved share of the frame on a larger window (the film's 1920 by 1080 frames it at 384 px) and stays
+ * 320 px on any smaller one.
+ */
+export function laptopFrameShare(viewportWidthPx: number, viewportHeightPx: number): number {
+  return Math.max(1, Math.min(viewportWidthPx / LAPTOP_FRAME_PX.width, viewportHeightPx / LAPTOP_FRAME_PX.height));
+}
+
+/**
+ * D26 item 2 on the laptop: centred across, its middle at 62 percent of the window's height, 320 px across, grown with
+ * a larger window by `laptopFrameShare`.
+ */
 export function laptopCraftFraming(camera: FlightCamera): CraftFraming {
-  return { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx, diameterPx: CRAFT_FRAMING.diameterPx, frameHeightPx: camera.viewportHeightPx };
+  return {
+    xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx,
+    yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx,
+    diameterPx: CRAFT_FRAMING.diameterPx * laptopFrameShare(camera.viewportWidthPx, camera.viewportHeightPx),
+    frameHeightPx: camera.viewportHeightPx,
+  };
 }
 
 /**

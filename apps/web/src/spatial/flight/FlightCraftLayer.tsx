@@ -6,7 +6,7 @@ import dracoWrapperUrl from 'three/examples/jsm/libs/draco/gltf/draco_wasm_wrapp
 import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?url';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
-import { CRAFT_FRAMING, craftModelUrl, type Craft } from './crafts.js';
+import { craftModelUrl, type Craft } from './crafts.js';
 import { craftFrameRadiusM, craftSceneOf, laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { addEdgeLight, createEdgeLightUniforms, edgeLightColor, type EdgeLightUniforms } from './craftEdgeLight.js';
 import { markFillOcclusion } from './craftFillOcclusion.js';
@@ -388,8 +388,9 @@ export const FlightCraftLayer: React.FC<{
   candidatesRef.current = keyCandidates;
   const [state, setState] = useState<CraftState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  // craft-lod-one: the framed craft's span in device pixels picks its level, once a mount, never switched in flight
-  const [spanDevicePx] = useState(() => (framing?.diameterPx ?? CRAFT_FRAMING.diameterPx) * dpr);
+  // craft-lod-one: the framed craft's span in device pixels picks its level, once a mount, never switched in flight;
+  // craft-frame-share-one: the laptop's framed size as the window frames it (laptopFrameShare)
+  const [spanDevicePx] = useState(() => (framing?.diameterPx ?? laptopCraftFraming(camera).diameterPx) * dpr);
   // The flight's one loader and its parsed models, by address, oldest first
   const loader = useRef<ModelLoader | null>(null);
   const models = useRef(new Map<string, Promise<CachedModel>>());
