@@ -1988,6 +1988,17 @@ def _hint_takes(rotations: np.ndarray, hint_vec: np.ndarray, radius_deg: float) 
     return rotations[:, 2, :] @ hint_vec >= math.cos(math.radians(radius_deg))
 
 
+def _horizon_inliers(d_rays: np.ndarray, rotations: np.ndarray, u_cat: np.ndarray, cos_gate: float) -> np.ndarray:
+    """For each candidate rotation, how many of the rays have a catalog star within the gate (ray . R u >= cos_gate).
+
+    Rays first (horizon-rays-first-1): the up to 38 rays are turned into the catalog's frame and compared with every
+    star in one matrix product, where the search turned all up to 110 stars by every rotation and then compared each
+    ray with each. The same counts in another order of addition [tested: 0 of 10,339,940 per-rotation counts differed
+    over 10 public photos, SCIENCE-INGEST solve-wall-profile-3], 266.3 s of horizon search to 36.4 s there [tested]."""
+    sim = np.matmul(np.matmul(d_rays, rotations), u_cat.T)
+    return np.count_nonzero(np.max(sim, axis=2) >= cos_gate, axis=1)
+
+
 def _search_horizon_attitude(
     pool: Sequence[SourceDetection],
     width: int,
@@ -2071,9 +2082,7 @@ def _search_horizon_attitude(
                     valid_att &= _hint_takes(R_cand, *hint)
                 if np.any(valid_att):
                     R_sub = R_cand[valid_att]
-                    proj = np.einsum("kn,cmn->ckm", u_cat, R_sub)
-                    sim = np.einsum("mn,ckn->cmk", d_rays, proj)
-                    inliers_per_rot = np.count_nonzero(np.max(sim, axis=2) >= cos_gate, axis=1)
+                    inliers_per_rot = _horizon_inliers(d_rays, R_sub, u_cat, cos_gate)
                     max_idx = int(np.argmax(inliers_per_rot))
                     top_inliers = int(inliers_per_rot[max_idx])
                     if top_inliers > best_score:
