@@ -2686,6 +2686,35 @@
   animation: none;
 }
 
+/* short-card-status-one (UIUX-predsky-READY.md's line for short upright windows with a card open, DECIDED-BY-LEAD at the
+   line stamped 03:59 on 27 Nov; AUDIT-C's O19): the status never rises above the top bar's foot plus 8 px (112); where
+   16 px above the sheet would put it higher (PredictedSkyScreen.tsx sets the class only there, with the sheet's top 16 px
+   under the status's foot), the sheet gives the room: from that top to its foot, its body scrolling inside under its tag
+   row and Close, Go there pinned at its foot as the sheet held sideways pins it (phone-sideways-two) */
+.predsky.is-phone.is-card-short .predsky-status.is-above-card {
+  top: 112px;
+  bottom: auto;
+}
+
+.predsky.is-phone.is-card-short .reveal-card.is-phone {
+  top: var(--predsky-sheet-top);
+  height: auto;
+}
+
+.predsky.is-phone.is-card-short .reveal-card.is-phone .reveal-card__scroll {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.predsky.is-phone.is-card-short .reveal-card.is-phone .reveal-card__acts {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 12px 0 14px;
+  background: #111112;
+}
+
 /* predsky-phone-fade-1 (gap nine, DECIDED-BY-LEAD 24 Nov 12:58, UIUX-predsky-READY.md): D19's fade stands behind the
    phone readout at rest as well as above a card, as the estimate block has it, so no star shows through the
    Predicted tag or the words; no new look */

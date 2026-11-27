@@ -30,6 +30,7 @@ function clearOf(status: HTMLElement | null): Box[] {
     });
 }
 import { isSideways } from './phoneSlot.js';
+import { shortCardSheetTopPx } from './shortCard.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -104,6 +105,15 @@ export const PredictedSkyScreen: React.FC<{
   // Version two (AUDIT-C's D6): held on its side means wider than tall as well (sideways-landscape-guard-one)
   const sideways = phone && isSideways(size.widthPx, size.heightPx);
   const cardContent = phoneAboveCard || sideways;
+  // short-card-status-one (UIUX-predsky-READY.md's line for short upright windows, DECIDED-BY-LEAD 03:59 on 27 Nov): with
+  // a card open the status never rises above the top bar's foot plus 8 px; where 16 px above the sheet would put it
+  // higher, the sheet gives the room, its top 16 px under the status's foot (shortCard.ts), read from the status's height
+  const [statusH, setStatusH] = useState(0);
+  useLayoutEffect(() => {
+    const h = status.current?.offsetHeight ?? 0;
+    setStatusH((prev) => (prev === h ? prev : h));
+  });
+  const sheetTop = phone && card.mounted && answer === null && !sideways && statusH > 0 ? shortCardSheetTopPx(size.heightPx, statusH) : null;
   const deepSky = useDeepSkyTable(session.observationSolution?.findings.some(isDeepSky) === true);
   // The open card's box (ruled 17:05): rings and names under it are left out, the picked star's own mark stays.
   // Read untransformed offset geometry first so phone sheet-in translateY at frame 0 still clears the settled 469..814 px card area.
@@ -118,7 +128,7 @@ export const PredictedSkyScreen: React.FC<{
           ? { x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }
           : null;
     setCardBox(box);
-  }, [card.mounted, cardStar?.id, phone, size.widthPx, size.heightPx]);
+  }, [card.mounted, cardStar?.id, phone, size.widthPx, size.heightPx, sheetTop]);
   // The answer's box: rings and names under it are left out while it stands, as under the card (ruled 17:05)
   const [answerBox, setAnswerBox] = useState<Box | null>(null);
   useLayoutEffect(() => {
@@ -154,7 +164,12 @@ export const PredictedSkyScreen: React.FC<{
   const leaderD = leaderNow ?? heldLeader;
   const leader = useLeaving(leaderNow !== null, cardLeaveMs);
   return (
-    <div className={phone ? 'predsky is-phone' : 'predsky'} data-testid="predicted-sky" data-evidence-class="predicted">
+    <div
+      className={sheetTop !== null ? 'predsky is-phone is-card-short' : phone ? 'predsky is-phone' : 'predsky'}
+      style={sheetTop !== null ? ({ '--predsky-sheet-top': `${sheetTop}px` } as React.CSSProperties) : undefined}
+      data-testid="predicted-sky"
+      data-evidence-class="predicted"
+    >
       {!phone && leader.mounted && leaderD !== null && (
         <svg className={leader.leaving ? 'reveal-leader is-predicted is-leaving' : 'reveal-leader is-predicted'} data-testid="predicted-sky-leader" aria-hidden="true" focusable="false">
           <path pathLength={1} d={leaderD} />
