@@ -21,6 +21,12 @@ final class RunnerJobReaderTests: XCTestCase {
         return refusal.path
     }
 
+    /// The first rule a record breaks, as "path: reason".
+    private func refusal(_ sample: JSONValue) -> String? {
+        guard let object = sample.objectValue, case .failure(let refusal) = SolveJobReader.readRunnerRecord(object) else { return nil }
+        return refusal.description
+    }
+
     private func isSolve(_ sample: JSONValue) -> Bool { sample["kind"]?.stringValue == "solve" }
 
     /// Each entry of a section that carries a verdict: a solve's verdict is the reader's; any other kind is refused.
@@ -57,7 +63,7 @@ final class RunnerJobReaderTests: XCTestCase {
                 XCTAssertFalse(isSolve(record), "valid[\(index)] refused: \(refusal)")
             }
         }
-        XCTAssertEqual(solves, 16)
+        XCTAssertEqual(solves, 18)
     }
 
     /// align-2c: a solve's record may hold the person's alignment it ran from in `request`, in any state; the phone
@@ -92,7 +98,7 @@ final class RunnerJobReaderTests: XCTestCase {
     func testTakesAPredictedSkyTimeWithinTheRunAndRefusesOneOutsideIt() throws {
         let valid = try XCTUnwrap(fixture()["valid"]?.arrayValue)
         let withSky = valid.compactMap(\.objectValue).filter { $0["predictedSkyAtUTC"] != nil }
-        XCTAssertEqual(withSky.count, 2)
+        XCTAssertEqual(withSky.count, 3)
         for record in withSky {
             XCTAssertNoThrow(try SolveJobReader.read(.object(record)).get())
             let started = try XCTUnwrap(record["startedAtUTC"])
@@ -108,6 +114,57 @@ final class RunnerJobReaderTests: XCTestCase {
             atStart["predictedSkyAtUTC"] = started
             XCTAssertTrue(accepts(.object(atStart)))
         }
+    }
+
+    /// runner-reader-measured-one (contract cbf77399e, wait-detections-zero): a solve's record may say when it published
+    /// the detections it measured, once started and within its run, as the predicted sky's time; the phone takes such a
+    /// record and refuses the time outside the run, on a solve that never started and on a queued one, as the contract does.
+    func testTakesAMeasuredTimeWithinTheRunAndRefusesOneOutsideIt() throws {
+        let valid = try XCTUnwrap(fixture()["valid"]?.arrayValue)
+        let measured = valid.compactMap(\.objectValue).filter { $0["measuredAtUTC"] != nil }
+        XCTAssertEqual(measured.map { $0["state"]?.stringValue }, ["running", "succeeded"])
+        for record in measured {
+            XCTAssertTrue(accepts(.object(record)))
+            // Read and held, as the predicted sky's time is; no screen shows it
+            let job = try SolveJobReader.readRunnerRecord(record).get()
+            XCTAssertEqual(job.measuredAtUTC, "2031-05-02T19:20:10.000Z")
+            let started = try XCTUnwrap(record["startedAtUTC"])
+            var early = record
+            early["measuredAtUTC"] = .string("2000-01-01T00:00:00.000Z")
+            XCTAssertEqual(refusal(.object(early)), "measuredAtUTC: a measured time lies within the job's run")
+            if let finished = record["finishedAtUTC"] {
+                var late = record
+                late["measuredAtUTC"] = .string("2099-01-01T00:00:00.000Z")
+                XCTAssertEqual(refusal(.object(late)), "measuredAtUTC: a measured time lies within the job's run")
+                var atFinish = record
+                atFinish["measuredAtUTC"] = finished
+                XCTAssertTrue(accepts(.object(atFinish)))
+            }
+            var atStart = record
+            atStart["measuredAtUTC"] = started
+            XCTAssertTrue(accepts(.object(atStart)))
+            var notAnInstant = record
+            notAnInstant["measuredAtUTC"] = .string("2031-05-02 19:20:10")
+            XCTAssertEqual(refusal(.object(notAnInstant)), "measuredAtUTC: not an instant")
+            // Compared as instants, never as text (PLATFORM's note to MOBILE): a stamp on a whole second written without
+            // milliseconds is earlier than one 4 ms into that second, though "10Z" sorts after "10.004Z" as text
+            var wholeSecondStart = record
+            wholeSecondStart["startedAtUTC"] = .string("2031-05-02T19:20:10Z")
+            wholeSecondStart["measuredAtUTC"] = .string("2031-05-02T19:20:10.004Z")
+            XCTAssertTrue(accepts(.object(wholeSecondStart)))
+            var wholeSecondMeasured = record
+            wholeSecondMeasured["startedAtUTC"] = .string("2031-05-02T19:20:10.004Z")
+            wholeSecondMeasured["measuredAtUTC"] = .string("2031-05-02T19:20:10Z")
+            XCTAssertEqual(refusal(.object(wholeSecondMeasured)), "measuredAtUTC: a measured time lies within the job's run")
+        }
+        // On a queued solve, which has not started, the state table forbids it
+        let queued = try XCTUnwrap(valid.compactMap(\.objectValue).first { $0["kind"]?.stringValue == "solve" && $0["state"]?.stringValue == "queued" })
+        var early = queued
+        early["measuredAtUTC"] = .string("2031-05-02T19:20:10Z")
+        XCTAssertEqual(refusal(.object(early)), "measuredAtUTC: the fields do not fit the job's kind and state")
+        let invalid = try XCTUnwrap(fixture()["invalid"]?.arrayValue)
+        let reasons = invalid.compactMap { $0["reason"]?.stringValue }.filter { $0.contains("measured") }
+        XCTAssertEqual(reasons.count, 5, "the contract's own refusals of the measured time, each refused here too")
     }
 
     func testRefusesEveryInvalidRecordOfTheFixture() throws {
@@ -126,7 +183,7 @@ final class RunnerJobReaderTests: XCTestCase {
 
     func testHoldsTheStateTableCellByCellForASolve() throws {
         let (checked, wrong) = try judge("grid")
-        XCTAssertEqual(checked, 7 * 14 * 2 * 2, "every solve cell of the table")
+        XCTAssertEqual(checked, 7 * 15 * 2 * 2, "every solve cell of the table")
         XCTAssertEqual(wrong, [])
     }
 

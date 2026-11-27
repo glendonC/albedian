@@ -7,7 +7,7 @@ import Foundation
 public enum RunnerJob {
     static let keys: Set<String> = ["id", "sourceAssetSha256", "kind", "state", "createdAtUTC", "startedAtUTC", "finishedAtUTC",
                                     "stages", "solutionId", "error", "producer", "request", "graphId", "attemptId", "variantId",
-                                    "inputSpan", "cancelRequestedAtUTC", "queueAhead", "predictedSkyAtUTC"]
+                                    "inputSpan", "cancelRequestedAtUTC", "queueAhead", "predictedSkyAtUTC", "measuredAtUTC"]
     static let stageKeys: Set<String> = ["stage", "unit", "done", "total", "pass"]
     /// Every stage name the contract knows (`UPLOAD_JOB_STAGES`); a solve's are `SolveJob.Stage`.
     static let allStages: Set<String> = ["store", "decode", "detect", "solve", "verify", "encode", "write", "measure", "restore"]
@@ -49,15 +49,15 @@ public enum RunnerJob {
     /// The fields the table judges, in its order (`JOB_STATE_FIELDS`).
     static let stateFields = ["startedAtUTC", "finishedAtUTC", "error", "solutionId", "attemptId", "variantId", "inputSpan",
                               "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages",
-                              "predictedSkyAtUTC"]
+                              "predictedSkyAtUTC", "measuredAtUTC"]
     /// `JOB_STATE_TABLE.solve`, row by row as the contract writes it; `rejected` has no row for a solve.
     static let solveTable: [SolveJob.State: [Rule]] = [
-        .queued:      [.f, .f, .f, .f, .f, .f, .f, .f, .e, .a, .e, .f, .f, .f],
-        .running:     [.r, .f, .f, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
-        .succeeded:   [.r, .r, .f, .r, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
-        .failed:      [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
-        .canceled:    [.e, .r, .f, .f, .f, .f, .s, .a, .f, .a, .e, .f, .s, .s],
-        .interrupted: [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
+        .queued:      [.f, .f, .f, .f, .f, .f, .f, .f, .e, .a, .e, .f, .f, .f, .f],
+        .running:     [.r, .f, .f, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s, .s],
+        .succeeded:   [.r, .r, .f, .r, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s, .s],
+        .failed:      [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s, .s],
+        .canceled:    [.e, .r, .f, .f, .f, .f, .s, .a, .f, .a, .e, .f, .s, .s, .s],
+        .interrupted: [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s, .s],
     ]
 
     /// The person's alignment a solve ran from (`PersonAlignmentSchema`, packages/contracts/src/alignment.ts; align-2c):
@@ -109,7 +109,7 @@ extension SolveJobReader {
         }
         guard let created = Wire.instant(object["createdAtUTC"]) else { return refuse("createdAtUTC", "not an instant") }
         var instants: [String: String] = [:]
-        for key in ["startedAtUTC", "finishedAtUTC", "cancelRequestedAtUTC", "predictedSkyAtUTC"] where object[key] != nil {
+        for key in ["startedAtUTC", "finishedAtUTC", "cancelRequestedAtUTC", "predictedSkyAtUTC", "measuredAtUTC"] where object[key] != nil {
             guard let instant = Wire.instant(object[key]) else { return refuse(key, "not an instant") }
             instants[key] = instant
         }
@@ -223,6 +223,13 @@ extension SolveJobReader {
                 return refuse("predictedSkyAtUTC", "a predicted sky time lies within the job's run")
             }
         }
+        // When the solve published the detections it measured (wait-detections-zero, contract cbf77399e): read and held
+        // to the run, not shown, since the wait's measured stars are the web's
+        if let measured = instants["measuredAtUTC"], let startedAt {
+            if measured < startedAt || (finishedAt.map { measured > $0 } ?? false) {
+                return refuse("measuredAtUTC", "a measured time lies within the job's run")
+            }
+        }
         if let error {
             switch state {
             case .interrupted where error != RunnerJob.interrupted:
@@ -237,6 +244,7 @@ extension SolveJobReader {
                            producer: producer, queueAhead: queueAhead, inputSpan: inputSpan,
                            cancelRequestedAtUTC: instants["cancelRequestedAtUTC"])
         job.predictedSkyAtUTC = instants["predictedSkyAtUTC"]
+        job.measuredAtUTC = instants["measuredAtUTC"]
         return .success(job)
     }
 }

@@ -157,8 +157,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     the counts by evidence class as the server reports them, the reveal opened in the web app. Swift readers only for
     the job and solution fields shown, judged on the existing contract fixtures as a further reading.
   - Built and on `main`: the solve, its job read beside it, the status and counts by evidence class (`2944948e`,
-    mobile-4 v2; runner job contract reader `51f2aa79`; `predictedSkyAtUTC` reader `86312b1b`; person-alignment job
-    request reader `197d0aaf`; shared solution fixture sample counting `f045e514`; verified TAN WCS and held-out gates
+    mobile-4 v2; runner job contract reader `51f2aa79`; `predictedSkyAtUTC` reader `86312b1b`; `measuredAtUTC`
+    reader, runner-reader-measured-one; person-alignment job request reader `197d0aaf`; shared solution fixture sample counting `f045e514`; verified TAN WCS and held-out gates
     on `calibrated`, `FINDING_CLASS_EVIDENCE` class invariants across all four classes, and closed `poseEstimate`
     methods `767f9b01b5`, solread-2); "Open" on the result shows `<paired address>/?upload=<sha256>` in the system's
     Safari view (`d6e33f53`, mobile-4b).
