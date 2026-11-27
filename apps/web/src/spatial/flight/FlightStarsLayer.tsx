@@ -12,7 +12,7 @@ import { arrivalBloomOf, arrivalCraftFraming, arrivalProgress, arrivalShiftOf, a
 import type * as THREE from 'three';
 import { FlightCraftLayer, prepareCraftSky, type CraftRenderer } from './FlightCraftLayer.js';
 import { lightCandidateOfFinding, type LightCandidate } from './craftLight.js';
-import { FlightDomeLayer, type DomeView } from '../sky/FlightDomeLayer.js';
+import { FlightDomeLayer, prepareFlightDome, type DomeView } from '../sky/FlightDomeLayer.js';
 import { createFlightFinish, pickedRowOf, type FlightFinish } from './flightFinish.js';
 import { laptopCraftFraming, type CraftFraming } from './craftScene.js';
 import { craftFromSearch, type Craft } from './crafts.js';
@@ -410,7 +410,10 @@ export const FlightStarsLayer: React.FC<{
   // craft is picked (or by the pick itself if it comes first), never on the reveal, nor during the move
   const atRest = session.spatialView?.transitionPhase === 'at_space';
   useEffect(() => {
-    if (atRest) prepareCraftSky();
+    if (!atRest) return;
+    prepareCraftSky();
+    // steer-hitch-one: the steering dome's first paint done at rest too, so the first steer's is warm
+    prepareFlightDome(viewportWidthPx, viewportHeightPx, dpr);
   }, [atRest]);
 
   useEffect(() => {

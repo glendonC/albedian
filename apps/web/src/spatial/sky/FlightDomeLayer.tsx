@@ -27,6 +27,46 @@ function keptDome(gl: WebGL2RenderingContext, glow: WebGLTexture, registration: 
   return keptDomes.get(glow)!;
 }
 
+/**
+ * steer-hitch-one (LEAD ANSWER 27 Nov 03:02, AUDIT-D's catch): the steering dome's first paint through the kept context,
+ * at the first steer, made its program (compiled, linked and waited for) and its first frame on the GPU (the draw's
+ * pipeline and the frame handed over), the long task of the hand-over in the takes' CPU profiles: 7 to 10 ms on this
+ * laptop, and 67 to 267 ms when a screenshot waited on the GPU in the same frame. Here the same paint is done once while
+ * the flight rests (FlightStarsLayer calls it beside prepareCraftSky), at the window's size, into a canvas no one sees,
+ * so the first steer's paint finds its program made and its pipeline warm. Where pictures cannot be kept it does nothing.
+ */
+export function prepareFlightDome(viewportWidthPx: number, viewportHeightPx: number, pixelRatio: number): void {
+  if (typeof document === 'undefined') return;
+  void Promise.all([keptSkyPicture(FLIGHT_MILKY_WAY_URL), loadPanoramaRegistration()]).then(
+    ([picture, registration]) => {
+      if (!picture) return;
+      const target = document.createElement('canvas');
+      target.width = Math.round(viewportWidthPx * pixelRatio);
+      target.height = Math.round(viewportHeightPx * pixelRatio);
+      // Any camera warms the same program and pipeline: looking along +z through a plain pinhole filling the window
+      const view: DomeView = {
+        rows: { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] },
+        crpixX: viewportWidthPx / 2,
+        crpixY: viewportHeightPx / 2,
+        scaleRadPerPx: 1 / Math.max(1, viewportHeightPx),
+        k1: 0,
+        k2: 0,
+        storedToScreen: [1, 0, 0, 0, 1, 0],
+        viewportWidthPx,
+        viewportHeightPx,
+      };
+      picture.paint(target, (gl, glow) => {
+        const dome = keptDome(gl, glow, registration);
+        if (!dome) return false;
+        gl.viewport(0, 0, target.width, target.height);
+        drawFlightDome(gl, dome, view, viewportWidthPx, viewportHeightPx, pixelRatio);
+        return true;
+      });
+    },
+    () => undefined
+  );
+}
+
 export const FlightDomeLayer: React.FC<{
   /** The steering camera now; none draws nothing. */
   view: DomeView | null;
