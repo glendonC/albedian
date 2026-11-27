@@ -13,10 +13,12 @@ import { followJob, readVariantShown, startPlaybackCopy, type StoredRestoration 
  * - a gate's refusal (a new job's or a stored one under the copy's revision): the no-copy row (`noCopy`);
  * - any other end (a time limit, an internal error, a result not stored, the clip changed, the server stopping, a start
  *   that reached no job): `stopped`, the failed x, and a press asks again;
- * - a clip the route cannot copy (422), or a copy its route names but does not serve: `not_copyable`, its row with no
- *   check, not pressable, and no second line; nothing is said that is not known.
+ * - a clip the route cannot copy (422): `not_copyable`, its row with no check, not pressable, and UIUX's line from the
+ *   route's own sentence (UIUX-versionwait-READY.md, its addition for EXPORT's firstneed-web-words, ruled 00:23 on 27 Nov);
+ * - a copy its record names but its route does not serve: `unserved`, the same row with no second line (the lead's
+ *   answer of 08:10 on 25 Nov), since nothing known says why.
  */
-export type CopyWait = 'making' | 'stopped' | 'not_copyable';
+export type CopyWait = 'making' | 'stopped' | 'not_copyable' | 'unserved';
 
 /** A listed version with what its copy at first need shows, when it has one to wait for. */
 export interface ListedVersion extends StoredRestoration {
@@ -29,6 +31,7 @@ type CopyState =
   | { kind: 'making'; since: number }
   | { kind: 'stopped' }
   | { kind: 'not_copyable' }
+  | { kind: 'unserved' }
   | { kind: 'refused' }
   | { kind: 'ready'; playbackUrl: string };
 
@@ -49,7 +52,7 @@ export function drawableVersion(version: ListedVersion): boolean {
 
 async function copyServed(sha256: string, variantId: string): Promise<CopyState> {
   const shown = await readVariantShown(sha256, variantId);
-  return shown.playbackUrl !== null ? { kind: 'ready', playbackUrl: shown.playbackUrl } : { kind: 'not_copyable' };
+  return shown.playbackUrl !== null ? { kind: 'ready', playbackUrl: shown.playbackUrl } : { kind: 'unserved' };
 }
 
 async function jobEnded(sha256: string, variantId: string, job: UploadJob): Promise<CopyState> {

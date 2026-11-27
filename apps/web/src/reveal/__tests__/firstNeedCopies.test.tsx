@@ -7,7 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLAYBACK_GATE_REFUSED, type MediaVariant, type UploadJob } from '@albedian/contracts';
 import { NO_PLAYBACK_NOTE, readRestorations, type StoredRestoration } from '../../services/apiClient.js';
-import { COPY_STOPPED_LINE, NO_COPY_LINE, RestoreVersions } from '../RestoreParts.js';
+import { COPY_STOPPED_LINE, NO_COPY_LINE, NOT_COPYABLE_LINE, RestoreVersions } from '../RestoreParts.js';
 import { needsFirstCopy, useFirstNeedCopies, type ListedVersion } from '../firstNeedCopies.js';
 
 // playback-firstneed (REQ-JOB-10; the lead's 22:19 ruling on 24 Nov; UIUX-versionwait-READY.md, its additions of
@@ -193,7 +193,7 @@ describe('a restored clip listed with no playback copy (playback-firstneed)', ()
     expect(posts).toHaveLength(2);
   });
 
-  it('keeps a clip the route cannot copy as a row with no check, not pressable, and no second line (lead 08:10)', async () => {
+  it("keeps a clip the route cannot copy as a row with no check, not pressable, and UIUX's line from the route's sentence (lead 00:23)", async () => {
     const posts = serve({ start: () => json({ detail: 'No playback copy is made for a clip stored this way yet.' }, 422) });
     await draw([listed(clipNoCopy)]);
     expect(seen[0]!.copy).toBe('not_copyable');
@@ -201,7 +201,8 @@ describe('a restored clip listed with no playback copy (playback-firstneed)', ()
     expect([row.getAttribute('aria-disabled'), row.getAttribute('aria-pressed'), row.getAttribute('aria-busy')]).toEqual(['true', 'false', null]);
     expect(row.querySelector('.restore-versions__mark')!.childElementCount).toBe(0);
     expect(row.querySelector('.restore-versions__size')!.textContent).toBe('14.0 MB');
-    expect(lines()).toEqual([]);
+    expect(lines()).toEqual([NOT_COPYABLE_LINE]);
+    expect(NOT_COPYABLE_LINE).toBe('No copy that plays here is made for a clip stored this way, so it is not shown; Download saves it.');
     act(() => row.click());
     await tick(3000);
     expect(posts).toHaveLength(1);
@@ -213,6 +214,24 @@ describe('a restored clip listed with no playback copy (playback-firstneed)', ()
     await draw([listed(clipNoCopy)]);
     expect(seen[0]!.copy).toBeUndefined();
     expect(seen[0]!.playbackUrl).toBe(copyUri);
+  });
+
+  it('says nothing of a copy its record names but its route does not serve: no check, not pressable, no line', async () => {
+    // Its own variant: a copy served once is kept as served for the page's life (playbackCopyUrl)
+    const id = 'var_00000000000000d5';
+    const uri = `/api/media/${sha}/variants/${id}/playback`;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (init?.method === 'POST' && url === uri) return json({ detail: 'that variant has a playback copy' }, 409);
+      if (url === `/api/media/${sha}/variants/${id}`) return json({ variant: { ...clipWithCopy, id, playbackCopy: { ...(clipWithCopy.playbackCopy as object), uri } } });
+      return json({ detail: 'no playback copy is served for that variant' }, 404);
+    });
+    await draw([listed(clipNoCopy, id)]);
+    expect(seen[0]!.copy).toBe('unserved');
+    const row = rowEl()!;
+    expect([row.getAttribute('aria-disabled'), row.getAttribute('aria-busy')]).toEqual(['true', null]);
+    expect(row.querySelector('.restore-versions__mark')!.childElementCount).toBe(0);
+    expect(lines()).toEqual([]);
   });
 
   it('never asks for a still, a clip whose copy is served, or one whose record notes no copy', async () => {

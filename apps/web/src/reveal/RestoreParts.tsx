@@ -570,6 +570,12 @@ export const NO_COPY_LINE = 'No copy that plays here matched it closely enough, 
  */
 export const COPY_STOPPED_LINE = 'The copy that plays here stopped before it was finished, so it is not shown; press to try again.';
 
+/**
+ * The second line of a restored version the playback route refuses as not copyable before any copy is tried, from the
+ * route's own sentence without its "yet" (UIUX-versionwait-READY.md, its addition for EXPORT's firstneed-web-words).
+ */
+export const NOT_COPYABLE_LINE = 'No copy that plays here is made for a clip stored this way, so it is not shown; Download saves it.';
+
 export const RestoreVersions: React.FC<{
   versions: readonly ListedVersion[];
   /** The version drawn, which takes the check (D36's "the one shown"). */
@@ -595,7 +601,8 @@ export const RestoreVersions: React.FC<{
       {versions.map((version, i) => {
         const drawn = drawableVersion(version);
         // A version not drawn keeps its row: one whose copy is being made or stopped is pressable (the swap waits for
-        // its copy); one no copy matched, or the route cannot copy, is not (aria-disabled), with no check
+        // its copy); one no copy matched, the route cannot copy, or whose copy is not served is not (aria-disabled),
+        // with no check
         const pressable = drawn || version.copy === 'making' || version.copy === 'stopped';
         const press = () => {
           if (!pressable) return;
@@ -628,6 +635,7 @@ export const RestoreVersions: React.FC<{
               {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
               {version.noCopy && <span className="restore-versions__older">{NO_COPY_LINE}</span>}
               {version.copy === 'stopped' && <span className="restore-versions__older">{COPY_STOPPED_LINE}</span>}
+              {version.copy === 'not_copyable' && <span className="restore-versions__older">{NOT_COPYABLE_LINE}</span>}
             </button>
           </li>
         );
