@@ -28,6 +28,8 @@ export interface ArrivalJob {
   readonly queueAhead?: number;
   /** When a cancel was asked of a running job. */
   readonly cancelRequestedAtUTC?: string;
+  /** When the solve published its measured detections, at its Measured stage's end (wait-detections-one). */
+  readonly measuredAtUTC?: string;
   readonly stages: ReadonlyArray<{ readonly stage: string; readonly unit: string; readonly done: number; readonly total: number | null }>;
   readonly error?: string;
 }

@@ -29,6 +29,26 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* wait-measured-one (UIUX-first-use-wow-READY.md item 3, RULED 03:22 on 25 Nov): once Measured ends, the points of light
+   it measured stand on the photo as the Observed class's glyph in its colour (MeasuredMarks.tsx), under the working
+   rows, taking no press; they arrive as marks arrive (MOTION-READY-web.md --mo-mark: 67 ms each, brightest first, all
+   within 330 ms; under Reduced motion the span is 0 and each a 270 ms dissolve) */
+.measured-marks {
+  --mark-step: max(0ms, calc((var(--look-mo-span-marks) - var(--look-mo-dur-mark)) / max(1, var(--mark-n) - 1)));
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: var(--look-ev-observed);
+}
+
+.measured-mark {
+  animation: look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both;
+}
+
 /* Until the receipt there is no photo on screen: black covers the modeled scene, as the photo will */
 .work-backdrop {
   position: fixed;

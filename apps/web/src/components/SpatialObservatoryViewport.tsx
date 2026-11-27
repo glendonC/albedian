@@ -62,6 +62,7 @@ import { prepareFlight } from '../spatial/flight/prepareFlight.js';
 import { flightReadout, isFlightShown } from '../reveal/flightView.js';
 import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import { ClipPlayer } from '../reveal/ClipPlayer.js';
+import { MeasuredMarks } from '../reveal/MeasuredMarks.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
 import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
@@ -811,6 +812,18 @@ export const SpatialObservatoryViewport: React.FC<
             entering={photoEntering}
             endsMask={phoneWorking ? slotMask : undefined}
           />
+          {/* wait-measured-one (UIUX-first-use-wow-READY.md item 3): once Measured ends, the points of light it measured on
+              the photo as Observed marks, from the job's own route; a stopped job's dimmed photo carries none */}
+          {arrival.failure === null && (
+            <MeasuredMarks
+              session={phoneWorking ? slotted : session}
+              jobId={arrival.job?.id}
+              measuredAtUTC={arrival.job?.measuredAtUTC}
+              viewportWidthPx={windowSize.widthPx}
+              viewportHeightPx={windowSize.heightPx}
+              phone={phone}
+            />
+          )}
           <WorkingScreen
             phone={phone}
             arrival={arrival}
