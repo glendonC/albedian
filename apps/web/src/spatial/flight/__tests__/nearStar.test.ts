@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import { steerCamera } from '@albedian/camera-rig';
 import {
-  AU_PC, AU_PER_LY, HANDOVER_SECONDS, HEAD_ON_RAD, NEAR_STAR_TAU_S, NEAR_UNIT_BELOW_LY, SUN_ABSOLUTE_MAG,
+  AU_FROM_KM, AU_PC, AU_PER_LY, HANDOVER_SECONDS, HEAD_ON_RAD, KM_PER_AU, LY_FROM_AU, NEAR_STAR_TAU_S, SUN_ABSOLUTE_MAG, readoutFigures,
   handoverShare, headingRows, keptOutside, nearStarFloorPc, nearStarOf, nearStarStep, pacedSpeed, readoutDistance, startHandover, stepHandover, turnBetween, turnedRows,
 } from '../nearStar.js';
 import { steeringSpeedLine } from '../steering.js';
@@ -248,20 +248,56 @@ describe('nearStarStep: a steering frame paced by the star', () => {
   });
 });
 
-describe('the readout near the star (condition two, until UIUX\'s record)', () => {
-  it('gives light years down to a tenth of one, then astronomical units', () => {
-    expect(NEAR_UNIT_BELOW_LY).toBe(0.1);
+// readout-units-one (UIUX-flight-READY "The readout's units near a star", DECIDED-BY-LEAD 27 Nov 00:21): Celestia's own
+// bands (hud.cpp DistanceLyToStr): light years from 1,000 au, astronomical units from 10 million km, kilometres below;
+// "au" lower case (IAU 2012 B2); three significant figures at every size; no hysteresis.
+describe('the readout\'s units near a star (readout-units-one)', () => {
+  it('takes its switches at 1,000 au and at 10 million km, the au of IAU 2012 B2 exactly', () => {
     expect(AU_PER_LY).toBeCloseTo(63241.077, 2);
-    expect(readoutDistance(2.19)).toEqual({ value: 2.19, unit: 'ly' });
-    expect(readoutDistance(0.1)).toEqual({ value: 0.1, unit: 'ly' });
-    const near = readoutDistance(0.05);
-    expect(near.unit).toBe('AU');
-    expect(near.value).toBeCloseTo(0.05 * AU_PER_LY, 9);
+    expect(KM_PER_AU).toBe(149_597_870.7);
+    expect(LY_FROM_AU).toBe(1000);
+    expect(AU_FROM_KM).toBe(10_000_000);
   });
 
-  it('says the steering speed in light years a second, and in astronomical units a second below a tenth of one', () => {
-    expect(steeringSpeedLine(1 / LY_PER_PC)).toBe('this flight: 1.00 ly each second');
-    expect(steeringSpeedLine(0.1 / LY_PER_PC)).toBe('this flight: 0.100 ly each second');
-    expect(steeringSpeedLine((26.8 * AU_PC))).toBe('this flight: 26.8 AU each second');
+  it('gives light years at 1,000 au and beyond, astronomical units from 10 million km, kilometres below', () => {
+    expect(readoutDistance(2.19)).toEqual({ value: 2.19, unit: 'ly' });
+    const atLy = 1000 / AU_PER_LY;
+    expect(readoutDistance(atLy)).toEqual({ value: atLy, unit: 'ly' });
+    const below = readoutDistance(atLy * (1 - 1e-9));
+    expect(below.unit).toBe('au');
+    expect(below.value).toBeCloseTo(1000, 4);
+    const atAu = 1e7 / KM_PER_AU / AU_PER_LY;
+    expect(readoutDistance(atAu).unit).toBe('au');
+    expect(readoutDistance(atAu).value).toBeCloseTo(1e7 / KM_PER_AU, 12);
+    const km = readoutDistance(atAu * (1 - 1e-9));
+    expect(km.unit).toBe('km');
+    expect(km.value).toBeCloseTo(1e7, 0);
+    expect(readoutDistance(0)).toEqual({ value: 0, unit: 'km' });
+  });
+
+  it('reads the record\'s own figures: Rigel\'s floor 224 au, Tabit\'s 1.79 au, 3,162 au as 0.0500 ly', () => {
+    const show = (ly: number) => `${readoutFigures(readoutDistance(ly).value)} ${readoutDistance(ly).unit}`;
+    expect(show(223.8 / AU_PER_LY)).toBe('224 au');
+    expect(show(1.79 / AU_PER_LY)).toBe('1.79 au');
+    expect(show(3162.05 / AU_PER_LY)).toBe('0.0500 ly');
+    expect(show(252.4)).toBe('252 ly');
+  });
+
+  it('writes three significant figures at every size, and zero as 0', () => {
+    expect(readoutFigures(0.0158)).toBe('0.0158');
+    expect(readoutFigures(0.5)).toBe('0.500');
+    expect(readoutFigures(1.79)).toBe('1.79');
+    expect(readoutFigures(35.07)).toBe('35.1');
+    expect(readoutFigures(223.8)).toBe('224');
+    expect(readoutFigures(75_696.5)).toBe('75,700');
+    expect(readoutFigures(0.9996)).toBe('1.00');
+    expect(readoutFigures(0)).toBe('0');
+  });
+
+  it('says the steering speed in the same bands, the distance flown each second', () => {
+    expect(steeringSpeedLine(4.12 / LY_PER_PC)).toBe('this flight: 4.12 ly each second');
+    expect(steeringSpeedLine(215 * AU_PC)).toBe('this flight: 215 au each second');
+    expect(steeringSpeedLine(0.000506 * AU_PC)).toBe('this flight: 75,700 km each second');
+    expect(steeringSpeedLine(0)).toBe('this flight: 0 km each second');
   });
 });

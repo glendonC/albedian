@@ -4,6 +4,7 @@ import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { distancePc } from '@albedian/observation';
 import { canDrawRealSky } from './RealSkyLayer.js';
+import { readoutFigures } from '../spatial/flight/nearStar.js';
 
 /**
  * Go there (fly, approved 2026-11-12): after a star card's Go there, the photo gives way to the real sky in the same
@@ -48,12 +49,11 @@ export function flightReadout(session: ObservationSession): FlightReadout | null
 }
 
 /**
- * Three figures, as the approved screens write the readout (fly: "0.00" to "24.0" from Earth, "25.0" to "1.00" to the
- * star; D30: "160", "321"): two decimals below 10, one below 100, whole light years from 100, grouped above a thousand
- * (every whole light year kept, none rounded away). A rounding that reaches the next width takes its form ("10.0").
+ * Three figures, as the approved screens write the readout (fly: "24.0" from Earth, "25.0" to "1.00" to the star; D30:
+ * "160", "321"). readout-units-one (UIUX-flight-READY "The readout's units near a star", DECIDED-BY-LEAD 27 Nov 00:21,
+ * rule 2): three significant figures at every size ("0.0158", "75,700"), grouped, zero as "0"; the readout's own
+ * figures (nearStar.ts readoutFigures), with which its units go (readoutDistance).
  */
 export function threeFigures(value: number): string {
-  if (Math.round(value * 10) / 10 >= 100) return Math.round(value).toLocaleString('en-US');
-  if (Math.round(value * 100) / 100 >= 10) return value.toFixed(1);
-  return value.toFixed(2);
+  return readoutFigures(value);
 }

@@ -86,8 +86,7 @@ describe('flightReadout: the flight\'s own distances', () => {
 });
 
 describe('threeFigures: the readout\'s numbers', () => {
-  it('writes three figures, as the approved screens do (0.00 to 24.0 from Earth, 25.0 to 1.00 to the star, 321)', () => {
-    expect(threeFigures(0)).toBe('0.00');
+  it('writes three figures, as the approved screens do (24.0 from Earth, 25.0 to 1.00 to the star, 321)', () => {
     expect(threeFigures(1)).toBe('1.00');
     expect(threeFigures(1.004)).toBe('1.00');
     expect(threeFigures(24.04)).toBe('24.0');
@@ -96,13 +95,22 @@ describe('threeFigures: the readout\'s numbers', () => {
     expect(threeFigures(321.96)).toBe('322');
   });
 
-  it('carries a rounding into the next width, and keeps every whole light year above a thousand, grouped', () => {
+  it('carries a rounding into the next width', () => {
     expect(threeFigures(9.996)).toBe('10.0');
     expect(threeFigures(99.96)).toBe('100');
     expect(threeFigures(9.994)).toBe('9.99');
     expect(threeFigures(99.94)).toBe('99.9');
-    expect(threeFigures(1234.56)).toBe('1,235');
-    expect(threeFigures(15625.4)).toBe('15,625');
+  });
+
+  // readout-units-one (UIUX-flight-READY "The readout's units near a star", DECIDED-BY-LEAD 27 Nov 00:21, rule 2): three
+  // significant figures at every size, as Celestia's significant digits and C7 have it; zero as 0 ("0 km each second")
+  it('keeps three significant figures below 1 and above a thousand, grouped, and writes zero as 0', () => {
+    expect(threeFigures(0.0158)).toBe('0.0158');
+    expect(threeFigures(0.5)).toBe('0.500');
+    expect(threeFigures(1234.56)).toBe('1,230');
+    expect(threeFigures(15625.4)).toBe('15,600');
+    expect(threeFigures(75_696.5)).toBe('75,700');
+    expect(threeFigures(0)).toBe('0');
   });
 });
 

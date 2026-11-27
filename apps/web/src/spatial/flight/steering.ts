@@ -1,5 +1,5 @@
 import type { SteerInput } from '@albedian/camera-rig';
-import { readoutDistance } from './nearStar.js';
+import { readoutDistance, readoutFigures } from './nearStar.js';
 
 /**
  * pilot-1e (D26 item 6, with the lead's answer of 08:55: a press on the flight hands over and takes back the steering,
@@ -155,13 +155,11 @@ export class SteerHands {
   }
 }
 
-const THREE_FIGURES = new Intl.NumberFormat('en-US', { minimumSignificantDigits: 3, maximumSignificantDigits: 3 });
-
 /**
- * D26 item 7: the steering speed, under the Simulated tag; near-star-flight-one: in astronomical units a second below
- * a tenth of a light year a second (nearStar.ts readoutDistance).
+ * D26 item 7: the steering speed, under the Simulated tag; readout-units-one: the distance flown each second in the
+ * readout's own bands and figures (nearStar.ts readoutDistance, readoutFigures), "0 km each second" at rest.
  */
 export function steeringSpeedLine(speedPcPerS: number): string {
   const near = readoutDistance(speedPcPerS * 3.261563777);
-  return `this flight: ${THREE_FIGURES.format(near.value)} ${near.unit} each second`;
+  return `this flight: ${readoutFigures(near.value)} ${near.unit} each second`;
 }

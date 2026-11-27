@@ -105,16 +105,33 @@ export function turnedRows(rows: WcsCameraRows, axis: Vec3, angleRad: number): W
 }
 
 /**
- * The readout's near unit (condition two of the ruling, until UIUX's record): below a tenth of a light year, where the
- * readout's two decimals would leave one figure, a distance is given in astronomical units, the unit the app's answers
- * already write for near things (C7, answerWords.ts); a speed likewise below a tenth of a light year a second.
+ * readout-units-one (UIUX-flight-READY "The readout's units near a star", DECIDED-BY-LEAD 27 Nov 00:21; it replaces
+ * near-star-flight-one's interim tenth of a light year): every distance the flight readout shows, and the distance its
+ * speed line flies each second, in Celestia's own bands (src/celestia/hud.cpp, DistanceLyToStr, read by UIUX on 27 Nov):
+ * light years from 1,000 au, astronomical units from 10 million km, kilometres below; no hysteresis. Celestia's kpc and
+ * Mpc are not taken (the readout stays in light years however far) nor its m (no floor is under 0.01 au).
  */
-export const NEAR_UNIT_BELOW_LY = 0.1;
 export const AU_PER_LY = 1 / (AU_PC * LY_PER_PC);
+/** The astronomical unit in kilometres, exactly (IAU 2012 Resolution B2). */
+export const KM_PER_AU = 149_597_870.7;
+/** Light years from this many astronomical units (Celestia: AUtoLightYears(1000)). */
+export const LY_FROM_AU = 1000;
+/** Astronomical units from this many kilometres (Celestia: kilometersToLightYears(10000000.0)). */
+export const AU_FROM_KM = 10_000_000;
 
-/** A distance in light years in the readout's unit: light years, or astronomical units below a tenth of one. */
-export function readoutDistance(ly: number): { value: number; unit: 'ly' | 'AU' } {
-  return ly < NEAR_UNIT_BELOW_LY ? { value: ly * AU_PER_LY, unit: 'AU' } : { value: ly, unit: 'ly' };
+/** A distance in light years in the readout's band: light years, astronomical units ("au", lower case) or kilometres. */
+export function readoutDistance(ly: number): { value: number; unit: 'ly' | 'au' | 'km' } {
+  const au = ly * AU_PER_LY;
+  if (au >= LY_FROM_AU) return { value: ly, unit: 'ly' };
+  const km = au * KM_PER_AU;
+  return km >= AU_FROM_KM ? { value: au, unit: 'au' } : { value: km, unit: 'km' };
+}
+
+const THREE_SIGNIFICANT = new Intl.NumberFormat('en-US', { minimumSignificantDigits: 3, maximumSignificantDigits: 3 });
+
+/** The readout's figures: three significant figures at every size, grouped (Celestia's significant digits, C7); zero as 0. */
+export function readoutFigures(value: number): string {
+  return value === 0 ? '0' : THREE_SIGNIFICANT.format(value);
 }
 
 const distance = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);

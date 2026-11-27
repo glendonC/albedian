@@ -1528,13 +1528,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               {!freeFlight && shownFlight.toStarLy === null ? (
                 <>
                   <p className="flight-readout__nodistance">{NO_DISTANCE_LINE}</p>
-                  <p className="flight-readout__view">{`Your view is ${threeFigures(shownFlight.fromEarthLy)} ly from Earth.`}</p>
+                  <p className="flight-readout__view">{`Your view is ${threeFigures(readoutDistance(shownFlight.fromEarthLy).value)} ${readoutDistance(shownFlight.fromEarthLy).unit} from Earth.`}</p>
                 </>
               ) : (
               <div className="flight-readout__stats">
                 {shownFlight.toStarLy !== null && (
                   <div className="flight-readout__stat">
-                    {/* near-star-flight-one: astronomical units below a tenth of a light year (nearStar.ts readoutDistance) */}
+                    {/* readout-units-one: every distance in Celestia's bands, ly, au or km (nearStar.ts readoutDistance) */}
                     <b>
                       {threeFigures(readoutDistance(shownFlight.toStarLy).value)}
                       <small>{readoutDistance(shownFlight.toStarLy).unit}</small>
@@ -1544,8 +1544,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                 )}
                 <div className="flight-readout__stat">
                   <b>
-                    {threeFigures(shownFlight.fromEarthLy)}
-                    <small>ly</small>
+                    {threeFigures(readoutDistance(shownFlight.fromEarthLy).value)}
+                    <small>{readoutDistance(shownFlight.fromEarthLy).unit}</small>
                   </b>
                   <span>from Earth</span>
                 </div>

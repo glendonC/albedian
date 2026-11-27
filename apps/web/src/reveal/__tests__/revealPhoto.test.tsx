@@ -917,16 +917,30 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
   });
 
   // near-star-flight-one (DECIDED-BY-LEAD 25 Nov 07:28, condition two): near the star the distance to it reads in
-  // astronomical units below a tenth of a light year, where two decimals of a light year would leave one figure
-  it('gives the distance to the star in astronomical units below a tenth of a light year (near-star-flight-one)', () => {
+  // readout-units-one (UIUX-flight-READY "The readout's units near a star", DECIDED-BY-LEAD 27 Nov 00:21): Celestia's
+  // bands for every distance the readout shows, ly from 1,000 au, au from 10 million km, km below, three figures each
+  it('gives every distance in Celestia\'s bands with three figures (readout-units-one)', () => {
     const { session } = rigelPicked();
     const stats = () => [...q(READOUT)!.querySelectorAll('.flight-readout__stat')].map((s) => [s.querySelector('b')!.textContent, s.querySelector('span')!.textContent]);
     show(session, { flight: { name: 'Rigel', toStarLy: 0.1, fromEarthLy: 859.43 } });
-    expect(stats()).toEqual([['0.10ly', 'to Rigel'], ['859ly', 'from Earth']]);
+    expect(stats()).toEqual([['0.100ly', 'to Rigel'], ['859ly', 'from Earth']]);
     show(session, { flight: { name: 'Rigel', toStarLy: 0.05, fromEarthLy: 859.43 } });
-    expect(stats()).toEqual([['3,162AU', 'to Rigel'], ['859ly', 'from Earth']]);
-    show(session, { flight: { name: 'Rigel', toStarLy: 0.001, fromEarthLy: 859.43 } });
-    expect(stats()).toEqual([['63.2AU', 'to Rigel'], ['859ly', 'from Earth']]);
+    expect(stats()).toEqual([['0.0500ly', 'to Rigel'], ['859ly', 'from Earth']]);
+    show(session, { flight: { name: 'Rigel', toStarLy: 0.01, fromEarthLy: 859.43 } });
+    expect(stats()).toEqual([['632au', 'to Rigel'], ['859ly', 'from Earth']]);
+    show(session, { flight: { name: 'Rigel', toStarLy: 1e-6, fromEarthLy: 859.43 } });
+    expect(stats()).toEqual([['9,460,000km', 'to Rigel'], ['859ly', 'from Earth']]);
+    // from Earth too, near the Sun
+    show(session, { flight: { name: 'Rigel', toStarLy: 859.43, fromEarthLy: 0.001 } });
+    expect(stats()).toEqual([['859ly', 'to Rigel'], ['63.2au', 'from Earth']]);
+  });
+
+  it('gives the no-distance line\'s distance from Earth in the same bands (readout-units-one)', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Omega Centauri', toStarLy: null, fromEarthLy: 0.001 } });
+    expect(q('.flight-readout__view')!.textContent).toBe('Your view is 63.2 au from Earth.');
+    show(session, { flight: { name: 'Omega Centauri', toStarLy: null, fromEarthLy: 391.2 } });
+    expect(q('.flight-readout__view')!.textContent).toBe('Your view is 391 ly from Earth.');
   });
 
   // flight-readout-nodistance-one (UIUX-flight-READY.md, the addition of 20:05; DECIDED-BY-LEAD 20:09 on 24 Nov; FIELD saw
