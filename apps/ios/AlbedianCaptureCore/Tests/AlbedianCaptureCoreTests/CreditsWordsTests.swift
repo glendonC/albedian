@@ -24,7 +24,7 @@ final class CreditsWordsTests: XCTestCase {
     func testTheApprovedRowsStayInTheirOrderAndKeepTheirOwnLinesFirst() throws {
         XCTAssertEqual(CreditsWords.rows.map(\.label), ["Milky Way photograph", "Star catalogs", "Type", "Icons"])
         XCTAssertEqual(Array(try row("Milky Way photograph").lines.prefix(3)), ["ESO/S. Brunier", "The Milky Way panorama, eso0932a", "CC BY 4.0"])
-        XCTAssertEqual(Array(try row("Star catalogs").lines.prefix(2)), ["ESA Hipparcos, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3"])
+        XCTAssertEqual(Array(try row("Star catalogs").lines.prefix(2)), ["ESA, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3"])
         XCTAssertEqual(try row("Type").lines, ["Geist, SIL Open Font License"])
         XCTAssertEqual(try row("Icons").lines, ["Phosphor Icons, MIT License"])
         XCTAssertEqual(CreditsWords.rows.map(\.page), [.milkyWayPhotograph, .starCatalogs, nil, nil])
@@ -60,5 +60,28 @@ final class CreditsWordsTests: XCTestCase {
         XCTAssertEqual(CreditsWords.starNamesCitation, names["citation"] as? String)
         XCTAssertEqual(CreditsWords.starNamesLicence, licence["name"] as? String)
         XCTAssertEqual(Array(lines.suffix(3)), [CreditsWords.starNamesCredit, CreditsWords.starNamesCitation, CreditsWords.starNamesLicence])
+    }
+
+    /// credits-esa-words-m (ASSETS' note to MOBILE after credits-esa-form-one, the lead's 00:26 ruling): each catalog is
+    /// credited as its record credits it, Hipparcos "ESA" as ESA's catalogue page asks, and every star source whose terms
+    /// ask to cite shows its record's citation word for word, once, as the web's Credits does; one that does not ask
+    /// shows none.
+    func testEachCatalogIsCreditedAndCitedAsItsRecordSays() throws {
+        let lines = try row("Star catalogs").lines
+        let hipparcos = try source("hipparcos-2007", in: stars)
+        let gaia = try source("gaia-dr3", in: stars)
+        XCTAssertEqual(lines[0], "\(try XCTUnwrap(hipparcos["credit"] as? String)), Hipparcos 2007")
+        XCTAssertEqual(lines[1], "\(try XCTUnwrap(gaia["credit"] as? String)), Gaia DR3")
+        for source in try sources(stars) {
+            let id = source["id"] as? String ?? "?"
+            let conditions = (source["license"] as? [String: Any])?["conditions"] as? String ?? ""
+            let citation = try XCTUnwrap(source["citation"] as? String, id)
+            let asks = conditions.range(of: "\\bcite\\b", options: [.regularExpression, .caseInsensitive]) != nil
+            XCTAssertEqual(lines.filter { $0 == citation }.count, asks ? 1 : 0, id)
+        }
+        XCTAssertEqual(CreditsWords.gaiaCitation, gaia["citation"] as? String)
+        // Gaia's citation follows its acknowledgement, as the web's block orders acknowledgements before citations
+        let acknowledgement = try XCTUnwrap(lines.firstIndex(of: CreditsWords.gaiaAcknowledgement))
+        XCTAssertEqual(lines[acknowledgement + 1], CreditsWords.gaiaCitation)
     }
 }

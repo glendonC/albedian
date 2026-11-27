@@ -15,6 +15,10 @@ public enum CreditsWords {
     /// The Gaia DR3 record's acknowledgement, word for word. Shown, never opened.
     public static let gaiaAcknowledgement = "This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement."
 
+    /// The Gaia DR3 record's citation, word for word: ESA asks research using Gaia DR3 to cite the mission paper and the
+    /// release paper (credits-esa-words-m, after ASSETS' credits-esa-form-one).
+    public static let gaiaCitation = "Gaia Collaboration, Prusti, T., et al. 2016, A&A 595, A1; Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1"
+
     /// The IAU catalog of star names: its terms ask to mention the source and cite it; the aim overlay draws its names.
     public static let starNamesCredit = "IAU Working Group on Star Names (WGSN)"
     public static let starNamesCitation = "IAU Working Group on Star Names, IAU Catalog of Star Names"
@@ -35,7 +39,7 @@ public enum CreditsWords {
         Row(label: "Milky Way photograph",
             lines: ["ESO/S. Brunier", "The Milky Way panorama, eso0932a", "CC BY 4.0", milkyWayChange()], page: .milkyWayPhotograph),
         Row(label: "Star catalogs",
-            lines: ["ESA Hipparcos, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3", "CC BY-NC 3.0 IGO", gaiaAcknowledgement,
+            lines: ["ESA, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3", "CC BY-NC 3.0 IGO", gaiaAcknowledgement, gaiaCitation,
                     starNamesCredit, starNamesCitation, starNamesLicence],
             page: .starCatalogs),
         Row(label: "Type", lines: ["Geist, SIL Open Font License"], page: nil),
