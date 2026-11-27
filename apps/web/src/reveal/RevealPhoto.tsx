@@ -38,6 +38,7 @@ import { readoutDistance } from '../spatial/flight/nearStar.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { isSideways, phoneSlotIn, phoneSlotRect } from './phoneSlot.js';
 import { cardMarkShift, coveredBySidewaysCard, sidewaysCardBox } from './cardMark.js';
+import { hintSide, markAtPress, type DrawnRing } from './markPress.js';
 import { PhoneAlignRefused, PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
@@ -56,6 +57,16 @@ export function pressHintMarkOf(marks: readonly RevealMark[]): RevealMark | null
       .filter((mark) => mark.kind === 'catalog' && mark.name !== null && mark.deepSky === null)
       .sort((a, b) => (a.finding.catalogRef?.apparentMagnitude ?? 99) - (b.finding.catalogRef?.apparentMagnitude ?? 99))[0] ?? null
   );
+}
+
+/**
+ * How far a mark's drawing reaches from its centre (MarkGlyph): a star's ring with its ticks, 9 px at phone width and 12 on
+ * the laptop; a deep-sky symbol 6 (12 across); a predicted ring 7; a picked mark its halo, 22; and any may-be-off ring
+ * around it (mark-press-nearest-one: the hint keeps clear of these).
+ */
+function drawnRingOf(mark: RevealMark, phone: boolean): DrawnRing {
+  const glyph = mark.picked ? 22 : mark.kind === 'catalog' ? (phone ? 9 : 12) : mark.deepSky !== null ? 6 : 7;
+  return { xPx: mark.xPx, yPx: mark.yPx, rPx: Math.max(glyph, mark.uncertaintyPx === null ? 0 : mark.uncertaintyPx + 1) };
 }
 
 /** The first-use hints, each kept on the device once used (UIUX-first-use-wow-READY.md: never back once used). */
@@ -672,6 +683,24 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     pressHintUsed || arriving || there || skyShown || bareFrame || answer || picked !== null
       ? null
       : pressHintMarkOf(drawnMarks);
+  // mark-press-nearest-one (DECIDED-BY-LEAD 23:54 on 26 Nov): the hint stands clear of every other mark's ring, on its
+  // name's side, else the other (markPress.ts hintSide); its size is read from its own layout
+  const pressHintRef = useRef<HTMLParagraphElement>(null);
+  const [pressHintSize, setPressHintSize] = useState({ widthPx: 0, heightPx: 0 });
+  useLayoutEffect(() => {
+    const el = pressHintRef.current;
+    const next = el ? { widthPx: el.offsetWidth, heightPx: el.offsetHeight } : { widthPx: 0, heightPx: 0 };
+    if (next.widthPx !== pressHintSize.widthPx || next.heightPx !== pressHintSize.heightPx) setPressHintSize(next);
+  });
+  const pressHintLeft =
+    pressHintMark !== null &&
+    hintSide(
+      pressHintMark,
+      pressHintMark.nameOnLeft,
+      pressHintSize,
+      drawnMarks.filter((mark) => mark !== pressHintMark).map((mark) => drawnRingOf(mark, phone)),
+      viewW
+    ) === 'left';
   // Line it up yourself (D24), on the laptop's no-match reveal and at phone width alike, over the photo or clip itself
   const alignStart = useMemo(() => startPose(session), [session]);
   const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
@@ -1478,7 +1507,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </svg>
           )
         )}
-        {drawnMarks.map((mark) => {
+        {/* mark-press-nearest-one: a matched star's ring is never hidden under a predicted symbol drawn above it, so the
+            predicted marks are drawn first and the matched ones over them (by order, with no z-index, which would lift the
+            marks over the compare's labels drawn after them) */}
+        {[...drawnMarks.filter((m) => m.kind === 'predicted'), ...drawnMarks.filter((m) => m.kind !== 'predicted')].map((mark) => {
           const coveredByPhoneCard = coveredByPhoneCardAt(mark.xPx, mark.yPx);
           return (
             <button
@@ -1495,7 +1527,28 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               }
               aria-pressed={mark.picked}
               style={{ left: `${mark.xPx}px`, top: `${mark.yPx}px`, '--mark-i': arrival.get(mark.finding.id) } as React.CSSProperties}
-              onClick={() => onSelectFinding(mark.finding.id, { xPx: mark.xPx, yPx: mark.yPx })}
+              onClick={(event) => {
+                // mark-press-nearest-one: a key press (no pointer) opens this mark; a pointer's press on a mark's name
+                // opens that mark (version two, AUDIT-C's D4: a name is its mark's own, even where another mark's square
+                // is drawn over it), read from the names' laid-out boxes; else the nearest mark whose target holds it,
+                // matched before predicted at an equal distance (markPress.ts)
+                const layerEl = event.currentTarget.parentElement;
+                const layer = layerEl?.getBoundingClientRect();
+                const pressable = drawnMarks.filter((m) => !coveredByPhoneCardAt(m.xPx, m.yPx));
+                const named =
+                  event.detail > 0
+                    ? pressable.find((m) => {
+                        const n = layerEl?.querySelector(`[data-testid="reveal-mark-${m.finding.id}"] .reveal-mark__name`)?.getBoundingClientRect();
+                        return n !== undefined && n.width > 0 && event.clientX >= n.left && event.clientX <= n.right && event.clientY >= n.top && event.clientY <= n.bottom;
+                      })
+                    : undefined;
+                const nearest =
+                  event.detail > 0 && !named && layer
+                    ? markAtPress(pressable, { xPx: event.clientX - layer.left, yPx: event.clientY - layer.top })
+                    : null;
+                const chosen = named ?? nearest ?? mark;
+                onSelectFinding(chosen.finding.id, { xPx: chosen.xPx, yPx: chosen.yPx });
+              }}
             >
               <MarkGlyph mark={mark} phone={phone} />
               {mark.name !== null && <span className="reveal-mark__name">{mark.name}</span>}
@@ -1507,7 +1560,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {pressHintMark && (
         <p
-          className={pressHintMark.nameOnLeft ? 'reveal-hint is-left' : 'reveal-hint'}
+          ref={pressHintRef}
+          className={pressHintLeft ? 'reveal-hint is-left' : 'reveal-hint'}
           data-testid="reveal-hint"
           style={{ left: `${pressHintMark.xPx}px`, top: `${pressHintMark.yPx}px` }}
         >

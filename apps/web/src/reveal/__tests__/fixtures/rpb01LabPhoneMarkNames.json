@@ -1,0 +1,1176 @@
+{
+ "about": "The marks the reveal drew on the public photo rp-b-01 (FIELD's copy rp-b-01-lab.jpg) at the phone's three sizes, read live by WEB-UX for hint-place-one on lane/web-ux-mark-press-nearest (main af49f9b26), headless Chrome with touch: each mark's centre and its name's box (left, top, right, bottom) in the marks layer's CSS px, null where no name is drawn; and the hint's width and height.",
+ "sizes": [
+  {
+   "window": [
+    402,
+    714
+   ],
+   "hint": [
+    141.3,
+    16.8
+   ],
+   "marks": [
+    {
+     "name": "NGC 6025",
+     "xPx": 340.5,
+     "yPx": 463.6,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5138",
+     "xPx": 199.5,
+     "yPx": 247.3,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Omega Centauri",
+     "xPx": 50.2,
+     "yPx": 278.4,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "S Nor Cluster",
+     "xPx": 338.7,
+     "yPx": 508.7,
+     "predicted": true,
+     "deepSky": true,
+     "label": [
+      260.8,
+      503.2,
+      326.7,
+      514.2
+     ]
+    },
+    {
+     "name": "NGC 5662",
+     "xPx": 209.4,
+     "yPx": 368.7,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5460",
+     "xPx": 87.8,
+     "yPx": 361.3,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5281",
+     "xPx": 255.8,
+     "yPx": 264.4,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5316",
+     "xPx": 246,
+     "yPx": 279.1,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Alpha Lupi",
+     "xPx": 107,
+     "yPx": 436,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Muscae",
+     "xPx": 367,
+     "yPx": 152,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6125166320994675456",
+     "xPx": 99,
+     "yPx": 110,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Centauri",
+     "xPx": 54,
+     "yPx": 175,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tau Centauri",
+     "xPx": 48,
+     "yPx": 167,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Sigma Centauri",
+     "xPx": 70,
+     "yPx": 145,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alpha Muscae",
+     "xPx": 325,
+     "yPx": 158,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Imai",
+     "xPx": 186,
+     "yPx": 123,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Delta Muscae",
+     "xPx": 359,
+     "yPx": 185,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Eta Centauri",
+     "xPx": 35,
+     "yPx": 456,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Trianguli Australis",
+     "xPx": 380,
+     "yPx": 342,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Epsilon Muscae",
+     "xPx": 310,
+     "yPx": 133,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gacrux",
+     "xPx": 163,
+     "yPx": 152,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      111.4,
+      146.5,
+      147,
+      157.5
+     ]
+    },
+    {
+     "name": "Gaia DR3 6075953898506794496",
+     "xPx": 137,
+     "yPx": 128,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Zeta Centauri",
+     "xPx": 66,
+     "yPx": 341,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Iota Lupi",
+     "xPx": 69,
+     "yPx": 398,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Ginan",
+     "xPx": 207,
+     "yPx": 135,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Epsilon Centauri",
+     "xPx": 135,
+     "yPx": 287,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6077604196752635648",
+     "xPx": 87,
+     "yPx": 142,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Beta Trianguli Australis",
+     "xPx": 360,
+     "yPx": 425,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6127817277882986496",
+     "xPx": 52,
+     "yPx": 178,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6085579126381717504",
+     "xPx": 57,
+     "yPx": 201,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Hadar",
+     "xPx": 233,
+     "yPx": 300,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      249,
+      294.5,
+      278.8,
+      305.5
+     ]
+    },
+    {
+     "name": "Gaia DR3 6061204980842862336",
+     "xPx": 156,
+     "yPx": 181,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi1 Centauri",
+     "xPx": 68,
+     "yPx": 223,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5849837854861497856",
+     "xPx": 311,
+     "yPx": 328,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Iota Crucis",
+     "xPx": 216,
+     "yPx": 176,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mimosa",
+     "xPx": 199,
+     "yPx": 180,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi2 Centauri",
+     "xPx": 74,
+     "yPx": 230,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5892368991819163136",
+     "xPx": 195,
+     "yPx": 345,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6053327426740164992",
+     "xPx": 256,
+     "yPx": 132,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6085229378603010688",
+     "xPx": 54,
+     "yPx": 231,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Acrux",
+     "xPx": 243,
+     "yPx": 145,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    }
+   ]
+  },
+  {
+   "window": [
+    375,
+    667
+   ],
+   "hint": [
+    141.3,
+    16.8
+   ],
+   "marks": [
+    {
+     "name": "NGC 6025",
+     "xPx": 317.6,
+     "yPx": 430,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Pearl Cluster",
+     "xPx": 217.7,
+     "yPx": 51.9,
+     "predicted": true,
+     "deepSky": true,
+     "label": [
+      229.7,
+      46.4,
+      293.3,
+      57.4
+     ]
+    },
+    {
+     "name": "NGC 5138",
+     "xPx": 186.1,
+     "yPx": 228.3,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Omega Centauri",
+     "xPx": 46.8,
+     "yPx": 257.2,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "S Nor Cluster",
+     "xPx": 316,
+     "yPx": 472,
+     "predicted": true,
+     "deepSky": true,
+     "label": [
+      238,
+      466.5,
+      304,
+      477.5
+     ]
+    },
+    {
+     "name": "NGC 5662",
+     "xPx": 195.4,
+     "yPx": 341.5,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5460",
+     "xPx": 81.9,
+     "yPx": 334.6,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5281",
+     "xPx": 238.7,
+     "yPx": 244.2,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5316",
+     "xPx": 229.5,
+     "yPx": 257.9,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Alpha Lupi",
+     "xPx": 100,
+     "yPx": 404,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Muscae",
+     "xPx": 342,
+     "yPx": 139,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6125166320994675456",
+     "xPx": 93,
+     "yPx": 100,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Centauri",
+     "xPx": 50,
+     "yPx": 161,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tau Centauri",
+     "xPx": 44,
+     "yPx": 153,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Sigma Centauri",
+     "xPx": 65,
+     "yPx": 132,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alpha Muscae",
+     "xPx": 303,
+     "yPx": 145,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Delta Muscae",
+     "xPx": 335,
+     "yPx": 170,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Eta Centauri",
+     "xPx": 33,
+     "yPx": 423,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Trianguli Australis",
+     "xPx": 355,
+     "yPx": 316,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Epsilon Muscae",
+     "xPx": 289,
+     "yPx": 122,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gacrux",
+     "xPx": 152,
+     "yPx": 139,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      100.4,
+      133.5,
+      136,
+      144.5
+     ]
+    },
+    {
+     "name": "Zeta Centauri",
+     "xPx": 61,
+     "yPx": 316,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Iota Lupi",
+     "xPx": 65,
+     "yPx": 368,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Ginan",
+     "xPx": 194,
+     "yPx": 124,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Epsilon Centauri",
+     "xPx": 126,
+     "yPx": 265,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6077604196752635648",
+     "xPx": 81,
+     "yPx": 130,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Beta Trianguli Australis",
+     "xPx": 336,
+     "yPx": 394,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6127817277882986496",
+     "xPx": 49,
+     "yPx": 163,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6085579126381717504",
+     "xPx": 53,
+     "yPx": 185,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Hadar",
+     "xPx": 217,
+     "yPx": 277,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      233,
+      271.5,
+      262.8,
+      282.5
+     ]
+    },
+    {
+     "name": "Gaia DR3 6061204980842862336",
+     "xPx": 146,
+     "yPx": 166,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi1 Centauri",
+     "xPx": 63,
+     "yPx": 206,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5849837854861497856",
+     "xPx": 290,
+     "yPx": 303,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Iota Crucis",
+     "xPx": 201,
+     "yPx": 162,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mimosa",
+     "xPx": 185,
+     "yPx": 166,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi2 Centauri",
+     "xPx": 69,
+     "yPx": 212,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5892368991819163136",
+     "xPx": 182,
+     "yPx": 319,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6053327426740164992",
+     "xPx": 239,
+     "yPx": 121,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6085229378603010688",
+     "xPx": 51,
+     "yPx": 213,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Acrux",
+     "xPx": 227,
+     "yPx": 132,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    }
+   ]
+  },
+  {
+   "window": [
+    390,
+    844
+   ],
+   "hint": [
+    141.3,
+    16.8
+   ],
+   "marks": [
+    {
+     "name": "lam Cen Nebula",
+     "xPx": 245.1,
+     "yPx": 134.3,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 6025",
+     "xPx": 330.3,
+     "yPx": 524.1,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Pearl Cluster",
+     "xPx": 226.4,
+     "yPx": 130.9,
+     "predicted": true,
+     "deepSky": true,
+     "label": [
+      150.8,
+      125.4,
+      214.4,
+      136.4
+     ]
+    },
+    {
+     "name": "NGC 5138",
+     "xPx": 193.6,
+     "yPx": 314.3,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Omega Centauri",
+     "xPx": 48.7,
+     "yPx": 344.4,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "S Nor Cluster",
+     "xPx": 328.6,
+     "yPx": 567.8,
+     "predicted": true,
+     "deepSky": true,
+     "label": [
+      250.6,
+      562.3,
+      316.6,
+      573.3
+     ]
+    },
+    {
+     "name": "NGC 5662",
+     "xPx": 203.2,
+     "yPx": 432.1,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5460",
+     "xPx": 85.2,
+     "yPx": 424.9,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 6067",
+     "xPx": 287.8,
+     "yPx": 598.1,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5281",
+     "xPx": 248.2,
+     "yPx": 330.9,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "NGC 5316",
+     "xPx": 238.7,
+     "yPx": 345.1,
+     "predicted": true,
+     "deepSky": true,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5236306071562633344",
+     "xPx": 291,
+     "yPx": 159,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5233836018668907776",
+     "xPx": 336,
+     "yPx": 172,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alpha Lupi",
+     "xPx": 104,
+     "yPx": 497,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Muscae",
+     "xPx": 356,
+     "yPx": 222,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6125166320994675456",
+     "xPx": 96,
+     "yPx": 181,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mu Muscae",
+     "xPx": 291,
+     "yPx": 163,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Centauri",
+     "xPx": 52,
+     "yPx": 244,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Tau Centauri",
+     "xPx": 46,
+     "yPx": 236,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Sigma Centauri",
+     "xPx": 68,
+     "yPx": 215,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Alpha Muscae",
+     "xPx": 315,
+     "yPx": 228,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Imai",
+     "xPx": 180,
+     "yPx": 194,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Delta Muscae",
+     "xPx": 348,
+     "yPx": 253,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5333974693006467328",
+     "xPx": 245,
+     "yPx": 135,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Eta Centauri",
+     "xPx": 34,
+     "yPx": 517,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gamma Trianguli Australis",
+     "xPx": 369,
+     "yPx": 406,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Epsilon Muscae",
+     "xPx": 301,
+     "yPx": 204,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gacrux",
+     "xPx": 158,
+     "yPx": 222,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      106.4,
+      216.5,
+      142,
+      227.5
+     ]
+    },
+    {
+     "name": "Gaia DR3 5334994490080052352",
+     "xPx": 217,
+     "yPx": 148,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6075953898506794496",
+     "xPx": 133,
+     "yPx": 198,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Zeta Centauri",
+     "xPx": 64,
+     "yPx": 405,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Iota Lupi",
+     "xPx": 67,
+     "yPx": 460,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Ginan",
+     "xPx": 201,
+     "yPx": 205,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Epsilon Centauri",
+     "xPx": 131,
+     "yPx": 353,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6077604196752635648",
+     "xPx": 84,
+     "yPx": 212,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Beta Trianguli Australis",
+     "xPx": 349,
+     "yPx": 486,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5333141675530343936",
+     "xPx": 251,
+     "yPx": 159,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6127817277882986496",
+     "xPx": 51,
+     "yPx": 247,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5334135702753475200",
+     "xPx": 231,
+     "yPx": 141,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6085579126381717504",
+     "xPx": 55,
+     "yPx": 270,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6126517517699891712",
+     "xPx": 73,
+     "yPx": 171,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Hadar",
+     "xPx": 226,
+     "yPx": 365,
+     "predicted": false,
+     "deepSky": false,
+     "label": [
+      242,
+      359.5,
+      271.8,
+      370.5
+     ]
+    },
+    {
+     "name": "Gaia DR3 6061204980842862336",
+     "xPx": 152,
+     "yPx": 250,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi1 Centauri",
+     "xPx": 66,
+     "yPx": 291,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5849837854861497856",
+     "xPx": 302,
+     "yPx": 392,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Iota Crucis",
+     "xPx": 209,
+     "yPx": 245,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Mimosa",
+     "xPx": 193,
+     "yPx": 249,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Xi2 Centauri",
+     "xPx": 72,
+     "yPx": 297,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 5892368991819163136",
+     "xPx": 189,
+     "yPx": 409,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6053327426740164992",
+     "xPx": 248,
+     "yPx": 203,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Gaia DR3 6085229378603010688",
+     "xPx": 53,
+     "yPx": 299,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Theta1 Crucis",
+     "xPx": 241,
+     "yPx": 178,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Acrux",
+     "xPx": 236,
+     "yPx": 215,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    },
+    {
+     "name": "Theta2 Crucis",
+     "xPx": 239,
+     "yPx": 180,
+     "predicted": false,
+     "deepSky": false,
+     "label": null
+    }
+   ]
+  }
+ ]
+}
