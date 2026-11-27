@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Vec3 } from './craftLight.js';
+import { ACES_INPUT_SCALE, CRAFT_HIGHLIGHT_CEILING_INPUT, CRAFT_WHITE_CAP_INPUT, type Vec3 } from './craftLight.js';
 import { fillOcclusionShader } from './craftFillOcclusion.js';
 
 /**
@@ -29,6 +29,25 @@ const PATCHED = new WeakSet<THREE.Material>();
 /** The fragment lines the edge light adds just before the material's output (three r187's MeshStandardMaterial). */
 export const EDGE_FRAGMENT = 'outgoingLight += diffuseColor.rgb * uEdgeColor * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), uEdgePower);';
 
+const glslFloat = (v: number) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
+const KNEE = glslFloat(CRAFT_WHITE_CAP_INPUT);
+const SPAN = glslFloat(CRAFT_HIGHLIGHT_CEILING_INPUT - CRAFT_WHITE_CAP_INPUT);
+
+/**
+ * foil-clip-one (the lit-white cap held for every light): craftLight.ts's highlightRollOff on the whole outgoing light,
+ * the edge light with it, by its largest channel at the exposure three's ACES reads (toneMappingExposure over 0.6), so
+ * a glint keeps its colour and no surface goes to white; nothing changes at or under the cap, and nothing where three
+ * does not tone map.
+ */
+export const HIGHLIGHT_FRAGMENT = [
+  '#ifdef TONE_MAPPING',
+  '{',
+  `  float craftPeak = max( max( outgoingLight.r, outgoingLight.g ), outgoingLight.b ) * toneMappingExposure / ${glslFloat(ACES_INPUT_SCALE)};`,
+  `  if ( craftPeak > ${KNEE} ) outgoingLight *= ( ${KNEE} + ${SPAN} * ( 1.0 - exp( - ( craftPeak - ${KNEE} ) / ${SPAN} ) ) ) / craftPeak;`,
+  '}',
+  '#endif',
+].join('\n');
+
 /** Patches each standard material of a model once, sharing `uniforms`; other materials are left as they are. */
 export function addEdgeLight(model: THREE.Object3D, uniforms: EdgeLightUniforms): number {
   let patched = 0;
@@ -43,7 +62,7 @@ export function addEdgeLight(model: THREE.Object3D, uniforms: EdgeLightUniforms)
         shader.uniforms.uEdgePower = uniforms.uEdgePower;
         shader.fragmentShader = shader.fragmentShader
           .replace('#include <common>', '#include <common>\nuniform vec3 uEdgeColor;\nuniform float uEdgePower;')
-          .replace('#include <opaque_fragment>', `${EDGE_FRAGMENT}\n#include <opaque_fragment>`);
+          .replace('#include <opaque_fragment>', `${EDGE_FRAGMENT}\n${HIGHLIGHT_FRAGMENT}\n#include <opaque_fragment>`);
         // craft-ao-fill-one: the sky fill's occlusion, in the programs of the materials markFillOcclusion marked
         fillOcclusionShader(shader);
       };

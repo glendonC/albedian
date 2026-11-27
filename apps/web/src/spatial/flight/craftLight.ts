@@ -12,9 +12,8 @@ import { placeFinding } from './flightFrame.js';
  * - the fill is the sky's own light, held since craft-light-two at a ruled ratio to the key, since craft-fill-eight-one
  *   eight to one far from any star and rising to sixteen to one beside one (keyToFillOf, craftLighting, below);
  * - the exposure is metered as a camera meters, on the side of the craft the camera sees, at the photographic middle
- *   grey, and nothing holds it down: beside a very bright star the star-lit rim may reach white, as a backlit subject's
- *   rim does in any photograph, and the tone map's own shoulder takes it (the lead dropped the cap at 16:08, since
- *   holding it left the craft near black).
+ *   grey, held since chase-light-one so the brightest lit white sits at CRAFT_WHITE_CAP_INPUT; since foil-clip-one every
+ *   light above that cap, a metal's glint and the edge light among them, rolls off under white (highlightRollOff).
  * Units: the key's irradiance on a surface facing it is 1 (a three.js DirectionalLight of intensity 1).
  */
 
@@ -298,6 +297,34 @@ export const CRAFT_BACKLIT_STOPS = 1.5;
  * gives about code 206 there.
  */
 export const CRAFT_WHITE_CAP_INPUT = 1;
+
+/**
+ * foil-clip-one (DECIDED-BY-LEAD 27 Nov 12:04: the lit-white cap held for every light): the ACES input no surface of
+ * the craft may reach under any light. The exposure's cap counts a white surface that scatters evenly; a metal's glint
+ * does not (New Horizons' gold foil at roughness 0.3, three's GGX, is about 31 times that white facing the key and more
+ * at a grazing rim), so above the cap every light is rolled off toward this: a white here is code 245 under three
+ * r187's ACES, over the lit white's 206 so a glint still reads, and under the 254 the film check counts as clipped.
+ */
+export const CRAFT_HIGHLIGHT_CEILING_INPUT = 4;
+
+/**
+ * foil-clip-one: an ACES input after the craft's highlight shoulder: as it is at or under CRAFT_WHITE_CAP_INPUT; above
+ * it rising from the same slope and closing on CRAFT_HIGHLIGHT_CEILING_INPUT, never reaching it. The shader's
+ * HIGHLIGHT_FRAGMENT (craftEdgeLight.ts) is this curve.
+ */
+export function highlightRollOff(input: number): number {
+  if (!(input > CRAFT_WHITE_CAP_INPUT)) return input;
+  const span = CRAFT_HIGHLIGHT_CEILING_INPUT - CRAFT_WHITE_CAP_INPUT;
+  return CRAFT_WHITE_CAP_INPUT + span * (1 - Math.exp(-(input - CRAFT_WHITE_CAP_INPUT) / span));
+}
+
+/** foil-clip-one: a surface's linear radiance held by the shoulder at an exposure, scaled by its largest channel so its colour stays. */
+export function heldHighlight(radiance: Vec3, exposure: number): Vec3 {
+  const peak = (Math.max(radiance[0], radiance[1], radiance[2]) * exposure) / ACES_INPUT_SCALE;
+  if (!(peak > CRAFT_WHITE_CAP_INPUT)) return radiance;
+  const k = highlightRollOff(peak) / peak;
+  return [radiance[0] * k, radiance[1] * k, radiance[2] * k];
+}
 
 /** How far the key is behind the craft from the camera: 1 straight behind, 0 beside it or behind the camera. */
 export function keyBehindCraft(craftFromCameraM: Vec3, keyDirection: Vec3): number {
