@@ -12,7 +12,7 @@
 	<key>NSMotionUsageDescription</key>
 	<string>Albedian records which way the phone pointed for each photo, as a hint for finding its stars.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Albedian uses your location while you aim to find true north and the sky above you, and sends it only to your laptop.</string>
+	<string>Albedian uses your location while you aim to find true north and the sky above you, and sends it only to Albedian on your laptop.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Albedian sends your photo and where the phone pointed to your laptop on this network.</string>
 	<key>UIAppFonts</key>

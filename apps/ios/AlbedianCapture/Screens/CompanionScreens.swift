@@ -451,7 +451,7 @@ struct ShotPhoto: View {
     }
 }
 
-/// After the shot (arrive iPhone 5): take again, the photo as shot, and "Send". When the laptop cannot be reached
+/// After the shot (arrive iPhone 5, with UIUX-iphone-firstuse-READY item 2): take again, the photo as shot, and "Send to laptop". When the laptop cannot be reached
 /// (UIUX-unreachable): under the photo "Can't reach the laptop" and "Your photo is kept on this phone.", then "Try
 /// again" and "Change address". No byte count and no spinner; while the solve runs the screen stays as it is and the
 /// result follows (arrive iPhone 5).
@@ -524,7 +524,8 @@ struct AfterShotScreen: View {
                     .atBottom(Arrive.unreachableButtonsBottomGap)
                     .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
                 } else if !model.unreachable && arrived {
-                    MainButton(title: "Send", icon: .send, action: model.send).atBottom(Arrive.mainBottomGap)
+                    // firstuse-send-one (UIUX-iphone-firstuse-READY item 2): the button says where the send goes
+                    MainButton(title: SendWords.mainButton, icon: .send, action: model.send).atBottom(Arrive.mainBottomGap)
                         .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
                 }
             }

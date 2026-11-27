@@ -65,6 +65,15 @@ public enum ConnectLayout {
     public static var connectTop: Double { messageTop + roomHeight + 12 }
 }
 
+/// The words the record gives Send's first use (UIUX-iphone-firstuse-READY item 2): where the send goes, on the button
+/// and in the location ask, in the term Connect uses.
+public enum SendWords {
+    /// The main button after the shot.
+    public static let mainButton = "Send to laptop"
+    /// The system's location ask (`NSLocationWhenInUseUsageDescription`).
+    public static let locationReason = "Albedian uses your location while you aim to find true north and the sky above you, and sends it only to Albedian on your laptop."
+}
+
 /// The words the record gives Connect's first use (UIUX-iphone-firstuse-READY item 1).
 public enum ConnectWords {
     /// The pill on Aim while no laptop is kept.
