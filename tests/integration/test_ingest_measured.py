@@ -18,6 +18,7 @@ from services.contracts.astronomy import SourceDetection
 from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
 from services.ingest import runner as job_runner
+from services.ingest.job_store import instant
 from services.ingest.runner import JobContext, KindResult
 from tests.integration.test_job_routes import BOUND_S, _png, _starfield, _until_state, setup  # noqa: F401
 
@@ -105,7 +106,9 @@ def test_the_real_solve_publishes_the_detections_its_solution_holds_as_observed(
     job = client.post(f"/api/ingest/{sha}/solve").json()
     ended = _until_state(client, job["id"], ("succeeded", "failed"))
     assert ended["state"] == "succeeded", ended
-    assert "measuredAtUTC" in ended and ended["startedAtUTC"] <= ended["measuredAtUTC"] <= ended["finishedAtUTC"]
+    # As instants: a stamp on a whole second ("...:26Z") sorts after one later in it ("...:26.004Z") as text
+    assert "measuredAtUTC" in ended
+    assert instant(ended["startedAtUTC"]) <= instant(ended["measuredAtUTC"]) <= instant(ended["finishedAtUTC"])
     assert len(caught) == 1
     for detection in caught[0]:
         SourceDetection.model_validate(detection)

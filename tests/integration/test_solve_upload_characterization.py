@@ -690,6 +690,9 @@ STAMP_PATHS = {
     "solve_stops_at_its_bound_before_a_candidate": "succeeded",
     "decode_fails_unexpectedly": "failed",
 }
+# The paths whose detect stage ends, so the job publishes what it measured and reads the clock for it, between its
+# start and its finish (wait-detections-one version two)
+MEASURING_PATHS = frozenset({"photo_that_solves", "solve_stops_at_its_bound_before_a_candidate"})
 
 
 def _job_records(record: dict[str, Any]) -> list[dict[str, Any]]:
@@ -700,22 +703,34 @@ def _job_records(record: dict[str, Any]) -> list[dict[str, Any]]:
 def test_each_stamp_holds_the_moment_it_must(
     name: str, client: TestClient, store: IngestStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The runner reads the clock three times, in order: created, started, finished. Every record it writes and
-    every transition it reports holds the read its field names, exactly, and nothing else."""
+    """The runner reads the clock three times, in order: created, started, finished; four on a path whose detect stage
+    ends: created, started, measured, finished. Every record it writes and every transition it reports holds the read
+    its field names, exactly, and nothing else; the measured time only once it was taken, and from then on."""
     record = run_case(name, client, store, tmp_path, monkeypatch, clock=Clock())
-    assert record["clockReads"] == 3, f"{name}: {record['clockReads']} clock reads"
+    measures = name in MEASURING_PATHS
+    assert record["clockReads"] == (4 if measures else 3), f"{name}: {record['clockReads']} clock reads"
+    finished = "<now 3>" if measures else "<now 2>"
     jobs = _job_records(record)
     assert jobs[0]["state"] == "queued" and jobs[-1]["state"] == STAMP_PATHS[name], [j["state"] for j in jobs]
+    assert ("measuredAtUTC" in jobs[-1]) == measures, f"{name}: the last record's measured time"
+    seen_measured = False
+    for job in jobs:
+        # Once a record says when the job measured, every later record says so too
+        assert not (seen_measured and "measuredAtUTC" not in job), f"{name}/{job['state']}: the measured time dropped"
+        seen_measured = seen_measured or "measuredAtUTC" in job
     for job in [*jobs, *record["transitions"]]:
         assert job["createdAtUTC"] == "<now 0>", f"{name}/{job['state']}: createdAtUTC {job['createdAtUTC']}"
         if job["state"] == "queued":
             assert "startedAtUTC" not in job and "finishedAtUTC" not in job, f"{name}: a queued job with a start"
+            assert "measuredAtUTC" not in job, f"{name}: a queued job that measured"
             continue
         assert job["startedAtUTC"] == "<now 1>", f"{name}/{job['state']}: startedAtUTC {job['startedAtUTC']}"
+        if "measuredAtUTC" in job:
+            assert measures and job["measuredAtUTC"] == "<now 2>", f"{name}/{job['state']}: measuredAtUTC {job['measuredAtUTC']}"
         if job["state"] == "running":
             assert "finishedAtUTC" not in job, f"{name}: a running job with a finish"
         else:
-            assert job["finishedAtUTC"] == "<now 2>", f"{name}/{job['state']}: finishedAtUTC {job['finishedAtUTC']}"
+            assert job["finishedAtUTC"] == finished, f"{name}/{job['state']}: finishedAtUTC {job['finishedAtUTC']}"
     if "returned" in record:
         assert record["returned"] == jobs[-1], f"{name}: the record returned is not the last one written"
 
@@ -724,11 +739,18 @@ def test_each_stamp_holds_the_moment_it_must(
 def test_a_clock_that_steps_back_never_puts_a_stamp_before_the_one_it_follows(
     name: str, client: TestClient, store: IngestStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Each read a minute before the last: the start is the creation and the finish the start, never earlier."""
+    """Each read a minute before the last: the start is the creation, the measured time the start and the finish the
+    last of them, never earlier; and every record is written (wait-detections-one version two)."""
     record = run_case(name, client, store, tmp_path, monkeypatch, clock=Clock(step=-CLOCK_STEP))
-    assert record["clockReads"] == 3, f"{name}: {record['clockReads']} clock reads"
-    final = _job_records(record)[-1]
+    measures = name in MEASURING_PATHS
+    assert record["clockReads"] == (4 if measures else 3), f"{name}: {record['clockReads']} clock reads"
+    jobs = _job_records(record)
+    final = jobs[-1]
+    assert final["state"] == STAMP_PATHS[name], final
     assert (final["createdAtUTC"], final["startedAtUTC"], final["finishedAtUTC"]) == ("<now 0>",) * 3, final
+    assert final.get("measuredAtUTC") == ("<now 0>" if measures else None), final
+    # The record that first says when the job measured is among those written, not only the live one
+    assert any("measuredAtUTC" in job and job["state"] == "running" for job in jobs) == measures, [j["state"] for j in jobs]
 
 
 def test_the_context_a_kind_is_given_cannot_be_changed() -> None:

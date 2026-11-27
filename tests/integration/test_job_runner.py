@@ -1425,6 +1425,73 @@ def test_a_start_on_a_whole_second_is_before_a_predicted_sky_later_in_that_secon
     assert runner.wait(record["id"], BOUND_S)["state"] == "succeeded"
 
 
+def _measured_detections(sha: str) -> list[dict[str, Any]]:
+    """The calibrated fixture's observed detections, as a solve of this upload measures them."""
+    fixture = _solution_payload(sha)
+    return [f["sourceDetection"] for f in fixture["findings"] if f.get("sourceDetection")]
+
+
+@pytest.mark.parametrize("clock", ["steps_back", "set_back_after_publishing", "set_back_after_the_start"])
+@pytest.mark.parametrize("publishes", ["measured", "predicted_sky", "both"])
+def test_a_clock_that_steps_back_keeps_each_published_stamp_within_the_run_and_the_record_written(
+        world: dict[str, Any], monkeypatch: pytest.MonkeyPatch, publishes: str, clock: str) -> None:
+    """wait-detections-one version two (the lead's line stamped 23:51): each read of the runner's clock a minute before
+    the last, or a clock set back after the job published (each publishing read ten minutes on, the finish's read two
+    seconds after the start), or one set back after the start (started five seconds after the creation, every later
+    read two seconds after it). The time a solve says it measured, and the time it published its predicted sky, are
+    never before its start; its finish is never before either; and the record holding them is the one written to disk,
+    live and at the end, as the contract takes it."""
+    start = datetime(2026, 11, 24, 20, 44, 26, tzinfo=timezone.utc)
+    reads: list[datetime] = []
+
+    def stepping_back() -> datetime:
+        n = len(reads)
+        if clock == "steps_back":
+            reads.append(start - timedelta(minutes=n))
+        elif clock == "set_back_after_the_start":
+            # Created, started five seconds on, then every later read two seconds after the creation
+            reads.append(start + timedelta(seconds=(0, 5)[n] if n < 2 else 2))
+        else:
+            # Created and started, then each publish ten minutes on, then the finish's read two seconds after the start
+            publishing = 2 if publishes == "both" else 1
+            reads.append(start + (timedelta(seconds=n) if n < 2 else timedelta(minutes=10, seconds=n)
+                                  if n < 2 + publishing else timedelta(seconds=2)))
+        return reads[-1]
+
+    monkeypatch.setattr(job_runner, "_now", stepping_back)
+    published, release = threading.Event(), threading.Event()
+
+    def body(ctx: JobContext) -> KindResult:
+        if publishes in ("measured", "both"):
+            ctx.measured(_measured_detections(ctx.sha256))
+        if publishes in ("predicted_sky", "both"):
+            ctx.predicted_sky(_approximate_with_pose(ctx.sha256))
+        published.set()
+        assert release.wait(BOUND_S), "the test never released the run"
+        return _publish_solution(ctx)
+
+    world["kinds"]["solve"] = solve_kind(Script(), body)
+    runner, sha = world["runner"](), world["shas"][0]
+    record, _ = runner.start(sha, "solve")
+    assert published.wait(BOUND_S)
+    stamps = {"measured": ["measuredAtUTC"], "predicted_sky": ["predictedSkyAtUTC"],
+              "both": ["measuredAtUTC", "predictedSkyAtUTC"]}[publishes]
+    live = runner.get(record["id"])
+    UploadJob.model_validate(live)
+    on_disk = _on_disk(world["store"], record["id"])
+    for stamp in stamps:
+        assert _starts_by(live["startedAtUTC"], live[stamp]), (stamp, live)
+        assert on_disk[stamp] == live[stamp], f"the record with {stamp} was not written"
+    release.set()
+    ended = runner.wait(record["id"], BOUND_S)
+    assert ended["state"] == "succeeded", ended
+    UploadJob.model_validate(ended)
+    assert _on_disk(world["store"], record["id"]) == ended
+    for stamp in stamps:
+        assert ended[stamp] == live[stamp]
+        assert _starts_by(ended[stamp], ended["finishedAtUTC"]), (stamp, ended)
+
+
 def _starts_by(earlier: str, later: str) -> bool:
     """Whether the UTC stamp `earlier` is no later than `later`, compared as instants, never as strings."""
     return instant(earlier) <= instant(later)

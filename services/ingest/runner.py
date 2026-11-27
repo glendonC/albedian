@@ -679,7 +679,9 @@ class Runner:
 
     def _ended_record(self, job: _Job, state: str, **fields: Any) -> dict[str, Any]:
         record = {k: v for k, v in job.record.items() if k not in ("queueAhead", "error", "finishedAtUTC")}
-        finished = _later(record.get("startedAtUTC"), record.get("cancelRequestedAtUTC"), record["createdAtUTC"])
+        # Never before any stamp the run wrote, its published sky and measured detections among them
+        finished = _later(record.get("startedAtUTC"), record.get("cancelRequestedAtUTC"), record.get("predictedSkyAtUTC"),
+                          record.get("measuredAtUTC"), record["createdAtUTC"])
         return {**record, **fields, "state": state, "finishedAtUTC": finished}
 
     def _commit(self, job: _Job, result: KindResult) -> dict[str, Any]:
@@ -830,7 +832,8 @@ class Runner:
         scratch.write_text(json.dumps(dict(solution)), encoding="utf-8")
         os.replace(scratch, target)
         with self._cond:
-            job.record = {**job.record, "predictedSkyAtUTC": format_utc(_now())}
+            # Never before the start, under a clock that steps back (wait-detections-one version two)
+            job.record = {**job.record, "predictedSkyAtUTC": _later(job.record.get("startedAtUTC"))}
         self._write(job, force=True, quiet=True)
 
     def _measured(self, job: _Job, detections: Sequence[Mapping[str, Any]]) -> None:
@@ -849,7 +852,8 @@ class Runner:
         scratch.write_text(json.dumps(payload), encoding="utf-8")
         os.replace(scratch, target)
         with self._cond:
-            job.record = {**job.record, "measuredAtUTC": format_utc(_now())}
+            # Never before the start, under a clock that steps back (wait-detections-one version two)
+            job.record = {**job.record, "measuredAtUTC": _later(job.record.get("startedAtUTC"))}
         self._write(job, force=True, quiet=True)
 
     def measured(self, job_id: str) -> Optional[dict[str, Any]]:

@@ -7,7 +7,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -38,7 +38,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -217,6 +218,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -229,7 +263,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -268,8 +303,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -380,6 +416,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -704,8 +777,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -766,7 +840,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "camera_with_a_focal_length_in_words": {
   "returned": {
@@ -776,7 +850,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -807,7 +881,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -986,6 +1061,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -998,7 +1106,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -1037,8 +1146,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -1149,6 +1259,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -1473,8 +1620,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -1535,7 +1683,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "camera_with_a_focal_length_that_is_a_flag": {
   "returned": {
@@ -1545,7 +1693,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -1576,7 +1724,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -1755,6 +1904,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -1767,7 +1949,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -1806,8 +1989,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -1918,6 +2102,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -2242,8 +2463,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -2304,7 +2526,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "camera_with_an_unphysical_focal_length": {
   "returned": {
@@ -2314,7 +2536,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -2345,7 +2567,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -2524,6 +2747,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -2536,7 +2792,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -2575,8 +2832,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -2687,6 +2945,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -3011,8 +3306,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -3073,7 +3369,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "camera_with_published_optics": {
   "returned": {
@@ -3083,7 +3379,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -3114,7 +3410,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -3293,6 +3590,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -3305,7 +3635,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -3344,8 +3675,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -3456,6 +3788,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -3780,8 +4149,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -3842,7 +4212,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "child_inputs_of_a_colour_photo": {
   "returned": {
@@ -3852,7 +4222,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -3883,7 +4253,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -4062,6 +4433,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -4074,7 +4478,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -4113,8 +4518,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -4225,6 +4631,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -4549,8 +4992,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -4611,7 +5055,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "child_inputs_of_a_photo_decoded_with_no_colour": {
   "returned": {
@@ -4621,7 +5065,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -4652,7 +5096,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -4831,6 +5276,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -4843,7 +5321,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -4882,8 +5361,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -4994,6 +5474,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -5318,8 +5835,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -5378,7 +5896,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "child_inputs_of_a_photo_stored_turned": {
   "returned": {
@@ -5388,7 +5906,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -5419,7 +5937,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -5598,6 +6117,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -5610,7 +6162,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -5649,8 +6202,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -5761,6 +6315,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -6085,8 +6676,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -6147,7 +6739,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "child_inputs_of_a_two_frame_clip": {
   "returned": {
@@ -6157,7 +6749,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -6194,7 +6786,8 @@
     "frameCount": 2,
     "startSec": "<float>",
     "endSec": "<float>"
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -6417,6 +7010,45 @@
       "unit": "frames",
       "done": 2,
       "total": 2
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "inputSpan": {
+     "firstFrameIndex": 0,
+     "frameCount": 2,
+     "startSec": "<float>",
+     "endSec": "<float>"
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 2,
+      "total": 2
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 2,
+      "total": 2
      },
      {
       "stage": "solve",
@@ -6435,7 +7067,8 @@
      "frameCount": 2,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -6480,8 +7113,9 @@
      "startSec": "<float>",
      "endSec": "<float>"
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -6634,6 +7268,49 @@
       "startSec": "<float>",
       "endSec": "<float>"
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 2,
+       "total": 2
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 2,
+       "total": 2
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "inputSpan": {
+      "firstFrameIndex": 0,
+      "frameCount": 2,
+      "startSec": "<float>",
+      "endSec": "<float>"
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -6964,8 +7641,9 @@
       "startSec": "<float>",
       "endSec": "<float>"
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -7024,7 +7702,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "clip": {
   "returned": {
@@ -7034,7 +7712,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -7081,7 +7759,8 @@
     "frameCount": 3,
     "startSec": "<float>",
     "endSec": "<float>"
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -7304,6 +7983,45 @@
       "unit": "frames",
       "done": 3,
       "total": 3
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "inputSpan": {
+     "firstFrameIndex": 0,
+     "frameCount": 3,
+     "startSec": "<float>",
+     "endSec": "<float>"
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 3,
+      "total": 3
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 3,
+      "total": 3
      },
      {
       "stage": "solve",
@@ -7326,7 +8044,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7374,7 +8093,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7422,7 +8142,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7470,7 +8191,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7518,7 +8240,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7566,7 +8289,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7614,7 +8338,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7662,7 +8387,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7710,7 +8436,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7758,7 +8485,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7806,7 +8534,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7854,7 +8583,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7902,7 +8632,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7950,7 +8681,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -7998,7 +8730,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8046,7 +8779,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8094,7 +8828,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8142,7 +8877,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8190,7 +8926,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8238,7 +8975,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8286,7 +9024,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8334,7 +9073,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8382,7 +9122,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8430,7 +9171,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8478,7 +9220,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8526,7 +9269,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8574,7 +9318,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8622,7 +9367,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8670,7 +9416,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8718,7 +9465,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8766,7 +9514,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8814,7 +9563,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8862,7 +9612,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8910,7 +9661,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -8958,7 +9710,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9006,7 +9759,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9054,7 +9808,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9102,7 +9857,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9150,7 +9906,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9198,7 +9955,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9246,7 +10004,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9294,7 +10053,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9342,7 +10102,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9390,7 +10151,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9438,7 +10200,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9486,7 +10249,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9534,7 +10298,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9582,7 +10347,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9630,7 +10396,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9678,7 +10445,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9726,7 +10494,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9774,7 +10543,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9822,7 +10592,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9870,7 +10641,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9918,7 +10690,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -9966,7 +10739,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10014,7 +10788,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10062,7 +10837,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10110,7 +10886,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10158,7 +10935,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10206,7 +10984,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10254,7 +11033,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10302,7 +11082,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10350,7 +11131,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10398,7 +11180,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10446,7 +11229,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10494,7 +11278,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10542,7 +11327,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10590,7 +11376,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10638,7 +11425,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10686,7 +11474,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10734,7 +11523,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10782,7 +11572,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10830,7 +11621,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10878,7 +11670,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10926,7 +11719,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -10974,7 +11768,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11022,7 +11817,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11070,7 +11866,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11118,7 +11915,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11166,7 +11964,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11214,7 +12013,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11262,7 +12062,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11310,7 +12111,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11358,7 +12160,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11406,7 +12209,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11454,7 +12258,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11502,7 +12307,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11550,7 +12356,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11598,7 +12405,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11646,7 +12454,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11694,7 +12503,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11742,7 +12552,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11790,7 +12601,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11838,7 +12650,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11886,7 +12699,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11934,7 +12748,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -11982,7 +12797,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12030,7 +12846,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12078,7 +12895,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12126,7 +12944,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12174,7 +12993,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12222,7 +13042,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12270,7 +13091,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12318,7 +13140,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12366,7 +13189,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12414,7 +13238,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12462,7 +13287,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12510,7 +13336,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12558,7 +13385,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12606,7 +13434,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12654,7 +13483,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12702,7 +13532,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12750,7 +13581,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12798,7 +13630,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12846,7 +13679,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12894,7 +13728,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12942,7 +13777,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -12990,7 +13826,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13038,7 +13875,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13086,7 +13924,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13134,7 +13973,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13182,7 +14022,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13230,7 +14071,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13278,7 +14120,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13326,7 +14169,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13374,7 +14218,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13422,7 +14267,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13470,7 +14316,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13518,7 +14365,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13566,7 +14414,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13614,7 +14463,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13662,7 +14512,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13710,7 +14561,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13758,7 +14610,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13806,7 +14659,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13854,7 +14708,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13902,7 +14757,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13950,7 +14806,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -13998,7 +14855,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14046,7 +14904,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14094,7 +14953,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14142,7 +15002,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14190,7 +15051,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14238,7 +15100,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14286,7 +15149,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14334,7 +15198,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14382,7 +15247,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14430,7 +15296,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14478,7 +15345,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14526,7 +15394,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14574,7 +15443,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14622,7 +15492,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14670,7 +15541,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14718,7 +15590,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14766,7 +15639,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14814,7 +15688,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14862,7 +15737,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14910,7 +15786,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -14958,7 +15835,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15006,7 +15884,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15054,7 +15933,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15102,7 +15982,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15150,7 +16031,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15198,7 +16080,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15246,7 +16129,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15294,7 +16178,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15342,7 +16227,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15390,7 +16276,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15438,7 +16325,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15486,7 +16374,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15534,7 +16423,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15582,7 +16472,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15630,7 +16521,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15678,7 +16570,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15726,7 +16619,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15774,7 +16668,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15822,7 +16717,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15870,7 +16766,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15918,7 +16815,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -15966,7 +16864,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16014,7 +16913,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16062,7 +16962,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16110,7 +17011,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16158,7 +17060,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16206,7 +17109,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16254,7 +17158,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16302,7 +17207,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16350,7 +17256,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16398,7 +17305,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16446,7 +17354,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16494,7 +17403,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16542,7 +17452,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16590,7 +17501,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16638,7 +17550,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16686,7 +17599,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16734,7 +17648,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16782,7 +17697,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16830,7 +17746,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16878,7 +17795,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16926,7 +17844,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -16974,7 +17893,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17022,7 +17942,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17070,7 +17991,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17118,7 +18040,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17166,7 +18089,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17214,7 +18138,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17262,7 +18187,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17310,7 +18236,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17358,7 +18285,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17406,7 +18334,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17454,7 +18383,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17502,7 +18432,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17550,7 +18481,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17598,7 +18530,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17646,7 +18579,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17694,7 +18628,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17742,7 +18677,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17790,7 +18726,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17838,7 +18775,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17886,7 +18824,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17934,7 +18873,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -17982,7 +18922,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18030,7 +18971,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18078,7 +19020,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18126,7 +19069,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18174,7 +19118,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18222,7 +19167,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18270,7 +19216,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18318,7 +19265,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18366,7 +19314,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18414,7 +19363,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18462,7 +19412,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18510,7 +19461,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18558,7 +19510,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18606,7 +19559,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18654,7 +19608,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18702,7 +19657,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18750,7 +19706,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18798,7 +19755,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18846,7 +19804,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18894,7 +19853,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18942,7 +19902,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -18990,7 +19951,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19038,7 +20000,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19086,7 +20049,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19134,7 +20098,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19182,7 +20147,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19230,7 +20196,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19278,7 +20245,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19326,7 +20294,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19374,7 +20343,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19422,7 +20392,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19470,7 +20441,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19518,7 +20490,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19566,7 +20539,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19614,7 +20588,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19662,7 +20637,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19710,7 +20686,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19758,7 +20735,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19806,7 +20784,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19854,7 +20833,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19902,7 +20882,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19950,7 +20931,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -19998,7 +20980,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20046,7 +21029,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20094,7 +21078,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20142,7 +21127,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20190,7 +21176,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20238,7 +21225,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20286,7 +21274,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20334,7 +21323,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20382,7 +21372,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20430,7 +21421,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20478,7 +21470,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20526,7 +21519,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20574,7 +21568,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20622,7 +21617,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20670,7 +21666,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20718,7 +21715,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20766,7 +21764,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20814,7 +21813,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20862,7 +21862,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20910,7 +21911,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -20958,7 +21960,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21006,7 +22009,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21054,7 +22058,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21102,7 +22107,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21150,7 +22156,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21198,7 +22205,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21246,7 +22254,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21294,7 +22303,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21342,7 +22352,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21390,7 +22401,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21438,7 +22450,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21486,7 +22499,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21534,7 +22548,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21582,7 +22597,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21630,7 +22646,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21678,7 +22695,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21726,7 +22744,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21774,7 +22793,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21822,7 +22842,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21870,7 +22891,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21918,7 +22940,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -21966,7 +22989,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22014,7 +23038,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22062,7 +23087,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22110,7 +23136,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22158,7 +23185,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22206,7 +23234,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22254,7 +23283,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22302,7 +23332,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22350,7 +23381,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22398,7 +23430,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22446,7 +23479,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22494,7 +23528,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22542,7 +23577,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22590,7 +23626,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22638,7 +23675,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22686,7 +23724,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22734,7 +23773,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22782,7 +23822,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22830,7 +23871,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22878,7 +23920,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22926,7 +23969,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -22974,7 +24018,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23022,7 +24067,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23070,7 +24116,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23118,7 +24165,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23166,7 +24214,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23214,7 +24263,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23262,7 +24312,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23316,7 +24367,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -23371,8 +24423,9 @@
      "startSec": "<float>",
      "endSec": "<float>"
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -23554,6 +24607,49 @@
        "unit": "frames",
        "done": 3,
        "total": 3
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "inputSpan": {
+      "firstFrameIndex": 0,
+      "frameCount": 3,
+      "startSec": "<float>",
+      "endSec": "<float>"
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 3,
+       "total": 3
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 3,
+       "total": 3
       },
       {
        "stage": "solve",
@@ -23576,7 +24672,8 @@
       "frameCount": 3,
       "startSec": "<float>",
       "endSec": "<float>"
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -23628,7 +24725,8 @@
       "frameCount": 3,
       "startSec": "<float>",
       "endSec": "<float>"
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -23680,7 +24778,8 @@
       "frameCount": 3,
       "startSec": "<float>",
       "endSec": "<float>"
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -23732,7 +24831,8 @@
       "frameCount": 3,
       "startSec": "<float>",
       "endSec": "<float>"
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -23784,7 +24884,8 @@
       "frameCount": 3,
       "startSec": "<float>",
       "endSec": "<float>"
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -23842,7 +24943,8 @@
       "frameCount": 3,
       "startSec": "<float>",
       "endSec": "<float>"
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -24243,8 +25345,9 @@
       "startSec": "<float>",
       "endSec": "<float>"
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -24257,7 +25360,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "decode_fails_unexpectedly": {
   "returned": {
@@ -24949,7 +26052,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -24984,7 +26087,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -25163,6 +26267,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -25179,7 +26316,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25222,8 +26360,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -25363,6 +26502,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -25379,7 +26555,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -25455,8 +26632,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -25469,7 +26647,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "photo_that_solves": {
   "returned": {
@@ -25479,7 +26657,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -25520,7 +26698,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -25699,6 +26878,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -25715,7 +26927,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25757,7 +26970,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25799,7 +27013,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25841,7 +27056,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25883,7 +27099,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25925,7 +27142,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -25967,7 +27185,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26009,7 +27228,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26051,7 +27271,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26093,7 +27314,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26135,7 +27357,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26177,7 +27400,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26219,7 +27443,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26261,7 +27486,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26303,7 +27529,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26345,7 +27572,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26387,7 +27615,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26429,7 +27658,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26471,7 +27701,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26513,7 +27744,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26555,7 +27787,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26597,7 +27830,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26639,7 +27873,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26681,7 +27916,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26723,7 +27959,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26765,7 +28002,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26807,7 +28045,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26849,7 +28088,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26891,7 +28131,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26933,7 +28174,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -26975,7 +28217,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27017,7 +28260,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27059,7 +28303,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27101,7 +28346,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27143,7 +28389,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27185,7 +28432,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27227,7 +28475,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27269,7 +28518,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27311,7 +28561,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27353,7 +28604,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27395,7 +28647,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27437,7 +28690,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27479,7 +28733,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27521,7 +28776,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27563,7 +28819,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27605,7 +28862,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27647,7 +28905,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27689,7 +28948,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27731,7 +28991,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27773,7 +29034,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27815,7 +29077,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27857,7 +29120,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27899,7 +29163,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27941,7 +29206,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -27983,7 +29249,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28025,7 +29292,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28067,7 +29335,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28109,7 +29378,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28151,7 +29421,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28193,7 +29464,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28235,7 +29507,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28277,7 +29550,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28319,7 +29593,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28361,7 +29636,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28403,7 +29679,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28445,7 +29722,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28487,7 +29765,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28529,7 +29808,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28571,7 +29851,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28613,7 +29894,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28655,7 +29937,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28697,7 +29980,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28739,7 +30023,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28781,7 +30066,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28823,7 +30109,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28865,7 +30152,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28907,7 +30195,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28949,7 +30238,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -28991,7 +30281,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29033,7 +30324,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29075,7 +30367,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29117,7 +30410,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29159,7 +30453,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29201,7 +30496,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29243,7 +30539,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29285,7 +30582,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29327,7 +30625,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29369,7 +30668,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29411,7 +30711,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29453,7 +30754,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29495,7 +30797,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29537,7 +30840,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29579,7 +30883,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29621,7 +30926,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29663,7 +30969,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29705,7 +31012,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29747,7 +31055,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29789,7 +31098,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29831,7 +31141,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29873,7 +31184,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29915,7 +31227,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29957,7 +31270,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -29999,7 +31313,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30041,7 +31356,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30083,7 +31399,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30125,7 +31442,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30167,7 +31485,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30209,7 +31528,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30251,7 +31571,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30293,7 +31614,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30335,7 +31657,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30377,7 +31700,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30419,7 +31743,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30461,7 +31786,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30503,7 +31829,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30545,7 +31872,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30587,7 +31915,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30629,7 +31958,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30671,7 +32001,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30713,7 +32044,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30755,7 +32087,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30797,7 +32130,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30839,7 +32173,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30881,7 +32216,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30923,7 +32259,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -30965,7 +32302,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31007,7 +32345,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31049,7 +32388,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31091,7 +32431,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31133,7 +32474,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31175,7 +32517,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31217,7 +32560,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31259,7 +32603,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31301,7 +32646,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31343,7 +32689,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31385,7 +32732,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31427,7 +32775,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31469,7 +32818,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31511,7 +32861,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31553,7 +32904,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31595,7 +32947,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31637,7 +32990,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31679,7 +33033,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31721,7 +33076,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31763,7 +33119,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31805,7 +33162,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31847,7 +33205,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31889,7 +33248,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31931,7 +33291,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -31973,7 +33334,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32015,7 +33377,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32057,7 +33420,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32099,7 +33463,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32141,7 +33506,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32183,7 +33549,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32225,7 +33592,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32267,7 +33635,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32309,7 +33678,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32351,7 +33721,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32393,7 +33764,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32435,7 +33807,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32477,7 +33850,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32519,7 +33893,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32561,7 +33936,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32603,7 +33979,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32645,7 +34022,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32693,7 +34071,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -32742,8 +34121,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -32883,6 +34263,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -32899,7 +34316,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -32945,7 +34363,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -32997,7 +34416,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -33822,8 +35242,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -33836,7 +35257,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "photo_that_solves_with_no_listener": {
   "returned": {
@@ -33846,7 +35267,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -33887,7 +35308,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [],
   "writes": [
@@ -34027,6 +35449,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -34043,7 +35502,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -34089,7 +35549,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -34141,7 +35602,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -34966,8 +36428,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -34980,7 +36443,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "photo_with_its_time_and_place": {
   "returned": {
@@ -34990,7 +36453,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -35031,7 +36494,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -35210,6 +36674,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -35226,7 +36723,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35268,7 +36766,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35310,7 +36809,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35352,7 +36852,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35394,7 +36895,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35436,7 +36938,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35478,7 +36981,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35520,7 +37024,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35562,7 +37067,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35604,7 +37110,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35646,7 +37153,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35688,7 +37196,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35730,7 +37239,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35772,7 +37282,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35814,7 +37325,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35856,7 +37368,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35898,7 +37411,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35940,7 +37454,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -35982,7 +37497,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36024,7 +37540,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36066,7 +37583,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36108,7 +37626,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36150,7 +37669,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36192,7 +37712,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36234,7 +37755,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36276,7 +37798,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36318,7 +37841,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36360,7 +37884,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36402,7 +37927,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36444,7 +37970,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36486,7 +38013,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36528,7 +38056,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36570,7 +38099,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36612,7 +38142,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36654,7 +38185,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36696,7 +38228,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36738,7 +38271,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36780,7 +38314,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36822,7 +38357,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36864,7 +38400,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36906,7 +38443,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36948,7 +38486,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -36990,7 +38529,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37032,7 +38572,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37074,7 +38615,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37116,7 +38658,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37158,7 +38701,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37200,7 +38744,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37242,7 +38787,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37284,7 +38830,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37326,7 +38873,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37368,7 +38916,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37410,7 +38959,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37452,7 +39002,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37494,7 +39045,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37536,7 +39088,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37578,7 +39131,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37620,7 +39174,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37662,7 +39217,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37704,7 +39260,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37746,7 +39303,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37788,7 +39346,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37830,7 +39389,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37872,7 +39432,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37914,7 +39475,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37956,7 +39518,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -37998,7 +39561,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38040,7 +39604,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38082,7 +39647,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38124,7 +39690,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38166,7 +39733,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38208,7 +39776,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38250,7 +39819,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38292,7 +39862,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38334,7 +39905,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38376,7 +39948,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38418,7 +39991,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38460,7 +40034,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38502,7 +40077,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38544,7 +40120,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38586,7 +40163,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38628,7 +40206,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38670,7 +40249,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38712,7 +40292,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38754,7 +40335,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38802,7 +40384,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -38851,8 +40434,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -38992,6 +40576,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -39008,7 +40629,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -39054,7 +40676,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -39106,7 +40729,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -40040,8 +41664,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -40054,7 +41679,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "pose_frames_of_a_clip": {
   "returned": {
@@ -40064,7 +41689,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -40101,7 +41726,8 @@
     "frameCount": 3,
     "startSec": "<float>",
     "endSec": "<float>"
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -40324,6 +41950,45 @@
       "unit": "frames",
       "done": 3,
       "total": 3
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "inputSpan": {
+     "firstFrameIndex": 0,
+     "frameCount": 3,
+     "startSec": "<float>",
+     "endSec": "<float>"
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 3,
+      "total": 3
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 3,
+      "total": 3
      },
      {
       "stage": "solve",
@@ -40342,7 +42007,8 @@
      "frameCount": 3,
      "startSec": "<float>",
      "endSec": "<float>"
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -40387,8 +42053,9 @@
      "startSec": "<float>",
      "endSec": "<float>"
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -40541,6 +42208,49 @@
       "startSec": "<float>",
       "endSec": "<float>"
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 3,
+       "total": 3
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 3,
+       "total": 3
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "inputSpan": {
+      "firstFrameIndex": 0,
+      "frameCount": 3,
+      "startSec": "<float>",
+      "endSec": "<float>"
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -40926,8 +42636,9 @@
       "startSec": "<float>",
       "endSec": "<float>"
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -41054,7 +42765,7 @@
     "<float>"
    ]
   ],
-  "clockReads": 3
+  "clockReads": 4
  },
  "pose_frames_of_a_photo": {
   "returned": {
@@ -41064,7 +42775,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -41095,7 +42806,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -41274,6 +42986,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -41286,7 +43031,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -41325,8 +43071,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -41437,6 +43184,43 @@
       "name": "albedian.solve_chain",
       "revision": 32
      }
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -41760,8 +43544,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -41845,7 +43630,7 @@
    ],
    "no stack"
   ],
-  "clockReads": 3
+  "clockReads": 4
  },
  "predicted_sky_fails": {
   "returned": {
@@ -41855,7 +43640,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -41890,7 +43675,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -42069,6 +43855,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -42085,7 +43904,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -42128,8 +43948,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -42269,6 +44090,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -42285,7 +44143,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -42361,8 +44220,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -42375,7 +44235,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "route_refusal": {
   "status": 404,
@@ -42391,7 +44251,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -42426,7 +44286,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -42605,6 +44466,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -42621,7 +44515,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -42664,8 +44559,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -42805,6 +44701,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -42821,7 +44754,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -42897,8 +44831,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -42911,7 +44846,7 @@
   },
   "worker": [],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "solution_write_fails": {
   "returned": {
@@ -42921,7 +44856,7 @@
    "state": "failed",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -42956,7 +44891,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -43135,6 +45071,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -43151,7 +45120,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -43194,8 +45164,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "error": "The job's result could not be stored.",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -43335,6 +45306,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -43351,7 +45359,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -43427,8 +45436,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "error": "The job's result could not be stored.",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -43439,7 +45449,7 @@
   },
   "worker": null,
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "solve_fails": {
   "returned": {
@@ -43449,7 +45459,7 @@
    "state": "failed",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -43484,7 +45494,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -43663,6 +45674,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -43679,7 +45723,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -43722,8 +45767,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "error": "The solve stopped on an internal error.",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -43863,6 +45909,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -43879,7 +45962,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -43926,8 +46010,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "error": "The solve stopped on an internal error.",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -43986,7 +46071,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "solve_stops_at_its_bound_after_candidates": {
   "returned": {
@@ -43996,7 +46081,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -44031,7 +46116,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -44210,6 +46296,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -44226,7 +46345,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -44268,7 +46388,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -44311,8 +46432,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -44452,6 +46574,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -44468,7 +46627,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -45392,8 +47552,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -45454,7 +47615,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "solve_stops_at_its_bound_before_a_candidate": {
   "returned": {
@@ -45464,7 +47625,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -45499,7 +47660,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -45678,6 +47840,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -45694,7 +47889,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -45737,8 +47933,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -45878,6 +48075,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -45894,7 +48128,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -46223,8 +48458,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -46285,7 +48521,7 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  },
  "solve_stops_at_its_bound_with_a_place_and_no_time": {
   "returned": {
@@ -46295,7 +48531,7 @@
    "state": "succeeded",
    "createdAtUTC": "<now 0>",
    "startedAtUTC": "<now 1>",
-   "finishedAtUTC": "<now 2>",
+   "finishedAtUTC": "<now 3>",
    "stages": [
     {
      "stage": "store",
@@ -46330,7 +48566,8 @@
    "producer": {
     "name": "albedian.solve_chain",
     "revision": 32
-   }
+   },
+   "measuredAtUTC": "<now 2>"
   },
   "transitions": [
    {
@@ -46509,6 +48746,39 @@
       "unit": "frames",
       "done": 1,
       "total": 1
+     }
+    ],
+    "startedAtUTC": "<now 1>",
+    "producer": {
+     "name": "albedian.solve_chain",
+     "revision": 32
+    },
+    "measuredAtUTC": "<now 2>"
+   },
+   {
+    "id": "job_<sha16 sent><job random>",
+    "sourceAssetSha256": "<sha256 sent>",
+    "kind": "solve",
+    "state": "running",
+    "createdAtUTC": "<now 0>",
+    "stages": [
+     {
+      "stage": "store",
+      "unit": "bytes",
+      "done": "<bytes sent>",
+      "total": "<bytes sent>"
+     },
+     {
+      "stage": "decode",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
+     },
+     {
+      "stage": "detect",
+      "unit": "frames",
+      "done": 1,
+      "total": 1
      },
      {
       "stage": "solve",
@@ -46525,7 +48795,8 @@
     "producer": {
      "name": "albedian.solve_chain",
      "revision": 32
-    }
+    },
+    "measuredAtUTC": "<now 2>"
    },
    {
     "id": "job_<sha16 sent><job random>",
@@ -46568,8 +48839,9 @@
      "name": "albedian.solve_chain",
      "revision": 32
     },
+    "measuredAtUTC": "<now 2>",
     "solutionId": "sol_<sha16 sent>",
-    "finishedAtUTC": "<now 2>"
+    "finishedAtUTC": "<now 3>"
    }
   ],
   "writes": [
@@ -46709,6 +48981,43 @@
        "unit": "frames",
        "done": 1,
        "total": 1
+      }
+     ],
+     "startedAtUTC": "<now 1>",
+     "producer": {
+      "name": "albedian.solve_chain",
+      "revision": 32
+     },
+     "measuredAtUTC": "<now 2>"
+    }
+   },
+   {
+    "file": "jobs/job_<sha16 sent><job random>.json",
+    "readOnly": false,
+    "payload": {
+     "id": "job_<sha16 sent><job random>",
+     "sourceAssetSha256": "<sha256 sent>",
+     "kind": "solve",
+     "state": "running",
+     "createdAtUTC": "<now 0>",
+     "stages": [
+      {
+       "stage": "store",
+       "unit": "bytes",
+       "done": "<bytes sent>",
+       "total": "<bytes sent>"
+      },
+      {
+       "stage": "decode",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
+      },
+      {
+       "stage": "detect",
+       "unit": "frames",
+       "done": 1,
+       "total": 1
       },
       {
        "stage": "solve",
@@ -46725,7 +49034,8 @@
      "producer": {
       "name": "albedian.solve_chain",
       "revision": 32
-     }
+     },
+     "measuredAtUTC": "<now 2>"
     }
    },
    {
@@ -47058,8 +49368,9 @@
       "name": "albedian.solve_chain",
       "revision": 32
      },
+     "measuredAtUTC": "<now 2>",
      "solutionId": "sol_<sha16 sent>",
-     "finishedAtUTC": "<now 2>"
+     "finishedAtUTC": "<now 3>"
     }
    }
   ],
@@ -47120,6 +49431,6 @@
    }
   ],
   "pose": null,
-  "clockReads": 3
+  "clockReads": 4
  }
 }
