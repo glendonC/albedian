@@ -1761,6 +1761,50 @@ class _HeldOutLook:
     refined_on_ids: set[int]
     train_det_ids: set[int]
     train_tuples: list[tuple[SourceDetection, float, float]]
+    # What the reported WCS was made from, so a star can be placed by the same recipe run without it
+    # (matched-residual-one): the pose the training fit started from, the training fit, and the final polish's pairs
+    # (none when the look was not polished: the reported WCS is then the training fit)
+    start_wcs: PhoneCameraWCS
+    trained_wcs: PhoneCameraWCS
+    polish_pairs: list[tuple[SourceDetection, float, float]]
+
+
+def _train_fit(start_wcs: PhoneCameraWCS, train_tuples: Sequence[tuple[SourceDetection, float, float]]) -> PhoneCameraWCS:
+    """A look's training fit: rigid from `start_wcs` on the training pairs, then with distortion from three pairs."""
+    fitted = _refine_phone_camera_wcs(start_wcs, train_tuples, fit_distortion=False)
+    if len(train_tuples) >= 3:
+        # When 3 or 4 pairs train the fit (`< FEW_PAIR_DISTORTION_MIN_PAIRS`), `_refine_phone_camera_wcs` shrinks
+        # `(k1, k2)` with `(50.0, 120.0)` instead of `(25.0, 60.0)` (refine-2)
+        fitted = _refine_phone_camera_wcs(fitted, train_tuples, fit_distortion=True)
+    return fitted
+
+
+def _polish_fit(trained_wcs: PhoneCameraWCS, pairs: Sequence[tuple[SourceDetection, float, float]]) -> PhoneCameraWCS:
+    """A look's final polish from its training fit on every inlier it is given, fitting distortion from nine."""
+    return _refine_phone_camera_wcs(trained_wcs, pairs, fit_distortion=len(pairs) >= 9)
+
+
+def _fit_without(look: _HeldOutLook, det: SourceDetection) -> PhoneCameraWCS:
+    """The look's reported WCS made again without `det`'s pair (matched-residual-one): a training star's by the
+    training fit from the look's start and then the polish, each without it; a star only the polish was refined on by
+    the polish from the training fit without it; any other star's is the reported WCS itself, which no fit of it
+    shaped."""
+    in_training = any(d is det for d, _, _ in look.train_tuples)
+    in_polish = any(d is det for d, _, _ in look.polish_pairs)
+    if not in_training and not in_polish:
+        return look.refined_wcs
+    trained = _train_fit(look.start_wcs, [p for p in look.train_tuples if p[0] is not det]) if in_training else look.trained_wcs
+    if not look.polish_pairs:
+        return trained
+    return _polish_fit(trained, [p for p in look.polish_pairs if p[0] is not det])
+
+
+def _left_out_residual_px(look: _HeldOutLook, det: SourceDetection, ra_deg: float, dec_deg: float) -> float:
+    """The pixels from `det` to the star at (`ra_deg`, `dec_deg`) under the look's WCS made without that star
+    (`_fit_without`); infinite where that WCS places the star nowhere."""
+    x, y = _fit_without(look, det).world_to_pixel(ra_deg, dec_deg)
+    distance = math.hypot(x - det.x_px, y - det.y_px)
+    return distance if math.isfinite(distance) else math.inf
 
 
 def _held_out_look(
@@ -1790,11 +1834,7 @@ def _held_out_look(
     train_det_ids = {id(eval_pool[d_i]) for d_i, _, _ in train_items}
     train_tuples = [(eval_pool[d_i], float(v_ra[c_i]), float(v_dec[c_i])) for d_i, c_i, _ in train_items]
 
-    refined_wcs = _refine_phone_camera_wcs(initial_wcs, train_tuples, fit_distortion=False)
-    if len(train_tuples) >= 3:
-        # When 3 or 4 pairs train the fit (`< FEW_PAIR_DISTORTION_MIN_PAIRS`), `_refine_phone_camera_wcs` shrinks
-        # `(k1, k2)` with `(50.0, 120.0)` instead of `(25.0, 60.0)` (refine-2)
-        refined_wcs = _refine_phone_camera_wcs(refined_wcs, train_tuples, fit_distortion=True)
+    refined_wcs = trained_wcs = _train_fit(initial_wcs, train_tuples)
 
     # Re-associate on refined WCS and run a second pass separating held-out inliers
     assoc_rad_px = max(4.5, min(6.0, 0.35 * deg_in_px))
@@ -1820,6 +1860,7 @@ def _held_out_look(
     dual_disagreement_px = 0.0
     # The held-out inliers the reported solution is refined on after the check, when it is
     refined_on_ids: set[int] = set()
+    polish_pairs: list[tuple[SourceDetection, float, float]] = []
     if len(held_out_tuples) >= 6:
         held_wcs = _refine_phone_camera_wcs(refined_wcs, held_out_tuples[:12], fit_distortion=len(held_out_tuples) >= 8)
         gx, gy = np.meshgrid(
@@ -1833,11 +1874,9 @@ def _held_out_look(
         dual_disagreement_px = float(np.median(finite_diffs)) if finite_diffs.size else 99.0
         # Final joint polish on all inliers (train + held-out) fitting lens distortion while keeping held-out metrics strictly from pre-polish split
         if dual_disagreement_px <= MAX_DUAL_PATH_DISAGREEMENT_PX:
-            combined_inliers = [*train_tuples, *held_out_tuples[:18]]
+            polish_pairs = [*train_tuples, *held_out_tuples[:18]]
             refined_on_ids = {id(det) for det, _, _ in held_out_tuples[:18]}
-            refined_wcs = _refine_phone_camera_wcs(
-                refined_wcs, combined_inliers, fit_distortion=len(combined_inliers) >= 9
-            )
+            refined_wcs = _polish_fit(refined_wcs, polish_pairs)
 
     active_area_px2 = float(width * height) * sky_fraction
     passed_gate, log_odds = evaluate_coincidence_gate(
@@ -1851,7 +1890,8 @@ def _held_out_look(
     return _HeldOutLook(
         passed_gate=passed_gate, log_odds=log_odds, all_pairs=all_pairs, gate_px=gate_px, refined_wcs=refined_wcs,
         held_out_tuples=held_out_tuples, held_out_residuals_all=held_out_residuals_all, refined_on_ids=refined_on_ids,
-        train_det_ids=train_det_ids, train_tuples=train_tuples,
+        train_det_ids=train_det_ids, train_tuples=train_tuples, start_wcs=initial_wcs, trained_wcs=trained_wcs,
+        polish_pairs=polish_pairs,
     )
 
 
@@ -2954,11 +2994,15 @@ def _solve_phone_photo_with(
     refined_wcs, held_out_tuples, held_out_residuals_all = look.refined_wcs, look.held_out_tuples, look.held_out_residuals_all
     refined_on_ids, train_det_ids, train_tuples = look.refined_on_ids, look.train_det_ids, look.train_tuples
 
-    # Map verified inlier detections by identity
+    # Map verified inlier detections by identity. A pair is a match only where its star also lies within the gate under
+    # the reported WCS made without it (matched-residual-one): a training or polish star's residual under the fit made
+    # on it cannot show the fit bent to it, which named a star that is not there at a lone corner (rp-b-14), and the
+    # reported WCS can move a star the gate paired before the polish past the gate (rp-b-08); such a detection stays
+    # observed, outside the verified inlier gate
     verified_by_det_id: dict[int, tuple[CatalogStar, float, bool]] = {}
     if passed_gate:
         for d_i, c_i, res_px in all_pairs:
-            if res_px <= gate_px:
+            if res_px <= gate_px and _left_out_residual_px(look, eval_pool[d_i], float(v_ra[c_i]), float(v_dec[c_i])) <= gate_px:
                 det = eval_pool[d_i]
                 if v_row_indices is not None:
                     star = tile_index.to_catalog_star(int(v_row_indices[c_i]), float(v_ra[c_i]), float(v_dec[c_i]), epoch_jyear)

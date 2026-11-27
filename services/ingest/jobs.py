@@ -1748,8 +1748,12 @@ SOLVE_PRODUCER_FILES = (
 # candidate that does not pass the held-out gate, or has too few pairs to try, is looked at once more on its first
 # association grown (refit rigidly, associated again within the same radius while the count grows), taken only when
 # it passes, the gate and its bounds unchanged (association-grow-one), which calibrates rp-b-08, rp-b-09 and rp-b-16
-# and moves rp-b-06 to its hinted pass
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 34, SOLVE_PRODUCER_FILES)
+# and moves rp-b-06 to its hinted pass; 35, a phone solution names a detection only where its star also lies within
+# the inlier gate under the reported WCS made again without that star (the training fit and the polish run on the
+# pairs without it), so no name rests on a fit bent to its own star or on a residual measured before the polish
+# moved it; such a detection stays observed, and the gate, its numbers and the status are unchanged
+# (matched-residual-one)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 35, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

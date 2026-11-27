@@ -34,7 +34,7 @@
   "digest": "d5bc72a7b70a4450ab23ba1a686cb8c096b63b006175a94aec37fdef51cc92e9"
  },
  "albedian.solve_chain": {
-  "revision": 34,
+  "revision": 35,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -82,6 +82,6 @@
    "services/science/sun_pose.py",
    "services/science/anet_stage.py"
   ],
-  "digest": "0c14d6e235739055ca109a2e72457eb2b625945393a9ca763a71410e4304e7c9"
+  "digest": "44c0ecda08a7b3336427be57abed109c6c92fe8be9017b451df19984a50725d3"
  }
 }
