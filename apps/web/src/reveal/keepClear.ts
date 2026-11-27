@@ -55,6 +55,8 @@ export const FADE_REACH: ReadonlyArray<{ place: string; faded: string; reach: { 
   { place: '.reveal-card:not(.is-phone):not(.is-sky)', faded: '.reveal-card:not(.is-phone):not(.is-sky)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },
   { place: "[data-testid='reveal-status'][data-moment='there']", faded: ".reveal-status[data-moment='there']", reach: { left: 36, top: 44, right: 44, bottom: 44 } },
   { place: '.predsky:not(.is-phone) .predsky-status', faded: '.predsky:not(.is-phone) .predsky-status', reach: { left: 36, top: 44, right: 44, bottom: 44 } },
+  // predsky-sideways-status-one (00:44 on 27 Nov): the sideways status column with no card carries the same fade
+  { place: '.predsky.is-phone .predsky-status.is-sideways', faded: '.predsky.is-phone .predsky-status.is-sideways', reach: { left: 24, top: 44, right: 44, bottom: 44 } },
   { place: '.reveal-nav .sound-control', faded: '.reveal-nav', reach: { left: 44, top: 26, right: 32, bottom: 44 } },
   // The open answer carries the card's fade, and the views row the row's own (keepclear-answer-views-one)
   { place: '.reveal-answer:not(.is-phone):not(.is-sky)', faded: '.reveal-answer:not(.is-phone):not(.is-sky)', reach: { left: 44, top: 44, right: 32, bottom: 44 } },

@@ -2648,6 +2648,30 @@
   pointer-events: none;
 }
 
+/* predsky-sideways-status-one (UIUX-predsky-READY.md, DECIDED-BY-LEAD 00:44 on 27 Nov): held on its side with no card
+   (PredictedSkyScreen.tsx sets the class only there) the status holds the card state's own content in the card state's
+   own column, standing by its foot 16 px above Back to Moment, the phone block's anchor; behind it D19's fade, 82
+   percent black under the column clearing to nothing over 44 px past its open edges, and 24 px under its leading
+   margin: no box, no edge line, no motion */
+.predsky.is-phone .predsky-status.is-sideways {
+  left: max(24px, env(safe-area-inset-left));
+  right: calc(max(12px, env(safe-area-inset-right)) + 390px + 16px);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 44px + 16px);
+  isolation: isolate;
+}
+
+.predsky.is-phone .predsky-status.is-sideways::before {
+  left: -24px;
+  top: -44px;
+  bottom: -44px;
+  right: -44px;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-composite: intersect;
+}
+
 /* D36: two or more ready restorations, listed under Download with no heading: rows of 36 px in Geist 13 (the Layers
    list's, UIUX-space), the size at the right in ink 44 percent with tabular figures, the check 14 px at the far right,
    an older row's second line at 12 px in ink 44 percent. [proposed] 12 px between Download and the list */
@@ -3101,30 +3125,6 @@
   .predsky-top {
     top: 12px;
     left: max(20px, env(safe-area-inset-left));
-  }
-
-  .predsky.is-phone .predsky-status:not(.is-above-card) {
-    left: max(24px, env(safe-area-inset-left));
-    right: max(24px, env(safe-area-inset-right));
-    max-height: calc(100% - 152px);
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    pointer-events: auto;
-    background: rgba(0, 0, 0, 0.82);
-  }
-
-  .predsky.is-phone .predsky-status:not(.is-above-card)::before {
-    content: none;
-  }
-
-  .predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    padding-bottom: 8px;
-    margin-bottom: -8px;
-    background: var(--look-field);
   }
 
   .predsky.is-phone .reveal-card.is-phone {

@@ -9,6 +9,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { describe, expect, it } from 'vitest';
 import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
 import { SIDEWAYS_QUERY } from '../../components/phoneSheet.js';
+import { FADE_REACH } from '../keepClear.js';
 import { PredictedSkyScreen } from '../PredictedSkyScreen.js';
 
 // phone-sideways-two (UIUX-phone-sideways-READY.md item 5, RULED at the lead's line stamped 06:27; Apple's sheet
@@ -27,6 +28,16 @@ const inSideways = (selector: string) => {
       if (!rule.selectors.map((s) => s.replace(/\s+/g, ' ')).includes(selector)) return;
       rule.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
     });
+  });
+  return found;
+};
+
+/** A rule's declarations at the top level of reveal.css. */
+const atRoot = (selector: string) => {
+  const found: Record<string, string> = {};
+  postcss.parse(css).walkRules((rule) => {
+    if (rule.parent?.type !== 'root' || !rule.selectors.map((s) => s.replace(/\s+/g, ' ')).includes(selector)) return;
+    rule.walkDecls((d) => void (found[d.prop] = d.value.replace(/\s+/g, ' ')));
   });
   return found;
 };
@@ -62,30 +73,38 @@ describe('the predicted sky on a phone held on its side', () => {
     expect(inSideways('.predsky-top')).toEqual({ top: '12px', left: 'max(20px, env(safe-area-inset-left))' });
   });
 
-  // With no card, the status stands by its foot inside the side safe areas, capped 8 px under the top bar's foot
-  // (12 + 44 + 8 = 64; 64 + 88 = 152): taller than its room, it takes the pointer and scrolls inside itself (item 7)
-  // with the Predicted and Simulated tag row held at its top over field black, so both tags stay whole on every frame
-  it('stands the status under the top bar, scrollable by touch with its tag row held whole at its top', () => {
-    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card)')).toEqual({
+  // predsky-sideways-status-one (UIUX-predsky-READY.md, "The predicted sky held sideways with no card: its status",
+  // DECIDED-BY-LEAD 00:44 on 27 Nov; it replaces version two's flat box): with no card the status holds the card state's own
+  // content, the two tags and the Milky Way line, in the card state's own column, standing by its foot 16 px above Back to
+  // Moment, on D19's fade clearing over 44 px past its open edges, no box, no edge line; names under it and its fade leave
+  it('stands the no-card status in the card state column, 16 px above Back to Moment, on the fade, with the card state content', () => {
+    expect(atRoot('.predsky.is-phone .predsky-status.is-sideways')).toEqual({
       left: 'max(24px, env(safe-area-inset-left))',
-      right: 'max(24px, env(safe-area-inset-right))',
-      'max-height': 'calc(100% - 152px)',
-      'overflow-x': 'hidden',
-      'overflow-y': 'auto',
-      'overscroll-behavior': 'contain',
-      'pointer-events': 'auto',
+      right: 'calc(max(12px, env(safe-area-inset-right)) + 390px + 16px)',
+      bottom: 'calc(max(12px, env(safe-area-inset-bottom)) + 44px + 16px)',
+      isolation: 'isolate',
+    });
+    const mask = 'linear-gradient(to left, transparent 0, #000 44px), linear-gradient(to bottom, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%)';
+    expect(atRoot('.predsky.is-phone .predsky-status.is-sideways::before')).toEqual({
+      left: '-24px',
+      top: '-44px',
+      bottom: '-44px',
+      right: '-44px',
       background: 'rgba(0, 0, 0, 0.82)',
+      '-webkit-mask-image': mask,
+      '-webkit-mask-composite': 'source-in',
+      'mask-image': mask,
+      'mask-composite': 'intersect',
     });
-    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card)::before')).toEqual({ content: 'none' });
-    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags')).toEqual({
-      position: 'sticky',
-      top: '0',
-      'z-index': '1',
-      'padding-bottom': '8px',
-      'margin-bottom': '-8px',
-      background: 'var(--look-field)',
+    // Version two's box, its scroll and its held tag row are gone
+    for (const gone of ['.predsky.is-phone .predsky-status:not(.is-above-card)', '.predsky.is-phone .predsky-status:not(.is-above-card)::before', '.predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags']) {
+      expect(inSideways(gone), gone).toEqual({});
+    }
+    expect(FADE_REACH.find((f) => f.place === '.predsky.is-phone .predsky-status.is-sideways')).toEqual({
+      place: '.predsky.is-phone .predsky-status.is-sideways',
+      faded: '.predsky.is-phone .predsky-status.is-sideways',
+      reach: { left: 24, top: 44, right: 44, bottom: 44 },
     });
-    expect(inSideways('.predsky.is-phone .predsky-status:not(.is-above-card) > .look-tag')).toEqual({});
 
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const base = poseSession(sample('horizon_predicted_only'));
@@ -96,16 +115,106 @@ describe('the predicted sky on a phone held on its side', () => {
       mode: 'predicted',
       observationSolutionId: base.observationSolution!.id,
     }).session;
+    const window0 = { w: window.innerWidth, h: window.innerHeight };
+    const at = (w: number, h: number) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: w });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: h });
+    };
     const host = document.createElement('div');
     document.body.appendChild(host);
-    const root = createRoot(host);
+    let root = createRoot(host);
     try {
+      for (const [w, h] of [[874, 292], [874, 402], [667, 320]] as const) {
+        at(w, h);
+        act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, phone: true })));
+        const status = host.querySelector('[data-testid="reveal-status"]')!;
+        expect(status.className, `${w}x${h}`).toBe('reveal-status predsky-status is-sideways');
+        expect([...status.children].map((c) => c.className), `${w}x${h}`).toEqual(['predsky-status__tags', 'predsky-status__sky']);
+        expect([...status.querySelectorAll('.look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
+        act(() => root.unmount());
+        root = createRoot(host);
+      }
+      // With a card open on its side the status keeps the card state's own place, at the foot as built
+      at(874, 292);
+      const picked = sky.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!.id;
+      act(() => root.render(createElement(PredictedSkyScreen, { session: { ...sky, selectedFindingId: picked }, onHome: () => {}, phone: true })));
+      expect(host.querySelector('[data-testid="star-card"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="reveal-status"]')!.className).toBe('reveal-status predsky-status is-above-card');
+      act(() => root.unmount());
+      root = createRoot(host);
+      // Version two (AUDIT-C's D6): a phone held upright in a short window (a small iPhone in Safari, a phone with its
+      // keyboard open) keeps the upright status, all its lines, no sideways class
+      for (const [w, h] of [[390, 480], [360, 400]] as const) {
+        at(w, h);
+        act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, phone: true })));
+        const upright = host.querySelector('[data-testid="reveal-status"]')!;
+        expect(upright.className, `${w}x${h}`).toBe('reveal-status predsky-status');
+        expect(upright.querySelector('.predsky-status__lead'), `${w}x${h}`).not.toBeNull();
+        act(() => root.unmount());
+        root = createRoot(host);
+      }
+      // A short laptop window is no phone on its side: the status as today
+      at(874, 400);
+      act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, phone: false })));
+      expect(host.querySelector('[data-testid="reveal-status"]')!.className).toBe('reveal-status predsky-status');
+      act(() => root.unmount());
+      root = createRoot(host);
+      // Upright, as today: the title, the disclosure sentences and the facts, no sideways class
+      at(390, 844);
       act(() => root.render(createElement(PredictedSkyScreen, { session: sky, onHome: () => {}, phone: true })));
-      expect(host.querySelector('.predsky.is-phone .predsky-status:not(.is-above-card) > .look-tag')).toBeNull();
-      const heldTags = host.querySelector('.predsky.is-phone .predsky-status:not(.is-above-card) > .predsky-status__tags');
-      expect(heldTags).not.toBeNull();
-      expect([...heldTags!.querySelectorAll('.look-tag')].map((el) => el.getAttribute('data-evidence-class'))).toEqual(['predicted', 'simulated']);
+      const upright = host.querySelector('[data-testid="reveal-status"]')!;
+      expect(upright.className).toBe('reveal-status predsky-status');
+      expect(upright.querySelector('.predsky-status__lead')).not.toBeNull();
+      expect(upright.querySelector('.predsky-status__note')).not.toBeNull();
+      expect(upright.querySelector('.predsky-status__facts')).not.toBeNull();
     } finally {
+      act(() => root.unmount());
+      host.remove();
+      at(window0.w, window0.h);
+    }
+  });
+
+  it('keeps the names clear of the status column from the first frame, reading its box after layout (at any size)', async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const base = poseSession(sample('horizon_predicted_only'));
+    const sky = dispatchAlbedianAction(base, { type: 'sky.show', requestId: 'req_sideways_names', expectedViewRevision: base.viewRevision, mode: 'predicted', observationSolutionId: base.observationSolution!.id }).session;
+    const template = sky.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const alpha = { ...template, id: 'finding-predicted-star-a', title: 'Alpha', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    const session = { ...sky, observationSolution: { ...sky.observationSolution!, findings: [alpha] } } as typeof sky;
+    const pose = { cameraWorldQuaternion: [0, 0, 0, 1] as [number, number, number, number], icrsWorldQuaternion: [0, 0, 0, 1] as [number, number, number, number], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let root = createRoot(host);
+    const names = () => host.querySelectorAll('.predsky-name').length;
+    const show = async () => {
+      act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: () => {}, phone: true, skyPose: () => pose })));
+      await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    };
+    const window0 = { w: window.innerWidth, h: window.innerHeight };
+    const at = (w: number, h: number) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: w });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: h });
+    };
+    // The status's box follows its class as laid out: in its sideways place (as if) over the whole window, else nowhere
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (this.getAttribute('data-testid') !== 'reveal-status') return rect.call(this);
+      const r = this.classList.contains('is-sideways') ? [0, 0, innerWidth, innerHeight] : [0, 0, 0, 0];
+      return { left: r[0], top: r[1], right: r[2], bottom: r[3], width: r[2]! - r[0]!, height: r[3]! - r[1]!, x: r[0], y: r[1], toJSON() {} } as DOMRect;
+    };
+    try {
+      at(1024, 768);
+      await show();
+      expect(names()).toBe(1);
+      // Turned on its side: the render that places the names still reads the upright box; the sideways class lands on the
+      // commit, and the names must leave the column it now covers
+      at(874, 400);
+      act(() => void window.dispatchEvent(new Event('resize')));
+      expect(host.querySelector('[data-testid="reveal-status"]')!.className).toBe('reveal-status predsky-status is-sideways');
+      expect(names()).toBe(0);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+      at(window0.w, window0.h);
       act(() => root.unmount());
       host.remove();
     }

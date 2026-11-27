@@ -29,6 +29,7 @@ function clearOf(status: HTMLElement | null): Box[] {
       return [{ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom, ...(fade ? { fade } : {}) }];
     });
 }
+import { isSideways } from './phoneSlot.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -97,6 +98,12 @@ export const PredictedSkyScreen: React.FC<{
   const shownId = answer ? litId : (picked?.id ?? null);
   // On the phone the status steps above the answer as above the card sheet, whose place it takes
   const phoneAboveCard = phone && (card.mounted || answer !== null);
+  // predsky-sideways-status-one (UIUX-predsky-READY.md, DECIDED-BY-LEAD 00:44 on 27 Nov): held on its side with no card,
+  // the status shows the card state's own content (the two tags and the Milky Way line) in the card state's own column,
+  // 16 px above Back to Moment on D19's fade; the title, the disclosure sentences and the facts stand upright as today
+  // Version two (AUDIT-C's D6): held on its side means wider than tall as well (sideways-landscape-guard-one)
+  const sideways = phone && isSideways(size.widthPx, size.heightPx);
+  const cardContent = phoneAboveCard || sideways;
   const deepSky = useDeepSkyTable(session.observationSolution?.findings.some(isDeepSky) === true);
   // The open card's box (ruled 17:05): rings and names under it are left out, the picked star's own mark stays.
   // Read untransformed offset geometry first so phone sheet-in translateY at frame 0 still clears the settled 469..814 px card area.
@@ -127,6 +134,14 @@ export const PredictedSkyScreen: React.FC<{
   }, [answer, phone, size.widthPx, size.heightPx]);
   // Names at 11 px on the phone, 13 on the laptop
   const fontPx = phone ? 11 : 13;
+  // The status column's box as laid out: read again after layout, so the names keep clear of the column and its fade from
+  // the first frame and whenever the column moves (predsky-sideways-status-one; the record's item 4)
+  const [, setStatusLaidOut] = useState('');
+  useLayoutEffect(() => {
+    const r = status.current?.getBoundingClientRect();
+    const key = r ? `${r.left},${r.top},${r.right},${r.bottom}` : '';
+    setStatusLaidOut((prev) => (prev === key ? prev : key));
+  });
   const clear = [...clearOf(status.current), ...(card.mounted && cardBox ? [cardBox] : []), ...(answer && answerBox ? [answerBox] : [])];
   const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, fontPx, clear, shownId);
   const facts = phone ? phoneFacts(words) : words.facts;
@@ -178,7 +193,7 @@ export const PredictedSkyScreen: React.FC<{
       )}
       <div
         ref={status}
-        className={phoneAboveCard ? 'reveal-status predsky-status is-above-card' : 'reveal-status predsky-status'}
+        className={phoneAboveCard ? 'reveal-status predsky-status is-above-card' : sideways ? 'reveal-status predsky-status is-sideways' : 'reveal-status predsky-status'}
         data-testid="reveal-status"
         data-moment="predicted-sky"
         role="status"
@@ -189,10 +204,10 @@ export const PredictedSkyScreen: React.FC<{
           <EvidenceTag evidenceClass="predicted" />
           <EvidenceTag evidenceClass="simulated" />
         </div>
-        {!phoneAboveCard && <p className="predsky-status__lead">{words.heading}</p>}
-        {!phoneAboveCard && <p className="predsky-status__note">{words.note}</p>}
+        {!cardContent && <p className="predsky-status__lead">{words.heading}</p>}
+        {!cardContent && <p className="predsky-status__note">{words.note}</p>}
         <p className="predsky-status__sky">{words.milkyWay}</p>
-        {!phoneAboveCard && (
+        {!cardContent && (
           <div className="predsky-status__facts">
             {facts.map((fact) => (
               <p key={fact}>{fact}</p>
