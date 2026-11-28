@@ -50,7 +50,7 @@ Albedian is an observation-centered media restoration and 3D astronomy app built
   apps/
     web/                    # React + TypeScript + WebGL/Three.js + Web Audio observational shell
       public/catalog/stars/ # Gaia DR3 + Hipparcos 2007 catalog star tiles (docs/science/CATALOG_STAR_TILES.md)
-      public/models/hangar/ # NASA's models of 39 spacecraft and suits, rebuilt for the flight (PROVENANCE.json)
+      public/models/hangar/ # NASA's models of 41 spacecraft and suits, rebuilt for the flight (PROVENANCE.json)
     ios/                    # Albedian Capture, the iPhone companion (SwiftUI)
     webgpu-spike/           # The WebGPU renderer spike (docs/architecture/RENDERER_WEBGPU_SPIKE.md)
   services/
@@ -102,7 +102,7 @@ pnpm field --check
 pnpm field
 ```
 
-`pnpm field --check` starts nothing and prints one line per need; fix any `MISSING` line first. `pnpm field` starts the API on 127.0.0.1:8000, the web app on http://localhost:5173 and the music sample server; open the web app and press Upload. With no night photo at hand, try TBOE PC Ohm's public-domain (CC0) photo [Starry sky 2](https://commons.wikimedia.org/w/index.php?curid=178297645) from Wikimedia Commons (corpus photo `rp-b-16`, the app's sample night, [`docs/science/REAL_PHOTO_CORPUS.md`](docs/science/REAL_PHOTO_CORPUS.md)): download its original file from that page; on main at `f783fdc9a` on 27 November 2026 it calibrated in 13 s, and astrometry.net confirmed all 43 of its catalog matched stars ([`docs/science/REAL_PHOTO_BENCHMARK.md`](docs/science/REAL_PHOTO_BENCHMARK.md)). The music's samples are not in the repository: `uv run python scripts/fetch_music_sources.py` fetches the 144 files the app plays (CC0 and CC BY 4.0, about 262 MB, listed in [`data/music_sources.json`](data/music_sources.json)) into `.cache/music/sources`, and is safe to run again; without them the app runs and the music stays silent, and `pnpm field --check` counts them ([`docs/FIELD_USE.md`](docs/FIELD_USE.md)).
+`pnpm field --check` starts nothing and prints one line per need; fix any `MISSING` line first. `pnpm field` starts the API on 127.0.0.1:8000, the web app on http://localhost:5173 and the music sample server; open the web app and press Try a sample night, which stands beside Upload once the first start has fetched and solved the app's sample night in the background: the finished reveal of TBOE PC Ohm's public-domain (CC0) photo [Starry sky 2](https://commons.wikimedia.org/w/index.php?curid=178297645) from Wikimedia Commons (corpus photo `rp-b-16`, [`docs/science/REAL_PHOTO_CORPUS.md`](docs/science/REAL_PHOTO_CORPUS.md)), named as the sample photo with its credit. Or press Upload and give it a night photo of your own; to upload this one, download its original file from that page; on main at `f783fdc9a` on 27 November 2026 it calibrated in 13 s, and astrometry.net confirmed all 43 of its catalog matched stars ([`docs/science/REAL_PHOTO_BENCHMARK.md`](docs/science/REAL_PHOTO_BENCHMARK.md)). The music's samples are not in the repository: `uv run python scripts/fetch_music_sources.py` fetches the 144 files the app plays (CC0 and CC BY 4.0, about 262 MB, listed in [`data/music_sources.json`](data/music_sources.json)) into `.cache/music/sources`, and is safe to run again; without them the app runs and the music stays silent, and `pnpm field --check` counts them ([`docs/FIELD_USE.md`](docs/FIELD_USE.md)).
 
 ### 3. Run Verification & Property-Based Test Suites
 ```bash
