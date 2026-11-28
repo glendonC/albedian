@@ -13,7 +13,7 @@ import { poseSession, sample } from '../../components/__tests__/poseSessions.js'
 import { readLeadingMarginPx, SAFE_AREA_LEFT_VAR } from '../../components/phoneSheet.js';
 import { sourcePhotoDisplayRect } from '../../components/sourcePhotoRect.js';
 import { PhoneNoMatch } from '../PhoneNoMatch.js';
-import { phoneSlotCrop } from '../phoneSlot.js';
+import { noMatchPhotoRoomPx, phoneSlotCrop } from '../phoneSlot.js';
 import type { RevealStatus } from '../revealStatus.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
@@ -79,11 +79,11 @@ function declarationsOf(selector: string): Record<string, string> {
   return found;
 }
 
-/** The no-match photo cropped as the viewport crops it: with the leading edge held on its side. */
-function cropped(session: ObservationSession, w: number, h: number, leadingPx?: number): ObservationSession {
+/** The no-match photo cropped as the viewport crops it: with the leading edge held on its side, and the room (8f). */
+function cropped(session: ObservationSession, w: number, h: number, leadingPx?: number, roomPx?: number): ObservationSession {
   const asset = session.sourceAsset!;
   const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
-  return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, w, h, asset.mediaKind, leadingPx) } } as ObservationSession;
+  return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, w, h, asset.mediaKind, leadingPx, roomPx) } } as ObservationSession;
 }
 function shownRect(session: ObservationSession, w: number, h: number) {
   const asset = session.sourceAsset!;
@@ -257,7 +257,9 @@ describe('nomatch-sideways-one: the viewport crops the no-match photo to the lea
     const noMatch = poseSession(sample('horizon_predicted_only'));
     setWindow(874, 292);
     openViewport(noMatch);
-    const led = shownRect(cropped(noMatch, 874, 292, 24), 874, 292);
+    // The 16:9 sample fit to the height would leave 283 px; the room keeps its column at 284 (nomatch-sideways-wide-one, 8f)
+    const led = shownRect(cropped(noMatch, 874, 292, 24, noMatchPhotoRoomPx(874, 24, 24)), 874, 292);
+    expect(874 - 24 - (24 + led.widthPx + 24)).toBeCloseTo(284, 6);
     const screen = q('[data-testid="reveal-phone-scroll"]')!;
     expect(screen.className).toBe('reveal-phone-scroll is-column');
     expect(parseFloat(screen.style.left)).toBeCloseTo(24 + led.widthPx + 24, 3);

@@ -64,7 +64,8 @@ const ENDS_FADE_PX = 40;
  * as fractions of its size): a photo covers the slot, centred on it, as small as covering allows; a clip fits inside
  * the slot without cropping, centred at (viewportWidthPx / 2, 378) (D16, UIUX-clipphone-READY.md section 1) [verified].
  * Held on its side a photo given a leading edge stands there instead of centred: the no-match photo, whole, its leading
- * edge at the leading margin (nomatch-sideways-one; UIUX-phone-sideways-READY.md item 8a).
+ * edge at the leading margin (nomatch-sideways-one; UIUX-phone-sideways-READY.md item 8a). Given a room as well it fits
+ * that width too, centred in the height, so the column beside it keeps its least width (8f; noMatchPhotoRoomPx).
  */
 export function phoneSlotCrop(
   shownWidthPx: number,
@@ -72,7 +73,8 @@ export function phoneSlotCrop(
   viewportWidthPx: number,
   viewportHeightPx: number,
   mediaKind?: 'image' | 'video',
-  leadingEdgePx?: number
+  leadingEdgePx?: number,
+  roomWidthPx?: number
 ): PhotoCrop {
   const fitted = fitSourceToViewport(shownWidthPx, shownHeightPx, viewportWidthPx, viewportHeightPx);
   const slot = phoneSlotIn(viewportHeightPx, viewportWidthPx);
@@ -80,15 +82,30 @@ export function phoneSlotCrop(
   const h = Math.max(1, shownHeightPx);
   // A clip fits the slot (D16); so does a photo on a phone held on its side, shown whole (phone-sideways-two)
   const whole = mediaKind === 'video' || isSideways(viewportWidthPx, viewportHeightPx);
-  const scale = whole ? Math.min(viewportWidthPx / w, slot.heightPx / h) : Math.max(viewportWidthPx / w, slot.heightPx / h);
+  const led = leadingEdgePx !== undefined && whole && mediaKind !== 'video';
+  const roomPx = led && roomWidthPx !== undefined ? Math.max(0, Math.min(viewportWidthPx, roomWidthPx)) : viewportWidthPx;
+  const scale = whole ? Math.min(roomPx / w, slot.heightPx / h) : Math.max(viewportWidthPx / w, slot.heightPx / h);
   const width = w * scale;
-  const centreX = leadingEdgePx !== undefined && whole && mediaKind !== 'video' ? leadingEdgePx + width / 2 : viewportWidthPx / 2;
+  const centreX = led ? leadingEdgePx + width / 2 : viewportWidthPx / 2;
   const centreY = slot.topPx + slot.heightPx / 2;
   return {
     zoom: width / fitted.widthPx,
     panX: (centreX - fitted.leftPx) / fitted.widthPx - 0.5,
     panY: (centreY - fitted.topPx) / fitted.heightPx - 0.5,
   };
+}
+
+/** The no-match column's least width held sideways (UIUX-phone-sideways-READY.md 8f: 8c's own measure at 667 by 320). */
+export const NOMATCH_COLUMN_LEAST_PX = 284;
+/** From the no-match photo's trailing edge to its column held sideways (8b). */
+export const NOMATCH_COLUMN_GAP_PX = 24;
+
+/**
+ * The width a no-match photo held sideways may fill (8f): the window's width less the leading and trailing margins,
+ * the gap and the column's least width, so the photo gives way before an action does.
+ */
+export function noMatchPhotoRoomPx(viewportWidthPx: number, leadingMarginPx: number, trailingMarginPx: number, columnLeastPx: number = NOMATCH_COLUMN_LEAST_PX): number {
+  return Math.max(0, viewportWidthPx - leadingMarginPx - trailingMarginPx - NOMATCH_COLUMN_GAP_PX - columnLeastPx);
 }
 
 /** The mask that fades the slot's top and bottom and hides the photo beyond it, in the photo's own box. */

@@ -65,8 +65,9 @@ import { ClipPlayer } from '../reveal/ClipPlayer.js';
 import { MeasuredMarks, type MeasuredMark } from '../reveal/MeasuredMarks.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
-import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, phoneEndsMask, phoneSlotCrop, phoneSlotIn } from '../reveal/phoneSlot.js';
-import { readLeadingMarginPx } from './phoneSheet.js';
+import { isPhoneNoMatchShown, isPhoneRevealShown, isSideways, noMatchPhotoRoomPx, phoneEndsMask, phoneSlotCrop, phoneSlotIn } from '../reveal/phoneSlot.js';
+import { useNoMatchColumnLeastPx } from '../reveal/noMatchColumn.js';
+import { readLeadingMarginPx, readSafeAreaInsetsPx } from './phoneSheet.js';
 import { SAMPLE_CREDIT_GAP_PX, SampleCredit } from '../reveal/SampleCredit.js';
 import { useRestoration } from '../reveal/restoration.js';
 import { photoNames } from '../reveal/sampleWords.js';
@@ -721,15 +722,21 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     if (arrival === null) waitMarks.current = null;
   }, [arrival]);
+  // nomatch-sideways-one (item 8a): held on its side the no-match photo stands whole at the leading margin, a column beside it;
+  // never while the solve still runs, when the session reads as unmatched too and the waiting photo stands centred (item 2;
+  // nomatch-sideways-wait-one). nomatch-sideways-wide-one (8f): it fits the room the column's least width leaves, the
+  // trailing margin as the column's own (max(24px, the trailing inset)), so a wide photo gives way before an action does
+  const noMatchLed = !phoneWorking && phoneNoMatch && session.sourceAsset?.mediaKind === 'image' && isSideways(windowSize.widthPx, windowSize.heightPx);
+  const leadingMarginPx = noMatchLed ? readLeadingMarginPx() : 0;
+  const trailingMarginPx = noMatchLed ? Math.max(24, readSafeAreaInsetsPx().right) : 0;
+  const columnLeastPx = useNoMatchColumnLeastPx(noMatchLed, windowSize.widthPx, leadingMarginPx, trailingMarginPx, windowSize.heightPx);
   const slotted: ObservationSession = (() => {
     const asset = session.sourceAsset;
     if (!(phoneReveal || phoneWorking) || !asset) return session;
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
-    // nomatch-sideways-one (item 8a): held on its side the no-match photo stands whole at the leading margin, a column beside it;
-    // never while the solve still runs, when the session reads as unmatched too and the waiting photo stands centred (item 2;
-    // nomatch-sideways-wait-one)
-    const leading = !phoneWorking && phoneNoMatch && asset.mediaKind === 'image' && isSideways(windowSize.widthPx, windowSize.heightPx) ? readLeadingMarginPx() : undefined;
-    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, asset.mediaKind, leading) } } as ObservationSession;
+    const leading = noMatchLed ? leadingMarginPx : undefined;
+    const room = noMatchLed ? noMatchPhotoRoomPx(windowSize.widthPx, leadingMarginPx, trailingMarginPx, columnLeastPx) : undefined;
+    return { ...session, cropTransform: { ...session.cropTransform, ...phoneSlotCrop(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, asset.mediaKind, leading, room) } } as ObservationSession;
   })();
   const slotMask = (() => {
     const asset = session.sourceAsset;
