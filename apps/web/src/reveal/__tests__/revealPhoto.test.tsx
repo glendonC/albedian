@@ -2175,6 +2175,9 @@ describe('the second hint: drag to look around', () => {
     expect(q('[data-testid="steer-line"]')!.textContent).toBe('Drag: turn');
     show(resting, { flight: omega, phone: true, phoneSteering: true, viewportWidthPx: 844, viewportHeightPx: 390 });
     expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['Drag: turn']);
+    // Held on its side at rest, no "Drag: turn" stands with the rest hint (AUDIT-D's survivor on phone-sideways-four v2)
+    show(resting, { flight: omega, phone: true, viewportWidthPx: 844, viewportHeightPx: 390 });
+    expect(q('[data-testid="steer-line"]')).toBeNull();
   });
 
   it('reads the flight\'s own target for the words, not a star an answer lights (the layer flies to the former)', () => {
