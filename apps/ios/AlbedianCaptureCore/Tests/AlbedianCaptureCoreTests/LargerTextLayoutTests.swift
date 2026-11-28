@@ -450,12 +450,13 @@ final class LargerTextLayoutTests: XCTestCase {
         let screens = try code("Screens/CompanionScreens.swift").code
         let after = try code("Screens/AfterSendScreens.swift").code
         let effect = ".scrollBounceBehavior(.basedOnSize).scrollEdgeEffectStyle(.automatic,for:.top)"
-        for (name, declaration, file) in [("Connect", "struct ConnectScreen: View", screens),
-                                          ("Can't reach the laptop", "struct AfterShotScreen: View", screens),
-                                          ("the refusal", "struct StoppedScreen: View", after)] {
+        // send-largetext-m: after the shot, Send to laptop past its floor is a second column of the same kind
+        for (name, declaration, file, columns) in [("Connect", "struct ConnectScreen: View", screens, 1),
+                                          ("Can't reach the laptop and Send", "struct AfterShotScreen: View", screens, 2),
+                                          ("the refusal", "struct StoppedScreen: View", after, 1)] {
             let body = compact(try body(of: declaration, in: file))
-            XCTAssertEqual(body.components(separatedBy: effect).count - 1, 1, name)
-            XCTAssertEqual(body.components(separatedBy: ".scrollBounceBehavior(").count - 1, 1, "\(name): one column")
+            XCTAssertEqual(body.components(separatedBy: effect).count - 1, columns, name)
+            XCTAssertEqual(body.components(separatedBy: ".scrollBounceBehavior(").count - 1, columns, "\(name): each column with the effect")
         }
     }
 
@@ -473,10 +474,10 @@ final class LargerTextLayoutTests: XCTestCase {
         XCTAssertTrue(screens.contains(bar + ".back,label:,action:model.back)}}"), "Connect's back button in the bar")
         XCTAssertTrue(screens.contains(bar + ".again,label:,action:model.takeAgain)}}"), "Take again in the bar")
         XCTAssertTrue(after.contains(bar + ".close,label:,action:model.close)}}"), "the refusal's close in the bar")
-        XCTAssertEqual((screens + after).components(separatedBy: ".padding(.top,CGFloat(UnreachableFrame.top-Arrive.topBarFoot))").count - 1, 3,
+        XCTAssertEqual((screens + after).components(separatedBy: ".padding(.top,CGFloat(UnreachableFrame.top-Arrive.topBarFoot))").count - 1, 4,
                        "each column starts under the bar's foot where it did")
         XCTAssertTrue(screens.contains("if!dynamicTypeSize.isAccessibilitySize{IconButton(icon:.back,label:,action:model.back).atTop(Arrive.topControls,alignment:.leading)"))
-        XCTAssertTrue(screens.contains("ifarrived&&!stacked{IconButton(icon:.again,label:,action:model.takeAgain).atTop(Arrive.topControls,alignment:.leading)"))
+        XCTAssertTrue(screens.contains("ifarrived&&!stacked&&!scrollsToSend{IconButton(icon:.again,label:,action:model.takeAgain).atTop(Arrive.topControls,alignment:.leading)"))
         XCTAssertTrue(after.contains("if!dynamicTypeSize.isAccessibilitySize{IconButton(icon:.close,label:,action:model.close).atTop(Arrive.topControls,alignment:.leading)"),
                       "the floating buttons only at default sizes")
     }

@@ -474,12 +474,28 @@ struct AfterShotScreen: View {
     /// largertext-unreachable-m: the room the lines and the stacked buttons need at accessibility sizes, measured once
     /// from them, hidden; nil until measured, and nothing of the column is drawn before
     @State private var columnRoom: Double?
+    /// send-largetext-m: Send to laptop's height as built at this text size, measured hidden; nil until measured
+    @State private var pillHeight: Double?
 
     var body: some View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
             let stacked = model.unreachable && dynamicTypeSize.isAccessibilitySize
+            // send-largetext-m (UIUX-iphone-firstuse-READY L1 and L2, DECIDED-BY-LEAD 27 Nov 12:39): the photo's foot
+            // 16 pt above Send to laptop at every text size, the photo whole and smaller where the wrapped pill would
+            // come closer, down to 160 pt; past that the screen scrolls, the pill in the flow under the photo
+            let pillTop = Double(geometry.size.height) - Arrive.mainBottomGap - (pillHeight ?? 0)
+            let send = SendFrame.size(screenWidth: width, pillTop: pillTop)
+            let scrollsToSend = !model.unreachable && SendFrame.scrolls(pillTop: pillTop)
             ZStack {
+                if !model.unreachable {
+                    // The pill as built, within the margins, measured hidden
+                    sendPill
+                        .padding(.horizontal, CGFloat(ButtonGeometry.margin))
+                        .hidden()
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { pillHeight = $0 }
+                }
                 if stacked {
                     // largertext-unreachable-m (UIUX-iphone-largertext-sweep-READY item 4, DECIDED-BY-LEAD 24 Nov 19:56):
                     // one column: the photo whole and smaller, as tall as what is left above the lines and the stacked
@@ -506,10 +522,29 @@ struct AfterShotScreen: View {
                     .safeAreaBar(edge: .top) { TopBar { IconButton(icon: .again, label: "Take again", action: model.takeAgain) } }
                     .opacity(columnRoom == nil ? 0 : 1)
                     .transition(.words(reduceMotion: reduceMotion))
+                } else if scrollsToSend {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ShotPhoto(shot: model.shot, width: send.width)
+                            sendPill
+                                .padding(.top, CGFloat(SendFrame.gap))
+                                .padding(.horizontal, CGFloat(ButtonGeometry.margin))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, CGFloat(UnreachableFrame.top - Arrive.topBarFoot))
+                        .padding(.bottom, CGFloat(Arrive.mainBottomGap))
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    // As the other scrolling columns: on under the fixed top controls with the system's scroll edge effect
+                    .scrollEdgeEffectStyle(.automatic, for: .top)
+                    .safeAreaBar(edge: .top) { TopBar { IconButton(icon: .again, label: "Take again", action: model.takeAgain) } }
                 } else {
-                    ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                    ShotPhoto(shot: model.shot, width: model.unreachable ? width : send.width).atTop(Arrive.photoTop)
+                        // Nothing drawn at accessibility sizes before the pill is measured, so the photo never shows at a
+                        // size it then leaves
+                        .opacity(!model.unreachable && dynamicTypeSize.isAccessibilitySize && pillHeight == nil ? 0 : 1)
                 }
-                if arrived && !stacked {
+                if arrived && !stacked && !scrollsToSend {
                     IconButton(icon: .again, label: "Take again", action: model.takeAgain)
                         .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
                         .transition(.words(reduceMotion: reduceMotion))
@@ -533,15 +568,20 @@ struct AfterShotScreen: View {
                     }
                     .atBottom(Arrive.unreachableButtonsBottomGap)
                     .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
-                } else if !model.unreachable && arrived {
+                } else if !model.unreachable && arrived && !scrollsToSend {
                     // firstuse-send-one (UIUX-iphone-firstuse-READY item 2): the button says where the send goes
-                    MainButton(title: SendWords.mainButton, icon: .send, action: model.send).atBottom(Arrive.mainBottomGap)
+                    sendPill.atBottom(Arrive.mainBottomGap)
                         .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
                 }
             }
         }
         .ignoresSafeArea()
         .onAppear { arrived = true }
+    }
+
+    /// firstuse-send-one's main button: it says where the send goes.
+    private var sendPill: some View {
+        MainButton(title: SendWords.mainButton, icon: .send, action: model.send)
     }
 
     /// The lines and the stacked buttons at accessibility sizes: both lines wrapping, centred, the icon at the first
