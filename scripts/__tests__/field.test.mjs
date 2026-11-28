@@ -76,6 +76,11 @@ describe('field start plan', () => {
       'node ../../scripts/check-built-page.mjs dist',
     ]);
     expect(plan.build.env.KEEP).toBe('1');
+    // phone-code-home-one (UIUX-phone-code-READY.md Q3, the lead's line of 22:20 on 27 Nov): the build made at this start
+    // carries the phone's address for the laptop's home to offer as a code; the plain start makes no build and has none
+    expect(plan.build.env.VITE_ALBEDIAN_PHONE_URL).toBe(`http://192.168.1.20:${WEB_PORT}`);
+    expect(plan.build.env.VITE_ALBEDIAN_PHONE_URL).toBe(plan.phoneUrl);
+    expect(plan.web.env.VITE_ALBEDIAN_PHONE_URL).toBeUndefined();
     // The dev server hands out any file in the repository by its /@fs/ path; preview serves apps/web/dist alone
     expect(plan.web.args.slice(0, 5)).toEqual(['--filter', '@albedian/web', 'exec', 'vite', 'preview']);
     expect(hostArg(plan.web.args)).toBe('0.0.0.0');

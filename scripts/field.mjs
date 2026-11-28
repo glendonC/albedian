@@ -119,7 +119,9 @@ export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, web
             { command: 'pnpm', args: ['--filter', '@albedian/web', 'exec', 'vite', 'build'] },
             { command: process.execPath, args: ['scripts/check-built-page.mjs', 'apps/web/dist'] },
           ],
-          env: { ...env, VITE_ALBEDIAN_MUSIC_SOURCES: MUSIC_BASE },
+          // phone-code-home-one (UIUX-phone-code-READY.md Q3): the phone's address, baked into this start's build, for the
+          // laptop's home to offer as a code at its own host (apps/web/src/components/phoneAddress.ts)
+          env: { ...env, VITE_ALBEDIAN_MUSIC_SOURCES: MUSIC_BASE, VITE_ALBEDIAN_PHONE_URL: phoneUrl },
         }
       : null,
     api: {
