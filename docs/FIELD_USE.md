@@ -63,7 +63,7 @@ hotel, airport or cafe Wi-Fi, and stop it when you are done.
 
 What it does:
 
-- It first builds the web app (26 seconds on this laptop [tested]), then serves only that build, never the
+- It first builds the web app (4 to 6 seconds on this laptop [tested]), then serves only that build, never the
   development server. If the build fails, it says so and starts nothing [inference from code].
 - The web app listens on every network interface of the laptop (`0.0.0.0`), not only the address it prints
   [tested].
