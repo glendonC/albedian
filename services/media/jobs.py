@@ -156,6 +156,16 @@ def _results_stored(store: JobStore, record: Mapping[str, Any]) -> bool:
             and all((variant / name).is_file() for name in ("variant.json", "graph.json", "attempt.json")))
 
 
+def _planes_digest(planes) -> str:
+    """A frame's planes, their shapes, types and bytes, as one SHA-256: what the stored file must decode to."""
+    digest = hashlib.sha256()
+    for plane in planes:
+        plane = np.ascontiguousarray(plane)
+        digest.update(f"{plane.shape}{plane.dtype.str}".encode())
+        digest.update(plane.tobytes())
+    return digest.hexdigest()
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -392,6 +402,11 @@ class _Stage:
         self.done += count
         self.progress(self.stage, self.unit, self.done, self.total)
 
+    def to(self, done: int) -> None:
+        """The count raised to `done`, one at a time, where it is lower; never lowered."""
+        while self.done < done:
+            self.add()
+
 
 def _clip_steps(clip: clip_frames.ClipColour, settings: clip_frames.ClipSettings, probe: clip_io.ClipProbe,
                 container: str, codec: str) -> list[dict]:
@@ -548,20 +563,28 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
     encoded = encoded_path if turned else variant_path
     decoded, restored, written = (_Stage(progress, stage, "frames", count) for stage in ("decode", "restore", "encode"))
     frames: list[clip_frames.FrameResult] = []
+    # Each run restored and gated in one pass (clip-speed-one): the gate on the very planes the encoder is handed, each
+    # frame's digest kept as it is written, so the stored file can be proven to hold them; a worker counts each frame as
+    # it finishes it, so Restoring moves frame by frame [tested: the public clip's row stood 30 to 37 s, and its gate
+    # pass was 42 percent of its job, .lanetools/speed/stages_base.txt]
+    gates: list[clip_frames.FrameGate] = []
+    digests: list[str] = []
     with clip_io.ClipDecoder(original_path, probe) as decoder, clip_io.ClipEncoder(
         encoded, probe.video, time_base=probe.time_base, frame_times=probe.frame_times, container=container,
         audio_source=original_path if probe.audio else None, crf=CLIP_CRF, preset=CLIP_PRESET,
         last_duration=probe.last_frame_duration,
-    ) as encoder, frame_pool.FramePool(functools.partial(clip_frames.restore_run, settings), workers=workers) as pool:
+    ) as encoder, frame_pool.FramePool(functools.partial(clip_frames.restore_and_gate_run, settings), workers=workers,
+                                       counted=("restore",), on_count=lambda _stage, done: restored.to(done)) as pool:
         def source():
             for frame in decoder:
                 decoded.add()
                 yield frame.planes
 
-        for result in pool.map(frame_pool.runs(source(), window=clip_frames.RUN_WINDOW)):
-            restored.add()
+        for result, frame_gate in pool.map(frame_pool.runs(source(), window=clip_frames.RUN_WINDOW)):
             encoder.write(result.planes)
             written.add()
+            digests.append(_planes_digest(result.planes))
+            gates.append(frame_gate)
             frames.append(dataclasses.replace(result, planes=()))
         encoder.finish()
         codec = encoder.codec
@@ -599,20 +622,31 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
             raise clip_io.ClipError("internal")
         measured = _clip_measured(clip, settings, probe, frames, [], max(peak, clip_io.peak_memory().self_bytes))
         return recorder.rejected(check.rejection, measured)
-    # The gate on the stored file, each frame against the original's own pixels, rebuilt in the pool
+    # Checking: the stored file read once, each frame proven to be exactly the planes gated in the pass (clip-speed-one);
+    # the last frame's count waits for the whole proof. Where one differs, the gate on the stored file, each frame
+    # against the original's own pixels, rebuilt in the pool as before
     verify = _Stage(progress, "verify", "frames", count)
     stored_probe = clip_io.probe_clip(stored)
-    gated: list[clip_frames.FrameGate] = []
-    with clip_io.ClipDecoder(original_path, probe) as originals, clip_io.ClipDecoder(stored, stored_probe) as kept, \
-            frame_pool.FramePool(functools.partial(clip_frames.gate_run, settings), workers=workers) as pool:
-        # Each frame's own stars as the restore pass found them on the same original frame (restore-7s): the gate takes
-        # them only for the luma they were found on, and finds them itself otherwise
-        own_stars = {f.index: f.own_stars for f in frames}
-        pairs = ((a.planes, b.planes, own_stars.get(a.index)) for a, b in zip(originals, kept))
-        for result in pool.map(frame_pool.runs(pairs, window=clip_frames.RUN_WINDOW)):
-            gated.append(result)
-            verify.add()
-        peak = max(peak, pool.worker_peak_bytes)
+    proven = 0
+    with clip_io.ClipDecoder(stored, stored_probe) as kept:
+        for k, frame in enumerate(kept):
+            if k >= len(digests) or _planes_digest(frame.planes) != digests[k]:
+                break
+            proven += 1
+            if proven < count:
+                verify.add()
+    gated: list[clip_frames.FrameGate] = gates
+    if proven != count or len(digests) != count:
+        gated = []
+        with clip_io.ClipDecoder(original_path, probe) as originals, clip_io.ClipDecoder(stored, stored_probe) as kept, \
+                frame_pool.FramePool(functools.partial(clip_frames.gate_run, settings), workers=workers) as pool:
+            # Each frame's own stars as the restore pass found them on the same original frame (restore-7s): the gate
+            # takes them only for the luma they were found on, and finds them itself otherwise
+            own_stars = {f.index: f.own_stars for f in frames}
+            pairs = ((a.planes, b.planes, own_stars.get(a.index)) for a, b in zip(originals, kept))
+            gated = list(pool.map(frame_pool.runs(pairs, window=clip_frames.RUN_WINDOW)))
+            peak = max(peak, pool.worker_peak_bytes)
+    verify.to(count)
     if len(gated) != count:
         raise clip_io.ClipError("frame_times")
     gate_record = gate.clip_record([g.outcome for g in gated])

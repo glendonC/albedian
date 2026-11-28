@@ -24,7 +24,7 @@ POST /api/media/{sha256}/restore  (kind: display_copy | restoration)        serv
      6  dissolve points the original does not confirm                         services/media/gate.py
      7  lift, bounded by noise and quantisation                               services/media/tone.py
      8  encode with the original's transfer; clips: frame times, audio copy   services/media/encode.py, clip_io.py
-     9  gate, on the stored file decoded back                                 services/media/gate.py
+     9  gate, on the stored file decoded back; clips: in the restore pass     services/media/gate.py
     10  ready: link the variant and its records into place; else remove it    services/media/variants.py
 GET variants, records, file, export, manifest                                services/media/router.py
 ```
@@ -780,6 +780,20 @@ child's process group, so a cancel or the bound stops it (the upload jobs spec, 
 depend on the pool's size: a test runs one clip with one worker and with two and compares the stored files'
 hashes. Two, because agents' test runs stay inside the lane's limit of two processes; only the timed run on the
 owner's clips uses the default pool, and the unit asks the lead for a time to run it [proposed].
+
+**The gate in the same pass** [tested: clip-speed-one; decided by the lead at the 16:24 stamp of 27 Nov]. Each worker
+gates each frame of its run as soon as it has restored it, on the very planes it hands the encoder, by the gate's
+own steps (`clip_frames.restore_and_gate_run`: the window, the frames together and the stars rebuilt from the
+original frames alone, its own tile searches). The child keeps each frame's digest as it writes it; once the stored
+file is written and checked, Checking reads it back once and proves, frame by frame, that it decodes to exactly the
+planes gated (the store is lossless, section 10's crf 0); only then do the gates stand. Where one frame differs, the
+gate reads the stored file and the original again in a pass of its own, as it did before. Each worker counts each
+frame it has restored and gated in a counter its pool shares, so Restoring moves one frame at a time; Checking counts
+the frames it proves and is listed only once Saving has reported (the web's rule, clip-checking-row-one). On the
+public clip (328 frames at 1080p, 6 workers, a load of 10 to 14) the job took 291 to 293 s with the gate's second
+pass and 269 to 277 s in one, every stored byte and the playback copy's the same: the gate's own work is the same,
+only the second pass's barrier and decodes go (394 s to 287 s at a load of 30). Checking fell from about 130 s to
+under 1 s, and the longest silence from 21 s to 8 s.
 
 **Encode, streamed.** Linear light back to the stream's own Y'CbCr (section 1), written frame by frame to:
 

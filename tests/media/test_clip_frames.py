@@ -8,6 +8,7 @@ synthetic and made with the temporal tests' own drawing; the step itself draws n
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import math
 from pathlib import Path
@@ -325,6 +326,43 @@ def test_every_frame_comes_out_once_in_order_and_the_same_whatever_the_pools_siz
     assert [r.index for r in one] == list(range(10))
     assert all(all(np.array_equal(a, b) for a, b in zip(x.planes, y.planes)) for x, y in zip(one, two))
     assert all(x.planes[0].shape == f[0].shape and x.planes[0].dtype == f[0].dtype for x, f in zip(one, frames))
+
+
+@pytest.mark.parametrize("case", ["merged", "barred"])
+def test_one_pass_restores_and_gates_each_frame_exactly_as_the_two_passes_do(case: str) -> None:
+    # clip-speed-one: the job restores and gates each run in one worker; that must be what the restore pass and then
+    # the gate pass on the same planes give, to the bit and to the record
+    if case == "merged":
+        clip = clip_frames.clip_colour(video(width=256, height=256))
+        frames = scene_clip(clip, 12, 33, sigma=0.002)
+    else:
+        clip = clip_frames.clip_colour(video(width=192, height=144))
+        frames = _with_bars(clip, _sky_frames(clip, sky_y=24.0, sigma=1.5, count=12), top=24, bottom=24)
+    settings = clip_frames.measure_clip(clip, [frames[i] for i in clip_frames.sample_indices(len(frames))])
+    if case == "merged":
+        assert settings.measurement.reason is None, "the control: a noise table, so the frames merge"
+    else:
+        assert settings.bars, "the control: the bars are found"
+    neighbours = 0
+    for run in frame_pool.runs(iter(frames), window=clip_frames.RUN_WINDOW):
+        both = clip_frames.restore_and_gate_run(settings, run)
+        restored = clip_frames.restore_run(settings, run)
+        own = {run.before + k: result for k, result in enumerate(restored)}
+        items = tuple((planes, own[i].planes, own[i].own_stars) if i in own else (planes, planes, None)
+                      for i, planes in enumerate(run.frames))
+        gated = clip_frames.gate_run(settings, frame_pool.Run(run.first, run.before, run.count, items))
+        assert len(both) == len(restored) == len(gated) == run.count
+        for (result, frame_gate), alone, gate_alone in zip(both, restored, gated):
+            assert all(np.array_equal(a, b) and a.dtype == b.dtype for a, b in zip(result.planes, alone.planes))
+            assert dataclasses.replace(result, planes=()) == dataclasses.replace(alone, planes=())
+            assert frame_gate.outcome.record == gate_alone.outcome.record
+            assert (frame_gate.outcome.unconfirmed, frame_gate.outcome.rejection, frame_gate.outcome.changes,
+                    frame_gate.outcome.ratios) == (gate_alone.outcome.unconfirmed, gate_alone.outcome.rejection,
+                                                   gate_alone.outcome.changes, gate_alone.outcome.ratios)
+            assert dataclasses.replace(frame_gate, outcome=None) == dataclasses.replace(gate_alone, outcome=None)
+            neighbours += result.neighbours > 0
+    if case == "merged":
+        assert neighbours >= len(frames) - 2, "the control: frames with registered neighbours"
 
 
 def test_without_a_noise_table_a_frame_is_only_lifted() -> None:

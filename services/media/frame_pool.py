@@ -15,6 +15,7 @@ import multiprocessing
 import os
 from collections import deque
 from concurrent.futures import Future, ProcessPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Iterator, Optional, Sequence
 
@@ -37,6 +38,26 @@ WORKERS_LIMIT_ENV = "ALBEDIAN_MEDIA_WORKERS"
 INNER_THREAD_VARIABLES = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS",
                           "NUMEXPR_NUM_THREADS")
 INNER_THREADS = "1"  # [decided 2026-11-25 by the lead, pool-threads-one]
+# How often the pool reads its counters while it waits for a run's results [proposed: a person sees a row move about
+# every second; the public clip's frames take 3 to 6 s each in a worker, so 6 workers finish one about every second]
+COUNT_POLL_SEC = 0.5
+
+# In a worker: the counters its pool shares with it, by stage (clip-speed-one); none outside a pool that counts
+_COUNTERS: dict = {}
+
+
+def _count_into(counters: dict) -> None:
+    global _COUNTERS
+    _COUNTERS = counters
+
+
+def frame_done(stage: str) -> None:
+    """In a worker: one more frame of `stage` finished, counted at once in the counter its pool shares, so the job
+    reports it while the worker's run goes on; outside a pool that counts `stage`, nothing."""
+    counter = _COUNTERS.get(stage)
+    if counter is not None:
+        with counter.get_lock():
+            counter.value += 1
 
 
 @dataclass(frozen=True)
@@ -112,11 +133,17 @@ class FramePool:
     function of one run, returning one result per frame of the run's own. At most `workers` runs are in the pool at
     once; results come in frame order; a failure in any run ends the pool and reaches the caller."""
 
-    def __init__(self, work: Callable[[Run], Sequence[Any]], *, workers: int) -> None:
+    def __init__(self, work: Callable[[Run], Sequence[Any]], *, workers: int, counted: Sequence[str] = (),
+                 on_count: Optional[Callable[[str, int], None]] = None) -> None:
         if workers < 1:
             raise ValueError("a pool has one worker or more")
         self._work = work
         self._workers = workers
+        # The stages its workers count with `frame_done`, and the caller told of each rise, one frame at a time
+        self._counted = tuple(counted)
+        self._on_count = on_count
+        self._counters: dict = {}
+        self._reported: dict = {}
         self._executor: Optional[ProcessPoolExecutor] = None
         self._worker_pids: set[int] = set()
         self._callers_threads: dict[str, Optional[str]] = {}
@@ -135,7 +162,14 @@ class FramePool:
         # (a worker may start late) and the caller's own values come back at its end
         self._callers_threads = {name: os.environ.get(name) for name in INNER_THREAD_VARIABLES}
         os.environ.update({name: INNER_THREADS for name in INNER_THREAD_VARIABLES})
-        self._executor = ProcessPoolExecutor(max_workers=self._workers, mp_context=multiprocessing.get_context("spawn"))
+        context = multiprocessing.get_context("spawn")
+        self._counters = {stage: context.Value("q", 0) for stage in self._counted}
+        self._reported = {stage: 0 for stage in self._counted}
+        if self._counters:
+            self._executor = ProcessPoolExecutor(max_workers=self._workers, mp_context=context, initializer=_count_into,
+                                                 initargs=(self._counters,))
+        else:
+            self._executor = ProcessPoolExecutor(max_workers=self._workers, mp_context=context)
         return self
 
     def __exit__(self, *_exc: object) -> None:
@@ -157,6 +191,29 @@ class FramePool:
         processes = getattr(self._executor, "_processes", None) or {}
         self._worker_pids.update(int(pid) for pid in processes)
 
+    def _report(self) -> None:
+        """Each counted stage's rise since the last read, told to the caller one frame at a time."""
+        for stage, counter in self._counters.items():
+            value = counter.value
+            while self._reported[stage] < value:
+                self._reported[stage] += 1
+                if self._on_count is not None:
+                    self._on_count(stage, self._reported[stage])
+
+    def _results(self, future: Future) -> tuple[list[Any], int]:
+        """A run's results, the counters read while they are awaited and once more after: a worker counts a frame
+        before it returns, so every frame of the run is reported before its results are handed back."""
+        if not self._counters:
+            return future.result()
+        while True:
+            try:
+                out = future.result(timeout=COUNT_POLL_SEC)
+            except FutureTimeout:
+                self._report()
+                continue
+            self._report()
+            return out
+
     @property
     def worker_pids(self) -> frozenset[int]:
         """Every worker process this pool started, by process id."""
@@ -177,7 +234,7 @@ class FramePool:
         for _ in range(self._workers):
             hand_out()
         while pending:
-            results, peak = pending.popleft().result()
+            results, peak = self._results(pending.popleft())
             self.worker_peak_bytes = max(self.worker_peak_bytes, peak)
             # The next run goes in before these results are handed back, so the pool stays busy meanwhile
             hand_out()

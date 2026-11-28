@@ -629,25 +629,55 @@ def restore_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameResult
         return [dataclasses.replace(result, planes=_put_back(clip, found, run.frames[run.before + k], result.planes))
                 for k, result in enumerate(restore_run(settings.within(), inside))]
     frames, first = _run_frames(settings, run, run.frames)
-    # The clip index of frames[0]
-    origin = run.first - first
     # The run's tile searches, kept by the exact values each read (`gate.Searches`): a tile whose values repeat, as a
     # repeated frame's do, is answered from its first search, and one that differs in a bit is searched afresh
     searches = gate.Searches()
     results = []
     for k in range(run.count):
-        prepared = prepare_frame(settings, frames, first + k)
-        dissolved = dissolve_frame(settings, prepared, searches)
-        side = prepared.side
-        own, together = side.found.field, side.found.together
-        closure = () if side.window is None else tuple(
-            (origin + side.window_start + i, error) for i, error in enumerate(side.window.closure_errors))
-        repeats, samples = _repeats(settings.colour, run, k)
-        results.append(FrameResult(run.first + k, finish_frame(settings, dissolved.working, side), side.neighbours, own.found,
-                                   own.confirmed, settings.lift.beta, together.confirmed, side.found.fixed,
-                                   list(dissolved.per_pass), closure, repeats, samples, bool(own.clipped.any()),
-                                   gate.own_stars_of(side.own, frames.luma[first + k])))
+        results.append(_restored(settings, run, frames, first, k, searches))
+        frame_pool.frame_done("restore")
     return results
+
+
+def _restored(settings: ClipSettings, run: frame_pool.Run, frames: _RunFrames, first: int, k: int,
+              searches: gate.Searches) -> FrameResult:
+    """The run's own frame `k` prepared, dissolved and finished (`restore_run`'s step); `frames[first]` is the run's own
+    first frame."""
+    prepared = prepare_frame(settings, frames, first + k)
+    dissolved = dissolve_frame(settings, prepared, searches)
+    side = prepared.side
+    own, together = side.found.field, side.found.together
+    origin = run.first - first
+    closure = () if side.window is None else tuple(
+        (origin + side.window_start + i, error) for i, error in enumerate(side.window.closure_errors))
+    repeats, samples = _repeats(settings.colour, run, k)
+    return FrameResult(run.first + k, finish_frame(settings, dissolved.working, side), side.neighbours, own.found,
+                       own.confirmed, settings.lift.beta, together.confirmed, side.found.fixed,
+                       list(dissolved.per_pass), closure, repeats, samples, bool(own.clipped.any()),
+                       gate.own_stars_of(side.own, frames.luma[first + k]))
+
+
+def restore_and_gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[tuple[FrameResult, "FrameGate"]]:
+    """The pool's work for one run in one pass (clip-speed-one): each of its own frames restored as `restore_run`
+    restores it and at once gated as `gate_run` gates it, on the very planes it was restored to, then counted for the
+    job's progress. The gate's window, frames together and stars are rebuilt from the original frames alone and its
+    tile searches are its own, as in `gate_run`; the job takes these gates only once the stored file is proven to decode
+    to exactly the planes gated, and gates the stored file in a pass of its own otherwise. A clip with bars is restored
+    and then gated run by run, as the two passes do."""
+    if settings.bars:
+        results = restore_run(settings, run)
+        own = {run.before + k: result for k, result in enumerate(results)}
+        items = tuple((planes, own[i].planes, own[i].own_stars) if i in own else (planes, planes, None)
+                      for i, planes in enumerate(run.frames))
+        return list(zip(results, gate_run(settings, frame_pool.Run(run.first, run.before, run.count, items))))
+    frames, first = _run_frames(settings, run, run.frames)
+    searches, gate_searches = gate.Searches(), gate.Searches()
+    out = []
+    for k in range(run.count):
+        result = _restored(settings, run, frames, first, k, searches)
+        out.append((result, _gated(settings, run, frames, first, k, result.planes, result.own_stars, gate_searches)))
+        frame_pool.frame_done("restore")
+    return out
 
 
 def _repeats(clip: ClipColour, run: frame_pool.Run, k: int) -> tuple[int, int]:
@@ -729,14 +759,23 @@ def gate_run(settings: ClipSettings, run: frame_pool.Run) -> list[FrameGate]:
     results = []
     for k in range(run.count):
         item = run.frames[run.before + k]
-        side = original_side(settings, frames, first + k, item[2] if len(item) > 2 else None)
-        outcome = gate_frame(settings, side, run.frames[run.before + k][1], searches)
-        own, together = side.found.field, side.found.together
-        results.append(FrameGate(run.first + k, outcome, own.found + together.found, own.confirmed + together.confirmed,
-                                 together.confirmed, side.found.fixed))
+        results.append(_gated(settings, run, frames, first, k, item[1], item[2] if len(item) > 2 else None, searches))
     return results
+
+
+def _gated(settings: ClipSettings, run: frame_pool.Run, frames: _RunFrames, first: int, k: int,
+           stored_planes: Sequence[np.ndarray], own_stars: Optional[gate.OwnStars], searches: gate.Searches) -> FrameGate:
+    """The run's own frame `k` gated on `stored_planes` against its original pixels (`gate_run`'s step), its window,
+    frames together and stars rebuilt from the original frames, its own stars from `own_stars` for the luma they were
+    found on."""
+    side = original_side(settings, frames, first + k, own_stars)
+    outcome = gate_frame(settings, side, stored_planes, searches)
+    own, together = side.found.field, side.found.together
+    return FrameGate(run.first + k, outcome, own.found + together.found, own.confirmed + together.confirmed,
+                     together.confirmed, side.found.fixed)
 
 
 __all__ = ["ClipColour", "ClipSettings", "clip_bars", "FrameGate", "FrameResult", "OriginalSide", "Prepared", "clip_colour",
            "dissolve_frame", "finish_frame", "gate_frame", "gate_run", "measure_clip", "measure_stars", "original_side", "prepare_frame",
+           "restore_and_gate_run",
            "restore_run", "sample_indices", "stored_luma", "to_stored"]

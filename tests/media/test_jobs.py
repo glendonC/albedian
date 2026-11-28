@@ -22,6 +22,7 @@ Covers, through the API on a store of its own:
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import io
 import json
@@ -871,6 +872,96 @@ def test_the_stored_clip_is_the_same_whatever_the_pools_size(tmp_path) -> None:
     assert hashes[0] == hashes[1]
 
 
+def black_job(tmp_path: Path, *, count: int, workers: int, progress=no_progress, name: str = "black") -> tuple[dict, Path]:
+    """A black clip of `count` frames restored as the job's child restores it: its result and its upload's folder."""
+    root = tmp_path / f"store-{name}"
+    source = tmp_path / f"{name}.mov"
+    black_clip(source, count=count)
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = root / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / "original.mov"
+    original.write_bytes(source.read_bytes())
+    (root / ".partial").mkdir()
+    partials = [str(root / ".partial" / f"{JOB_ID}-clip_encoded.mov.part"), str(root / ".partial" / f"{JOB_ID}-variant.mov.part")]
+    facts = {"mimeType": "video/quicktime", "durationMs": count * 1000.0 / 30, "audioStreams": []}
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                               None, facts, partials, progress, workers=workers)
+    return out, folder
+
+
+def test_the_restore_and_the_gate_report_each_frame_as_a_worker_finishes_it(tmp_path) -> None:
+    # clip-speed-one: the row stood still while a whole run of 8 frames from each worker came back at once (the public
+    # clip's row 30 to 37 s, 48 frames a step, .lanetools/speed/stages_base.txt); a worker now counts each frame once it
+    # has restored and gated it, and the job reports each as it comes; Checking, the proof that the stored file holds
+    # exactly the frames gated, counts each frame it reads and is listed only once the stored file is written
+    events = []
+    count = 20
+    out, _ = black_job(tmp_path, count=count, workers=1, progress=lambda *event: events.append(event))
+    assert out["status"] == "ready", out
+    for stage in ("restore", "verify"):
+        done = [d for s, _unit, d, _total in events if s == stage]
+        assert done[0] == 0 and done[-1] == count, (stage, done)
+        steps = [b - a for a, b in zip(done, done[1:])]
+        assert all(step in (0, 1) for step in steps) and steps.count(1) == count, (stage, done)
+    # One worker: the first run's 8 frames are each counted, restored and gated, before its results come back and
+    # the first frame is encoded; before, the count rose only as the encoder wrote
+    first_encoded = next(i for i, (s, _u, d, _t) in enumerate(events) if s == "encode" and d == 1)
+    restored = max(d for s, _u, d, _t in events[:first_encoded] if s == "restore")
+    assert restored == frame_pool.RUN_FRAMES, restored
+    # and Checking starts only after Saving
+    first_check = next(i for i, (s, _u, _d, _t) in enumerate(events) if s == "verify")
+    assert any(s == "write" for s, _u, _d, _t in events[:first_check]), events[:first_check]
+
+
+def test_the_original_is_decoded_once_for_the_restoration_and_the_gate_reads_the_frames_it_restored(tmp_path, monkeypatch) -> None:
+    # clip-speed-one: the gate ran as a second whole pass, decoding the original and the stored file again (42 percent
+    # of the public clip's job, .lanetools/speed/stages_base.txt); it now gates each run in the worker that restored
+    # it, and the stored file is decoded once to prove it holds exactly the frames gated
+    opened = []
+    real = clip_io.ClipDecoder
+
+    class Counting(real):
+        def __init__(self, path, *args, **kwargs):
+            opened.append(Path(path).name)
+            super().__init__(path, *args, **kwargs)
+
+    monkeypatch.setattr(clip_io, "ClipDecoder", Counting)
+    out, _ = black_job(tmp_path, count=12, workers=1)
+    assert out["status"] == "ready", out
+    # once for the measure's frames, once to restore; the stored file once
+    stored = [name for name in opened if "variant" in name]
+    assert opened.count("original.mov") == 2 and len(stored) == 1, opened
+
+
+def test_a_stored_file_that_does_not_decode_to_the_frames_gated_is_gated_in_a_pass_of_its_own(tmp_path, monkeypatch) -> None:
+    # The same-pass gate holds only for frames the stored file is proven to hold: where one decoded frame differs from
+    # what was gated, the gate reads the stored file and the original again, each frame against its original, as it
+    # did before clip-speed-one, and its verdict is that pass's
+    opened = []
+    real = clip_io.ClipDecoder
+
+    class Altered(real):
+        def __init__(self, path, *args, **kwargs):
+            opened.append(Path(path).name)
+            self._stored = "variant" in Path(path).name
+            super().__init__(path, *args, **kwargs)
+
+        def __iter__(self):
+            for frame in super().__iter__():
+                if self._stored and frame.index == 5 and sum("variant" in name for name in opened) == 1:
+                    y = np.array(frame.planes[0])
+                    y[10, 10] = y[10, 10] + 1
+                    frame = dataclasses.replace(frame, planes=(y, *frame.planes[1:]))
+                yield frame
+
+    monkeypatch.setattr(clip_io, "ClipDecoder", Altered)
+    out, _ = black_job(tmp_path, count=12, workers=1)
+    assert out["status"] == "ready", out
+    # the measure, the restore, and the gate's own pass; the stored file for the proof and again for that pass
+    assert opened.count("original.mov") == 3 and sum("variant" in name for name in opened) == 2, opened
+
+
 def test_a_refused_or_failed_clip_leaves_no_partial_file_and_no_variant(tmp_path, monkeypatch) -> None:
     root = tmp_path / "store"
     source = tmp_path / "black.mov"
@@ -1252,10 +1343,10 @@ def test_the_job_finds_its_measure_frames_stars_in_the_pool_and_stores_the_same_
     real_pool = frame_pool.FramePool
 
     class Spy(real_pool):
-        def __init__(self, work, *, workers):
+        def __init__(self, work, *, workers, **counting):
             works.append((getattr(work, "func", work), workers))
             pools.append(self)
-            super().__init__(work, workers=workers)
+            super().__init__(work, workers=workers, **counting)
 
         def map(self, source):
             yield from super().map(source)
