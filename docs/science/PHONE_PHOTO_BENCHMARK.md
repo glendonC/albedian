@@ -272,7 +272,7 @@ stars confirmed, held out 21 of 28, median 1.84 px); 0 wrong, 0 false solves, 0 
 28.5 s and worst 192.9 s per photo, at a load of 6 to 11. Of the 9 photos with no place, 1 calibrates (none did before).
 Simulated: the Crux frames `pos-003` and `pos-073` now solve blind (`tests/science/test_blind_search_catalog.py`). Why the
 other 8 photos with no place still fail is [open]: solve-search-1 found few true stars among their searched detections.
-On main at `5653cb0ee` (27 Nov, run `submission-count-5653cb0ee`) 12 of the 60 calibrate: 11 correct, 1 unchecked, 0 wrong, 0 false solves, with one matched star among them that is not there ([REAL_PHOTO_BENCHMARK.md](REAL_PHOTO_BENCHMARK.md)) [tested].
+On main at `f783fdc9a` (27 Nov, run `submission-count-f783fdc9a`) 12 of the 60 calibrate: 10 correct, 1 imprecise, 1 unchecked, 0 wrong, 0 false solves, and no matched star among them that is not there ([REAL_PHOTO_BENCHMARK.md](REAL_PHOTO_BENCHMARK.md)) [tested].
 
 ## Real clips (no ground truth)
 

@@ -6,7 +6,7 @@ Labels: [tested] by `tests/science/test_real_photo_benchmark.py`; [measured] in 
 
 ## Headline
 
-**On main at `5653cb0ee` the product calibrates 12 of the 60 photos; the check judges 11 of them correct and cannot check the twelfth, and one matched star among them is not there.** In run `submission-count-5653cb0ee` (27 November; every record names that commit, with no uncommitted changes) no claim is wrong or a false solve as a whole. Of the 405 catalog_matched findings in the 11 claims the check can judge, it confirms 397; 7 are the right star placed badly, and finding `gaia-dr3-574112955678493824` in `rp-b-14` names a star that is not there: the named star lies 33.87 px from its detection, just past twice its 16.69 px tolerance, and no other catalog star lies within 77.0 px of it. `rp-b-07` calibrates, but the check did not solve that photo, so its claim is unchecked [measured].
+**On main at `f783fdc9a` the product calibrates 12 of the 60 photos; the check judges 10 of them correct and one imprecise, cannot check the twelfth, and finds no matched star that is not there.** In run `submission-count-f783fdc9a` (27 November; every record names that commit, with no uncommitted changes) no claim is wrong or a false solve as a whole. Of the 393 catalog_matched findings in the 11 claims the check can judge, it confirms 388 and 5 are the right star placed badly; none names a wrong star or a star that is not there. `rp-b-08` is imprecise: its median offset from the check is 3.05 px, over the 3 px line. `rp-b-07` calibrates, but the check did not solve that photo, so its claim is unchecked [measured]. In the run before matched-residual-one (`submission-count-5653cb0ee`, the same day) the check confirmed 397 of 405, 7 were placed badly and one, in `rp-b-14`, named a star that is not there [measured].
 
 On 11 November (run `realsky2-main`, main at commit `e65dc9ca`, the commit every record of that run names), photo `rp-b-06` was the only photo of 60 that the product calibrated. Of its 17 catalog_matched findings, the check confirmed 14. Finding `hip-84345` named a wrong star: the named star lay 9.31 px from the detection, while another catalog star lay 2.86 px from it. Finding `hip-86032` named a star that is not there: the named star lay 17.82 px from the detection and no catalog star lay within its 6.52 px tolerance. Finding `gaia-dr3-1201067439457715072` was the right star placed badly, 7.25 px against a 6.43 px tolerance [measured].
 
@@ -86,7 +86,40 @@ Records go under `.cache/solver-bench/real-photos/<label>/` (`upload/`, `oracle/
 - astrometry.net does not state a licence for these index files: its readme points to a file `GETTING-INDEXES` that neither its code repository's top level nor the index folder holds. They are used only on this machine by this check and are never shipped [verified: the pages named in `data/downloads.json`, read 2026-11-11].
 - Timings are not evidence of speed: the machine was shared. The one-minute load average after each upload had a median of 20.5 and reached 32.2 in run `realsky2-main` (24.3 and 243.3 in run `realsky2-full`) [measured].
 
-## Outcomes on main on 27 November (run `submission-count-5653cb0ee`)
+## Outcomes on main on 27 November (run `submission-count-f783fdc9a`)
+
+Run `submission-count-f783fdc9a`, kept under `.cache/solver-bench/real-photos/submission-count-f783fdc9a/`: main at commit `f783fdc9a` on 2026-11-27, all 60 photos of `corpus.json` through the upload path with one worker, every claim judged against the check's records of run `realsky2-full`. Every record names that commit, the run started with no uncommitted changes, and the product's optional astrometry.net stage was off (`ALBEDIAN_ASTROMETRY_NET` unset) [measured]. The command is the one in the next section with this label; only the upload and score phases ran.
+
+| Tier | Photos | Solved by the check | Our statuses | Correct | Imprecise | Wrong | False solves | Unchecked | Stopped at the bound | Median s | Worst s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | 13 | 8 | calibrated 1, predicted_only 2, unresolved 10 | 1 | 0 | 0 | 0 | 0 | 0 | 26.4 | 34.0 |
+| B | 22 | 19 | calibrated 11, predicted_only 3, unresolved 8 | 9 | 1 | 0 | 0 | 1 | 0 | 11.2 | 35.2 |
+| C | 14 | 0 | predicted_only 11, unresolved 3 | 0 | 0 | 0 | 0 | 0 | 0 | 10.3 | 30.2 |
+| D | 11 | 0 | predicted_only 6, unresolved 5 | 0 | 0 | 0 | 0 | 0 | 0 | 9.3 | 33.7 |
+| all | 60 | 27 | calibrated 12, predicted_only 22, unresolved 26 | 10 | 1 | 0 | 0 | 1 | 0 | 12.0 | 35.2 |
+
+The solver changes since run `submission-count-5653cb0ee` are matched-residual-one (`b16bdc05f`), which names a phone solution's detection only where its star lies within the inlier gate under the reported WCS made again without it, and frame-once-1, which makes a solve's per-frame work once. The same 12 photos calibrate. Compared name by name, 12 names came off, none was added and no verdict changed: 9 confirmed (one each in `rp-b-01`, `rp-b-06`, `rp-b-14` and `rp-b-16`, two in `rp-b-08`, three in `rp-b-10`), the misplaced `hip-85792` in `rp-b-08` and `hip-87261` in `rp-b-22`, and the finding in `rp-b-14` that named a star that is not there. Seconds are the solve call's, at a one-minute load of 5.2 to 60.0, so they are not evidence of speed [measured].
+
+| Photo | Tier | Judged | Findings confirmed | Misplaced | Wrong star | No star | Median offset px | Worst offset px | Check residual px |
+|---|---|---|---|---|---|---|---|---|---|
+| `rp-a-10` | A | correct | 19 of 19 | 0 | 0 | 0 | 0.81 | 2.58 | 0.825 |
+| `rp-b-01` | B | correct | 42 of 42 | 0 | 0 | 0 | 2.25 | 3.14 | 1.876 |
+| `rp-b-02` | B | correct | 46 of 46 | 0 | 0 | 0 | 2.46 | 6.00 | 2.286 |
+| `rp-b-06` | B | correct | 19 of 20 | 1 | 0 | 0 | 3.00 | 8.25 | 2.294 |
+| `rp-b-07` | B | unchecked | not judged | | | | | | |
+| `rp-b-08` | B | imprecise | 37 of 40 | 3 | 0 | 0 | 3.05 | 7.14 | 3.305 |
+| `rp-b-09` | B | correct | 32 of 33 | 1 | 0 | 0 | 1.05 | 6.81 | 0.885 |
+| `rp-b-10` | B | correct | 20 of 20 | 0 | 0 | 0 | 2.28 | 6.40 | 2.41 |
+| `rp-b-12` | B | correct | 39 of 39 | 0 | 0 | 0 | 0.47 | 1.56 | 0.823 |
+| `rp-b-14` | B | correct | 33 of 33 | 0 | 0 | 0 | 2.74 | 10.51 | 2.747 |
+| `rp-b-16` | B | correct | 43 of 43 | 0 | 0 | 0 | 1.72 | 5.42 | 1.651 |
+| `rp-b-22` | B | correct | 58 of 58 | 0 | 0 | 0 | 0.95 | 4.68 | 1.043 |
+
+`rp-b-08` is imprecise, not correct: its median offset from the check is 3.05 px against the 3 px line (2.99 px in the run before), while the check's own median residual on that photo is 3.305 px [measured].
+
+The 5 findings the check does not confirm, all **misplaced**, the right star placed between one and two tolerances off [measured]: `gaia-dr3-1487434040320076800` in `rp-b-06` (8.25 px against a 6.39 px tolerance); `hip-61932`, `hip-61084` and `hip-59747` in `rp-b-08` (7.14 px against 6.46, 7.09 against 6.54 and 6.81 against 6.31); `gaia-dr3-5926920079553285760` in `rp-b-09` (6.81 against 6.53).
+
+## Outcomes on main on 27 November before matched-residual-one (run `submission-count-5653cb0ee`)
 
 Run `submission-count-5653cb0ee`, kept under `.cache/solver-bench/real-photos/submission-count-5653cb0ee/`: main at commit `5653cb0ee` on 2026-11-27, all 60 photos of `corpus.json` through the upload path with one worker, every claim judged against the check's records of run `realsky2-full`. Every record and the summary name that commit, with no uncommitted changes, and the product's optional astrometry.net stage was off (`ALBEDIAN_ASTROMETRY_NET` unset) [measured]. Only the upload and score phases ran, so neither diagnostic was made:
 
@@ -192,7 +225,7 @@ Records, this page and the reports hold booleans and labels about a photo's time
 
 ## Limits and open questions
 
-- Run `submission-count-5653cb0ee` shows main as it was on 2026-11-27 and run `realsky2-main` as it was on 2026-11-11; "What stops real photos, ranked" is from the earlier run and was not measured again. Each later solver change should be measured with the commands above, and its records will name its commit [open].
+- Runs `submission-count-f783fdc9a` and `submission-count-5653cb0ee` show main as it was on 2026-11-27, after and before matched-residual-one, and run `realsky2-main` as it was on 2026-11-11; "What stops real photos, ranked" is from the earlier run and was not measured again. Each later solver change should be measured with the commands above, and its records will name its commit [open].
 - The check's records were made in run `realsky2-full`, before records named a commit; that run's code is the branch's first version, whose three modules' SHA-256 values its report gives.
 - No ground truth beyond the check: the judged claims are judged by one solver, and 33 of 60 photos have no check at all [open].
 - The check's attempt set and 60 s bound are [proposed]; a wider set might solve the five ultra-wide frames.
