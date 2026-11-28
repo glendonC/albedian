@@ -2,10 +2,12 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { resolveMotionTokens } from '@albedian/design-system';
 import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
+import { ConnectPhonePage } from './ConnectPhonePage.js';
 import { CreditsPage } from './CreditsPage.js';
 import { nameParts, refusalSentence, shortFileName, type HomeRefusal } from './homeRefusal.js';
 import { homeBackdropStyle, homeShadeStyle } from './homeBackdrop.js';
 import { carriesFiles, droppedFile } from './homeDrop.js';
+import { servedPhoneAddress } from './phoneAddress.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/home.css';
@@ -29,6 +31,12 @@ export interface HomeScreenProps {
    * sample's asset and its kept solve both answer; none draws no pill and nothing takes its place.
    */
   onTrySample?: () => void;
+  /**
+   * phone-code-home-one (UIUX-phone-code-READY.md Q3): the phone's address offered as a code, only while the field start
+   * serves the network and only at the laptop's own host (phoneAddress.ts); read from the build when not given, null
+   * for none: no Connect phone and nothing takes its place.
+   */
+  phoneAddress?: string | null;
 }
 
 /**
@@ -45,11 +53,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onUploadPressed,
   refusal = null,
   onTrySample,
+  phoneAddress,
 }) => {
+  const offered = phoneAddress === undefined ? servedPhoneAddress() : phoneAddress;
   // P2: there from the first frame when the sample answered before the home was drawn; when it answers later, the pill
   // words in as it mounts, as Fly on your own does
   const [sampleAtFirst] = useState(() => onTrySample !== undefined);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  // Credits or Connect phone stands in the home's place
+  const pageOpen = creditsOpen || phoneOpen;
   // The status region is on screen empty first and gets its words after, so a screen reader announces them
   const [shownRefusal, setShownRefusal] = useState<HomeRefusal | null>(null);
   useEffect(() => setShownRefusal(refusal), [refusal]);
@@ -58,7 +71,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const fileInput = useRef<HTMLInputElement>(null);
   const home = useRef<HTMLDivElement>(null);
   const credit = useRef<HTMLAnchorElement>(null);
-  const returnFocus = useRef(false);
+  // The pill whose page has just closed, which takes the focus back (Credits or Connect phone)
+  const returnFocus = useRef<'Credits' | 'Connect phone' | null>(null);
   // A file held over the window: how many parts of the window it has entered and not yet left (a browser sends a
   // child's enter before its parent's leave), so the overlay stays while the file crosses the window
   const [fileOver, setFileOver] = useState(false);
@@ -67,6 +81,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [goneAtOnce, setGoneAtOnce] = useState(false);
   const drop = useLeaving(fileOver, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
   const credits = useLeaving(creditsOpen, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
+  const phonePage = useLeaving(phoneOpen, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
   const entered = useRef(0);
   const chosen = useRef(onFileChosen);
   chosen.current = onFileChosen;
@@ -74,7 +89,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Anywhere on the window takes a dropped photo while the home shows (approved 2026-11-12); a drag that holds no
   // file is left to the browser. Credits stands in the home's place, so it takes none
   useEffect(() => {
-    if (creditsOpen) return undefined;
+    if (pageOpen) return undefined;
     const close = () => {
       entered.current = 0;
       setGoneAtOnce(true);
@@ -116,7 +131,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       window.removeEventListener('drop', onDrop);
       close();
     };
-  }, [creditsOpen]);
+  }, [pageOpen]);
 
   // refusal-credit-gap-one (UIUX-homecredit-READY.md, its last addition): the credit stays whole where it is and a
   // refused upload's message ends 22 px before it, so the credit's drawn width goes onto the home for the message's
@@ -124,7 +139,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   useLayoutEffect(() => {
     const line = credit.current;
     const screen = home.current;
-    if (creditsOpen || !line || !screen) return undefined;
+    if (pageOpen || !line || !screen) return undefined;
     const measure = () => {
       const width = line.getBoundingClientRect().width;
       if (width > 0) screen.style.setProperty('--home-credit-w', `${Math.ceil(width)}px`);
@@ -134,14 +149,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const watch = new ResizeObserver(measure);
     watch.observe(line);
     return () => watch.disconnect();
-  }, [creditsOpen]);
+  }, [pageOpen]);
 
-  // Back from Credits puts the keyboard where it was, on Credits
+  // Back from a page puts the keyboard where it was, on the pill that opened it
   useEffect(() => {
-    if (creditsOpen || !returnFocus.current) return;
-    returnFocus.current = false;
-    home.current?.querySelector<HTMLButtonElement>('.home-top .look-second')?.focus();
-  }, [creditsOpen]);
+    const pill = returnFocus.current;
+    if (pageOpen || !pill) return;
+    returnFocus.current = null;
+    [...(home.current?.querySelectorAll<HTMLButtonElement>('.home-top .look-second') ?? [])].find((b) => b.textContent === pill)?.focus();
+  }, [pageOpen]);
 
   // Credits in the home's place; Back brings the home back at once beneath it while the page leaves over it (the
   // motion record: its words out, the page frame out), the same page, read once
@@ -149,19 +165,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     <CreditsPage
       leaving={credits.leaving}
       onBack={() => {
-        returnFocus.current = true;
+        returnFocus.current = 'Credits';
         setCreditsOpen(false);
       }}
     />
   ) : null;
+  // Connect phone's page, as Credits' (UIUX-phone-code-READY.md Q3: in the Credits page's frame, leaving as it leaves)
+  const phoneCodePage =
+    phonePage.mounted && offered ? (
+      <ConnectPhonePage
+        address={offered}
+        leaving={phonePage.leaving}
+        onBack={() => {
+          returnFocus.current = 'Connect phone';
+          setPhoneOpen(false);
+        }}
+      />
+    ) : null;
 
   return (
     <>
-    {!creditsOpen && (
+    {!pageOpen && (
     <div className="home-screen" data-testid="home-screen" data-hud-interactive="true" ref={home}>
       <div className="home-sky" style={homeBackdropStyle()} aria-hidden="true" />
       <div className="home-shade" style={homeShadeStyle()} aria-hidden="true" />
       <div className="home-top">
+        {offered && <SecondAction label="Connect phone" onClick={() => setPhoneOpen(true)} />}
         <SecondAction label="Credits" onClick={() => setCreditsOpen(true)} />
         <IconButton label="Sound" icon="speaker-high" pressed={soundOn} onClick={onToggleSound} data-audio-control="toggle" />
       </div>
@@ -234,6 +263,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     </div>
     )}
     {creditsPage}
+    {phoneCodePage}
     </>
   );
 };

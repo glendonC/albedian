@@ -308,6 +308,36 @@
   border-bottom: 1px solid var(--look-hair);
 }
 
+/* phone-code-home-one (UIUX-phone-code-READY.md Q3, DECIDED-BY-LEAD 19:25 on 27 Nov): Connect phone's page in the
+   Credits page's frame: under the title at the column's left the code on its white square (drawn in whole CSS pixels
+   by ConnectPhonePage.tsx), 16 px under it the line in the iPhone Connect start line's style (Geist 14, ink 66
+   percent), 8 px under that the address in Geist Mono 16, ink, selectable. The code arrives and leaves with the page's
+   words, as a Credits row does [inference: the record says only that the page leaves as Credits leaves] */
+.phone-code {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
+}
+
+.credits-page.is-leaving .phone-code {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
+.phone-code__square {
+  display: block;
+}
+
+.phone-code__line {
+  margin: 16px 0 0;
+  font: 400 14px / 1.4 var(--look-font-sans);
+  color: var(--look-ink-2);
+}
+
+.phone-code__address {
+  margin: 8px 0 0;
+  font: 400 16px / 1.4 'Geist Mono', ui-monospace, monospace;
+  color: var(--look-ink);
+  user-select: text;
+}
+
 .credits-label {
   font-size: 13px;
   color: var(--look-ink-3);
