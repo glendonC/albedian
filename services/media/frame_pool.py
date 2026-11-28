@@ -25,9 +25,14 @@ from services.media import clip_io, temporal
 RUN_FRAMES = 8
 # The neighbours either side a run carries: the temporal window's own
 WINDOW_FRAMES = temporal.WINDOW_FRAMES
-# The default pool is the machine's cores divided by this, and at least one worker [proposed: design section 10, "half
-# the machine's cores and at least one"]
-CORE_SHARE = 2
+# The default pool is the machine's cores less this many, and at least one worker, so the app and the machine keep
+# two [decided by the lead at the 16:24 stamp of 27 Nov, clip-workers-one, only as the stored files stay the same; it was
+# half the cores, design section 10]
+FREE_CORES = 2
+# The playback copy's encoder keeps the machine's cores divided by this, and at least one thread: x264's bytes depend
+# on its threads, and these are the threads it had when the pool was half the cores [tested: clip-workers-one, the
+# public clip's copy another SHA-256 at 6, 9 and 16 threads, its stored file the same]
+ENCODER_CORE_SHARE = 2
 # The name of the environment variable that holds the pool under its default [decided 2026-11-11 in design section
 # 10: the limit of two processes is for agents' test runs; the product sets nothing]
 WORKERS_LIMIT_ENV = "ALBEDIAN_MEDIA_WORKERS"
@@ -112,10 +117,21 @@ def runs(frames: Iterable[Any], *, run_frames: int = RUN_FRAMES, window: int = W
         first += count
 
 
+def encoder_threads() -> int:
+    """The playback copy's encoder threads: the machine's cores over ENCODER_CORE_SHARE, and at least one; fewer where
+    WORKERS_LIMIT_ENV holds a smaller whole number above 0, as the pool, never more. Its own, so the copy's bytes do
+    not move with the pool's size."""
+    threads = max(1, (os.cpu_count() or 1) // ENCODER_CORE_SHARE)
+    limit = os.environ.get(WORKERS_LIMIT_ENV, "")
+    if limit.isdigit() and int(limit) >= 1:
+        return min(threads, int(limit))
+    return threads
+
+
 def default_workers() -> int:
-    """Half the machine's cores, and at least one; fewer where WORKERS_LIMIT_ENV holds a smaller whole number above 0
-    (agents' test runs, which stay within two processes), never more."""
-    workers = max(1, (os.cpu_count() or 1) // CORE_SHARE)
+    """The machine's cores less FREE_CORES, and at least one; fewer where WORKERS_LIMIT_ENV holds a smaller whole number
+    above 0 (agents' test runs, which stay within two processes), never more."""
+    workers = max(1, (os.cpu_count() or 1) - FREE_CORES)
     limit = os.environ.get(WORKERS_LIMIT_ENV, "")
     if limit.isdigit() and int(limit) >= 1:
         return min(workers, int(limit))

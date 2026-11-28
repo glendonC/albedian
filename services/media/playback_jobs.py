@@ -98,7 +98,7 @@ def playback_copy_in_child(folder: str, variant_id: str, partials: Sequence[str]
         # The encode and its gate report no count of their own: the stage stands with no total until they end
         progress("encode", "frames", 0, None)
         copy = clip_io.make_playback_copy(stored, encoded, out, probe, variant.get("displayOrientation"),
-                                          threads=workers or frame_pool.default_workers(), min_psnr_db=PLAYBACK_COPY_MIN_PSNR_DB)
+                                          threads=workers or frame_pool.encoder_threads(), min_psnr_db=PLAYBACK_COPY_MIN_PSNR_DB)
         progress("encode", "frames", probe.frame_count, probe.frame_count)
         progress("verify", "frames", probe.frame_count, probe.frame_count)
         if copy is None:

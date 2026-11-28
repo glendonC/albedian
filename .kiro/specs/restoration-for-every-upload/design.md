@@ -774,7 +774,8 @@ the limit of two processes in the lane contract is for agents' test runs, not fo
 decodes the clip once, in order, and hands the frames out in runs of consecutive frames, each run with the three
 neighbours either side that its window needs [proposed: runs of 8 frames]. Each worker does everything between
 decode and encode for its run and returns the finished frames; the child writes them to the one encoder in frame
-order. The pool has a stated default size, half the machine's cores and at least one [proposed], and is bounded:
+order. The pool has a stated default size, the machine's cores less two and at least one [decided by the lead at the
+16:24 stamp of 27 Nov, clip-workers-one; it was half the cores], and is bounded:
 no more runs are handed out than there are workers, so memory does not grow with the clip. The pool is in the job
 child's process group, so a cancel or the bound stops it (the upload jobs spec, design 3.3). The result must not
 depend on the pool's size: a test runs one clip with one worker and with two and compares the stored files'

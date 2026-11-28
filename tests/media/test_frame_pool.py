@@ -261,11 +261,25 @@ def test_a_pool_of_no_workers_is_refused() -> None:
         frame_pool.FramePool(square_own, workers=0)
 
 
-@pytest.mark.parametrize("cores,expected", [(None, 1), (1, 1), (2, 1), (3, 1), (4, 2), (18, 9)])
-def test_the_default_pool_is_half_the_cores_and_at_least_one(monkeypatch: pytest.MonkeyPatch, cores, expected) -> None:
+# clip-workers-one (decided by the lead at the 16:24 stamp of 27 Nov): the machine's cores less two, so the app and the
+# machine keep two, and at least one; 16 on this laptop's 18, where half gave 9
+@pytest.mark.parametrize("cores,expected", [(None, 1), (1, 1), (2, 1), (3, 1), (4, 2), (8, 6), (18, 16)])
+def test_the_default_pool_is_the_cores_less_two_and_at_least_one(monkeypatch: pytest.MonkeyPatch, cores, expected) -> None:
     monkeypatch.delenv(frame_pool.WORKERS_LIMIT_ENV, raising=False)
     monkeypatch.setattr(os, "cpu_count", lambda: cores)
     assert frame_pool.default_workers() == expected
+
+
+@pytest.mark.parametrize("cores,expected", [(None, 1), (1, 1), (2, 1), (3, 1), (4, 2), (18, 9)])
+def test_the_encoders_threads_are_half_the_cores_whatever_the_pool(monkeypatch: pytest.MonkeyPatch, cores, expected) -> None:
+    # clip-workers-one: x264's bytes depend on its threads (the public clip's playback copy another at 6, 9 and 16
+    # threads, .lanetools/speed/workers.log), so the copy's encoder keeps the threads it had when the pool was half
+    # the cores, under the same limit, while the pool takes the cores less two
+    monkeypatch.delenv(frame_pool.WORKERS_LIMIT_ENV, raising=False)
+    monkeypatch.setattr(os, "cpu_count", lambda: cores)
+    assert frame_pool.encoder_threads() == expected
+    monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, "2")
+    assert frame_pool.encoder_threads() == min(expected, 2)
 
 
 def test_every_numeric_constant_of_the_pool_names_its_source() -> None:
@@ -275,17 +289,17 @@ def test_every_numeric_constant_of_the_pool_names_its_source() -> None:
 
 
 def test_the_pools_size_can_be_held_under_the_default_and_never_above_it(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Agents' test runs stay within two processes (restore-7); the product sets nothing and takes half the cores
+    # Agents' test runs stay within two processes (restore-7); the product sets nothing and takes the cores less two
     monkeypatch.setattr(os, "cpu_count", lambda: 18)
     monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, "2")
     assert frame_pool.default_workers() == 2
     monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, "40")
-    assert frame_pool.default_workers() == 9
+    assert frame_pool.default_workers() == 16
     for refused in ("0", "-1", "two", ""):
         monkeypatch.setenv(frame_pool.WORKERS_LIMIT_ENV, refused)
-        assert frame_pool.default_workers() == 9
+        assert frame_pool.default_workers() == 16
     monkeypatch.delenv(frame_pool.WORKERS_LIMIT_ENV)
-    assert frame_pool.default_workers() == 9
+    assert frame_pool.default_workers() == 16
 
 
 def _pool_in_a_daemon(out) -> None:

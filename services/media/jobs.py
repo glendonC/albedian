@@ -503,7 +503,8 @@ def clip_restoration_in_child(store_root: str, folder: str, original: str, sha25
         return recorder.failed(CHANGED)
     try:
         return _restore_clip(recorder, Path(store_root), original_path, request, orientation, facts, encoded_path,
-                             variant_path, progress, workers or frame_pool.default_workers(), playback_paths)
+                             variant_path, progress, workers or frame_pool.default_workers(), playback_paths,
+                             threads=workers or frame_pool.encoder_threads())
     except clip_io.ClipError as error:
         return recorder.failed(error.sentence)
     except clip_frames.ClipRefusal as refusal:
@@ -530,7 +531,7 @@ def _playback_file(playback: Optional[clip_io.PlaybackCopy], sha256: str, vid: s
 
 def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, request: dict, orientation: Optional[dict],
                   facts: dict, encoded_path: Path, variant_path: Path, progress: Callable[..., None], workers: int,
-                  playback_paths: Optional[tuple[Path, Path]] = None) -> dict:
+                  playback_paths: Optional[tuple[Path, Path]] = None, threads: Optional[int] = None) -> dict:
     probe = clip_io.probe_clip(original_path)
     clip = clip_frames.clip_colour(probe.video)
     container = clip_io.container_for(str(facts.get("mimeType")))
@@ -609,7 +610,7 @@ def _restore_clip(recorder: _Recorder, store_root: Path, original_path: Path, re
         try:
             if clip_io.stored_pixel_format(stored) in clip_io.PLAYBACK_GATE_FORMATS:
                 playback = clip_io.make_playback_copy(stored, playback_paths[0], playback_paths[1], probe, orientation,
-                                                      threads=workers, min_psnr_db=PLAYBACK_COPY_MIN_PSNR_DB)
+                                                      threads=threads or workers, min_psnr_db=PLAYBACK_COPY_MIN_PSNR_DB)
                 gate_refused = playback is None
             if playback is not None:
                 write.add(playback.path.stat().st_size)

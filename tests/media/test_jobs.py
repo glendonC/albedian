@@ -962,6 +962,37 @@ def test_a_stored_file_that_does_not_decode_to_the_frames_gated_is_gated_in_a_pa
     assert opened.count("original.mov") == 3 and sum("variant" in name for name in opened) == 2, opened
 
 
+def test_the_playback_copys_encoder_takes_its_own_threads_not_the_pools_size(tmp_path, monkeypatch) -> None:
+    # clip-workers-one: the pool grows to the cores less two, the copy's encoder keeps half the cores, so the copy's
+    # bytes are what they were [tested: the public clip's copy another SHA-256 at 6, 9 and 16 threads]
+    threads = []
+    real = clip_io.make_playback_copy
+
+    def recording(*args, **kwargs):
+        threads.append(kwargs.get("threads"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(clip_io, "make_playback_copy", recording)
+    monkeypatch.setattr(frame_pool, "default_workers", lambda: 2)
+    monkeypatch.setattr(frame_pool, "encoder_threads", lambda: 3)
+    root = tmp_path / "store"
+    source = tmp_path / "black.mov"
+    black_clip(source, count=12)
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = root / sha[:2] / sha
+    folder.mkdir(parents=True)
+    original = folder / "original.mov"
+    original.write_bytes(source.read_bytes())
+    (root / ".partial").mkdir()
+    partials = [str(root / ".partial" / f"{JOB_ID}-{name}.part")
+                for name in ("clip_encoded.mov", "variant.mov", "playback_encoded.mp4", "playback.mp4")]
+    facts = {"mimeType": "video/quicktime", "durationMs": 400.0, "audioStreams": []}
+    out = media_jobs.clip_restoration_in_child(str(root), str(folder), str(original), sha, JOB_ID, {"kind": "restoration"},
+                                               None, facts, partials, no_progress)
+    assert out["status"] == "ready", out
+    assert threads == [3], threads
+
+
 def test_a_refused_or_failed_clip_leaves_no_partial_file_and_no_variant(tmp_path, monkeypatch) -> None:
     root = tmp_path / "store"
     source = tmp_path / "black.mov"
