@@ -372,8 +372,17 @@ describe('SparkPortalRenderer: the landing pictures are asked for in one place o
     const transition = source.indexOf('  public transitionToShowcaseScene(');
     const transitionEnd = source.indexOf('\n  }\n', transition);
     expect(asks[0]! > transition && asks[0]! < transitionEnd, 'asked for when a landing scene starts').toBe(true);
-    // The sky view's panorama is what loads at start
-    expect(source).toContain('      loadSkyViewTextures(this.textureLoader, this.skyDomeUniforms);\n');
+    // home-asks-less-one (DECIDED-BY-LEAD 20:30 on 27 Nov): the sky view's panorama no longer loads at start, behind the
+    // home, but once, inside askSkyViewPictures, which only showSkyView asks for (homeAsksLess.test.ts drives it)
+    const sky = source.indexOf('  private askSkyViewPictures(): void {');
+    const skyEnd = source.indexOf('\n  }\n', sky);
+    const skyLoads = [...source.matchAll(/loadSkyViewTextures\(/g)].map((m) => m.index!);
+    expect(skyLoads, 'loadSkyViewTextures( in SparkPortalRenderer.ts, once, inside askSkyViewPictures').toHaveLength(1);
+    expect(skyLoads[0]! > sky && skyLoads[0]! < skyEnd).toBe(true);
+    const skyAsks = [...source.matchAll(/this\.askSkyViewPictures\(\)/g)].map((m) => m.index!);
+    const show = source.indexOf('  public showSkyView(): void {');
+    expect(skyAsks, 'this.askSkyViewPictures() once').toHaveLength(1);
+    expect(skyAsks[0]! > show && skyAsks[0]! < source.indexOf('\n  }\n', show), 'asked for by showSkyView').toBe(true);
   });
 });
 

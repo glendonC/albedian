@@ -81,6 +81,8 @@ export class SparkPortalRenderer {
   private drawing = true; // false while the home covers the canvas (setDrawing)
   private heldScene: { sceneKey: ShowcaseSceneKey; instant: boolean } | null = null; // asked for while not drawing
   private landingPicturesAsked = false; // once, by the first landing scene
+  private skyViewPicturesAsked = false; // once, by the first showSkyView (home-asks-less-one)
+  private loadMoonShape: (() => void) | null = null; // the cislunar Moon's model, asked with the sky view's picture
   private tick: ((timestamp: number) => void) | null = null; // the frame loop's step, once started
   private timer = new THREE.Timer();
   private heldClockSec: number | null = null;
@@ -132,9 +134,9 @@ export class SparkPortalRenderer {
 
       this.sparkControls = new SparkControls({ canvas: this.renderer.domElement });
       this.catalogStars = new CatalogStarField();
-      // The sky view's panorama on every visit; the landing scenes' pictures (the bodies, and the Bruneton table that
-      // sampleBrunetonAtmoLut reads) wait for a landing scene
-      loadSkyViewTextures(this.textureLoader, this.skyDomeUniforms);
+      // The sky view's panorama (and the Moon's model) wait for the sky view's first set up, which the viewport asks for
+      // as the home leaves (home-asks-less-one: the home shows neither); the landing scenes' pictures (the bodies, and
+      // the Bruneton table that sampleBrunetonAtmoLut reads) wait for a landing scene
       this.localFrame.add(createGlobalPhotorealisticSkyDomeMesh(this.skyDomeUniforms));
       this.buildEarthCaptureWorld();
       this.buildCislunarWorld();
@@ -191,7 +193,8 @@ export class SparkPortalRenderer {
   private buildCislunarWorld(): void {
     const group = this.regimeGroups.cislunar;
     this.addCatalogStarMount(group, 85.0);
-    const { earthMesh, moonMesh } = buildCislunarRegimeGroup(group, this.earthUniforms, this.moonUniforms, this.gltfLoader);
+    const { earthMesh, moonMesh, loadMoonShape } = buildCislunarRegimeGroup(group, this.earthUniforms, this.moonUniforms, this.gltfLoader);
+    this.loadMoonShape = loadMoonShape;
     this.cislunarEarthMesh = earthMesh;
     this.cislunarMoonMesh = moonMesh;
   }
@@ -300,6 +303,17 @@ export class SparkPortalRenderer {
     if (held && this.showcaseMode) this.transitionToShowcaseScene(held.sceneKey, held.instant);
   }
 
+  /**
+   * Asks for the sky view's panorama and the Moon's model the first time the sky view is set up, where there is a
+   * context to draw them (home-asks-less-one): the viewport sets it up as the home leaves, seconds before it can draw.
+   */
+  private askSkyViewPictures(): void {
+    if (this.skyViewPicturesAsked || !this.renderer) return;
+    this.skyViewPicturesAsked = true;
+    loadSkyViewTextures(this.textureLoader, this.skyDomeUniforms);
+    this.loadMoonShape?.();
+  }
+
   /** Asks for the landing scenes' pictures the first time a landing scene starts, where there is a context to draw them. */
   private askLandingPictures(): void {
     if (this.landingPicturesAsked || !this.renderer) return;
@@ -387,7 +401,10 @@ export class SparkPortalRenderer {
   }
 
   public holdClock(seconds: number | null): void { this.heldClockSec = seconds; }
-  public showSkyView(): void { if (this.activeRegime !== 'earth_capture' || this.flightState) this.jumpToRegime('earth_capture'); }
+  public showSkyView(): void {
+    this.askSkyViewPictures();
+    if (this.activeRegime !== 'earth_capture' || this.flightState) this.jumpToRegime('earth_capture');
+  }
 
   public getRenderLayers(): RenderLayerSet | null {
     return webglRenderLayersFor({ regime: this.activeRegime, observerTime: this.observer.frame ? this.observer.clock.kind : null });

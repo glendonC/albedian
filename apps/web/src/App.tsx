@@ -220,10 +220,13 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // List media found in data/uploads; a capture becomes the session only when the user picks it
+  // List media found in data/uploads; a capture becomes the session only when the user picks it. home-asks-less-one
+  // (DECIDED-BY-LEAD 20:30 on 27 Nov): asked only once one is picked, so a browser opening the home never receives
+  // the list (4.3 MB on a phone's home, the uploads' places and times among it), which no screen draws
   useEffect(() => {
+    if (activeDiscoveredId === null) return;
     void fetchDiscoveredMedia().then(setDiscoveredMedia);
-  }, []);
+  }, [activeDiscoveredId]);
 
   // The address may name one stored upload (?upload=<sha256>, as the iPhone's Open writes it): its stored reveal
   // opens with no upload and no solve. Until its records are read and its photo decoded the page shows the app's black

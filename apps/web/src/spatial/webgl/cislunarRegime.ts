@@ -123,7 +123,7 @@ export function buildCislunarRegimeGroup(
   earthUniforms: EarthUniforms,
   moonUniforms: MoonUniforms,
   gltfLoader: GLTFLoader
-): { earthMesh: THREE.Mesh; moonMesh: THREE.Mesh } {
+): { earthMesh: THREE.Mesh; moonMesh: THREE.Mesh; loadMoonShape: () => void } {
   const earthRadius = 13.5;
   const earthCenter = new THREE.Vector3(-11.8, -16.8, -28.0);
 
@@ -315,21 +315,28 @@ export function buildCislunarRegimeGroup(
   moonMesh.rotation.y = -0.85;
   group.add(moonMesh);
 
-  gltfLoader.load(
-    '/models/nasa_lro_moon_3d.glb',
-    (gltf) => {
-      gltf.scene.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const m = child as THREE.Mesh;
-          moonMesh.geometry.dispose();
-          moonMesh.geometry = m.geometry.clone();
-          moonMesh.geometry.scale(moonRadius / 10.0, moonRadius / 10.0, moonRadius / 10.0);
-        }
-      });
-    },
-    undefined,
-    () => {}
-  );
+  // home-asks-less-one: the LRO model is asked for when the caller says, once, not while the scene is built behind
+  // the home; until it comes the Moon keeps its sphere, as it did while the model loaded before
+  let moonShapeAsked = false;
+  const loadMoonShape = (): void => {
+    if (moonShapeAsked) return;
+    moonShapeAsked = true;
+    gltfLoader.load(
+      '/models/nasa_lro_moon_3d.glb',
+      (gltf) => {
+        gltf.scene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const m = child as THREE.Mesh;
+            moonMesh.geometry.dispose();
+            moonMesh.geometry = m.geometry.clone();
+            moonMesh.geometry.scale(moonRadius / 10.0, moonRadius / 10.0, moonRadius / 10.0);
+          }
+        });
+      },
+      undefined,
+      () => {}
+    );
+  };
 
-  return { earthMesh, moonMesh };
+  return { earthMesh, moonMesh, loadMoonShape };
 }
