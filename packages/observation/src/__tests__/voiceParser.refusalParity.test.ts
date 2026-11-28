@@ -128,8 +128,9 @@ describe('@albedian/observation voice parser: refusals alike with the backend', 
     // refused by one and acted on by the other; the refusals only the app gives are those that need the photo's sky,
     // among them the six showpieces the backend says voice cannot reach and the app, holding the sky, says are not in
     // it (deepsky-answer-1, C33), and the six sentences that name Mercury or Neptune, planets no predicted sky lists, of which
-    // the app says it does not predict where they are (body-identity-one, unpredicted-body-one)
-    expect(counts, oneSided.join("\n")).toEqual({ same: 487, appOnly: 49, appRefusals: 608, backendRefusals: 536, appRefusesBackendActs: 0, backendRefusesAppActs: 0 });
+    // the app says it does not predict where they are (body-identity-one, unpredicted-body-one). The two sentences that
+    // ask the Moon's phase are the answer route's questions in both parsers and every view (C38p)
+    expect(counts, oneSided.join("\n")).toEqual({ same: 485, appOnly: 45, appRefusals: 602, backendRefusals: 530, appRefusesBackendActs: 0, backendRefusesAppActs: 0 });
     for (const line of oneSided) expect(line, line).toMatch(/(backend no_grounded_answer|app question\.ask|app media\.compare|app navigation\.cancel|app ui\.overlay):/);
     // Every one-sided reading, held exactly in a tracked fixture that the backend's test also reads, so the list
     // changes only on purpose (answers-3b gives both parsers one command table)

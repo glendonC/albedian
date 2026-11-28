@@ -320,6 +320,20 @@ function noPredictionKind(session: ObservationSession): (typeof NO_PREDICTION_WA
   return undefined;
 }
 
+/**
+ * The words that ask the Moon's phase, as the answer route reads them (QUESTION_PHRASES moon_phase in
+ * services/voice/answers.py; tests/integration/test_voice_no_place_bodies.py keeps the two equal). The phase needs only
+ * the capture time, so a question these words ask goes to the route whatever the Moon's finding (C38p).
+ */
+export const MOON_PHASE_PHRASES: ReadonlyArray<string> = [
+  'phase of the moon', 'moon phase', "moon's phase", 'what phase', 'full moon', 'new moon', 'half moon',
+  'how much of the moon', 'moon lit',
+];
+// As whole words, the longest first, as the route's pattern reads them
+const MOON_PHASE_PATTERN = new RegExp(
+  `\\b(?:${[...MOON_PHASE_PHRASES].sort((a, b) => b.length - a.length).map(escapeRegExp).join('|')})\\b`
+);
+
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -1050,6 +1064,11 @@ function parseWithRules(
   const named = readNames(norm, session);
   const howMany = /\bhow\s+many\b/i.test(norm);
   const base = { requestId, expectedViewRevision: context.viewRevision };
+  // C38p (DECIDED-BY-LEAD 27 Nov 21:22): a question the answer route reads as the Moon's phase needs only the capture
+  // time, so it is the route's whatever the Moon's finding: the route answers it from the time, or says the time is
+  // wanted, or that the sky was not worked out. Only a name other than the Moon that this sky does not hold, or a
+  // command, stops it here
+  const phaseAsked = MOON_PHASE_PATTERN.test(norm) && named.absent.every((name) => name.spoken === 'moon');
   // The first refusal of a sentence a rule acted on but did not account for (answers-3b v4)
   let notARequest: VoiceParseResult | undefined;
   for (const rule of VOICE_GRAMMAR.rules) {
@@ -1061,7 +1080,7 @@ function parseWithRules(
         unbakedObjectIn(norm) !== undefined ||
         SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(norm, name)) ||
         // a "how many" question naming a star stays a question, as the name rule and the backend read it
-        (named.absent.length > 0 && !howMany)
+        (named.absent.length > 0 && !howMany && !phaseAsked)
       ) {
         const resolved = resolveTargetFinding(norm, context, session, named, undefined, 'which');
         if (resolved?.disambiguation) return { disambiguation: resolved.disambiguation };
@@ -1076,6 +1095,10 @@ function parseWithRules(
       if (rule.match !== 'name') notARequest ??= read;
       continue;
     }
+    // The name rule, or a rule that only describes, stopped at the Moon or at the phase's own words ("I did not
+    // understand phase") leaves the phase to the later rules, and so to the rest rule's question
+    if (phaseAsked && read && !read.action && !read.disambiguation && rule.match !== 'rest' &&
+        (rule.match === 'name' || !changesTheScene(VOICE_GRAMMAR, rule))) continue;
     if (read && rule.match === 'rest' && notARequest) return notARequest;
     if (read) return read;
   }

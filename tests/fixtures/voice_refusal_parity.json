@@ -1695,13 +1695,8 @@
      "target": "finding-predicted-moon"
     },
     {
-     "status": "rejected",
-     "reason": "ambiguous_target",
-     "explanation": "I did not understand \"phase\": no list of the app holds that word.",
-     "refusal": {
-      "kind": "not_understood",
-      "said": "phase"
-     }
+     "status": "proposed",
+     "action": "question.ask"
     },
     {
      "status": "rejected",
@@ -2034,13 +2029,8 @@
      "action": "question.ask"
     },
     {
-     "status": "rejected",
-     "reason": "ambiguous_target",
-     "explanation": "I did not understand \"phase\": no list of the app holds that word.",
-     "refusal": {
-      "kind": "not_understood",
-      "said": "phase"
-     }
+     "status": "proposed",
+     "action": "question.ask"
     },
     {
      "status": "rejected",
@@ -5300,13 +5290,8 @@
      "target": "finding-predicted-moon"
     },
     {
-     "status": "rejected",
-     "reason": "ambiguous_target",
-     "explanation": "I did not understand \"phase\": no list of the app holds that word.",
-     "refusal": {
-      "kind": "not_understood",
-      "said": "phase"
-     }
+     "status": "proposed",
+     "action": "question.ask"
     },
     {
      "status": "rejected",
@@ -5639,13 +5624,8 @@
      "action": "question.ask"
     },
     {
-     "status": "rejected",
-     "reason": "ambiguous_target",
-     "explanation": "I did not understand \"phase\": no list of the app holds that word.",
-     "refusal": {
-      "kind": "not_understood",
-      "said": "phase"
-     }
+     "status": "proposed",
+     "action": "question.ask"
     },
     {
      "status": "rejected",
@@ -9071,13 +9051,8 @@
      "target": "finding-predicted-moon"
     },
     {
-     "status": "rejected",
-     "reason": "ambiguous_target",
-     "explanation": "I did not understand \"phase\": no list of the app holds that word.",
-     "refusal": {
-      "kind": "not_understood",
-      "said": "phase"
-     }
+     "status": "proposed",
+     "action": "question.ask"
     },
     {
      "status": "rejected",
@@ -9417,13 +9392,8 @@
      "action": "question.ask"
     },
     {
-     "status": "rejected",
-     "reason": "ambiguous_target",
-     "explanation": "I did not understand \"phase\": no list of the app holds that word.",
-     "refusal": {
-      "kind": "not_understood",
-      "said": "phase"
-     }
+     "status": "proposed",
+     "action": "question.ask"
     },
     {
      "status": "rejected",

@@ -1,6 +1,8 @@
-import { NO_PREDICTION_WARNINGS, refusalSentence, type ObservationSession } from '@albedian/contracts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { NO_PREDICTION_WARNINGS, ObservationSolutionSchema, refusalSentence, type ObservationSession } from '@albedian/contracts';
 import { describe, expect, it } from 'vitest';
-import { buildActionContext, parseUtteranceToAction } from '../index';
+import { buildActionContext, MOON_PHASE_PHRASES, parseUtteranceToAction } from '../index';
 import { createSyntheticCalibratedSession } from '../testing/syntheticSessions';
 
 /**
@@ -12,6 +14,9 @@ import { createSyntheticCalibratedSession } from '../testing/syntheticSessions';
  * takes C38n's shorter words (DECIDED-BY-LEAD 27 Nov 13:31), which an answer's spoken sentence has room for.
  */
 const parse = (text: string, session: ObservationSession) => parseUtteranceToAction(text, buildActionContext(session), session);
+const SOLUTIONS = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/python_contract_solutions.json'), 'utf8')
+) as Record<string, unknown>;
 
 // The predicted sky's own sentences (services/science/predicted_sky.py), as a solve carries them
 const NO_PLACE = 'The file has no recorded place, so no sky can be predicted for it.';
@@ -164,5 +169,95 @@ describe('@albedian/observation voice parser: a body with no place to predict it
   it('keeps the sky not worked out for a body where no solve is held', () => {
     const { observationSolution: _none, ...rest } = unresolved(photo, NO_PLACE);
     expect(parse('where is the moon', rest as ObservationSession).refusal).toEqual({ kind: 'sky_not_worked_out' });
+  });
+});
+
+/**
+ * C38p, its parser half (DECIDED-BY-LEAD 27 Nov 21:22): the Moon's phase needs only the capture time, so a question the
+ * answer route reads as the Moon's phase (its own phase phrases, MOON_PHASE_PHRASES, kept equal to the route's by
+ * tests/integration/test_voice_no_place_bodies.py) goes to the route whatever the Moon's finding: the route answers it
+ * from the time, or says the time is wanted (C38p), or that the sky was not worked out (C34). The parser's refusal at a
+ * Moon this sky does not hold ("cannot predict where the Moon is") answered a question about the time with the place.
+ * A command about the Moon keeps its refusal, and so does a name other than the Moon that this sky does not hold.
+ */
+describe('@albedian/observation voice parser: the Moon\'s phase goes to the answer route', () => {
+  const clip = createSyntheticCalibratedSession();
+  const photo = asPhoto(clip);
+
+  function unresolved(session: ObservationSession, warning?: string): ObservationSession {
+    const held = warning ? withoutPrediction(session, warning) : session;
+    return { ...held, machines: { ...held.machines, calibration: 'unresolved' as const },
+      observationSolution: { ...held.observationSolution!, status: 'unresolved', findings: [] } } as ObservationSession;
+  }
+
+  const PHASE_QUESTIONS = [
+    'what phase is the moon?', 'is it a full moon?', 'moon phase', 'how much of the moon is lit?',
+    "what's the moon phase?", 'what is the phase of the moon', "what was the moon's phase", 'was it a new moon?',
+  ];
+  const files: [string, ObservationSession][] = [
+    ['a worked out clip whose Moon is not in its sky', clip],
+    ...CLAUSES.flatMap(([warning]) => [
+      [`a worked out clip, ${warning}`, withoutPrediction(clip, warning)] as [string, ObservationSession],
+      [`a worked out photo, ${warning}`, withoutPrediction(photo, warning)] as [string, ObservationSession],
+      [`an unresolved photo, ${warning}`, unresolved(photo, warning)] as [string, ObservationSession],
+    ]),
+    ['an unresolved clip with no reason', unresolved(clip)],
+  ];
+
+  it.each(PHASE_QUESTIONS)('%s is a question for the route on every file', (text) => {
+    for (const [file, session] of files) {
+      const result = parse(text, session);
+      expect(result.refusal, `${text} / ${file}`).toBeUndefined();
+      expect(result.error, `${text} / ${file}`).toBeUndefined();
+      expect(result.action?.type, `${text} / ${file}`).toBe('question.ask');
+    }
+  });
+
+  it.each(PHASE_QUESTIONS)('%s is a question for the route on a file whose sky holds the Moon', (text) => {
+    // Before, every phase word the name rule met was refused as a word no list holds ("I did not understand phase")
+    const solution = ObservationSolutionSchema.parse(SOLUTIONS['horizon_predicted_only']);
+    expect(solution.findings.some((f) => f.id === 'finding-predicted-moon')).toBe(true);
+    const held = { ...clip, machines: { ...clip.machines, calibration: 'predicted_only' as const }, observationSolution: solution } as ObservationSession;
+    const result = parse(text, held);
+    expect(result.refusal, text).toBeUndefined();
+    expect(result.action?.type, text).toBe('question.ask');
+    // A command about it keeps the parser's own reading
+    expect(parse('take me to the full moon', held).action?.type).not.toBe('question.ask');
+  });
+
+  it('keeps the rest rule\'s refusal of a phase question longer than a question can hold', () => {
+    const long = `what phase is the moon ${'and so on '.repeat(60)}`;
+    const result = parse(long, withoutPrediction(photo, NO_PLACE));
+    expect(result.action).toBeUndefined();
+    expect(result.error).toBe('No command matches the request, and it is longer than a question can hold.');
+  });
+
+  it('keeps a command about the Moon refused in C38\'s words', () => {
+    for (const text of ['take me to the full moon', 'fly to the moon, the full moon', 'select the full moon']) {
+      const result = parse(text, withoutPrediction(photo, NO_PLACE));
+      expect(result.action, text).toBeUndefined();
+      expect(result.refusal, text).toEqual({ kind: 'no_place_to_predict', said: 'moon', name: 'the Moon' });
+    }
+  });
+
+  it('keeps another name this sky does not hold refused beside the phase', () => {
+    expect(parse('is Vega near a full moon?', withoutPrediction(photo, NO_PLACE)).refusal)
+      .toEqual({ kind: 'not_in_this_sky', said: 'vega', name: 'Vega' });
+    expect(parse('is it a full moon near Vega?', unresolved(photo)).refusal).toEqual({ kind: 'sky_not_worked_out' });
+  });
+
+  it('keeps a question about the Moon that does not ask its phase as before', () => {
+    expect(parse('where is the moon', withoutPrediction(photo, NO_PLACE)).refusal?.kind).toBe('no_place_to_predict');
+    expect(parse('is the moon up?', unresolved(photo)).refusal).toEqual({ kind: 'sky_not_worked_out' });
+    expect(parse('how far is the moon', clip).refusal?.kind).toBe('not_in_this_sky');
+  });
+
+  it('reads the phase phrases as whole words, as the route does', () => {
+    expect(MOON_PHASE_PHRASES).toContain('full moon');
+    // "honeymoon phase" holds no phase phrase as whole words; "the moonlit sky" holds no "moon lit"
+    expect(parse('select the moon, the honeymoon phase', withoutPrediction(photo, NO_PLACE)).refusal?.kind).toBe('no_place_to_predict');
+    expect(parse('where is the moonlit moon', withoutPrediction(photo, NO_PLACE)).refusal?.kind).toBe('no_place_to_predict');
+    // A question that only describes, whose phase words are inside another word, keeps the Moon's refusal
+    expect(parse('where is the moon in its honeymoon phase', withoutPrediction(photo, NO_PLACE)).refusal?.kind).toBe('no_place_to_predict');
   });
 });

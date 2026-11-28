@@ -111,8 +111,9 @@ def test_every_backend_refusal_names_its_kind_its_reason_and_its_sentence() -> N
             kinds[refusal["kind"]] = kinds.get(refusal["kind"], 0) + 1
     # The 682 sentences reach five of the seven kinds the backend can give over the three views; no_named_row (the
     # Magellanic Clouds, Eta Carinae) and two_requests are said by none of them and are held by the contract fixture
-    # instead. not_a_request: a sentence with a word no rule that changes the scene accounts for (answers-3b v4)
-    assert kinds == {"not_understood": 171, "which_one": 12, "deep_sky_out_of_reach": 6, "nothing_in_view": 114,
+    # instead. not_a_request: a sentence with a word no rule that changes the scene accounts for (answers-3b v4). The two
+    # that ask the Moon's phase are the answer route's questions in every view (C38p), no word they say refused
+    assert kinds == {"not_understood": 165, "which_one": 12, "deep_sky_out_of_reach": 6, "nothing_in_view": 114,
                      "not_a_request": 233}, kinds
 
 

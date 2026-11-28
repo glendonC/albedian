@@ -652,6 +652,15 @@ _SOUTHERN_CROSS_QUESTION = (
 _HOW_MANY = re.compile(rf"\bhow{_S}+many\b", re.ASCII)
 
 
+def _asks_moon_phase(text: str) -> bool:
+    """Whether the lower-cased words ask the Moon's phase, by the answer route's own phrases (C38p)."""
+    # The route's module reads this one, so it is read here only once both are loaded
+    from services.voice.answers import QUESTION_PHRASES
+
+    phrases = sorted(dict(QUESTION_PHRASES)["moon_phase"], key=len, reverse=True)
+    return re.search(r"\b(?:" + "|".join(re.escape(p) for p in phrases) + r")\b", text, re.ASCII) is not None
+
+
 def _parse_with_rules(
     utterance: str, ctx: ActionContext, request_id: str, rev: int, current_year: int
 ) -> VoiceIntent:
@@ -665,6 +674,9 @@ def _parse_with_rules(
     reading = _Reading(text, utterance, ctx, request_id, base, current_year, named, without_names)
     # The first refusal of a sentence a rule acted on but did not account for, given when no later rule accounts for it
     not_a_request: VoiceIntent | None = None
+    # C38p (DECIDED-BY-LEAD 27 Nov 21:22), as the app's parser reads it: a question the answer route reads as the Moon's
+    # phase needs only the capture time, so it is the route's question; only a command stops it here
+    phase_asked = _asks_moon_phase(text)
     for rule in VOICE_GRAMMAR.rules:
         if rule.id == VOICE_GRAMMAR.names_refused_before:
             # A southern object named but not baked, or the Southern Cross, is answered in its own words whatever
@@ -695,6 +707,11 @@ def _parse_with_rules(
                 # The name rule's own refusal is never kept: a sentence that is more than a name is the later rules' to read
                 if rule.match != "name":
                     not_a_request = not_a_request or stop
+                continue
+            # The name rule, or a rule that only describes, stopped at the phase's own words ("I did not understand
+            # phase") leaves the phase to the later rules, and so to the rest rule's question
+            if (phase_asked and intent.action is None and not intent.choices and rule.match != "rest"
+                    and (rule.match == "name" or not changes_the_scene(VOICE_GRAMMAR, rule))):
                 continue
             if rule.match == "rest" and not_a_request is not None:
                 return not_a_request

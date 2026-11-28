@@ -207,6 +207,16 @@ def refusal_sentence(reason: str, question: str | None = None, name: str | None 
     }[reason]
 
 
+# The predicted sky's reasons (the contract's NO_PREDICTION_WARNINGS) that say the file has no capture time
+_NO_TIME_KINDS = frozenset({"no_time_to_predict", "no_time_or_place_to_predict"})
+
+
+def _says_no_time(solution: dict[str, Any]) -> bool:
+    """True when the stored solve says the file has no capture time, with or without a place (NO_TIME, NO_TIME_OR_PLACE)."""
+    return any(isinstance(warning, str) and contract.NO_PREDICTION_WARNINGS.get(warning) in _NO_TIME_KINDS
+               for warning in solution.get("warnings") or [])
+
+
 def no_prediction_sentence(name: str, solution: dict[str, Any], noun: str = "photo") -> str | None:
     """The sentence for a body the predicted sky would place, named `name` as the answer's targets name it ("Moon",
     "Mars"), when the stored solve says the file gives no place, no capture time or neither to predict it from (C38
@@ -725,7 +735,10 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
         return _refused(unanswerable, "outside_the_data", solution, sentence=SENTENCE_TWO_NAMES, noun=noun)
     if kind == "moon_phase" and any(not each.is_moon for each in said_targets):
         return _refused(unanswerable, "outside_the_data", solution, noun=noun)
-    if solution is None or solution.get("status") in UNSOLVED:
+    # The Moon's phase needs only the capture time, not the sky: a file whose solve worked out no sky but holds its time
+    # is answered it from that time, as a worked out one is (DECIDED-BY-LEAD 27 Nov 21:22)
+    phase_from_time = kind == "moon_phase" and solution is not None and isinstance(solution.get("observedAtUTC"), str)
+    if solution is None or (solution.get("status") in UNSOLVED and not phase_from_time):
         # A body the predicted sky places, asked of a file whose solve says it gives no time or place to predict it
         # from, says that lasting reason first: no solve could place it (C38u). Only the questions about a named
         # thing, where C38 answers on a worked out sky; every other keeps the sky not worked out
@@ -734,6 +747,9 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
             unpredicted = no_prediction_sentence(missing, solution, noun) if missing is not None else None
             if unpredicted is not None:
                 return _refused(kind, "no_time_or_place", solution, sentence=unpredicted, noun=noun)
+        # The Moon's phase needs only the capture time: a file whose solve says it has none says that first (C38p)
+        if solution is not None and kind == "moon_phase" and _says_no_time(solution):
+            return _refused(kind, "no_time_or_place", solution, noun=noun)
         return _refused(kind, "photo_not_solved", solution, noun=noun)
     statements: list[dict[str, Any]] = []
     name = "It"
