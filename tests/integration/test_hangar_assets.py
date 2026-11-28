@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
-import subprocess
 import struct
 from pathlib import Path
 from urllib.parse import urlparse
@@ -20,8 +18,8 @@ from urllib.parse import urlparse
 import numpy as np
 import pytest
 
-from scripts.lookdev.hangar import write_hangar
-from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CACHE, CRAFTS, HANGAR, LOD_RATIO
+from scripts.lookdev.hangar import rebuild_pin, write_hangar
+from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CRAFTS, HANGAR, LOD_RATIO
 from scripts.lookdev.hangar.geometry import by_part_at
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -951,52 +949,39 @@ def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
             assert e["travel"]["speedKmS"] > 0
 
 
-# The Blender the committed models were built with; another version may write other bytes from the same recipe.
-BUILT_WITH = "Blender 5.2.3"
+def test_every_nasa_file_a_rebuild_reads_is_listed_in_the_download_registry() -> None:
+    listed = {e["path"] for e in json.loads((ROOT / "data" / "downloads.json").read_text(encoding="utf-8"))["downloads"]}
+    for craft in sorted(CRAFTS):
+        inputs = rebuild_pin.rebuild_inputs(craft)
+        assert inputs and set(inputs) <= listed, craft
 
 
-def _blender_version() -> str | None:
-    blender = shutil.which("blender")
-    if blender is None:
-        return None
-    out = subprocess.run([blender, "--version"], capture_output=True, text=True, timeout=120).stdout
-    return out.splitlines()[0] if out else None
-
-
-def _rebuild_inputs(craft: str) -> list[str]:
-    """The NASA files the build reads for one craft, as the shared cache holds them and data/downloads.json lists them
-    (a craft whose picker is rendered from the build reads no NASA picture)."""
-    src = CRAFTS[craft]["source"]
-    return [f"{CACHE}/{src['local']}/{src[key]}" for key in ("file", "picture") if src.get(key) is not None]
-
-
-# Every craft built again in Blender 5.2.3: each that carries the sky fill's occlusion, which since craft-ao-two's
-# fourth group is every model. A recipe change to any of them that the committed models do not follow fails here.
+# Every craft is checked against its rebuild pin, and each that carries the sky fill's occlusion, which since
+# craft-ao-two's fourth group is every model, is rebuilt in Blender 5.2.3 when the check calls for it.
 REBUILT = SHADED
 
 
 def test_the_rebuild_covers_every_craft_rebuilt_in_blender_5_2_3() -> None:
-    assert REBUILT == sorted(CRAFTS)
+    assert REBUILT == sorted(CRAFTS) and rebuild_pin.BUILT_WITH == "Blender 5.2.3"
 
 
-# the suite's 300 s bound would stop the station's rebuild (446 s at a load of 6) before the build's own 1200 s bound below
+# Each craft against its pin (scripts/lookdev/hangar/rebuild_pin.py): its shipped files against their SHA-256 in
+# PROVENANCE.json, its recipe (build_craft.py and every module of this repository it imports, the crafts.py values it
+# reads with its own CRAFTS entry, the Blender) against the pin and, while the recipe is unmoved, its files against the
+# pin, in seconds and with no Blender. It is rebuilt only when its recipe moved from the pin, and then fails until it is
+# rebuilt and repinned, or for every craft on ALBEDIAN_HANGAR_REBUILD_ALL=1, which then needs Blender 5.2.3 and NASA's
+# source in the shared cache; a rebuild that cannot run fails, nothing skips. Hubble's one mesh sits under a
+# transformed parent in NASA's file: a build that drops that transform when it unparents the meshes comes out at
+# another scale and shape (AUDIT-B's read of hangar-20); New Horizons' picker is rendered from the build because its
+# recipe names a reason, so its picture checks that path. The path each craft took is printed and kept as the test's
+# rebuild_path property (in a junit report).
+# The suite's 300 s bound would stop the station's rebuild (446 s at a load of 6) before the build's own 1200 s bound.
 @pytest.mark.timeout(1260)
-@pytest.mark.parametrize("craft", [pytest.param(c, marks=pytest.mark.local_dataset(*_rebuild_inputs(c))) for c in REBUILT])
-def test_an_unchanged_craft_rebuilds_byte_for_byte(craft: str, tmp_path: Path) -> None:
-    # Hubble's one mesh sits under a transformed parent in NASA's file: a build that drops that transform when it
-    # unparents the meshes comes out at another scale and shape (AUDIT-B's read of hangar-20); New Horizons' picker is
-    # rendered from the build because its recipe names a reason, so its picture checks that path. Runs only on a machine
-    # with NASA's source in the shared cache (the local_dataset marker skips it where the cache is absent, as on CI) and
-    # the Blender the hangar was built with: under --no-unexpected-skips a machine that has the cache but another
-    # Blender fails here rather than passing without the check.
-    version = _blender_version()
-    if version is None or not version.startswith(BUILT_WITH):
-        pytest.skip(f"needs {BUILT_WITH} (found {version})")
-    script = ROOT / "scripts" / "lookdev" / "hangar" / "build_craft.py"
-    cmd = [shutil.which("blender"), "-b", "--factory-startup", "-P", str(script), "--", "--craft", craft, "--out", str(tmp_path)]
-    # the station's build, its occlusion cast from the 3,108,229 vertices of its lod0, took 446 s at a load of 6
-    done = subprocess.run(cmd, capture_output=True, text=True, timeout=1200, cwd=ROOT)
-    assert done.returncode == 0, done.stderr[-2000:]
-    for level in ("lod0", "lod1", "lod2", "picker"):
-        name = f"{craft}_{level}.webp" if level == "picker" else f"{craft}_{level}.glb"
-        assert (tmp_path / name).read_bytes() == (HANGAR_DIR / craft / name).read_bytes(), name
+@pytest.mark.parametrize("craft", REBUILT)
+def test_a_craft_is_what_its_pinned_recipe_built_and_is_rebuilt_when_the_recipe_moves(
+    craft: str, tmp_path: Path, record_property
+) -> None:
+    verdict = rebuild_pin.judge(craft, rebuild_all=rebuild_pin.rebuild_all_switch(), out=tmp_path / craft)
+    record_property("rebuild_path", verdict.path)
+    print(f"{craft}: {verdict.path}")
+    assert verdict.problems == [], f"{craft} ({verdict.path}): " + "; ".join(verdict.problems)

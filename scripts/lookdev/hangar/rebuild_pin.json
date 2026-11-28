@@ -1,0 +1,727 @@
+{
+  "about": "For each hangar craft, from its last rebuild in Blender that came out byte for byte as shipped: its recipe's digest, part by part, and the SHA-256 of each file the rebuild wrote. Written only by scripts/lookdev/hangar/rebuild_pin.py, which rebuilds a craft before it pins it; read by tests/integration/test_hangar_assets.py, which rebuilds a craft only when its recipe has moved from this pin, or every craft when ALBEDIAN_HANGAR_REBUILD_ALL=1.",
+  "crafts": {
+    "aces": {
+      "files": {
+        "aces_lod0.glb": "08d97d094b4be3bac57399def2e327214ddf58d6ee62ea93d97a56a011c966e2",
+        "aces_lod1.glb": "f1a6730adc22ed628e82f05a8930ac5f704c9c48108ae655281d545f92ea6e1f",
+        "aces_lod2.glb": "6c9fcbe5f64ad2840b8de9096c246e09ea9fa3bec0433257ae5bb72219a22f4a",
+        "aces_picker.webp": "0ea408a15183179b4aebcfa43b5bbe35ff0d3bee9c3f7285ec3b9e9383d4972d"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['aces']": "a952096fd51539b01af78ab274e05a6150d0b39538b68ff4ceb04d5fa223bedf",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "apollo_lm": {
+      "files": {
+        "apollo_lm_lod0.glb": "119cd3efc617b6a2583eb425be19cb21a93760ae6126a3e07354ceb380f1d7bb",
+        "apollo_lm_lod1.glb": "7006d367cce1329031adb103f1a62722e4c3d7b891a695dd54bc4e0c6229ddbd",
+        "apollo_lm_lod2.glb": "538e93577f8574c0193e98f9c47f42f7505a83509ced7a7b9020af7d95230a5e",
+        "apollo_lm_picker.webp": "a5e1e7cd7187660802c2099e06cb0847aefecb9ad68edf6d6fde78dbea96d245"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['apollo_lm']": "5482df8787f241b4bf9284b8440dd6136c78bbc6ad92eeab1fdbbec88ddcdc78",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "apollosoyuz": {
+      "files": {
+        "apollosoyuz_lod0.glb": "c6555b9941293782d6475200762a4543424add90b5e1d7e76036002ae569f5f3",
+        "apollosoyuz_lod1.glb": "c1c3c1d20770dbe060f86136fbacd966b17c4879e32f3c17fe317bf76a2ddd20",
+        "apollosoyuz_lod2.glb": "76c2af84dc7282a3f2cae904161f841f8bf0305f2ec3530d5ead610521fb976e",
+        "apollosoyuz_picker.webp": "ef3618c2b1256141b5b47ab5a588a792bc7e72f45be63f9899d8f444ac5f4da0"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['apollosoyuz']": "89dd41a47282575519ff976556d6cbc35a3358069e1dd264dc2a530e477341f4",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "cassini": {
+      "files": {
+        "cassini_lod0.glb": "3fa1ebc41388c1d67d3858f32b6a6eee5bf18ae3d1a4ff0249c9effed2c23a4e",
+        "cassini_lod1.glb": "4f208b5c7eebfc3a138b38f2a106fff27e720aa4d60a144a8096ee33816f8dc6",
+        "cassini_lod2.glb": "932d01c6b388b09e3e33c1415a0720371f5fdfde82619391506459a9cbf9f176",
+        "cassini_picker.webp": "67d6604e9b1c0946f04baea387bb70e0d781a0afbe969c87a4a77cf7635c6607"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['cassini']": "af360e91578219bd320be7218f015267b263ea83e37fd450102e82ccbd470fdc",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "clementine": {
+      "files": {
+        "clementine_lod0.glb": "3b2e07e6db86305c416d46e475706bde97e426b27e1c97c04651d2557514b3db",
+        "clementine_lod1.glb": "2ebea0853c52e5870644768a76b8a7d6c8126a749f215ea5e345f2980aadb321",
+        "clementine_lod2.glb": "0fedbf89e78289b79ab1d6eddb230c483a8f4fcbdfc1a2c6b14c743cd712faa8",
+        "clementine_picker.webp": "08d0df22c7db8b084976ce1610c0ba54dc30da995d3969ea47357f316156271a"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['clementine']": "6f93fc8291e8a3640f666cc43b0ccdb8cea84bb251397b7d1f7c5b7885a89f0b",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "dawn": {
+      "files": {
+        "dawn_lod0.glb": "f3bdbe7f2988f6d54086c557b080c0540c69f3c2c47645c980ea49dced41a322",
+        "dawn_lod1.glb": "f3f01bb613d0b752aae0e02f3a2bd56b10dd3c659c1288da3b27b7a4c552861a",
+        "dawn_lod2.glb": "4bbcfd2fc7d90fa4546678d8aa42b73c27044ccda1fabe81e5e8933c99ad9ba6",
+        "dawn_picker.webp": "aa4b36fa12477b63684f9fe0a39c51cb7fb1666b34febc512dc85a1982df15de"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['dawn']": "db1c08226583206f15b04a95f3cc5e0263b05fc6e1fea36f979ee017f3d42d51",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "deepimpact": {
+      "files": {
+        "deepimpact_lod0.glb": "88ecc54b64a346f731ca5b99c4707d3e9412969f3d28b3ef6a45128b409a83a3",
+        "deepimpact_lod1.glb": "70fd79826d0a72b6260e3a81fd09490c35b7cb6a2274044c2fe6c51e6d41a22c",
+        "deepimpact_lod2.glb": "61e5f6286e4aaffe559fb68c1263e4621e1804ed4902bf21cca63fba9af958c7",
+        "deepimpact_picker.webp": "d0cb4ebd689cb40f560b4a85850c9d4b601a14844919bc7f73b03e09c1080553"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['deepimpact']": "48c87cec20346852b80d6471d3087255dfaedba81b8b648422cd30c8bf6bb938",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "ds1": {
+      "files": {
+        "ds1_lod0.glb": "74376e160a1d168a3b0246d17fe8fe580f90ad66f2dd87731df3952ed75a170e",
+        "ds1_lod1.glb": "f68d9cfd0d3c36a2625e3f8436542f7375d8e76b564b0205024f92aa1533fd36",
+        "ds1_lod2.glb": "74391f44a22e0537ea9dcf524a4667207a0683b3f6a668beda8a969c0a7bbe58",
+        "ds1_picker.webp": "0cf5965109380d6f213faff1f4aa54db2802d7c4d00c59129b6217c0fd484aa1"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['ds1']": "b3f11c7d3e324806aa849910f12c39121e33c7dc014a1f32f4f9dcbadebb80cb",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "emu": {
+      "files": {
+        "emu_lod0.glb": "f1521a424b6105c34afd9fb7cd7cddd9665682e78a8f1957cbf4433611d2dfeb",
+        "emu_lod1.glb": "0bbd21bc9c7b6e78c395db32fee3b8323e06a01c38a2121364da57ec84ecdcaa",
+        "emu_lod2.glb": "919eddd2d271d1c51d95e9765416cccef858b9ade3975fb9c5d6acdc80b2ae7c",
+        "emu_picker.webp": "a7e73f8a8c2c28109dd128c9e54034e38af362e442696baafeb1c7c047038149"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['emu']": "c7270d3d1ae5e6beea517f6829d6cd4d633cb10c349abfdab9f9363974101726",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "gemini": {
+      "files": {
+        "gemini_lod0.glb": "a38a6be9ccafd028f4409d99d7e368076b835ace219fb1aafdae8768eea2b1cb",
+        "gemini_lod1.glb": "2de1b94de81eb85cc1464bcadfa4f266b6a9888f0384ca42aceba7568ade8b46",
+        "gemini_lod2.glb": "27f2ee031cd532e72b096f4d9697640e5b59fb879d99fdf227319f96b09fdd2b",
+        "gemini_picker.webp": "4f16d72118409bc019f56381cc43ddd4c1e468d62c36fb0f6bd6692a42ade1b6"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['gemini']": "30907c1249af4d471bd4e650c6eba090c917f0190b9bf57e7c27a85565809841",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "gemini_suit": {
+      "files": {
+        "gemini_suit_lod0.glb": "2e2ea69feef28e9c2fd2d78da2935d08171d77da2aa99ffed4468e1ccf210e33",
+        "gemini_suit_lod1.glb": "5487e2e506b9a1c605bacebe1a365997210149e7b1fcbdfe169679e176451554",
+        "gemini_suit_lod2.glb": "ecb6b326d2e7bbe052d025ea0acd509278d5b2aaffbeb190893303be02e306af",
+        "gemini_suit_picker.webp": "298c042a16bd81fb2c2e053753a96482b84b3c5cfd8c7ef3ce42f8bf75d1707d"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['gemini_suit']": "4541e00df33c251cdb57f047d1d46cce2ec4ebafa1be1d30cb486fc6c6660a53",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "hubble": {
+      "files": {
+        "hubble_lod0.glb": "7c25eca7e11a1ef43b22feeaf7fc21cbf8ca26302dadaef91774eb268a3a68b7",
+        "hubble_lod1.glb": "91571aa54fb644976c02062c5e60865a003bbb5c00e96d5d779e0b4cfe3baf46",
+        "hubble_lod2.glb": "d1ec3e97a745f921bf410c66c60439164f6d46549cf7de23b7792c3849a19af9",
+        "hubble_picker.webp": "ff3175a70708afbf7acdbe13598539f29e64e8dfed8863f1e11fa3533531862b"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['hubble']": "1f1ceb21955d591cdc48f3ec00e2213cf90c5f1daa029d1d787a3f8c8a8c6aed",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "ibex": {
+      "files": {
+        "ibex_lod0.glb": "322798d439ab6fb5f3b6df9754eed3ac204e353c2d034a3f08797ce97d545e79",
+        "ibex_lod1.glb": "2b0a886e73a9c2f5f745906fb180ec91fdb5c0208227bfbf88a471f7ca1c65c4",
+        "ibex_lod2.glb": "15dcac165437154893b1f5e4d4aa3cecf6f91b5ed486fd05e5981e49fe7e8417",
+        "ibex_picker.webp": "eb602ebb9f4e7cbaf2ddd110547d7d7c4b6a9021eeaf9b888bc5395ca6d1e1f1"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['ibex']": "6c4ca3a5d86e126c515a68190cb96c768df342720b593464881eeee22c7c00ef",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "ingenuity": {
+      "files": {
+        "ingenuity_lod0.glb": "8e2d6cf726d385fa2a3938431243974522095eb51d1133048c3a673ae9ff2e49",
+        "ingenuity_lod1.glb": "fda2193aee4747e83917850b5f20b67131f9f3bda7e497c545f94416246374b0",
+        "ingenuity_lod2.glb": "f2a1cb5e1caac498e57acfd0c0916cf6d3d6542dce57fb9eddc736a639255525",
+        "ingenuity_picker.webp": "14a0603510a59a9a9e7d834bfdaa7f882a462da139105eab70fcae80c772d91f"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['ingenuity']": "c7329a21ecbdc90d5824534074322ed59255c93c7626d4ddd722928c1a870499",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "insight": {
+      "files": {
+        "insight_lod0.glb": "4eefd6b95718b82f5d4075482d6e30883f747496ecf93cb59b8195e480eecd58",
+        "insight_lod1.glb": "746f7c1250f28851e1b559d387eb1aae85038a913ee6527411cf26093c2dc853",
+        "insight_lod2.glb": "04a660816bbcc2c39a3e82e907344955c1f6e34998c1262ff404ef597ef9eae3",
+        "insight_picker.webp": "51f87e4585040bb38698de35644e712fd2fec4f73dcf5ccb4f177d85cd9ad667"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['insight']": "8075ecd60849b4819c6453c45d126c2a3f0b09028f92401ae169400bcda1866a",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "iss": {
+      "files": {
+        "iss_lod0.glb": "1428234709e7c4dbae2d293e103596df6d96746fa1a152ca30e951bbd26f6453",
+        "iss_lod1.glb": "42c5ae0139d5999909a7981383c5a97b308d6555556f76d85f0ca232168c0b5d",
+        "iss_lod2.glb": "304cd7ceea6c65722888de166e0ca0b1c18489bdcb97da6d6da461618bc1290a",
+        "iss_picker.webp": "4a40413482a781195f329cc69d8631fa9ddf70124e04bd0837018bb5bf357725"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['iss']": "352a3132578e2d2426ec70b2b7fd706d9c464d4b2d169cba6cceea3268687e8f",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "juno": {
+      "files": {
+        "juno_lod0.glb": "309657c9453d696041bf54084d7b81e0563f849037cd2120cb5f30b4d5212d27",
+        "juno_lod1.glb": "0434f205afa93032a29273a22eaacfd12249b80e006c3d387abb831c400ecf01",
+        "juno_lod2.glb": "8ecebf93e2fc3c7dc6fb62209771acea2c2bf7db3bed9e439585955aea4d38ef",
+        "juno_picker.webp": "60e6b60492e1dad5e82026ec409f4dd33be15d610f01beccbafa0976eaf29577"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['juno']": "0d92602fcc9afbef4b468e0a942600ce937878e7710b65745ff090c659678895",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "jwst": {
+      "files": {
+        "jwst_lod0.glb": "deb1fcff82a261003a77f2401cf496a283d93ea5dc345b48a9dac83a8c1fe3ed",
+        "jwst_lod1.glb": "2ba83465c4b17137c46a891e1b8e114396d1f22da05407ad23902aeae0d8a136",
+        "jwst_lod2.glb": "436555e3148941141e25c076d0f42ee561628919a0f2e4496e7d02710a135117",
+        "jwst_picker.webp": "a714dbbb087275c49e71014ca5d6bed1389a63655d3601be465205529cce8869"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['jwst']": "e65ad7ce98c7930065ebbefa340398e9e80dcbf82b7e1a7dd86aad8e9579a2c5",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "kepler": {
+      "files": {
+        "kepler_lod0.glb": "8944a145aa5d30f78e4df29852b89529a412c56dbf49d4d58e78e7caaf1e38c0",
+        "kepler_lod1.glb": "59d07766a7c074eee6e2720b9c3d0025a4dd3dd970953f0c589e4322a836404f",
+        "kepler_lod2.glb": "75a1c8b7dea4f47363c17fe38982629e5bb6640ec0e9cbe5dd1fbc7d99fa3593",
+        "kepler_picker.webp": "6a5454dff62f3c16cf470e94aaf5b28af6e5969f686399e24b1ddd46fadca1b8"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['kepler']": "6bf4e51abe79f143e405e56de5efce362d0d3afb2fd608c21264918403b78f71",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "mark3": {
+      "files": {
+        "mark3_lod0.glb": "27faf81dff2c59de285d20be69fbe571220c9e06a12287084a61b361e30e0f16",
+        "mark3_lod1.glb": "d7e11f1572cdd8e822a7ff41659947986730d5d2063b749bf2f5059da9c1f3df",
+        "mark3_lod2.glb": "aba75f1f1523b5a0ce75ddc997721861dc86cbd9973e53a5b2926a1be2909d39",
+        "mark3_picker.webp": "d85f967a21a43f49946a8f8b81c524d20dfea6ef5405931d78d80e05203e295c"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['mark3']": "34438bd286ab36d14047a0b3ac804e1615fe0d580d59595c324474eb1bfd01cd",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "maven": {
+      "files": {
+        "maven_lod0.glb": "cf0c83987729fad013fe08208f4c3c0f5fb4f1ebc5ffb0a7d2d46842d7958945",
+        "maven_lod1.glb": "54766f9425cbe4f5be1c40eeace16384bbd2ac1c30fde3c242bbad4c6ab174af",
+        "maven_lod2.glb": "fb1ea0703d89f64b2170021528c6ce75c0ed57c3bb743f9107a35dd7ff406ac2",
+        "maven_picker.webp": "cb0398c9e33f7db55a2f12c9ef639eb5229f7a106255cf633f6ba66e33bcb2d4"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['maven']": "5ba6e4961e278e6f95fea234a977d97728f98898aee063bb573f9af1467332be",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "mercury_suit": {
+      "files": {
+        "mercury_suit_lod0.glb": "be7c23689041ada773dc18bb2c8baeefef202e7da06ca174f0cbee3a8e73f5d9",
+        "mercury_suit_lod1.glb": "8a4d73c833987bcb3c218bf79fd058ccb41678c4b561ef98fd8530b0ea162efb",
+        "mercury_suit_lod2.glb": "84e17cd312dc24e45fc62aaa20cd45d1e7484dd4d86d0d5aa018fba14b86f0f9",
+        "mercury_suit_picker.webp": "26dc43d08be31339a869239600e14b92c9f1807dddd2365c3dbf168cbcd495ed"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['mercury_suit']": "0123e6ae321501f9376b77b5eb2b13c835b1bc7a091f07e7ac59d141859e1432",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "messenger": {
+      "files": {
+        "messenger_lod0.glb": "01ac27e26c4e876622c3f9e56e2dba72d5dad7d473cb96381c50de7c546cb022",
+        "messenger_lod1.glb": "d79ef17072e495946b2859001b473a23dd16be1e1214d171a64edf9d0519a6d5",
+        "messenger_lod2.glb": "4c4dd907328afcce20807a3c7896249ccb1983eae9fa2c15e6a1889524eec09c",
+        "messenger_picker.webp": "f28df12d2b573d9d9e13a7c14174c37bc95f4f5006dd277e1218ef4845d60bc2"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['messenger']": "b800b0b720650c65929eb9d812103ede6f35f1900c0154db400dcb00727e9f5b",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "mgs": {
+      "files": {
+        "mgs_lod0.glb": "cecdd71a29997b89135234fb56f5d0f7a0f1fbce2a2ca0030b4e1d78f21dec29",
+        "mgs_lod1.glb": "04e035e0de56b39eb0c3dfb9d074a4e7e02f4977dfc94e5b052b35a76d60e5b2",
+        "mgs_lod2.glb": "6fa9c04c11abd61cabbb0b56597ca8052760795c32f2959b5cb08354b447e7b9",
+        "mgs_picker.webp": "f8c865c409bce80b51b58b5257de94721d693e66ca606aad0c9ca513a6bb84db"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['mgs']": "0aeda52dbdde764bde209b529711751101dfde760ba8a37db031271babfb18b8",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "mro": {
+      "files": {
+        "mro_lod0.glb": "a87d3e065b679bbc93003a36a14a527c060c5b8303d653d61940717c070c36af",
+        "mro_lod1.glb": "4553cfcbe113c84b657d177816d38abae1ae07d11020514d4342993f479f30ef",
+        "mro_lod2.glb": "25b8b2194bacfc84969dcc66f343fa26c53ee192960ce11e769bb0b7f78454cf",
+        "mro_picker.webp": "0b3aef1b99c920bd00a797395919b72c223484b0ffc6385daa52de3ed8c45d1a"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['mro']": "8d3a5f227c8fa0de1b3edc12f566846a1398a9094b134a9f400b8f2c0272f5ad",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "near": {
+      "files": {
+        "near_lod0.glb": "2171a6f4d06a80e0986b501c4dd6e0098ddab7cd241ba4ead0ae46f78fa215d4",
+        "near_lod1.glb": "7e9c3c72ae1facdeb9c45113885f5964847e8e8f34eacb3dd93044f421e82cdd",
+        "near_lod2.glb": "f493a5654d58a8c42c52404ad373ecdaa8d837bc659600c84df51349f817820e",
+        "near_picker.webp": "4637a730325acc99446415ff986e1298d4334fecce7b0b63abb2cbac003984e9"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['near']": "6a75ff799508077dd5f5a27d1d3787530cdc9d6464e7bcf6d822c792670705ca",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "newhorizons": {
+      "files": {
+        "newhorizons_lod0.glb": "04d8fa7aab021afd5d8db452cb0aa03f279140a00a77af7da90166a9b6825455",
+        "newhorizons_lod1.glb": "0cb30ae2f4ca69369de0eb30d8463512471c29f6a5f80cd38f3a6853a296692a",
+        "newhorizons_lod2.glb": "614a65740feedbd86bea5aab121c5aed5162fe1c350414424b62beaae221b86f",
+        "newhorizons_picker.webp": "a7bd23cc3dcfd49fb5a90b4016fa0a4686bfd737b2c3f04e6a4401939d742c9e"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['newhorizons']": "c952c71d847b67e0569b86fcba8f463b7b919bb0aa8125b347cbe2375b8806bd",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "odyssey": {
+      "files": {
+        "odyssey_lod0.glb": "6f6417f980e1c2f82ea9cde39e7f85838fcdd6d7e223fba6a9f25e8d8c72e82f",
+        "odyssey_lod1.glb": "83149a43d230fc370a7462847ffb2b078f4425e8c3ccbbdf1477bfdf9acf1693",
+        "odyssey_lod2.glb": "e49d2b80bfb92cdd2f2a74007ede1773bdf55a8c12b3e124858291645e5deb71",
+        "odyssey_picker.webp": "83ae52a1815d37f717738db9dd1c9ab144cfade2f3d4ec12aec2bd6553d5aecd"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['odyssey']": "bf7c84190feed151109a0180b6504426e13416925c4f77a6b7a25ebe890cff66",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "osirisrex": {
+      "files": {
+        "osirisrex_lod0.glb": "3f5777ef1c269e652430661217d95ae02820b6d16605e2fe197f716b04a0ee72",
+        "osirisrex_lod1.glb": "1952d49e19bffc689b9e0722f8e51852422d6510c3c0cf89ae28c088412822a9",
+        "osirisrex_lod2.glb": "55033e74ece8632d98129631722363671529aae307ee88129ba3f8df63c9fce2",
+        "osirisrex_picker.webp": "374fa5fb14a2f3e4ecaa5f8301cf1614b963b6535138480207a2b773cf8b9a71"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['osirisrex']": "ebb02c95b4714e9213d1daa2c9f2e14307624d31cb6b35ddd738b31102fc8fda",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "parker": {
+      "files": {
+        "parker_lod0.glb": "326280dc09eecc0e79e35d4e5c593df88a2b03f5a7eddb4a2c648a027abeea75",
+        "parker_lod1.glb": "b60204f37272a5387920e2c93a3a79c8b1606f6d1a5204ee1e4420a519d7dff8",
+        "parker_lod2.glb": "638bd5c1f5d6dd7a355735fb94895bb88b9c42d40e48061f4bf0cc6bb5b71eb9",
+        "parker_picker.webp": "598a830ee037f3a31839d0d4d834e1e6f29263135dad9cdc0c7bb8294870238e"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['parker']": "cead6e04d0cc5b1f90e7503b747403020ae443281d5f73df8add2f58331e6f30",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "perseverance": {
+      "files": {
+        "perseverance_lod0.glb": "5ee1a69033c006ef5a601935477c0bc8f5bbabeb602418d06c016365244f502c",
+        "perseverance_lod1.glb": "fde728e0412e40d12033a42a4e9a42000b8d66a54c3feb56c362cedd52d51546",
+        "perseverance_lod2.glb": "7346ee2fb44d20cf8b35823b5bdcd4bf5d4a7bf803666871c86100772cd908d0",
+        "perseverance_picker.webp": "47f463836320bb044a69f99d751abe2520ce8c95d43913aa5a9d58df32d704e1"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['perseverance']": "22cce274108c4663bf91c46def90d4973d2624c24e2583b7c046310afb01ab90",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "pioneer10": {
+      "files": {
+        "pioneer10_lod0.glb": "bd6c461c3d62757bf4cd835c44c95693d373d6d754f487bda2906c96c99f24e8",
+        "pioneer10_lod1.glb": "a64ca330e7085c1814cda03d0cb8ec93fc7bd5bc033bbfcc198e372efe558855",
+        "pioneer10_lod2.glb": "0e3b73be63252eb2449a89ca80c51107e1d4a2b862af56896404e9d66a439a4e",
+        "pioneer10_picker.webp": "f7080320244a4e3e0206d184f9bb34cb19e582ef67d93adcb61e49eacce5bfde"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['pioneer10']": "faee19de75ca9c402cb056a818becc7c19f28edaa20fcf3221c89b484ba9a967",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "shuttle": {
+      "files": {
+        "shuttle_lod0.glb": "770e013f6064c8aeb5de58f75580f2a5059e9d2ce4a615944986689cd1394a20",
+        "shuttle_lod1.glb": "72008e6f364829c985cba1f1e2a539d2b0cecf10ffb96b049a7055c37de60ac5",
+        "shuttle_lod2.glb": "801c0991e0edaf7c1f5aa43f3d744ab84389991dc4b7dfeb5e0f843c8d5fbdbe",
+        "shuttle_picker.webp": "766f507f05dd7b413e7cfdb8bd17b0389be6ec499f0bfb26384df0bcb989b40b"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['shuttle']": "dd48b1d48a7cd3c8f5eedaa4576b8c81c0b25618c807adcef94e397d10549876",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "spitzer": {
+      "files": {
+        "spitzer_lod0.glb": "03f88a7738521576ec049aad59dcf65668050194a44b5144f5282dcdb098bad9",
+        "spitzer_lod1.glb": "33b94a600f550afbc94dc5eeaf399549901f0933347b4140f62811e66769badd",
+        "spitzer_lod2.glb": "25e4c96037e4523197ef0d9bd34f0881e0376ba6f01dfff927a06732ab15531d",
+        "spitzer_picker.webp": "6b41ba5896e69a6a583c1cde2058cc71e2073eb71ec1953f05c2aa5c432c1a70"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['spitzer']": "23e4efceba7f4568d02c7ebd09d356d7ae95540de8f41202dc88db0e3ff5f7f7",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "stardust": {
+      "files": {
+        "stardust_lod0.glb": "62826676decd839b20088b4b694468c976270acf47f0ef80bad5110640115f89",
+        "stardust_lod1.glb": "8e315e33d967a9afc8283e1b5b862d4663e242017ccf3458492a886c2bd1c2bb",
+        "stardust_lod2.glb": "2b3090a955ceff56d2d4777f840949313c73dc373e274e356dd42bda5f1aabb0",
+        "stardust_picker.webp": "c8c6767edafec9504df57d4fb1b3002d533d6957cf74f91446df6ab726b02872"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['stardust']": "f45344ed972447fd1d5180ba4da54832af15fb2c5b0c396711377d5d4a1fab38",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "tdrs": {
+      "files": {
+        "tdrs_lod0.glb": "0598f7100bbc4405dce22492d6e204430aa2d6933cfe8f018b184da193fc1899",
+        "tdrs_lod1.glb": "8d5640047ff385ad7bab7fac84511c6fc76502d4a15ecd759b3e36fd8232c377",
+        "tdrs_lod2.glb": "8788b70982eaf679dde5ab323741f515714387c750c7770be6dbd857c83a2e38",
+        "tdrs_picker.webp": "0081d877ef31ddb26344f8a65e3655388c8bc50e8455cb0dbe0956607d298632"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['tdrs']": "c6f683cdaa25a573fece4dd19bf563efca0e83a992c4796215aba9bb1c260578",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "vanallen": {
+      "files": {
+        "vanallen_lod0.glb": "8ad686bd7c024f51f24d491d68784a2c235855a1692fe38533278ab6e41dfb22",
+        "vanallen_lod1.glb": "94053e4007fa7019923754351b36beef892f5454b49fa2656d83ca7a4421c218",
+        "vanallen_lod2.glb": "376a9a23245c1d2fde28e091ccbb2bba303e3ced625aa31bfd86e27011f4d9dc",
+        "vanallen_picker.webp": "7444598c586763e4c2c320d29c95f4d52f3556cdb01c005997399d575f8cd9ea"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['vanallen']": "0b7bf43289794eaa0823b81a6c44136268aa20e75a09db0ad2d08fa251069a3d",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "viking": {
+      "files": {
+        "viking_lod0.glb": "1dbd4e8f7d7caec245d4f53826177341eee2147929b6275c43317103b20cbedf",
+        "viking_lod1.glb": "fbfcda7acd17eb77b54f950369bca3cf815da3e666c90b57e5c2e079e79f8246",
+        "viking_lod2.glb": "75c27492f5c0f056209f47c6d7052495a8d003e1abdab29cf029c67a906dc6ca",
+        "viking_picker.webp": "ccbfb7689cf406e5873aabcd58a4a7e3694c8b71f8d58205af1193ec7189c8a8"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['viking']": "6fb601a2e0ac8d9fe3c2bed46f2282c22e318f5f86c3110090a042e2eaa95c08",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "voyager": {
+      "files": {
+        "voyager_lod0.glb": "735c59df16e080e173f644f18e8256e2125e18039e1ff11fe0eb9d91d28e2486",
+        "voyager_lod1.glb": "6596bd9ef92c352c2fe34d34c2f582f7f371034448f23a624d2f478985b43457",
+        "voyager_lod2.glb": "746d0520b6df0f352dba25790aba6164368d9700929ba42594609f53ae175983",
+        "voyager_picker.webp": "3710bdd84109d8d3900ae13fd2f5c4b99739318f675303a8994bea7b657fa1e6"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['voyager']": "f5a8c71d8c7e5e64162b32c2b31125352839d819266c3ddfd2444717b720637a",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    },
+    "z2": {
+      "files": {
+        "z2_lod0.glb": "260d54a530d6cf57b5338429cd339bb53d16b562342d042a65326d0c44563a29",
+        "z2_lod1.glb": "dc2ca03b32780b3856485118e08b80ab336b668ba48c13ac994dc095003547de",
+        "z2_lod2.glb": "752aacf880f61ceee51ae1ad9ccd2b1484d211fddc963a8e109d5595239444b5",
+        "z2_picker.webp": "4cf44f9701746d72aa94e0d3c473dc2325a3c1d3869a050b04c310797305cd13"
+      },
+      "recipe": {
+        "crafts.CACHE": "815f647436320e88c3190198e4e3182228b6053a9ef625b05ab2bf24202a9950",
+        "crafts.CRAFTS['z2']": "3b462b9bb1f36206373d3652eae4baa3283f600eac8580c1cbf005c5928c4472",
+        "crafts.LOD_RATIO": "73cd03e6cd7b5333e7653b448d2aed7ad7096356df8129b900d6d5841c857ae4",
+        "crafts.PICKER_EDGE": "cba28b89eb859497f544956d64cf2ecf29b76fe2ef7175b33ea59e64293a4461",
+        "crafts.TEXTURE_EDGE": "8139cb1a883a330a5b01ddeb708229a0f94aaa69f8a2e3d03b5b97f50ca891b2",
+        "scripts/lookdev/hangar/build_craft.py": "2631545d20cd40058ec820e514fd24ffb4f6e637146828aa7518a8ca58885e21",
+        "scripts/lookdev/hangar/geometry.py": "609d2f6efc034dc53c69fd4bbfabf3b0febb8b5e2ca09faedb5ed391c3cdabdd",
+        "tool": "Blender 5.2.3"
+      }
+    }
+  },
+  "format": "albedian-hangar-rebuild-pin",
+  "formatVersion": 1
+}
