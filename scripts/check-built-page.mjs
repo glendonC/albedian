@@ -23,9 +23,10 @@
  * of a style attribute or of a stylesheet (which CSS still reads as an address, while the check needs its closing
  * bracket), and an @import whose string is left open at the end of a stylesheet (which CSS still reads).
  * It also holds each built page to the content policy (scripts/content-policy.mjs, which the preview server sends),
- * reading the same parsed document: each style element's text must hash to one of the policy's STYLE_HASHES, and a page
- * may hold no script element without a src, no event attribute (any attribute whose name begins with "on" and a letter
- * is read as one) and no style attribute, none of which the policy allows; a template's content is read as the page is.
+ * reading the same parsed document: each style element's text must hash to one of the policy's STYLE_HASHES, each script
+ * element without a src must hash to one of its SCRIPT_HASHES (the first frame's script, first-frame-inline-one), and a
+ * page may hold no event attribute (any attribute whose name begins with "on" and a letter is read as one) and no style
+ * attribute, neither of which the policy allows; a template's content is read as the page is.
  * Nothing of the page is run or fetched.
  * Usage: node scripts/check-built-page.mjs <build folder>
  */
@@ -33,7 +34,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { STYLE_HASHES, styleHash } from './content-policy.mjs';
+import { SCRIPT_HASHES, STYLE_HASHES, scriptHash, styleHash } from './content-policy.mjs';
 
 /** jsdom, from the web app, which declares it (the check lives outside the app and declares nothing of its own). */
 const { JSDOM } = createRequire(path.join(path.dirname(fileURLToPath(import.meta.url)), '../apps/web/package.json'))('jsdom');
@@ -378,18 +379,19 @@ export function builtOutsideAddresses(dir) {
 
 /**
  * What of a page the content policy would refuse, as [form, what] in document order, the page read by jsdom: a style
- * element whose text's hash is not one of the policy's, a script element without a src, an on... event attribute, a
- * style attribute.
+ * element whose text's hash is not one of the policy's style hashes, a script element without a src whose text's hash is
+ * not one of its script hashes (named by its first sixty characters, trimmed), an on... event attribute, a style
+ * attribute.
  */
-export function policyMisfits(html, hashes = STYLE_HASHES) {
+export function policyMisfits(html, hashes = STYLE_HASHES, scriptHashes = SCRIPT_HASHES) {
   const found = [];
   for (const el of elementsOf(new JSDOM(html).window.document)) {
     if (el.localName === 'style') {
       const hash = styleHash(el.textContent ?? '');
       if (!hashes.includes(hash)) found.push(['style element, its hash not in the content policy', hash]);
     }
-    if (el.localName === 'script' && !el.hasAttribute('src')) {
-      found.push(['inline script, which the content policy allows none of', (el.textContent ?? '').trim().slice(0, 60)]);
+    if (el.localName === 'script' && !el.hasAttribute('src') && !scriptHashes.includes(scriptHash(el.textContent ?? ''))) {
+      found.push(['inline script, its hash not in the content policy', (el.textContent ?? '').trim().slice(0, 60)]);
     }
     for (const name of el.getAttributeNames()) {
       const lower = name.toLowerCase();

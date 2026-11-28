@@ -166,11 +166,34 @@
   </head>
   <body>
     <!-- first-paint-one (UIUX-first-paint-READY.md P1 to P5): the home's first frame before the script runs, its own markup
-         and rules (home.css), replaced by the home's first commit; the logo waits for first-frame.js -->
+         and rules (home.css), replaced by the home's first commit; the logo waits for the script below it -->
     <div id="root"><div id="first-frame" class="home-screen first-frame">
       <div class="home-hero"><span class="look-logo" role="img" aria-label="Albedian"><span class="look-logo__word" aria-hidden="true">albedian</span><svg class="look-logo__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false"><defs><mask id="look-logo-mask-first-frame"><rect width="32" height="32" fill="white"></rect><path d="M18.2 2.2Q18.2 13.8 29.8 13.8Q18.2 13.8 18.2 25.4Q18.2 13.8 6.6 13.8Q18.2 13.8 18.2 2.2Z" fill="black"></path></mask></defs><circle cx="15.2" cy="16.0" r="11.5" fill="currentColor" mask="url(#look-logo-mask-first-frame)"></circle></svg></span><div class="home-row" aria-hidden="true"></div></div>
     </div></div>
-    <script src="/first-frame.js"></script>
+    <!-- first-paint-one (UIUX-first-paint-READY.md P2 and P5): the logo only once Geist 600 has loaded, never in a fallback
+         face, and only at the home's address: an address naming one upload (openUpload.ts uploadAddressed) or one sample
+         night (App.tsx addressedSample) opens behind the same black, so its first frame is the black alone. Inline, the
+         page's own (first-frame-inline-one, DECIDED-BY-LEAD 02:59 on 28 Nov: no provenance record fits a file written
+         here), its text held by the content policy's SCRIPT_HASHES; it runs as the parser reaches it, before the app's. -->
+    <script>
+      (function () {
+        var frame = document.getElementById('first-frame');
+        if (!frame) return;
+        var query = new URLSearchParams(window.location.search);
+        var uploads = query.getAll('upload');
+        if (uploads.length === 1 && /^[0-9a-f]{64}$/.test(uploads[0])) return;
+        var samples = query.getAll('sample');
+        if (samples.length === 1 && /^night-[a-z0-9-]{1,40}$/.test(samples[0])) return;
+        var fonts = document.fonts;
+        if (!fonts || typeof fonts.load !== 'function') return;
+        fonts.load('600 132px Geist').then(
+          function (faces) {
+            if (faces && faces.length > 0) frame.setAttribute('data-logo', '');
+          },
+          function () {}
+        );
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

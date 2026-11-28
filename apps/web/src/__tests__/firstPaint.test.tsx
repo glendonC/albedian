@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,14 @@ const page = new DOMParser().parseFromString(html, 'text/html');
 const frame = () => page.getElementById('first-frame');
 /** The page's one inline style, the only stylesheet the first frame may stand on. */
 const inline = page.querySelector('head style')!.textContent!;
+/**
+ * first-frame-inline-one (DECIDED-BY-LEAD 02:59 on 28 Nov: no provenance record fits a file written here, so the script
+ * is the page's own): the first frame's one script, inline in the page, and the content policy's hashes of inline scripts.
+ */
+const firstFrameScript = () => [...page.querySelectorAll('script')].filter((s) => !s.hasAttribute('src'));
+const policy = fs.readFileSync(path.resolve(web, '../../scripts/content-policy.mjs'), 'utf8');
+const SCRIPT_HASHES = JSON.parse(/export const SCRIPT_HASHES = (\[[^\]]*\]);/.exec(policy)?.[1] ?? '[]') as string[];
+const scriptHash = (text: string) => `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 /** The markup of an element with the mask ids made alike and the attributes a static page holds differently set aside. */
 const alike = (el: Element, drop: readonly string[] = []) => {
   const copy = el.cloneNode(true) as Element;
@@ -172,29 +181,39 @@ describe("first-paint-one: the page's own first frame", () => {
     expect(face(inline)).toBe(face(read('src/styles/fonts.css')));
   });
 
-  it('asks for Geist early from its own origin, and runs its one script from its own origin after the frame', () => {
+  it("asks for Geist early from its own origin, and runs its one inline script after the frame, before the app's", () => {
     const preload = page.querySelector('head link[rel="preload"][as="font"]')!;
     expect(preload.getAttribute('href')).toBe('/fonts/geist/Geist-wght.woff2');
     expect(preload.getAttribute('type')).toBe('font/woff2');
     expect(preload.hasAttribute('crossorigin')).toBe(true);
     const scripts = [...page.querySelectorAll('script')];
-    const first = scripts.find((s) => s.getAttribute('src') === '/first-frame.js')!;
+    const inlineScripts = firstFrameScript();
+    expect(inlineScripts).toHaveLength(1);
+    const first = inlineScripts[0]!;
+    // A classic script, run as the parser reaches it: after the frame's markup, before the app's own module
     expect(first.getAttribute('type')).toBeNull();
     expect(page.getElementById('root')!.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(scripts.every((s) => s.hasAttribute('src'))).toBe(true);
+    const app = scripts.find((s) => s.getAttribute('src') === '/src/main.tsx')!;
+    expect(first.compareDocumentPosition(app) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Nothing is fetched for it, and no copy of it stands in the public folder, where a file needs a provenance record
+    expect(scripts.some((s) => /first-frame/.test(s.getAttribute('src') ?? ''))).toBe(false);
+    expect(fs.existsSync(path.join(web, 'public/first-frame.js'))).toBe(false);
+  });
+
+  it("holds the inline script to the content policy's one script hash, so a change to it is a change to the policy", () => {
+    expect(SCRIPT_HASHES).toEqual([scriptHash(firstFrameScript()[0]!.textContent!)]);
   });
 });
 
-describe('first-frame.js: the logo only in Geist and only at the home\'s address', () => {
+describe("the first frame's script: the logo only in Geist and only at the home's address", () => {
   const SHA = 'a'.repeat(64);
   async function run(search: string, fonts: 'loads' | 'unmatched' | 'fails' | 'none') {
     document.body.innerHTML = '<div id="root"><div id="first-frame" class="home-screen first-frame"></div></div>';
     window.history.replaceState(null, '', `/${search}`);
     const load = vi.fn((font: string) => (fonts === 'loads' ? Promise.resolve([font]) : fonts === 'unmatched' ? Promise.resolve([]) : Promise.reject(new Error('no font'))));
     Object.defineProperty(document, 'fonts', { configurable: true, value: fonts === 'none' ? undefined : { load } });
-    vi.resetModules();
-    const script = '../../public/first-frame.js';
-    await import(/* @vite-ignore */ script);
+    // The page's own inline script, run as the page runs it: as a classic script's text in the page's global scope
+    new Function(firstFrameScript()[0]!.textContent!)();
     await new Promise((r) => setTimeout(r, 0));
     return { home: document.getElementById('first-frame')!.hasAttribute('data-logo'), load };
   }
@@ -232,7 +251,6 @@ describe('first-frame.js: the logo only in Geist and only at the home\'s address
   });
 
   it("reads a sample night's id by the contract's own pattern", () => {
-    const script = fs.readFileSync(path.join(web, 'public/first-frame.js'), 'utf8');
-    expect(script).toContain(`/${SAMPLE_ID_PATTERN.source}/.test(`);
+    expect(firstFrameScript()[0]!.textContent!).toContain(`/${SAMPLE_ID_PATTERN.source}/.test(`);
   });
 });
