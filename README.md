@@ -91,7 +91,7 @@ The roadmap as it stood on 9 November is [`docs/ROADMAP.md`](docs/ROADMAP.md); h
 ## Quick Start
 
 ### 1. What You Need
-Node 22 or later, pnpm 10.7.1 (the `packageManager` in `package.json`), [uv](https://docs.astral.sh/uv/), and ffmpeg with ffprobe on the `PATH` (an ffmpeg older than 7.1 refuses iPhone HEIC photos; JPEG works with any). A browser with WebGL 2.
+Node 22 or later, pnpm 10.7.1 (the `packageManager` in `package.json`), [uv](https://docs.astral.sh/uv/), and ffmpeg with ffprobe on the `PATH` (an ffmpeg older than 7.1 refuses iPhone HEIC photos; JPEG works with any). A browser with WebGL 2. Built and walked on macOS 26 on an Apple silicon Mac; Linux and Windows have not been tried (CI runs the tests and the build on Ubuntu 24.04, never the app). The iPhone companion was built with Xcode 26.6 and needs iOS 26 ([`apps/ios/README.md`](apps/ios/README.md)).
 
 ### 2. Install and Start
 ```bash
