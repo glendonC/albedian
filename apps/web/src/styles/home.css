@@ -85,11 +85,13 @@
 
 /* P3: on the laptop while the message's room after the pill is narrower than 240 px (838 px wide down to 721), the
    message stands under the row as at phone width, 18 px below it, its widest edge 22 px before the credit's left edge;
-   the logo and the row rise by its height as the phone's do */
+   the logo and the row rise by its height as the phone's do. The message spans both columns: Upload's is its own width
+   and the pill's the one flexible track, so a message wider than the row adds its room after the pill and the pill keeps
+   its 10 px after Upload (P5; two auto columns grew to share the message's width) */
 @media (min-width: 721px) and (max-width: 838px) {
   .home-row:has(.home-sample) {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto 1fr;
     column-gap: 10px;
     row-gap: 18px;
     justify-items: start;
@@ -431,14 +433,15 @@
   }
 
   /* P1 and P4 on the phone: the pill beside Upload at the phone's size (176 by 44 at 390 wide), the message under the
-     row, 18 px below it, the full width less the gutters */
+     row, 18 px below it, the full width less the gutters; the pill keeps its 10 px after Upload under a message wider
+     than the row, as in the laptop's narrow band */
   .home-hero .look-second {
     --look-h: var(--look-h-phone);
     --look-fs: var(--look-fs-phone);
   }
 
   .home-row:has(.home-sample) {
-    grid-template-columns: auto auto;
+    grid-template-columns: auto 1fr;
     column-gap: 10px;
   }
 

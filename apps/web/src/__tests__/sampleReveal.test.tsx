@@ -505,7 +505,7 @@ describe('sample-pill-one: Try a sample night on the home', () => {
 
   it('holds its place: 10 px after Upload, the message under the row in the narrow band, beside or under Upload on the phone', () => {
     expect(rulesIn(null, '.home-row')).toMatchObject({ 'align-items': 'center', gap: '10px' });
-    expect(rulesIn('(min-width: 721px) and (max-width: 838px)', '.home-row:has(.home-sample)')).toEqual({ display: 'grid', 'grid-template-columns': 'auto auto', 'column-gap': '10px', 'row-gap': '18px', 'justify-items': 'start' });
+    expect(rulesIn('(min-width: 721px) and (max-width: 838px)', '.home-row:has(.home-sample)')).toEqual({ display: 'grid', 'grid-template-columns': 'auto 1fr', 'column-gap': '10px', 'row-gap': '18px', 'justify-items': 'start' });
     expect(rulesIn('(min-width: 721px) and (max-width: 838px)', '.home-row:has(.home-sample) .home-refusal:not(:empty)')).toEqual({
       position: 'static',
       'grid-column': '1 / -1',
@@ -513,10 +513,26 @@ describe('sample-pill-one: Try a sample night on the home', () => {
       width: 'auto',
       'max-width': 'calc(100vw - 48px - 22px - var(--home-credit-w, 0px) - 32px)',
     });
-    expect(rulesIn('(max-width: 720px)', '.home-row:has(.home-sample)')).toEqual({ 'grid-template-columns': 'auto auto', 'column-gap': '10px' });
+    expect(rulesIn('(max-width: 720px)', '.home-row:has(.home-sample)')).toEqual({ 'grid-template-columns': 'auto 1fr', 'column-gap': '10px' });
     expect(rulesIn('(max-width: 720px)', '.home-hero .look-second')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)' });
     expect(rulesIn('(max-width: 346px)', '.home-row:has(.home-sample)')).toEqual({ 'grid-template-columns': 'auto', 'row-gap': '10px' });
     expect(rulesIn('(max-width: 346px)', '.home-row:has(.home-sample) .home-refusal:not(:empty)')).toEqual({ 'margin-top': '8px' });
+  });
+
+  // sample-pill-refusal-one (UIUX built-four-1127.md, P1 and P5): a refusal under the row spans both its columns; were
+  // both sized by their content (auto auto) a message wider than Upload, 10 px and the pill would grow each to share its
+  // width and slide the pill right (29.6 px after Upload on the phone, 21.9 at 800 wide, measured in the page). Upload's
+  // column is its own width and the pill's is the one flexible track, so a wider message's room lands after the pill
+  it('keeps the pill 10 px after Upload while a refused upload\'s message stands under the row (P5)', () => {
+    for (const band of ['(min-width: 721px) and (max-width: 838px)', '(max-width: 720px)']) {
+      expect(rulesIn(band, '.home-row:has(.home-sample) .home-refusal:not(:empty)')['grid-column']).toBe('1 / -1');
+      const tracks = (rulesIn(band, '.home-row:has(.home-sample)')['grid-template-columns'] ?? '').split(' ');
+      expect(tracks).toHaveLength(2);
+      expect(tracks[0]).toBe('auto');
+      expect(tracks[1]).toMatch(/^\d+(\.\d+)?fr$/);
+    }
+    expect(rulesIn('(max-width: 720px)', '.home-row')).toMatchObject({ display: 'grid', 'justify-items': 'start' });
+    expect(rulesIn('(min-width: 721px) and (max-width: 838px)', '.home-row:has(.home-sample)')['justify-items']).toBe('start');
   });
 
   it('offers the record\'s first night only when its asset and its solve both answer', async () => {
