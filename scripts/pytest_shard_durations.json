@@ -1,5 +1,5 @@
 {
-  "about": "Seconds of test time per test file, from one whole serial pytest run of main 046a6c60 on the development laptop under other load (gate-durations-probe); scripts/pytest_shards.py uses them only to balance its shards, and a test file with no time here falls in the lightest shard.",
+  "about": "Seconds of test time per test file, from one whole serial pytest run of main 046a6c60 on the development laptop under other load (gate-durations-probe), but tests/integration/test_hangar_assets.py's, the median of three serial runs of that file alone on main 891a577a7 at a load of 12 to 15, after its rebuild pin (rebuild-when-recipe-moves-one); scripts/pytest_shards.py uses them only to balance its shards, and a test file with no time here falls in the lightest shard.",
   "seconds": {
     "tests/integration/test_aligned_lent_moment.py": 3.0,
     "tests/integration/test_aligned_solution_served.py": 0.2,
@@ -49,7 +49,7 @@
     "tests/integration/test_generate_letters_and_digits.py": 0.2,
     "tests/integration/test_git_env.py": 7.6,
     "tests/integration/test_guarded_call.py": 59.4,
-    "tests/integration/test_hangar_assets.py": 7.0,
+    "tests/integration/test_hangar_assets.py": 9.3,
     "tests/integration/test_held_out_gate.py": 3.4,
     "tests/integration/test_ingest_contract.py": 0.7,
     "tests/integration/test_ingest_metadata.py": 3.7,
