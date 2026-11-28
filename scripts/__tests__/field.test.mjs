@@ -7,13 +7,17 @@ import {
   DEFAULT_ORIGINS,
   MUSIC_BASE,
   MUSIC_PORT,
+  SCAN_LINE,
   WEB_PORT,
   fieldPlan,
   musicSourcesLine,
   parseFieldArgs,
   pickLanAddress,
+  readyLines,
   runBuild,
+  terminalQrLines,
 } from '../field.mjs';
+import { encodeQr } from '../qr.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 
@@ -224,5 +228,82 @@ describe('the music line pnpm field prints', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+// UIUX-phone-code-READY.md Q2 (DECIDED-BY-LEAD 27 Nov 19:25): under --lan only, once the API answers, the phone's
+// address as a code after the music line, then Expo's sentence, then the lines as they were, the address among them
+describe('the lines pnpm field prints once ready', () => {
+  const music = 'Music: 3 sample files in .cache/music/sources, served at /music-sources/.';
+  const PLAIN_HTTP = [
+    'Over plain http the phone gets upload, solve and the sky, but no WebGPU views, microphone or speech.',
+    'Any device on this network can open it, upload, solve and send voice commands; stop it when you are done.',
+  ];
+
+  /** The module grid a terminal code's lines draw, light margin included, read back from each cell's two colours. */
+  function drawnGrid(lines) {
+    const grid = [];
+    for (const line of lines) {
+      expect(line.endsWith('\x1b[0m'), 'each line ends with the reset').toBe(true);
+      const body = line.slice(0, -'\x1b[0m'.length);
+      const cells = [...body.matchAll(/\x1b\[(\d+);(\d+)m\u2580/g)];
+      expect(cells.map((cell) => cell[0]).join(''), 'nothing on a line but its coloured half blocks').toBe(body);
+      for (const [, top, bottom] of cells) {
+        expect(['30', '37'], 'the upper module black or white').toContain(top);
+        expect(['40', '47', '49'], 'the lower module black or white, or none').toContain(bottom);
+      }
+      grid.push(cells.map(([, top]) => top === '30'));
+      if (cells.every(([, , bottom]) => bottom === '49')) continue;
+      expect(cells.some(([, , bottom]) => bottom === '49'), 'a line has its lower row whole or not at all').toBe(false);
+      grid.push(cells.map(([, , bottom]) => bottom === '40'));
+    }
+    return grid;
+  }
+
+  it('prints no code and no scan line for pnpm field alone', () => {
+    const plan = fieldPlan({ lan: false, env: {} });
+    expect(readyLines(plan, music)).toEqual([
+      '',
+      `Albedian is ready. On this laptop (full experience): ${plan.laptopUrl}`,
+      music,
+      'Stop all three with Ctrl+C.',
+      '',
+    ]);
+  });
+
+  it('with --lan draws the phone address as a code after the music line, then the scan line, then the lines as they were', () => {
+    const plan = fieldPlan({ lan: true, lanAddress: '192.168.1.20', env: {} });
+    expect(readyLines(plan, music)).toEqual([
+      '',
+      `Albedian is ready. On this laptop (full experience): ${plan.laptopUrl}`,
+      music,
+      ...terminalQrLines(plan.phoneUrl),
+      'Scan the QR code above to open Albedian on your phone.',
+      `Phone on the same network: ${plan.phoneUrl}`,
+      ...PLAIN_HTTP,
+      'Stop all three with Ctrl+C.',
+      '',
+    ]);
+    expect(SCAN_LINE).toBe('Scan the QR code above to open Albedian on your phone.');
+  });
+
+  it("draws the encoder's code of the address with one light module all round, two module rows a line", () => {
+    for (const address of [`http://192.168.1.20:${WEB_PORT}`, 'http://192.168.255.255:65535', 'http://10.0.0.2:5173', 'http://172.20.10.3:5173']) {
+      const { size, modules } = encodeQr(address);
+      const side = size + 2;
+      const grid = drawnGrid(terminalQrLines(address));
+      const expected = Array.from({ length: side }, (_, y) =>
+        Array.from({ length: side }, (_, x) => x >= 1 && y >= 1 && x <= size && y <= size && modules[y - 1][x - 1]),
+      );
+      expect(grid, address).toEqual(expected);
+    }
+  });
+
+  it('draws the longest phone address in version 2, 27 columns by 14 lines, the last line with no lower row', () => {
+    const lines = terminalQrLines('http://192.168.255.255:65535');
+    expect(lines).toHaveLength(14);
+    for (const line of lines) expect([...line.matchAll(/\u2580/g)]).toHaveLength(27);
+    expect([...lines[13].matchAll(/;49m/g)]).toHaveLength(27);
+    expect(lines.slice(0, 13).every((line) => !line.includes(';49m'))).toBe(true);
   });
 });

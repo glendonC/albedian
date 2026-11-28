@@ -19,6 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fieldCheck, formatReport, realProbes } from './field-check.mjs';
+import { encodeQr } from './qr.mjs';
 
 export const API_PORT = 8000;
 export const WEB_PORT = 5173;
@@ -189,6 +190,55 @@ async function waitForHealth(healthUrl, deadline, isStopped) {
   return false;
 }
 
+/** The line under the phone address's code (UIUX-phone-code-READY.md Q2, Expo's sentence). */
+export const SCAN_LINE = 'Scan the QR code above to open Albedian on your phone.';
+// ANSI colours of a half block: foreground black or white for its upper module, background black or white for its
+// lower one, the terminal's own background below a code with an odd number of rows; then the reset
+const TOP = { dark: 30, light: 37 };
+const BOTTOM = { dark: 40, light: 47, none: 49 };
+const RESET = '\x1b[0m';
+const UPPER_HALF_BLOCK = '▀';
+
+/**
+ * `text` as a QR code for the terminal (UIUX-phone-code-READY.md Q2): the encoder's code (scripts/qr.mjs, level L)
+ * with one light module all round, two module rows a line in upper half blocks and one module a column, each
+ * module's colour set explicitly, light ANSI white and dark ANSI black, and reset at each line's end, so it reads
+ * the same in a light terminal and a dark one.
+ */
+export function terminalQrLines(text) {
+  const { size, modules } = encodeQr(text);
+  const side = size + 2;
+  const dark = (x, y) => x >= 1 && y >= 1 && x <= size && y <= size && modules[y - 1][x - 1];
+  const lines = [];
+  for (let y = 0; y < side; y += 2) {
+    let line = '';
+    for (let x = 0; x < side; x++) {
+      const top = dark(x, y) ? TOP.dark : TOP.light;
+      const bottom = y + 1 >= side ? BOTTOM.none : dark(x, y + 1) ? BOTTOM.dark : BOTTOM.light;
+      line += `\x1b[${top};${bottom}m${UPPER_HALF_BLOCK}`;
+    }
+    lines.push(line + RESET);
+  }
+  return lines;
+}
+
+/**
+ * What the field start prints once the API answers, line by line: the laptop's address and the music; and under
+ * --lan the phone's address as a code, the line that says to scan it, then the address itself, still printed for
+ * typing, and what a phone gets over plain http.
+ */
+export function readyLines(plan, musicLine) {
+  const lines = ['', `Albedian is ready. On this laptop (full experience): ${plan.laptopUrl}`, musicLine];
+  if (plan.phoneUrl) {
+    lines.push(...terminalQrLines(plan.phoneUrl), SCAN_LINE);
+    lines.push(`Phone on the same network: ${plan.phoneUrl}`);
+    lines.push('Over plain http the phone gets upload, solve and the sky, but no WebGPU views, microphone or speech.');
+    lines.push('Any device on this network can open it, upload, solve and send voice commands; stop it when you are done.');
+  }
+  lines.push('Stop all three with Ctrl+C.', '');
+  return lines;
+}
+
 /** How many sample files the music has, by count only: their names are not printed. */
 export function musicSourcesLine(sourcesDir) {
   if (!fs.existsSync(sourcesDir)) {
@@ -294,14 +344,7 @@ async function main() {
     return;
   }
 
-  console.log(`\nAlbedian is ready. On this laptop (full experience): ${plan.laptopUrl}`);
-  console.log(musicSourcesLine(path.join(REPO_ROOT, MUSIC_SOURCES_DIR)));
-  if (plan.phoneUrl) {
-    console.log(`Phone on the same network: ${plan.phoneUrl}`);
-    console.log('Over plain http the phone gets upload, solve and the sky, but no WebGPU views, microphone or speech.');
-    console.log('Any device on this network can open it, upload, solve and send voice commands; stop it when you are done.');
-  }
-  console.log('Stop all three with Ctrl+C.\n');
+  console.log(readyLines(plan, musicSourcesLine(path.join(REPO_ROOT, MUSIC_SOURCES_DIR))).join('\n'));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
