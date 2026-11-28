@@ -2832,6 +2832,24 @@
   background: #111112;
 }
 
+/* short-upright-two U2 (UIUX-predsky-READY.md, DECIDED-BY-LEAD at the line stamped 12:39 on 27 Nov; AUDIT-C's O23):
+   upright, whenever the card's body is taller than the sheet shows (PredictedSkyScreen.tsx sets the class only then),
+   Go there is pinned at the sheet's foot as in the short case and held sideways, the body scrolling inside above it
+   with no foot fade over the pinned row; the sheet keeps its place and size */
+.predsky.is-phone.is-card-pinned .reveal-card.is-phone .reveal-card__scroll {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.predsky.is-phone.is-card-pinned .reveal-card.is-phone .reveal-card__acts {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 12px 0 14px;
+  background: #111112;
+}
+
 /* predsky-phone-fade-1 (gap nine, DECIDED-BY-LEAD 24 Nov 12:58, UIUX-predsky-READY.md): D19's fade stands behind the
    phone readout at rest as well as above a card, as the estimate block has it, so no star shows through the
    Predicted tag or the words; no new look */

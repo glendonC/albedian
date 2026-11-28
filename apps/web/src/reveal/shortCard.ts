@@ -9,6 +9,8 @@
 
 /** The top bar's foot (the Close circle at 60, 44 px) plus 8 px: the highest the status may stand on the phone. */
 export const PHONE_STATUS_TOP_MIN_PX = 112;
+/** The upright phone status's foot at rest: 16 px above Back to Moment, which stands 72 px from the window's foot (reveal.css). */
+export const PHONE_STATUS_FOOT_PX = 88;
 /** The status's gap above the sheet, and the sheet's under the status where it gives the room. */
 const STATUS_SHEET_GAP_PX = 16;
 
@@ -21,6 +23,15 @@ export function phoneSheetTopPx(viewportHeightPx: number): number {
  * Where the sheet's top stands when it gives the room: 16 px under the status pinned at 112, or null where the status,
  * 16 px above the sheet as it stands, would stand no higher than 112 (nothing moves).
  */
+/**
+ * short-upright-two U1 (UIUX-predsky-READY.md, DECIDED-BY-LEAD at the line stamped 12:39 on 27 Nov; AUDIT-C's O22):
+ * whether the whole status, standing by its foot at 88 with no card, would rise above the top bar's foot plus 8 px. A
+ * status whose top would stand at exactly 112 stays whole.
+ */
+export function restStatusRisesPastTop(viewportHeightPx: number, statusHeightPx: number): boolean {
+  return viewportHeightPx - PHONE_STATUS_FOOT_PX - statusHeightPx < PHONE_STATUS_TOP_MIN_PX;
+}
+
 export function shortCardSheetTopPx(viewportHeightPx: number, statusHeightPx: number): number | null {
   const statusTop = phoneSheetTopPx(viewportHeightPx) - STATUS_SHEET_GAP_PX - statusHeightPx;
   return statusTop < PHONE_STATUS_TOP_MIN_PX ? PHONE_STATUS_TOP_MIN_PX + statusHeightPx + STATUS_SHEET_GAP_PX : null;

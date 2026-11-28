@@ -30,7 +30,7 @@ function clearOf(status: HTMLElement | null): Box[] {
     });
 }
 import { isSideways } from './phoneSlot.js';
-import { shortCardSheetTopPx } from './shortCard.js';
+import { restStatusRisesPastTop, shortCardSheetTopPx } from './shortCard.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -104,7 +104,16 @@ export const PredictedSkyScreen: React.FC<{
   // 16 px above Back to Moment on D19's fade; the title, the disclosure sentences and the facts stand upright as today
   // Version two (AUDIT-C's D6): held on its side means wider than tall as well (sideways-landscape-guard-one)
   const sideways = phone && isSideways(size.widthPx, size.heightPx);
-  const cardContent = phoneAboveCard || sideways;
+  // short-upright-two U1 (UIUX-predsky-READY.md, DECIDED-BY-LEAD at the line stamped 12:39 on 27 Nov; AUDIT-C's O22): upright
+  // with no card, where the whole status would rise above the top bar's foot plus 8 px it takes the sideways form, the two
+  // tags and the Milky Way line by its foot 16 px above Back to Moment on D19's fade, and returns whole when the window has
+  // room. Decided from the whole status as laid out, once per window and words: undecided, the status stands whole
+  const facts = phone ? phoneFacts(words) : words.facts;
+  const restUpright = phone && !sideways && !phoneAboveCard;
+  const restKey = `${size.widthPx}x${size.heightPx}|${words.heading}|${words.note}|${words.milkyWay}|${facts.join('|')}`;
+  const [restForm, setRestForm] = useState<{ key: string; tagsOnly: boolean } | null>(null);
+  const restTagsOnly = restUpright && restForm !== null && restForm.key === restKey && restForm.tagsOnly;
+  const cardContent = phoneAboveCard || sideways || restTagsOnly;
   // short-card-status-one (UIUX-predsky-READY.md's line for short upright windows, DECIDED-BY-LEAD 03:59 on 27 Nov): with
   // a card open the status never rises above the top bar's foot plus 8 px; where 16 px above the sheet would put it
   // higher, the sheet gives the room, its top 16 px under the status's foot (shortCard.ts), read from the status's height
@@ -114,6 +123,20 @@ export const PredictedSkyScreen: React.FC<{
     setStatusH((prev) => (prev === h ? prev : h));
   });
   const sheetTop = phone && card.mounted && answer === null && !sideways && statusH > 0 ? shortCardSheetTopPx(size.heightPx, statusH) : null;
+  useLayoutEffect(() => {
+    if (!restUpright || (restForm !== null && restForm.key === restKey)) return;
+    setRestForm({ key: restKey, tagsOnly: restStatusRisesPastTop(size.heightPx, status.current?.offsetHeight ?? 0) });
+  });
+  // short-upright-two U2 (UIUX-predsky-READY.md, AUDIT-C's O23): upright, whenever the card's body is taller than the sheet
+  // shows, Go there is pinned at the sheet's foot as held sideways and in the short case, the body scrolling inside above
+  // it; when the body fits, nothing changes. Read from the body as laid out (pinned, the row is 6 px taller, so a body
+  // that overflows by less stays pinned rather than flickering)
+  const [bodyPinned, setBodyPinned] = useState(false);
+  useLayoutEffect(() => {
+    const body = phone && !sideways && card.mounted && answer === null ? document.querySelector<HTMLElement>('.predsky .reveal-card.is-phone .reveal-card__scroll') : null;
+    const overflows = body !== null && body.scrollHeight > body.clientHeight + 0.5;
+    setBodyPinned((prev) => (prev === overflows ? prev : overflows));
+  });
   const deepSky = useDeepSkyTable(session.observationSolution?.findings.some(isDeepSky) === true);
   // The open card's box (ruled 17:05): rings and names under it are left out, the picked star's own mark stays.
   // Read untransformed offset geometry first so phone sheet-in translateY at frame 0 still clears the settled 469..814 px card area.
@@ -154,7 +177,6 @@ export const PredictedSkyScreen: React.FC<{
   });
   const clear = [...clearOf(status.current), ...(card.mounted && cardBox ? [cardBox] : []), ...(answer && answerBox ? [answerBox] : [])];
   const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, fontPx, clear, shownId);
-  const facts = phone ? phoneFacts(words) : words.facts;
   const pickedMark = shownId !== null && !phone ? (marks.find((m) => m.id === shownId) ?? null) : null;
   const leaderNow = pickedMark ? skyLeaderPath(pickedMark, size.widthPx, fontPx) : null;
   const [heldLeader, setHeldLeader] = useState<string | null>(leaderNow);
@@ -165,7 +187,7 @@ export const PredictedSkyScreen: React.FC<{
   const leader = useLeaving(leaderNow !== null, cardLeaveMs);
   return (
     <div
-      className={sheetTop !== null ? 'predsky is-phone is-card-short' : phone ? 'predsky is-phone' : 'predsky'}
+      className={sheetTop !== null ? 'predsky is-phone is-card-short' : bodyPinned ? 'predsky is-phone is-card-pinned' : phone ? 'predsky is-phone' : 'predsky'}
       style={sheetTop !== null ? ({ '--predsky-sheet-top': `${sheetTop}px` } as React.CSSProperties) : undefined}
       data-testid="predicted-sky"
       data-evidence-class="predicted"
