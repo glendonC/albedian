@@ -941,17 +941,17 @@ function whatIsNotHeld(
   }
   const missing = said.absent[0];
   if (missing) {
+    // A body the predicted sky places, in a file that gives nothing to predict it from, in the solve's own words
+    // (C38), and that first in a sky not worked out too, since no solve could place it (C38u)
+    const lasting = Object.hasOwn(PREDICTED_BODY_NAMES, missing.spoken) ? noPredictionKind(session) : undefined;
     // Only a sky that was worked out can lack a name: of any other, all that is known is that nothing is placed
     // yet. The reason is the unresolved sky where the view marks it so, else the one a missing name always had
-    if (!skyWasWorkedOut(context, session)) {
+    if (!lasting && !skyWasWorkedOut(context, session)) {
       const reason = context.calibrationState === 'unresolved' ? 'unresolved_sky' : 'ambiguous_target';
       return refused({ kind: 'sky_not_worked_out' }, reason, session);
     }
-    // A planet the predicted sky never places is said as only what the app knows (DECIDED-BY-LEAD 24 Nov 20:16); a body
-    // it places, in a file that gives nothing to predict it from, in the solve's own words (C38)
-    const kind = Object.hasOwn(UNPREDICTED_BODY_NAMES, missing.spoken)
-      ? 'not_predicted'
-      : (Object.hasOwn(PREDICTED_BODY_NAMES, missing.spoken) ? noPredictionKind(session) : undefined) ?? 'not_in_this_sky';
+    // A planet the predicted sky never places is said as only what the app knows (DECIDED-BY-LEAD 24 Nov 20:16)
+    const kind = Object.hasOwn(UNPREDICTED_BODY_NAMES, missing.spoken) ? 'not_predicted' : lasting ?? 'not_in_this_sky';
     return refused({ kind, said: missing.spoken, name: missing.shown }, 'ambiguous_target', session);
   }
   if (unknown) return refused({ kind: 'not_understood', said: unknown }, 'ambiguous_target', session);

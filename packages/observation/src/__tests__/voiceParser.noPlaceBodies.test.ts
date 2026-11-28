@@ -92,10 +92,77 @@ describe('@albedian/observation voice parser: a body with no place to predict it
     }
   });
 
-  it('in a sky not worked out says only that', () => {
-    const session = withoutPrediction(clip, NO_PLACE);
-    const unsolved = { ...session, machines: { ...session.machines, calibration: 'unresolved' as const },
-      observationSolution: { ...session.observationSolution!, status: 'unresolved' as const, findings: [] } } as ObservationSession;
-    expect(parse('where is the moon', unsolved).refusal).toEqual({ kind: 'sky_not_worked_out' });
+});
+
+/**
+ * C38u (UIUX-voiceyet2-READY.md, added 27 Nov 19:08, DECIDED-BY-LEAD): for the Moon, the Sun and the planets the
+ * predicted sky places only, a file whose solve did not work its sky out but carries one of C38's three reasons is
+ * refused in C38's sentence ahead of C34's "This photo's sky has not been worked out, so nothing in it can be
+ * answered.", since no solve could place those bodies without a time and a place. Everything else said of that file
+ * keeps C34's sentence, and nothing changes where the solve carries no such reason.
+ */
+describe('@albedian/observation voice parser: a body with no place to predict it from, in a sky not worked out', () => {
+  const clip = createSyntheticCalibratedSession();
+  const photo = asPhoto(clip);
+
+  /** The session's file as its solve left it with no sky worked out, carrying `warning` when one is given. */
+  function unresolved(session: ObservationSession, warning?: string, status: 'unresolved' | 'ambiguous' = 'unresolved'): ObservationSession {
+    const held = warning ? withoutPrediction(session, warning) : session;
+    return { ...held, machines: { ...held.machines, calibration: 'unresolved' as const },
+      observationSolution: { ...held.observationSolution!, status, findings: [] } } as ObservationSession;
+  }
+
+  it.each([
+    ['where is the moon', 'moon', 'the Moon'],
+    ['fly to the moon', 'moon', 'the Moon'],
+    ['select the sun', 'sun', 'the Sun'],
+    ['show me Mars', 'mars', 'Mars'],
+    ['take me to Saturn', 'saturn', 'Saturn'],
+    ['what is jupiter', 'jupiter', 'Jupiter'],
+    ['is that venus', 'venus', 'Venus'],
+    ['how far is Uranus?', 'uranus', 'Uranus'],
+  ])('%s says the file gives nothing to predict it from, ahead of the sky not worked out', (text, said, name) => {
+    for (const [warning, clause] of CLAUSES) {
+      for (const [session, noun] of [[clip, 'clip'], [photo, 'photo']] as const) {
+        const result = parse(text, unresolved(session, warning));
+        expect(result.action).toBeUndefined();
+        expect(result.refusal).toEqual({ kind: NO_PREDICTION_WARNINGS[warning as keyof typeof NO_PREDICTION_WARNINGS], said, name });
+        expect(result.reason).toBe('ambiguous_target');
+        expect(result.error).toBe(`This ${noun} ${clause}, so the app cannot predict where ${name} is.`);
+      }
+    }
+  });
+
+  it('reads the reason the solve carries, whatever word it gives for the sky it did not work out', () => {
+    const result = parse('where is the moon', unresolved(photo, NO_TIME_OR_PLACE, 'ambiguous'));
+    expect(result.error).toBe('This photo has no recorded time or place, so the app cannot predict where the Moon is.');
+  });
+
+  it('keeps the sky not worked out for a star, Mercury, Neptune and a deep sky object, whatever the reason', () => {
+    for (const [warning] of CLAUSES) {
+      for (const text of ['how far is Vega', 'where is Mercury', 'take me to Neptune', 'fly to Sirius']) {
+        const result = parse(text, unresolved(clip, warning));
+        expect(result.refusal, text).toEqual({ kind: 'sky_not_worked_out' });
+        expect(result.reason, text).toBe('unresolved_sky');
+        expect(result.error, text).toBe('The sky in this clip has not been worked out, so nothing in it can be found by name.');
+      }
+    }
+  });
+
+  it('keeps the sky not worked out for what is in view, with nothing named', () => {
+    expect(parse('select that', unresolved(photo, NO_PLACE)).refusal).toEqual({ kind: 'nothing_in_view_sky_not_worked_out' });
+  });
+
+  it('keeps the sky not worked out for a body where the solve carries no such reason', () => {
+    for (const text of ['where is the moon', 'show me Mars', 'select the sun']) {
+      const result = parse(text, unresolved(photo));
+      expect(result.refusal, text).toEqual({ kind: 'sky_not_worked_out' });
+      expect(result.error, text).toBe('The sky in this photo has not been worked out, so nothing in it can be found by name.');
+    }
+  });
+
+  it('keeps the sky not worked out for a body where no solve is held', () => {
+    const { observationSolution: _none, ...rest } = unresolved(photo, NO_PLACE);
+    expect(parse('where is the moon', rest as ObservationSession).refusal).toEqual({ kind: 'sky_not_worked_out' });
   });
 });

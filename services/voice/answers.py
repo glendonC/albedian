@@ -726,6 +726,14 @@ def answer_question(question: str, solution: dict[str, Any] | None, selected: st
     if kind == "moon_phase" and any(not each.is_moon for each in said_targets):
         return _refused(unanswerable, "outside_the_data", solution, noun=noun)
     if solution is None or solution.get("status") in UNSOLVED:
+        # A body the predicted sky places, asked of a file whose solve says it gives no time or place to predict it
+        # from, says that lasting reason first: no solve could place it (C38u). Only the questions about a named
+        # thing, where C38 answers on a worked out sky; every other keeps the sky not worked out
+        if solution is not None and kind != "moon_phase" and kind not in SOLUTION_PATHS:
+            missing = _target(question, solution, selected)[1]
+            unpredicted = no_prediction_sentence(missing, solution, noun) if missing is not None else None
+            if unpredicted is not None:
+                return _refused(kind, "no_time_or_place", solution, sentence=unpredicted, noun=noun)
         return _refused(kind, "photo_not_solved", solution, noun=noun)
     statements: list[dict[str, Any]] = []
     name = "It"

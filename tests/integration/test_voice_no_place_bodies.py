@@ -88,10 +88,60 @@ def test_a_body_with_a_finding_in_the_file_is_answered_by_it() -> None:
     assert answer["status"] == "answered", answer
 
 
-def test_a_sky_not_worked_out_says_only_that() -> None:
-    solution = {**without_prediction(NO_PLACE), "status": "unresolved"}
-    answer = answers.answer_question("where is the moon?", solution, None)
-    assert answer["reason"] == "photo_not_solved", answer
+# C38u (UIUX-voiceyet2-READY.md, added 27 Nov 19:08, DECIDED-BY-LEAD): for the Moon, the Sun and the planets the
+# predicted sky places only, a file whose solve did not work its sky out but carries one of C38's three reasons answers
+# C38's sentence ahead of C34's "This photo's sky has not been worked out, so nothing in it can be answered.", since no
+# solve could place those bodies without a time and a place. Every other question on that file keeps C34's sentence,
+# and nothing changes where the solve carries no such reason.
+NOT_WORKED_OUT = "This {noun}'s sky has not been worked out, so nothing in it can be answered."
+
+
+def unresolved(warning: str | None, status: str = "unresolved") -> dict[str, Any]:
+    """The file as a solve that worked out no sky left it, carrying `warning` among its warnings when one is given."""
+    held = without_prediction(warning) if warning else SOLUTIONS["plate_calibrated"]
+    return {**held, "status": status, "findings": []}
+
+
+@pytest.mark.parametrize("noun", answers.NOUNS)
+@pytest.mark.parametrize("warning", [NO_PLACE, NO_TIME, NO_TIME_OR_PLACE])
+@pytest.mark.parametrize(
+    ("question", "name"),
+    [("where is the moon?", "the Moon"), ("what is the Moon", "the Moon"), ("where is the sun?", "the Sun"),
+     ("how far is Mars?", "Mars"), ("how bright is saturn", "Saturn"), ("where is Jupiter", "Jupiter"),
+     ("what is venus", "Venus"), ("where is Uranus?", "Uranus")],
+)
+def test_a_body_in_a_sky_not_worked_out_says_the_file_gives_nothing_to_predict_it_from(
+        question: str, name: str, warning: str, noun: str) -> None:
+    answer = answers.answer_question(question, unresolved(warning), None, noun=noun)
+    contract.VOICE_ANSWER.validate_python(answer)
+    assert (answer["status"], answer["reason"], answer["sentence"]) == (
+        "unanswerable", "no_time_or_place", f"This {noun} {CLAUSES[warning]}, so the app cannot predict where {name} is.",
+    ), answer
+
+
+@pytest.mark.parametrize("status", sorted(answers.UNSOLVED - {"unresolved"}))
+def test_the_reason_the_solve_carries_is_read_whatever_word_it_gives_for_the_sky(status: str) -> None:
+    answer = answers.answer_question("where is the moon?", unresolved(NO_TIME_OR_PLACE, status), None)
+    assert answer["sentence"] == "This photo has no recorded time or place, so the app cannot predict where the Moon is."
+
+
+@pytest.mark.parametrize("warning", [NO_PLACE, NO_TIME, NO_TIME_OR_PLACE])
+@pytest.mark.parametrize(
+    "question",
+    ["how far is Vega?", "where is Mercury?", "where is Neptune?", "where is Pluto?", "what phase is the moon?",
+     "how many stars are in it?", "how sure is it?", "where is it?", "what is that?",
+     "how sure are you about the moon?", "how many stars are near Mars?"],
+)
+def test_every_other_question_in_a_sky_not_worked_out_keeps_its_sentence(question: str, warning: str) -> None:
+    answer = answers.answer_question(question, unresolved(warning), None)
+    assert (answer["reason"], answer["sentence"]) == ("photo_not_solved", NOT_WORKED_OUT.format(noun="photo")), answer
+
+
+@pytest.mark.parametrize("question", ["where is the moon?", "how far is Mars?", "where is the sun?"])
+def test_a_body_in_a_sky_not_worked_out_keeps_its_sentence_where_the_solve_carries_no_such_reason(question: str) -> None:
+    for solution in (unresolved(None), SOLUTIONS["plate_too_few_sources"], SOLUTIONS["pending_unsolved"], None):
+        answer = answers.answer_question(question, solution, None)
+        assert (answer["reason"], answer["sentence"]) == ("photo_not_solved", NOT_WORKED_OUT.format(noun="photo")), answer
 
 
 def test_the_moons_phase_needs_only_the_capture_time() -> None:
