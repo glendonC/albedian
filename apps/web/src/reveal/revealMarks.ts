@@ -37,8 +37,9 @@ export interface RevealMark {
 /**
  * Which marks get a name on a crowded photo: the design lane's rule for the calibrated sample
  * (.lead/uiux/UIUX-sample-b01-NOTE.md point 2), an interim for the owner's review. A name is drawn for the picked
- * star, and for a named star brighter than this magnitude whose name does not run into another mark. The approved
- * picture, drawn on a photo with 17 matched stars, names every named star.
+ * star, and for a named star brighter than this magnitude whose name gives way only to a brighter star's name
+ * (names-brightest-first-one, N1 and N2). The approved picture, drawn on a photo with 17 matched stars, names every
+ * named star.
  */
 export const NAME_MAGNITUDE_LIMIT = 3.2;
 /** The gap from a mark's centre to its name: 19 px at 13 px type, 25 px for the picked star's 15 px. */
@@ -56,6 +57,14 @@ const DEEP_SKY_ROOM_PX = DEEP_SKY_RADIUS_PX + 2;
 const DEEP_SKY_STAR_ROOM_PX = 9;
 
 const overlap = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+/**
+ * How far one name's box runs into another's: the smaller of the overlap's width and height, 0 when apart, as
+ * Stellarium Web Engine measures one label against another (src/modules/labels.c, test_label_overlaps).
+ */
+const overlapPx = (a: Box, b: Box) =>
+  overlap(a, b) ? Math.min(Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)) : 0;
+/** The most a matched star's name may run into an earlier name and still stand (labels.c, max_overlap). */
+export const NAME_OVERLAP_PX = 8;
 
 /** The type size and gap of a name, and the faintest star named, on the laptop and at phone width. */
 interface NameSpec {
@@ -253,21 +262,40 @@ export function revealMarks(
       return ma === mb ? a.index - b.index : ma - mb;
     });
   for (const { index, picked } of nameOrder) {
-    const { finding, position } = placed[index]!;
+    const { finding, position, kind } = placed[index]!;
     const candidate = finding.title;
-    const runsInto = (box: Box) =>
-      rooms.some((room) => room.id !== finding.id && overlap(box, room.box)) ||
-      taken.some((other) => overlap(box, other)) ||
-      places.some((place) => overlap(box, nameClearOf(place)));
+    const boxOn = (onLeft: boolean) => nameBox(position.xPx, position.yPx, candidate, picked, onLeft, spec);
+    const meetsRing = (box: Box) => rooms.some((room) => room.id !== finding.id && overlap(box, room.box));
+    const meetsPlace = (box: Box) => places.some((place) => overlap(box, nameClearOf(place)));
+    const leaves = (box: Box) => box.x1 > right || box.x0 < left;
+    const runsInto = (box: Box) => meetsRing(box) || taken.some((other) => overlap(box, other)) || meetsPlace(box);
     // To the right, unless that crosses the photo's right edge
-    let nameOnLeft = nameBox(position.xPx, position.yPx, candidate, picked, false, spec).x1 - NAME_MARGIN_PX > right;
-    let chosen: Box | null = nameBox(position.xPx, position.yPx, candidate, picked, nameOnLeft, spec);
-    // The picked star keeps its name where its place gives it; any other name gives way to a mark, control or earlier name
-    if (!picked && runsInto(chosen)) {
-      const other = nameBox(position.xPx, position.yPx, candidate, false, !nameOnLeft, spec);
-      if (runsInto(other) || other.x1 > right || other.x0 < left) chosen = null;
+    const first = boxOn(false).x1 - NAME_MARGIN_PX > right;
+    let nameOnLeft = first;
+    let chosen: Box | null = boxOn(first);
+    if (picked) {
+      // The picked star keeps its name where its place gives it
+    } else if (kind === 'catalog') {
+      // names-brightest-first-one (UIUX's N1 and N2, first-minute-phone-walk.md, DECIDED-BY-LEAD 13:09 on 27 Nov): a
+      // matched star's name gives way only to an earlier name, which is a brighter one, run into by more than
+      // NAME_OVERLAP_PX, or to the photo's edge or a kept place; a fainter mark's ring stays drawn under it. Of the sides
+      // left, the one whose name covers no drawn ring (today's flip), else the first
+      const free = [first, !first].filter((onLeft, i) => {
+        const box = boxOn(onLeft);
+        return (i === 0 || !leaves(box)) && !meetsPlace(box) && !taken.some((other) => overlapPx(box, other) > NAME_OVERLAP_PX);
+      });
+      const side = free.find((onLeft) => !meetsRing(boxOn(onLeft))) ?? free[0];
+      if (side === undefined) chosen = null;
       else {
-        nameOnLeft = !nameOnLeft;
+        nameOnLeft = side;
+        chosen = boxOn(side);
+      }
+    } else if (runsInto(chosen)) {
+      // Any other name gives way to a mark, control or earlier name
+      const other = boxOn(!first);
+      if (runsInto(other) || leaves(other)) chosen = null;
+      else {
+        nameOnLeft = !first;
         chosen = other;
       }
     }

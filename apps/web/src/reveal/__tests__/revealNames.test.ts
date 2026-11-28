@@ -6,7 +6,8 @@ import { NAME_MAGNITUDE_LIMIT, revealMarks } from '../revealMarks.js';
 
 // Which marks get a name on a crowded photo: the design lane's rule for the calibrated sample (UIUX-sample-b01-NOTE.md
 // point 2, drawn by .cache/uiux/lib/sky.mjs), built as an interim for the owner's review. Every matched star is
-// marked; a name is drawn only for a named star brighter than magnitude 3.2 whose name does not run into another mark.
+// marked; a name is drawn only for a named star brighter than magnitude 3.2, and since names-brightest-first-one (N1,
+// N2) it gives way only to a brighter star's name, the photo's edge or a kept place, standing over fainter rings.
 
 const VIEW = { w: 1440, h: 900 };
 // The fixture's frame is 960 by 540, drawn at 1.5 screen pixels a photo pixel from y 45: (px + 0.5) * 1.5
@@ -87,21 +88,23 @@ describe("a name does not run into another mark", () => {
     expect(names(sessionOf([at('Mimosa', 400, 200, 1.2), at('Clear', 430, 183, 6)])).Mimosa).toBe('right');
   });
 
-  it('is not drawn when marks sit on both sides of it', () => {
+  // names-brightest-first-one (N1, N2): a fainter mark's ring no longer removes a brighter star's name; it stays drawn
+  // under the name, which takes its first side when no side clears the rings
+  it('stands on its first side over the rings when marks sit on both sides of it, every mark still drawn', () => {
     const session = sessionOf([at('Mimosa', 400, 200, 1.2), at('Right', 430, 200, 6), at('Left', 370, 200, 6)]);
-    expect(names(session).Mimosa).toBeNull();
+    expect(names(session).Mimosa).toBe('right');
     expect(revealMarks(session, VIEW.w, VIEW.h)).toHaveLength(3);
   });
 
-  it("is not drawn when the other side would leave the photo", () => {
+  it('stays on its side over a ring when the other side would leave the photo', () => {
     // 20 photo px (30 on screen) from the photo's left edge: flipped left, the name would start before the edge
     const session = sessionOf([at('Mimosa', 20, 200, 1.2), at('Blocker', 50, 200, 6)]);
-    expect(names(session).Mimosa).toBeNull();
+    expect(names(session).Mimosa).toBe('right');
   });
 
-  it('goes left near the right edge as before, and is not drawn when a mark is there too', () => {
+  it('goes left near the right edge as before, and stays there over a mark on that side', () => {
     expect(names(sessionOf([at('Aldebaran', 930, 72, 0.9)])).Aldebaran).toBe('left');
-    expect(names(sessionOf([at('Aldebaran', 930, 72, 0.9), at('Blocker', 900, 72, 6)])).Aldebaran).toBeNull();
+    expect(names(sessionOf([at('Aldebaran', 930, 72, 0.9), at('Blocker', 900, 72, 6)])).Aldebaran).toBe('left');
   });
 
   it('lets the picked star keep its name among other marks, on the side its place gives it', () => {
@@ -119,18 +122,19 @@ describe("a name does not run into another mark", () => {
 // (picked first; Moon and planets without apparentMagnitude ahead of stars, else ascending apparentMagnitude) and each
 // placed nameBox joins taken so fainter names flip side or yield instead of colliding.
 describe('a name yields to a brighter object or picked name (namebox-1, D20)', () => {
-  it('places the brighter star name first even when the fainter star comes earlier in findings, flipping or dropping the fainter name', () => {
-    // At x 400, y 200 and y 208 (same x, 12 screen px apart vertically): neither mark's 14 px room (x 586.75..614.75)
-    // touches either right-side nameBox (x >= 616.75), while their right-side nameBoxes overlap vertically by 4.9 px
+  it('places the brighter star name first even when the fainter star comes earlier in findings, flipping the fainter name', () => {
+    // At x 400, y 200 and y 205 (same x, 7.5 screen px apart vertically): neither mark's 14 px room (x 586.75..614.75)
+    // touches either right-side nameBox (x >= 616.75), while their right-side nameBoxes overlap vertically by 9.4 px,
+    // past the 8 px a name may overlap an earlier one (names-brightest-first-one, N1)
     const denebola = at('Denebola', 400, 200, 2.14);
-    const regulus = at('Regulus', 400, 208, 1.36);
+    const regulus = at('Regulus', 400, 205, 1.36);
     const flipped = sessionOf([denebola, regulus]);
     expect(names(flipped)).toEqual({ Denebola: 'left', Regulus: 'right' });
     expect(revealMarks(flipped, VIEW.w, VIEW.h).map((m) => m.finding.title)).toEqual(['Denebola', 'Regulus']);
 
-    // With a mark blocking Denebola's left side too, Denebola yields (null) while Regulus keeps right
-    const blockedLeft = sessionOf([denebola, regulus, at('Blocker', 370, 200, 6)]);
-    expect(names(blockedLeft)).toEqual({ Denebola: null, Regulus: 'right', Blocker: null });
+    // A fainter mark's ring on Denebola's left no longer makes it yield: it stands there over the ring (N1)
+    const ringLeft = sessionOf([denebola, regulus, at('Blocker', 370, 200, 6)]);
+    expect(names(ringLeft)).toEqual({ Denebola: 'left', Regulus: 'right', Blocker: null });
   });
 
   it('places Moon and planets without apparentMagnitude ahead of stars, including negative-magnitude stars, on a pose estimate', () => {
@@ -186,9 +190,64 @@ describe('a name yields to a brighter object or picked name (namebox-1, D20)', (
   });
 
   it('places the picked finding first and adds its nameBox to taken so even a brighter neighbour flips away from it', () => {
+    // 9 screen px apart: the picked 15 px name and Vega's 13 px name overlap 9.5 px vertically, past the 8 px (N1)
     const vega = at('Vega', 400, 200, 0.03);
-    const pickedFaint = at('Subtle', 400, 208, 4.8);
+    const pickedFaint = at('Subtle', 400, 206, 4.8);
     expect(names(sessionOf([vega, pickedFaint], pickedFaint.id))).toEqual({ Vega: 'left', Subtle: 'right' });
+  });
+});
+
+// names-brightest-first-one (UIUX's N1 to N3, .lead/kiro/reports/UIUX/first-minute-phone-walk.md, DECIDED-BY-LEAD at
+// the line stamped 13:09 on 27 Nov), from Stellarium Web Engine's labels.c: a label is tested only against labels placed
+// before it, and shows while its overlap with each, the smaller of the overlap's width and height, is at most 8 px.
+// N1: a matched star's name gives way only to an earlier (brighter) name past 8 px, the photo's edge or a kept place.
+// N2: of the sides left, the one whose name covers no drawn ring; else the first. N3: the press is unchanged (D4).
+describe('a star\'s name gives way only to a brighter star\'s name (names-brightest-first-one, N1 and N2)', () => {
+  // Regulus at (400, 200) names to the right at screen y 345.75; its box runs 10.4 px above and 6.5 below that line
+  const regulus = at('Regulus', 400, 200, 1.36);
+
+  it('gives way to a brighter name only past 8 px of overlap: 8.5 px flips it, 7.9 px leaves it on its side', () => {
+    // 5.6 photo px below is 8.4 screen px: the right boxes overlap 16.9 - 8.4 = 8.5 px in height
+    expect(names(sessionOf([regulus, at('Denebola', 400, 205.6, 2.14)]))).toEqual({ Regulus: 'right', Denebola: 'left' });
+    // 6 photo px below is 9 screen px: they overlap 7.9 px, at most 8, so both stand on the right
+    expect(names(sessionOf([regulus, at('Denebola', 400, 206, 2.14)]))).toEqual({ Regulus: 'right', Denebola: 'right' });
+  });
+
+  it('measures the overlap as its smaller side: names on one line give way only when they cross by more than 8 px', () => {
+    // On one line the height overlap is the whole 16.9 px, so the width decides. Denebola left of Regulus: its right box
+    // ends 5 px into Regulus's (which starts at x 616.75), so it stands; 9 px in, it goes left. A fainter ring on its
+    // left and Regulus's ring on its right keep N2 from choosing by rings
+    const line = (xPx: number) => names(sessionOf([regulus, at('Denebola', xPx, 200, 2.14), at('Blocker', 332.83, 200, 6)])).Denebola;
+    expect(line(360.51)).toBe('right');
+    expect(line(363.17)).toBe('left');
+  });
+
+  it('is left out when brighter names take both its sides, its ring still drawn', () => {
+    // Spica (brighter) at screen x 514.75 names to the right over x 530.75..573.15 on Denebola's line; Regulus takes
+    // Denebola's right 9.4 px over; Denebola's left box (x 520.51..584.75) meets Spica's name across its whole height
+    const spica = at('Spica', 342.67, 205, 0.97);
+    const denebola = at('Denebola', 400, 205, 2.14);
+    const session = sessionOf([denebola, regulus, spica]);
+    expect(names(session)).toEqual({ Denebola: null, Regulus: 'right', Spica: 'right' });
+    expect(revealMarks(session, VIEW.w, VIEW.h)).toHaveLength(3);
+  });
+
+  it('takes the side clear of rings when both sides are free of names (N2, today\'s flip)', () => {
+    // A fainter mark 30 photo px right sits in the right box; the left is clear of rings
+    expect(names(sessionOf([at('Mimosa', 400, 200, 1.2), at('Blocker', 430, 200, 6)])).Mimosa).toBe('left');
+    // A fainter mark on each side: no side clears the rings, so the first
+    expect(names(sessionOf([at('Mimosa', 400, 200, 1.2), at('Right', 430, 200, 6), at('Left', 370, 200, 6)])).Mimosa).toBe('right');
+  });
+
+  it('never stands over a kept place, as today: a place over the right sends it left, one over both sides leaves it out', () => {
+    // Mimosa at screen (600.75, 345.75): its right box runs x 616.75..666.43, its left x 535.07..584.75, y 335.35..352.25
+    const mimosa = at('Mimosa', 400, 200, 1.2);
+    const overRight = { x0: 630, x1: 700, y0: 330, y1: 360 };
+    const overLeft = { x0: 540, x1: 570, y0: 330, y1: 360 };
+    const keep = (clear: { x0: number; x1: number; y0: number; y1: number }[]) =>
+      revealMarks(sessionOf([mimosa]), VIEW.w, VIEW.h, { clear }).find((m) => m.finding.id === mimosa.id)!;
+    expect(keep([overRight])).toMatchObject({ name: 'Mimosa', nameOnLeft: true });
+    expect(keep([overRight, overLeft])).toMatchObject({ name: null });
   });
 });
 
