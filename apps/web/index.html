@@ -5,6 +5,7 @@
     <meta name="color-scheme" content="dark" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Albedian</title>
+    <link rel="preload" href="/fonts/geist/Geist-wght.woff2" as="font" type="font/woff2" crossorigin />
     <link
       rel="icon"
       type="image/svg+xml"
@@ -65,10 +66,111 @@
         -moz-osx-font-smoothing: grayscale;
         transition: background-color 180ms ease, color 180ms ease;
       }
+
+      /* first-paint-one (UIUX-first-paint-READY.md P1 to P5; version two, ruled 22:20 on 27 Nov): the home's first frame
+         stands on these rules alone, before any stylesheet of the app arrives (the plain field start brings them with
+         its script). Each value is the app rule's it copies, pinned by firstPaint.test.tsx: home.css .home-screen,
+         .home-hero and their narrow and short windows, look.css .look-logo with look-tokens.css, Upload's height, and
+         fonts.css's Geist. The logo stays out until first-frame.js has seen Geist 600 and the home's address. */
+      @font-face {
+        font-family: 'Geist';
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url('/fonts/geist/Geist-wght.woff2') format('woff2');
+      }
+
+      .first-frame {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        overflow: hidden;
+        background: #000000;
+      }
+
+      .first-frame .home-hero {
+        position: absolute;
+        left: 48px;
+        bottom: 56px;
+        z-index: 2;
+        display: grid;
+        gap: 36px;
+        justify-items: start;
+      }
+
+      .first-frame:not([data-logo]) .home-hero {
+        visibility: hidden;
+      }
+
+      .first-frame .look-logo {
+        --first-frame-fs: 132px;
+        display: inline-flex;
+        align-items: flex-start;
+        margin-left: -6px;
+        color: #ffffff;
+      }
+
+      .first-frame .look-logo__word {
+        font: 600 var(--first-frame-fs) / 1 'Geist', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        letter-spacing: -0.048em;
+      }
+
+      .first-frame .look-logo__mark {
+        display: block;
+        flex: none;
+        width: calc(var(--first-frame-fs) * 0.857);
+        height: calc(var(--first-frame-fs) * 0.857);
+        margin-left: calc(var(--first-frame-fs) * -0.048);
+        margin-top: calc(var(--first-frame-fs) * -0.238);
+      }
+
+      .first-frame .home-row {
+        height: 48px;
+      }
+
+      @media (max-width: 900px) {
+        .first-frame .look-logo {
+          --first-frame-fs: clamp(56px, 14.6vw, 132px);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .first-frame .home-hero {
+          left: 16px;
+          right: 16px;
+          bottom: 28px;
+          gap: 22px;
+        }
+
+        .first-frame .look-logo {
+          --first-frame-fs: 52px;
+          margin-left: -2px;
+        }
+
+        .first-frame .home-row {
+          height: 44px;
+        }
+      }
+
+      @media (max-height: 480px) {
+        .first-frame .home-hero {
+          bottom: 20px;
+          gap: 20px;
+        }
+
+        .first-frame .look-logo {
+          --first-frame-fs: clamp(40px, 16vh, 132px);
+        }
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- first-paint-one (UIUX-first-paint-READY.md P1 to P5): the home's first frame before the script runs, its own markup
+         and rules (home.css), replaced by the home's first commit; the logo waits for first-frame.js -->
+    <div id="root"><div id="first-frame" class="home-screen first-frame">
+      <div class="home-hero"><span class="look-logo" role="img" aria-label="Albedian"><span class="look-logo__word" aria-hidden="true">albedian</span><svg class="look-logo__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false"><defs><mask id="look-logo-mask-first-frame"><rect width="32" height="32" fill="white"></rect><path d="M18.2 2.2Q18.2 13.8 29.8 13.8Q18.2 13.8 18.2 25.4Q18.2 13.8 6.6 13.8Q18.2 13.8 18.2 2.2Z" fill="black"></path></mask></defs><circle cx="15.2" cy="16.0" r="11.5" fill="currentColor" mask="url(#look-logo-mask-first-frame)"></circle></svg></span><div class="home-row" aria-hidden="true"></div></div>
+    </div></div>
+    <script src="/first-frame.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

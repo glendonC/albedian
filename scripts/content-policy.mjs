@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 export const POLICY_HEADER = 'Content-Security-Policy-Report-Only';
 
 /** The sha256 of each inline style element of the app's page, as a policy source ('sha256-<base64>'). */
-export const STYLE_HASHES = ["'sha256-o9Veb53mCAZwjyOfjV3YEx6Tjxs/PUs3bAM+6dA7dsI='"];
+export const STYLE_HASHES = ["'sha256-cMUDd9wo16CsYUazHeM4DJSbU/tZMmYdiX3r9lrfRaA='"];
 
 /** Each directive with its sources, in the order the header gives them. */
 export const DIRECTIVES = [

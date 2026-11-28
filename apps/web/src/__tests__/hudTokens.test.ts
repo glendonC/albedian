@@ -128,7 +128,8 @@ describe('index.html loads Geist and nothing retired', () => {
   });
 
   it('sets every inline font-family to a HUD stack', () => {
-    const values = [...indexHtml.matchAll(/font-family:\s*([^;]+);/g)].map((m) => squash(m[1] ?? ''));
+    // A @font-face's family names the face it declares, not a stack (first-paint-one's Geist, pinned to fonts.css's)
+    const values = [...indexHtml.replace(/@font-face\s*\{[^}]*\}/g, '').matchAll(/font-family:\s*([^;]+);/g)].map((m) => squash(m[1] ?? ''));
     expect(values.length).toBeGreaterThan(0);
     for (const value of values) expect([HUD_FONTS.sans, HUD_FONTS.mono]).toContain(value);
   });
