@@ -108,8 +108,18 @@ export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, web
   return {
     // Under --lan the network gets the built app alone: the dev server would hand out any repository file by /@fs/ path
     // Vite bakes VITE_ values into the build, so the music base for the --lan build is set here
+    // field-start-fast-one: the web package's own build (apps/web/package.json) without its typecheck, which changes
+    // nothing the build serves and took 8.8 s of a 15.4 s field build with no line printed [tested, discovery walk];
+    // it stays in pnpm typecheck, the package's own build and CI's gates
     build: lan
-      ? { command: 'pnpm', args: ['--filter', '@albedian/web', 'build'], env: { ...env, VITE_ALBEDIAN_MUSIC_SOURCES: MUSIC_BASE } }
+      ? {
+          steps: [
+            { command: process.execPath, args: ['scripts/verify-public-tracked.mjs'] },
+            { command: 'pnpm', args: ['--filter', '@albedian/web', 'exec', 'vite', 'build'] },
+            { command: process.execPath, args: ['scripts/check-built-page.mjs', 'apps/web/dist'] },
+          ],
+          env: { ...env, VITE_ALBEDIAN_MUSIC_SOURCES: MUSIC_BASE },
+        }
       : null,
     api: {
       command: 'uv',
@@ -146,6 +156,16 @@ export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, web
     laptopUrl: `http://localhost:${webPort}`,
     phoneUrl,
   };
+}
+
+/** Runs the --lan build's steps in order from `cwd`, each with the build's environment and its output on the
+ * terminal; null once every step has passed, or why the first that failed did (and the steps after it never run). */
+export function runBuild(build, cwd, run = spawnSync) {
+  for (const step of build.steps) {
+    const result = run(step.command, step.args, { cwd, env: build.env, stdio: 'inherit' });
+    if (result.error || result.status !== 0) return result.error?.message ?? result.signal ?? `exit code ${result.status}`;
+  }
+  return null;
 }
 
 function portIsFree(port, host) {
@@ -226,9 +246,8 @@ async function main() {
   if (plan.build) {
     console.log('Building the web app for --lan; only this build is served to the network.');
     const started = Date.now();
-    const result = spawnSync(plan.build.command, plan.build.args, { cwd: REPO_ROOT, env: plan.build.env, stdio: 'inherit' });
-    if (result.error || result.status !== 0) {
-      const why = result.error?.message ?? result.signal ?? `exit code ${result.status}`;
+    const why = runBuild(plan.build, REPO_ROOT);
+    if (why !== null) {
       console.error(`The web app build failed (${why}), so --lan started nothing. Fix the build, or run pnpm field without --lan.`);
       process.exit(1);
     }

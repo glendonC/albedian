@@ -12,7 +12,18 @@ import {
   musicSourcesLine,
   parseFieldArgs,
   pickLanAddress,
+  runBuild,
 } from '../field.mjs';
+
+const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+
+/** A field build step written as the web package's own build script writes it, run from apps/web. */
+function asPackageStep(step) {
+  if (step.command === process.execPath) return ['node', ...step.args.map((a) => path.relative('apps/web', a))].join(' ');
+  expect(step.command).toBe('pnpm');
+  expect(step.args.slice(0, 3)).toEqual(['--filter', '@albedian/web', 'exec']);
+  return step.args.slice(3).join(' ');
+}
 
 const interfaces = {
   lo0: [
@@ -55,8 +66,11 @@ describe('field start plan', () => {
 
   it('with --lan builds the web app first and serves only that build with vite preview', () => {
     const plan = fieldPlan({ lan: true, lanAddress: '192.168.1.20', env: { KEEP: '1' } });
-    expect(plan.build.command).toBe('pnpm');
-    expect(plan.build.args).toEqual(['--filter', '@albedian/web', 'build']);
+    expect(plan.build.steps.map(asPackageStep)).toEqual([
+      'node ../../scripts/verify-public-tracked.mjs',
+      'vite build',
+      'node ../../scripts/check-built-page.mjs dist',
+    ]);
     expect(plan.build.env.KEEP).toBe('1');
     // The dev server hands out any file in the repository by its /@fs/ path; preview serves apps/web/dist alone
     expect(plan.web.args.slice(0, 5)).toEqual(['--filter', '@albedian/web', 'exec', 'vite', 'preview']);
@@ -142,6 +156,55 @@ describe('field start plan', () => {
     expect(plan.web.env.ALBEDIAN_API_TARGET).toBe('http://127.0.0.1:8100');
     expect(plan.healthUrl).toBe('http://127.0.0.1:8100/api/health');
     expect(plan.web.args).toContain('5180');
+  });
+});
+
+// field-start-fast-one: the typecheck changes nothing the build serves and took 8.8 s of a 15.4 s field build with no
+// line printed; it stays in pnpm typecheck, the web package's own build and CI's gates
+describe('the --lan build', () => {
+  it("is the web package's own build without its typecheck, step for step", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'apps/web/package.json'), 'utf8'));
+    const packageSteps = pkg.scripts.build.split(' && ');
+    // When the package's build gains or loses a step, the field's build is looked at again here
+    expect(packageSteps).toEqual([
+      'node ../../scripts/verify-public-tracked.mjs',
+      'tsc --noEmit',
+      'vite build',
+      'node ../../scripts/check-built-page.mjs dist',
+    ]);
+    const plan = fieldPlan({ lan: true, lanAddress: '192.168.1.20', env: {} });
+    expect(plan.build.steps.map(asPackageStep)).toEqual(packageSteps.filter((step) => step !== 'tsc --noEmit'));
+    for (const step of plan.build.steps) expect([step.command, ...step.args].join(' ')).not.toMatch(/tsc|typecheck/);
+  });
+
+  it('runs its steps in order from the repository with the build environment, and stops at the first that fails', () => {
+    const { build } = fieldPlan({ lan: true, lanAddress: '192.168.1.20', env: { KEEP: '1' } });
+    const outcome = (results) => {
+      const calls = [];
+      const run = (command, args, options) => {
+        calls.push({ command, args, cwd: options.cwd, env: options.env, stdio: options.stdio });
+        return results[calls.length - 1];
+      };
+      return { why: runBuild(build, '/repo', run), calls };
+    };
+    const passed = outcome([{ status: 0 }, { status: 0 }, { status: 0 }]);
+    expect(passed.why).toBeNull();
+    expect(passed.calls.map((c) => [c.command, ...c.args])).toEqual(build.steps.map((s) => [s.command, ...s.args]));
+    for (const call of passed.calls) {
+      expect(call.cwd).toBe('/repo');
+      expect(call.env).toBe(build.env);
+      expect(call.stdio).toBe('inherit');
+    }
+    const second = outcome([{ status: 0 }, { status: 3 }, { status: 0 }]);
+    expect(second.why).toBe('exit code 3');
+    expect(second.calls).toHaveLength(2);
+    expect(outcome([{ status: null, signal: 'SIGTERM' }]).why).toBe('SIGTERM');
+    const missing = outcome([{ status: 0 }, { status: 0 }, { error: new Error('spawn pnpm ENOENT'), status: null }]);
+    expect(missing.why).toBe('spawn pnpm ENOENT');
+    expect(missing.calls).toHaveLength(3);
+    // spawnSync's own failure is the reason even beside a status of 0 or the signal it killed the step with
+    expect(outcome([{ error: new Error('spawnSync node ENOBUFS'), status: 0 }]).why).toBe('spawnSync node ENOBUFS');
+    expect(outcome([{ error: new Error('spawnSync node ETIMEDOUT'), status: null, signal: 'SIGTERM' }]).why).toBe('spawnSync node ETIMEDOUT');
   });
 });
 
