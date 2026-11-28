@@ -662,6 +662,8 @@ export const FlightStarsLayer: React.FC<{
   const arrivalRef = useRef(arrival);
   arrivalRef.current = arrival;
   const bloom = useMemo(() => (!cone && arrival && view ? arrivalBloomOf(arrival, view) : null), [arrival, view, cone]);
+  // craft-star-light-one: the key in the drawn row's colour, made once for each list and row (AUDIT-D: not on every render)
+  const litCandidates = useMemo(() => withDrawnStarColour(keyCandidates, arrival), [keyCandidates, arrival]);
   const bloomRef = useRef(bloom);
   bloomRef.current = bloom;
   const referenceKey = camera ? keyOfReference(camera.referencePc) : '';
@@ -886,7 +888,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={withDrawnStarColour(keyCandidates, arrival)} framing={craftPlace} phone={phone} steer={steer ? { ...aliveFrame(steerNow.current ?? steer, alive.current).craft, shiftPx: steerShift() } : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
+    {!cone && (craft || craftSeen) && camera && <FlightCraftLayer camera={camera} craft={craft ?? null} keyCandidates={litCandidates} framing={craftPlace} phone={phone} steer={steer ? { ...aliveFrame(steerNow.current ?? steer, alive.current).craft, shiftPx: steerShift() } : null} drawRef={craftDraw} {...(craftLoad ? { load: craftLoad } : {})} {...(makeCraftRenderer ? { makeRenderer: makeCraftRenderer } : {})} />}
     </>
   );
 };

@@ -168,9 +168,12 @@ async function handed(session: ObservationSession, tile: CatalogStarCoreTile): P
       for (const cb of due) cb(now);
     });
   }
-  await act(async () => root.render(createElement(FlightStarsLayer, { session, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: CRAFTS['astronaut-emu']! })));
+  renderAgain = async (next = session) => act(async () => root.render(createElement(FlightStarsLayer, { session: next, viewportWidthPx: 1440, viewportHeightPx: 900, openTiles, craft: CRAFTS['astronaut-emu']! })));
+  await renderAgain();
   return seen.candidates.at(-1) as LightCandidate[];
 }
+/** The last layer rendered once more with the same tiles: the same session unless another is given. */
+let renderAgain: (next?: ObservationSession) => Promise<void> = async () => {};
 
 describe('the star layer hands the craft the key in the drawn row\'s colour', () => {
   it('a Hipparcos finding\'s key takes the B-V of the row drawn at the place flown to', async () => {
@@ -179,6 +182,24 @@ describe('the star layer hands the craft the key in the drawn row\'s colour', ()
     expect(candidates).toHaveLength(1);
     expect(candidates[0]!.isBMinusV).toBe(true);
     expect(candidates[0]!.colorIndex).toBeCloseTo(1.85, 6);
+  });
+
+  it('hands the same coloured list on every render while the list and the row stay, so the craft is not drawn again for it', async () => {
+    const session = there(undefined);
+    const candidates = await handed(session, rowAtThePlace(session, 1.85));
+    expect(candidates[0]!.isBMinusV).toBe(true);
+    const before = seen.candidates.length;
+    await renderAgain();
+    expect(seen.candidates.length).toBeGreaterThan(before);
+    expect(seen.candidates.at(-1)).toBe(candidates);
+  });
+
+  it('hands the new list when the finding\'s own colour comes, the row staying', async () => {
+    const session = there(undefined);
+    await handed(session, rowAtThePlace(session, 1.85));
+    const gaia = there(2.1);
+    await renderAgain({ ...session, observationSolution: gaia.observationSolution } as ObservationSession);
+    expect(seen.candidates.at(-1)).toMatchObject([{ colorIndex: 2.1, isBMinusV: false }]);
   });
 
   it('a Gaia finding\'s key keeps its own BP-RP', async () => {
